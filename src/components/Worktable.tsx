@@ -344,7 +344,7 @@ export function Worktable({
             <button className="button primary publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</button>
           ) : (
             <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
-              <button ref={puzzleMenuButtonRef} className="icon-button puzzle-menu-trigger" aria-label="Open puzzle actions"
+              <button ref={puzzleMenuButtonRef} className="icon-button borderless puzzle-menu-trigger" aria-label="Open puzzle actions"
                 title="Puzzle actions" aria-expanded={puzzleMenuOpen} aria-controls="puzzle-menu"
                 onClick={() => setPuzzleMenuOpen((open) => !open)}>
                 <MoreHorizontal size={20} />
