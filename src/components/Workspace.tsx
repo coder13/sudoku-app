@@ -3,9 +3,9 @@ import { ArrowDownToLine, Check, Layers2, Menu, Minus, Plus, Settings as Setting
 import { parsePuzzle } from '../sudoku/formats'
 import type { ErrorMode } from '../sudoku/game'
 import {
-  DEFAULT_ADVANCED_MODES, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, INPUT_SIZE_STEP, MAX_INPUT_SIZE,
-  MIN_INPUT_SIZE, readPanelHeight, readPreferences, saveAdvancedModes, saveErrorMode, saveInputSize, savePanelHeight,
-  type AdvancedModes,
+  DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, INPUT_SIZE_STEP, MAX_INPUT_SIZE,
+  MIN_INPUT_SIZE, readPanelHeight, readPreferences, saveAdvancedModes, saveAppearance, saveErrorMode, saveInputSize,
+  savePanelHeight, type AdvancedModes, type AppearancePreferences,
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
@@ -22,8 +22,10 @@ export function Workspace() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [multi, setMulti] = useState(false)
   const [advancedModes, setAdvancedModesState] = useState<AdvancedModes>(DEFAULT_ADVANCED_MODES)
+  const [appearance, setAppearanceState] = useState<AppearancePreferences>(DEFAULT_APPEARANCE)
   const [errorMode, setErrorModeState] = useState<ErrorMode>(DEFAULT_ERROR_MODE)
   const [inputSize, setInputSizeState] = useState(DEFAULT_INPUT_SIZE)
+  const [systemDark, setSystemDark] = useState(false)
   const [panelHeight, setPanelHeight] = useState(280)
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
@@ -34,16 +36,35 @@ export function Workspace() {
   const resizeStartInputSize = useRef(inputSize)
   const game = games.find((item) => item.id === active)
   const close = () => setPanel(null)
+  const colorMode = appearance.colorMode === 'system' ? (systemDark ? 'dark' : 'light') : appearance.colorMode
+  const activeTheme = colorMode === 'dark' ? appearance.darkTheme : appearance.lightTheme
 
   useEffect(() => {
     roomStore.connect()
     const preferences = readPreferences()
     setAdvancedModesState(preferences.advancedModes)
+    setAppearanceState(preferences.appearance)
     setErrorModeState(preferences.errorMode)
     setInputSizeState(preferences.inputSize)
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
   }, [])
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-color-scheme: dark)')
+    const update = () => setSystemDark(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  useEffect(() => {
+    const root = document.documentElement
+    root.dataset.colorMode = colorMode
+    root.dataset.theme = activeTheme
+    root.style.colorScheme = colorMode
+    const background = getComputedStyle(root).getPropertyValue('--page-bg').trim()
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+    if (themeColor && background) themeColor.content = background
+  }, [activeTheme, colorMode])
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
     const { hostname } = window.location
@@ -121,6 +142,11 @@ export function Workspace() {
   function setAdvancedModes(next: AdvancedModes) {
     setAdvancedModesState(next)
     saveAdvancedModes(next)
+  }
+
+  function setAppearance(next: AppearancePreferences) {
+    setAppearanceState(next)
+    saveAppearance(next)
   }
 
   function setErrorMode(next: ErrorMode) {
@@ -204,7 +230,7 @@ export function Workspace() {
         <div className="workspace">
           {game ? (
             <Worktable key={`${game.id}-${game.source}`} game={game} modalOpen={panel !== null || menuOpen || resizeMode}
-              advancedModes={advancedModes} errorMode={errorMode} multi={multi} actionsRef={worktableActions}
+              advancedModes={advancedModes} appearance={appearance} errorMode={errorMode} multi={multi} actionsRef={worktableActions}
               inputSize={inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight} beginResize={beginResize}
               onPublish={() => setPanel('publish')} />
           ) : (
@@ -234,6 +260,7 @@ export function Workspace() {
       {panel === 'import' && <ImportPuzzle close={close} onImport={(text, cancelled) => openPuzzle(parsePuzzle(text), cancelled)} />}
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
       {panel === 'settings' && <Settings close={close} advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
+        appearance={appearance} setAppearance={setAppearance}
         errorMode={errorMode} setErrorMode={setErrorMode} inputSize={inputSize} setInputSize={setInputSize}
         onResize={beginResize} draft={game?.source === 'draft'} />}
       {panel === 'manage' && game && <PuzzleOptions game={game} close={close}

@@ -7,7 +7,7 @@ import {
   COLORS, conflictsOf, enter, formatTime, isSolved, redo, undo, valuesOf,
   type ErrorMode, type Game, type Mode,
 } from '../sudoku/game'
-import type { AdvancedModes } from '../sudoku/preferences'
+import type { AdvancedModes, AppearancePreferences } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { Board } from './Board'
 import { Controls } from './Controls'
@@ -73,12 +73,13 @@ function useTimer(id: string, running: boolean) {
 export type WorktableActions = { check: () => void }
 
 export function Worktable({
-  game, modalOpen, advancedModes, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
+  game, modalOpen, advancedModes, appearance, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
   beginResize, onPublish,
 }: {
   game: Game
   modalOpen: boolean
   advancedModes: AdvancedModes
+  appearance: AppearancePreferences
   errorMode: ErrorMode
   multi: boolean
   actionsRef: RefObject<WorktableActions | null>
@@ -269,6 +270,7 @@ export function Worktable({
           )}
         </div>
         <Board game={game} values={values} errors={errors} candidateLayout={advancedModes.candidateLayout}
+          showGuides={appearance.showGuides}
           highlightedDigit={mode === 'color' ? null : selectedDigit} selected={selected} active={active}
           boardRef={boardRef} onCell={clickCell} />
         {draft && <div className="draft-tip"><PencilLine size={16} /> Enter the starting digits, then save your puzzle.</div>}

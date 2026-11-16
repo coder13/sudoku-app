@@ -6,6 +6,7 @@ type Props = {
   values: string
   errors: Set<number>
   candidateLayout: CandidateLayout
+  showGuides: boolean
   highlightedDigit: number | null
   selected: number[]
   active: number
@@ -13,12 +14,12 @@ type Props = {
   onCell: (index: number, event: MouseEvent) => void
 }
 
-export function Board({ game, values, errors, candidateLayout, highlightedDigit, selected, active, boardRef, onCell }: Props) {
+export function Board({ game, values, errors, candidateLayout, showGuides, highlightedDigit, selected, active, boardRef, onCell }: Props) {
   const focusValue = selected.includes(active) ? values[active] : highlightedDigit ? String(highlightedDigit) : ''
   return (
-    <div className="board-frame">
-      <div className="col-labels" aria-hidden="true">{DIGITS.map((n) => <span key={n}>{n}</span>)}</div>
-      <div className="row-labels" aria-hidden="true">{DIGITS.map((n) => <span key={n}>{n}</span>)}</div>
+    <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}`}>
+      {showGuides && <div className="col-labels" aria-hidden="true">{DIGITS.map((n) => <span key={n}>{n}</span>)}</div>}
+      {showGuides && <div className="row-labels" aria-hidden="true">{DIGITS.map((n) => <span key={n}>{n}</span>)}</div>}
       <div className="board-body">
         <div className="sudoku-grid" role="grid" aria-label="Sudoku grid" ref={boardRef}>
           {DIGITS.map((row) => (

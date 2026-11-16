@@ -6,6 +6,15 @@ export type AdvancedModes = {
   multiSelectButton: boolean
 }
 
+export type ColorMode = 'system' | 'light' | 'dark'
+export type ThemeId = 'violet' | 'ocean' | 'forest'
+export type AppearancePreferences = {
+  colorMode: ColorMode
+  lightTheme: ThemeId
+  darkTheme: ThemeId
+  showGuides: boolean
+}
+
 export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
   candidateLayout: 'grid',
   colorsEnabled: false,
@@ -13,6 +22,12 @@ export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
 }
 
 export const DEFAULT_ERROR_MODE: ErrorMode = 'all'
+export const DEFAULT_APPEARANCE: AppearancePreferences = {
+  colorMode: 'system',
+  lightTheme: 'violet',
+  darkTheme: 'violet',
+  showGuides: true,
+}
 export const DEFAULT_INPUT_SIZE = 210
 export const MIN_INPUT_SIZE = 162
 export const MAX_INPUT_SIZE = 234
@@ -21,13 +36,17 @@ export const ADVANCED_MODE_KEY = 'sudoku-app:v1:advanced-modes'
 export const ERROR_MODE_KEY = 'sudoku-app:v1:error-mode'
 export const INPUT_SIZE_KEY = 'sudoku-app:v1:input-size'
 export const PANEL_HEIGHT_KEY = 'sudoku-app:v1:input-panel-height'
+export const APPEARANCE_KEY = 'sudoku-app:v1:appearance'
 
 const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'none'])
+const COLOR_MODES = new Set<ColorMode>(['system', 'light', 'dark'])
+const THEMES = new Set<ThemeId>(['violet', 'ocean', 'forest'])
 
 export function readPreferences() {
   let advancedModes = DEFAULT_ADVANCED_MODES
   let errorMode = DEFAULT_ERROR_MODE
   let inputSize = DEFAULT_INPUT_SIZE
+  let appearance = DEFAULT_APPEARANCE
   try {
     const savedErrorMode = localStorage.getItem(ERROR_MODE_KEY) as ErrorMode | null
     if (savedErrorMode && ERROR_MODES.has(savedErrorMode)) errorMode = savedErrorMode
@@ -44,8 +63,20 @@ export function readPreferences() {
     if (savedInputSizeText !== null && Number.isFinite(savedInputSize)) {
       inputSize = Math.min(MAX_INPUT_SIZE, Math.max(MIN_INPUT_SIZE, savedInputSize))
     }
+    const savedAppearance = JSON.parse(localStorage.getItem(APPEARANCE_KEY) ?? 'null') as Partial<AppearancePreferences> | null
+    if (savedAppearance) {
+      appearance = {
+        colorMode: savedAppearance.colorMode && COLOR_MODES.has(savedAppearance.colorMode)
+          ? savedAppearance.colorMode : DEFAULT_APPEARANCE.colorMode,
+        lightTheme: savedAppearance.lightTheme && THEMES.has(savedAppearance.lightTheme)
+          ? savedAppearance.lightTheme : DEFAULT_APPEARANCE.lightTheme,
+        darkTheme: savedAppearance.darkTheme && THEMES.has(savedAppearance.darkTheme)
+          ? savedAppearance.darkTheme : DEFAULT_APPEARANCE.darkTheme,
+        showGuides: savedAppearance.showGuides !== false,
+      }
+    }
   } catch { /* Keep defaults when preferences cannot be read. */ }
-  return { advancedModes, errorMode, inputSize }
+  return { advancedModes, errorMode, inputSize, appearance }
 }
 
 export function saveAdvancedModes(value: AdvancedModes) {
@@ -60,6 +91,11 @@ export function saveErrorMode(value: ErrorMode) {
 
 export function saveInputSize(value: number) {
   try { localStorage.setItem(INPUT_SIZE_KEY, String(value)) }
+  catch { /* The setting remains active for this session. */ }
+}
+
+export function saveAppearance(value: AppearancePreferences) {
+  try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(value)) }
   catch { /* The setting remains active for this session. */ }
 }
 
