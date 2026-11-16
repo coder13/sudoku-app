@@ -39,6 +39,7 @@ import { useGridClickAway } from './useGridClickAway'
 import { Modal } from './Modal'
 import { usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
+import { PuzzleAnalysis } from './PuzzleAnalysis'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 
@@ -200,6 +201,7 @@ export function Worktable({
   const [solution, setSolution] = useState<string | null>(null)
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
+  const [analysisOpen, setAnalysisOpen] = useState(false)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [changePuzzleOpen, setChangePuzzleOpen] = useState(false)
@@ -343,7 +345,7 @@ export function Worktable({
       : null
 
   useTimer(game.id, !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
-    !resetOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen)
+    !resetOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen && !analysisOpen)
 
   const markHintVisible = useCallback(() => {
     if (!deduction || previewing || solved) return
@@ -837,7 +839,7 @@ export function Worktable({
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       const target = event.target
-      if (event.defaultPrevented || game.paused || previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || event.altKey ||
+      if (event.defaultPrevented || game.paused || previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
@@ -1265,11 +1267,22 @@ export function Worktable({
     <button onClick={() => { void showHint() }} disabled={busy || solved}>
       <Lightbulb size={17} /> View hint
     </button>
+    {analysisAction}
   </>
+  const analysisAction = !draft && !solved && !variant && (
+    <button onClick={() => {
+      setPuzzleMenuOpen(false)
+      setActionsOpen(false)
+      setAnalysisOpen(true)
+    }}>
+      <ListFilter size={17} /> Available techniques
+    </button>
+  )
   const puzzleOptionItems = <>
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
+    {analysisAction}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle
@@ -1468,6 +1481,9 @@ export function Worktable({
       <button className="button secondary" disabled={busy || solved || draft || game.paused} onClick={() => { void showHint('all') }}>
         <ListFilter size={17} /> Analyze all moves
       </button>
+      {!variant && !draft && !solved && <button className="button secondary" onClick={() => setAnalysisOpen(true)}>
+        <ListFilter size={17} /> Available techniques
+      </button>}
     </section>
   )
   const advancedSolutionPathPanel = solutionPathRevealed && solutionPath ? (
@@ -1534,6 +1550,7 @@ export function Worktable({
           <p>{VARIANTS[variant.id].rule}</p>
         </div>
       </Modal>}
+      {analysisOpen && !draft && !solved && !variant && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} />}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       {changePuzzleOpen && <Modal title="Change puzzle" onClose={() => setChangePuzzleOpen(false)}>
         <div className="stop-puzzle-options">
