@@ -150,14 +150,15 @@ test('Double Exocet exposes its two components and a replayable solve', async ()
   const first = exercises[0]
   const evidence = first.deduction.evidence
   assert.ok('double-exocet' in evidence)
-  const { components, crossLines, assignments } = evidence['double-exocet']
+  const { components, crossLines, jointCrossLineSupport, assignments } = evidence['double-exocet']
   assert.deepEqual(components.map(({ bases, targets }) => ({ bases, targets })), [
     { bases: [39, 41], targets: [47, 35] },
     { bases: [51, 52], targets: [38, 31] },
   ])
   assert.deepEqual(crossLines, [{ column: 2 }, { column: 4 }, { column: 8 }])
-  assert.equal(assignments.length, 36)
-  assert.equal(first.deduction.actions.length, 41)
+  assert.equal(jointCrossLineSupport, true)
+  assert.equal(assignments.length, 8)
+  assert.equal(first.deduction.actions.length, 84)
   assert.ok(first.deduction.actions.some(action => 'eliminate' in action && action.eliminate.cell === 27 && action.eliminate.digit === 4))
   const { givens, entries, eliminations } = first
   const proof = await run({ type: 'check-practice-move', values: givens, entries, eliminations, technique, action: first.suggestion })
@@ -168,6 +169,63 @@ test('Double Exocet exposes its two components and a replayable solve', async ()
   const step = replayStep(trace, 0)
   assert.ok(step)
   assert.equal(step.after.eliminations[27] & (1 << 3), 1 << 3)
+})
+
+test('Double Exocet exposes a paired target and its replay constraints', async () => {
+  const { run } = engineRequests()
+  const values = '082030970950000300730000005000005600590800003061090000003008040000007800870050006'
+  const technique = 'double-exocet'
+  const target = { cell: 42, digit: 7 }
+  const moves = await run({ type: 'deductions', values, techniqueOrder: [technique] })
+  const match = moves.find(({ actions }) => actions.some(action =>
+    'eliminate' in action && action.eliminate.cell === target.cell && action.eliminate.digit === target.digit
+  ))
+  const evidence = match?.proofs.find(({ evidence }) => 'grouped-double-exocet' in evidence)?.evidence
+  assert.ok(evidence && 'grouped-double-exocet' in evidence)
+  const { components, crossLines, rankPattern } = evidence['grouped-double-exocet']
+  const house = { row: 2 }
+  assert.deepEqual(crossLines, [house, { row: 4 }, { row: 8 }])
+  assert.deepEqual(components[1].targets, [
+    { 'conjugate-pair': { digit: 9, link: { house, cells: [21, 23] } } },
+    { cell: 41 },
+  ])
+  const request = { type: 'prove-rank', values, target, nodeBudget: 50_000 } as const
+  const result = await run({ ...request, pattern: rankPattern })
+  assert.equal(result.status, 'proven')
+  assert.equal(await run({ type: 'replay-rank-proof', values, proof: result.proof }), true)
+  const withoutReservation = rankPattern.bases.filter(base =>
+    !('house-digit' in base && base['house-digit'].digit === 9 && 'row' in base['house-digit'].house &&
+    base['house-digit'].house.row === house.row)
+  )
+  assert.deepEqual(await run({
+    ...request, pattern: { ...rankPattern, bases: withoutReservation },
+  }), { status: 'compatible' })
+})
+
+test('Fireworks exposes the published triple and quadruple through practice and solve replay', async () => {
+  const { run } = engineRequests()
+  const technique = 'fireworks'
+  const catalog = await run({ type: 'techniques' })
+  assert.equal(catalog.techniques.find(item => item.id === technique)?.cost, 240)
+  const [triple, , quadruple] = await run({ type: 'practice-examples', technique })
+  assert.deepEqual(triple.deduction.evidence, {
+    firework: { wings: [0, 80], pivots: [{ cell: 8, digits: [1, 2, 3] }] },
+  })
+  assert.deepEqual(quadruple.deduction.evidence, {
+    firework: { wings: [27, 77], pivots: [{ cell: 32, digits: [3, 4] }, { cell: 72, digits: [1, 2] }] },
+  })
+  const { givens, entries, eliminations, suggestion } = quadruple
+  const proof = await run({ type: 'check-practice-move', values: givens, entries, eliminations, technique, action: suggestion })
+  assert.deepEqual(proof, quadruple.deduction)
+  const trace = await run({
+    type: 'logical-solve', values: givens, techniqueOrder: [technique, ...catalog.defaultOrder],
+    includePositions: true,
+  })
+  assert.deepEqual(trace.steps[0], quadruple.deduction)
+  assert.deepEqual(trace.rating.status, { solved: 'unfair' })
+  const step = replayStep(trace, 0)
+  assert.ok(step)
+  assert.equal(step.after.eliminations[48] & (1 << 3), 1 << 3)
 })
 
 test('opt-in rank solve records the rank removal, score, and replay positions', async () => {

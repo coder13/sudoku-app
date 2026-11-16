@@ -245,6 +245,54 @@ const DOUBLE_EXOCET_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
             "monhard-11",
             Technique::DoubleExocet.practice_examples()[2].givens,
         ),
+        (
+            "unsolvable-28",
+            "600008940900006100070040000200610000000000200089002000000060005000000030800001600",
+        ),
+    ],
+)];
+
+// The worked examples and seven exemplars on SudokuWiki's Fireworks page.
+const FIREWORKS_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
+    "fireworks",
+    &[
+        (
+            "triple-laser",
+            Technique::Fireworks.practice_examples()[0].givens,
+        ),
+        ("stuart", Technique::Fireworks.practice_examples()[1].givens),
+        (
+            "cobra-roll",
+            Technique::Fireworks.practice_examples()[2].givens,
+        ),
+        (
+            "exemplar-1",
+            "609000015000050000030000080000007000207004600100800003000080034900020000400105070",
+        ),
+        (
+            "exemplar-2",
+            "000902300507600000600807005000300600070000010800010000400080000002000094905400000",
+        ),
+        (
+            "exemplar-3",
+            "000400300060907005080201000004000010000700000190005006000000803000006001740000060",
+        ),
+        (
+            "exemplar-4",
+            "100000400000010000098000006000420000700005300002086700900000005300002000470600000",
+        ),
+        (
+            "exemplar-5",
+            "500007038000908002070000150340100000000000800200060000003600009000009040706000000",
+        ),
+        (
+            "exemplar-6",
+            "001036850009005000000000000000050900600000023120900000000080004410000700036090010",
+        ),
+        (
+            "exemplar-7",
+            "004008007000060000500100028000400096000070080300000210100003470027000000050010000",
+        ),
     ],
 )];
 
@@ -275,6 +323,8 @@ fn main() {
     let senior_examples = args.iter().any(|arg| arg == "--senior-exocet-examples");
     let double_exocet = args.iter().any(|arg| arg == "--double-exocet");
     let double_examples = args.iter().any(|arg| arg == "--double-exocet-examples");
+    let fireworks = args.iter().any(|arg| arg == "--fireworks");
+    let fireworks_examples = args.iter().any(|arg| arg == "--fireworks-examples");
     let depth_three = args.iter().any(|arg| arg == "--depth-three");
     let tridagon = args.iter().any(|arg| arg == "--tridagon");
     let depth_puzzles: Vec<_> = if depth_three {
@@ -307,6 +357,8 @@ fn main() {
         FORCING_EXAMPLES
     } else if double_examples {
         DOUBLE_EXOCET_EXAMPLES
+    } else if fireworks_examples {
+        FIREWORKS_EXAMPLES
     } else if senior_examples {
         SENIOR_EXOCET_EXAMPLES
     } else {
@@ -363,6 +415,13 @@ fn main() {
     if senior_first {
         order.insert(0, Technique::SeniorExocet);
     }
+    if fireworks {
+        let before_medusa = order
+            .iter()
+            .position(|&technique| technique == Technique::Medusa)
+            .unwrap();
+        order.insert(before_medusa, Technique::Fireworks);
+    }
     let label = if nested {
         "Default order plus Dynamic and Nested Forcing Nets"
     } else if dynamic {
@@ -387,6 +446,9 @@ fn main() {
     }
     if double_exocet {
         eprintln!("Double Exocet before forcing");
+    }
+    if fireworks {
+        eprintln!("Fireworks before 3D Medusa");
     }
     if advanced {
         eprintln!("Advanced Forcing Net after Dynamic Forcing Net");
@@ -426,6 +488,19 @@ fn main() {
                 let start = Instant::now();
                 black_box(rate_puzzle(black_box(&board), &order)).expect("repeatable rating");
                 timings.push(start.elapsed().as_secs_f64() * 1000.0);
+            }
+            if group == "fireworks" {
+                let count = trace
+                    .score
+                    .counts
+                    .get(&Technique::Fireworks)
+                    .copied()
+                    .unwrap_or(0);
+                eprintln!(
+                    "{name}: {} steps, {} points, {count} Fireworks",
+                    trace.steps.len(),
+                    trace.score.points
+                );
             }
             if dynamic && (group == "expert" || forcing_examples) {
                 let count = |technique| trace.score.counts.get(&technique).copied().unwrap_or(0);

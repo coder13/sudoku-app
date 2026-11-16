@@ -465,6 +465,16 @@ pub struct SectorLink {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+/// The intersection and required digits of one Firework.
+pub struct FireworkPivot {
+    /// Cell where the row, column, and box meet.
+    pub cell: usize,
+    /// Digits confined to this box and the two wings in the crossing lines.
+    pub digits: Vec<u8>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
 /// Cross-line coverage for one base digit in an Exocet proof.
 pub struct ExocetCover {
     /// Digit whose occurrences are constrained.
@@ -509,11 +519,14 @@ pub struct DoubleExocetProof {
     pub components: [ExocetComponent; 2],
     /// The three cross-lines used by both components.
     pub cross_lines: [House; 3],
+    /// True when the checks fill the shared cross-lines for all base digits
+    /// together. Otherwise they check each placed base digit independently.
+    pub joint_cross_line_support: bool,
     /// Paired assignments that pass the peer and cross-line checks.
     pub assignments: Vec<[ExocetAssignment; 2]>,
 }
 
-/// A target in a grouped Senior Exocet proof.
+/// A single-cell or paired target in an Exocet proof.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(
     feature = "wasm-api",
@@ -547,6 +560,34 @@ impl ExocetTarget {
             Self::ConjugatePair { digit, .. } => Some(digit),
         }
     }
+}
+
+/// One base pair and its target groups in a grouped Double Exocet.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct GroupedExocetComponent {
+    /// The two base cell indices.
+    pub bases: [usize; 2],
+    /// The two target groups in cross-line order.
+    pub targets: [ExocetTarget; 2],
+    /// The cover for each base digit outside the target groups.
+    pub covers: Vec<ExocetCover>,
+}
+
+/// Two Exocets with a shared set of cross-lines and at least one paired target.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct GroupedDoubleExocetProof {
+    /// Both base pairs, targets, and covers.
+    pub components: [GroupedExocetComponent; 2],
+    /// The three cross-lines used by both components.
+    pub cross_lines: [House; 3],
+    /// The local constraints that replay each removal with [`crate::prove_rank_at`].
+    pub rank_pattern: crate::RankPattern,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -781,6 +822,13 @@ pub enum HintEvidence {
         /// All assignments of candidates to these cells that contain the removal.
         cases: Vec<AlignedExclusionCase>,
     },
+    /// A Firework triple or quadruple with a shared pair of wing cells.
+    Firework {
+        /// The row wing followed by the column wing, relative to the first pivot.
+        wings: [usize; 2],
+        /// One intersection for a triple, or two for a quadruple.
+        pivots: Vec<FireworkPivot>,
+    },
     /// At least one candidate outside the three core digits must break a Tridagon.
     Tridagon {
         /// One triple in each of the four boxes, ordered by box and then by row.
@@ -861,6 +909,8 @@ pub enum HintEvidence {
     },
     /// Two Junior Exocet proofs evaluated together.
     DoubleExocet(Box<DoubleExocetProof>),
+    /// Joint deductions when at least one target is a conjugate pair.
+    GroupedDoubleExocet(Box<GroupedDoubleExocetProof>),
     /// An SK Loop with eight connected arms.
     SkLoop(Box<SkLoopProof>),
     /// A multi-sector pattern that accounts for digits across several houses.
@@ -971,6 +1021,9 @@ impl HintEvidence {
             }
             HintEvidence::BugPlusOne { .. } => 3,
             HintEvidence::AlignedExclusion { cells, cases } => cells.len() + cases.len(),
+            HintEvidence::Firework { pivots, .. } => {
+                2 + pivots.len() + pivots.iter().map(|pivot| pivot.digits.len()).sum::<usize>()
+            }
             HintEvidence::Tridagon {
                 guardians,
                 branches,
@@ -1016,6 +1069,25 @@ impl HintEvidence {
                     .map(|cover| cover.cells.len())
                     .sum::<usize>()
                     + proof.assignments.len()
+            }
+            HintEvidence::GroupedDoubleExocet(proof) => {
+                proof
+                    .components
+                    .iter()
+                    .map(|component| {
+                        2 + component
+                            .targets
+                            .iter()
+                            .flat_map(|target| target.cells())
+                            .count()
+                            + component
+                                .covers
+                                .iter()
+                                .map(|cover| cover.cells.len())
+                                .sum::<usize>()
+                    })
+                    .sum::<usize>()
+                    + proof.rank_pattern.bases.len()
             }
             HintEvidence::SkLoop(proof) => proof.arms.iter().map(Vec::len).sum(),
             HintEvidence::MultiSectorLockedSets {

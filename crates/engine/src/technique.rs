@@ -148,6 +148,7 @@ catalog! {
     UniqueLoop: "unique-loop", 140, Hard, true, ["Uniqueness Loop"];
     BugPlusOne: "bug-plus-one", 100, Hard, true, ["BUG+1", "Bivalue Universal Grave + 1"];
     WxyzWing: "wxyz-wing", 220, Unfair, false, [];
+    Fireworks: "fireworks", 240, Unfair, false, ["Triple Firework", "Quadruple Firework"];
     AlignedPairExclusion: "aligned-pair-exclusion", 310, Unfair, false, [];
     AlignedTripletExclusion: "aligned-triplet-exclusion", 370, Unfair, false, [];
     Tridagon: "tridagon", 410, Extreme, false, ["Trivalue Oddagon", "Thor's Hammer"];

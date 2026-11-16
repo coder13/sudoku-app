@@ -383,6 +383,22 @@ impl<'a> Pattern<'a> {
                     }
                 }
             }
+            HintEvidence::Firework { wings, pivots } => {
+                for pivot in pivots {
+                    let [row, column, block] = House::at(pivot.cell);
+                    self.houses.extend([row, column, block]);
+                    let digits = mask(pivot.digits.iter().copied());
+                    self.mark([pivot.cell, wings[0], wings[1]], digits);
+                    for cell in block.cells() {
+                        if cell != pivot.cell
+                            && (cell / 9 == pivot.cell / 9 || cell % 9 == pivot.cell % 9)
+                            && self.masks.is_some_and(|masks| masks[cell] & digits != 0)
+                        {
+                            self.mark([cell], digits);
+                        }
+                    }
+                }
+            }
             HintEvidence::Tridagon {
                 cells,
                 digits,
@@ -458,6 +474,16 @@ impl<'a> Pattern<'a> {
                 for component in &proof.components {
                     let digits = self.exocet_covers(proof.cross_lines, &component.covers);
                     self.mark(component.bases.into_iter().chain(component.targets), digits);
+                }
+            }
+            HintEvidence::GroupedDoubleExocet(proof) => {
+                for component in &proof.components {
+                    let digits = self.exocet_covers(proof.cross_lines, &component.covers);
+                    self.mark(component.bases, digits);
+                    for target in component.targets {
+                        let reserved = target.reserved_digit().map_or(0, digit_bit);
+                        self.mark(target.cells(), digits | reserved);
+                    }
                 }
             }
             HintEvidence::SkLoop(proof) => {

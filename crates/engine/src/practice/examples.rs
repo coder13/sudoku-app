@@ -5,6 +5,55 @@ use super::{PracticeExample, Technique, elimination_masks, place, remove};
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
+        Technique::Fireworks => {
+            const {
+                [
+                    // Andrew Stuart's second triple, at the position shown in SudokuWiki.
+                    PracticeExample {
+                        givens: "230008005060200000000090100006000320403000501025000900007080000000002070100900058",
+                        entries: Some(
+                            "000000700000000804000000002010000007000020080000000046000000210000000400042000600",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (18, 8),
+                            (19, 5),
+                            (41, 7),
+                            (48, 1),
+                            (54, 5),
+                            (54, 9),
+                            (57, 3),
+                            (59, 3),
+                            (63, 5),
+                            (63, 8),
+                            (63, 9),
+                            (66, 3),
+                            (67, 3),
+                        ])),
+                        expected_actions: &[remove(21, 4), remove(21, 5), remove(21, 6)],
+                    },
+                    // Cobra Roll by jovi_al, the published quadruple.
+                    PracticeExample {
+                        givens: "002300500010040090000500006076000000800020040900000803000005002000006010000870000",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[
+                            remove(27, 5),
+                            remove(32, 1),
+                            remove(32, 8),
+                            remove(32, 9),
+                            remove(48, 4),
+                            remove(56, 1),
+                            remove(64, 2),
+                            remove(72, 3),
+                            remove(72, 4),
+                            remove(72, 5),
+                            remove(72, 6),
+                            remove(77, 9),
+                        ],
+                    },
+                ]
+            }
+        }
         Technique::DoubleExocet => {
             const {
                 [
@@ -25,16 +74,19 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                             remove(13, 6),
                             remove(16, 1),
                             remove(16, 2),
+                            remove(20, 8),
                             remove(22, 1),
                             remove(22, 2),
                             remove(22, 4),
                             remove(22, 6),
+                            remove(25, 8),
                             remove(29, 4),
                             remove(30, 1),
                             remove(30, 2),
                             remove(30, 4),
                             remove(34, 1),
                             remove(34, 2),
+                            remove(42, 7),
                             remove(48, 2),
                             remove(48, 4),
                             remove(51, 2),
@@ -48,6 +100,7 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                             remove(77, 1),
                             remove(77, 2),
                             remove(77, 4),
+                            remove(78, 9),
                         ],
                     },
                     // Monhard, line 11, after two hidden singles.
@@ -59,10 +112,12 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                         ),
                         eliminations: None,
                         expected_actions: &[
+                            remove(2, 5),
                             remove(7, 1),
                             remove(7, 2),
                             remove(7, 3),
                             remove(7, 4),
+                            remove(8, 3),
                             remove(14, 2),
                             remove(14, 3),
                             remove(14, 4),
@@ -78,9 +133,15 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                             remove(25, 2),
                             remove(25, 3),
                             remove(25, 4),
+                            remove(29, 1),
+                            remove(29, 3),
+                            remove(31, 8),
+                            remove(32, 8),
                             remove(40, 1),
                             remove(40, 2),
                             remove(41, 2),
+                            remove(42, 3),
+                            remove(43, 3),
                             remove(44, 1),
                             remove(44, 2),
                             remove(44, 3),
@@ -88,10 +149,14 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                             remove(53, 1),
                             remove(53, 2),
                             remove(53, 4),
+                            remove(56, 9),
+                            remove(58, 9),
+                            remove(59, 9),
                             remove(60, 1),
                             remove(60, 2),
                             remove(60, 3),
                             remove(60, 4),
+                            remove(62, 3),
                             remove(67, 4),
                             remove(68, 3),
                             remove(68, 4),

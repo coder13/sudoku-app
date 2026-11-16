@@ -7,18 +7,43 @@ use crate::{DIGITS, ExocetTarget, hints::digit_bit};
 
 #[derive(Clone, Copy)]
 pub(super) struct Target {
-    evidence: ExocetTarget,
-    cells: u128,
-    reserved: u16,
+    pub(super) evidence: ExocetTarget,
+    pub(super) cells: u128,
+    pub(super) reserved: u16,
 }
 
 impl Target {
-    fn new(evidence: ExocetTarget) -> Self {
+    pub(super) fn new(evidence: ExocetTarget) -> Self {
         Self {
             cells: evidence.cells().fold(0, |mask, cell| mask | cell_bit(cell)),
             reserved: evidence.reserved_digit().map_or(0, digit_bit),
             evidence,
         }
+    }
+}
+
+pub(super) struct TargetCover {
+    outside: u128,
+    houses: [[Option<House>; 2]; 9],
+}
+
+impl TargetCover {
+    pub(super) fn new(digits: u16, outside: u128, possible: &[u128; 9]) -> Option<Self> {
+        let mut houses = [[None; 2]; 9];
+        for digit in bit_indices(digits) {
+            houses[digit] = cover_with_two_houses(possible[digit] & outside)?;
+        }
+        Some(Self { outside, houses })
+    }
+
+    pub(super) fn evidence(&self, digits: u16, possible: &[u128; 9]) -> Vec<ExocetCover> {
+        bit_indices(digits)
+            .map(|digit| ExocetCover {
+                digit: digit as u8 + 1,
+                cells: cells(possible[digit] & self.outside).collect(),
+                houses: self.houses[digit].into_iter().flatten().collect(),
+            })
+            .collect()
     }
 }
 
@@ -122,13 +147,9 @@ impl Region<'_> {
         // occurrences can lie outside the targets. Every pair reserves one cell,
         // leaving exactly two target cells available for the two true base digits.
         let outside = self.cells & !(targets[0].cells | targets[1].cells);
-        let mut covers = [[None; 2]; 9];
-        for digit in bit_indices(base.digits) {
-            let Some(cover) = cover_with_two_houses(possible[digit] & outside) else {
-                return ControlFlow::Continue(());
-            };
-            covers[digit] = cover;
-        }
+        let Some(cover) = TargetCover::new(base.digits, outside, possible) else {
+            return ControlFlow::Continue(());
+        };
 
         let mut removals = [0; 9];
         for target in targets {
@@ -142,13 +163,7 @@ impl Region<'_> {
                 bases: base.cells,
                 targets: targets.map(|target| target.evidence),
                 cross_lines: self.lines,
-                covers: bit_indices(base.digits)
-                    .map(|digit| ExocetCover {
-                        digit: digit as u8 + 1,
-                        cells: cells(possible[digit] & outside).collect(),
-                        houses: covers[digit].into_iter().flatten().collect(),
-                    })
-                    .collect(),
+                covers: cover.evidence(base.digits, possible),
             }
         })
     }

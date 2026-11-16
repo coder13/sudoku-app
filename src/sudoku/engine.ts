@@ -277,6 +277,7 @@ type ExocetCover = { digit: number; cells: number[]; houses: House[] }
 type ExocetAssignment = { bases: [number, number]; targets: [number, number] }
 type ExocetComponent = { bases: [number, number]; targets: [number, number]; covers: ExocetCover[] }
 type ExocetTarget = { cell: number } | { 'conjugate-pair': { digit: number; link: ConjugatePair } }
+type GroupedExocetComponent = Omit<ExocetComponent, 'targets'> & { targets: [ExocetTarget, ExocetTarget] }
 type Evidence =
   | { variant: { description: string; reason: string } }
   | { cell: number }
@@ -299,6 +300,7 @@ type Evidence =
   | { 'unique-loop': { sides: [number[], number[]]; digits: [number, number]; support: UniqueLoopSupport } }
   | { 'bug-plus-one': { cell: number; candidates: [number, number, number]; houses: [House, House, House] } }
   | { 'aligned-exclusion': { cells: number[]; cases: { digits: number[]; reason: { 'repeated-digit': [number, number] } | { 'empty-cell': number } }[] } }
+  | { firework: { wings: [number, number]; pivots: { cell: number; digits: number[] }[] } }
   | { tridagon: { cells: [number, number, number][]; digits: [number, number, number]; guardians: Candidate[]; branches: ForcingBranch[] } }
   | { forcing: { scope: ForcingScope | null; branches: ForcingBranch[] } }
   | { 'als-xz': { sets: [AlmostLockedSet, AlmostLockedSet]; links: number[] } }
@@ -321,7 +323,13 @@ type Evidence =
   | { 'double-exocet': {
       components: [ExocetComponent, ExocetComponent]
       crossLines: [House, House, House]
+      jointCrossLineSupport?: boolean
       assignments: [ExocetAssignment, ExocetAssignment][]
+    } }
+  | { 'grouped-double-exocet': {
+      components: [GroupedExocetComponent, GroupedExocetComponent]
+      crossLines: [House, House, House]
+      rankPattern: RankPattern
     } }
   | { 'sk-loop': { anchors: [number, number, number, number]; arms: number[][]; links: SectorLink[] } }
   | { 'multi-sector-locked-sets': { core: number[]; attachments: number[]; links: SectorLink[] } }

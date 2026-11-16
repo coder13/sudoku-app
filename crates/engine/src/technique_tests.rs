@@ -33,6 +33,16 @@ fn transpose_exocet_cover(cover: &crate::ExocetCover) -> crate::ExocetCover {
     }
 }
 
+fn transpose_exocet_target(target: crate::ExocetTarget) -> crate::ExocetTarget {
+    match target {
+        crate::ExocetTarget::Cell(cell) => crate::ExocetTarget::Cell(transpose(cell)),
+        crate::ExocetTarget::ConjugatePair { digit, link } => crate::ExocetTarget::ConjugatePair {
+            digit,
+            link: transpose_pair(link),
+        },
+    }
+}
+
 fn transpose_houses(houses: &[House]) -> Vec<House> {
     let mut transposed: Vec<_> = houses.iter().copied().map(transpose_house).collect();
     transposed.sort_by_key(|house| match house {
@@ -507,6 +517,21 @@ fn transpose_hint(hint: &Hint) -> Hint {
                 cases,
             }
         }
+        HintEvidence::Firework { wings, pivots } => {
+            let mut pivots: Vec<_> = pivots
+                .iter()
+                .map(|pivot| crate::FireworkPivot {
+                    cell: transpose(pivot.cell),
+                    digits: pivot.digits.clone(),
+                })
+                .collect();
+            pivots.sort_unstable_by_key(|pivot| pivot.cell);
+            let mut wings = wings.map(transpose);
+            if wings[0] / 9 != pivots[0].cell / 9 {
+                wings.swap(0, 1);
+            }
+            HintEvidence::Firework { wings, pivots }
+        }
         HintEvidence::Tridagon {
             cells,
             digits,
@@ -616,15 +641,7 @@ fn transpose_hint(hint: &Hint) -> Hint {
             covers,
         } => HintEvidence::GroupedExocet {
             bases: bases.map(transpose),
-            targets: targets.map(|target| match target {
-                crate::ExocetTarget::Cell(cell) => crate::ExocetTarget::Cell(transpose(cell)),
-                crate::ExocetTarget::ConjugatePair { digit, link } => {
-                    crate::ExocetTarget::ConjugatePair {
-                        digit,
-                        link: transpose_pair(link),
-                    }
-                }
-            }),
+            targets: targets.map(transpose_exocet_target),
             cross_lines: cross_lines.map(transpose_house),
             covers: covers.iter().map(transpose_exocet_cover).collect(),
         },
@@ -643,7 +660,44 @@ fn transpose_hint(hint: &Hint) -> Hint {
                             .collect(),
                     }),
                 cross_lines: proof.cross_lines.map(transpose_house),
+                joint_cross_line_support: proof.joint_cross_line_support,
                 assignments: proof.assignments.clone(),
+            }))
+        }
+        HintEvidence::GroupedDoubleExocet(proof) => {
+            let transpose_constraints = |constraints: &[crate::RankConstraint]| {
+                constraints
+                    .iter()
+                    .map(|constraint| match *constraint {
+                        crate::RankConstraint::Cell(cell) => {
+                            crate::RankConstraint::Cell(transpose(cell))
+                        }
+                        crate::RankConstraint::HouseDigit { house, digit } => {
+                            crate::RankConstraint::HouseDigit {
+                                house: transpose_house(house),
+                                digit,
+                            }
+                        }
+                    })
+                    .collect()
+            };
+            HintEvidence::GroupedDoubleExocet(Box::new(crate::GroupedDoubleExocetProof {
+                components: proof.components.each_ref().map(|component| {
+                    crate::GroupedExocetComponent {
+                        bases: component.bases.map(transpose),
+                        targets: component.targets.map(transpose_exocet_target),
+                        covers: component
+                            .covers
+                            .iter()
+                            .map(transpose_exocet_cover)
+                            .collect(),
+                    }
+                }),
+                cross_lines: proof.cross_lines.map(transpose_house),
+                rank_pattern: crate::RankPattern {
+                    bases: transpose_constraints(&proof.rank_pattern.bases),
+                    covers: transpose_constraints(&proof.rank_pattern.covers),
+                },
             }))
         }
         HintEvidence::SkLoop(proof) => HintEvidence::SkLoop(Box::new(crate::SkLoopProof {
