@@ -67,6 +67,24 @@ describe('theme palette system', () => {
     }
   })
 
+  test('standard dark palettes give highlights contrast against their surroundings', () => {
+    for (const id of standardThemeIds) {
+      const theme = THEME_TOKENS[id].dark
+      const highlights = [
+        ['related cells', theme.peerBg, theme.boardBg, 1.45],
+        ['matching cells', theme.matchingBg, theme.boardBg, 2.2],
+        ['matching and related cells', theme.matchingBg, theme.peerBg, 1.45],
+        ['two-candidate cells', theme.candidateCountBg, theme.boardBg, 2.4],
+        ['selected and matching cells', theme.boardSelectedBg, theme.matchingBg, 1.25],
+        ['selected keypad digit', theme.selectedBg, theme.keyBg, 2.4],
+        ['active surfaces', theme.surfaceActive, theme.surface, 1.6],
+      ] as const
+      for (const [label, fill, background, minimum] of highlights) {
+        assert.ok(contrast(fill, background) >= minimum, `${id} ${label}`)
+      }
+    }
+  })
+
   for (const { id, name } of THEME_OPTIONS) {
     for (const mode of ['light', 'dark'] as const) {
       test(`${name} ${mode} keeps text and controls readable`, () => {

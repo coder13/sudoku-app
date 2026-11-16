@@ -42,21 +42,21 @@ const colorModes = {
     pageBg: '#101010',
     ink: '#f0f0f0',
     muted: '#b5b5b5',
-    candidateInk: '#cbcbcb',
+    candidateInk: '#e0e0e0',
     surface: '#1c1c1c',
     surfaceRaised: '#262626',
     surfaceSoft: '#232323',
     surfaceMuted: '#151515',
     surfaceHover: '#2b2b2b',
     surfaceHoverStrong: '#383838',
-    surfaceActive: '#333333',
+    surfaceActive: '#414141',
     border: '#3e3e3e',
     borderStrong: '#777777',
     boardBg: '#171717',
     givenBg: '#242424',
     gridLine: '#545454',
     gridStrong: '#969696',
-    peerBg: '#282828',
+    peerBg: '#363636',
     keyBg: '#252525',
     keyBorder: '#545454',
     dangerBg: '#482631',
@@ -101,8 +101,8 @@ export function contrast(first: string, second: string) {
   return (light + 0.05) / (dark + 0.05)
 }
 
-function contrastingAccent(accent: string, fallback: string, against: string[], minimum = 4.5) {
-  for (let amount = 0; amount < 1; amount += 0.1) {
+function contrastingAccent(accent: string, fallback: string, against: string[], minimum = 4.5, increment = 0.1) {
+  for (let amount = 0; amount < 1; amount += increment) {
     const color = mix(accent, fallback, amount)
     if (against.every((other) => contrast(color, other) >= minimum)) return color
   }
@@ -113,11 +113,14 @@ function buildTokens(mode: ResolvedColorMode, { accent, selectionBorder, seconda
   const base = colorModes[mode]
   const { boardBg, ink } = base
   const lightMode = mode === 'light'
+  const highlight = (color: string, lightAmount: number, darkContrast: number) => lightMode
+    ? mix(boardBg, color, lightAmount)
+    : contrastingAccent(boardBg, color, [boardBg], darkContrast, 0.02)
   const primaryInk = '#ffffff'
   const primaryBg = contrastingAccent(accent, '#000000', [primaryInk], 5)
-  const matchingBg = mix(boardBg, accent, lightMode ? 0.32 : 0.14)
-  const selectedBg = mix(boardBg, accent, lightMode ? 0.48 : 0.26)
-  const candidateCountBg = mix(boardBg, secondaryAccent, lightMode ? 0.35 : 0.2)
+  const matchingBg = highlight(accent, 0.32, 2.2)
+  const selectedBg = highlight(accent, 0.48, 2.85)
+  const candidateCountBg = highlight(secondaryAccent, 0.35, 2.4)
   const cellBackgrounds = [base.givenBg, base.peerBg, matchingBg, selectedBg, candidateCountBg]
   const accentInk = contrastingAccent(accent, ink, [base.pageBg, base.surfaceHoverStrong, ...cellBackgrounds])
   const selectedBorder = contrastingAccent(selectionBorder, ink, [selectedBg], 3)
