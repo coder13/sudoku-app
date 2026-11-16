@@ -171,7 +171,7 @@ export function Worktable({
   onPublish: () => void
   onCancelDraft: () => void
   onStopPlaying: () => void
-  onNewPuzzle: () => void
+  onNewPuzzle: (step?: 'difficulty') => void
   onCreatePuzzle: () => void
   onEditPuzzle: () => void
   showLeftPanel: boolean
@@ -1228,7 +1228,10 @@ export function Worktable({
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={!modalOpen && !puzzleMenuOpen && !actionsOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen}
-      showGuides={appearance.showGuides} onChooseDifficulty={() => setSolvedView('difficulty')} onChooseVariant={onNewPuzzle} />
+      showGuides={appearance.showGuides} onChooseDifficulty={() => {
+        if (mobile) onNewPuzzle('difficulty')
+        else setSolvedView('difficulty')
+      }} onChooseVariant={onNewPuzzle} />
   ) : showDifficulty ? (
     <PuzzleDifficulty value={preferredDifficulty} variant={variant?.id} showGuides={appearance.showGuides}
       onBack={() => setSolvedView('results')} onChange={onDifficultyChange} />
