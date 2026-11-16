@@ -1,7 +1,7 @@
 import {
   type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useEffect, useMemo, useRef, useState,
 } from 'react'
-import { Braces, Check, CheckCheck, CircleCheck, CircleX, Info, MoreHorizontal, PencilLine } from 'lucide-react'
+import { Braces, Check, CheckCheck, CircleCheck, CircleX, Info, MoreHorizontal, PencilLine, Share2 } from 'lucide-react'
 import { runEngine, type Analysis } from '../sudoku/engine'
 import {
   COLORS, conflictsOf, enter, fillEntries, formatTime, isSolved, redo, replaceCandidates, singleFromCandidates, undo, valuesOf,
@@ -88,7 +88,7 @@ export type WorktableActions = { check: () => void }
 
 export function Worktable({
   game, modalOpen, advancedModes, appearance, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, onPublish,
+  beginResize, toggleMulti, onShare, onPublish,
 }: {
   game: Game
   modalOpen: boolean
@@ -101,6 +101,8 @@ export function Worktable({
   panelHeight: number
   setPanelHeight: Dispatch<SetStateAction<number>>
   beginResize: () => void
+  toggleMulti: () => void
+  onShare: () => void
   onPublish: () => void
 }) {
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
@@ -366,6 +368,12 @@ export function Worktable({
                   <Braces size={17} /> Highlight {'{x,y}'} cells
                 </button>
                 <div className="app-menu-separator" />
+                <button onClick={() => {
+                  setPuzzleMenuOpen(false)
+                  onShare()
+                }}>
+                  <Share2 size={17} /> Share puzzle
+                </button>
                 <button onClick={() => { void runCheck() }} disabled={busy}>
                   <Check size={17} /> Check puzzle
                 </button>
@@ -395,7 +403,7 @@ export function Worktable({
         values={values} input={input}
         undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
         disabled={disabled} draft={draft} inputSize={inputSize} panelHeight={panelHeight}
-        setPanelHeight={setPanelHeight} beginResize={beginResize} />
+        setPanelHeight={setPanelHeight} beginResize={beginResize} multi={multi} toggleMulti={toggleMulti} />
       {dialogResult && <Modal title={dialogResult.title} onClose={() => setDialogResult(null)} className="check-dialog">
         <div className={`check-result ${dialogResult.tone}`}>
           <span className="check-result-icon" aria-hidden="true">

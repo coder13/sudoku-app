@@ -3,7 +3,7 @@ import {
   type SetStateAction,
   useEffect, useRef, useState,
 } from 'react'
-import { Delete, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { Delete, Layers2, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { COLORS, DIGITS, type Mode } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
 
@@ -32,6 +32,8 @@ type Props = {
   panelHeight: number
   setPanelHeight: Dispatch<SetStateAction<number>>
   beginResize: () => void
+  multi: boolean
+  toggleMulti: () => void
 }
 
 export function Controls(props: Props) {
@@ -150,6 +152,12 @@ export function Controls(props: Props) {
               <button className="icon-button color-mode-button" title="Color mode" aria-label="Color mode"
                 aria-pressed={props.colorMode} aria-keyshortcuts="B" onClick={props.toggleColorMode} disabled={props.disabled}>
                 <Palette size={18} />
+              </button>
+            )}
+            {!props.draft && (mobile || props.advancedModes.multiSelectButton) && (
+              <button className="icon-button multi-select-button" onClick={props.toggleMulti} disabled={props.disabled}
+                aria-label="Multi-select" title="Multi-select" aria-pressed={props.multi}>
+                <Layers2 size={18} />
               </button>
             )}
             <button className="icon-button erase-mode-button" onClick={props.toggleEraseMode} disabled={props.disabled}
