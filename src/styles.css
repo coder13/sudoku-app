@@ -16,7 +16,16 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; min-width: 280px; overflow: hidden; background: var(--page-bg); }
-.app-shell { min-height: 100dvh; }
+.app-shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* Installed apps can draw beneath the status and navigation bars. */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.app-shell > .topbar { flex: none; }
+.app-shell > main { flex: 1; min-height: 0; height: auto; }
 .app-shell.advanced-mode { --topbar-height: 47px; }
 button, input, textarea, select { font: inherit; color: inherit; }
 .select-control {
@@ -1979,7 +1988,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     height: calc(100dvh - var(--topbar-height));
     overflow-y: auto;
     overscroll-behavior-y: contain;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-bottom: 8px;
   }
   .standard-workspace-page .workspace:has(> .puzzle-column) {
     height: auto;
