@@ -1,13 +1,14 @@
-// A worker serves one build at a time and activates as soon as its cache is ready.
+// A worker serves one build at a time and waits for the app to approve an update.
 const cachedPaths = new Set(assets)
 const shellPrefixes = ['sudoku-app-shell-', 'gridroom-shell-']
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(Promise.all([
-    caches.open(cacheName).then((cache) =>
-      cache.addAll(assets.map((asset) => new Request(asset, { cache: 'reload' })))),
-    self.skipWaiting(),
-  ]))
+  event.waitUntil(caches.open(cacheName).then((cache) =>
+    cache.addAll(assets.map((asset) => new Request(asset, { cache: 'reload' })))))
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {

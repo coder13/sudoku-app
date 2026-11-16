@@ -621,6 +621,31 @@ svg { flex-shrink: 0; }
 .resize-active .controls { height: var(--controls-height, 280px); padding: 16px; }
 .resize-active .resize-handle { display: grid; }
 .resize-active .resize-handle span { background: var(--purple); }
+.update-prompt {
+  position: fixed;
+  z-index: 44;
+  top: 84px;
+  right: max(18px, calc((100vw - 1128px) / 2 + 26px));
+  width: min(390px, calc(100vw - 28px));
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  color: var(--ink);
+  box-shadow: 0 16px 42px #21172f38;
+  backdrop-filter: blur(12px);
+}
+.update-prompt-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: var(--lavender); color: var(--dark-purple); }
+.update-prompt-copy { min-width: 0; }
+.update-prompt-copy strong, .update-prompt-copy small { display: block; }
+.update-prompt-copy strong { font-size: 15px; }
+.update-prompt-copy small { margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.update-prompt-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 7px; }
+.update-prompt-actions .button { min-height: 39px; padding-inline: 12px; }
 .game-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; max-height: 310px; overflow-y: auto; }
 .game-row {
   display: flex;
@@ -813,6 +838,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .resize-size-controls { gap: 4px; }
   .resize-size-controls .icon-button { width: 38px; min-height: 38px; }
   .resize-session-actions .button { min-height: 40px; padding-inline: 11px; }
+  .update-prompt { top: 72px; right: 8px; width: calc(100vw - 16px); }
 }
 
 @media (max-width: 355px) {

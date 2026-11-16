@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowDownToLine, Check, Layers2, Menu, Minus, Plus, Settings as SettingsIcon, Share2, SlidersHorizontal } from 'lucide-react'
+import {
+  ArrowDownToLine, Check, Download, Layers2, Menu, Minus, Plus, Settings as SettingsIcon, Share2, SlidersHorizontal,
+} from 'lucide-react'
 import { parsePuzzle } from '../sudoku/formats'
 import type { ErrorMode } from '../sudoku/game'
 import {
@@ -29,6 +31,8 @@ export function Workspace() {
   const [panelHeight, setPanelHeight] = useState(280)
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
+  const [updateWorker, setUpdateWorker] = useState<ServiceWorker | null>(null)
+  const [updating, setUpdating] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const worktableActions = useRef<WorktableActions | null>(null)
@@ -69,8 +73,9 @@ export function Workspace() {
     if (!('serviceWorker' in navigator)) return
     const { hostname } = window.location
     const local = import.meta.env.DEV || hostname === 'localhost' || hostname.endsWith('.localhost') ||
-      hostname === '[::1]' || /^127(?:\.\d+){3}$/.test(hostname)
+      hostname === '[::1]' || /^127(?:\.\d+){3}$/.test(hostname) || !hostname.includes('.')
     if (local) {
+      setUpdateWorker(null)
       void navigator.serviceWorker.getRegistrations().then((registrations) =>
         Promise.all(registrations.map((registration) => registration.unregister())))
       if ('caches' in window) {
@@ -81,16 +86,54 @@ export function Workspace() {
       return
     }
     if (import.meta.env.PROD) {
+      let disposed = false
       let reloading = false
-      const update = () => {
+      let controlled = Boolean(navigator.serviceWorker.controller)
+      const removeInstallingListeners = new Set<() => void>()
+      const handleControllerChange = () => {
+        if (!controlled) {
+          controlled = true
+          return
+        }
         if (reloading) return
         reloading = true
         window.location.reload()
       }
-      navigator.serviceWorker.addEventListener('controllerchange', update)
-      navigator.serviceWorker.register('/sw.js')
-        .catch(() => { /* Local saves remain available when service workers are blocked. */ })
-      return () => navigator.serviceWorker.removeEventListener('controllerchange', update)
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange)
+
+      let removeRegistrationListeners = () => {}
+      void navigator.serviceWorker.register('/sw.js').then((registration) => {
+        if (disposed) return
+        const offer = (worker: ServiceWorker | null) => {
+          if (worker && navigator.serviceWorker.controller) setUpdateWorker(worker)
+        }
+        const watchInstalling = () => {
+          const installing = registration.installing
+          if (!installing) return
+          const handleStateChange = () => {
+            if (installing.state === 'installed') offer(registration.waiting ?? installing)
+          }
+          installing.addEventListener('statechange', handleStateChange)
+          removeInstallingListeners.add(() => installing.removeEventListener('statechange', handleStateChange))
+        }
+        const checkForUpdate = () => {
+          if (document.visibilityState === 'visible') void registration.update().catch(() => {})
+        }
+        offer(registration.waiting)
+        registration.addEventListener('updatefound', watchInstalling)
+        watchInstalling()
+        document.addEventListener('visibilitychange', checkForUpdate)
+        removeRegistrationListeners = () => {
+          registration.removeEventListener('updatefound', watchInstalling)
+          document.removeEventListener('visibilitychange', checkForUpdate)
+        }
+      }).catch(() => { /* Local saves remain available when service workers are blocked. */ })
+      return () => {
+        disposed = true
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange)
+        removeRegistrationListeners()
+        removeInstallingListeners.forEach((remove) => remove())
+      }
     }
   }, [])
   useEffect(() => {
@@ -198,6 +241,12 @@ export function Workspace() {
     close()
   }
 
+  function installUpdate() {
+    if (!updateWorker || updating) return
+    setUpdating(true)
+    updateWorker.postMessage({ type: 'SKIP_WAITING' })
+  }
+
   return (
     <>
       <header className="topbar">
@@ -255,6 +304,18 @@ export function Workspace() {
           <button className="button primary" onClick={finishResize}>Save</button>
         </span>
       </div>}
+
+      {updateWorker && <aside className="update-prompt" role="dialog" aria-labelledby="update-title" aria-describedby="update-description">
+        <span className="update-prompt-icon" aria-hidden="true"><Download size={20} /></span>
+        <span className="update-prompt-copy">
+          <strong id="update-title">App update ready</strong>
+          <small id="update-description">A newer offline version is ready to use.</small>
+        </span>
+        <span className="update-prompt-actions">
+          <button className="button secondary" disabled={updating} onClick={() => setUpdateWorker(null)}>Later</button>
+          <button className="button primary" disabled={updating} onClick={installUpdate}>{updating ? 'Updating…' : 'Update app'}</button>
+        </span>
+      </aside>}
 
       {panel === 'new' && <NewPuzzle close={close} />}
       {panel === 'import' && <ImportPuzzle close={close} onImport={(text, cancelled) => openPuzzle(parsePuzzle(text), cancelled)} />}
