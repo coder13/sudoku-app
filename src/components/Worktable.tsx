@@ -273,7 +273,8 @@ export function Worktable({ game, modalOpen, onShare, onManage, onPublish }: {
           )}
         </div>
         <Board game={game} values={values} errors={errors} candidateLayout={advancedModes.candidateLayout}
-          selected={selected} active={active} boardRef={boardRef} onCell={clickCell} onResume={togglePause} />
+          highlightedDigit={mode === 'color' ? null : selectedDigit} selected={selected} active={active}
+          boardRef={boardRef} onCell={clickCell} onResume={togglePause} />
         {draft && <div className="draft-tip"><PencilLine size={16} /> Enter the starting digits, then save your puzzle.</div>}
       </section>
       <Controls mode={mode} pencil={pencil} togglePencil={() => { setColorMode(false); setPencil((current) => !current) }}

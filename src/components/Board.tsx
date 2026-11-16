@@ -7,6 +7,7 @@ type Props = {
   values: string
   errors: Set<number>
   candidateLayout: CandidateLayout
+  highlightedDigit: number | null
   selected: number[]
   active: number
   boardRef: RefObject<HTMLDivElement | null>
@@ -14,8 +15,8 @@ type Props = {
   onResume: () => void
 }
 
-export function Board({ game, values, errors, candidateLayout, selected, active, boardRef, onCell, onResume }: Props) {
-  const focusValue = selected.includes(active) ? values[active] : ''
+export function Board({ game, values, errors, candidateLayout, highlightedDigit, selected, active, boardRef, onCell, onResume }: Props) {
+  const focusValue = selected.includes(active) ? values[active] : highlightedDigit ? String(highlightedDigit) : ''
   const paused = game.source !== 'draft' && game.paused
   return (
     <div className="board-frame">
