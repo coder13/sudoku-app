@@ -1,5 +1,5 @@
 import type { CandidateLayout, ErrorMode } from './game'
-import { THEME_IDS_SET, type ThemeId } from './themes'
+import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes'
 
 export type AdvancedModes = {
   candidateLayout: CandidateLayout
@@ -26,7 +26,7 @@ export const DEFAULT_ERROR_MODE: ErrorMode = 'all'
 export const DEFAULT_APPEARANCE: AppearancePreferences = {
   colorMode: 'system',
   lightTheme: 'violet',
-  darkTheme: 'violet',
+  darkTheme: DEFAULT_DARK_THEME,
   showGuides: true,
 }
 export const DEFAULT_INPUT_SIZE = 210
@@ -63,15 +63,17 @@ export function readPreferences() {
     if (savedInputSizeText !== null && Number.isFinite(savedInputSize)) {
       inputSize = Math.min(MAX_INPUT_SIZE, Math.max(MIN_INPUT_SIZE, savedInputSize))
     }
-    const savedAppearance = JSON.parse(localStorage.getItem(APPEARANCE_KEY) ?? 'null') as Partial<AppearancePreferences> | null
+    const savedAppearance = JSON.parse(localStorage.getItem(APPEARANCE_KEY) ?? 'null') as
+      (Partial<AppearancePreferences> & { themeDefaultsVersion?: number }) | null
     if (savedAppearance) {
+      const darkTheme = savedAppearance.themeDefaultsVersion !== 2 && savedAppearance.darkTheme === 'violet'
+        ? DEFAULT_APPEARANCE.darkTheme : savedAppearance.darkTheme
       appearance = {
         colorMode: savedAppearance.colorMode && COLOR_MODES.has(savedAppearance.colorMode)
           ? savedAppearance.colorMode : DEFAULT_APPEARANCE.colorMode,
         lightTheme: savedAppearance.lightTheme && THEME_IDS_SET.has(savedAppearance.lightTheme)
           ? savedAppearance.lightTheme : DEFAULT_APPEARANCE.lightTheme,
-        darkTheme: savedAppearance.darkTheme && THEME_IDS_SET.has(savedAppearance.darkTheme)
-          ? savedAppearance.darkTheme : DEFAULT_APPEARANCE.darkTheme,
+        darkTheme: darkTheme && THEME_IDS_SET.has(darkTheme) ? darkTheme : DEFAULT_APPEARANCE.darkTheme,
         showGuides: savedAppearance.showGuides !== false,
       }
     }
@@ -95,7 +97,7 @@ export function saveInputSize(value: number) {
 }
 
 export function saveAppearance(value: AppearancePreferences) {
-  try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(value)) }
+  try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ ...value, themeDefaultsVersion: 2 })) }
   catch { /* The setting remains active for this session. */ }
 }
 

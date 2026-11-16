@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
-import { THEME_IDS, THEME_OPTIONS, THEME_TOKENS, contrast } from '../src/sudoku/themes.ts'
+import { DEFAULT_DARK_THEME, THEME_IDS, THEME_OPTIONS, THEME_TOKENS, contrast } from '../src/sudoku/themes.ts'
 
 function distance(first: string, second: string) {
   const channels = (color: string) => [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16))
@@ -10,6 +10,10 @@ function distance(first: string, second: string) {
 }
 
 describe('theme palette system', () => {
+  test('uses a neutral dark palette by default', () => {
+    assert.equal(DEFAULT_DARK_THEME, 'github')
+  })
+
   test('every selectable theme has a named light and dark palette', () => {
     assert.deepEqual(THEME_OPTIONS.map(({ id }) => id), [...THEME_IDS])
     for (const { id, name } of THEME_OPTIONS) {

@@ -5,6 +5,7 @@ export const THEME_IDS = [
 
 export type ThemeId = typeof THEME_IDS[number]
 export type ResolvedColorMode = 'light' | 'dark'
+export const DEFAULT_DARK_THEME: ThemeId = 'github'
 
 type ThemeSeed = {
   canvas: string
