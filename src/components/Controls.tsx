@@ -133,8 +133,8 @@ export function Controls(props: Props) {
 
       <div className="controls-content">
           <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
-            <button className="icon-button" onClick={props.undo} disabled={props.disabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
-            <button className="icon-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
+            <button className="icon-button history-button" onClick={props.undo} disabled={props.disabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
+            <button className="icon-button history-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
             {props.onCheck && <button className="icon-button puzzle-check-button" onClick={props.onCheck} disabled={props.disabled}
               aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></button>}
             {props.onActions && (
