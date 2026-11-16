@@ -144,12 +144,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-board .board-frame { width: 100%; }
 .lesson-board .candidate-marks { font-size: calc(clamp(8px, 21.6cqw / var(--board-columns, 9), 13px) * var(--board-font-scale, 1)); }
 .lesson-board [data-mark="ring"]::after { width: 1.25em; }
-.lesson-diagram-board {
-  --board-font-scale: 1.1;
-  width: min(100%, calc(var(--diagram-columns) * 46px + 20px));
-  margin-inline: auto;
-}
-.lesson-diagram-board .board-links { overflow: hidden; }
+.lesson-board .board-links { overflow: hidden; }
 .lesson-diagram figcaption { display: grid; gap: 8px; font-size: 14px; line-height: 1.5; }
 .lesson-proof summary { color: var(--dark-purple); font-weight: 700; cursor: pointer; }
 .lesson-proof > div { margin-top: 8px; }
@@ -171,12 +166,14 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   border-radius: 9px;
   background: var(--surface-raised);
 }
-.lesson-practice-layout { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); gap: 16px clamp(14px, 3cqw, 24px); }
-.lesson-practice-layout .board-frame { max-width: 470px; }
-.lesson-practice-controls { display: grid; align-content: start; gap: 12px; font-size: 14px; }
-.lesson-practice-modes, .lesson-practice-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.lesson-keypad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 260px; }
-.lesson-practice-controls button[aria-pressed="true"] { color: var(--dark-purple); background: var(--surface-active); border-color: var(--selected-border); }
+.lesson-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: 16px; align-items: start; min-width: 0; font-size: 14px; line-height: 1.5; }
+.lesson-workbench .board-frame { max-width: min(470px, calc(var(--diagram-columns, 9) * 46px + 20px)); margin-inline: auto; }
+.lesson-workbench-tools { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.lesson-workbench .controls { width: 100%; height: auto; padding: 8px; }
+.lesson-workbench .controls-content { height: auto; grid-template-columns: 48px minmax(0, min(var(--input-size, 210px), calc(100cqw - 108px))) 44px; gap: 8px; }
+.lesson-workbench .keypad-stack { width: auto; }
+.lesson-workbench .keypad:not(.palette) { min-height: 142px; }
+.lesson-practice-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .lesson-practice-feedback { min-height: 3em; color: var(--muted); line-height: 1.45; }
 .lesson-practice-feedback[data-result="correct"] { color: var(--lesson-result); }
 .lesson-outcomes { color: var(--ink); font-weight: 650; padding-inline-start: 0; margin: 0; }
@@ -241,12 +238,12 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 }
 
 @container (max-width: 640px) {
-  .lesson-practice-layout { grid-template-columns: minmax(0, 1fr); }
+  .lesson-workbench { grid-template-columns: minmax(0, 1fr); }
   .technique-lesson { gap: 18px; }
 }
 
 @media (forced-colors: active) {
-  .lesson-practice-controls button[aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -1px; }
+  .lesson-workbench button[aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -1px; }
   .learn-nav-link[aria-current="page"] { outline: 1px solid Highlight; outline-offset: -1px; }
   .lesson-board .board-links { forced-color-adjust: none; --lesson-pattern: LinkText; }
 }
