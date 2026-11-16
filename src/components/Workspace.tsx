@@ -21,6 +21,7 @@ import type { PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { PuzzlesPage } from './PuzzlesPage'
 import { isSettingsSection, Settings } from './Settings'
 import { usePageAppearance } from './usePageAppearance'
+import { usePuzzleGeneration } from './usePuzzleGeneration'
 import { Worktable, type WorktableActions } from './Worktable'
 
 type Panel = 'new' | 'import' | 'share' | 'publish' | null
@@ -88,11 +89,13 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [workspaceReady, setWorkspaceReady] = useState(false)
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
+  const automaticPuzzle = usePuzzleGeneration()
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const worktableActions = useRef<WorktableActions | null>(null)
   const resizeStartHeight = useRef(panelHeight)
   const resizeStartInputSize = useRef(inputSize)
+  const automaticPuzzleStarted = useRef(false)
   const game = games.find((item) => item.id === active)
   const advancedShell = workspaceMode === 'advanced' && (playing || learning)
   const activeLeftPanelOpen = learning ? advancedPanels.articles : advancedPanels.left
@@ -116,6 +119,20 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setWorkspaceReady(true)
     return disconnect
   }, [])
+  useEffect(() => {
+    if (!workspaceReady) return
+    if (game) {
+      automaticPuzzleStarted.current = false
+      return
+    }
+    if (games.length) {
+      roomStore.select(games[0].id)
+      return
+    }
+    if (automaticPuzzleStarted.current) return
+    automaticPuzzleStarted.current = true
+    void automaticPuzzle.generate(difficulty)
+  }, [workspaceReady, game, games.length, difficulty])
   useEffect(() => {
     if (!playing) return
     let attempt = 0
@@ -351,8 +368,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')} />
             ) : (
               <section className="surface empty-board">
-                <h2>Start a Sudoku</h2>
-                <button className="button primary" onClick={() => setPanel('new')}><Plus size={18} /> New puzzle</button>
+                <h2>{automaticPuzzle.busy ? 'Generating a puzzle…' : 'Start a Sudoku'}</h2>
+                {automaticPuzzle.error && <p className="workspace-error" role="alert">{automaticPuzzle.error}</p>}
+                {!automaticPuzzle.busy && <button className="button primary" onClick={() => {
+                  automaticPuzzleStarted.current = true
+                  void automaticPuzzle.generate(difficulty)
+                }}><Plus size={18} /> {automaticPuzzle.error ? 'Try again' : 'New puzzle'}</button>}
               </section>
             )}
           </div>

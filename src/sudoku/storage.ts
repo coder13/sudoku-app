@@ -1,15 +1,16 @@
-import { isDifficulty } from './difficulty'
-import { STARTER_GAME, type Game, type Position } from './game'
+import { isDifficulty } from './difficulty.ts'
+import type { Game, Position } from './game.ts'
 
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
 const GAME_PREFIX = PREFIX + 'game:'
 const ACTIVE = PREFIX + 'active'
 const READY = PREFIX + 'initialized'
+const BUILT_IN_STARTER_ID = 'warmup'
 const sources = ['starter', 'generated', 'imported', 'custom', 'draft']
 
 type Room = { games: Game[]; active: string | null; storageAvailable: boolean }
-const initial: Room = { games: [STARTER_GAME], active: STARTER_GAME.id, storageAvailable: true }
+const initial: Room = { games: [], active: null, storageAvailable: true }
 const listeners = new Set<() => void>()
 let room = initial
 
@@ -94,16 +95,21 @@ function hydrate() {
   try {
     const migrated = migrateStorage(localStorage)
     const keys = Array.from(new Set(Object.keys(localStorage).map(storageKey)))
-    const games = keys
+    const storedGames = keys
       .filter((key) => key.startsWith(GAME_PREFIX))
       .map((key) => readGame(key.slice(GAME_PREFIX.length), readSaved(localStorage, key)))
       .filter((game): game is Game => Boolean(game))
+    const removedStarter = persist(() => {
+      for (const game of storedGames) {
+        if (game.source !== 'starter' && game.id !== BUILT_IN_STARTER_ID) continue
+        const key = GAME_PREFIX + game.id
+        localStorage.removeItem(legacyKey(key))
+        localStorage.removeItem(key)
+      }
+    })
+    const games = storedGames.filter((game) => game.source !== 'starter' && game.id !== BUILT_IN_STARTER_ID)
 
     if (!readSaved(localStorage, READY)) {
-      if (!games.length) {
-        localStorage.setItem(GAME_PREFIX + STARTER_GAME.id, JSON.stringify(STARTER_GAME))
-        games.push(STARTER_GAME)
-      }
       localStorage.setItem(READY, '1')
     }
     let last = readSaved(localStorage, ACTIVE)
@@ -112,7 +118,11 @@ function hydrate() {
       last = readSaved(sessionStorage, ACTIVE) ?? last
     } catch { /* local fallback */ }
     const sorted = orderGames(games)
-    publish({ games: sorted, active: sorted.find((game) => game.id === last)?.id ?? sorted[0]?.id ?? null, storageAvailable: migrated })
+    publish({
+      games: sorted,
+      active: sorted.find((game) => game.id === last)?.id ?? sorted[0]?.id ?? null,
+      storageAvailable: migrated && removedStarter,
+    })
   } catch {
     publish({ ...room, storageAvailable: false })
   }
@@ -149,6 +159,11 @@ function rememberActive(storage: Storage, id: string | null) {
     storage.removeItem(ACTIVE)
   }
 }
+
+// Hydrate before React reads the store. This also keeps Vite hot replacement
+// from exposing the starter puzzle while a newly evaluated module waits for an
+// effect to reconnect it.
+if (typeof window !== 'undefined') hydrate()
 
 export const roomStore = {
   subscribe(listener: () => void) {
