@@ -67,23 +67,22 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         </dl>
         {result?.event.finish === 'solved' && ratingChange !== undefined ? <div className="completion-player-rating">
           <strong>Player rating {Math.round(result.after)} ({ratingChange >= 0 ? '+' : '−'}{Math.abs(ratingChange)})</strong>
-          <small>{result.event.viewed ? `${result.event.viewed} ${result.event.viewed === 1 ? 'hint' : 'hints'} viewed` : 'No hints'}
-            {result.event.applied > 0 && ` · ${result.event.applied} applied`}
-            {result.speedBonus >= 0.05 && ` · Speed bonus +${Number(result.speedBonus.toFixed(1))}`}</small>
-        </div> : game.source === 'generated' && !game.variant && <p className="completion-practice">Practice solve</p>}
+          {result.speedBonus >= 0.05 && <small>Speed bonus +{Number(result.speedBonus.toFixed(1))}</small>}
+          {result.fixedCalibration && <small>Auto will use {DIFFICULTY_LABELS[result.recommended]} when you choose it.</small>}
+        </div> : null}
         <dl className="completion-stats">
           <div><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
           {game.difficulty && <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
         </dl>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="completion-actions">
-          <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
-          <button className="button secondary" aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</button>
           <button className="button primary completion-next" aria-keyshortcuts="N" disabled={!canGenerate}
             onClick={() => { void generate(preferredDifficulty, undefined, game.variant?.id) }}>
             {busy ? 'Generating…' : nextLabel}
-            {!busy && <><ArrowRight size={18} aria-hidden="true" /><kbd aria-hidden="true">N</kbd></>}
+            {!busy && <ArrowRight size={18} aria-hidden="true" />}
           </button>
+          <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
+          <button className="button secondary" aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</button>
         </div>
       </div>
     </section>

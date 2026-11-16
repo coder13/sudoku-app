@@ -138,6 +138,7 @@ export type EngineRequest =
   | ({ type: 'rank-deductions'; pattern: RankPattern; nodeBudget: number } & StartingPosition)
   | ({ type: 'replay-rank-proof'; proof: RankProof } & StartingPosition)
   | ({ type: 'rank-proof-effort'; proof: RankProof } & StartingPosition)
+  | ({ type: 'classify-actions'; actions: readonly DeductionAction[] } & CandidatePosition)
   | { type: 'opening-techniques'; values: string }
   | { type: 'techniques'; variant?: boolean }
   | { type: 'lesson-examples' }
@@ -433,6 +434,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'rank-deductions' } ? RankScan :
   T extends { type: 'replay-rank-proof' } ? boolean :
   T extends { type: 'rank-proof-effort' } ? RankProofEffort | null :
+  T extends { type: 'classify-actions' } ? (string | null)[] :
   T extends { type: 'opening-techniques' } ? string[] :
   T extends { type: 'techniques' } ? TechniqueCatalog :
   T extends { type: 'generate-from-pool' } ? GeneratedPuzzle :
@@ -472,6 +474,7 @@ type EngineConnection = {
 }
 const playEngine: EngineConnection = { pending: new Map() }
 const generationEngine: EngineConnection = { pending: new Map() }
+const techniqueEngine: EngineConnection = { pending: new Map() }
 let requestId = 0
 let generationId = 0
 
@@ -496,8 +499,9 @@ function connect(connection: EngineConnection) {
 
 export function runEngine<T extends EngineRequest>(request: T): Promise<EngineResult<T>> {
   return new Promise((resolve, reject) => {
-    // Puzzle generation runs independently of the active game's requests.
-    const connection = request.type === 'generate-variant' ? generationEngine : playEngine
+    // A scan for an unfamiliar move must not hold up hints or candidate updates.
+    const connection = request.type === 'classify-actions' ? techniqueEngine
+      : request.type === 'generate-variant' ? generationEngine : playEngine
     connection.worker ??= connect(connection)
     const id = ++requestId
     connection.pending.set(id, { resolve: (value) => resolve(value as EngineResult<T>), reject })

@@ -1,9 +1,9 @@
 import {
   type CSSProperties, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent,
-  type Ref, type SetStateAction,
+  type ReactNode, type Ref, type SetStateAction,
   useEffect, useRef, useState,
 } from 'react'
-import { Check, Delete, Eraser, Highlighter, Layers2, Lightbulb, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { Check, Delete, Eraser, Highlighter, Layers2, ListChecks, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { COLORS, DIGITS, type ColorTarget, type Mode } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
 import { ColorTargetPicker } from './CellColorPalette'
@@ -31,9 +31,10 @@ type Props = {
   undo: () => void
   redo: () => void
   onCheck?: () => void
-  onHint?: () => void
-  hintButtonRef?: Ref<HTMLButtonElement>
-  hintDisabled?: boolean
+  onActions?: () => void
+  actionsMenu?: ReactNode
+  actionsButtonRef?: Ref<HTMLButtonElement>
+  actionsOpen?: boolean
   compact?: boolean
   canUndo: boolean
   canRedo: boolean
@@ -134,12 +135,17 @@ export function Controls(props: Props) {
             <button className="icon-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
             {props.onCheck && <button className="icon-button puzzle-check-button" onClick={props.onCheck} disabled={props.disabled}
               aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></button>}
-            {props.onHint && (
-              <button type="button" ref={props.hintButtonRef} className="button soft hint-key"
-                disabled={props.disabled} aria-disabled={props.hintDisabled || undefined}
-                onClick={props.hintDisabled ? undefined : props.onHint}>
-                <Lightbulb size={16} aria-hidden="true" /> Hint
-              </button>
+            {props.onActions && (
+              <div className="controls-actions-wrap">
+                <button type="button" ref={props.actionsButtonRef} className="icon-button actions-key"
+                  aria-label="Actions" title="Actions" disabled={props.disabled} aria-expanded={props.actionsOpen}
+
+                  aria-controls={props.actionsOpen ? (props.compact ? 'mobile-actions-menu' : 'input-actions-menu') : undefined}
+                  aria-haspopup={props.compact ? 'dialog' : undefined} onClick={props.onActions}>
+                  <ListChecks size={20} aria-hidden="true" />
+                </button>
+                {props.actionsMenu}
+              </div>
             )}
           </div>
 
@@ -199,7 +205,8 @@ export function Controls(props: Props) {
               </button>
             )}
             <button className="icon-button erase-mode-button" onClick={props.toggleEraseMode} disabled={props.disabled}
-              aria-label="Erase mode" title="Erase mode" aria-pressed={props.eraseMode}><Delete size={18} /></button>
+              aria-label="Erase mode" title="Erase mode"
+              aria-pressed={props.eraseMode}><Delete size={18} /></button>
           </div>
       </div>
 

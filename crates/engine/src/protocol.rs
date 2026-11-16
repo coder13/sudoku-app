@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::generation::start_builtin_pool;
-use super::hints::{checked_position, rank_position};
+use super::hints::{checked_position, classify_actions, rank_position};
 use super::{
     Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, GeneratedPuzzle,
     GenerationConflict, GenerationCriteria, GenerationError, GenerationRating, GenerationSearch,
@@ -156,6 +156,11 @@ enum Request {
         entries: Option<String>,
         eliminations: Option<Vec<u16>>,
         proof: RankProof,
+    },
+    ClassifyActions {
+        values: String,
+        eliminations: Option<Vec<u16>>,
+        actions: Vec<HintAction>,
     },
     OpeningTechniques {
         values: String,
@@ -1043,6 +1048,16 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             let snapshot = starting_position(&values, entries.as_deref(), eliminations)?;
             let effort = rank_proof_effort_at(&snapshot, &proof).map_err(rank_error)?;
             Ok(json!(effort))
+        }
+        Request::ClassifyActions {
+            values,
+            eliminations,
+            actions,
+        } => {
+            let eliminations = elimination_masks(eliminations)?;
+            let techniques = classify_actions(&board(&values)?, eliminations.as_ref(), &actions)
+                .map_err(hint_error)?;
+            Ok(json!(techniques))
         }
         Request::OpeningTechniques { values } => {
             let techniques = opening_techniques(&board(&values)?).map_err(puzzle_error)?;

@@ -63,6 +63,16 @@ The share menu copies a link to this app, an 81-character string, a nine-line gr
 
 Variant puzzles use an app link that carries the givens and rules. Classic share formats carry the givens. When the app imports a HoDoKu library line, it skips moves marked with `+`. Your progress stays in your browser.
 
+### Player rating and Auto difficulty
+
+Your player rating estimates your Sudoku skill. It starts at 855 and learns from the puzzles you play at Auto and fixed difficulties. Faster solves without hints can earn a small bonus based on your recent times at the same difficulty. Slow solves earn regular credit.
+
+Choose Auto in New puzzle to let the app adjust the difficulty as you play. Auto starts at Medium. With little history, a fast solve without hints can move you up quickly, and requests for hints at multiple positions can move you down. As the app learns from more puzzles, it adjusts one difficulty at a time. The grid and results show the actual difficulty of the puzzle you play.
+
+In Auto, use Solve all singles to finish an Easy puzzle without hints and move on to Medium with your rating intact. On harder puzzles, you can clear singles and get credit for solving the rest yourself.
+
+Open Puzzles, then Statistics to see your rating, next Auto difficulty, and progress with each solving technique. The app credits the simplest technique that explains each move it can match. Classic Auto can pick a puzzle that gives you another chance to use a technique you have needed hints for. Your progress stays in your browser.
+
 ## Project layout
 
 TanStack Start prerenders the app to static pages and assets in `dist/client`. Netlify or any static file server can publish that directory. The deployed app does not need an API or application server.
@@ -109,13 +119,14 @@ The `deductions` request searches the selected techniques on the current grid an
 
 ### Trainer design
 
-Hints start with one suggested move on the current board. The player opens the hint and controls each reveal. Keep the board visible beside the hint on wide screens and above it on narrow screens.
+Hints open on the easiest enabled move. Each move starts at the technique, and the player controls the remaining reveals.
 
-1. **Technique.** Name the technique and give one search instruction. Link to its lesson for a separate worked example.
-2. **Where to look.** Highlight the rows, columns, boxes, cells, or candidates that form the pattern. Give the player time to find the result.
-3. **Deduction.** Explain why the pattern forces the result. Mark a placement with a ring and a removal with a strike. Offer **Apply move** as a separate action.
+1. **Technique.** Name the technique.
+2. **Digits.** Show the digits to look for.
+3. **Location.** Highlight the houses or cells that form the pattern.
+4. **Explanation.** Show why the pattern forces the move. Mark a placement with a ring and a removal with a strike. The player can then choose **Apply hint**.
 
-The `next-deduction` request returns the easiest move from the same ranking as `hints`, even when it is the only choice. It accepts the current grid and any established candidate removals. It returns `null` when no move is available. Each response carries one proof through all three reveals. The `technique` field identifies the rule, `pattern` gives the locations and candidates to inspect, and `deduction` gives the evidence and all placements or removals. For targeted practice, use `deductions` to look up all proofs for the requested technique.
+The `next-deduction` request returns the easiest move from the same ranking as `hints`, even when it is the only choice. It accepts the current grid and any established candidate removals. It returns `null` when no move is available. The `technique` field identifies the rule, `pattern` gives the locations and candidates to inspect, and `deduction` gives the evidence and all placements or removals. For targeted practice, use `deductions` to look up all proofs for the requested technique.
 
 Ask the engine about the current entries and previously applied candidate removals. If every empty cell has candidates, use those candidates for the proof and preview. If some cells have no candidates, use the engine's candidates and the applied removals. Dismissing the hint restores the player's candidate display. The same grid can render lesson diagrams from the evidence in a verified example.
 

@@ -1,4 +1,4 @@
-import type { Deduction, Difficulty } from './engine'
+import type { Deduction, Difficulty, HintChoice } from './engine'
 
 export type PuzzleHint = { title: string; text: string }
 
@@ -59,6 +59,13 @@ export function cellReference(cell: number, style: CellReferenceStyle, difficult
   const advanced = difficulty === 'hard' || difficulty === 'unfair' || difficulty === 'extreme'
   const concise = style === 'concise' || (style === 'automatic' && advanced)
   return concise ? `r${row}c${column}` : `row ${row}, column ${column}`
+}
+
+export function describeHintDigits({ pattern, actions }: HintChoice): string {
+  const candidates = pattern?.candidates.length ? pattern.candidates
+    : actions.map((action) => 'place' in action ? action.place : action.eliminate)
+  const digits = [...new Set(candidates.map(({ digit }) => digit))].sort((left, right) => left - right)
+  return `Look for ${digits.length === 1 ? 'digit ' : 'digits '}${locationList.format(digits.map(String))}.`
 }
 
 export function describeHint(deduction: Deduction, {

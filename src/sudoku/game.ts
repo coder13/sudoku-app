@@ -94,6 +94,10 @@ export function isPuzzleSaved(game: Game): boolean {
   return game.savedForLater || (game.saved ?? game.source === 'custom')
 }
 
+export function puzzleIdentity(game: Pick<Game, 'givens' | 'variant'>): string {
+  return game.variant ? `${game.variant.id}:${JSON.stringify(game.variant.puzzle)}` : game.givens
+}
+
 export const STARTER_GAME = makeGame('warmup', 'The Warm-up', STARTER, 'starter', 0)
 
 export function peer(a: number, b: number, puzzle?: VariantPuzzle): boolean {
@@ -388,9 +392,14 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
       return [index, Math.log2(mask) + 1]
     }
   }
-  const extra = variant?.rules?.flatMap((rule) =>
-    rule.type === 'diagonal' ? [variantHouseCells({ diagonal: rule.diagonal }, variant)] : []) ?? []
-  for (const house of [...HOUSES, ...extra]) {
+  const houses = variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
+  let extraIndex = 0
+  const extra = variant?.rules?.flatMap((rule) => {
+    if (rule.type === 'diagonal') return [variantHouseCells({ diagonal: rule.diagonal }, variant)]
+    if (rule.type === 'extra-house') return [variantHouseCells({ extra: extraIndex++ }, variant)]
+    return []
+  }) ?? []
+  for (const house of [...houses, ...extra]) {
     for (let digit = 1; digit <= 9; digit++) {
       if (house.some((index) => values[index] === String(digit))) continue
       const bit = 1 << (digit - 1)

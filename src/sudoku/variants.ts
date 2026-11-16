@@ -40,6 +40,10 @@ export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>
 export type VariantGame = { id: PlayableVariant; puzzle: VariantPuzzle; solution: string }
 
+export function isVariantId(value: unknown): value is VariantId {
+  return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
+}
+
 const jigsawDifficulties: readonly DifficultyPreference[] = ['auto', 'easy', 'medium', 'hard']
 
 export function variantDifficulties(variant?: VariantId) {

@@ -3,6 +3,7 @@ import type { CandidateLayout, ErrorMode } from './game'
 import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale'
 import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints'
 import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes'
+import { isVariantId, variantDifficulty, type VariantId } from './variants'
 
 export {
   gridTextScalePercentage, MAX_GRID_TEXT_SCALE, MIN_GRID_TEXT_SCALE, stepGridTextScale,
@@ -47,7 +48,7 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   colorMode: 'system',
   lightTheme: 'violet',
   darkTheme: DEFAULT_DARK_THEME,
-  showGuides: true,
+  showGuides: false,
   gridTextScale: DEFAULT_GRID_TEXT_SCALE,
 }
 export const DEFAULT_HIGHLIGHT_PREFERENCES: HighlightPreferences = {
@@ -69,6 +70,7 @@ export const APPEARANCE_KEY = 'sudoku-app:v1:appearance'
 export const HIGHLIGHT_KEY = 'sudoku-app:v1:highlighting'
 export const WORKSPACE_MODE_KEY = 'sudoku-app:v1:workspace-mode'
 const DIFFICULTY_KEY = 'sudoku-app:v1:difficulty'
+const NEW_PUZZLE_KEY = 'sudoku-app:v1:new-puzzle'
 const CELL_REFERENCE_STYLE_KEY = 'sudoku-app:v1:hint-cell-reference-style'
 
 const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'none'])
@@ -118,7 +120,7 @@ export function readPreferences() {
         lightTheme: savedAppearance.lightTheme && THEME_IDS_SET.has(savedAppearance.lightTheme)
           ? savedAppearance.lightTheme : DEFAULT_APPEARANCE.lightTheme,
         darkTheme: darkTheme && THEME_IDS_SET.has(darkTheme) ? darkTheme : DEFAULT_APPEARANCE.darkTheme,
-        showGuides: savedAppearance.showGuides !== false,
+        showGuides: savedAppearance.showGuides === true,
         gridTextScale: clampGridTextScale(savedAppearance.gridTextScale),
       }
     }
@@ -152,6 +154,23 @@ export function saveCellReferenceStyle(value: CellReferenceStyle) {
 export function saveDifficulty(value: DifficultyPreference) {
   try { localStorage.setItem(DIFFICULTY_KEY, value) }
   catch { /* The setting remains active for this session. */ }
+}
+
+export type NewPuzzlePreference = { variant: VariantId; difficulty: DifficultyPreference }
+
+export function readNewPuzzlePreference(): NewPuzzlePreference | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(NEW_PUZZLE_KEY) ?? 'null') as Partial<NewPuzzlePreference> | null
+    if (isVariantId(value?.variant) && isDifficultyPreference(value.difficulty)) {
+      return { variant: value.variant, difficulty: variantDifficulty(value.variant, value.difficulty) }
+    }
+  } catch { /* Use the variant picker when the preference is unavailable. */ }
+  return null
+}
+
+export function saveNewPuzzlePreference(value: NewPuzzlePreference) {
+  try { localStorage.setItem(NEW_PUZZLE_KEY, JSON.stringify(value)) }
+  catch { /* The choice remains active for this session. */ }
 }
 
 export function saveAdvancedModes(value: AdvancedModes) {

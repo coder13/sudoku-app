@@ -1071,14 +1071,9 @@ pub(crate) fn rank_position(
         return Vec::new();
     }
     let search = DeductionSearch::new(position.board(), position.masks());
-    let mut techniques: Vec<_> = Technique::ALL
-        .into_iter()
-        .filter(|technique| !disabled_techniques.contains(technique))
-        .collect();
-    let rank = |technique: &Technique| (technique.difficulty(), technique.cost());
-    techniques.sort_by_key(rank);
+    let techniques = ordered_hint_techniques(disabled_techniques);
     let mut choices: Vec<Hint> = Vec::new();
-    for tier in techniques.chunk_by(|left, right| rank(left) == rank(right)) {
+    for tier in techniques.chunk_by(|left, right| technique_rank(left) == technique_rank(right)) {
         let mut hints: Vec<_> = tier
             .iter()
             .flat_map(|&technique| search.hints(technique))
@@ -1096,6 +1091,71 @@ pub(crate) fn rank_position(
         }
     }
     choices
+}
+
+fn technique_rank(technique: &Technique) -> (super::Difficulty, u16) {
+    (technique.difficulty(), technique.cost())
+}
+
+fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
+    let mut techniques: Vec<_> = Technique::ALL
+        .into_iter()
+        .filter(|technique| !disabled.contains(technique))
+        .collect();
+    techniques.sort_by_key(technique_rank);
+    techniques
+}
+
+/// Attribute each action independently. A proof may also affect other candidates.
+#[cfg(feature = "wasm-api")]
+pub(crate) fn classify_actions(
+    board: &Board,
+    eliminations: Option<&[u16; CELLS]>,
+    actions: &[HintAction],
+) -> Result<Vec<Option<Technique>>, HintError> {
+    let position = checked_position(board, eliminations)?;
+    let mut result = vec![None; actions.len()];
+    let mut pending: Vec<_> = actions
+        .iter()
+        .copied()
+        .enumerate()
+        .filter(|(_, action)| {
+            let Candidate { cell, digit } = action.candidate();
+            (1..=9).contains(&digit)
+                && position
+                    .masks()
+                    .get(cell)
+                    .is_some_and(|mask| mask & digit_bit(digit) != 0)
+        })
+        .collect();
+    let search = DeductionSearch::new(position.board(), position.masks());
+    let techniques = ordered_hint_techniques(&[]);
+    for tier in techniques.chunk_by(|left, right| technique_rank(left) == technique_rank(right)) {
+        if pending.is_empty() {
+            break;
+        }
+        let mut proofs: Vec<_> = tier
+            .iter()
+            .flat_map(|&technique| search.hints(technique))
+            .filter(|hint| {
+                pending
+                    .iter()
+                    .any(|(_, action)| hint.actions.contains(action))
+            })
+            .collect();
+        proofs.sort_by_cached_key(Hint::rank_within_tier);
+        for proof in proofs {
+            pending.retain(|&(index, action)| {
+                if proof.actions.contains(&action) {
+                    result[index] = Some(proof.technique);
+                    false
+                } else {
+                    true
+                }
+            });
+        }
+    }
+    Ok(result)
 }
 
 /// Find choices from a snapshot, requiring at least two distinct moves.

@@ -1,6 +1,6 @@
 import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fn } from 'storybook/test'
+import { expect, fireEvent, fn, waitFor } from 'storybook/test'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
 import {
@@ -23,7 +23,7 @@ const meta = {
     multi: false, actionsRef: { current: null }, inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(),
     beginResize: fn(), toggleMulti: fn(), onDifficultyChange: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(), onStopPlaying: fn(),
     onNewPuzzle: fn(), onCreatePuzzle: fn(), onEditPuzzle: fn(),
-    showLeftPanel: true, showRightPanel: true, showBottomPanel: true,
+    showLeftPanel: true, showRightPanel: true, showBottomPanel: true, onOpenHintPanel: fn(),
     puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),
   },
   beforeEach: ({ args }) => { seedRoom([args.game, ...args.games.filter(({ id }) => id !== args.game.id)]) },
@@ -38,7 +38,7 @@ export const ClickAwayClearsCell: Story = {
     const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })
     await userEvent.click(cell)
     await expect(cell).toHaveAttribute('aria-selected', 'true')
-    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle actions' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
     await expect(cell).toHaveAttribute('aria-selected', 'false')
   },
 }
@@ -49,27 +49,50 @@ export const Solved: Story = { args: { game: solved, games: [solved] } }
 export const CandidateShortcut: Story = {
   play: async ({ canvas, userEvent }) => {
     const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })
-    await userEvent.click(cell)
+    cell.focus()
+    await expect(cell).toHaveAttribute('aria-selected', 'false')
     await userEvent.keyboard('{Meta>}4{/Meta}')
     await expect(cell).toHaveAccessibleName('Row 1, column 3, empty, candidates 4')
-    await userEvent.keyboard('{Meta>}4{/Meta}')
+    await userEvent.click(cell)
+    await userEvent.keyboard('{Control>}4{/Control}')
     await expect(cell).toHaveAccessibleName('Row 1, column 3, empty')
+    fireEvent.keyDown(cell, { key: "'", code: 'Digit4', metaKey: true })
+    await expect(cell).toHaveAccessibleName('Row 1, column 3, empty, candidates 4')
   },
 }
 export const HintWithGrid: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle actions' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'View hint' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    const viewHint = await canvas.findByRole('button', { name: 'View hint' })
+    await waitFor(() => {
+      const { left, top, width, height } = viewHint.getBoundingClientRect()
+      const hit = viewHint.ownerDocument.elementFromPoint(left + width / 2, top + height / 2)
+      expect(viewHint.contains(hit)).toBe(true)
+    })
+    await userEvent.click(viewHint)
     const hint = await canvas.findByRole('complementary', { name: 'Puzzle hint' }, { timeout: 5000 })
-    await expect(hint).toHaveTextContent(/Place digit|Remove digit/)
+    await canvas.findByRole('button', { name: 'Show digits' })
+    await expect(hint).not.toHaveTextContent(/Place digit|Remove digit|Look for digit/)
     await expect(canvas.getByRole('group', { name: 'Hint navigation' })).toHaveTextContent('1/10')
+    await userEvent.click(canvas.getByRole('button', { name: 'Show digits' }))
+    await expect(hint).toHaveTextContent(/Look for digit/)
+    await expect(hint).not.toHaveTextContent(/Look in|Place digit|Remove digit/)
+    await userEvent.click(canvas.getByRole('button', { name: 'Show location' }))
+    await expect(hint).toHaveTextContent(/Look in|Look at the highlighted cells/)
+    await expect(hint).not.toHaveTextContent(/Place digit|Remove digit/)
+    await userEvent.click(canvas.getByRole('button', { name: 'Show explanation' }))
+    await expect(hint).toHaveTextContent(/Place digit|Remove digit/)
+    await expect(canvas.getByRole('button', { name: 'Apply hint' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Next hint' }))
+    await expect(canvas.getByRole('button', { name: 'Show digits' })).toBeVisible()
+    await expect(hint).not.toHaveTextContent(/Place digit|Remove digit/)
   },
 }
 
 export const AnalyzeMoves: Story = {
+  args: { workspaceMode: 'advanced' },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle actions' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Analyze all moves' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Analyze all moves' }))
     const navigation = await canvas.findByRole('group', { name: 'Hint navigation' }, { timeout: 5000 })
     const count = Number(navigation.textContent?.split('/')[1])
     await expect(count).toBeGreaterThan(10)
@@ -85,8 +108,8 @@ function WorktableExample(args: ComponentProps<typeof Worktable>) {
   const [difficulty, setDifficulty] = useState(args.preferredDifficulty)
   const actionsRef = useRef<WorktableActions | null>(null)
   const game = room.games.find(({ id }) => id === room.active) ?? args.game
-  return <div className="story-app">
-    <main className="page"><div className="workspace">
+  return <div className="story-app worktable-story">
+    <main className="page standard-workspace-page" aria-label="Sudoku workspace"><div className="workspace">
       <Worktable {...args} key={`${game.id}-${game.source}`} game={game} games={room.games} preferredDifficulty={difficulty}
         actionsRef={actionsRef} panelHeight={height} setPanelHeight={setHeight} multi={multi}
         toggleMulti={() => setMulti((value) => !value)} onDifficultyChange={setDifficulty} />

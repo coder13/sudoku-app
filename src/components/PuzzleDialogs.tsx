@@ -4,6 +4,7 @@ import { isDifficultyPreference, type DifficultyPreference } from '../sudoku/dif
 import { runEngine } from '../sudoku/engine'
 import { exportPuzzle, parsePuzzle, type ShareFormat } from '../sudoku/formats'
 import { createGameId, isSolved, makeGame, restartGame, valuesOf, type Game } from '../sudoku/game'
+import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { isPlayablePuzzle, VARIANTS, variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantGame, type VariantId } from '../sudoku/variants'
 import { VariantSelector } from './VariantSelector'
 import { roomStore } from '../sudoku/storage'
@@ -107,24 +108,29 @@ export function StopPlaying({ game, fromPlay = false, close, onDone }: {
   </Modal>
 }
 
-export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
+export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDifficultyChange, onPuzzleStart, onCreate }: {
   close: () => void
   difficulty: DifficultyPreference
+  initialVariant?: VariantId
   onDifficultyChange: (difficulty: DifficultyPreference) => void
+  onPuzzleStart?: (preference: NewPuzzlePreference) => void
   onCreate: () => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
-  const [variant, setVariant] = useState<VariantId>('classic')
+  const [variant, setVariant] = useState<VariantId>(initialVariant)
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
   const selected = variantDifficulty(variant, selection ?? difficulty)
+  const autoLabel = variantDifficultyLabel(variant, 'auto', recommended)
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    void generate(selected, () => {
+    const done = () => {
       onDifficultyChange(selected)
+      onPuzzleStart?.({ variant, difficulty: selected })
       close()
-    }, variant)
+    }
+    void generate(selected, done, variant)
   }
 
   return (
@@ -136,11 +142,13 @@ export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
           const next = event.target.value
           if (isDifficultyPreference(next)) setSelection(next)
         }}>
-          {variantDifficulties(variant).map((level) => <option key={level} value={level}>{variantDifficultyLabel(variant, level, recommended)}</option>)}
+          {variantDifficulties(variant).map((level) => <option key={level} value={level}>
+            {level === 'auto' ? autoLabel : variantDifficultyLabel(variant, level, recommended)}
+          </option>)}
         </select>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="button primary" disabled={busy}>
-          <Dices size={18} /> {busy ? 'Generating…' : 'Generate a puzzle'}
+          <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
         </button>
       </form>
       <div className="new-options">

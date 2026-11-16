@@ -179,6 +179,25 @@ test('ranked hints count distinct moves and prefer the easier proof at a tied co
   ])
 })
 
+test('technique attribution chooses the simplest proof for each candidate across different action sets', async () => {
+  const { run } = engineRequests()
+  const remove = (cell: number, digit: number) => ({ eliminate: { cell, digit } })
+  const overlap = remove(2, 4)
+  const { choices } = await run({ type: 'hints', values: LOCKED_PAIR, limit: 'all' })
+  const provesOverlap = (action: unknown) => JSON.stringify(action) === JSON.stringify(overlap)
+  assert.ok(choices.some(({ technique, actions }) => technique === 'naked-pair' && actions.length === 2 && actions.some(provesOverlap)))
+  assert.ok(choices.some(({ technique, actions }) => technique === 'locked-pair' && actions.length === 4 && actions.some(provesOverlap)))
+  assert.deepEqual(await run({
+    type: 'classify-actions', values: LOCKED_PAIR, actions: [overlap, remove(34, 3), remove(19, 5), remove(81, 1), remove(0, 9)],
+  }), ['locked-pair', 'claiming', 'pointing', null, null])
+
+  const solved = await run({ type: 'solve', values: STARTER })
+  assert.ok(solved)
+  assert.deepEqual(await run({
+    type: 'classify-actions', values: `0${solved.slice(1)}`, actions: [{ place: { cell: 0, digit: Number(solved[0]) } }],
+  }), ['full-house'])
+})
+
 test('hint diagrams use the current candidates and exclude previously removed candidates', async () => {
   const { run } = engineRequests()
   const values = LOCKED_PAIR
@@ -700,6 +719,17 @@ test('generation distinguishes the first configured step from an exclusive openi
   assert.deepEqual(moves[0].actions, trace.steps[0].actions)
   const exclusive = await raw({ ...options, technique: { id: 'hidden-single', mode: 'exclusive-opening' } })
   assert.ok('code' in exclusive && exclusive.code === 'search-limit')
+})
+
+test('generation can target a Hard Classic puzzle with X-Wing', async () => {
+  const { run } = engineRequests()
+  const { defaultOrder: techniqueOrder } = await run({ type: 'techniques' })
+  const values = await run({ type: 'generate-constrained', seed: 4, maxAttempts: 96, clues: [24, 36],
+    difficulty: 'hard', technique: 'x-wing', techniqueOrder })
+  const rating = await run({ type: 'rate', values, techniqueOrder })
+  assert.deepEqual(rating.status, { solved: 'hard' })
+  assert.ok(rating.score.counts['x-wing'] > 0)
+  assert.equal(await run({ type: 'analyze', values }), 'unique')
 })
 
 test('generation reports incompatible targets before the attempt budget is used', async () => {

@@ -9,6 +9,7 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 }
 
 export const DEFAULT_DIFFICULTY: Difficulty = 'easy'
+export const SINGLE_TECHNIQUES: readonly string[] = ['full-house', 'naked-single', 'hidden-single']
 
 export type DifficultyPreference = Difficulty | 'auto'
 export const DIFFICULTY_OPTIONS: DifficultyPreference[] = ['auto', ...Object.keys(DIFFICULTY_LABELS) as Difficulty[]]

@@ -1,5 +1,5 @@
 import { STARTER_GAME, type Game } from '../../src/sudoku/game'
-import { initialPlayerRating } from '../../src/sudoku/player-rating'
+import { initialPlayerRating, type PlayerRating } from '../../src/sudoku/player-rating'
 import type { roomStore as appStore } from '../../src/sudoku/storage'
 
 type Room = ReturnType<typeof appStore.getSnapshot>
@@ -14,6 +14,10 @@ function publish(next: Room) {
 
 export function seedRoom(games: Game[], active = games[0]?.id ?? null, storageAvailable = true) {
   publish({ games, active, stoppedPlaying: false, storageAvailable, playerRating: initialPlayerRating })
+}
+
+export function seedPlayerRating(playerRating: PlayerRating) {
+  publish({ ...room, playerRating })
 }
 
 export const roomStore: typeof appStore = {

@@ -1,6 +1,7 @@
 import type { BoardAnnotations, BoardLink, BoardRegion, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
-import type { Candidate, Deduction, DeductionAction, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
+import type { Candidate, Deduction, DeductionAction, Difficulty, HintChoice, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
 import { DIGITS, peer } from './game'
+import { cellReference, type CellReferenceStyle } from './hints'
 
 type Pattern = {
   houses?: House[]
@@ -45,6 +46,22 @@ function houseCells(house: House) {
     if ('column' in house) return index * 9 + house.column
     return Math.floor(house.box / 3) * 27 + (house.box % 3) * 3 + Math.floor(index / 3) * 9 + index % 3
   })
+}
+
+export function hintLocation({ evidence, pattern }: HintChoice, style: CellReferenceStyle, difficulty?: Difficulty) {
+  if (!pattern) return
+  const focus = 'house' in evidence ? [] : pattern.cells
+  const cells = new Map<number, CellAnnotation>()
+  for (const house of pattern.houses) {
+    for (const cell of houseCells(house)) cells.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
+  }
+  for (const cell of focus) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'hint cell' })
+
+  const references = focus.length ? focus.map((cell) => cellReference(cell, style, difficulty)) : pattern.houses.map(houseName)
+  const text = references.length > 0 && references.length <= 4 ? `Look in ${list.format(references)}.`
+    : 'Look at the highlighted cells.'
+  const annotations: BoardAnnotations = { cells }
+  return { text, annotations }
 }
 
 function link(from: number, to: number, digit: number, dashed = false, arrow = false): BoardLink {
@@ -362,6 +379,62 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
         ? `If ${cellName(first.cell)} took ${first.digit}, both links would force ${digit} into the adjacent corners. The opposite corner would take ${first.digit}, completing a rectangle that could be swapped.`
         : `One of the linked corners must take ${digit}. If the other linked corner took ${first.digit}, the opposite corners would complete a rectangle that could be swapped. Both linked corners therefore lose ${first.digit}.`
     return { houses, cells: corners, candidates: marks(corners, digits), links, description, reason }
+  }
+  if ('als-xz' in evidence || 'als-chain' in evidence) {
+    const { sets, links } = 'als-xz' in evidence ? evidence['als-xz'] : evidence['als-chain']
+    const firstSet = list.format(sets[0].cells.map(cellName))
+    const lastSet = list.format(sets[sets.length - 1].cells.map(cellName))
+    const description = sets.length === 2
+      ? `The sets at ${firstSet} and ${lastSet} each have one more candidate digit than cells. They cannot both use the same linked digit.`
+      : `Follow the sets from ${firstSet} to ${lastSet}. Each set has one more candidate digit than cells. The links use ${links.join(', ')} in that order.`
+    const reason = sets.length === 2
+      ? links.length === 2
+        ? `${links[0]} and ${links[1]} can each go in only one set. Both digits are needed to fill the two sets, so each set must use all its other digits. Any outside candidate that sees all possible placements of its digit is ruled out.`
+        : `Whichever set skips ${links[0]} must use all its other digits. That includes each shared digit marked for removal. An outside candidate that sees all copies of its digit in both sets is ruled out.`
+      : `If the first set skips ${first.digit}, it must use ${links[0]}. The next set then skips ${links[0]} and must use its outgoing link digit. This continues until the last set is forced to use ${first.digit}. A candidate that sees all copies of its digit in both end sets is ruled out.`
+    return { cells: sets.flatMap(({ cells }) => cells), candidates: sets.flatMap(({ cells, digits }) => marks(cells, digits)), description, reason }
+  }
+  if ('death-blossom' in evidence) {
+    const { stem, petals } = evidence['death-blossom']
+    const stemDigits = petals.map(({ digit }) => digit)
+    return {
+      cells: [stem, ...petals.flatMap(({ set }) => set.cells)],
+      candidates: petals.flatMap(({ set }) => marks(set.cells, set.digits)),
+      accent: { candidates: marks([stem], stemDigits), label: 'Stem candidate' },
+      description: `${cellName(stem)} can take ${either.format(stemDigits.map(String))}. Each choice rules out that digit in a different set of cells.`,
+      reason: `The affected set then has as many digits as cells and must use all of them, including ${first.digit}. The crossed-out candidates see every possible placement of ${first.digit} for every choice at ${cellName(stem)}.`,
+    }
+  }
+  if ('sue-de-coq' in evidence) {
+    const { intersection, digits, line, block } = evidence['sue-de-coq']
+    return {
+      houses: [line.house, block.house], cells: [...intersection, ...line.cells, ...block.cells],
+      candidates: [...marks(intersection, digits), ...marks(line.cells, line.digits), ...marks(block.cells, block.digits)],
+      description: `${list.format(intersection.map(cellName))} lie in both ${houseName(line.house)} and ${houseName(block.house)}. The sets to either side need different digits from those cells' candidates.`,
+      reason: 'The two side sets use up all the spare digits from the intersection. Every remaining digit must go in the intersection itself. That locks the crossed-out digits into the highlighted cells of their respective houses.',
+    }
+  }
+  if ('exocet' in evidence) {
+    const { bases, targets, crossLines, covers } = evidence.exocet
+    const digits = covers.map(({ digit }) => digit)
+    return {
+      houses: crossLines, cells: [...bases, ...targets], candidates: marks(bases, digits),
+      accent: { candidates: marks(targets, digits), label: 'Target candidate' },
+      description: `Every digit placed at ${list.format(bases.map(cellName))} must also occur in all three cross-lines (${list.format(crossLines.map(houseName))}). Cells that see both bases lose that digit. The remaining places outside ${list.format(targets.map(cellName))} fit in at most two houses.`,
+      reason: 'Each base digit therefore needs one of the two target cells. Check the assignments where both base digits can fit on all three lines. A crossed-out candidate either never appears in those assignments or would block a copy required by every assignment.',
+    }
+  }
+  if ('sk-loop' in evidence || 'multi-sector-locked-sets' in evidence) {
+    const { cells: body, links } = 'sk-loop' in evidence
+      ? { cells: evidence['sk-loop'].arms.flat(), links: evidence['sk-loop'].links }
+      : { cells: [...evidence['multi-sector-locked-sets'].core, ...evidence['multi-sector-locked-sets'].attachments], links: evidence['multi-sector-locked-sets'].links }
+    const cells = [...new Set(body)]
+    const linkDetails = list.format(links.map(({ house, digits }) => `${digits.join(', ')} in ${houseName(house)}`))
+    return {
+      cells, houses: links.map(({ house }) => house), candidates: marks(cells, DIGITS),
+      description: `Count one slot for each linked digit in its house (${linkDetails}). There are ${cells.length} slots for the ${cells.length} highlighted cells, and every candidate in those cells uses at least one slot.`,
+      reason: 'The highlighted cells must fill every slot. An outside candidate that uses a slot, or a candidate inside that uses two slots, would leave a cell without one.',
+    }
   }
   if (!('w-wing' in evidence)) return undefined
   const { wings, link: pair, linkedDigit, digit } = evidence['w-wing']

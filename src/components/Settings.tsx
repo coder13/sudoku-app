@@ -415,7 +415,7 @@ export function Settings({
             )
           })}
         </nav>
-        <div className="settings-panel">
+        <div className="settings-panel motion-screen" key={section ?? 'overview'}>
           {section ? renderSection(section) : <div className="settings-overview"><h3>Settings</h3><p>Choose a section to configure the app.</p></div>}
         </div>
       </div>
@@ -435,7 +435,7 @@ export function Settings({
             })}
           </nav>
         ) : (
-          <div className="settings-mobile-section">{renderSection(section)}</div>
+          <div className="settings-mobile-section motion-screen" key={section}>{renderSection(section)}</div>
         )}
       </div>
     </Modal>

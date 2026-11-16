@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, useMatch } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, useMatch, useRouterState } from '@tanstack/react-router'
 import { ChevronDown, List } from 'lucide-react'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { lessonsByDifficulty } from '../sudoku/lesson-difficulties'
@@ -8,12 +8,13 @@ import '../lessons.css'
 export const Route = createFileRoute('/learn')({ component: LearnLayout })
 
 export function LearnLayout() {
+  const article = useRouterState({ select: ({ location }) => location.pathname })
   return (
     <div className="learn-page">
       <TechniqueNavigation />
       <main className="learn-content">
         <div className="advanced-article-tab" aria-hidden="true">Article</div>
-        <div className="learn-content-scroll"><Outlet /></div>
+        <div className="learn-content-scroll motion-screen" key={article}><Outlet /></div>
       </main>
     </div>
   )

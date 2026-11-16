@@ -26,7 +26,7 @@ const previewRegionEdges = previewRegions.flatMap((region, cell) => {
   return edges
 }).join(' ')
 
-function VariantPreview({ variant }: { variant: VariantId }) {
+export function VariantPreview({ variant }: { variant: VariantId }) {
   return <span className="variant-preview" data-variant={variant} aria-hidden="true">
     {previews[variant].length > 0 && <VariantClues rules={previews[variant]} />}
     {variant === 'jigsaw' && <svg className="variant-clues" viewBox="0 0 9 9" focusable="false">
