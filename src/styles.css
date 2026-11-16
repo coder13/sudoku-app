@@ -51,7 +51,7 @@ svg { flex-shrink: 0; }
 
 .topbar-actions, .puzzle-actions { display: flex; align-items: center; gap: 9px; }
 .topbar-actions { position: relative; }
-.app-menu-trigger { width: 42px; min-height: 42px; }
+.icon-button.app-menu-trigger { width: 42px; min-height: 42px; }
 .app-menu {
   position: absolute;
   z-index: 20;
@@ -410,7 +410,7 @@ svg { flex-shrink: 0; }
 .resize-session-bar small { margin-top: 2px; color: var(--muted); font-size: 12px; }
 .resize-session-actions { display: flex; gap: 7px; }
 .resize-active .puzzle, .resize-active .controls-content { pointer-events: none; }
-.resize-active .controls { height: var(--controls-height, 280px); padding-top: 26px; }
+.resize-active .controls { height: var(--controls-height, 280px); padding: 16px; }
 .resize-active .resize-handle { display: grid; }
 .resize-active .resize-handle span { background: var(--purple); }
 .game-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; max-height: 310px; overflow-y: auto; }
@@ -524,11 +524,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 
 @media (max-width: 760px) {
-  .topbar-inner { min-height: 61px; }
-  .topbar-inner, .page { padding-inline: 14px; }
+  .topbar-inner { min-height: 62px; padding-inline: 10px; }
   .wordmark { font-size: 21px; gap: 7px; }
   .brand-mark { width: 31px; height: 31px; padding: 7px; border-radius: 8px; }
-  .page { height: calc(100dvh - 62px); padding-top: 8px; padding-bottom: 8px; }
+  .page { height: calc(100dvh - 62px); padding: 8px; }
   .workspace {
     height: 100%;
     grid-template-columns: minmax(0, 1fr);
@@ -543,7 +542,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzle-actions .icon-button { width: 35px; min-height: 38px; }
   .board-frame { width: min(calc(100vw - 48px), max(130px, calc(100dvh - var(--mobile-controls-height, 280px) - 220px))); }
   .draft-tip { margin-top: 4px; font-size: 11px; }
-  .controls { height: var(--controls-height, 280px); padding: 26px 10px 8px; }
+  .controls, .resize-active .controls { height: var(--controls-height, 280px); padding: 12px; }
   .controls-content { height: 100%; grid-template-columns: 42px auto 42px; gap: 9px; }
   .keypad-stack { width: min(var(--input-size, 210px), calc(100cqw - 102px)); }
   .candidate-kind button { min-height: 38px; }
@@ -596,7 +595,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 
 @media (max-width: 355px) {
-  .topbar-inner, .page { padding-inline: 9px; }
   .wordmark { font-size: 19px; }
   .puzzle-actions { gap: 3px; }
   .puzzle-actions .icon-button { width: 31px; }
