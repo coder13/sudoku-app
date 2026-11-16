@@ -57,7 +57,7 @@ Audit complete. Native hint choices retain the two-move minimum. The worker test
 
 Audit complete. Native, browser, and batch generation share the attempt logic. Pool requests validate before loading the templates. Batch output records the resolved solver order, and malformed rows leave later records usable. The native benchmark matched 20 of 20 seeds at each count from 17 through 19 clues and 15 of 20 at 20 clues, using a 1,001–1,600 point target and up to 208 attempts per seed.
 
-The batch regression also generates a unique 21-clue puzzle with Forcing Net as its sole opening technique. [Source template dml50](https://gitlab.com/scilab/forge/sudoku/-/blob/master/collection/hardest.sdm)
+The batch regression generates a unique 21-clue puzzle with Forcing Net as the first move under its selected profile. It rejects the exclusive opening request because Nested Forcing Net can also make an opening move. [Source template dml50](https://gitlab.com/scilab/forge/sudoku/-/blob/master/collection/hardest.sdm)
 
 [HoDoKu targeted creation](https://hodoku.sourceforge.net/en/docs_cre.php) · [HoDoKu batch commands](https://hodoku.sourceforge.net/en/docs_ref.php) · [Tdoku sparse and expert puzzle sets](https://github.com/t-dillon/tdoku/blob/master/benchmarks/README.md#benchmarked-data-sets)
 
@@ -91,6 +91,38 @@ Audit complete. Both complex fish detectors use two to four houses on each side 
 
 [Tdoku benchmark sets](https://github.com/t-dillon/tdoku/blob/master/benchmarks/README.md#benchmarked-data-sets) · [HoDoKu complex fish](https://hodoku.sourceforge.net/en/tech_fishc.php) · [Inkala’s 2012 grid](https://www.sudokuwiki.org/Arto_Inkala_Sudoku)
 
+### Expert solver research
+
+- [x] Add Dynamic Forcing Net with Pointing and Claiming inside each branch. Replay the full proof and test it through ranked hints and custom solver profiles.
+- [x] Add Nested Forcing Net with one level of nesting. Replay both cases of the second assumption and verify all deductions on the published nested forcing puzzles.
+- [ ] Evaluate Naked Pair, Hidden Pair, and X-Wing inside forcing branches. Compare proof sizes and rating times with the current dynamic and nested profiles. [Sudoku Explainer examples](https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#using-advanced-techniques-within-the-chains)
+- [ ] Support mixed cell and house-digit constraints in rank proofs. Use Easter Monster to test how overlapping constraints affect deductions. [Allan Barker’s Easter Monster solution](https://sudoku.allanbarker.com/sweb/extra/easter/a_em.htm)
+- [ ] Test both Kraken Fish types. A candidate can be removed when every possible fin or fish alternative leads to that removal. Measure whether single-digit Templates can skip complex fish searches without dropping proofs. [HoDoKu Kraken Fish and Templates](https://hodoku.sourceforge.net/en/tech_last.php)
+- [x] Add Aligned Pair Exclusion and Aligned Triplet Exclusion. Replay every rejected assignment and verify near misses where one assignment remains possible. [Sudoku Explainer examples](https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#aligned-pair-exclusion)
+- [x] Add regular Tridagon detection and forcing nets over its extra candidates. Replay both kinds of evidence and solve all 12 recorded depth-three stalls. [Published proofs and examples](https://github.com/denis-berthier/CSP-Rules-Examples#the-tridagons-folder)
+- [x] Propagate the requirement that at least one guardian is true inside forcing branches. Replay both the shared-conclusion proofs and the refutations, and solve line 66,643 from the saved position. [Recorded stall](crates/engine/benches/fixtures/te3-tridagon-stalls-v10.jsonl)
+- [ ] Add Unique Loops longer than a rectangle. [Sudoku Explainer catalog](https://github.com/seboobies/sudoku/blob/master/diuf/sudoku/SolvingTechnique.java)
+
+Append Dynamic Forcing Net with `cargo bench --locked -p sudoku-app-engine --features wasm-api --bench coverage -- --dynamic-forcing`. The default profile takes one step on AI Escargot. The extended profile takes four, then stalls. Easter Monster still stalls after four steps. Both profiles solve three of the five expert grids. The expert rating median rose from 5.77 to 8.23 ms, and the p95 rose from 13.48 to 24.20 ms in this run. Dynamic Forcing Net adds 800 points and is available to custom solving profiles and ranked hints.
+
+Use `--forcing-examples` to compare the profiles on Sudoku Explainer’s published puzzles. The default profile stalls on all six advanced forcing puzzles. The profile with Dynamic Forcing Net solves all six, with a rating median of 153 ms and a p95 of 229 ms. Those two profiles stall on all five nested forcing puzzles. [Published forcing puzzles](https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#beyond-forcing-chains) · [Coverage benchmark](crates/engine/benches/coverage.rs)
+
+Pass `--nested-forcing` to append both extended forcing techniques. This profile solves all five published nested forcing puzzles, AI Escargot, and Easter Monster. Complete ratings for the five nested forcing puzzles take a native median of 256 ms and a p95 of 588 ms. The benchmark compares every deduction with the independently verified solution. Nested Forcing Net starts at 950 points per move. Its proof names the second candidate and records a contradiction for each of its two truth values.
+
+A separate check covered 149 distinct, verified grids from the historical hardest-puzzle collection. The default profile solved 80. The extended profile solved all 149 and matched the exact solution on all 69 additional solves. Use a newer expert corpus to find positions that still stall. [Historical hardest-puzzle collection](https://gitlab.com/scilab/forge/sudoku/-/blob/master/collection/hardest.sdm)
+
+Use `--aligned-examples --aligned-exclusion` to test the six published practice grids with the two aligned exclusions before AIC. On the third triplet example, the new profile takes 66 steps and scores 1,494 points. The default takes 76 steps and scores 3,664 points. Its triplet proof removes 9 from r8c2 by ruling out four assignments. The shortest Forcing Net proof for that move has ten inference steps. The second triplet example also drops from 2,306 to 2,106 points. Median rating time across the three triplet examples increases from 0.57 to 1.38 ms. [Published aligned exclusion puzzles](https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#aligned-pair-exclusion) · [Coverage benchmark](crates/engine/benches/coverage.rs)
+
+On Philip Newman’s depth-three collection, the profile with both extended forcing nets solves 12 of 24 sampled grids. Adding the aligned exclusions before AIC leaves the same 12 stalled positions. The sample uses both ends of the file and 22 evenly spaced rows between them. The stall fixture stores the original line numbers, givens, placed digits, removals, and technique order. [Published collection](https://github.com/denis-berthier/Classifications-of-TE3-Sudokus/blob/main/puzzles.txt) · [Recorded stalls](crates/engine/benches/fixtures/te3-stalls-v10.jsonl)
+
+A Tridagon uses three selected cells in each of four boxes. The 12 cells cannot all take one of the same three digits. At least one candidate outside those digits must be true. An exhaustive three-digit assignment check found a Tridagon in each recorded stall. Nine have just one extra candidate, and the exact solution confirms all nine placements. [Tridagon proofs and examples](https://github.com/denis-berthier/CSP-Rules-Examples#the-tridagons-folder)
+
+Use `--depth-three --nested-forcing --tridagon` to benchmark both new techniques on the 12 original puzzles. Without the two techniques, all 12 ratings stall and take a median of 260 ms. With the techniques, all 12 ratings complete with a median of 17.6 ms. From the saved positions, direct Tridagon placements resolve nine stalls. Tridagon Forcing Nets resolve the other three through two or four extra candidates. All 12 resumed paths reach the independently verified solution.
+
+The profile with Tridagon solves all 24 puzzles in the original sample. On 96 evenly spaced rows from the same dataset, it previously solved 95 and stalled on line 66,643 after 33 moves. An independent prototype found seven removals by propagating that Tridagon’s four-guardian rule. The engine now reproduces those removals and finishes the saved position with two Tridagon Forcing Net moves followed by other deductions. It solves all 96 puzzles and all 256 in a broader, evenly spaced sample. The exact solver verifies every deduction and final grid. [Published collection](https://github.com/denis-berthier/Classifications-of-TE3-Sudokus/blob/main/puzzles.txt) · [Recorded stall](crates/engine/benches/fixtures/te3-tridagon-stalls-v10.jsonl)
+
+An independent exact-cover check used Barker’s 46 constraints for the next Easter Monster move, which removes candidate 1 from r6c7. Assuming that candidate is true makes those constraints inconsistent. Fifteen active candidates occur more often in his required sets than his covering sets. A proof checker that requires each candidate to occur at least as often in the covering sets would reject this example. [Published constraints](https://sudoku.allanbarker.com/sweb/extra/easter/a_em.htm)
+
 ## 7. Compare solve paths
 
 Each rating describes a path under one solver configuration. The solution panel marks unfinished positions with at most one distinct move from the enabled Easy techniques. [Path analysis](crates/engine/src/logical/paths.rs)
@@ -120,7 +152,7 @@ The release benchmark sampled 20 seeds per cell in the table with up to 208 atte
 | 19 | 20 | 20 | 20 | 20 |
 | 20 | 20 | 20 | 20 | 20 |
 
-Audit complete. The practice catalog has 177 grids across 59 techniques. The regression checks three independent givens grids and at least two layouts per technique. It verifies each expected deduction against the unique solution and replays the technique-specific proof with the stored candidate removals. [Practice grids](crates/engine/src/practice/examples.rs) · [Native regression](crates/engine/tests/engine_contract.rs) · [Wasm regression](tests/engine-wasm.mts)
+Audit complete. The practice catalog has 195 grids across 65 techniques. The regression checks three independent givens grids and at least two layouts per technique. It verifies each expected deduction against the unique solution and replays the technique-specific proof with the stored candidate removals. [Practice grids](crates/engine/src/practice/examples.rs) · [Native regression](crates/engine/tests/engine_contract.rs) · [Wasm regression](tests/engine-wasm.mts)
 
 ## 9. Model puzzles as sets of rules
 

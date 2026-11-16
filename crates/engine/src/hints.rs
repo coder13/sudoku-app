@@ -205,7 +205,7 @@ pub struct ForcingLiteral {
     derive(serde::Serialize),
     serde(rename_all = "kebab-case")
 )]
-/// Alternatives covered by a forcing proof.
+/// Alternatives covered by a forcing proof or constraint used by an inference.
 pub enum ForcingScope {
     /// Both truth values of one candidate.
     Candidate(Candidate),
@@ -218,6 +218,17 @@ pub enum ForcingScope {
         /// Digit under consideration.
         digit: u8,
     },
+    /// A digit confined to the intersection of two houses under a branch assumption.
+    Intersection {
+        /// House whose candidates outside the intersection have been removed.
+        source: House,
+        /// House where the digit can be removed outside the intersection.
+        target: House,
+        /// Digit under consideration.
+        digit: u8,
+    },
+    /// At least one guardian of the enclosing Tridagon must be true.
+    Guardians,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -249,6 +260,19 @@ pub enum ForcingConflict {
         /// Indices of the propositions that exhausted the constraint.
         causes: Vec<usize>,
     },
+    /// Both truth values of a second candidate lead to contradictions.
+    Cases(Box<[ForcingCase; 2]>),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+/// A contradiction under a second assumption and facts from the outer branch.
+pub struct ForcingCase {
+    /// Indices of the imported propositions within the outer branch.
+    pub premises: Vec<usize>,
+    /// Proof with the second assumption at index zero, then the imported propositions,
+    /// then its own steps. The contradiction refutes the second assumption conditionally.
+    pub branch: ForcingBranch,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -261,6 +285,18 @@ pub struct ForcingBranch {
     pub steps: Vec<ForcingInference>,
     /// Contradiction reached at the end, if this branch refutes its assumption.
     pub conflict: Option<ForcingConflict>,
+}
+
+impl ForcingBranch {
+    fn proof_size(&self) -> usize {
+        let nested = match &self.conflict {
+            Some(ForcingConflict::Cases(cases)) => {
+                cases.iter().map(|case| case.branch.proof_size()).sum()
+            }
+            _ => 0,
+        };
+        1 + self.steps.len() + nested
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -388,6 +424,30 @@ pub struct SkLoopProof {
     pub arms: [Vec<usize>; 8],
     /// Links joining the arms in loop order.
     pub links: [SectorLink; 8],
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+/// A rejected assignment of digits to the cells of an aligned exclusion.
+pub struct AlignedExclusionCase {
+    /// Assigned digits in the order of the selected cells.
+    pub digits: Vec<u8>,
+    /// Constraint that rules out this assignment.
+    pub reason: AlignedExclusionReason,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+/// Why an assignment in an aligned exclusion is impossible.
+pub enum AlignedExclusionReason {
+    /// Both cells share a house and receive the same digit.
+    RepeatedDigit([usize; 2]),
+    /// A common peer of the selected cells has no candidates left.
+    EmptyCell(usize),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -552,6 +612,25 @@ pub enum HintEvidence {
         /// Its row, column, and box.
         houses: [House; 3],
     },
+    /// Every assignment that uses the removed candidate fails a local Sudoku rule.
+    AlignedExclusion {
+        /// Cells assigned together, in the order used by each case.
+        cells: Vec<usize>,
+        /// All assignments of candidates to these cells that contain the removal.
+        cases: Vec<AlignedExclusionCase>,
+    },
+    /// At least one candidate outside the three core digits must break a Tridagon.
+    Tridagon {
+        /// One triple in each of the four boxes, ordered by box and then by row.
+        cells: [[usize; 3]; 4],
+        /// The three digits that cannot fill this pattern on their own.
+        digits: [u8; 3],
+        /// All remaining candidates in these cells outside the three core digits.
+        guardians: Vec<Candidate>,
+        /// Conditional proofs in guardian order, or one branch refuting the opposite move.
+        /// Direct deductions have no branches.
+        branches: Vec<ForcingBranch>,
+    },
     /// Branches that reach a contradiction or establish a common result.
     Forcing {
         /// A scope supplies exhaustive alternatives. A contradiction needs just one assumption.
@@ -705,8 +784,20 @@ impl HintEvidence {
                 _ => 4,
             },
             HintEvidence::BugPlusOne { .. } => 3,
+            HintEvidence::AlignedExclusion { cells, cases } => cells.len() + cases.len(),
+            HintEvidence::Tridagon {
+                guardians,
+                branches,
+                ..
+            } => {
+                12 + guardians.len()
+                    + branches
+                        .iter()
+                        .map(ForcingBranch::proof_size)
+                        .sum::<usize>()
+            }
             HintEvidence::Forcing { branches, .. } => {
-                branches.iter().map(|branch| 1 + branch.steps.len()).sum()
+                branches.iter().map(ForcingBranch::proof_size).sum()
             }
             HintEvidence::AlsXz { sets, .. } => sets.iter().map(|set| set.cells.len()).sum(),
             HintEvidence::AlsChain { sets, .. } => sets.iter().map(|set| set.cells.len()).sum(),

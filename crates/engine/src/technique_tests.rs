@@ -52,6 +52,16 @@ fn transpose_scope(scope: ForcingScope) -> ForcingScope {
             house: transpose_house(house),
             digit,
         },
+        ForcingScope::Intersection {
+            source,
+            target,
+            digit,
+        } => ForcingScope::Intersection {
+            source: transpose_house(source),
+            target: transpose_house(target),
+            digit,
+        },
+        ForcingScope::Guardians => ForcingScope::Guardians,
     }
 }
 
@@ -71,6 +81,34 @@ fn transpose_link(link: CandidateLink) -> CandidateLink {
             LinkSource::House(house) => LinkSource::House(transpose_house(house)),
         },
         strength: link.strength,
+    }
+}
+
+fn transpose_forcing_branch(branch: &ForcingBranch) -> ForcingBranch {
+    ForcingBranch {
+        assumption: transpose_literal(branch.assumption),
+        steps: branch
+            .steps
+            .iter()
+            .map(|step| ForcingInference {
+                effect: transpose_literal(step.effect),
+                scope: transpose_scope(step.scope),
+                causes: step.causes.clone(),
+            })
+            .collect(),
+        conflict: branch.conflict.as_ref().map(|conflict| match conflict {
+            ForcingConflict::Opposite(pair) => ForcingConflict::Opposite(*pair),
+            ForcingConflict::Exhausted { scope, causes } => ForcingConflict::Exhausted {
+                scope: transpose_scope(*scope),
+                causes: causes.clone(),
+            },
+            ForcingConflict::Cases(cases) => {
+                ForcingConflict::Cases(Box::new(cases.each_ref().map(|case| crate::ForcingCase {
+                    premises: case.premises.clone(),
+                    branch: transpose_forcing_branch(&case.branch),
+                })))
+            }
+        }),
     }
 }
 
@@ -332,6 +370,70 @@ fn transpose_hint(hint: &Hint) -> Hint {
             candidates: *candidates,
             houses: House::at(transpose(*cell)),
         },
+        HintEvidence::AlignedExclusion { cells, cases } => {
+            let mut order: Vec<_> = (0..cells.len()).collect();
+            order.sort_unstable_by_key(|&index| transpose(cells[index]));
+            let mut cases: Vec<_> = cases
+                .iter()
+                .map(|case| AlignedExclusionCase {
+                    digits: order.iter().map(|&index| case.digits[index]).collect(),
+                    reason: match case.reason {
+                        AlignedExclusionReason::RepeatedDigit(pair) => {
+                            let mut pair = pair.map(transpose);
+                            pair.sort_unstable();
+                            AlignedExclusionReason::RepeatedDigit(pair)
+                        }
+                        AlignedExclusionReason::EmptyCell(cell) => {
+                            AlignedExclusionReason::EmptyCell(transpose(cell))
+                        }
+                    },
+                })
+                .collect();
+            cases.sort_unstable_by(|a, b| a.digits.cmp(&b.digits));
+            HintEvidence::AlignedExclusion {
+                cells: order
+                    .into_iter()
+                    .map(|index| transpose(cells[index]))
+                    .collect(),
+                cases,
+            }
+        }
+        HintEvidence::Tridagon {
+            cells,
+            digits,
+            guardians,
+            branches,
+        } => {
+            let cells = [0, 2, 1, 3].map(|index| {
+                let mut group = cells[index].map(transpose);
+                group.sort_unstable();
+                group
+            });
+            let mut order: Vec<_> = (0..guardians.len()).collect();
+            order.sort_unstable_by_key(|&index| {
+                let guardian = transpose_candidate(guardians[index]);
+                let (row, _, group) = coordinates(guardian.cell);
+                (group, row, guardian.digit)
+            });
+            let guardians = order
+                .iter()
+                .map(|&index| transpose_candidate(guardians[index]))
+                .collect();
+            let branches = if branches.is_empty() {
+                Vec::new()
+            } else {
+                order
+                    .iter()
+                    .map(|&index| transpose_forcing_branch(&branches[index]))
+                    .collect()
+            };
+            HintEvidence::Tridagon {
+                cells,
+                digits: *digits,
+                guardians,
+                branches,
+            }
+        }
         HintEvidence::WxyzWing {
             cells,
             digits,
@@ -347,30 +449,7 @@ fn transpose_hint(hint: &Hint) -> Hint {
         }
         HintEvidence::Forcing { scope, branches } => HintEvidence::Forcing {
             scope: scope.map(transpose_scope),
-            branches: branches
-                .iter()
-                .map(|branch| ForcingBranch {
-                    assumption: transpose_literal(branch.assumption),
-                    steps: branch
-                        .steps
-                        .iter()
-                        .map(|step| ForcingInference {
-                            effect: transpose_literal(step.effect),
-                            scope: transpose_scope(step.scope),
-                            causes: step.causes.clone(),
-                        })
-                        .collect(),
-                    conflict: branch.conflict.as_ref().map(|conflict| match conflict {
-                        ForcingConflict::Opposite(pair) => ForcingConflict::Opposite(*pair),
-                        ForcingConflict::Exhausted { scope, causes } => {
-                            ForcingConflict::Exhausted {
-                                scope: transpose_scope(*scope),
-                                causes: causes.clone(),
-                            }
-                        }
-                    }),
-                })
-                .collect(),
+            branches: branches.iter().map(transpose_forcing_branch).collect(),
         },
         HintEvidence::AlsXz { sets, links } => HintEvidence::AlsXz {
             sets: sets.each_ref().map(transpose_als),
@@ -1401,6 +1480,203 @@ fn empty_rectangle_depends_on_the_whole_box_fitting_the_cross() {
         },
         (EMPTY, miss),
     );
+}
+
+fn mask(digits: impl IntoIterator<Item = u8>) -> u16 {
+    digits
+        .into_iter()
+        .fold(0, |mask, digit| mask | digit_bit(digit))
+}
+
+#[test]
+fn tridagon_geometry_matches_exhaustive_three_colorability() {
+    const PERMUTATIONS: [[usize; 3]; 6] = [
+        [0, 1, 2],
+        [0, 2, 1],
+        [1, 0, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+        [2, 1, 0],
+    ];
+
+    fn color(cells: &[usize], colors: &mut [u8], index: usize) -> bool {
+        if index == cells.len() {
+            return true;
+        }
+        let (row, column, group) = coordinates(cells[index]);
+        for digit in 1..=3 {
+            if cells[..index].iter().enumerate().any(|(i, &cell)| {
+                let (r, c, g) = coordinates(cell);
+                colors[i] == digit && (r == row || c == column || g == group)
+            }) {
+                continue;
+            }
+            colors[index] = digit;
+            if color(cells, colors, index + 1) {
+                return true;
+            }
+        }
+        false
+    }
+
+    let mut impossible = 0;
+    for number in 0..6usize.pow(4) {
+        let selected: [[usize; 3]; 4] = std::array::from_fn(|i| {
+            let cols = PERMUTATIONS[(number / 6usize.pow(i as u32)) % 6];
+            let origin = (i / 2) * 27 + (i % 2) * 3;
+            std::array::from_fn(|row| origin + row * 9 + cols[row])
+        });
+        let cells = selected.as_flattened();
+        let mut masks = [0; CELLS];
+        for &cell in cells {
+            masks[cell] = mask([1, 2, 3]);
+        }
+        let guardian = Candidate {
+            cell: cells[0],
+            digit: 4,
+        };
+        masks[guardian.cell] |= digit_bit(guardian.digit);
+        let found = find_technique(&EMPTY, &masks, Technique::Tridagon);
+        if color(cells, &mut [0; 12], 0) {
+            assert!(found.is_empty(), "colorable: {selected:?}");
+        } else {
+            impossible += 1;
+            assert_eq!(
+                found,
+                [Hint {
+                    technique: Technique::Tridagon,
+                    evidence: HintEvidence::Tridagon {
+                        cells: selected,
+                        digits: [1, 2, 3],
+                        guardians: vec![guardian],
+                        branches: Vec::new(),
+                    },
+                    actions: vec![HintAction::Place(guardian)],
+                }]
+            );
+        }
+    }
+    assert_eq!(impossible, 648);
+}
+
+#[test]
+fn tridagon_clears_a_peer_of_every_extra_candidate() {
+    let cells = [[1, 9, 20], [3, 13, 23], [27, 37, 47], [30, 40, 50]];
+    let mut masks = [0; CELLS];
+    for &cell in cells.iter().flatten() {
+        masks[cell] = mask([2, 4, 8]);
+    }
+    masks[1] |= digit_bit(6);
+    masks[9] |= digit_bit(6);
+    masks[0] = mask([6, 7]);
+    // A core digit need not remain in every selected cell.
+    masks[47] &= !digit_bit(8);
+    let mut miss = masks;
+    miss[68] = miss[0];
+    miss[0] = 0;
+    assert_rule(
+        EMPTY,
+        masks,
+        Hint {
+            technique: Technique::Tridagon,
+            evidence: HintEvidence::Tridagon {
+                cells,
+                digits: [2, 4, 8],
+                guardians: vec![
+                    Candidate { cell: 1, digit: 6 },
+                    Candidate { cell: 9, digit: 6 },
+                ],
+                branches: Vec::new(),
+            },
+            actions: vec![HintAction::Eliminate(Candidate { cell: 0, digit: 6 })],
+        },
+        (EMPTY, miss),
+    );
+}
+
+#[test]
+fn aligned_pair_uses_common_peers_and_allows_repeated_digits_in_nonpeers() {
+    let mut masks = [0; CELLS];
+    masks[0] = mask([1, 4]);
+    masks[12] = mask([2, 3]);
+    masks[3] = mask([1, 2]);
+    masks[9] = mask([1, 3]);
+    let expected = Hint {
+        technique: Technique::AlignedPairExclusion,
+        evidence: HintEvidence::AlignedExclusion {
+            cells: vec![0, 12],
+            cases: vec![
+                AlignedExclusionCase {
+                    digits: vec![1, 2],
+                    reason: AlignedExclusionReason::EmptyCell(3),
+                },
+                AlignedExclusionCase {
+                    digits: vec![1, 3],
+                    reason: AlignedExclusionReason::EmptyCell(9),
+                },
+            ],
+        },
+        actions: vec![HintAction::Eliminate(Candidate { cell: 0, digit: 1 })],
+    };
+    let mut miss = masks;
+    miss[12] = mask([1, 2]);
+    assert_proof_with_near_miss(masks, expected.clone(), miss);
+
+    let mut miss = masks;
+    miss[19] = miss[9];
+    miss[9] = 0;
+    assert_proof_with_near_miss(masks, expected, miss);
+}
+
+#[test]
+fn aligned_triplet_can_need_three_digits_to_empty_a_common_peer() {
+    let mut masks = [0; CELLS];
+    masks[0] = mask([1, 4]);
+    masks[1] = mask([2, 5]);
+    masks[2] = mask([2, 3]);
+    masks[9] = mask([1, 2, 3]);
+    masks[10] = mask([1, 3, 5]);
+    masks[11] = mask([1, 2, 5]);
+    let target = HintAction::Eliminate(Candidate { cell: 0, digit: 1 });
+    let expected = Hint {
+        technique: Technique::AlignedTripletExclusion,
+        evidence: HintEvidence::AlignedExclusion {
+            cells: vec![0, 1, 2],
+            cases: vec![
+                AlignedExclusionCase {
+                    digits: vec![1, 2, 2],
+                    reason: AlignedExclusionReason::RepeatedDigit([1, 2]),
+                },
+                AlignedExclusionCase {
+                    digits: vec![1, 2, 3],
+                    reason: AlignedExclusionReason::EmptyCell(9),
+                },
+                AlignedExclusionCase {
+                    digits: vec![1, 5, 2],
+                    reason: AlignedExclusionReason::EmptyCell(11),
+                },
+                AlignedExclusionCase {
+                    digits: vec![1, 5, 3],
+                    reason: AlignedExclusionReason::EmptyCell(10),
+                },
+            ],
+        },
+        actions: vec![target],
+    };
+    assert!(
+        !find_technique(&EMPTY, &masks, Technique::AlignedPairExclusion)
+            .iter()
+            .any(|hint| hint.actions.contains(&target))
+    );
+    let mut miss = masks;
+    miss[10] |= digit_bit(6);
+    let filtered = |masks| {
+        find_technique(&EMPTY, masks, Technique::AlignedTripletExclusion).into_iter().find(|hint| {
+        matches!(&hint.evidence, HintEvidence::AlignedExclusion { cells, .. } if cells == &[0,1,2]) && hint.actions.contains(&target)
+    })
+    };
+    assert_eq!(filtered(&masks), Some(expected));
+    assert_eq!(filtered(&miss), None);
 }
 
 #[test]

@@ -57,9 +57,19 @@ Use [`Technique::ALL`] for the detector inventory and [`Technique::DEFAULT_ORDER
 | Wings and single-digit patterns | W-Wing, XY-Wing, XYZ-Wing, WXYZ-Wing, Skyscraper, Two-String Kite, Empty Rectangle |
 | Coloring and inference | Simple Coloring, 3D Medusa, X-Chain, XY-Chain, Alternating Inference Chain, continuous and discontinuous Nice Loops, and grouped versions |
 | Uniqueness | Unique Rectangle Types 1–6, Hidden Rectangle, BUG+1 |
-| Advanced deductions | Forcing Chain and Forcing Net, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Junior Exocet, SK Loop, Multi-Sector Locked Sets |
+| Advanced deductions | Aligned Pair and Triplet Exclusion, Tridagon and Tridagon Forcing Net, Forcing Chain, Forcing Net, Dynamic Forcing Net, Nested Forcing Net, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Junior Exocet, SK Loop, Multi-Sector Locked Sets |
 
-The catalog records the point cost, technique difficulty, and uniqueness assumption for each detector. Franken Fish and Mutant Fish are available in hints and selected-technique searches. Add their IDs to a custom profile to use them for solving and rating.
+The catalog records the point cost, technique difficulty, and uniqueness assumption for each detector. Complex fish, aligned exclusions, Tridagons, and extended forcing nets are available in hints and selected-technique searches. Add their IDs to a custom profile to use them for solving and rating.
+
+Aligned Exclusion checks what happens when two or three selected cells take specific digits. Reject an assignment if it repeats a digit in peer cells or empties a common peer. Remove a candidate when every assignment that uses it fails. The proof records the rejected assignments and their reasons. Aligned Pair Exclusion costs 310 points and Aligned Triplet Exclusion costs 370 points.
+
+Dynamic Forcing Net extends a branch by applying Pointing and Claiming after ordinary net propagation. A branch starts by assuming a candidate is true or false. Each locked candidate step records both houses and the earlier removals that confine the digit to their intersection. The detector reports a deduction when that step contributes to a contradiction or a conclusion shared by every alternative. Its initial cost is 800 points at the Extreme tier. Append `dynamic-forcing-net` to your solver order to try it after the other techniques.
+
+Nested Forcing Net tries a second assumption when dynamic propagation runs out of moves. If both truth values of the second candidate lead to contradictions, the first assumption is false. The proof stores both cases and the facts each case imports from the outer branch. [`ForcingCase`] documents how to read the step indices. Append `nested-forcing-net` to opt in at 950 points per deduction.
+
+A regular Tridagon uses four boxes in two bands and two stacks. Select three cells in different rows and columns within each box. The pattern can be impossible to fill with the same three digits, so at least one extra candidate must be true. The extra candidates are called guardians. `tridagon` places a sole guardian or removes a candidate that conflicts with every guardian. These techniques cost 410 and 850 points at the Extreme tier.
+
+`tridagon-forcing-net` can prove a conclusion shared by the surviving guardian branches. It can also assume the opposite move and use the requirement that at least one guardian must be true to show a contradiction. If only one guardian remains possible in such a branch, that guardian must be true. In the proof, [`ForcingScope::Guardians`] refers to the guardians listed in the enclosing Tridagon evidence.
 
 Use [`rate_puzzle`] for a rating without the trace. [`PuzzleRating`] carries the total points, technique counts, hardest technique, solve status, technique order, and [`SCORING_VERSION`]. Each deduction adds its technique's cost once, regardless of how many candidates it removes. The point bands have inclusive ceilings of 800, 1,000, 1,600, and 1,800 for Easy, Medium, Hard, and Unfair. Higher scores are Extreme. A complete path's difficulty is the higher of its point band and the hardest technique's tier. Save the order and scoring version with the rating so you can reproduce it.
 
@@ -348,7 +358,9 @@ npm run test:wasm
 node --experimental-strip-types scripts/bench-variants.mjs
 ```
 
-The engine benchmark times exact search, rating, traces, hints, and opening detection, and reports generation match rates and symmetry-adjusted diversity. The coverage benchmark reports logical solve rates and rating times separately for everyday, 17-clue, and expert fixtures. It writes replayable stalled positions to standard output and reports the group statistics on standard error.
+The engine benchmark times exact search, rating, traces, hints, and opening detection, and reports generation match rates and symmetry-adjusted diversity. The coverage benchmark reports logical solve rates and rating times separately for everyday, 17-clue, and expert fixtures. It writes replayable stalled positions to standard output and reports the group statistics on standard error. Pass `-- --dynamic-forcing` to append Dynamic Forcing Net. Pass `-- --nested-forcing` to append both extended forcing techniques. Use `--aligned-exclusion` to run Aligned Exclusion before AIC. Select a published puzzle group with `--forcing-examples` or `--aligned-examples`.
+
+Select the twelve depth-three examples with `--depth-three`. Add `--tridagon` to try direct Tridagon deductions before Forcing Chain and guardian nets before Nested Forcing Net.
 
 The variant benchmarks share fixtures for classic, X Sudoku, Killer, and mixed Jigsaw and Killer puzzles. They measure rating, ranked hints, and seeded generation. The Wasm run includes request encoding and response decoding. Run the Wasm build before the JavaScript benchmark. The benchmark reports raw and gzip binary sizes.
 

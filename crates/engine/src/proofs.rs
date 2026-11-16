@@ -4,10 +4,10 @@ use std::{
 };
 
 use super::{
-    AlmostLockedSet, Board, CELLS, Candidate, ColoringReason, DeductionSearch, ForcingConflict,
-    ForcingScope, Hint, HintAction, HintError, HintEvidence, House, InferenceNode, LinkSource,
-    PositionSnapshot, RectangleSupport, Technique, checked_position, digit_bit, digits,
-    visit_technique,
+    AlignedExclusionReason, AlmostLockedSet, Board, CELLS, Candidate, ColoringReason,
+    DeductionSearch, ForcingBranch, ForcingConflict, ForcingScope, Hint, HintAction, HintError,
+    HintEvidence, House, InferenceNode, LinkSource, PositionSnapshot, RectangleSupport, Technique,
+    checked_position, coordinates, digit_bit, digits, visit_technique,
 };
 use crate::DIGITS;
 
@@ -358,19 +358,45 @@ impl<'a> Pattern<'a> {
                 self.houses.extend(*houses);
                 self.mark([*cell], mask(*candidates));
             }
+            HintEvidence::AlignedExclusion { cells, cases } => {
+                self.mark(cells.iter().copied(), DIGITS);
+                for case in cases {
+                    match case.reason {
+                        AlignedExclusionReason::RepeatedDigit([first, second]) => {
+                            self.shared_houses(first, second);
+                        }
+                        AlignedExclusionReason::EmptyCell(blocker) => {
+                            self.mark([blocker], mask(case.digits.iter().copied()));
+                            for &cell in cells {
+                                self.shared_houses(blocker, cell);
+                            }
+                        }
+                    }
+                }
+            }
+            HintEvidence::Tridagon {
+                cells,
+                digits,
+                guardians,
+                branches,
+            } => {
+                self.mark(cells.iter().flatten().copied(), mask(*digits));
+                for group in cells {
+                    self.houses.insert(House::Box(coordinates(group[0]).2));
+                }
+                for &guardian in guardians {
+                    self.candidate(guardian);
+                }
+                for branch in branches {
+                    self.forcing_branch(branch);
+                }
+            }
             HintEvidence::Forcing { scope, branches } => {
                 if let Some(scope) = scope {
                     self.scope(*scope);
                 }
                 for branch in branches {
-                    self.candidate(branch.assumption.candidate);
-                    for step in &branch.steps {
-                        self.scope(step.scope);
-                        self.candidate(step.effect.candidate);
-                    }
-                    if let Some(ForcingConflict::Exhausted { scope, .. }) = &branch.conflict {
-                        self.scope(*scope);
-                    }
+                    self.forcing_branch(branch);
                 }
             }
             HintEvidence::AlsXz { sets, .. } => self.sets(sets),
@@ -453,6 +479,32 @@ impl<'a> Pattern<'a> {
         }
     }
 
+    fn forcing_branch(&mut self, branch: &ForcingBranch) {
+        self.candidate(branch.assumption.candidate);
+        for step in &branch.steps {
+            self.scope(step.scope);
+            self.candidate(step.effect.candidate);
+        }
+        match &branch.conflict {
+            Some(ForcingConflict::Exhausted { scope, .. }) => self.scope(*scope),
+            Some(ForcingConflict::Cases(cases)) => {
+                for case in cases.iter() {
+                    self.forcing_branch(&case.branch);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn shared_houses(&mut self, first: usize, second: usize) {
+        let other = House::at(second);
+        self.houses.extend(
+            House::at(first)
+                .into_iter()
+                .filter(|house| other.contains(house)),
+        );
+    }
+
     fn scope(&mut self, scope: ForcingScope) {
         match scope {
             ForcingScope::Candidate(candidate) => self.candidate(candidate),
@@ -460,6 +512,10 @@ impl<'a> Pattern<'a> {
             ForcingScope::House { house, .. } => {
                 self.houses.insert(house);
             }
+            ForcingScope::Intersection { source, target, .. } => {
+                self.houses.extend([source, target]);
+            }
+            ForcingScope::Guardians => {} // The enclosing Tridagon already marks every guardian.
         }
     }
 

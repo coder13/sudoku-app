@@ -15,6 +15,126 @@ const SPARSE: &str =
 const TEMPLATE: &str =
     "000500000600000309000008200000000000538000000000007001200090000001000007000300080";
 
+#[cfg(feature = "wasm-api")]
+fn recorded_position(line: &str) -> (u64, PositionSnapshot, Vec<Technique>) {
+    let fixture: serde_json::Value = serde_json::from_str(line).unwrap();
+    let row = fixture["sourceLine"].as_u64().unwrap();
+    let mut position =
+        PositionSnapshot::new(parse_givens(fixture["givens"].as_str().unwrap()).unwrap());
+    position.entries = parse_givens(fixture["entries"].as_str().unwrap()).unwrap();
+    let saved = fixture["eliminations"].as_array().unwrap();
+    assert_eq!(saved.len(), position.eliminations.len());
+    for (mask, saved) in position.eliminations.iter_mut().zip(saved) {
+        *mask = saved.as_u64().unwrap().try_into().unwrap();
+    }
+    let order = fixture["techniqueOrder"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|id| Technique::from_id(id.as_str().unwrap()).unwrap())
+        .collect();
+    (row, position, order)
+}
+
+#[cfg(feature = "wasm-api")]
+#[test]
+fn tridagon_and_its_guardian_nets_complete_the_recorded_depth_three_stalls() {
+    let mut placed = 0;
+    let mut forced = 0;
+    for line in include_str!("../benches/fixtures/te3-stalls-v10.jsonl").lines() {
+        let (row, position, mut order) = recorded_position(line);
+        let forcing = order
+            .iter()
+            .position(|&technique| technique == Technique::ForcingChain)
+            .unwrap();
+        order.insert(forcing, Technique::Tridagon);
+        let nested = order
+            .iter()
+            .position(|&technique| technique == Technique::NestedForcingNet)
+            .unwrap();
+        order.insert(nested, Technique::TridagonForcingNet);
+
+        let solution = VerifiedTemplate::verify(position.givens).unwrap();
+        let trace = solve_position(&position, &order).unwrap();
+        assert!(matches!(trace.status, SolveStatus::Solved(_)), "line {row}");
+        assert_eq!(&trace.board, solution.solution(), "line {row}");
+        for step in &trace.steps {
+            for action in &step.actions {
+                let candidate = action.candidate();
+                assert_eq!(
+                    candidate.digit == solution.solution()[candidate.cell],
+                    matches!(action, HintAction::Place(_)),
+                    "line {row}: {action:?}"
+                );
+            }
+        }
+        let first = &trace.steps[0];
+        match first.technique {
+            Technique::Tridagon => {
+                assert!(
+                    matches!(first.actions.as_slice(), [HintAction::Place(_)]),
+                    "line {row}"
+                );
+                placed += 1;
+            }
+            Technique::TridagonForcingNet => forced += 1,
+            _ => panic!("line {row}: expected a tridagon to resolve the stall"),
+        }
+    }
+    assert_eq!((placed, forced), (9, 3));
+}
+
+#[cfg(feature = "wasm-api")]
+#[test]
+fn a_guardian_constraint_resolves_depth_three_line_66643() {
+    let (row, position, order) = recorded_position(include_str!(
+        "../benches/fixtures/te3-tridagon-stalls-v10.jsonl"
+    ));
+    assert_eq!(row, 66643);
+    let solution = VerifiedTemplate::verify(position.givens).unwrap();
+    let hints = technique_deductions_at(&position, Technique::TridagonForcingNet).unwrap();
+    let mut removed = BTreeSet::new();
+    for hint in hints {
+        let [HintAction::Eliminate(candidate)] = hint.actions.as_slice() else {
+            panic!("expected a candidate removal");
+        };
+        let HintEvidence::Tridagon { branches, .. } = hint.evidence else {
+            panic!("expected a Tridagon proof");
+        };
+        let [branch] = branches.as_slice() else {
+            panic!("expected one refuted assumption");
+        };
+        assert_eq!(branch.assumption.candidate, *candidate);
+        assert!(branch.assumption.truth && branch.conflict.is_some());
+        assert_ne!(solution.solution()[candidate.cell], candidate.digit);
+        removed.insert((candidate.cell, candidate.digit));
+    }
+    assert!(
+        BTreeSet::from([
+            (25, 3),
+            (25, 8),
+            (26, 1),
+            (62, 4),
+            (74, 3),
+            (74, 4),
+            (74, 8)
+        ])
+        .is_subset(&removed)
+    );
+
+    let trace = solve_position(&position, &order).unwrap();
+    assert_eq!(trace.steps[0].technique, Technique::TridagonForcingNet);
+    assert!(matches!(trace.status, SolveStatus::Solved(_)));
+    assert_eq!(&trace.board, solution.solution());
+    for action in trace.steps.iter().flat_map(|step| &step.actions) {
+        let candidate = action.candidate();
+        assert_eq!(
+            solution.solution()[candidate.cell] == candidate.digit,
+            matches!(action, HintAction::Place(_))
+        );
+    }
+}
+
 fn assert_replayed_trace(givens: Board, level: Difficulty, expected_points: u32) {
     let order = Technique::DEFAULT_ORDER;
     let rating = rate_puzzle(&givens, order).unwrap();

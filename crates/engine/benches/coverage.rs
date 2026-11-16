@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, hint::black_box, time::Instant};
 
-use serde_json::json;
+use serde_json::{Value, json};
 use sudoku_app_engine::{
     Board, HintAction, SCORING_VERSION, SolveStatus, Technique, VerifiedTemplate, parse_givens,
     rate_puzzle, solve_logically, solve_position,
@@ -96,6 +96,65 @@ const CORPUS: &[(&str, &[(&str, &str)])] = &[
     ),
 ];
 
+// Published Sudoku Explainer examples from its advanced and nested forcing sections.
+// https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#beyond-forcing-chains
+const FORCING_EXAMPLES: &[(&str, &[(&str, &str)])] = &[
+    (
+        "advanced-forcing",
+        &[
+            (
+                "advanced-forcing-1",
+                "708000300000201000500000000040000026300080000000100090090600004000070500000000000",
+            ),
+            (
+                "advanced-forcing-2",
+                "700000400020070080003008009000500300060020090001007006000300900030040060009001035",
+            ),
+            (
+                "advanced-forcing-3",
+                "001000002030040000500600300007008001060010030100900800005009004080050070200100900",
+            ),
+            (
+                "advanced-forcing-4",
+                "001000200030040050600000007000103000080000030000604000200000006040050080007000100",
+            ),
+            (
+                "advanced-forcing-5",
+                "001000200030040050600000007000103000080070030000506000700000006050030080009000100",
+            ),
+            (
+                "advanced-forcing-6",
+                "000001002010020030400500000004000006070030010800000900500008000000010070006400500",
+            ),
+        ],
+    ),
+    (
+        "nested-forcing",
+        &[
+            (
+                "nested-forcing-1",
+                "060900003500004020000080400800000050003000700090000001001050000070300009900002040",
+            ),
+            (
+                "nested-forcing-2",
+                "100007090030020008009600500005300900010080002600004000300000010040000007007000300",
+            ),
+            (
+                "nested-forcing-3",
+                "900001800060030000002500007009000006050000020400000300300008100000040080007900005",
+            ),
+            (
+                "nested-forcing-4",
+                "001002000030040050600700800006000007010000030900000600007001008040030020000500900",
+            ),
+            (
+                "nested-forcing-5",
+                "001002000030040050500600700007000006010000030800000900009003002020010040000700800",
+            ),
+        ],
+    ),
+];
+
 fn digits(board: &Board) -> String {
     board
         .iter()
@@ -103,13 +162,130 @@ fn digits(board: &Board) -> String {
         .collect()
 }
 
+// The six examples with productive aligned deductions after basic logic stalls.
+const ALIGNMENT_EXAMPLES: &[(&str, &[(&str, &str)])] = &[
+    (
+        "aligned-pair",
+        &[
+            (
+                "aligned-pair-1",
+                Technique::AlignedPairExclusion.practice_examples()[0].givens,
+            ),
+            (
+                "aligned-pair-2",
+                Technique::AlignedPairExclusion.practice_examples()[1].givens,
+            ),
+            (
+                "aligned-pair-3",
+                Technique::AlignedPairExclusion.practice_examples()[2].givens,
+            ),
+        ],
+    ),
+    (
+        "aligned-triplet",
+        &[
+            (
+                "aligned-triplet-1",
+                Technique::AlignedTripletExclusion.practice_examples()[0].givens,
+            ),
+            (
+                "aligned-triplet-2",
+                Technique::AlignedTripletExclusion.practice_examples()[1].givens,
+            ),
+            (
+                "aligned-triplet-3",
+                Technique::AlignedTripletExclusion.practice_examples()[2].givens,
+            ),
+        ],
+    ),
+];
+
 fn main() {
-    let order = Technique::DEFAULT_ORDER;
-    eprintln!(
-        "Default logical order, scoring version {SCORING_VERSION}, {RUNS} timed ratings per grid"
-    );
+    let args: Vec<_> = std::env::args().collect();
+    let nested = args.iter().any(|arg| arg == "--nested-forcing");
+    let dynamic = nested || args.iter().any(|arg| arg == "--dynamic-forcing");
+    let forcing_examples = args.iter().any(|arg| arg == "--forcing-examples");
+    let aligned_examples = args.iter().any(|arg| arg == "--aligned-examples");
+    let aligned = args.iter().any(|arg| arg == "--aligned-exclusion");
+    let depth_three = args.iter().any(|arg| arg == "--depth-three");
+    let tridagon = args.iter().any(|arg| arg == "--tridagon");
+    let depth_puzzles: Vec<_> = if depth_three {
+        include_str!("fixtures/te3-stalls-v10.jsonl")
+            .lines()
+            .map(|line| {
+                let fixture: Value = serde_json::from_str(line).expect("valid depth-three fixture");
+                (
+                    format!("te3-{}", fixture["sourceLine"]),
+                    fixture["givens"]
+                        .as_str()
+                        .expect("depth-three givens")
+                        .to_owned(),
+                )
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let depth_refs: Vec<_> = depth_puzzles
+        .iter()
+        .map(|(label, givens)| (label.as_str(), givens.as_str()))
+        .collect();
+    let depth_corpus = [("depth-three", depth_refs.as_slice())];
+    let corpus = if depth_three {
+        &depth_corpus
+    } else if aligned_examples {
+        ALIGNMENT_EXAMPLES
+    } else if forcing_examples {
+        FORCING_EXAMPLES
+    } else {
+        CORPUS
+    };
+    let mut order = Technique::DEFAULT_ORDER.to_vec();
+    if tridagon {
+        let before_forcing = order
+            .iter()
+            .position(|&technique| technique == Technique::ForcingChain)
+            .unwrap();
+        order.insert(before_forcing, Technique::Tridagon);
+    }
+    if aligned {
+        let before_aic = order
+            .iter()
+            .position(|&technique| technique == Technique::Aic)
+            .unwrap();
+        order.splice(
+            before_aic..before_aic,
+            [
+                Technique::AlignedPairExclusion,
+                Technique::AlignedTripletExclusion,
+            ],
+        );
+    }
+    if dynamic {
+        order.push(Technique::DynamicForcingNet);
+    }
+    if tridagon {
+        order.push(Technique::TridagonForcingNet);
+    }
+    if nested {
+        order.push(Technique::NestedForcingNet);
+    }
+    let label = if nested {
+        "Default order plus Dynamic and Nested Forcing Nets"
+    } else if dynamic {
+        "Default order plus Dynamic Forcing Net"
+    } else {
+        "Default logical order"
+    };
+    eprintln!("{label}, scoring version {SCORING_VERSION}, {RUNS} timed ratings per grid");
+    if aligned {
+        eprintln!("Aligned Pair and Triplet Exclusion before AIC");
+    }
+    if tridagon {
+        eprintln!("Tridagon before forcing and Tridagon Forcing Net after dynamic propagation");
+    }
     let mut seen = BTreeSet::new();
-    for &(group, puzzles) in CORPUS {
+    for &(group, puzzles) in corpus {
         let mut solved = 0;
         let mut timings = Vec::with_capacity(RUNS * puzzles.len());
         for &(name, givens) in puzzles {
@@ -124,8 +300,8 @@ fn main() {
                     "{name}"
                 );
             }
-            let trace = solve_logically(&board, order).expect("trace for a unique grid");
-            let rating = rate_puzzle(&board, order).expect("rating for a unique grid");
+            let trace = solve_logically(&board, &order).expect("trace for a unique grid");
+            let rating = rate_puzzle(&board, &order).expect("rating for a unique grid");
             assert_eq!(rating.status, trace.status, "{name}");
             assert_eq!(rating.score, trace.score, "{name}");
             for action in trace.steps.iter().flat_map(|step| &step.actions) {
@@ -138,15 +314,66 @@ fn main() {
             }
             for _ in 0..RUNS {
                 let start = Instant::now();
-                black_box(rate_puzzle(black_box(&board), order)).expect("repeatable rating");
+                black_box(rate_puzzle(black_box(&board), &order)).expect("repeatable rating");
                 timings.push(start.elapsed().as_secs_f64() * 1000.0);
+            }
+            if dynamic && (group == "expert" || forcing_examples) {
+                let dynamic_steps = trace
+                    .steps
+                    .iter()
+                    .filter(|step| step.technique == Technique::DynamicForcingNet)
+                    .count();
+                let nested_steps = trace
+                    .steps
+                    .iter()
+                    .filter(|step| step.technique == Technique::NestedForcingNet)
+                    .count();
+                eprintln!(
+                    "{name}: {:?}, {} total steps, {dynamic_steps} dynamic steps, {nested_steps} nested steps",
+                    rating.status,
+                    trace.steps.len()
+                );
+            }
+            if aligned_examples {
+                let count = trace
+                    .steps
+                    .iter()
+                    .filter(|step| {
+                        matches!(
+                            step.technique,
+                            Technique::AlignedPairExclusion | Technique::AlignedTripletExclusion
+                        )
+                    })
+                    .count();
+                eprintln!(
+                    "{name}: {:?}, {} points, {} total steps, {count} aligned exclusion steps",
+                    rating.status,
+                    rating.score.points,
+                    trace.steps.len()
+                );
+            }
+            if depth_three {
+                let count = |technique| {
+                    trace
+                        .steps
+                        .iter()
+                        .filter(|step| step.technique == technique)
+                        .count()
+                };
+                eprintln!(
+                    "{name}: {:?}, {} total steps, {} Tridagons, {} Tridagon Forcing Nets",
+                    rating.status,
+                    trace.steps.len(),
+                    count(Technique::Tridagon),
+                    count(Technique::TridagonForcingNet)
+                );
             }
             match rating.status {
                 SolveStatus::Solved(_) => solved += 1,
                 SolveStatus::Stalled => {
                     let end = trace.positions().last().expect("initial position");
                     assert_eq!(end.values(), Ok(trace.board), "{name}");
-                    let replay = solve_position(&end, order).expect("valid stalled position");
+                    let replay = solve_position(&end, &order).expect("valid stalled position");
                     assert_eq!(replay.status, SolveStatus::Stalled, "{name}");
                     assert!(replay.steps.is_empty(), "{name}: still has a move");
                     println!(

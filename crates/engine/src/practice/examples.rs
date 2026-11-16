@@ -1666,6 +1666,253 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                 ]
             }
         }
+        Technique::AlignedPairExclusion => {
+            const {
+                [
+                    PracticeExample {
+                        givens: "030402000200016004010700003001000078009840100000020005600005000145000080007004500",
+                        entries: Some(
+                            "706090851058300790904058000400500000500007030873001000002000000000000000300000000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[(60, 9), (69, 9)])),
+                        expected_actions: &[remove(57, 9)],
+                    },
+                    PracticeExample {
+                        givens: "400608003080090040003407100708000409060000070504000208005201600010060050600905001",
+                        entries: Some(
+                            "000000000006000000000000086000000000000800305000000000000000000000000000000000000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (1, 9),
+                            (2, 2),
+                            (2, 9),
+                            (6, 7),
+                            (39, 1),
+                            (40, 1),
+                            (54, 9),
+                            (55, 3),
+                            (63, 2),
+                            (63, 9),
+                            (73, 3),
+                        ])),
+                        expected_actions: &[remove(76, 3)],
+                    },
+                ]
+            }
+        }
+        Technique::AlignedTripletExclusion => {
+            const {
+                [
+                    PracticeExample {
+                        givens: "090640010040007360050010070000204000600070000000061800020730080008000734009000000",
+                        entries: Some(
+                            "000000000000000000006000400000000000000000000000000000000000900560100000000400000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (5, 5),
+                            (17, 5),
+                            (27, 1),
+                            (27, 8),
+                            (28, 3),
+                            (28, 7),
+                            (29, 1),
+                            (35, 9),
+                            (37, 3),
+                            (38, 1),
+                            (44, 9),
+                            (53, 9),
+                            (60, 1),
+                            (62, 1),
+                            (62, 9),
+                            (72, 1),
+                            (73, 1),
+                            (76, 2),
+                            (77, 2),
+                        ])),
+                        expected_actions: &[remove(38, 3)],
+                    },
+                    PracticeExample {
+                        givens: "560040000000130000000000670000200500008001209900000800140060050007010000380000400",
+                        entries: Some(
+                            "000000100000006905000000000000000000000000000000000000000000700000000300000000000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (2, 2),
+                            (19, 2),
+                            (20, 2),
+                            (20, 4),
+                            (22, 5),
+                            (26, 2),
+                            (31, 7),
+                            (32, 3),
+                            (32, 4),
+                            (32, 7),
+                            (39, 5),
+                            (39, 7),
+                            (48, 5),
+                            (48, 7),
+                            (50, 5),
+                            (50, 7),
+                            (70, 2),
+                            (76, 5),
+                            (76, 7),
+                        ])),
+                        expected_actions: &[remove(64, 9)],
+                    },
+                ]
+            }
+        }
+        Technique::Tridagon => {
+            const {
+                [
+                    // Philip Newman's depth-three collection, line 13764.
+                    PracticeExample {
+                        givens: "000400780007180206000070014000601807000047021710820000530000000004260000900000000",
+                        entries: Some(
+                            "000000000000000000000000000000000000000000000000000000000000000070000000000000000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (5, 3),
+                            (5, 5),
+                            (5, 9),
+                            (23, 3),
+                            (23, 5),
+                            (23, 9),
+                            (34, 4),
+                            (52, 3),
+                            (52, 5),
+                            (52, 9),
+                            (61, 9),
+                            (62, 9),
+                            (71, 8),
+                            (79, 3),
+                            (79, 5),
+                            (80, 3),
+                            (80, 5),
+                        ])),
+                        expected_actions: &[place(42, 6)],
+                    },
+                    // Philip Newman's depth-three collection, line 96342.
+                    PracticeExample {
+                        givens: "120406089000089000090210004010000800600108900980024600060000478000842096040000205",
+                        entries: Some(
+                            "000000000406000000008000060000000000000000000000000000000000000000000000809000000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (16, 3),
+                            (16, 5),
+                            (17, 7),
+                            (25, 5),
+                            (29, 3),
+                            (29, 5),
+                            (29, 7),
+                            (30, 3),
+                            (30, 5),
+                            (30, 7),
+                            (31, 3),
+                            (31, 5),
+                            (31, 7),
+                            (38, 3),
+                            (38, 7),
+                            (43, 2),
+                            (43, 3),
+                            (52, 3),
+                            (54, 5),
+                            (56, 3),
+                            (56, 5),
+                            (72, 3),
+                            (72, 7),
+                            (74, 1),
+                            (74, 3),
+                            (74, 7),
+                            (75, 3),
+                            (77, 3),
+                        ])),
+                        expected_actions: &[place(27, 2)],
+                    },
+                ]
+            }
+        }
+        Technique::TridagonForcingNet => {
+            const {
+                [
+                    // Philip Newman's depth-three collection, line 66643.
+                    PracticeExample {
+                        givens: "100056009050109006090270000270000800000500900510000340700602090001090600900710000",
+                        entries: Some(
+                            "000000000000000000600000000000000000000000000000000000000000000000000000060000000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (2, 4),
+                            (2, 8),
+                            (6, 2),
+                            (7, 7),
+                            (11, 3),
+                            (11, 4),
+                            (11, 8),
+                            (16, 7),
+                            (18, 3),
+                            (18, 4),
+                            (24, 4),
+                            (26, 5),
+                            (29, 3),
+                            (37, 6),
+                            (40, 3),
+                            (40, 4),
+                            (40, 8),
+                            (41, 3),
+                            (41, 8),
+                            (43, 2),
+                            (47, 8),
+                            (60, 4),
+                            (64, 3),
+                            (64, 8),
+                            (68, 3),
+                            (68, 4),
+                            (70, 3),
+                            (70, 5),
+                            (70, 8),
+                            (71, 2),
+                            (73, 2),
+                            (73, 3),
+                            (73, 4),
+                            (78, 5),
+                            (80, 2),
+                            (80, 5),
+                        ])),
+                        expected_actions: &[remove(26, 1)],
+                    },
+                    // Philip Newman's depth-three collection, line 89460.
+                    PracticeExample {
+                        givens: "120000009000000200860000045206310000010807000078000013600038000780201300030670800",
+                        entries: Some(
+                            "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (4, 6),
+                            (12, 5),
+                            (12, 9),
+                            (33, 7),
+                            (34, 5),
+                            (34, 9),
+                            (35, 4),
+                            (40, 2),
+                            (49, 9),
+                            (50, 4),
+                            (50, 5),
+                            (50, 9),
+                            (56, 4),
+                            (56, 5),
+                            (56, 9),
+                            (74, 4),
+                            (74, 5),
+                            (74, 9),
+                        ])),
+                        expected_actions: &[place(50, 2)],
+                    },
+                ]
+            }
+        }
         Technique::ForcingChain => {
             const {
                 [
@@ -1702,6 +1949,46 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                         entries: None,
                         eliminations: None,
                         expected_actions: &[remove(0, 3)],
+                    },
+                ]
+            }
+        }
+        Technique::DynamicForcingNet => {
+            const {
+                [
+                    PracticeExample {
+                        givens: "000200000805310000201000008049060800000902000002030540700000901000078403000001000",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[place(59, 3)],
+                    },
+                    // The version 10 default solver's first stalled position on AI Escargot.
+                    PracticeExample {
+                        eliminations: Some(&elimination_masks(&[
+                            (57, 9),
+                            (59, 9),
+                            (75, 9),
+                            (77, 9),
+                        ])),
+                        expected_actions: &[remove(68, 2)],
+                        ..super::FORCING_NET
+                    },
+                ]
+            }
+        }
+        Technique::NestedForcingNet => {
+            const {
+                [
+                    PracticeExample {
+                        expected_actions: &[remove(52, 7)],
+                        ..super::FORCING_NET
+                    },
+                    // Easter Monster
+                    PracticeExample {
+                        givens: "100000002090400050006000700050903000000070000000850040700000600030009080002000001",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[remove(18, 2)],
                     },
                 ]
             }

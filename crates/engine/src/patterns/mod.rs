@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{Board, CELLS, Technique, coordinates};
 
+mod aligned_exclusion;
 mod als;
 mod chains;
 mod coloring;
@@ -21,6 +22,7 @@ mod rank_zero;
 mod single_digit;
 mod sk_loop;
 mod sue_de_coq;
+mod tridagon;
 mod uniqueness;
 mod wings;
 
@@ -76,6 +78,15 @@ impl<'a> PatternSearch<'a> {
             }
             Technique::WWing => wings::visit_w_wings(self, visit),
             Technique::WxyzWing => wings::visit_wxyz_wings(self, visit),
+            Technique::AlignedPairExclusion => {
+                aligned_exclusion::visit::<2>(self.masks, technique, visit)
+            }
+            Technique::AlignedTripletExclusion => {
+                aligned_exclusion::visit::<3>(self.masks, technique, visit)
+            }
+            Technique::Tridagon | Technique::TridagonForcingNet => {
+                tridagon::visit(self, technique, visit)
+            }
             Technique::Skyscraper | Technique::TwoStringKite | Technique::EmptyRectangle => {
                 single_digit::visit(self.positions_by_digit(), technique, visit)
             }
@@ -98,7 +109,10 @@ impl<'a> PatternSearch<'a> {
             | Technique::UniqueRectangle6
             | Technique::HiddenRectangle => uniqueness::visit_rectangles(self, technique, visit),
             Technique::BugPlusOne => uniqueness::visit_bug(self, visit),
-            Technique::ForcingChain | Technique::ForcingNet => self
+            Technique::ForcingChain
+            | Technique::ForcingNet
+            | Technique::DynamicForcingNet
+            | Technique::NestedForcingNet => self
                 .forcing
                 .get_or_init(|| forcing::ForcingGraph::new(self.masks, self.positions_by_digit()))
                 .visit(technique, visit),

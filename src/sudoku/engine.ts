@@ -185,12 +185,22 @@ type RectangleSupport =
   | { subset: { houses: House[]; cells: number[]; digits: number[] } }
   | { 'strong-links': { houses: House[]; digit: number } }
 type ForcingLiteral = { candidate: Candidate; truth: boolean }
-type ForcingScope = { candidate: Candidate } | { cell: number } | { house: { house: House; digit: number } }
+type ForcingScope =
+  | 'guardians'
+  | { candidate: Candidate }
+  | { cell: number }
+  | { house: { house: House; digit: number } }
+  | { intersection: { source: House; target: House; digit: number } }
 type ForcingBranch = {
   assumption: ForcingLiteral
   steps: { effect: ForcingLiteral; scope: ForcingScope; causes: number[] }[]
-  conflict: { opposite: [number, number] } | { exhausted: { scope: ForcingScope; causes: number[] } } | null
+  conflict:
+    | { opposite: [number, number] }
+    | { exhausted: { scope: ForcingScope; causes: number[] } }
+    | { cases: [ForcingCase, ForcingCase] }
+    | null
 }
+type ForcingCase = { premises: number[]; branch: ForcingBranch }
 type AlmostLockedSet = { cells: number[]; digits: number[] }
 type SectorSubset = { house: House; cells: number[]; digits: number[] }
 type SectorLink = { house: House; digits: number[] }
@@ -213,6 +223,8 @@ type Evidence =
   | { inference: { links: InferenceLink[] } }
   | { 'unique-rectangle': { corners: [number, number, number, number]; digits: [number, number]; support: RectangleSupport } }
   | { 'bug-plus-one': { cell: number; candidates: [number, number, number]; houses: [House, House, House] } }
+  | { 'aligned-exclusion': { cells: number[]; cases: { digits: number[]; reason: { 'repeated-digit': [number, number] } | { 'empty-cell': number } }[] } }
+  | { tridagon: { cells: [number, number, number][]; digits: [number, number, number]; guardians: Candidate[]; branches: ForcingBranch[] } }
   | { forcing: { scope: ForcingScope | null; branches: ForcingBranch[] } }
   | { 'als-xz': { sets: [AlmostLockedSet, AlmostLockedSet]; links: number[] } }
   | { 'als-chain': { sets: AlmostLockedSet[]; links: number[] } }

@@ -896,6 +896,53 @@ test('the worker protocol reaches the compiled browser engine', async () => {
       assert.ok(branch.steps.every((step, index) => step.causes.every(cause => cause <= index)))
     }
   }
+  const dynamicNet = examples['dynamic-forcing-net'].deduction
+  assert.equal(costs.get('dynamic-forcing-net'), 800)
+  assert.ok(!catalog.defaultOrder.includes('dynamic-forcing-net'))
+  assert.ok('forcing' in dynamicNet.evidence)
+  assert.ok(dynamicNet.evidence.forcing.branches.some(branch => branch.steps.some(step => typeof step.scope === 'object' && 'intersection' in step.scope)))
+  const nestedNet = examples['nested-forcing-net'].deduction
+  assert.equal(costs.get('nested-forcing-net'), 950)
+  assert.ok(!catalog.defaultOrder.includes('nested-forcing-net'))
+  assert.ok('forcing' in nestedNet.evidence)
+  const nestedConflict = nestedNet.evidence.forcing.branches[0].conflict
+  assert.ok(nestedConflict && 'cases' in nestedConflict)
+  assert.deepEqual(nestedConflict.cases.map(({ branch }) => branch.assumption.truth), [true, false])
+
+  for (const [id, cost] of [['tridagon', 410], ['tridagon-forcing-net', 850]] as const) {
+    assert.equal(costs.get(id), cost)
+    const { deduction } = examples[id]
+    assert.ok('tridagon' in deduction.evidence)
+    const { cells, digits, guardians, branches } = deduction.evidence.tridagon
+    assert.equal(cells.length, 4)
+    assert.equal(new Set(cells.flat()).size, 12)
+    assert.equal(new Set(digits).size, 3)
+    if (id === 'tridagon') {
+      assert.equal(guardians.length, 1)
+      assert.equal(branches.length, 0)
+      assert.deepEqual(deduction.actions, [{ place: guardians[0] }])
+    } else {
+      assert.ok(guardians.length >= 2)
+      assert.deepEqual(branches.map(branch => branch.assumption), guardians.map(candidate => ({ candidate, truth: true })))
+      assert.ok(branches.some(branch => branch.steps.length > 0))
+    }
+  }
+
+  for (const [id, cost, width] of [['aligned-pair-exclusion', 310, 2], ['aligned-triplet-exclusion', 370, 3]] as const) {
+    assert.equal(costs.get(id), cost)
+    const example = examples[id]
+    const { deduction: { evidence, actions }, candidates } = example
+    assert.ok('aligned-exclusion' in evidence)
+    const { cells, cases } = evidence['aligned-exclusion']
+    const [action] = actions
+    assert.ok('eliminate' in action)
+    assert.equal(cells.length, width)
+    const choices = cells.filter(cell => cell !== action.eliminate.cell).map(cell =>
+      candidates[cell].toString(2).split('1').length - 1)
+    assert.equal(cases.length, choices.reduce((product, n) => product * n, 1))
+    assert.ok(cases.every(({ digits }) => digits[cells.indexOf(action.eliminate.cell)] === action.eliminate.digit))
+    assert.ok(cases.some(({ reason }) => 'empty-cell' in reason))
+  }
 
   for (const [technique, cost] of [['als-xz', 300], ['als-xy-wing', 320], ['als-chain', 340], ['sue-de-coq', 250], ['death-blossom', 360]] as const) {
     assert.equal(costs.get(technique), cost)
@@ -978,6 +1025,129 @@ test('the worker protocol reaches the compiled browser engine', async () => {
   const matched = await run({ type: 'generate-constrained', seed: 42, maxAttempts: 1, clues: 17, score: [766, 766], templates: [TEMPLATE] })
   assert.equal(matched.replaceAll('0', '').length, 17)
   assert.equal((await run({ type: 'rate', values: matched })).score.points, 766)
+})
+
+test('a custom solving profile can continue past the default AI Escargot stall', async () => {
+  const { run } = engineRequests()
+  const values = '100007090030020008009600500005300900010080002600004000300000010041000007007000300'
+  const baseline = await run({ type: 'logical-solve', values, includePositions: true })
+  assert.equal(baseline.rating.status, 'stalled')
+  assert.equal(baseline.steps.length, 1)
+
+  const techniqueOrder = [...baseline.rating.techniqueOrder, 'dynamic-forcing-net']
+  const extended = await run({ type: 'logical-solve', values, techniqueOrder })
+  const first = extended.steps[baseline.steps.length]
+  assert.deepEqual(extended.steps.slice(0, baseline.steps.length), baseline.steps)
+  assert.equal(first.technique, 'dynamic-forcing-net')
+  assert.deepEqual(first.actions, [{ eliminate: { cell: 68, digit: 2 } }])
+  assert.ok('forcing' in first.evidence)
+  assert.ok(first.evidence.forcing.branches.some(branch => branch.steps.some(step => typeof step.scope === 'object' && 'intersection' in step.scope)))
+
+  const stall = baseline.positions?.at(-1)
+  assert.ok(stall)
+  const request = { type: 'hints', values: baseline.board, eliminations: stall.eliminations } as const
+  const hints = await run(request)
+  assert.ok(hints.choices.filter(hint => hint.technique === 'dynamic-forcing-net').length >= 2)
+  const disabled = await run({ ...request, disabledTechniques: ['dynamic-forcing-net'] })
+  assert.ok(disabled.choices.every(hint => hint.technique !== 'dynamic-forcing-net'))
+})
+
+test('dynamic forcing can complete a published puzzle with a replayable logical trace', async () => {
+  const { run } = engineRequests()
+  // The first advanced forcing example in Sudoku Explainer's published collection.
+  const values = '708000300000201000500000000040000026300080000000100090090600004000070500000000000'
+  const baseline = await run({ type: 'rate', values })
+  assert.equal(baseline.status, 'stalled')
+  const techniqueOrder = [...baseline.techniqueOrder, 'dynamic-forcing-net']
+  const trace = await run({ type: 'logical-solve', values, techniqueOrder, includePositions: true })
+  assert.deepEqual(trace.rating.status, { solved: 'extreme' })
+  assert.equal(trace.board, await run({ type: 'solve', values }))
+  const index = trace.steps.findIndex(step => step.technique === 'dynamic-forcing-net')
+  const step = replayStep(trace, index)
+  assert.ok(step)
+  const before = [...step.before.givens].map((digit, cell) => digit === '0' ? step.before.entries[cell] : digit).join('')
+  const moves = await run({
+    type: 'deductions', values: before, eliminations: step.before.eliminations, techniqueOrder: ['dynamic-forcing-net'],
+  })
+  const proof = moves.find(move => JSON.stringify(move.actions) === JSON.stringify(step.deduction.actions))
+  assert.ok(proof)
+  assert.deepEqual(proof.proofs[0].evidence, step.deduction.evidence)
+})
+
+test('nested forcing completes Easter Monster and exports the two cases of its proof', async () => {
+  const { run } = engineRequests()
+  const values = '100000002090400050006000700050903000000070000000850040700000600030009080002000001'
+  const catalog = await run({ type: 'techniques' })
+  const dynamic = [...catalog.defaultOrder, 'dynamic-forcing-net']
+  const baseline = await run({ type: 'logical-solve', values, techniqueOrder: dynamic })
+  assert.equal(baseline.rating.status, 'stalled')
+  const techniqueOrder = [...dynamic, 'nested-forcing-net']
+  const trace = await run({ type: 'logical-solve', values, techniqueOrder })
+  assert.deepEqual(trace.rating.status, { solved: 'extreme' })
+  assert.equal(trace.board, await run({ type: 'solve', values }))
+  const first = trace.steps[baseline.steps.length]
+  assert.deepEqual(trace.steps.slice(0, baseline.steps.length), baseline.steps)
+  assert.equal(first.technique, 'nested-forcing-net')
+  assert.ok('forcing' in first.evidence)
+  const [outer] = first.evidence.forcing.branches
+  assert.ok(outer.conflict && 'cases' in outer.conflict)
+  const [positive, negative] = outer.conflict.cases
+  assert.deepEqual(positive.branch.assumption.candidate, negative.branch.assumption.candidate)
+  assert.equal(positive.branch.assumption.truth, true)
+  assert.equal(negative.branch.assumption.truth, false)
+  for (const { premises, branch } of [positive, negative]) {
+    assert.ok(premises.every(index => index <= outer.steps.length))
+    assert.ok(branch.conflict && !('cases' in branch.conflict))
+    assert.ok(branch.steps.every((step, index) => step.causes.every(cause => cause <= index + premises.length)))
+  }
+})
+
+test('Tridagon practice exposes the guardian constraint in a refutation', async () => {
+  const { run } = engineRequests()
+  const technique = 'tridagon-forcing-net'
+  const [, exercise] = await run({ type: 'practice-examples', technique })
+  assert.deepEqual(exercise.suggestion, { eliminate: { cell: 26, digit: 1 } })
+  const { evidence } = exercise.deduction
+  assert.ok('tridagon' in evidence)
+  const { guardians, branches } = evidence.tridagon
+  assert.equal(guardians.length, 4)
+  assert.equal(branches.length, 1)
+  const [branch] = branches
+  assert.deepEqual(branch.assumption, { candidate: { cell: 26, digit: 1 }, truth: true })
+  const conflict = branch.conflict
+  assert.ok(conflict)
+  assert.ok(branch.steps.some(step => step.scope === 'guardians')
+    || ('exhausted' in conflict && conflict.exhausted.scope === 'guardians'))
+  assert.deepEqual(await run({
+    type: 'check-practice-move', technique, values: exercise.givens, entries: exercise.entries,
+    eliminations: exercise.eliminations, action: exercise.suggestion,
+  }), exercise.deduction)
+})
+
+test('aligned triplet exclusion can replace a longer chain profile path', async () => {
+  const { run } = engineRequests()
+  const values = '560040000000130000000000670000200500008001209900000800140060050007010000380000400'
+  const baseline = await run({ type: 'logical-solve', values })
+  const techniqueOrder = [...baseline.rating.techniqueOrder]
+  techniqueOrder.splice(techniqueOrder.indexOf('aic'), 0, 'aligned-pair-exclusion', 'aligned-triplet-exclusion')
+  const trace = await run({ type: 'logical-solve', values, techniqueOrder, includePositions: true })
+  assert.deepEqual(baseline.rating.status, { solved: 'extreme' })
+  assert.deepEqual(trace.rating.status, { solved: 'unfair' })
+  assert.equal(trace.board, await run({ type: 'solve', values }))
+  assert.ok(trace.rating.score.points < baseline.rating.score.points)
+  assert.ok(trace.steps.length < baseline.steps.length)
+  const index = trace.steps.findIndex(({ technique }) => technique === 'aligned-triplet-exclusion')
+  const step = replayStep(trace, index)
+  assert.ok(step && 'aligned-exclusion' in step.deduction.evidence)
+  assert.equal(step.deduction.evidence['aligned-exclusion'].cases.length, 4)
+
+  const catalog = await run({ type: 'techniques' })
+  const enabled = ['aligned-triplet-exclusion', 'forcing-chain', 'forcing-net']
+  const disabledTechniques = catalog.techniques.map(({ id }) => id).filter(id => !enabled.includes(id))
+  const grid = [...step.before.givens].map((digit, cell) => digit === '0' ? step.before.entries[cell] : digit).join('')
+  const { choices } = await run({ type: 'hints', values: grid, eliminations: step.before.eliminations, disabledTechniques, limit: 'all' })
+  const explanations = choices.filter(hint => hint.actions.some(action => 'eliminate' in action && action.eliminate.cell === 64 && action.eliminate.digit === 9))
+  assert.deepEqual(explanations.map(hint => hint.technique), ['aligned-triplet-exclusion'])
 })
 
 test('variant requests round-trip the rules and solve under those rules', async () => {
@@ -1228,8 +1398,8 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   const { raw, run } = engineRequests()
   const catalog = await run({ type: 'techniques', variant: true })
   assert.equal(catalog.scoringVersion, 4)
-  assert.equal(catalog.techniques.length, 81)
-  assert.equal(new Set(catalog.techniques.map(technique => technique.id)).size, 81)
+  assert.equal(catalog.techniques.length, 87)
+  assert.equal(new Set(catalog.techniques.map(technique => technique.id)).size, 87)
   const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))
   assert.equal(costs.get('parity'), 6)
   assert.equal(costs.get('cage-house-sum'), 67)

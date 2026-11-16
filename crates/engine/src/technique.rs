@@ -147,8 +147,14 @@ catalog! {
     HiddenRectangle: "hidden-rectangle", 100, Hard, true, [];
     BugPlusOne: "bug-plus-one", 100, Hard, true, ["BUG+1", "Bivalue Universal Grave + 1"];
     WxyzWing: "wxyz-wing", 220, Unfair, false, [];
+    AlignedPairExclusion: "aligned-pair-exclusion", 310, Unfair, false, [];
+    AlignedTripletExclusion: "aligned-triplet-exclusion", 370, Unfair, false, [];
+    Tridagon: "tridagon", 410, Extreme, false, ["Trivalue Oddagon", "Thor's Hammer"];
+    TridagonForcingNet: "tridagon-forcing-net", 850, Extreme, false, [];
     ForcingChain: "forcing-chain", 500, Extreme, false, [];
     ForcingNet: "forcing-net", 700, Extreme, false, [];
+    DynamicForcingNet: "dynamic-forcing-net", 800, Extreme, false, [];
+    NestedForcingNet: "nested-forcing-net", 950, Extreme, false, [];
     AlsXz: "als-xz", 300, Unfair, false, ["ALS-XZ Rule"];
     AlsXyWing: "als-xy-wing", 320, Unfair, false, [];
     AlsChain: "als-chain", 340, Unfair, false, ["ALS-XY-Chain"];
@@ -162,7 +168,7 @@ catalog! {
 }
 
 impl Technique {
-    /// Default solver profile. Complex fish are available in custom profiles.
+    /// Default solver profile. See [`Self::ALL`] for techniques available in custom profiles.
     /// Opening analysis and hints use the full catalog.
     pub const DEFAULT_ORDER: &'static [Self] = &[
         Self::FullHouse,

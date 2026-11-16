@@ -311,8 +311,10 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
         conclusion = `The steps both force and rule out ${candidateName(effects[conflict.opposite[0]].candidate)}.`
       } else if (conflict && 'exhausted' in conflict) {
         const { scope } = conflict.exhausted
-        if ('cell' in scope) conclusion = `${cellName(scope.cell)} has no candidate left.`
-        if ('house' in scope) conclusion = `There is no place for ${scope.house.digit} in ${houseName(scope.house.house)}.`
+        if (typeof scope === 'object') {
+          if ('cell' in scope) conclusion = `${cellName(scope.cell)} has no candidate left.`
+          if ('house' in scope) conclusion = `There is no place for ${scope.house.digit} in ${houseName(scope.house.house)}.`
+        }
       }
       return {
         assumption: `Assume ${statement(assumption)}.`,

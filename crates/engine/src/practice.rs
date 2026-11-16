@@ -516,6 +516,112 @@ const WXYZ_WING: PracticeExample = PracticeExample {
     expected_actions: &[remove(28, 9)],
 };
 
+// Published Sudoku Explainer puzzles, advanced to a position with an aligned exclusion.
+const ALIGNED_PAIR_EXCLUSION: PracticeExample = PracticeExample {
+    givens: "009040300670030094000806000400050002050903010090000060000020000500401009030000020",
+    entries: Some(
+        "000000006000000000340090000013600900206000400000214503000300040000000030004000000",
+    ),
+    eliminations: Some(&elimination_masks(&[(7, 7), (26, 5)])),
+    expected_actions: &[remove(3, 5)],
+};
+
+const ALIGNED_TRIPLET_EXCLUSION: PracticeExample = PracticeExample {
+    givens: "000000900001200870009300051690020000480001000030000260000000610050134000000097000",
+    entries: Some(
+        "000010000000009000020006400000003100002060000100000000000002000006000700010600000",
+    ),
+    eliminations: Some(&elimination_masks(&[
+        (0, 2),
+        (1, 2),
+        (2, 5),
+        (2, 7),
+        (54, 8),
+        (56, 7),
+        (56, 8),
+        (62, 5),
+        (62, 8),
+        (72, 3),
+    ])),
+    expected_actions: &[remove(3, 4)],
+};
+
+// Philip Newman's depth-three collection, line 1.
+const TRIDAGON: PracticeExample = PracticeExample {
+    givens: "103056000057109000690370000001093007509607300000510000000960000000000400005000860",
+    entries: Some(
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    ),
+    eliminations: Some(&elimination_masks(&[
+        (7, 4),
+        (16, 4),
+        (16, 8),
+        (28, 2),
+        (28, 8),
+        (45, 2),
+        (45, 4),
+        (45, 8),
+        (46, 2),
+        (46, 4),
+        (46, 6),
+        (46, 8),
+        (53, 4),
+        (65, 8),
+    ])),
+    expected_actions: &[place(47, 6)],
+};
+
+// Philip Newman's depth-three collection, line 75697.
+const TRIDAGON_FORCING_NET: PracticeExample = PracticeExample {
+    givens: "103006000057000000680003000000000350305010807870530001000948170708000000000020600",
+    entries: Some(
+        "000000000000000036000000010000000000000600000000000060000000000000060000000000000",
+    ),
+    eliminations: Some(&elimination_masks(&[
+        (3, 8),
+        (4, 8),
+        (6, 2),
+        (6, 4),
+        (6, 9),
+        (8, 2),
+        (8, 4),
+        (8, 5),
+        (14, 2),
+        (14, 4),
+        (16, 1),
+        (16, 2),
+        (16, 4),
+        (16, 8),
+        (16, 9),
+        (17, 2),
+        (17, 3),
+        (17, 4),
+        (17, 8),
+        (17, 9),
+        (24, 2),
+        (24, 9),
+        (28, 2),
+        (28, 4),
+        (28, 9),
+        (29, 2),
+        (29, 4),
+        (29, 9),
+        (30, 2),
+        (30, 4),
+        (30, 6),
+        (39, 2),
+        (64, 9),
+        (67, 5),
+        (70, 3),
+        (71, 5),
+        (77, 1),
+        (79, 3),
+        (79, 9),
+        (80, 9),
+    ])),
+    expected_actions: &[remove(26, 9)],
+};
+
 const FORCING_CHAIN: PracticeExample = PracticeExample {
     givens: "300008009070650003000000006001004600004070300005800200900000000100089050400200008",
     entries: Some(
@@ -552,6 +658,21 @@ const FORCING_NET: PracticeExample = PracticeExample {
     entries: None,
     eliminations: None,
     expected_actions: &[remove(57, 9)],
+};
+
+const DYNAMIC_FORCING_NET: PracticeExample = PracticeExample {
+    givens: "000000640008007209070200000000100860600309002082005000000002090407900100091000000",
+    entries: None,
+    eliminations: None,
+    expected_actions: &[remove(62, 7)],
+};
+
+// The first published nested forcing example in Sudoku Explainer's collection.
+const NESTED_FORCING_NET: PracticeExample = PracticeExample {
+    givens: "060900003500004020000080400800000050003000700090000001001050000070300009900002040",
+    entries: None,
+    eliminations: None,
+    expected_actions: &[remove(39, 1)],
 };
 
 // Witness positions and expected eliminations from HoDoKu's regression library.
@@ -830,8 +951,14 @@ impl Technique {
             Self::HiddenRectangle => return HIDDEN_RECTANGLE,
             Self::BugPlusOne => return BUG_PLUS_ONE,
             Self::WxyzWing => return WXYZ_WING,
+            Self::AlignedPairExclusion => return ALIGNED_PAIR_EXCLUSION,
+            Self::AlignedTripletExclusion => return ALIGNED_TRIPLET_EXCLUSION,
+            Self::Tridagon => return TRIDAGON,
+            Self::TridagonForcingNet => return TRIDAGON_FORCING_NET,
             Self::ForcingChain => return FORCING_CHAIN,
             Self::ForcingNet => return FORCING_NET,
+            Self::DynamicForcingNet => return DYNAMIC_FORCING_NET,
+            Self::NestedForcingNet => return NESTED_FORCING_NET,
             Self::AlsXz => return ALS_XZ,
             Self::AlsXyWing => return ALS_XY_WING,
             Self::AlsChain => return ALS_CHAIN,
@@ -1092,11 +1219,182 @@ mod tests {
     }
 
     #[test]
-    fn forcing_proofs_follow_the_exact_one_constraints() {
+    fn aligned_exclusion_replays_every_assignment_of_the_removed_candidate() {
+        use crate::AlignedExclusionReason::{EmptyCell, RepeatedDigit};
+        use std::collections::BTreeSet;
+
+        for (technique, count) in [
+            (Technique::AlignedPairExclusion, 2),
+            (Technique::AlignedTripletExclusion, 3),
+        ] {
+            for example in technique.practice_examples() {
+                let position = example.position().unwrap();
+                let mut masks = candidates(&position.values().unwrap()).unwrap();
+                for (mask, removed) in masks.iter_mut().zip(position.eliminations) {
+                    *mask &= !removed;
+                }
+                for hint in technique_deductions_at(&position, technique).unwrap() {
+                    let [HintAction::Eliminate(target)] = hint.actions.as_slice() else {
+                        panic!("an aligned exclusion proves one removal");
+                    };
+                    let HintEvidence::AlignedExclusion { cells, cases } = &hint.evidence else {
+                        panic!("an aligned exclusion records its rejected assignments");
+                    };
+                    assert_eq!(cells.len(), count);
+                    let index = cells.iter().position(|&cell| cell == target.cell).unwrap();
+                    let expected: usize = cells
+                        .iter()
+                        .filter(|&&cell| cell != target.cell)
+                        .map(|&cell| masks[cell].count_ones() as usize)
+                        .product();
+                    assert_eq!(cases.len(), expected);
+                    let mut seen = BTreeSet::new();
+                    for case in cases {
+                        assert_eq!(case.digits.len(), count);
+                        assert_eq!(case.digits[index], target.digit);
+                        assert!(seen.insert(&case.digits));
+                        for (&cell, &digit) in cells.iter().zip(&case.digits) {
+                            assert_ne!(masks[cell] & (1 << (digit - 1)), 0);
+                        }
+                        let sees = |a, b| {
+                            House::at(a)
+                                .iter()
+                                .any(|house| House::at(b).contains(house))
+                        };
+                        match case.reason {
+                            RepeatedDigit([a, b]) => {
+                                assert_ne!(a, b);
+                                assert!(sees(a, b));
+                                let digit = |cell| {
+                                    case.digits[cells.iter().position(|&c| c == cell).unwrap()]
+                                };
+                                assert_eq!(digit(a), digit(b));
+                            }
+                            EmptyCell(blocker) => {
+                                assert!(!cells.contains(&blocker));
+                                assert!(cells.iter().all(|&cell| sees(blocker, cell)));
+                                let assigned = case
+                                    .digits
+                                    .iter()
+                                    .fold(0, |mask, &digit| mask | 1 << (digit - 1));
+                                assert_ne!(masks[blocker], 0);
+                                assert_eq!(masks[blocker] & !assigned, 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn tridagon_nets_replay_their_cases_and_refutations() {
+        let mut saw_cases = false;
+        let mut saw_refutation = false;
+        for example in Technique::TridagonForcingNet.practice_examples() {
+            let position = example.position().unwrap();
+            let mut masks = candidates(&position.values().unwrap()).unwrap();
+            for (mask, removed) in masks.iter_mut().zip(position.eliminations) {
+                *mask &= !removed;
+            }
+            let hints = technique_deductions_at(&position, Technique::TridagonForcingNet).unwrap();
+            assert!(!hints.is_empty());
+            for hint in hints {
+                let [action] = hint.actions.as_slice() else {
+                    panic!("single forcing conclusion");
+                };
+                let target = ForcingLiteral {
+                    candidate: action.candidate(),
+                    truth: matches!(action, HintAction::Place(_)),
+                };
+                let HintEvidence::Tridagon {
+                    cells,
+                    digits: core,
+                    guardians,
+                    branches,
+                } = hint.evidence
+                else {
+                    panic!("tridagon evidence");
+                };
+                let core = core
+                    .into_iter()
+                    .fold(0, |mask, digit| mask | 1 << (digit - 1));
+                let extra: Vec<_> = cells
+                    .iter()
+                    .flatten()
+                    .flat_map(|&cell| {
+                        crate::hints::digits(masks[cell] & !core)
+                            .map(move |digit| Candidate { cell, digit })
+                    })
+                    .collect();
+                assert_eq!(extra, guardians);
+                assert!(guardians.len() >= 2);
+                if let [branch] = branches.as_slice() {
+                    saw_refutation = true;
+                    assert_eq!(branch.assumption.candidate, target.candidate);
+                    assert_ne!(branch.assumption.truth, target.truth);
+                    let facts = replay_forcing_branch(branch, &masks, &[], &guardians);
+                    let conflict = branch
+                        .conflict
+                        .as_ref()
+                        .expect("the opposite move must fail");
+                    assert!(
+                        branch
+                            .steps
+                            .iter()
+                            .any(|step| step.scope == ForcingScope::Guardians)
+                            || matches!(
+                                conflict,
+                                ForcingConflict::Exhausted {
+                                    scope: ForcingScope::Guardians,
+                                    ..
+                                }
+                            )
+                    );
+                    replay_forcing_conflict(conflict, &masks, &facts, &guardians);
+                    continue;
+                }
+                saw_cases = true;
+                assert_eq!(branches.len(), guardians.len());
+                assert!(branches.iter().any(|branch| branch.conflict.is_none()));
+                for (guardian, branch) in guardians.into_iter().zip(branches) {
+                    assert_eq!(
+                        branch.assumption,
+                        ForcingLiteral {
+                            candidate: guardian,
+                            truth: true
+                        }
+                    );
+                    let facts = replay_forcing_branch(&branch, &masks, &[], &[]);
+                    if let Some(conflict) = &branch.conflict {
+                        replay_forcing_conflict(conflict, &masks, &facts, &[]);
+                    } else {
+                        assert_eq!(facts.last(), Some(&target));
+                    }
+                }
+            }
+        }
+        assert!(saw_cases && saw_refutation);
+    }
+
+    #[test]
+    fn forcing_proofs_replay_each_inference_from_its_premises() {
         let mut saw_contradiction = false;
         let mut saw_verity = false;
-        for technique in [Technique::ForcingChain, Technique::ForcingNet] {
-            let position = technique.practice_example().position().unwrap();
+        let examples = [
+            Technique::ForcingChain,
+            Technique::ForcingNet,
+            Technique::DynamicForcingNet,
+            Technique::NestedForcingNet,
+        ]
+        .into_iter()
+        .flat_map(|technique| {
+            technique
+                .practice_examples()
+                .map(|example| (technique, example))
+        });
+        for (technique, example) in examples {
+            let position = example.position().unwrap();
             let mut masks = candidates(&position.values().unwrap()).unwrap();
             for (mask, removed) in masks.iter_mut().zip(position.eliminations) {
                 *mask &= !removed;
@@ -1116,13 +1414,19 @@ mod tests {
                 let HintEvidence::Forcing { scope, branches } = hint.evidence else {
                     panic!("forcing deduction must record its proof");
                 };
-                assert_eq!(
-                    branches
-                        .iter()
-                        .flat_map(|branch| &branch.steps)
-                        .any(|step| step.causes.len() > 1),
-                    technique == Technique::ForcingNet
-                );
+                let steps = || branches.iter().flat_map(|branch| &branch.steps);
+                if technique != Technique::NestedForcingNet {
+                    assert_eq!(
+                        steps().any(|step| matches!(step.scope, ForcingScope::Intersection { .. })),
+                        technique == Technique::DynamicForcingNet
+                    );
+                }
+                if matches!(technique, Technique::ForcingChain | Technique::ForcingNet) {
+                    assert_eq!(
+                        steps().any(|step| step.causes.len() > 1),
+                        technique == Technique::ForcingNet
+                    );
+                }
                 match scope {
                     Some(scope) => {
                         saw_verity = true;
@@ -1134,7 +1438,7 @@ mod tests {
                             forcing_assumptions(scope, &masks)
                         );
                         for branch in &branches {
-                            let facts = replay_forcing_branch(branch, &masks);
+                            let facts = replay_forcing_branch(branch, &masks, &[], &[]);
                             assert!(branch.conflict.is_none());
                             assert_eq!(facts.last(), Some(&target));
                         }
@@ -1146,22 +1450,13 @@ mod tests {
                         };
                         assert_eq!(branch.assumption.candidate, target.candidate);
                         assert_ne!(branch.assumption.truth, target.truth);
-                        let facts = replay_forcing_branch(branch, &masks);
-                        match branch.conflict.as_ref().unwrap() {
-                            ForcingConflict::Opposite([first, second]) => {
-                                assert_eq!(facts[*first].candidate, facts[*second].candidate);
-                                assert_ne!(facts[*first].truth, facts[*second].truth);
-                            }
-                            ForcingConflict::Exhausted { scope, causes } => {
-                                assert_eq!(
-                                    forcing_literals(&facts, causes),
-                                    forcing_members(*scope, &masks)
-                                        .into_iter()
-                                        .map(|candidate| (candidate, false))
-                                        .collect::<Vec<_>>()
-                                );
-                            }
-                        }
+                        let facts = replay_forcing_branch(branch, &masks, &[], &[]);
+                        let conflict = branch.conflict.as_ref().unwrap();
+                        assert_eq!(
+                            matches!(conflict, ForcingConflict::Cases(_)),
+                            technique == Technique::NestedForcingNet
+                        );
+                        replay_forcing_conflict(conflict, &masks, &facts, &[]);
                     }
                 }
             }
@@ -1169,7 +1464,11 @@ mod tests {
         assert!(saw_contradiction && saw_verity);
     }
 
-    fn forcing_members(scope: ForcingScope, masks: &[u16; CELLS]) -> Vec<Candidate> {
+    fn forcing_members(
+        scope: ForcingScope,
+        masks: &[u16; CELLS],
+        guardians: &[Candidate],
+    ) -> Vec<Candidate> {
         match scope {
             ForcingScope::Cell(cell) => (1..=9)
                 .filter(|&digit| masks[cell] & (1 << (digit - 1)) != 0)
@@ -1182,6 +1481,18 @@ mod tests {
                 .map(|cell| Candidate { cell, digit })
                 .collect(),
             ForcingScope::Candidate(_) => panic!("a candidate alone is not an exact-one unit"),
+            ForcingScope::Intersection { .. } => {
+                panic!("an intersection connects two exact-one units")
+            }
+            ForcingScope::Guardians => {
+                assert!(
+                    guardians.len() >= 2,
+                    "a guardian scope needs its enclosing proof"
+                );
+                let mut members = guardians.to_vec();
+                members.sort_unstable();
+                members
+            }
         }
     }
 
@@ -1191,7 +1502,7 @@ mod tests {
                 .map(|truth| ForcingLiteral { candidate, truth })
                 .to_vec();
         }
-        forcing_members(scope, masks)
+        forcing_members(scope, masks, &[])
             .into_iter()
             .map(|candidate| ForcingLiteral {
                 candidate,
@@ -1212,14 +1523,69 @@ mod tests {
         literals
     }
 
-    fn replay_forcing_branch(branch: &ForcingBranch, masks: &[u16; CELLS]) -> Vec<ForcingLiteral> {
+    fn replay_forcing_branch(
+        branch: &ForcingBranch,
+        masks: &[u16; CELLS],
+        premises: &[ForcingLiteral],
+        guardians: &[Candidate],
+    ) -> Vec<ForcingLiteral> {
         let Candidate { cell, digit } = branch.assumption.candidate;
         assert_ne!(masks[cell] & (1 << (digit - 1)), 0);
         let mut facts = vec![branch.assumption];
+        facts.extend_from_slice(premises);
         for step in &branch.steps {
-            let unit = forcing_members(step.scope, masks);
-            assert!(unit.contains(&step.effect.candidate));
             let causes = forcing_literals(&facts, &step.causes);
+            if let ForcingScope::Intersection {
+                source,
+                target,
+                digit,
+            } = step.scope
+            {
+                let Candidate {
+                    cell,
+                    digit: removed,
+                } = step.effect.candidate;
+                assert!(!step.effect.truth);
+                assert_eq!(removed, digit);
+                assert!(target.cells().contains(&cell));
+                assert!(!source.cells().contains(&cell));
+                assert_ne!(masks[cell] & (1 << (digit - 1)), 0);
+                let source = forcing_members(
+                    ForcingScope::House {
+                        house: source,
+                        digit,
+                    },
+                    masks,
+                    guardians,
+                );
+                let target_cells = target.cells();
+                assert!(
+                    source
+                        .iter()
+                        .filter(|&&candidate| {
+                            target_cells.contains(&candidate.cell)
+                                && !facts.contains(&ForcingLiteral {
+                                    candidate,
+                                    truth: false,
+                                })
+                        })
+                        .count()
+                        >= 2
+                );
+                assert!(!causes.is_empty());
+                assert_eq!(
+                    causes,
+                    source
+                        .into_iter()
+                        .filter(|candidate| !target_cells.contains(&candidate.cell))
+                        .map(|candidate| (candidate, false))
+                        .collect::<Vec<_>>()
+                );
+                facts.push(step.effect);
+                continue;
+            }
+            let unit = forcing_members(step.scope, masks, guardians);
+            assert!(unit.contains(&step.effect.candidate));
             if step.effect.truth {
                 assert_eq!(
                     causes,
@@ -1229,6 +1595,11 @@ mod tests {
                         .collect::<Vec<_>>()
                 );
             } else {
+                assert_ne!(
+                    step.scope,
+                    ForcingScope::Guardians,
+                    "guardians need not be mutually exclusive"
+                );
                 let [(candidate, true)] = causes.as_slice() else {
                     panic!("an exclusion follows from a true member of the unit");
                 };
@@ -1238,6 +1609,48 @@ mod tests {
             facts.push(step.effect);
         }
         facts
+    }
+
+    fn replay_forcing_conflict(
+        conflict: &ForcingConflict,
+        masks: &[u16; CELLS],
+        facts: &[ForcingLiteral],
+        guardians: &[Candidate],
+    ) {
+        match conflict {
+            ForcingConflict::Opposite([first, second]) => {
+                assert_eq!(facts[*first].candidate, facts[*second].candidate);
+                assert_ne!(facts[*first].truth, facts[*second].truth);
+            }
+            ForcingConflict::Exhausted { scope, causes } => {
+                assert_eq!(
+                    forcing_literals(facts, causes),
+                    forcing_members(*scope, masks, guardians)
+                        .into_iter()
+                        .map(|candidate| (candidate, false))
+                        .collect::<Vec<_>>()
+                );
+            }
+            ForcingConflict::Cases(cases) => {
+                let [a, b] = cases.as_ref();
+                assert_eq!(a.branch.assumption.candidate, b.branch.assumption.candidate);
+                assert_ne!(a.branch.assumption.truth, b.branch.assumption.truth);
+                for case in cases.iter() {
+                    assert!(case.premises.windows(2).all(|pair| pair[0] < pair[1]));
+                    let premises: Vec<_> =
+                        case.premises.iter().map(|&index| facts[index]).collect();
+                    assert!(
+                        premises
+                            .iter()
+                            .all(|fact| fact.candidate != case.branch.assumption.candidate)
+                    );
+                    let facts = replay_forcing_branch(&case.branch, masks, &premises, guardians);
+                    let conflict = case.branch.conflict.as_ref().unwrap();
+                    assert!(!matches!(conflict, ForcingConflict::Cases(_)));
+                    replay_forcing_conflict(conflict, masks, &facts, guardians);
+                }
+            }
+        }
     }
 
     #[test]

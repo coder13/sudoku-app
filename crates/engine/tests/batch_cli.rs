@@ -121,14 +121,22 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
         "technique": { "id": "forcing-net", "mode": "exclusive-opening" },
         "templates": [FORCING_NET_OPENER],
     });
+    let ordered = json!({
+        "seed": 42,
+        "maxAttempts": 1,
+        "clues": 21,
+        "technique": { "id": "forcing-net", "mode": "first" },
+        "techniqueOrder": ["forcing-net"],
+        "templates": [FORCING_NET_OPENER],
+    });
     let records = run(
         "batch-generate",
         format!(
-            "{matched}\n{exhausted}\n{invalid}\n{{\n{matched}\n{pool}\n{targeted}\n{exclusive}\n"
+            "{matched}\n{exhausted}\n{invalid}\n{{\n{matched}\n{pool}\n{targeted}\n{exclusive}\n{ordered}\n"
         ),
     );
-    assert_eq!(records.len(), 8);
-    for (record, line) in records.iter().zip(1..=8) {
+    assert_eq!(records.len(), 9);
+    for (record, line) in records.iter().zip(1..=9) {
         assert_eq!(record["line"], line);
         assert_eq!(record["scoringVersion"], SCORING_VERSION);
     }
@@ -172,7 +180,11 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
         records[6]["result"]["rating"]["techniqueOrder"],
         json!(["full-house"])
     );
-    let result = &records[7]["result"];
+    assert_eq!(
+        records[7]["result"],
+        json!({ "status": "exhausted", "attempts": 1 })
+    );
+    let result = &records[8]["result"];
     assert_eq!(result["attempts"], 1);
     assert_eq!(result["status"], "matched");
     assert_eq!(result["rating"]["status"], "stalled");
@@ -180,7 +192,10 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
     assert_ne!(transformed, FORCING_NET_OPENER);
     let board = parse_givens(transformed).unwrap();
     assert_eq!(analyze(&board), Analysis::Unique);
-    assert_eq!(opening_techniques(&board).unwrap(), [Technique::ForcingNet]);
+    assert_eq!(
+        opening_techniques(&board).unwrap(),
+        [Technique::ForcingNet, Technique::NestedForcingNet]
+    );
 }
 
 #[test]
