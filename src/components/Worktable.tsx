@@ -668,9 +668,9 @@ export function Worktable({
     roomStore.update(game.id, transform)
   }
 
-  function enterFromInput(cells: number[], digit: number, inputMode: Mode, allowMultipleValues = false, baseGame?: Game) {
+  function enterFromInput(cells: number[], digit: number, inputMode: Mode, allowMultipleValues = false) {
     edit((current) => {
-      const origin = baseGame ?? current
+      const origin = current
       const next = enter(origin, cells, inputMode, digit, { allowMultipleValues })
       const actions = playerActions(origin, next, cells, inputMode, digit)
       if (actions.length && !solved) void observeTechniqueActions(origin, actions, 'independent',
@@ -752,14 +752,19 @@ export function Worktable({
     edit((current) => paintCandidate(current, candidate, candidateBrush))
   }
 
+  const canDoubleClickSingle = advancedModes.doubleClickSingles && !draft && !solved && !pencil &&
+    !highlightMode && !colorMode && !eraseMode && brush === null && selectedDigit === null && !hintAnnotations
+
   function clickCell(index: number, event: MouseEvent) {
+    const doubleClickEligible = canDoubleClickSingle && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey
+    if (!doubleClickEligible || pendingDoubleClickSingle.current?.index !== index) pendingDoubleClickSingle.current = null
     if (event.detail === 1) {
-      const digit = !draft && !solved && !colorMode && !eraseMode && brush === null
+      const digit = doubleClickEligible
         ? onlyCandidate(game.position.center[index] | game.position.corner[index]) : null
       pendingDoubleClickSingle.current = advancedModes.doubleClickSingles && digit !== null
         ? { index, digit, game } : null
     }
-    if (event.detail > 1 && advancedModes.doubleClickSingles) return
+    if (event.detail > 1 && doubleClickEligible && pendingDoubleClickSingle.current) return
     if (highlightMode && suppressCellClick.current) {
       suppressCellClick.current = false
       return
@@ -793,19 +798,19 @@ export function Worktable({
   }
 
   function doubleClickCell(index: number, event: MouseEvent) {
-    if (!advancedModes.doubleClickSingles || draft || solved || colorMode || eraseMode || brush !== null ||
+    if (!canDoubleClickSingle ||
       event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return
     const pending = pendingDoubleClickSingle.current?.index === index ? pendingDoubleClickSingle.current : null
     pendingDoubleClickSingle.current = null
-    const origin = pending?.game ?? game
+    if (!pending || pending.game.position !== game.position) return
+    const origin = pending.game
     if (valuesOf(origin)[index] !== '0') return
-    const digit = pending?.digit ?? onlyCandidate(origin.position.center[index] | origin.position.corner[index])
-    if (digit === null) return
+    const digit = pending.digit
     event.preventDefault()
     setActive(index)
     anchor.current = index
     setSelected([index])
-    enterFromInput([index], digit, 'value', false, origin)
+    enterFromInput([index], digit, 'value')
   }
 
   function startCellDrag(index: number, event: ReactPointerEvent) {
