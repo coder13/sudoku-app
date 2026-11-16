@@ -195,6 +195,7 @@ type AlmostLockedSet = { cells: number[]; digits: number[] }
 type SectorSubset = { house: House; cells: number[]; digits: number[] }
 type SectorLink = { house: House; digits: number[] }
 type Evidence =
+  | { variant: { description: string; reason: string } }
   | { cell: number }
   | { house: House }
   | { intersection: { source: House; target: House; cells: number[] } }
@@ -291,7 +292,7 @@ type VariantResult<T extends VariantRequest> =
   T extends { operation: 'check-practice-move' } ? VariantDeduction | null :
   Required<VariantPosition>
 
-type VariantHouse = { row: number } | { column: number } | { region: number }
+export type VariantHouse = { row: number } | { column: number } | { region: number }
   | { diagonal: 'main' | 'anti' } | { extra: number }
 export type VariantDeduction = {
   technique: string
@@ -373,12 +374,17 @@ export class EngineError extends Error {
   }
 }
 
-let worker: Worker | undefined
+type EngineConnection = {
+  worker?: Worker
+  pending: Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>
+}
+const playEngine: EngineConnection = { pending: new Map() }
+const generationEngine: EngineConnection = { pending: new Map() }
 let requestId = 0
 let generationId = 0
-const pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>()
 
-function connect() {
+function connect(connection: EngineConnection) {
+  const { pending } = connection
   const instance = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' })
   instance.onmessage = ({ data }: MessageEvent<EngineResponse>) => {
     const request = pending.get(data.id)
@@ -389,7 +395,7 @@ function connect() {
   }
   instance.onerror = () => {
     instance.terminate()
-    worker = undefined
+    connection.worker = undefined
     for (const request of pending.values()) request.reject(new Error('The Sudoku engine could not start. Try again.'))
     pending.clear()
   }
@@ -398,10 +404,12 @@ function connect() {
 
 export function runEngine<T extends EngineRequest>(request: T): Promise<EngineResult<T>> {
   return new Promise((resolve, reject) => {
-    worker ??= connect()
+    // Puzzle generation runs independently of the active game's requests.
+    const connection = request.type === 'generate-variant' ? generationEngine : playEngine
+    connection.worker ??= connect(connection)
     const id = ++requestId
-    pending.set(id, { resolve: (value) => resolve(value as EngineResult<T>), reject })
-    worker.postMessage({ id, request: withHintPreferences(withSolverProfile(request)) })
+    connection.pending.set(id, { resolve: (value) => resolve(value as EngineResult<T>), reject })
+    connection.worker.postMessage({ id, request: withHintPreferences(withSolverProfile(request)) })
   })
 }
 

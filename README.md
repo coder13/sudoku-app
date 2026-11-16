@@ -1,6 +1,6 @@
 # Sudoku
 
-Play classic 9 × 9 Sudoku. Start several puzzles and switch between them at any time. The app saves each puzzle, its entries, notes, and undo history in the browser.
+Play Classic, Killer, Diagonal, Anti-Knight, Thermometer, Arrow, and Kropki Sudoku. Start several puzzles and switch between them at any time. The app saves each puzzle, its placed digits, candidates, and undo history in the browser.
 
 ## Run locally
 
@@ -51,7 +51,9 @@ The editor runs on its own local preview server. Set `LESSON_EDITOR_PORT` to use
 
 ## Play, create, and share
 
-The board accepts keyboard or touch input. It supports two types of pencil marks, cell colors, multi-select, and undo and redo. Use New puzzle to generate a puzzle or enter givens by hand. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
+The grid accepts keyboard or touch input. It supports two types of candidates, cell colors, multi-select, undo, and redo. Open **Puzzles → New puzzle** to choose a variant and a difficulty from Easy through Extreme. The variant name above the grid opens its rules. The engine checks that the variant rule is needed for a unique solution, then rates a full logical solve using that rule. Hints explain the active rules and show the candidates or cells involved.
+
+Use **Create by hand** to enter givens for Classic Sudoku. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
 
 Open **Learn** for technique articles with diagrams and practice puzzles. In a practice puzzle, select an empty cell and a digit, then check your move.
 
@@ -59,7 +61,7 @@ If you have more than one saved puzzle, open Puzzle options and choose Switch pu
 
 The share menu copies a link to this app, an 81-character string, a nine-line grid, a HoDoKu library line, or a link for Sudoku Exchange or sudoku.coach. Import accepts the same formats and reads single-puzzle text files. On localhost, sharing defaults to a Sudoku Exchange link so anyone with the link can open the puzzle.
 
-Share formats carry the givens. When the app imports a HoDoKu library line, it skips moves marked with `+`. Your progress stays in your browser.
+Variant puzzles use an app link that carries the givens and rules. Classic share formats carry the givens. When the app imports a HoDoKu library line, it skips moves marked with `+`. Your progress stays in your browser.
 
 ## Project layout
 

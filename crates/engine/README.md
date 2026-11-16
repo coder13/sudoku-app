@@ -291,15 +291,15 @@ Cage Combinations checks which digits can occupy each cell while meeting the cag
 
 Classic detectors can run when the puzzle uses standard boxes. X-Wing, Swordfish, and Jellyfish also run with replacement regions because they use rows and columns. For a uniqueness deduction, the engine verifies uniqueness within a fixed node limit. It offers the deduction only when every changed cell is outside the scope of every additional rule. The proof records the cells that can exchange digits.
 
-For a `variant` request, set `operation` to `trace`, `rate`, or `hints`. Use `techniqueOrder` to choose the enabled techniques. An empty list disables all techniques, while an omitted field uses [`VariantTechnique::DEFAULT_ORDER`]. Exact validation continues to enforce every puzzle rule. Hints rank the available proofs by difficulty and cost, then by the number of cells in the proof.
+For a `variant` request, set `operation` to `trace`, `rate`, or `hints`. Use `techniqueOrder` to choose the enabled techniques. An empty list disables all techniques, while an omitted field uses [`VariantTechnique::DEFAULT_ORDER`]. Exact validation continues to enforce every puzzle rule. Hints rank the available proofs by difficulty and cost, then by the number of cells in the proof. They return a single deduction when it is the only move available.
 
 Use `replay-step` with a zero-based `stepIndex` to get the position before and after a move. Use `practice-position` with `technique` to get the position before its first use. To check a practice move, send `check-practice-move` with that position, the `technique`, and an `action`. The engine searches for a proof of the submitted action with the selected technique.
 
 Use [`variant_practice_examples`] to load three exercises for a technique. In Wasm or `batch-variant`, send `practice-examples` with `variant: true` and the technique ID. Send `techniques` with `variant: true` to read the variant catalog, point costs, and default order. Each exercise includes its rules, the position before the move, the candidate masks, valid actions, and a suggested action with its proof.
 
-The engine uses scoring version 3 for variants. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. House sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
+The engine uses scoring version 4 for variants. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. House sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
 
-The variant technique tiers use costs through 26 points for Easy and through 68 for Medium. Higher costs start in Hard. The total score still uses the standard score bands. A stalled path reports a partial total and keeps the selected rule set, technique order, and scoring version.
+The variant technique tiers use costs through 26 points for Easy and through 68 for Medium. Cage Combinations and Arrow also start at Easy because they apply the basic rules of Killer and Arrow Sudoku. Higher costs start at Hard. The total score still uses the standard score bands. A stalled path reports a partial total and keeps the selected rule set, technique order, and scoring version.
 
 ### Fog visibility
 

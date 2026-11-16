@@ -1,7 +1,7 @@
 import {
   type CSSProperties, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, Eye, Lightbulb, ListFilter, ListOrdered, MoreHorizontal, PencilLine, RotateCcw, Share2, X } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, ListFilter, ListOrdered, MoreHorizontal, PencilLine, RotateCcw, Share2, X } from 'lucide-react'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
@@ -18,6 +18,9 @@ import type { AdvancedModes, AppearancePreferences, HighlightPreferences, Worksp
 import { rectangleSelection } from '../sudoku/selection'
 import { roomStore } from '../sudoku/storage'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
+import { variantHintChoice, variantSolutionPath } from '../sudoku/variant-hints'
+import { getVariantPlayOrder, playCandidates, variantHintOrder, variantPosition } from '../sudoku/variant-play'
+import { VARIANTS, variantHouseMasks } from '../sudoku/variants'
 import { Board } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
@@ -37,15 +40,19 @@ const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
 }
 
-async function solveSingleValues(values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
+async function solveSingleValues(game: Game, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
   let board = values
   for (let step = 0; step < 81; step++) {
-    const legalMasks = await runEngine({ type: 'notes', values: board })
+    const legalMasks = game.variant
+      ? await playCandidates({ ...game, position: {
+        ...game.position, entries: [...board].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join(''),
+      } })
+      : await runEngine({ type: 'notes', values: board })
     if (!legalMasks) throw new Error('Singles cannot be solved until the grid conflicts are resolved.')
     const masks = displayedCandidates
       ? legalMasks.map((mask, index) => board[index] === '0' ? mask & displayedCandidates[index] : 0)
       : legalMasks
-    const single = singleFromCandidates(board, masks, eliminations)
+    const single = singleFromCandidates(board, masks, eliminations, game.variant?.puzzle)
     if (!single) return board
     const [index, digit] = single
     board = board.slice(0, index) + digit + board.slice(index + 1)
@@ -172,6 +179,7 @@ export function Worktable({
   const [eraseMode, setEraseMode] = useState(false)
   const [solution, setSolution] = useState<string | null>(null)
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
+  const [variantRulesOpen, setVariantRulesOpen] = useState(false)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const [tooHardOpen, setTooHardOpen] = useState(false)
@@ -179,7 +187,9 @@ export function Worktable({
   const { recommended } = usePlayerRating()
   const [cancelDraftOpen, setCancelDraftOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [notes, setNotes] = useState<{ values: string; masks: number[] | null; failed?: boolean }>()
+  const [notes, setNotes] = useState<{
+    values: string; eliminations?: number[]; variant?: Game['variant']; masks: number[] | null; failed?: boolean
+  }>()
   const [hintState, setHint] = useState<HintState | null>(null)
   const [hintRevealed, setHintRevealed] = useState(false)
   const mobile = useMobileLayout()
@@ -232,7 +242,7 @@ export function Worktable({
   const showDifficulty = solved && solvedView === 'difficulty'
   const showSolvedGrid = solved && solvedView === 'grid'
   const mobileResults = mobile && (showResults || showDifficulty)
-  const { id, givens, difficulty, score } = game
+  const { id, givens, difficulty, score, variant } = game
   const canSkipRatedAttempt = !solved && game.ratingAttempt && !game.ratingAttempt.outcome &&
     qualifiesForRating(game.ratingAttempt.grade.difficulty, recommended)
   const ratingPending = !draft && (difficulty === undefined || score === undefined) && !ratingFailed
@@ -241,11 +251,13 @@ export function Worktable({
   const disabled = previewing
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const chainsVisible = advancedWorkspace && showRightPanel && desktopChainsVisible
-  const currentNotes = notes?.values === values ? notes : undefined
+  const variantEliminations = variant && eliminations
+  const currentNotes = notes?.values === values && notes.variant === variant && notes.eliminations === variantEliminations ? notes : undefined
   const masks = currentNotes?.masks
   const autoGenerateCandidates = advancedModes.autoGenerateCandidates && !draft && !solved && needsInitialCandidates(game)
   const hasSingles = useMemo(() => !draft && !solved && Boolean(masks &&
-    singleFromCandidates(values, displayedCandidates ?? masks, eliminations)), [draft, solved, masks, values, displayedCandidates, eliminations])
+    singleFromCandidates(values, displayedCandidates ?? masks, eliminations, variant?.puzzle)),
+    [draft, solved, masks, values, displayedCandidates, eliminations, variant])
   const chainMasks = useMemo(() => chainsVisible && !draft && !solved && !previewing && masks
     ? masks.map((mask, index) => mask & ~(eliminations?.[index] ?? 0)) : null,
   [chainsVisible, draft, solved, previewing, masks, eliminations])
@@ -276,7 +288,7 @@ export function Worktable({
       : null
 
   useTimer(game.id, !draft && game.started && !solved && !modalOpen && !puzzleMenuOpen && !previewing && dialogResult === null &&
-    !resetOpen && !cancelDraftOpen && !tooHardOpen)
+    !resetOpen && !cancelDraftOpen && !tooHardOpen && !variantRulesOpen)
 
   useLayoutEffect(() => {
     if (!deduction || previewing || solved) return
@@ -300,6 +312,7 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setResetOpen(false)
     setTooHardOpen(false)
+    setVariantRulesOpen(false)
     setHint(null)
     setHintRevealed(false)
     hintReturnFocus.current = null
@@ -344,10 +357,14 @@ export function Worktable({
   useEffect(() => {
     if (draft || (difficulty !== undefined && score !== undefined)) return
     let current = true
-    void runEngine({ type: 'rate', values: givens }).then(({ score: ratingScore, status }) => {
+    const rate = variant
+      ? getVariantPlayOrder().then((techniqueOrder) => runEngine({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder }))
+        .then(({ points, status }) => ({ points, status }))
+      : runEngine({ type: 'rate', values: givens }).then(({ score, status }) => ({ points: score.points, status }))
+    void rate.then(({ points, status }) => {
       if (!current) return
       const ratedDifficulty = status === 'stalled' ? null : status.solved
-      const ratedScore = status === 'stalled' ? null : ratingScore.points
+      const ratedScore = status === 'stalled' ? null : points
       roomStore.update(id, (latest) => {
         if (latest.givens !== givens || (latest.difficulty !== undefined && latest.score !== undefined)) return latest
         return {
@@ -360,7 +377,7 @@ export function Worktable({
       if (current) setRatingFailed(true)
     })
     return () => { current = false }
-  }, [id, givens, draft, difficulty, score])
+  }, [id, givens, draft, difficulty, score, variant])
 
   useEffect(() => {
     if (!autoGenerateCandidates || !masks) return
@@ -373,14 +390,14 @@ export function Worktable({
     let current = true
     if (draft || solved) return
 
-    void runEngine({ type: 'notes', values }).then((masks) => {
-      if (current) setNotes({ values, masks })
+    void playCandidates(game).then((masks) => {
+      if (current) setNotes({ values, eliminations: variantEliminations, variant, masks })
     }).catch(() => {
-      if (current) setNotes({ values, masks: null, failed: true })
+      if (current) setNotes({ values, eliminations: variantEliminations, variant, masks: null, failed: true })
     })
 
     return () => { current = false }
-  }, [draft, solved, values])
+  }, [draft, solved, values, variant, variantEliminations])
 
   useEffect(() => {
     if (!sketch.drawing) return
@@ -479,14 +496,14 @@ export function Worktable({
 
   useEffect(() => {
     let current = true
-    setSolution(null)
-    if (!draft) {
+    setSolution(variant?.solution ?? null)
+    if (!draft && !variant) {
       void runEngine({ type: 'solve', values: game.givens })
         .then((result) => { if (current) setSolution(result) })
         .catch(() => { /* Checking still works if the solution cannot be loaded. */ })
     }
     return () => { current = false }
-  }, [draft, game.givens])
+  }, [draft, game.givens, variant])
 
   const errors = useMemo(() => {
     const result = new Set<number>()
@@ -738,7 +755,9 @@ export function Worktable({
     setBusy(true)
     setDialogResult(null)
     try {
-      const status = await runEngine({ type: 'analyze', values })
+      const status = variant
+        ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
+        : await runEngine({ type: 'analyze', values })
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
       if (!current || valuesOf(current) !== values) return
       if (!draft) {
@@ -749,7 +768,9 @@ export function Worktable({
         setDialogResult({ title: 'Puzzle check', ...validation[status] })
       }
     } catch (error) {
-      setDialogResult({ title: 'Puzzle check', text: (error as Error).message, tone: 'neutral' })
+      const conflict = error instanceof EngineError && (error.code === 'conflict' || error.code === 'unsolvable')
+      setDialogResult({ title: 'Puzzle check', text: conflict ? 'This puzzle is not correct yet.' : (error as Error).message,
+        tone: conflict ? 'error' : 'neutral' })
     } finally {
       setBusy(false)
     }
@@ -760,7 +781,7 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setBusy(true)
     try {
-      const masks = await runEngine({ type: 'notes', values })
+      const masks = await playCandidates(game)
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
       if (!current || valuesOf(current) !== values) return
       if (!masks) {
@@ -780,7 +801,7 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setBusy(true)
     try {
-      const result = await solveSingleValues(values, eliminations, displayedCandidates ?? undefined)
+      const result = await solveSingleValues(game, values, eliminations, displayedCandidates ?? undefined)
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
       if (!current || valuesOf(current) !== values || current.position.eliminations !== eliminations) return
       if (result === values) {
@@ -811,13 +832,20 @@ export function Worktable({
     setBusy(true)
     let result: HintState
     try {
-      const { choices, candidates } = await runEngine({
-        type: 'hints', values, eliminations: hintEliminations(values, displayedCandidates, eliminations), limit, includePatterns: true,
-      })
+      const removals = hintEliminations(values, displayedCandidates, eliminations)
+      const { choices, candidates } = variant ? {
+        choices: (await runEngine({
+          type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations: removals },
+          techniqueOrder: await variantHintOrder(), limit: limit === 'all' ? 0xffff_ffff : limit,
+        })).map((choice) => variantHintChoice(choice, variant.puzzle)),
+        candidates: variantHouseMasks(variant.puzzle, values, removals),
+      } : await runEngine({ type: 'hints', values, eliminations: removals, limit, includePatterns: true })
       if (!candidates) throw new Error('Missing hint candidates')
       result = { position: hintPosition, choices, candidates, index: 0 }
     } catch (error) {
-      const copy = error instanceof EngineError && error.code === 'invalid-eliminations' ? HINT_CANDIDATES_ERROR : HINT_ERROR
+      const incorrectCandidates = error instanceof EngineError && (error.code === 'invalid-eliminations' ||
+        (error.code === 'unsolvable' && variant && [...values].every((digit, cell) => digit === '0' || digit === variant.solution[cell])))
+      const copy = incorrectCandidates ? HINT_CANDIDATES_ERROR : HINT_ERROR
       result = { position: hintPosition, choices: [], index: 0, error: copy }
     } finally {
       setBusy(false)
@@ -869,7 +897,9 @@ export function Worktable({
     setSolutionPath({ status: 'loading' })
     const request = ++pathRequest.current
     try {
-      const result = await runEngine({ type: 'logical-solve', values: givens, includeStepDetails: true, includeMoveAvailability: true })
+      const result = variant ? variantSolutionPath(await runEngine({
+        type: 'variant', operation: 'trace', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder(),
+      })) : await runEngine({ type: 'logical-solve', values: givens, includeStepDetails: true, includeMoveAvailability: true })
       if (request !== pathRequest.current) return
       if (result.positions?.length !== result.steps.length + 1) throw new Error('Missing solution positions')
       setSolutionPath({ status: 'ready', trace: result })
@@ -904,6 +934,7 @@ export function Worktable({
   })
 
   const solutionHintPanel = previewing && solutionHintOpen && solutionHintCopy
+  const explanation = solutionHintPanel ? stepDiagram : hintDiagram
   const hintPanel = (solutionHintPanel || visibleHint || mobileHintOpen) && (
     <div className={`hint-dock${mobile ? ' workspace-controls mobile-hint-panel' : ''}`}
       ref={mobile ? mobileHintPanelRef : undefined} aria-live="polite">
@@ -911,9 +942,7 @@ export function Worktable({
         : mobileHintOpen && !visibleHint ? { title: 'Finding a hint…', text: '' } : hintCopy}
         onClose={() => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)}
         onApply={!solutionHintPanel && deduction && hintCandidates ? applyHint : undefined}
-        explanation={solutionHintPanel
-          ? stepDiagram?.reason ? `${stepDiagram.description} ${stepDiagram.reason}` : undefined
-          : hintDiagram?.reason ? `${hintDiagram.description} ${hintDiagram.reason}` : undefined}
+        explanation={explanation?.description ? [explanation.description, explanation.reason].filter(Boolean).join(' ') : undefined}
         navigation={!solutionHintPanel && visibleHint && visibleHint.choices.length > 0
           ? { index: visibleHint.index, count: visibleHint.choices.length, onMove: moveHint }
           : undefined} />
@@ -933,10 +962,10 @@ export function Worktable({
   const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} unavailable={chainUnavailable} inspection={chainInspection} />
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
-      ratingPending={ratingPending} shortcutEnabled={!modalOpen && !puzzleMenuOpen && !cancelDraftOpen && !tooHardOpen}
+      ratingPending={ratingPending} shortcutEnabled={!modalOpen && !puzzleMenuOpen && !cancelDraftOpen && !tooHardOpen && !variantRulesOpen}
       showGuides={appearance.showGuides} onChooseDifficulty={() => setSolvedView('difficulty')} />
   ) : showDifficulty ? (
-    <PuzzleDifficulty value={preferredDifficulty} showGuides={appearance.showGuides}
+    <PuzzleDifficulty value={preferredDifficulty} variant={variant?.id} showGuides={appearance.showGuides}
       onBack={() => setSolvedView('results')} onChange={onDifficultyChange} />
   ) : null
   const puzzleMenu = puzzleMenuOpen && (
@@ -998,6 +1027,10 @@ export function Worktable({
             </>
           ) : (
             <>
+              {variant && <button type="button" className="button soft variant-rules-button" onClick={() => setVariantRulesOpen(true)}
+                aria-label={`${VARIANTS[variant.id].name} Sudoku rules`} aria-haspopup="dialog">
+                <Info size={16} aria-hidden="true" />{VARIANTS[variant.id].name}
+              </button>}
               {solved && !previewing && <button className="button soft puzzle-view-toggle" aria-pressed={showSolvedGrid} onClick={() => {
                 setSolvedView(showSolvedGrid ? 'results' : 'grid')
               }}>{showSolvedGrid ? 'View results' : 'View grid'}</button>}
@@ -1018,19 +1051,20 @@ export function Worktable({
         </div>
         <div className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing ? ' chain-sketch' : hintDiagram ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}>
           {previewing ? (
-            <Board givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
+            <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
               candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
               label="Solution preview" showGuides={appearance.showGuides} />
           ) : completionPanel && !mobileResults ? completionPanel
           : sketch.drawing && chainMasks ? (
-            <Board givens={givens} values={values} position={game.position} errors={errors}
+            <Board variantPuzzle={variant?.puzzle} givens={givens} values={values} position={game.position} errors={errors}
               candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
               showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
               isLinkTarget={sketch.isLinkTarget}
               selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
           ) : (
-            <Board givens={game.givens} values={values} position={game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+            <Board variantPuzzle={variant?.puzzle} givens={game.givens} values={values} position={game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
               candidates={hintDiagram ? hintCandidates : undefined} annotations={hintDiagram?.annotations}
+              label={variant ? `${VARIANTS[variant.id].name} Sudoku grid` : undefined}
               showGuides={appearance.showGuides}
               highlighting={hintDiagram ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
               highlightedDigit={mobileResults ? null : selectedDigit} selected={mobileResults ? undefined : selected} active={active}
@@ -1149,6 +1183,9 @@ export function Worktable({
             : mobileHintOpen ? hintPanel : inputPanel}</>}
       {mobile && puzzleMenu && <Modal title="Puzzle actions" className="puzzle-actions-sheet"
         onClose={() => setPuzzleMenuOpen(false)}>{puzzleMenu}</Modal>}
+      {variant && variantRulesOpen && <Modal title={`${VARIANTS[variant.id].name} rules`} onClose={() => setVariantRulesOpen(false)}>
+        <div className="variant-rules-copy"><p>{VARIANTS.classic.rule}</p><p>{VARIANTS[variant.id].rule}</p></div>
+      </Modal>}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       {tooHardOpen && <Modal title="Too hard" onClose={() => { if (!nextAuto.busy) setTooHardOpen(false) }}>
         <p>You can keep solving this puzzle for practice or start a new {DIFFICULTY_LABELS[recommended]} puzzle with Auto.</p>

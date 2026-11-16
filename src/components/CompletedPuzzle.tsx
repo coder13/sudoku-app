@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react'
 import { DIFFICULTY_LABELS, DIFFICULTY_OPTIONS, difficultyOptionLabel, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
+import type { VariantId } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 
 export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, onChooseDifficulty }: {
@@ -24,7 +25,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const ratingLabel = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : difficultyLabel
   const solved = games.filter(isSolved)
   const bestTime = solved.reduce((best, puzzle) =>
-    puzzle.difficulty === game.difficulty ? Math.min(best, puzzle.elapsed) : best, Infinity)
+    puzzle.difficulty === game.difficulty && puzzle.variant?.id === game.variant?.id ? Math.min(best, puzzle.elapsed) : best, Infinity)
   const canGenerate = !busy && !ratingPending
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
@@ -37,11 +38,11 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
       const target = event.target
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, dialog'))) return
       event.preventDefault()
-      void generate(preferredDifficulty)
+      void generate(preferredDifficulty, undefined, game.variant?.id)
     }
     window.addEventListener('keydown', keydown)
     return () => window.removeEventListener('keydown', keydown)
-  }, [canGenerate, generate, preferredDifficulty, shortcutEnabled])
+  }, [canGenerate, game.variant?.id, generate, preferredDifficulty, shortcutEnabled])
 
   return (
     <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
@@ -67,7 +68,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
           <small>{result.event.viewed ? `${result.event.viewed} ${result.event.viewed === 1 ? 'hint' : 'hints'} viewed` : 'No hints'}
             {result.event.applied > 0 && ` · ${result.event.applied} applied`}
             {result.speedBonus >= 0.05 && ` · Speed bonus +${Number(result.speedBonus.toFixed(1))}`}</small>
-        </div> : game.source === 'generated' && <p className="completion-practice">Practice solve</p>}
+        </div> : game.source === 'generated' && !game.variant && <p className="completion-practice">Practice solve</p>}
         <dl className="completion-stats">
           <div><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
           {game.difficulty && <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
@@ -76,7 +77,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         <div className="completion-actions">
           <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
           <button className="button primary completion-next" aria-keyshortcuts="N" disabled={!canGenerate}
-            onClick={() => { void generate(preferredDifficulty) }}>
+            onClick={() => { void generate(preferredDifficulty, undefined, game.variant?.id) }}>
             {busy ? 'Generating…' : nextLabel}
             {!busy && <><ArrowRight size={18} aria-hidden="true" /><kbd aria-hidden="true">N</kbd></>}
           </button>
@@ -86,8 +87,9 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   )
 }
 
-export function PuzzleDifficulty({ value, showGuides, onChange, onBack }: {
+export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack }: {
   value: DifficultyPreference
+  variant?: VariantId
   showGuides: boolean
   onChange: (difficulty: DifficultyPreference) => void
   onBack: () => void
@@ -107,7 +109,7 @@ export function PuzzleDifficulty({ value, showGuides, onChange, onBack }: {
   async function selectDifficulty(difficulty: DifficultyPreference) {
     if (busy) return
     setPendingDifficulty(difficulty)
-    await generate(difficulty, () => onChange(difficulty))
+    await generate(difficulty, () => onChange(difficulty), variant)
     if (mounted.current) setPendingDifficulty(null)
   }
 

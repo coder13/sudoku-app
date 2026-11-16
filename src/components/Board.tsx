@@ -1,11 +1,14 @@
-import { useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react'
-import type { Candidate } from '../sudoku/engine'
+import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react'
+import type { Candidate, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
 import { activeHighlightDigit } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
+import { variantPeers } from '../sudoku/variants'
+import { VariantClues, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 
 type Props = {
+  variantPuzzle?: VariantPuzzle
   givens: string
   values: string
   position?: Pick<Position, 'center' | 'corner' | 'colors' | 'candidateColors'>
@@ -36,11 +39,13 @@ type Props = {
 type CandidateSlot = Candidate & { slotted: boolean }
 
 export function Board({
-  givens, values, position, errors, candidateLayout = 'grid', candidates, annotations, region, label = 'Sudoku grid', showGuides,
+  variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, annotations, region, label = 'Sudoku grid', showGuides,
   highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, boardRef, onCell, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onPaintCandidate,
 }: Props) {
+  const variantRules = variantPuzzle?.rules
+  const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules) : undefined, [variantRules])
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const focusDigit = activeHighlightDigit(values, selected, active, highlightedDigit)
   const candidateAction = onPaintCandidate ?? onCandidate
@@ -101,7 +106,7 @@ export function Board({
     <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}`} style={size}>
       {showGuides && <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>}
       {showGuides && <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>}
-      <div className="board-body">
+      <div className={variantRules ? 'board-body variant-board' : 'board-body'}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={label}
           aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           onKeyDown={candidateAction && navigateCandidates}
@@ -149,6 +154,7 @@ export function Board({
                   !value && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
                   color ? COLORS[color - 1] : '',
                   cellAnnotation?.label,
+                  cellClues?.[index]?.join(', '),
                   !value && candidateLabel,
                   candidateHighlightStyle === 'cell' ? `cell highlighted for candidate ${focusDigit}` :
                     candidateHighlightStyle ? `candidate ${focusDigit} highlighted` : '',
@@ -158,7 +164,7 @@ export function Board({
                 const classes = [
                   'cell',
                   fixed ? 'given' : 'entry',
-                  highlighting.relatedCells && selected.some((cell) => peer(index, cell)) ? 'peer' : '',
+                  highlighting.relatedCells && selected.some((cell) => peer(index, cell) || variantPeers(variantPuzzle, index, cell)) ? 'peer' : '',
                   highlighting.matchingDigits && value === focusDigit ? 'matching' : '',
                   candidateHighlightStyle === 'cell' ? 'candidate-highlight-cell' : '',
                   candidateHighlightStyle === 'outline' ? 'candidate-highlight-outline' : '',
@@ -224,6 +230,7 @@ export function Board({
             </div>
           ))}
         </div>
+        {variantRules && <VariantClues rules={variantRules} />}
         {!!annotations?.links?.length && <BoardLinks links={annotations.links} region={region} />}
       </div>
     </div>

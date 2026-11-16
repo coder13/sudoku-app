@@ -396,8 +396,9 @@ export function deductionResults(actions: readonly DeductionAction[]) {
 }
 
 export function lessonDiagram({ deduction, candidates }: Pick<LessonExample, 'deduction' | 'candidates'>, proof?: ProofPattern) {
-  const pattern: Pattern | undefined = describePattern(deduction, candidates)
-    ?? (proof && { ...proof, description: '', reason: '' })
+  const pattern: Pattern | undefined = 'variant' in deduction.evidence
+    ? proof && { ...proof, ...deduction.evidence.variant }
+    : describePattern(deduction, candidates) ?? (proof && { ...proof, description: '', reason: '' })
   if (!pattern) throw new Error(`Missing diagram for ${deduction.technique}`)
   const cells = new Map<number, CellAnnotation>()
   const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()

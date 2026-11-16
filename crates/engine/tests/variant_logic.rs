@@ -109,11 +109,11 @@ fn cage_combinations_use_candidate_locations_and_keep_proofs_explicit() {
             HintAction::Eliminate(Candidate { cell: 1, digit: 9 }),
         ]
     );
-    assert!(
+    assert_eq!(
         puzzle
             .ranked_hints(&EMPTY, &removed, VariantTechnique::DEFAULT_ORDER, 10)
-            .unwrap()
-            .is_empty()
+            .unwrap(),
+        proofs,
     );
 
     let mut wrong = EMPTY;
@@ -143,11 +143,11 @@ fn ranked_variant_hints_prefer_easier_proofs_and_respect_the_profile() {
             .unwrap(),
         full[..2]
     );
-    assert!(
+    assert_eq!(
         puzzle
             .ranked_hints(&EMPTY, &NO_REMOVALS, &enabled, 1)
-            .unwrap()
-            .is_empty()
+            .unwrap(),
+        full[..1],
     );
     let only_house_sums = puzzle
         .ranked_hints(&EMPTY, &NO_REMOVALS, &[VariantTechnique::CageHouseSum], 10)

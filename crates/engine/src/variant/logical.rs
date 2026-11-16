@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Version of the point costs and difficulty thresholds for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 3;
+pub const VARIANT_SCORING_VERSION: u32 = 4;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 
 macro_rules! catalog {
@@ -83,9 +83,9 @@ catalog! {
     /// Find possible digit differences along a Whispers line.
     Whispers: "whispers", 27, Medium;
     /// Remove digits that cannot be assigned to the cells of a Killer cage.
-    CageCombinations: "cage-combinations", 34, Medium;
+    CageCombinations: "cage-combinations", 34, Easy;
     /// Find assignments whose path digits add to the digit in the circle.
-    Arrow: "arrow", 36, Medium;
+    Arrow: "arrow", 36, Easy;
     /// Find consecutive sets that fit a Renban line.
     Renban: "renban", 40, Medium;
     /// Find shared sums among parts of a Region Sum line.
@@ -501,7 +501,6 @@ impl CompiledVariant {
 
     /// Return up to the requested number of distinct moves, easiest first.
     ///
-    /// Returns an empty list if fewer than two distinct moves can be returned.
     /// The enabled techniques restrict which proofs can be returned.
     pub fn ranked_hints(
         &self,
@@ -511,7 +510,7 @@ impl CompiledVariant {
         limit: usize,
     ) -> Result<Vec<VariantDeduction>, VariantPositionError> {
         let position = self.proof_position(entries, eliminations)?;
-        if limit < 2 {
+        if limit == 0 {
             return Ok(Vec::new());
         }
         let mut techniques = enabled.to_vec();
@@ -532,9 +531,6 @@ impl CompiledVariant {
                     }
                 }
             }
-        }
-        if moves.len() < 2 {
-            moves.clear();
         }
         Ok(moves)
     }

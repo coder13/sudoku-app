@@ -1,5 +1,6 @@
 import { STARTER } from './formats.ts'
-import type { Candidate, DeductionAction, Difficulty } from './engine.ts'
+import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
+import { variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
@@ -24,6 +25,7 @@ export type Game = {
   source: Source
   difficulty?: Difficulty | null
   score?: number | null
+  variant?: VariantGame
   generatedWithAuto?: true
   ratingAttempt?: RatingAttempt
   givens: string
@@ -74,6 +76,7 @@ export function restartGame(game: Game): Game {
     ...makeGame(game.id, game.title, game.givens, game.source, game.created),
     difficulty: game.difficulty,
     score: game.score,
+    variant: game.variant,
     generatedWithAuto: game.generatedWithAuto,
     ratingAttempt: game.ratingAttempt && {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
@@ -131,7 +134,7 @@ export function candidateCount(mask: number): number {
 
 export function isSolved(game: Game): boolean {
   const values = valuesOf(game)
-  return game.source !== 'draft' && !values.includes('0') && !conflictsOf(values).size
+  return game.source !== 'draft' && (game.variant ? values === game.variant.solution : !values.includes('0') && !conflictsOf(values).size)
 }
 
 export function progressOf(game: Game) {
@@ -248,8 +251,10 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
       }
       if (digit) {
         const bit = 1 << (digit - 1)
-        center = center.map((mask, i) => editable.includes(i) || editable.some((cell) => peer(cell, i)) ? mask & ~bit : mask)
-        corner = corner.map((mask, i) => editable.includes(i) || editable.some((cell) => peer(cell, i)) ? mask & ~bit : mask)
+        const clearDigit = (mask: number, i: number) => editable.some((cell) =>
+          peer(cell, i) || variantPeers(game.variant?.puzzle, cell, i)) ? mask & ~bit : mask
+        center = center.map(clearDigit)
+        corner = corner.map(clearDigit)
       } else {
         center = center.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
         corner = corner.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
@@ -328,7 +333,7 @@ export function fillEntries(game: Game, nextValues: string): Game {
     corner[index] = 0
     const bit = 1 << (digit - 1)
     for (let peerIndex = 0; peerIndex < 81; peerIndex++) {
-      if (!peer(index, peerIndex)) continue
+      if (!peer(index, peerIndex) && !variantPeers(game.variant?.puzzle, index, peerIndex)) continue
       center[peerIndex] &= ~bit
       corner[peerIndex] &= ~bit
     }
@@ -370,7 +375,7 @@ export function applyDeduction(game: Game, actions: readonly DeductionAction[], 
   })
 }
 
-export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[]): [number, number] | null {
+export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[], variant?: VariantPuzzle): [number, number] | null {
   if (values.length !== 81 || masks.length !== 81) return null
   const remaining = (cell: number) => masks[cell] & ~(eliminations?.[cell] ?? 0)
   for (let index = 0; index < 81; index++) {
@@ -379,7 +384,9 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
       return [index, Math.log2(mask) + 1]
     }
   }
-  for (const house of HOUSES) {
+  const extra = variant?.rules?.flatMap((rule) =>
+    rule.type === 'diagonal' ? [variantHouseCells({ diagonal: rule.diagonal }, variant)] : []) ?? []
+  for (const house of [...HOUSES, ...extra]) {
     for (let digit = 1; digit <= 9; digit++) {
       if (house.some((index) => values[index] === String(digit))) continue
       const bit = 1 << (digit - 1)

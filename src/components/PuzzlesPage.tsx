@@ -6,6 +6,8 @@ import {
 } from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
+import { type VariantId } from '../sudoku/variants'
+import { VariantSelector } from './VariantSelector'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 
 type Section = 'puzzles' | 'new' | 'statistics'
@@ -13,7 +15,7 @@ type SectionItem = { id: Section; label: string; description: string; icon: Comp
 
 const sections: SectionItem[] = [
   { id: 'puzzles', label: 'Your puzzles', description: 'Continue or switch puzzles', icon: Grid3X3 },
-  { id: 'new', label: 'New puzzle', description: 'Choose a difficulty and start', icon: Dices },
+  { id: 'new', label: 'New puzzle', description: 'Choose a variant and difficulty', icon: Dices },
   { id: 'statistics', label: 'Statistics', description: 'Review your solving history', icon: BarChart3 },
 ]
 const sectionRoutes: Record<Section, '/puzzles/browse' | '/puzzles/new' | '/puzzles/statistics'> = {
@@ -58,13 +60,15 @@ function NewPuzzleSection({ difficulty, setDifficulty, done }: {
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
+  const [variant, setVariant] = useState<VariantId>('classic')
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
   const selected = selection ?? difficulty
   const group = useId()
   return <section className="main-menu-section" aria-labelledby="puzzles-new-title">
-    <header><h2 id="puzzles-new-title">New puzzle</h2><p>Choose a difficulty or let Auto adjust it as you play.</p></header>
+    <header><h2 id="puzzles-new-title">New puzzle</h2></header>
+    <VariantSelector value={variant} onChange={setVariant} busy={busy} />
     <fieldset className="main-difficulty-options" disabled={busy}>
-      <legend className="sr-only">Puzzle difficulty</legend>
+      <legend className="new-puzzle-difficulty-label">Difficulty</legend>
       {DIFFICULTY_OPTIONS.map((value) => <label key={value}>
         <input type="radio" name={group} value={value} checked={selected === value}
           onChange={() => setSelection(value)} />
@@ -77,7 +81,7 @@ function NewPuzzleSection({ difficulty, setDifficulty, done }: {
     <button className="button primary main-start-puzzle" disabled={busy} onClick={() => { void generate(selected, () => {
       setDifficulty(selected)
       done()
-    }) }}>
+    }, variant) }}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
         ? `Start ${difficultyOptionLabel('auto', recommended)}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
     </button>

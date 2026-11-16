@@ -1832,3 +1832,81 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
+
+.variant-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+.dialog-form > .variant-picker { margin-bottom: 12px; }
+.variant-picker legend { margin-bottom: 9px; padding: 0; font-size: 14px; font-weight: 730; }
+.variant-picker p { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.variant-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr)); gap: 7px; }
+.variant-option {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  min-height: 79px;
+  padding: 9px 4px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.variant-option:has(input:checked) { border-color: var(--board-selected-border); background: var(--board-selected-bg); }
+.variant-option:has(input:focus-visible) { outline: 2px solid var(--board-selected-border); outline-offset: 2px; }
+.variant-option:has(input:disabled) { cursor: default; }
+.variant-check { position: absolute; inset: 5px 5px auto auto; color: var(--dark-purple); }
+.variant-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  aspect-ratio: 1;
+  border: 1px solid var(--grid-strong);
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(to right, transparent 0 calc(100% / 3 - 1px), var(--grid-line) calc(100% / 3 - 1px) calc(100% / 3)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(100% / 3 - 1px), var(--grid-line) calc(100% / 3 - 1px) calc(100% / 3)),
+    var(--board-bg);
+  overflow: hidden;
+}
+.variant-knight { font-size: 27px; line-height: 1; color: var(--board-ink); }
+.variant-clues { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.variant-board .variant-clues { inset: 2px; width: calc(100% - 4px); height: calc(100% - 4px); z-index: 1; }
+.variant-board .cell > span { position: relative; z-index: 2; }
+.variant-board .cell > .candidate-marks { position: absolute; }
+.variant-board:has(.variant-cage-total) .candidate-marks { inset-block-start: 24%; }
+.variant-board .board-links { z-index: 3; }
+.variant-diagonal { stroke: var(--board-selected-border); opacity: .55; stroke-width: .075; }
+.variant-cage-edge { fill: none; stroke: var(--board-ink); opacity: .7; stroke-width: .026; stroke-dasharray: .085 .048; }
+.variant-cage-total {
+  fill: var(--board-ink);
+  stroke: var(--board-bg);
+  stroke-width: .05;
+  paint-order: stroke;
+  font: 750 .22px 'DM Sans Variable', sans-serif;
+}
+.variant-preview .variant-cage-edge { stroke-width: .11; }
+.variant-preview .variant-cage-total { display: none; }
+.variant-thermometer { color: var(--board-ink); opacity: .28; }
+.variant-thermometer polyline { fill: none; stroke: currentColor; stroke-width: .22; stroke-linecap: round; stroke-linejoin: round; }
+.variant-thermometer circle { fill: currentColor; }
+.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head {
+  fill: none;
+  stroke: var(--board-ink);
+  stroke-width: .047;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .64;
+}
+.variant-arrow-head { stroke-width: .11; }
+.variant-dot { stroke-width: .033; }
+.variant-dot-white { fill: #fff; stroke: #222; }
+.variant-dot-black { fill: #161616; stroke: #eee; }
+.variant-preview .variant-dot { r: .23px; }
+.variant-preview .variant-arrow-line, .variant-preview .variant-arrow-circle { stroke-width: .13; }
+.variant-rules-button { margin-right: auto; }
+.variant-rules-copy { display: grid; gap: 10px; line-height: 1.55; }
+.new-puzzle-difficulty-label { margin-bottom: 5px; padding: 0; font-size: 14px; font-weight: 730; }

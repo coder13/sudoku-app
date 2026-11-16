@@ -4,7 +4,11 @@ import test from 'node:test'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
 import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult } from '../src/sudoku/engine.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
-import { completeCandidateMasks, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
+import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
+import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
+import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
+import { generatePlayableVariant, playCandidates } from '../src/sudoku/variant-play.ts'
+import { validVariantSave } from '../src/sudoku/variants.ts'
 import { saveSolverProfile } from '../src/sudoku/solver-profile.ts'
 
 const SPARSE = '345000000000200010000000000020100000000004500600000007800750000000060040000000300'
@@ -698,6 +702,20 @@ test('the browser client reports attempts and cancels one active search independ
   const beforeFailure = sent.length
   await assert.rejects(runGeneration(options, { onProgress: () => { throw new Error('progress callback failed') } }), /progress callback failed/)
   assert.deepEqual(sent.slice(beforeFailure).map(request => request.type), ['generation-start', 'generation-advance', 'generation-cancel'])
+
+  const generated = await generatePlayableVariant('arrow', 'extreme', 0, [])
+  assert.deepEqual(generated.rating.status, { solved: 'extreme' })
+  const game = {
+    ...makeGame('generated-arrow', 'Arrow puzzle', generated.puzzle.givens, 'generated'),
+    variant: { id: 'arrow' as const, puzzle: generated.puzzle, solution: generated.solution },
+  }
+  const masks = await playCandidates(game)
+  assert.ok(masks)
+  for (const [cell, digit] of [...generated.solution].entries()) {
+    if (game.givens[cell] === '0') assert.ok(hasCandidate(masks[cell], Number(digit)))
+  }
+  const next = await generatePlayableVariant('arrow', 'extreme', 0, [game])
+  assert.notEqual(next.puzzle.givens, generated.puzzle.givens)
 })
 
 test('the worker protocol reaches the compiled browser engine', async () => {
@@ -1209,7 +1227,7 @@ test('fog hints and replay use only the revealed rules and player knowledge', as
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
   const { raw, run } = engineRequests()
   const catalog = await run({ type: 'techniques', variant: true })
-  assert.equal(catalog.scoringVersion, 3)
+  assert.equal(catalog.scoringVersion, 4)
   assert.equal(catalog.techniques.length, 81)
   assert.equal(new Set(catalog.techniques.map(technique => technique.id)).size, 81)
   const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))
@@ -1236,4 +1254,73 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   const malformed = await raw({ type: 'practice-examples', variant: true, technique: 'unknown-technique' })
   assert.ok('code' in malformed)
   assert.equal(malformed.code, 'invalid-technique')
+})
+
+test('every playable variant generates each difficulty with a unique solution and usable hints', async (t) => {
+  const { run } = engineRequests()
+  const [variant, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
+  const techniqueOrder = variantTechniqueOrder(variant.defaultOrder, classic.defaultOrder)
+
+  for (const id of Object.keys(variantSeeds) as (keyof typeof variantSeeds)[]) {
+    const levels = variantSeeds[id]
+    for (const difficulty of Object.keys(levels) as (keyof typeof levels)[]) {
+      await t.test(`${id} / ${difficulty}`, async () => {
+        const recipes = levels[difficulty]
+        assert.ok(recipes.length > 1)
+        const puzzles = new Set<string>()
+        for (const recipe of recipes) {
+          const generated = await run(variantGenerationRequest(id, difficulty, recipe, techniqueOrder))
+          assert.deepEqual(generated.rating.status, { solved: difficulty })
+          puzzles.add(generated.puzzle.givens)
+        }
+        assert.equal(puzzles.size, recipes.length)
+
+        const { puzzle, solution, rating } = await run(variantGenerationRequest(id, difficulty, recipes[0], techniqueOrder))
+        const position = { puzzle }
+        assert.equal(await run({ type: 'variant', position, operation: 'analyze' }), 'unique')
+        assert.equal(await run({
+          type: 'variant', position: { puzzle: { ...puzzle, rules: [] } }, operation: 'analyze',
+        }), 'multiple')
+
+        const trace = await run({ type: 'variant', position, operation: 'trace', techniqueOrder })
+        const path = variantSolutionPath(trace)
+        assert.equal(path.board, solution)
+        assert.deepEqual(trace.rating, rating)
+
+        const ruleStep = trace.steps.findIndex(({ evidence }) => id === 'diagonal'
+          ? evidence.type === 'single' && evidence.house && 'diagonal' in evidence.house ||
+            evidence.type === 'intersection' && ('diagonal' in evidence.source || 'diagonal' in evidence.target)
+          : evidence.type === 'constraint' || evidence.type === 'cage-sum')
+        assert.ok(ruleStep >= 0, 'The logical path uses the variant rule.')
+        const { entries: ruleEntries, eliminations: ruleRemovals } = path.positions![ruleStep]
+        const ruleHints = await run({
+          type: 'variant', operation: 'hints', position: { puzzle, entries: ruleEntries, eliminations: ruleRemovals },
+          techniqueOrder: [trace.steps[ruleStep].technique], limit: 40,
+        })
+        assert.ok(ruleHints.some(({ actions }) => JSON.stringify(actions) === JSON.stringify(trace.steps[ruleStep].actions)))
+        assert.ok('variant' in variantHintChoice(trace.steps[ruleStep], puzzle).evidence)
+        let game = { ...makeGame('variant', 'Variant puzzle', puzzle.givens, 'generated'), variant: { id, puzzle, solution } }
+        assert.ok(validVariantSave(game.variant, game.givens))
+        const [firstHint] = await run({ type: 'variant', position, operation: 'hints', techniqueOrder, limit: 1 })
+        assert.ok(firstHint)
+        assert.notEqual(applyDeduction(game, variantHintChoice(firstHint, puzzle).actions, path.positions![0].candidates!), game)
+
+        for (const [index, step] of path.steps.entries()) {
+          const previous = game
+          game = { ...game, ...applyDeduction(game, step.actions, path.positions![index].candidates!) }
+          assert.notEqual(game.position, previous.position)
+          if (index < path.steps.length - 1) assert.equal(isSolved(game), false)
+        }
+        assert.equal(valuesOf(game), solution)
+        assert.ok(isSolved(game))
+        assert.deepEqual(restartGame(game).variant, game.variant)
+
+        const cell = puzzle.givens.indexOf('0')
+        const entries = [...solution].map((digit, i) => i === cell || puzzle.givens[i] !== '0' ? '0' : digit).join('')
+        const hints = await run({ type: 'variant', position: { puzzle, entries }, operation: 'hints', techniqueOrder })
+        assert.equal(hints.length, 1)
+        assert.deepEqual(hints[0].actions, [{ place: { cell, digit: Number(solution[cell]) } }])
+      })
+    }
+  }
 })

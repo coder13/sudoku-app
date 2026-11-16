@@ -4,6 +4,8 @@ import { EngineError, runEngine } from '../sudoku/engine'
 import { createGameId, makeGame } from '../sudoku/game'
 import { readSolverProfile } from '../sudoku/solver-profile'
 import { roomStore } from '../sudoku/storage'
+import { generatePlayableVariant } from '../sudoku/variant-play'
+import { VARIANTS, type VariantId } from '../sudoku/variants'
 
 export function usePlayerRating() {
   return useSyncExternalStore(roomStore.subscribe,
@@ -21,7 +23,7 @@ export function usePuzzleGeneration() {
     return () => { mounted.current = false }
   }, [])
 
-  async function generate(preference: DifficultyPreference, onGenerated?: () => void) {
+  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: VariantId = 'classic') {
     if (pending.current) return
     pending.current = true
     setBusy(true)
@@ -29,6 +31,19 @@ export function usePuzzleGeneration() {
     try {
       const difficulty = preference === 'auto' ? roomStore.getSnapshot().playerRating.recommended : preference
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+      if (variant !== 'classic') {
+        const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games)
+        if (!mounted.current) return
+        const title = nextPuzzleTitle(`${VARIANTS[variant].name} `)
+        const game = makeGame(createGameId(), title, result.puzzle.givens, 'generated')
+        game.variant = { id: variant, puzzle: result.puzzle, solution: result.solution }
+        game.difficulty = difficulty
+        game.score = result.rating.points
+        if (preference === 'auto') game.generatedWithAuto = true
+        roomStore.add(game)
+        onGenerated?.()
+        return
+      }
       const maxAttempts = difficulty === 'extreme' ? 2048 : 512
       const { defaultOrder } = await runEngine({ type: 'techniques' })
       const techniqueOrder = (preference === 'auto' ? undefined : readSolverProfile()) ?? defaultOrder
@@ -37,10 +52,7 @@ export function usePuzzleGeneration() {
       })
       const rating = await runEngine({ type: 'rate', values: givens, techniqueOrder }).catch(() => undefined)
       if (!mounted.current) return
-      const titles = new Set(roomStore.getSnapshot().games.map((game) => game.title))
-      let n = 1
-      while (titles.has(`Puzzle ${n}`)) n++
-      const game = makeGame(createGameId(), `Puzzle ${n}`, givens, 'generated')
+      const game = makeGame(createGameId(), nextPuzzleTitle(), givens, 'generated')
       if (preference === 'auto') game.generatedWithAuto = true
       if (rating && rating.status !== 'stalled') {
         game.difficulty = rating.status.solved
@@ -70,4 +82,12 @@ export function usePuzzleGeneration() {
   }
 
   return { busy, error, generate }
+}
+
+function nextPuzzleTitle(prefix = '') {
+  const titles = new Set(roomStore.getSnapshot().games.map((game) => game.title))
+  const title = (n: number) => `${prefix}Puzzle ${n}`
+  let n = 1
+  while (titles.has(title(n))) n++
+  return title(n)
 }

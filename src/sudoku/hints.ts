@@ -53,7 +53,7 @@ export function techniqueLabel(technique: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
-function cellReference(cell: number, style: CellReferenceStyle, difficulty?: Difficulty) {
+export function cellReference(cell: number, style: CellReferenceStyle, difficulty?: Difficulty) {
   const row = Math.floor(cell / 9) + 1
   const column = cell % 9 + 1
   const advanced = difficulty === 'hard' || difficulty === 'unfair' || difficulty === 'extreme'

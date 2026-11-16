@@ -5,7 +5,6 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
-import { parsePuzzle } from '../sudoku/formats'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import {
@@ -141,10 +140,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     let attempt = 0
     async function handleLink() {
       const id = ++attempt
-      if (!window.location.hash.startsWith('#puzzle=')) return
+      if (!/^#(?:puzzle|variant)=/.test(window.location.hash)) return
       setLinkError('')
       try {
-        await openPuzzle(parsePuzzle(window.location.href), () => id !== attempt)
+        await openPuzzle(window.location.href, () => id !== attempt)
       } catch (error) {
         if (id === attempt) setLinkError((error as Error).message)
       }
@@ -402,7 +401,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       </div>}
 
       {panel === 'new' && <NewPuzzle close={close} difficulty={difficulty} onDifficultyChange={setDifficulty} onCreate={createPuzzle} />}
-      {panel === 'import' && <ImportPuzzle close={close} onImport={(text, cancelled) => openPuzzle(parsePuzzle(text), cancelled)} />}
+      {panel === 'import' && <ImportPuzzle close={close} onImport={openPuzzle} />}
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
       {settingsRoute && <Settings close={() => { void navigate({ to: '/' }) }} section={settingsSection}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}

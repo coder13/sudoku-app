@@ -2,15 +2,51 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Clipboard, Dices, FileUp, PencilLine } from 'lucide-react'
 import { DIFFICULTY_OPTIONS, difficultyOptionLabel, isDifficultyPreference, type DifficultyPreference } from '../sudoku/difficulty'
 import { runEngine } from '../sudoku/engine'
-import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
+import { exportPuzzle, parsePuzzle, type ShareFormat } from '../sudoku/formats'
 import { createGameId, makeGame, valuesOf, type Game } from '../sudoku/game'
+import { isPlayablePuzzle, VARIANTS, type VariantGame, type VariantId } from '../sudoku/variants'
+import { VariantSelector } from './VariantSelector'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { validation } from './PuzzleCheckResult'
 
-export async function openPuzzle(givens: string, cancelled: () => boolean) {
-  const existing = roomStore.getSnapshot().games.find((game) => game.givens === givens && game.source !== 'draft')
+export async function openPuzzle(input: string, cancelled: () => boolean) {
+  const url = URL.canParse(input.trim()) ? new URL(input.trim()) : undefined
+  if (url?.hash.startsWith('#variant=')) {
+    let shared: Pick<VariantGame, 'id' | 'puzzle'>
+    try {
+      if (url.hash.length > 20_000) throw new Error()
+      shared = JSON.parse(new URLSearchParams(url.hash.slice(1)).get('variant') ?? '')
+      if (!isPlayablePuzzle(shared?.id, shared?.puzzle)) throw new Error()
+    } catch {
+      throw new Error('This link is missing a valid Sudoku variant.')
+    }
+    const { id, puzzle } = shared
+    const existing = () => roomStore.getSnapshot().games.find((game) =>
+      game.variant?.id === id && JSON.stringify(game.variant.puzzle) === JSON.stringify(puzzle))
+    const game = existing()
+    if (!game) {
+      const position = { puzzle }
+      const status = await runEngine({ type: 'variant', operation: 'analyze', position })
+      if (status !== 'unique') throw new Error(validation[status].text)
+      const solution = await runEngine({ type: 'variant', operation: 'solve', position })
+      if (cancelled()) return
+      const added = existing()
+      if (added) roomStore.select(added.id)
+      else roomStore.add({
+        ...makeGame(createGameId(), `Imported ${VARIANTS[id].name} puzzle`, puzzle.givens, 'imported'),
+        variant: { id, puzzle, solution },
+      })
+      return
+    }
+    if (!cancelled()) roomStore.select(game.id)
+    return
+  }
+
+  const givens = parsePuzzle(input)
+
+  const existing = roomStore.getSnapshot().games.find((game) => !game.variant && game.givens === givens && game.source !== 'draft')
   if (existing) {
     if (!cancelled()) roomStore.select(existing.id)
     return
@@ -18,7 +54,7 @@ export async function openPuzzle(givens: string, cancelled: () => boolean) {
   const status = await runEngine({ type: 'analyze', values: givens })
   if (status !== 'unique') throw new Error(validation[status].text)
   if (cancelled()) return
-  const current = roomStore.getSnapshot().games.find((game) => game.givens === givens && game.source !== 'draft')
+  const current = roomStore.getSnapshot().games.find((game) => !game.variant && game.givens === givens && game.source !== 'draft')
   if (current) roomStore.select(current.id)
   else roomStore.add(makeGame(createGameId(), 'Imported puzzle', givens, 'imported'))
 }
@@ -39,6 +75,7 @@ export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
+  const [variant, setVariant] = useState<VariantId>('classic')
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
   const selected = selection ?? difficulty
 
@@ -47,14 +84,15 @@ export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
     void generate(selected, () => {
       onDifficultyChange(selected)
       close()
-    })
+    }, variant)
   }
 
   return (
     <Modal title="New puzzle" onClose={close}>
       <form className="dialog-form" onSubmit={submit}>
+        <VariantSelector value={variant} onChange={setVariant} busy={busy} />
         <label htmlFor="puzzle-difficulty">Difficulty</label>
-        <select id="puzzle-difficulty" value={selected} disabled={busy} autoFocus onChange={(event) => {
+        <select id="puzzle-difficulty" value={selected} disabled={busy} onChange={(event) => {
           const next = event.target.value
           if (isDifficultyPreference(next)) setSelection(next)
         }}>
@@ -136,10 +174,12 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
   const { hostname, origin } = window.location
   const loopback = hostname === 'localhost' || hostname.endsWith('.localhost') ||
     hostname === '[::1]' || /^127(?:\.\d+){3}$/.test(hostname)
-  const [format, setFormat] = useState<ShareFormat>(loopback ? 'exchange' : 'link')
+  const [format, setFormat] = useState<ShareFormat>(loopback && !game.variant ? 'exchange' : 'link')
   const [status, setStatus] = useState('')
   const text = useRef<HTMLTextAreaElement>(null)
-  const value = exportPuzzle(game.givens, format, origin)
+  const value = game.variant
+    ? `${origin}/#variant=${encodeURIComponent(JSON.stringify({ id: game.variant.id, puzzle: game.variant.puzzle }))}`
+    : exportPuzzle(game.givens, format, origin)
 
   async function copy() {
     try {
@@ -155,10 +195,12 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
     <Modal title="Share puzzle" onClose={close}>
       <div className="dialog-form">
         <p>Share the starting grid for {game.title}.</p>
-        <label htmlFor="share-format">Format</label>
-        <select id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
-          {formats.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-        </select>
+        {!game.variant && <>
+          <label htmlFor="share-format">Format</label>
+          <select id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
+            {formats.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+          </select>
+        </>}
         {loopback && format === 'link' && <p>This link opens only on this device.</p>}
         <label htmlFor="share-output">Puzzle to share</label>
         <textarea id="share-output" ref={text} value={value} readOnly rows={format === 'grid' ? 9 : 3} spellCheck={false} />

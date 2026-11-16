@@ -59,9 +59,11 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
             .collect();
         estimates.sort_unstable();
         assert_eq!(estimates[1], technique.cost(), "{}", technique.id());
-        let tier = match estimates[1] {
-            0..=26 => Difficulty::Easy,
-            27..=68 => Difficulty::Medium,
+        let tier = match (technique, estimates[1]) {
+            (VariantTechnique::Arrow | VariantTechnique::CageCombinations, _) | (_, 0..=26) => {
+                Difficulty::Easy
+            }
+            (_, 27..=68) => Difficulty::Medium,
             _ => Difficulty::Hard,
         };
         assert_eq!(technique.difficulty(), tier, "{}", technique.id());

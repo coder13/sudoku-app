@@ -187,7 +187,7 @@ fn jigsaw_and_killer_rules_combine_on_the_same_position() {
     let trace = position
         .solve_logically(VariantTechnique::DEFAULT_ORDER)
         .unwrap();
-    assert_eq!(trace.rating.status, SolveStatus::Solved(Difficulty::Medium));
+    assert_eq!(trace.rating.status, SolveStatus::Solved(Difficulty::Easy));
     assert_eq!(trace.steps[0].technique, VariantTechnique::CageCombinations);
     let filled = std::array::from_fn(|cell| trace.end.entries[cell].max(givens[cell]));
     assert_eq!(filled, solution);

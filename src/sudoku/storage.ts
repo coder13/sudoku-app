@@ -1,3 +1,4 @@
+import { validVariantSave } from './variants.ts'
 import { isDifficulty } from './difficulty.ts'
 import { COLORS, createGameId, isSolved, type Game, type Position } from './game.ts'
 import {
@@ -56,6 +57,7 @@ function readGame(id: string, data: string | null): Game | undefined {
     if (
       value.id === id && typeof value.title === 'string' && value.title.length <= 72 &&
       sources.includes(value.source) && typeof value.givens === 'string' && /^[0-9]{81}$/.test(value.givens) &&
+      (value.variant === undefined || validVariantSave(value.variant, value.givens)) &&
       validPosition(value.position) && Array.isArray(value.past) && value.past.every(validPosition) &&
       Array.isArray(value.future) && value.future.every(validPosition) &&
       Number.isSafeInteger(value.elapsed) && value.elapsed >= 0 && Number.isSafeInteger(value.created) &&
@@ -70,7 +72,7 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt
-      if (attempt !== undefined && (value.source !== 'generated' || !isRatingAttempt(attempt) ||
+      if (attempt !== undefined && (value.source !== 'generated' || value.variant || !isRatingAttempt(attempt) ||
         (attempt.outcome && (attempt.outcome.gameId !== id || attempt.outcome.givens !== value.givens ||
           attempt.outcome.difficulty !== attempt.grade.difficulty)))) delete value.ratingAttempt
       return value
@@ -139,14 +141,14 @@ function mergeRatingAttempt(game: Game): Game {
 
 function rememberPuzzle(game: Game) {
   return persist(() => {
-    if (game.source === 'draft') return
+    if (game.source === 'draft' || game.variant) return
     const key = SEEN_PREFIX + game.givens
     if (localStorage.getItem(key) === null) localStorage.setItem(key, game.id)
   })
 }
 
 function seenPuzzle(game: Game) {
-  if (room.games.some((item) => item.source !== 'draft' && item.id !== game.id && item.givens === game.givens)) return true
+  if (room.games.some((item) => !item.variant && item.source !== 'draft' && item.id !== game.id && item.givens === game.givens)) return true
   try {
     const previous = localStorage.getItem(SEEN_PREFIX + game.givens)
     return previous !== null && previous !== game.id
