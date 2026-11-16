@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::generation::start_builtin_pool;
-use super::hints::{checked_position, classify_actions, rank_position};
+use super::hints::{checked_position, classify_actions, rank_position, rank_useful_position};
 use super::{
     Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, GeneratedPuzzle,
     GenerationConflict, GenerationCriteria, GenerationError, GenerationRating, GenerationSearch,
@@ -103,6 +103,9 @@ enum Request {
         include_patterns: bool,
         #[serde(default)]
         disabled_techniques: Vec<String>,
+        #[serde(default)]
+        prefer_progress: bool,
+        difficulty: Option<Difficulty>,
     },
     NextDeduction {
         values: String,
@@ -914,6 +917,8 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             limit,
             include_patterns,
             disabled_techniques,
+            prefer_progress,
+            difficulty,
         } => {
             let eliminations = elimination_masks(eliminations)?;
             let limit = match limit {
@@ -923,11 +928,17 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             };
             let position =
                 checked_position(&board(&values)?, eliminations.as_ref()).map_err(hint_error)?;
-            let choices = rank_position(
-                &position,
-                limit,
-                &disabled_hint_techniques(&disabled_techniques),
-            );
+            let disabled = disabled_hint_techniques(&disabled_techniques);
+            let choices = if prefer_progress {
+                rank_useful_position(
+                    &position,
+                    limit,
+                    &disabled,
+                    difficulty.unwrap_or(Difficulty::Medium),
+                )
+            } else {
+                rank_position(&position, limit, &disabled)
+            };
             if include_patterns {
                 let choices: Vec<_> = choices
                     .iter()

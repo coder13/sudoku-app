@@ -1054,9 +1054,11 @@ export function Worktable({
         choices: (await runEngine({
           type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations: removals },
           techniqueOrder: await variantHintOrder(), limit: limit === 'all' ? 0xffff_ffff : limit,
+          preferProgress: true, difficulty: game.difficulty ?? 'medium',
         })).map((choice) => variantHintChoice(choice, variant.puzzle)),
         candidates: variantHouseMasks(variant.puzzle, values, removals),
-      } : await runEngine({ type: 'hints', values, eliminations: removals, limit, includePatterns: true })
+      } : await runEngine({ type: 'hints', values, eliminations: removals, limit, includePatterns: true,
+        preferProgress: true, difficulty: game.difficulty ?? 'medium' })
       if (!candidates) throw new Error('Missing hint candidates')
       result = { position: hintPosition, choices, candidates, index: 0, stage: 'technique' }
     } catch (error) {

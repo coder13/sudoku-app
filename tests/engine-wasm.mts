@@ -259,6 +259,47 @@ test('technique attribution chooses the simplest proof for each candidate across
   }), ['full-house'])
 })
 
+test('play hint ranking prefers useful progress within difficulty and preserves all alternatives', async () => {
+  const { run } = engineRequests()
+  const { techniques } = await run({ type: 'techniques' })
+  const disabledTechniques = techniques.map(({ id }) => id).filter(id => !['pointing', 'naked-pair'].includes(id))
+  const request = { type: 'hints', values: LOCKED_PAIR, disabledTechniques, includePatterns: true } as const
+  const old = await run({ ...request, limit: 'all' })
+  assert.equal(old.choices[0].technique, 'pointing')
+  const easy = await run({ ...request, preferProgress: true, difficulty: 'easy', limit: 1 })
+  assert.equal(easy.choices[0].technique, 'pointing')
+  const useful = await run({ ...request, preferProgress: true, difficulty: 'medium', limit: 1 })
+  assert.equal(useful.choices[0].technique, 'naked-pair')
+  assert.ok(useful.choices[0].pattern)
+  assert.deepEqual(useful.candidates, old.candidates)
+  const all = await run({ ...request, preferProgress: true, difficulty: 'medium', limit: 'all' })
+  assert.deepEqual(all.choices[0], useful.choices[0])
+  const identities = (choices: typeof all.choices) => choices.map(({ actions }) => JSON.stringify(actions)).sort()
+  assert.deepEqual(identities(all.choices), identities(old.choices))
+  assert.deepEqual(await run({ ...request, preferProgress: true, limit: 0 }), {
+    choices: [], available: 0, candidates: old.candidates,
+  })
+  const eliminations = Array(81).fill(0)
+  for (const action of useful.choices[0].actions) {
+    if ('eliminate' in action) eliminations[action.eliminate.cell] |= 1 << (action.eliminate.digit - 1)
+  }
+  const followup = await run({ type: 'hints', values: LOCKED_PAIR, eliminations, preferProgress: true, difficulty: 'medium' })
+  assert.ok(followup.choices[0].actions.some(action => 'place' in action))
+})
+
+test('variant play hints support useful progress without changing the default ranking', async () => {
+  const { run } = engineRequests()
+  const request = {
+    type: 'variant', operation: 'hints',
+    position: { puzzle: { version: 1, givens: LOCKED_PAIR, rules: [] } },
+    techniqueOrder: ['pointing', 'naked-pair'], limit: 1,
+  } as const
+  const old = await run(request)
+  assert.equal(old[0].technique, 'pointing')
+  const useful = await run({ ...request, preferProgress: true, difficulty: 'medium' })
+  assert.equal(useful[0].technique, 'naked-pair')
+})
+
 test('hint diagrams use the current candidates and exclude previously removed candidates', async () => {
   const { run } = engineRequests()
   const values = LOCKED_PAIR

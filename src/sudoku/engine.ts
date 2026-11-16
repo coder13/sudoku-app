@@ -107,7 +107,7 @@ type VariantRequest = {
   | { operation: 'solve'; maxNodes?: number; seed?: number }
   | ({ visibility?: VariantVisibility } & (
     | { operation?: 'normalize' }
-    | { operation: 'hints'; techniqueOrder?: readonly string[]; limit?: number }
+    | { operation: 'hints'; techniqueOrder?: readonly string[]; limit?: number; preferProgress?: boolean; difficulty?: Difficulty }
     | { operation: 'rate'; techniqueOrder?: readonly string[] }
     | { operation: 'trace'; techniqueOrder?: readonly string[] }
     | { operation: 'replay-step'; techniqueOrder?: readonly string[]; stepIndex: number }
@@ -129,7 +129,7 @@ export type EngineRequest =
   | ({ type: 'alternate-solve-path'; technique: string; maxPositions: number } & StartingPosition & SolverOptions)
   | ({ type: 'practice-position'; technique: string } & StartingPosition & SolverOptions)
   | ({ type: 'check-practice-move'; technique: string; action: DeductionAction } & StartingPosition)
-  | ({ type: 'hints'; limit?: number | 'all'; includePatterns?: boolean } & CandidatePosition & HintOptions)
+  | ({ type: 'hints'; limit?: number | 'all'; includePatterns?: boolean; preferProgress?: boolean; difficulty?: Difficulty } & CandidatePosition & HintOptions)
   | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
   | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
   | ({ type: 'prove-rank'; pattern: RankPattern; target: Candidate; nodeBudget: number } & StartingPosition)

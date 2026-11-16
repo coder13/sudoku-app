@@ -535,6 +535,111 @@ impl CompiledVariant {
         Ok(moves)
     }
 
+    /// Prefer the easiest enabled move that unlocks singles, within the puzzle's tier.
+    pub(crate) fn useful_hints(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        enabled: &[VariantTechnique],
+        limit: usize,
+        difficulty: Difficulty,
+    ) -> Result<Vec<VariantDeduction>, VariantPositionError> {
+        let position = self.proof_position(entries, eliminations)?;
+        if limit == 0 || !position.board.contains(&0) {
+            return Ok(Vec::new());
+        }
+        let mut techniques = enabled.to_vec();
+        let tier = |t: &VariantTechnique| (t.difficulty(), t.cost());
+        techniques.sort_by_key(tier);
+        let baseline = self.single_progress(position.board, *eliminations);
+        let mut probes: Vec<(VariantDeduction, usize)> = Vec::new();
+        for group in techniques.chunk_by(|a, b| tier(a) == tier(b)) {
+            if probes.len() >= 512 || (group[0].difficulty() > difficulty && !probes.is_empty()) {
+                break;
+            }
+            let mut hints: Vec<_> = group
+                .iter()
+                .flat_map(|&t| self.explain(&position, t))
+                .collect();
+            hints.sort_by_cached_key(VariantDeduction::rank);
+            let mut useful = false;
+            let mut count = 0;
+            for hint in hints {
+                if probes
+                    .iter()
+                    .any(|(other, _)| other.actions == hint.actions)
+                {
+                    continue;
+                }
+                let placements = hint
+                    .actions
+                    .iter()
+                    .filter(|a| matches!(a, HintAction::Place(_)))
+                    .count();
+                let mut board = position.board;
+                let mut removals = *eliminations;
+                crate::position::record_actions(&mut board, &mut removals, &hint.actions);
+                let progress = placements + self.single_progress(board, removals);
+                let gain = progress.saturating_sub(baseline);
+                useful |= placements > 0 || gain > 0;
+                probes.push((
+                    hint,
+                    if placements > 0 {
+                        progress.max(1)
+                    } else {
+                        gain
+                    },
+                ));
+                count += 1;
+                if count == 64 || probes.len() == 512 {
+                    break;
+                }
+            }
+            if useful {
+                break;
+            }
+        }
+        probes.sort_by_cached_key(|(hint, gain)| {
+            (
+                *gain == 0,
+                tier(&hint.technique),
+                std::cmp::Reverse(*gain),
+                hint.rank(),
+            )
+        });
+        let mut choices: Vec<VariantDeduction> =
+            probes.into_iter().map(|(h, _)| h).take(limit).collect();
+        if choices.len() < limit {
+            for hint in self.ranked_hints(entries, eliminations, enabled, limit)? {
+                if choices.iter().all(|other| other.actions != hint.actions) {
+                    choices.push(hint);
+                    if choices.len() == limit {
+                        break;
+                    }
+                }
+            }
+        }
+        Ok(choices)
+    }
+
+    fn single_progress(&self, mut board: Board, mut removals: [u16; CELLS]) -> usize {
+        let mut placed = 0;
+        while board.contains(&0) {
+            let position = self.house_position(board, &removals);
+            let Some(step) = [
+                VariantTechnique::NakedSingle,
+                VariantTechnique::HiddenSingle,
+            ]
+            .into_iter()
+            .find_map(|t| self.explain(&position, t).into_iter().next()) else {
+                break;
+            };
+            crate::position::record_actions(&mut board, &mut removals, &step.actions);
+            placed += 1;
+        }
+        placed
+    }
+
     pub(super) fn proof_position(
         &self,
         entries: &Board,
