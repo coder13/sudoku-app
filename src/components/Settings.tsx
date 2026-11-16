@@ -1,4 +1,4 @@
-import { type CSSProperties, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Eye, Lightbulb, Maximize2, Minus, PenTool, Plus, SlidersHorizontal } from 'lucide-react'
 import { DIGITS, type ErrorMode } from '../sudoku/game'
 import {
@@ -14,6 +14,7 @@ const sections: { id: Section; label: string; description: string; icon: typeof 
   { id: 'solving', label: 'Solving style', description: 'Errors and solving behavior', icon: SlidersHorizontal },
   { id: 'hints', label: 'Hints', description: 'Help while solving', icon: Lightbulb },
 ]
+const sectionIds = new Set<Section>(sections.map((item) => item.id))
 
 function SettingsSection({ section, advancedModes, setAdvancedModes, errorMode, setErrorMode, inputSize, setInputSize, onResize, draft }: {
   section: Section
@@ -132,11 +133,85 @@ export function Settings({ close, advancedModes, setAdvancedModes, errorMode, se
   draft: boolean
 }) {
   const [section, setSection] = useState<Section>('appearance')
-  const [mobileSection, setMobileSection] = useState<Section | null>(null)
+  const [mobileScreens, setMobileScreens] = useState<Section[]>([])
+  const mobileScreensRef = useRef<Section[]>([])
+  const navigationId = useRef(`settings-${Math.random().toString(36).slice(2)}`)
+  const historyEnabled = useRef(typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches)
+  const historyInitialized = useRef(false)
+  const afterClose = useRef<(() => void) | null>(null)
+  const mobileSection = mobileScreens.at(-1) ?? null
   const current = sections.find((item) => item.id === mobileSection)
 
+  function setMobileStack(next: Section[]) {
+    mobileScreensRef.current = next
+    setMobileScreens(next)
+  }
+
+  function historyState(next: Section[]) {
+    return {
+      ...(window.history.state ?? {}),
+      settingsNavigation: { id: navigationId.current, screens: next },
+    }
+  }
+
+  useEffect(() => {
+    if (!historyEnabled.current) return
+    if (!historyInitialized.current) {
+      window.history.pushState(historyState([]), '')
+      historyInitialized.current = true
+    }
+
+    function handlePopState(event: PopStateEvent) {
+      const navigation = event.state?.settingsNavigation
+      if (navigation?.id === navigationId.current && Array.isArray(navigation.screens)) {
+        const next = navigation.screens.filter((screen: unknown): screen is Section =>
+          typeof screen === 'string' && sectionIds.has(screen as Section))
+        setMobileStack(next)
+        return
+      }
+      const callback = afterClose.current
+      afterClose.current = null
+      close()
+      callback?.()
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  function openMobileScreen(next: Section) {
+    const stack = [...mobileScreensRef.current, next]
+    setMobileStack(stack)
+    if (historyEnabled.current) window.history.pushState(historyState(stack), '')
+  }
+
+  function backMobileScreen() {
+    if (!mobileScreensRef.current.length) return
+    if (historyEnabled.current && window.history.state?.settingsNavigation?.id === navigationId.current) {
+      window.history.back()
+      return
+    }
+    setMobileStack(mobileScreensRef.current.slice(0, -1))
+  }
+
+  function exitSettings(callback?: () => void) {
+    if (historyEnabled.current && window.history.state?.settingsNavigation?.id === navigationId.current) {
+      afterClose.current = callback ?? null
+      window.history.go(-(mobileScreensRef.current.length + 1))
+      return
+    }
+    close()
+    callback?.()
+  }
+
   return (
-    <Modal title="Settings" onClose={close} className="settings-dialog">
+    <Modal title={current?.label ?? 'Settings'} onClose={() => exitSettings()}
+      className={`settings-dialog ${mobileSection ? 'settings-subscreen' : ''}`}
+      leading={mobileSection ? (
+        <button className="icon-button settings-header-back" aria-label="Back to settings" onClick={backMobileScreen}>
+          <ChevronLeft size={21} />
+        </button>
+      ) : undefined}>
       <div className="settings-desktop">
         <nav className="settings-tabs" aria-label="Settings sections" role="tablist" aria-orientation="vertical">
           {sections.map((item) => {
@@ -161,7 +236,7 @@ export function Settings({ close, advancedModes, setAdvancedModes, errorMode, se
             {sections.map((item) => {
               const Icon = item.icon
               return (
-                <button key={item.id} onClick={() => setMobileSection(item.id)}>
+                <button key={item.id} onClick={() => openMobileScreen(item.id)}>
                   <span className="settings-menu-icon"><Icon size={20} /></span>
                   <span><strong>{item.label}</strong><small>{item.description}</small></span>
                   <ChevronRight size={19} />
@@ -171,11 +246,9 @@ export function Settings({ close, advancedModes, setAdvancedModes, errorMode, se
           </nav>
         ) : (
           <div className="settings-mobile-section">
-            <button className="settings-back" onClick={() => setMobileSection(null)}><ChevronLeft size={19} /> All settings</button>
-            <span className="mobile-section-label">{current?.label}</span>
             <SettingsSection section={mobileSection} advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
               errorMode={errorMode} setErrorMode={setErrorMode} inputSize={inputSize} setInputSize={setInputSize}
-              onResize={onResize} draft={draft} />
+              onResize={() => exitSettings(onResize)} draft={draft} />
           </div>
         )}
       </div>
