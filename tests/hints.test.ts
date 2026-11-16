@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Deduction } from '../src/sudoku/engine.ts'
-import { describeHint, describeSingleHint, techniqueLabel } from '../src/sudoku/hints.ts'
+import { describeHint, describeSingleHint, moveHintIndex, techniqueLabel } from '../src/sudoku/hints.ts'
+
+test('Next wraps the hint list while Previous stops at the first hint', () => {
+  assert.equal(moveHintIndex(8, 10, 1), 9)
+  assert.equal(moveHintIndex(9, 10, 1), 0)
+  assert.equal(moveHintIndex(0, 10, -1), 0)
+  assert.equal(moveHintIndex(9, 10, -1), 8)
+  assert.equal(moveHintIndex(0, 1, 1), 0)
+  assert.equal(moveHintIndex(0, 0, 1), 0)
+})
 
 test('hint copy uses Sudoku terms and one-based cell coordinates', () => {
   assert.deepEqual(describeHint({

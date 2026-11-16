@@ -11,7 +11,7 @@ import {
   formatTime, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
-import { cellReference, describeHint, describeHintDigits, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
+import { cellReference, describeHint, describeHintDigits, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
 import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
@@ -834,7 +834,7 @@ export function Worktable({
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       const target = event.target
-      if (event.defaultPrevented || game.paused || previewing || mobileHintOpen || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || event.altKey ||
+      if (event.defaultPrevented || game.paused || previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
@@ -1080,9 +1080,8 @@ export function Worktable({
 
   function moveHint(offset: -1 | 1) {
     setHint((current) => {
-      if (!current) return current
-      const index = current.index + offset
-      if (index < 0 || index >= current.choices.length) return current
+      if (!current || !current.choices.length) return current
+      const index = moveHintIndex(current.index, current.choices.length, offset)
       return { ...current, index, stage: 'technique' }
     })
   }
@@ -1292,7 +1291,7 @@ export function Worktable({
       </>}
     </div>
   )
-  const canSelectCell = !game.paused && !mobileResults && !mobileHintOpen
+  const canSelectCell = !game.paused && !mobileResults
   const livePuzzleStage = previewing ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
@@ -1500,7 +1499,9 @@ export function Worktable({
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">{inputPanel}{hintPanel}{solutionPathPanel}</div></>
           : <>{puzzlePanel}{mobileResults
             ? <div className="workspace-controls mobile-completion">{completionPanel}</div>
-            : mobileHintOpen ? hintPanel : inputPanel}</>}
+            : <div className={`workspace-controls mobile-solving-controls${mobileHintOpen ? ' with-hint' : ''}`}>
+              {mobileHintOpen && hintPanel}{inputPanel}
+            </div>}</>}
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} exitDuration={240}
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
       {variant && variantRulesOpen && <Modal title={`${VARIANTS[variant.id].name} rules`} onClose={() => setVariantRulesOpen(false)}>

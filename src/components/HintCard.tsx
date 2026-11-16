@@ -41,7 +41,7 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
             </button>
             <span>{navigation.index + 1}/{navigation.count}</span>
             <button type="button" className="icon-button" aria-label="Next hint"
-              disabled={navigation.index + 1 === navigation.count} onClick={() => navigation.onMove(1)}>
+              disabled={navigation.count < 2} onClick={() => navigation.onMove(1)}>
               <ArrowRight size={16} aria-hidden="true" />
             </button>
           </div>}

@@ -2,6 +2,11 @@ import type { Deduction, Difficulty, HintChoice } from './engine'
 
 export type PuzzleHint = { title: string; text: string }
 
+export function moveHintIndex(index: number, count: number, offset: -1 | 1): number {
+  if (count < 1) return 0
+  return offset === 1 ? (index + 1) % count : Math.max(0, index - 1)
+}
+
 export const CELL_REFERENCE_LABELS = {
   automatic: 'Automatic',
   concise: 'Concise',
