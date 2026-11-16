@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowDownToLine, Check, Layers2, Menu, Minus, Plus, Settings as SettingsIcon, SlidersHorizontal } from 'lucide-react'
+import { ArrowDownToLine, Check, Layers2, Menu, Minus, Plus, Settings as SettingsIcon, Share2, SlidersHorizontal } from 'lucide-react'
 import { parsePuzzle } from '../sudoku/formats'
 import type { ErrorMode } from '../sudoku/game'
 import {
@@ -188,6 +188,7 @@ export function Workspace() {
               {game && <button className={advancedModes.multiSelectButton ? '' : 'mobile-menu-only'} onClick={toggleMulti} aria-pressed={multi}>
                 <Layers2 size={17} /> Multi-select {multi ? 'on' : 'off'}
               </button>}
+              {game && game.source !== 'draft' && <button onClick={() => openPanel('share')}><Share2 size={17} /> Share puzzle</button>}
               {game && <button onClick={() => openPanel('manage')}><SettingsIcon size={17} /> Puzzle options</button>}
               <div className="app-menu-separator" />
               <button onClick={() => openPanel('import')}><ArrowDownToLine size={17} /> Import</button>
@@ -205,7 +206,7 @@ export function Workspace() {
             <Worktable key={`${game.id}-${game.source}`} game={game} modalOpen={panel !== null || menuOpen || resizeMode}
               advancedModes={advancedModes} errorMode={errorMode} multi={multi} actionsRef={worktableActions}
               inputSize={inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight} beginResize={beginResize}
-              onShare={() => setPanel('share')} onPublish={() => setPanel('publish')} />
+              onPublish={() => setPanel('publish')} />
           ) : (
             <section className="surface empty-board">
               <h2>Start a Sudoku</h2>

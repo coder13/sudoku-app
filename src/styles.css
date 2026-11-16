@@ -130,7 +130,13 @@ svg { flex-shrink: 0; }
 }
 .puzzle { grid-area: puzzle; padding: 22px 27px; min-width: 0; }
 .puzzle-actions { justify-content: flex-end; margin-bottom: 14px; }
-.puzzle-icon { flex-shrink: 0; }
+.duration-counter {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
 
 .board-frame {
   display: grid;

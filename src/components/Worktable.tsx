@@ -1,10 +1,10 @@
 import {
   type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useEffect, useMemo, useRef, useState,
 } from 'react'
-import { Check, CircleCheck, CircleX, Info, PencilLine, Share2 } from 'lucide-react'
+import { Check, CircleCheck, CircleX, Info, PencilLine } from 'lucide-react'
 import { runEngine, type Analysis } from '../sudoku/engine'
 import {
-  COLORS, conflictsOf, enter, isSolved, redo, undo, valuesOf,
+  COLORS, conflictsOf, enter, formatTime, isSolved, redo, undo, valuesOf,
   type ErrorMode, type Game, type Mode,
 } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
@@ -36,11 +36,45 @@ function rectangle(start: number, end: number) {
   return result
 }
 
+function useTimer(id: string, running: boolean) {
+  useEffect(() => {
+    if (!running) return
+    let started = document.visibilityState === 'visible' ? performance.now() : null
+
+    function tick() {
+      if (started === null) return
+      const seconds = Math.floor((performance.now() - started) / 1000)
+      if (seconds < 1) return
+      started += seconds * 1000
+      roomStore.update(id, (current) => ({ ...current, elapsed: current.elapsed + seconds }))
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === 'hidden') {
+        tick()
+        started = null
+      } else {
+        started = performance.now()
+      }
+    }
+
+    const timer = window.setInterval(tick, 500)
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('pagehide', tick)
+    return () => {
+      tick()
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('pagehide', tick)
+    }
+  }, [id, running])
+}
+
 export type WorktableActions = { check: () => void }
 
 export function Worktable({
   game, modalOpen, advancedModes, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, onShare, onPublish,
+  beginResize, onPublish,
 }: {
   game: Game
   modalOpen: boolean
@@ -52,7 +86,6 @@ export function Worktable({
   panelHeight: number
   setPanelHeight: Dispatch<SetStateAction<number>>
   beginResize: () => void
-  onShare: () => void
   onPublish: () => void
 }) {
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
@@ -76,6 +109,8 @@ export function Worktable({
     : 'value'
   const solved = isSolved(game)
   const disabled = false
+
+  useTimer(game.id, !draft && game.started && !solved && !modalOpen && checkResult === null)
 
   useEffect(() => {
     if (advancedModes.colorsEnabled) return
@@ -228,7 +263,9 @@ export function Worktable({
           {draft ? (
             <button className="button primary publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</button>
           ) : (
-            <button className="icon-button puzzle-icon" title="Share puzzle" aria-label="Share puzzle" onClick={onShare}><Share2 size={18} /></button>
+            <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}`}>
+              {formatTime(game.elapsed)}
+            </span>
           )}
         </div>
         <Board game={game} values={values} errors={errors} candidateLayout={advancedModes.candidateLayout}
