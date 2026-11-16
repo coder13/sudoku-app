@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
 import { lessonCatalog, type LearnContent } from './src/sudoku/lesson-content.ts'
 
-function lessonPages() {
+function prerenderPages() {
   const content: LearnContent = JSON.parse(readFileSync(new URL('./src/sudoku/learn-content.json', import.meta.url), 'utf8'))
   const { articles, lessonExampleIds, lessonRoutes, lessons } = lessonCatalog(content)
   const lessonExamples = JSON.parse(readFileSync(new URL('./src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))
@@ -21,13 +21,27 @@ function lessonPages() {
       throw new Error(`Every lesson needs a practice variant with an engine difficulty. Check ${lesson.id}.`)
     }
   }
-  return [{ path: '/' }, { path: '/learn' }, ...[...lessonRoutes.keys()].map((id) => ({ path: `/learn/${id}` }))]
+  return [
+    '/',
+    '/puzzles',
+    '/puzzles/browse',
+    '/puzzles/new',
+    '/puzzles/statistics',
+    '/settings',
+    '/settings/appearance',
+    '/settings/input',
+    '/settings/highlighting',
+    '/settings/solving',
+    '/settings/hints',
+    '/learn',
+    ...[...lessonRoutes.keys()].map((id) => `/learn/${id}`),
+  ].map((path) => ({ path }))
 }
 
 export default defineConfig(({ command }) => ({
   plugins: [
     tanstackStart({
-      pages: command === 'build' ? lessonPages() : [],
+      pages: command === 'build' ? prerenderPages() : [],
       prerender: {
         enabled: true,
         autoStaticPathsDiscovery: false,
@@ -42,7 +56,6 @@ export default defineConfig(({ command }) => ({
     port: 8766,
     strictPort: true,
     allowedHosts: ['twilight'],
-    proxy: { '/api': 'http://127.0.0.1:8765' },
   },
   build: { assetsInlineLimit: 0 },
 }))

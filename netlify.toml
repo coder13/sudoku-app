@@ -1,0 +1,8 @@
+[build]
+  command = "rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && RUSTUP_TOOLCHAIN=stable npm run build"
+  publish = "dist/client"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

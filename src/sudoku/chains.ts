@@ -206,6 +206,19 @@ export function analyzeChains(graph: ChainGraph, edges: readonly ChainEdge[]) {
   return chains
 }
 
+export function chainExtensionStrength(graph: ChainGraph, edges: readonly ChainEdge[], extension: ChainEdge): LinkStrength | undefined {
+  const strength = graph.strength(...extension)
+  if (!strength || edges.some((edge) => sameEdge(edge, extension))) return
+  if (edges.length === 0) return strength
+
+  const chain = analyzeChains(graph, [...edges, extension]).find(({ nodes }) => nodes.includes(extension[0]))
+  if (!chain) return
+  if (!chain.strengths.length) return strength
+  if (!chain.canComplete && !chain.loop) return
+  const index = chain.strengths.findIndex((_, i) => sameEdge([chain.nodes[i], chain.nodes[i + 1]], extension))
+  return chain.strengths[index]
+}
+
 type LoopSearch = { status: 'found'; edges: ChainEdge[] } | { status: 'exhausted' | 'limited' }
 const LOOP_SEARCH_LIMIT = 12_000
 

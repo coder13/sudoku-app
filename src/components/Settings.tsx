@@ -220,11 +220,11 @@ export function AppearanceSettings({ appearance, setAppearance, inputSize, setIn
   inputSize: number
   setInputSize: (size: number) => void
   workspaceMode: WorkspaceMode
-  setWorkspaceMode: (mode: WorkspaceMode) => void
+  setWorkspaceMode?: (mode: WorkspaceMode) => void
 }) {
   return (
     <div className="appearance-flat-settings">
-      <div className="settings-section workspace-mode-settings">
+      {setWorkspaceMode && <div className="settings-section workspace-mode-settings">
         <h3>Workspace</h3>
         <p className="settings-intro">Choose a focused layout or a full desktop workspace.</p>
         <fieldset className="workspace-mode-options">
@@ -240,7 +240,7 @@ export function AppearanceSettings({ appearance, setAppearance, inputSize, setIn
             <span><strong>Advanced</strong><small>Use a full desktop workspace with named, movable, resizable panels and additional puzzle data.</small></span>
           </label>
         </fieldset>
-      </div>
+      </div>}
       <ThemeSettings appearance={appearance} setAppearance={setAppearance} />
       <GuideSetting appearance={appearance} setAppearance={setAppearance} />
       <SizeSettings appearance={appearance} setAppearance={setAppearance}
@@ -367,7 +367,7 @@ type SettingsProps = {
   cellReferenceStyle: CellReferenceStyle
   setCellReferenceStyle: (style: CellReferenceStyle) => void
   workspaceMode: WorkspaceMode
-  setWorkspaceMode: (mode: WorkspaceMode) => void
+  setWorkspaceMode?: (mode: WorkspaceMode) => void
 }
 
 export function Settings({

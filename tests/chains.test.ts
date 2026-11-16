@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { analyzeChains, candidateId, completeChainLoop, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
+import { analyzeChains, candidateId, chainExtensionStrength, completeChainLoop, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
 
 const id = (cell: number, digit = 1) => candidateId({ cell, digit })
 const pathEdges = (...nodes: number[]): ChainEdge[] => nodes.slice(1).map((node, i) => [nodes[i], node])
@@ -25,6 +25,8 @@ test('an X-chain can use a conjugate pair as weak and remove a candidate that se
   const edges = pathEdges(id(0), id(36), id(40), id(4))
   const [analysis] = analyzeChains(links, edges)
   assert.equal(links.strength(id(36), id(40)), 'strong')
+  assert.equal(chainExtensionStrength(links, [edges[0]], edges[1]), 'weak')
+  assert.equal(chainExtensionStrength(links, edges.slice(0, 2), edges[2]), 'strong')
   assert.equal(analysis.title, 'X-chain')
   assert.deepEqual(analysis.strengths, ['strong', 'weak', 'strong'])
   assert.deepEqual(analysis.actions, [{ eliminate: { cell: 8, digit: 1 } }])
@@ -61,12 +63,26 @@ test('a single discontinuity can force a placement or an elimination', () => {
   const [partial] = analyzeChains(weakSeam, pathEdges(...path))
   assert.equal(partial.title, 'Non-alternating chain')
   assert.equal(partial.canComplete, true)
+  assert.equal(chainExtensionStrength(weakSeam, pathEdges(...path), [id(1), id(0)]), 'strong')
   const completed = completeChainLoop(weakSeam, path)
   assert.deepEqual(completed, { status: 'found', edges: [[id(1), id(0)]] })
   assert.ok(completed.status === 'found')
   const [removal] = analyzeChains(weakSeam, [...pathEdges(...path), ...completed.edges])
   assert.equal(removal.loop, 'discontinuous')
   assert.deepEqual(removal.actions, [{ eliminate: { cell: 8, digit: 1 } }])
+})
+
+test('a chain can have one break in alternation and rejects a second break', () => {
+  const links = graph({ 0: [1, 2, 3, 4] })
+  const [a, b, c, d] = links.candidates
+  assert.equal(chainExtensionStrength(links, pathEdges(a, b), [b, c]), 'weak')
+  assert.equal(chainExtensionStrength(links, pathEdges(a, b, c), [c, d]), undefined)
+  assert.equal(chainExtensionStrength(links, pathEdges(a, b, c), [c, a]), undefined)
+
+  const separateBreaks = graph({ 0: [1, 2, 3], 4: [3, 4, 5] })
+  const [first, second, third, fourth, fifth, sixth] = separateBreaks.candidates
+  assert.equal(chainExtensionStrength(separateBreaks, pathEdges(first, second, third, fourth), [fourth, fifth]), 'weak')
+  assert.equal(chainExtensionStrength(separateBreaks, pathEdges(first, second, third, fourth, fifth), [fifth, sixth]), undefined)
 })
 
 test('disjoint drawings are analyzed separately and a branch is not treated as a path', () => {

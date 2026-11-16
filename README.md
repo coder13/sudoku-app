@@ -13,13 +13,17 @@ npm run build
 npm start
 ```
 
-Open [Sudoku on localhost](http://127.0.0.1:8765). Set `SUDOKU_APP_ADDRESS` to use a different address or port.
+Open [Sudoku on localhost](http://127.0.0.1:8765).
 
-Use `npm run dev` for frontend development. It prints the development URL. For offline play, open the production build online first. The browser needs localhost or HTTPS to install the service worker that serves the app offline.
+Use `npm run dev` for frontend development, then open `http://twilight:8766`. This stable Vite address hot-reloads source changes. For offline play, open the production build online first. The browser needs localhost or HTTPS to install the service worker that serves the app offline.
 
 Run `npm run check` for TypeScript, `npm test` for game and sharing tests, and `cargo test --locked` for Rust.
 
 Run `npm run test:wasm` to build and test the browser engine. Run `cargo bench --locked -p sudoku-app-engine --bench engine` to measure ratings, exact search, and generation.
+
+## Development workflow
+
+This project is still in early, active development. Changes can be committed and pushed directly to `main`; pull requests are not required at this stage. Use a pull request only when a change specifically needs review or isolated discussion.
 
 The coverage benchmark reports logical solve rates and rating times for fixed everyday, 17-clue, and expert grids. To save replayable stalled positions, redirect standard output to a JSON Lines file. The group totals and timings appear on standard error.
 
@@ -29,9 +33,27 @@ cargo bench --locked -p sudoku-app-engine --features wasm-api --bench coverage >
 
 Each stall record contains the givens, entries, and 81 candidate-removal masks in row order. Bit zero represents digit 1. It also records the solver order and scoring version. See the [baseline results](SUDOKU_ENGINE_TODO.md#6-measure-coverage-on-expert-puzzles).
 
+## Browse UI components
+
+Run `npm run storybook` and open [Storybook on localhost](http://127.0.0.1:6006). The sidebar groups components by size, from hint cards and breadcrumbs to dialogs, the play workspace, and Learn pages. Use the Appearance and Viewport controls to check light, dark, and narrow layouts.
+
+Open **Small → Hints → Copy review → All Techniques** to filter and compare hint copy. The difficulty folders also have one story for each engine technique. The stories use the app’s hint formatter and the engine’s verified lesson examples, so the catalog follows the engine when techniques change.
+
+Run `npm run build-storybook` to create a static catalog in `storybook-static/`. Both commands prepare the browser engine and regenerate the technique stories. The play stories use a temporary puzzle library, so changes in Storybook do not affect your saved puzzles.
+
+## Edit Learn articles
+
+Run `npm run dev:lessons` and open [the local lesson editor](http://127.0.0.1:5180/__lesson-editor/). Select Overview or a technique and click the highlighted text to edit it on the rendered page. Use the left panel to add and move blocks, change diagram examples or crops, rename practice options, and edit links.
+
+**Save to file** writes to `src/sudoku/learn-content.json` and refreshes the app preview. You can also press Cmd+S or Ctrl+S. **Preview** hides the editing controls so you can read the page and try its puzzles.
+
+The editor runs on its own local preview server. Set `LESSON_EDITOR_PORT` to use another port. It uses the generated engine files from `npm run build:wasm` and builds them on first launch if they are missing.
+
 ## Play, create, and share
 
 The board accepts keyboard or touch input. It supports two types of pencil marks, cell colors, multi-select, and undo and redo. Use New puzzle to generate a puzzle or enter givens by hand. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
+
+Open **Learn** for technique articles with diagrams and practice puzzles. In a practice puzzle, select an empty cell and a digit, then check your move.
 
 If you have more than one saved puzzle, open Puzzle options and choose Switch puzzle.
 
@@ -41,7 +63,7 @@ Share formats carry the givens. When the app imports a HoDoKu library line, it s
 
 ## Project layout
 
-TanStack Start renders React to a static page during the build. The Rust server in `crates/server` serves that page and assets from `dist/client`. It also serves `GET /api/health` and `POST /api/v1/puzzles/analyze`. The analysis endpoint accepts JSON with a `puzzle` field containing 81 digits or dots.
+TanStack Start prerenders the app to static pages and assets in `dist/client`. Netlify or any static file server can publish that directory. The deployed app does not need an API or application server.
 
 The same Rust engine in `crates/engine` runs in the browser as WebAssembly. A browser worker runs it off the UI thread. The engine generates puzzles, counts solutions up to two, and lists legal candidates. The build caches the page, assets, and engine so that play, generation, authoring, and import work offline after the first load.
 

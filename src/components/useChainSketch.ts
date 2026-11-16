@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Candidate } from '../sudoku/engine'
 import {
-  analyzeChains, candidateId, chainCandidate, completeChainLoop, sameEdge,
-  type ChainAnalysis, type ChainEdge, type ChainGraph,
+  analyzeChains, candidateId, chainCandidate, chainExtensionStrength, completeChainLoop, sameEdge,
+  type ChainAnalysis, type ChainEdge, type ChainGraph, type LinkStrength,
 } from '../sudoku/chains'
 import { cellName } from '../sudoku/lesson-diagram'
 import type { BoardAnnotations, BoardLink, CandidateAnnotation } from './BoardAnnotations'
@@ -15,13 +15,37 @@ const removalColor = 'var(--chain-removal)'
 export function useChainSketch(graph: ChainGraph | null, positionKey: string, enabled: boolean) {
   const [drawing, setDrawing] = useState(false)
   const [pending, setPending] = useState<number | null>(null)
+  const [hovered, setHovered] = useState<number | null>(null)
   const [history, setHistory] = useState<ChainEdge[][]>([])
   const [status, setStatus] = useState('')
   const edges = history.at(-1)
   const chains = useMemo(() => graph && edges ? analyzeChains(graph, edges) : [], [graph, edges])
+  const loopCompletions = useMemo(() => {
+    const completions = new Map<ChainAnalysis, ChainEdge[]>()
+    if (!graph || !edges) return completions
+    const drawnNodes = edges.flat()
+    for (const chain of chains) {
+      if (!chain.canComplete) continue
+      const otherNodes = new Set(drawnNodes)
+      for (const node of chain.nodes) otherNodes.delete(node)
+      const result = completeChainLoop(graph, chain.nodes, otherNodes)
+      if (result.status === 'found') completions.set(chain, result.edges)
+    }
+    return completions
+  }, [graph, edges, chains])
+  const linkTargets = useMemo(() => {
+    const targets = new Map<number, LinkStrength>()
+    if (!graph || pending === null) return targets
+    for (const candidate of graph.candidates) {
+      const strength = chainExtensionStrength(graph, edges ?? [], [pending, candidate])
+      if (strength) targets.set(candidate, strength)
+    }
+    return targets
+  }, [graph, pending, edges])
 
   useEffect(() => {
     setPending(null)
+    setHovered(null)
     setHistory([])
     setStatus('')
   }, [positionKey])
@@ -30,11 +54,12 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, en
     if (!enabled) {
       setDrawing(false)
       setPending(null)
+      setHovered(null)
       setStatus('')
     }
   }, [enabled])
 
-  const annotations = useMemo<BoardAnnotations>(() => {
+  const committed = useMemo<BoardAnnotations>(() => {
     if (!graph) return {}
     const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
     const links: BoardLink[] = []
@@ -61,27 +86,37 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, en
         }
       }
     }
+    if (pending !== null) mark(pending, { color: selectedColor, label: 'selected for linking' })
     for (const chain of chains) {
       for (const action of chain.actions) {
         if ('place' in action) mark(candidateId(action.place), { color: placementColor, label: 'forced placement' })
         else mark(candidateId(action.eliminate), { color: removalColor, mark: 'strike', label: 'can be removed' })
       }
     }
-    if (pending !== null) mark(pending, { color: selectedColor, label: 'selected for linking' })
     return { candidates: candidateMarks, links }
   }, [graph, chains, edges, pending])
 
-  function changeEdges(next: ChainEdge[]) {
+  const preview = useMemo<BoardLink | undefined>(() => {
+    if (pending === null || hovered === null) return
+    const strength = linkTargets.get(hovered)
+    if (!strength) return
+    return {
+      from: chainCandidate(pending), to: chainCandidate(hovered), color: 'var(--chain-preview)', dashed: strength === 'weak',
+    }
+  }, [pending, hovered, linkTargets])
+
+  function changeEdges(next: ChainEdge[], endpoint: number | null = null) {
     setHistory((previous) => [...previous, next])
-    setPending(null)
+    setPending(endpoint)
   }
 
   function select(candidate: Candidate) {
     if (!enabled || !drawing || !graph) return
     const id = candidateId(candidate)
+    const name = `${candidate.digit} in ${cellName(candidate.cell)}`
     if (pending === null) {
       setPending(id)
-      setStatus(`${candidate.digit} in ${cellName(candidate.cell)} selected. Choose a second candidate.`)
+      setStatus(`${name} selected. Choose a linked candidate.`)
       return
     }
     if (pending === id) {
@@ -91,32 +126,33 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, en
     }
     const link: ChainEdge = [pending, id]
     if (!graph.strength(...link)) {
-      setStatus('These candidates share no link. Choose a different second candidate.')
+      setStatus(`No link to ${name}. Choose a different candidate.`)
       return
     }
     const current = edges ?? []
     const existing = current.findIndex((edge) => sameEdge(edge, link))
-    changeEdges(existing === -1 ? [...current, link] : current.filter((_, i) => i !== existing))
-    setStatus(existing === -1 ? 'Link added. Choose the next pair.' : 'Link removed.')
+    if (existing === -1 && !linkTargets.has(id)) {
+      setStatus('That link would break alternation a second time. Choose a different candidate.')
+      return
+    }
+    changeEdges(existing === -1 ? [...current, link] : current.filter((_, i) => i !== existing), id)
+    setStatus(existing === -1
+      ? 'Choose another candidate to extend the chain, or select the last candidate again to end it.'
+      : 'Link removed. Choose a linked candidate to continue.')
   }
 
   function finishLoop(chain: ChainAnalysis) {
-    if (!graph || !edges) return
-    const otherNodes = new Set(edges.flat())
-    for (const node of chain.nodes) otherNodes.delete(node)
-    const result = completeChainLoop(graph, chain.nodes, otherNodes)
-    if (result.status === 'found') {
-      setDrawing(true)
-      changeEdges([...edges, ...result.edges])
-      setStatus(`Loop completed with ${result.edges.length} ${result.edges.length === 1 ? 'link' : 'links'}.`)
-    } else {
-      setStatus(result.status === 'limited' ? 'The search limit was reached before a loop was found.' : 'No loop extension found.')
-    }
+    const extension = loopCompletions.get(chain)
+    if (!edges || !extension) return
+    setDrawing(true)
+    changeEdges([...edges, ...extension])
+    setStatus(`Loop completed with ${extension.length} ${extension.length === 1 ? 'link' : 'links'}.`)
   }
 
   function stop() {
     setDrawing(false)
     setPending(null)
+    setHovered(null)
     setStatus('')
   }
 
@@ -130,9 +166,15 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, en
 
   return {
     drawing: enabled && drawing,
-    annotations, chains, status, pending, select, finishLoop, cancel, stop,
+    annotations: preview ? { ...committed, links: [preview, ...(committed.links ?? [])] } : committed,
+    chains, status, pending, select, finishLoop, cancel, stop,
     hasLinks: Boolean(edges?.length),
     canUndo: history.length > 0,
+    canFinishLoop: (chain: ChainAnalysis) => loopCompletions.has(chain),
+    isLinkTarget: (candidate: Candidate) => linkTargets.has(candidateId(candidate)),
+    hover(candidate: Candidate | null) {
+      setHovered(candidate && candidateId(candidate))
+    },
     toggle() {
       if (drawing) stop()
       else if (enabled) {

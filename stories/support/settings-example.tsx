@@ -38,6 +38,7 @@ export function SettingsExample(args: SettingsProps) {
   const [cellReferenceStyle, setCellReferenceStyle] = useState(args.cellReferenceStyle)
   const [inputSize, setInputSize] = useState(args.inputSize)
   const [workspaceMode, setWorkspaceMode] = useState(args.workspaceMode)
+  const onWorkspaceModeChange = args.setWorkspaceMode
   return <DialogStory label="Settings">{(close) =>
     <Settings {...args} close={() => { args.close(); close() }}
       advancedModes={advancedModes} setAdvancedModes={(value) => { args.setAdvancedModes(value); setAdvancedModes(value) }}
@@ -48,6 +49,6 @@ export function SettingsExample(args: SettingsProps) {
       setCellReferenceStyle={(value) => { args.setCellReferenceStyle(value); setCellReferenceStyle(value) }}
       inputSize={inputSize} setInputSize={(value) => { args.setInputSize(value); setInputSize(value) }}
       workspaceMode={workspaceMode}
-      setWorkspaceMode={(value) => { args.setWorkspaceMode(value); setWorkspaceMode(value) }} />
+      setWorkspaceMode={onWorkspaceModeChange && ((value) => { onWorkspaceModeChange(value); setWorkspaceMode(value) })} />
   }</DialogStory>
 }

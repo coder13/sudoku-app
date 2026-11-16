@@ -24,6 +24,8 @@ type Props = {
   boardRef?: RefObject<HTMLDivElement | null>
   onCell?: (index: number, event: MouseEvent) => void
   onCandidate?: (candidate: Candidate) => void
+  onCandidateHover?: (candidate: Candidate | null) => void
+  isLinkTarget?: (candidate: Candidate) => boolean
   selectedCandidate?: Candidate
   dragSelect?: boolean
   onCellPointerDown?: (index: number, event: PointerEvent) => void
@@ -33,7 +35,7 @@ type Props = {
 export function Board({
   givens, values, position, errors, candidateLayout = 'grid', candidates, annotations, region, label = 'Sudoku grid', showGuides,
   highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
-  selected = [], active = 0, boardRef, onCell, onCandidate, selectedCandidate, dragSelect = false,
+  selected = [], active = 0, boardRef, onCell, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove,
 }: Props) {
   const [candidateFocus, setCandidateFocus] = useState<Candidate>()
@@ -158,10 +160,17 @@ export function Board({
                   if (onCandidate && slotted) {
                     const candidate = { cell: index, digit }
                     const pending = selectedCandidate?.cell === index && selectedCandidate.digit === digit
+                    const linkTarget = isLinkTarget?.(candidate)
+                    const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label,
+                      linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
                     return <button type="button" key={digit} className="chain-candidate" style={style}
-                      aria-label={`${digit} in row ${row}, column ${col}${annotation?.label ? `, ${annotation.label}` : ''}`}
+                      aria-label={candidateLabel} data-link-target={linkTarget || undefined}
                       aria-pressed={pending} data-mark={annotation && (annotation.mark ?? 'ring')}
                       tabIndex={tabCandidate?.cell === index && tabCandidate.digit === digit ? 0 : -1}
+                      onPointerEnter={onCandidateHover && ((event) => {
+                        if (event.pointerType !== 'touch') onCandidateHover(candidate)
+                      })}
+                      onPointerLeave={onCandidateHover && (() => onCandidateHover(null))}
                       onFocus={() => setCandidateFocus(candidate)} onClick={() => onCandidate(candidate)}>{digit}</button>
                   }
                   return <span key={digit} className={highlightClass}
