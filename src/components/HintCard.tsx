@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Lightbulb, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Lightbulb, X } from 'lucide-react'
 import { useLayoutEffect, useRef } from 'react'
 import type { PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
@@ -6,7 +6,7 @@ import type { lessonDiagram } from '../sudoku/lesson-diagram'
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
 type HintAction = { label: string; onClick: () => void }
 
-export function HintCard({ hint, onClose, onShown, navigation, action, secondaryAction, explanation, collapseExplanation, trace }: {
+export function HintCard({ hint, onClose, onShown, navigation, action, secondaryAction, explanation, collapseExplanation, trace, lesson }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
@@ -16,6 +16,7 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
   explanation?: string
   collapseExplanation?: boolean
   trace?: ReturnType<typeof lessonDiagram>['trace']
+  lesson?: { id: string; title: string }
 }) {
   const card = useRef<HTMLElement>(null)
   useLayoutEffect(() => {
@@ -29,6 +30,9 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
         <div>
           <small>Hint</small>
           <h2>{hint.title}</h2>
+          {lesson && <a className="hint-card-lesson" href={`/learn/${lesson.id}`} aria-label={`Review ${lesson.title} lesson`}>
+            <BookOpen size={14} aria-hidden="true" /> Review lesson
+          </a>}
         </div>
         <button type="button" className="icon-button borderless hint-card-close" aria-label="Close hint" onClick={onClose}>
           <X size={18} aria-hidden="true" />

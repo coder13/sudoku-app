@@ -14,6 +14,7 @@ import {
 import { cellReference, describeHint, describeHintDigits, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
 import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
+import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { rectangleSelection } from '../sudoku/selection'
@@ -1177,6 +1178,9 @@ export function Worktable({
   })
 
   const solutionHintPanel = previewing && solutionHintOpen && solutionHintCopy
+  const hintTechnique = solutionHintPanel ? replayedSolutionStep?.deduction.technique
+    : visibleHint && !recovery ? deduction?.technique : undefined
+  const hintLesson = hintTechnique ? lessonRoutes.get(hintTechnique) : undefined
   const reveal = hintStage && hintStage !== 'explanation' ? nextHintReveal[hintStage] : undefined
   const hintAction = solutionHintPanel ? undefined
     : recovery ? fullHint ? { label: 'Restore candidate', onClick: applyCandidateRecovery }
@@ -1191,6 +1195,7 @@ export function Worktable({
       ref={mobile ? mobileHintPanelRef : undefined} aria-live="polite">
       <HintCard hint={solutionHintPanel ? solutionHintCopy
         : hintLoading ? { title: 'Finding a hint…', text: '' } : hintCopy}
+        lesson={hintLesson}
         onClose={() => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)}
         onShown={!solutionHintPanel && deduction ? markHintVisible : undefined}
         action={hintAction}
