@@ -43,7 +43,9 @@ describe('theme palette system', () => {
           ['card and recessed control', theme.surface, theme.surfaceMuted],
           ['input panel and digit button', theme.surface, theme.keyBg],
           ['board and givens', theme.boardBg, theme.givenBg],
+          ['board and two-candidate cells', theme.boardBg, theme.candidateCountBg],
           ['peer and matching cells', theme.peerBg, theme.matchingBg],
+          ['digit and two-candidate highlights', theme.matchingBg, theme.candidateCountBg],
           ['matching and selected cells', theme.matchingBg, theme.selectedBg],
         ]
         for (const [label, first, second] of pairs) {

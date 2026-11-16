@@ -35,6 +35,7 @@ export type ThemeTokens = Record<
   | 'surfaceHoverStrong' | 'surfaceActive' | 'border' | 'borderStrong' | 'lavender'
   | 'focus' | 'controlInk' | 'boardBg' | 'givenBg' | 'gridLine' | 'gridStrong'
   | 'boardOutline' | 'peerBg' | 'matchingBg' | 'selectedBg' | 'selectedBorder'
+  | 'candidateCountBg'
   | 'keyBg' | 'keyBorder' | 'keyInk' | 'noteInk' | 'centerNoteBg' | 'dangerBg'
   | 'dangerInk',
   string
@@ -109,6 +110,7 @@ function buildTokens(seed: ThemeSeed): ThemeTokens {
     boardOutline: seed.gridStrong,
     peerBg: mix(seed.board, seed.selection, 0.25),
     matchingBg: mix(seed.board, seed.selection, 0.52),
+    candidateCountBg: mix(seed.board, seed.note, 0.17),
     selectedBg: seed.selection,
     selectedBorder: seed.selectionBorder,
     keyBg: seed.key,

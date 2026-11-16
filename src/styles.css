@@ -30,6 +30,7 @@
   --board-outline: #463556;
   --peer-bg: #f2eefa;
   --matching-bg: #e6dcfa;
+  --candidate-count-bg: #f6e7cc;
   --selected-bg: #ded0fa;
   --selected-border: #8260cc;
   --key-bg: #faf9fd;
@@ -322,6 +323,7 @@ svg { flex-shrink: 0; }
 .cell.given { background: var(--given-bg); color: var(--ink); font-weight: 800; }
 .cell.entry { color: var(--dark-purple); }
 .cell.peer { background: var(--peer-bg); }
+.cell.candidate-count-match { background: var(--candidate-count-bg); }
 .cell.matching { background: var(--matching-bg); }
 .cell.colored { background: var(--tone); }
 .cell.conflict { background: var(--danger-bg); color: var(--danger-ink); }
@@ -361,6 +363,7 @@ svg { flex-shrink: 0; }
   line-height: 1;
   overflow-wrap: anywhere;
 }
+.candidate-match { color: var(--dark-purple) !important; font-weight: 900; text-decoration: underline 2px; text-underline-offset: 1px; }
 .draft-tip { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(calc(100% - 20px), 509px); margin: 18px auto 0; translate: 10px 0; color: var(--muted); font-size: 13px; }
 
 .controls { grid-area: controls; container-type: inline-size; position: relative; display: grid; place-items: center; padding: 16px; min-width: 0; }

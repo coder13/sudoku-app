@@ -1,7 +1,7 @@
 import {
   type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useEffect, useMemo, useRef, useState,
 } from 'react'
-import { Check, CheckCheck, CircleCheck, CircleX, Info, MoreHorizontal, PencilLine } from 'lucide-react'
+import { Braces, Check, CheckCheck, CircleCheck, CircleX, Info, MoreHorizontal, PencilLine } from 'lucide-react'
 import { runEngine, type Analysis } from '../sudoku/engine'
 import {
   COLORS, conflictsOf, enter, fillEntries, formatTime, isSolved, redo, replaceCandidates, singleFromCandidates, undo, valuesOf,
@@ -107,6 +107,7 @@ export function Worktable({
   const [active, setActive] = useState(start)
   const [selected, setSelected] = useState<number[]>([])
   const [selectedDigit, setSelectedDigit] = useState<number | null>(null)
+  const [highlightCandidatePairs, setHighlightCandidatePairs] = useState(false)
   const [pencil, setPencil] = useState(false)
   const [candidateKind, setCandidateKind] = useState<'center' | 'corner'>('corner')
   const [colorMode, setColorMode] = useState(false)
@@ -189,6 +190,7 @@ export function Worktable({
     if (inputMode === 'color' && digit > COLORS.length) return
     if (digit > 0) setEraseMode(false)
     if (!selected.length) {
+      setHighlightCandidatePairs(false)
       setSelectedDigit((current) => digit === 0 || current === digit ? null : digit)
       return
     }
@@ -356,6 +358,13 @@ export function Worktable({
                 <button onClick={() => { void solveAllSingles() }} disabled={busy}>
                   <CheckCheck size={17} /> Solve all singles
                 </button>
+                <button aria-pressed={highlightCandidatePairs} onClick={() => {
+                  setSelectedDigit(null)
+                  setHighlightCandidatePairs((current) => !current)
+                  setPuzzleMenuOpen(false)
+                }}>
+                  <Braces size={17} /> Highlight {'{x,y}'} cells
+                </button>
                 <div className="app-menu-separator" />
                 <button onClick={() => { void runCheck() }} disabled={busy}>
                   <Check size={17} /> Check puzzle
@@ -367,6 +376,7 @@ export function Worktable({
         <Board game={game} values={values} errors={errors} candidateLayout={advancedModes.candidateLayout}
           showGuides={appearance.showGuides}
           highlightedDigit={mode === 'color' ? null : selectedDigit} selected={selected} active={active}
+          highlightCandidateCount={highlightCandidatePairs ? 2 : null}
           boardRef={boardRef} onCell={clickCell} />
         {draft && <div className="draft-tip"><PencilLine size={16} /> Enter the starting digits, then save your puzzle.</div>}
         {!draft && <div className="puzzle-footer">

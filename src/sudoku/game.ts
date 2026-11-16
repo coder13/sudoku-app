@@ -75,6 +75,16 @@ export function conflictsOf(values: string): Set<number> {
   return conflicts
 }
 
+export function hasCandidate(mask: number, digit: number): boolean {
+  return digit >= 1 && digit <= 9 && (mask & (1 << (digit - 1))) !== 0
+}
+
+export function candidateCount(mask: number): number {
+  let count = 0
+  for (let remaining = mask & 0x1ff; remaining; remaining &= remaining - 1) count++
+  return count
+}
+
 export function isSolved(game: Game): boolean {
   const values = valuesOf(game)
   return game.source !== 'draft' && !values.includes('0') && !conflictsOf(values).size

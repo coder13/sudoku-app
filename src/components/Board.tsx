@@ -1,5 +1,5 @@
 import type { MouseEvent, RefObject } from 'react'
-import { COLORS, DIGITS, marksOf, peer, type CandidateLayout, type Game } from '../sudoku/game'
+import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Game } from '../sudoku/game'
 
 type Props = {
   game: Game
@@ -8,13 +8,14 @@ type Props = {
   candidateLayout: CandidateLayout
   showGuides: boolean
   highlightedDigit: number | null
+  highlightCandidateCount?: number | null
   selected: number[]
   active: number
   boardRef: RefObject<HTMLDivElement | null>
   onCell: (index: number, event: MouseEvent) => void
 }
 
-export function Board({ game, values, errors, candidateLayout, showGuides, highlightedDigit, selected, active, boardRef, onCell }: Props) {
+export function Board({ game, values, errors, candidateLayout, showGuides, highlightedDigit, highlightCandidateCount, selected, active, boardRef, onCell }: Props) {
   const focusValue = selected.includes(active) ? values[active] : highlightedDigit ? String(highlightedDigit) : ''
   return (
     <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}`}>
@@ -28,12 +29,15 @@ export function Board({ game, values, errors, candidateLayout, showGuides, highl
                 const index = (row - 1) * 9 + col - 1
                 const value = Number(values[index])
                 const fixed = game.givens[index] !== '0'
+                const candidateMask = game.position.center[index] | game.position.corner[index]
                 const centerCandidates = marksOf(game.position.center[index])
                 const cornerCandidates = marksOf(game.position.corner[index])
-                const gridCandidates = marksOf(game.position.center[index] | game.position.corner[index])
+                const gridCandidates = marksOf(candidateMask)
                 const color = game.position.colors[index]
                 const inSelection = selected.includes(index)
                 const error = errors.has(index)
+                const candidateMatches = !value && highlightedDigit != null && hasCandidate(candidateMask, highlightedDigit)
+                const candidateCountMatches = !value && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
                 const label = [
                   `Row ${row}, column ${col}`,
                   value ? (fixed ? `given ${value}` : String(value)) : 'empty',
@@ -41,13 +45,16 @@ export function Board({ game, values, errors, candidateLayout, showGuides, highl
                   !value && candidateLayout === 'center-corner' && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
                   !value && candidateLayout === 'center-corner' && cornerCandidates.length ? `corner candidates ${cornerCandidates.join(' ')}` : '',
                   color ? COLORS[color - 1] : '',
+                  candidateMatches ? `candidate ${highlightedDigit} highlighted` : '',
+                  candidateCountMatches ? `${highlightCandidateCount}-candidate cell highlighted` : '',
                   error ? 'incorrect' : '',
                 ].filter(Boolean).join(', ')
                 const classes = [
                   'cell',
                   fixed ? 'given' : 'entry',
                   selected.some((cell) => peer(index, cell)) ? 'peer' : '',
-                  value && String(value) === focusValue ? 'matching' : '',
+                  (value && String(value) === focusValue) || candidateMatches ? 'matching' : '',
+                  candidateCountMatches ? 'candidate-count-match' : '',
                   color ? `colored color-${color}` : '',
                   error ? 'conflict' : '',
                   inSelection ? 'selected' : '',
@@ -60,19 +67,19 @@ export function Board({ game, values, errors, candidateLayout, showGuides, highl
                         {candidateLayout === 'grid' && gridCandidates.length > 0 && (
                           <span className="candidate-marks" aria-hidden="true">
                             {gridCandidates.map((digit) => (
-                              <span key={digit} style={{ gridArea: `${Math.floor((digit - 1) / 3) + 1} / ${(digit - 1) % 3 + 1}` }}>{digit}</span>
+                              <span key={digit} className={digit === highlightedDigit ? 'candidate-match' : undefined} style={{ gridArea: `${Math.floor((digit - 1) / 3) + 1} / ${(digit - 1) % 3 + 1}` }}>{digit}</span>
                             ))}
                           </span>
                         )}
                         {candidateLayout === 'center-corner' && cornerCandidates.length > 0 && (
                           <span className="candidate-marks" aria-hidden="true">
                             {cornerCandidates.map((digit) => (
-                              <span key={digit} style={{ gridArea: `${Math.floor((digit - 1) / 3) + 1} / ${(digit - 1) % 3 + 1}` }}>{digit}</span>
+                              <span key={digit} className={digit === highlightedDigit ? 'candidate-match' : undefined} style={{ gridArea: `${Math.floor((digit - 1) / 3) + 1} / ${(digit - 1) % 3 + 1}` }}>{digit}</span>
                             ))}
                           </span>
                         )}
                         {candidateLayout === 'center-corner' && centerCandidates.length > 0 && (
-                          <span className="center-marks" aria-hidden="true">{centerCandidates.join('')}</span>
+                          <span className="center-marks" aria-hidden="true">{centerCandidates.map((digit) => <span key={digit} className={digit === highlightedDigit ? 'candidate-match' : undefined}>{digit}</span>)}</span>
                         )}
                       </>
                     )}

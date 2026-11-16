@@ -2,8 +2,18 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
 import {
-  conflictsOf, enter, fillEntries, marksOf, redo, replaceCandidates, singleFromCandidates, STARTER_GAME, undo, valuesOf,
+  candidateCount, conflictsOf, enter, fillEntries, hasCandidate, marksOf, redo, replaceCandidates, singleFromCandidates,
+  STARTER_GAME, undo, valuesOf,
 } from '../src/sudoku/game.ts'
+
+test('candidate matching treats masks as sets', () => {
+  const pair = (1 << (2 - 1)) | (1 << (7 - 1))
+  assert.equal(candidateCount(pair), 2)
+  assert.equal(candidateCount(pair | (1 << (7 - 1))), 2)
+  assert.equal(hasCandidate(pair, 2), true)
+  assert.equal(hasCandidate(pair, 7), true)
+  assert.equal(hasCandidate(pair, 4), false)
+})
 
 test('all share formats round-trip to the original givens', () => {
   const formats: ShareFormat[] = ['link', 'givens', 'grid', 'hodoku', 'exchange', 'coach']
