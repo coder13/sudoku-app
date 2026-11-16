@@ -1250,6 +1250,15 @@ export function Worktable({
     aria-keyshortcuts={shortcutLabel(shortcuts.solveSingles)}>
     <CheckCheck size={17} /> Solve all singles <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.solveSingles)}</kbd>
   </button>
+  const analysisAction = !draft && !solved && !variant && (
+    <button onClick={() => {
+      setPuzzleMenuOpen(false)
+      setActionsOpen(false)
+      setAnalysisOpen(true)
+    }}>
+      <ListFilter size={17} /> Available techniques
+    </button>
+  )
   const commonSolvingMenuItems = <>
     <button onClick={() => { void generateCandidates() }} disabled={busy || solved}
       aria-keyshortcuts={shortcutLabel(shortcuts.generateCandidates)}>
@@ -1269,15 +1278,6 @@ export function Worktable({
     </button>
     {analysisAction}
   </>
-  const analysisAction = !draft && !solved && !variant && (
-    <button onClick={() => {
-      setPuzzleMenuOpen(false)
-      setActionsOpen(false)
-      setAnalysisOpen(true)
-    }}>
-      <ListFilter size={17} /> Available techniques
-    </button>
-  )
   const puzzleOptionItems = <>
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
