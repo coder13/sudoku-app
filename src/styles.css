@@ -469,7 +469,16 @@ svg { flex-shrink: 0; }
   min-width: 0;
 }
 .puzzle:has(.board-frame.guides-hidden) { --board-guide-width: 0px; --board-guide-offset: 0px; }
-.puzzle-actions { justify-content: flex-end; margin-bottom: 14px; }
+.puzzle {
+  display: grid;
+  grid-template: "metadata actions" auto "grid grid" auto / minmax(0, 1fr) auto;
+  align-content: start;
+  gap: 14px 8px;
+}
+.puzzle:has(.draft-tip) { grid-template: ". actions" auto "grid grid" auto "draft draft" auto / minmax(0, 1fr) auto; }
+.puzzle-actions { grid-area: actions; justify-content: flex-end; margin: 0; }
+.puzzle-stage { grid-area: grid; }
+.draft-tip { grid-area: draft; }
 .puzzle-menu-wrap { position: relative; }
 .puzzle-menu { width: 235px; }
 .puzzle-menu button { min-height: 38px; font-size: 13px; }
@@ -478,7 +487,7 @@ svg { flex-shrink: 0; }
 .puzzle-grid-reservation { visibility: hidden; pointer-events: none; }
 .puzzle-placeholder-message { position: absolute; inset: 0; display: grid; place-items: center; overflow: auto; padding: 16px; }
 .empty-puzzle-content { display: grid; justify-items: center; align-content: center; gap: 14px; text-align: center; }
-.puzzle[data-placeholder] .puzzle-footer { visibility: hidden; }
+.puzzle[data-placeholder] .puzzle-metadata { visibility: hidden; }
 .puzzle-pause-trigger[aria-pressed="true"] { color: var(--dark-purple); }
 .pause-toggle-icons { position: relative; display: block; width: 18px; height: 18px; }
 .pause-toggle-icons svg {
@@ -613,15 +622,16 @@ svg { flex-shrink: 0; }
   .hint-card-actions { grid-column: 3; grid-row: 1; }
 }
 
-.puzzle-footer {
-  width: calc(var(--board-frame-width) - var(--board-guide-width));
-  min-height: 13px;
+.puzzle-metadata {
+  grid-area: metadata;
+  min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 9px;
-  margin: 12px auto 0;
-  translate: var(--board-guide-offset) 0;
+  align-self: center;
+  gap: 6px 9px;
 }
+
 .puzzle-difficulty { color: var(--muted); font-size: 13px; font-weight: 720; }
 .puzzle-auto-mode { color: var(--muted); font-size: 12px; }
 .puzzle-auto-mode::before { content: '·'; margin-inline-end: 6px; }
@@ -632,7 +642,7 @@ svg { flex-shrink: 0; }
   color: var(--dark-purple);
 }
 .duration-counter {
-  margin-inline-start: auto;
+  margin-inline-start: 0;
   color: var(--muted);
   font-size: 13px;
   font-weight: 720;
@@ -1786,8 +1796,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .surface { --radius: 14px; }
   .puzzle-column { align-self: center; }
   .puzzle { min-height: 0; padding: 10px 11px; overflow: hidden; }
-  .puzzle-actions { gap: 5px; margin-bottom: 8px; }
-  .puzzle-footer { margin-top: 7px; }
+  .puzzle-actions { gap: 5px; }
   .puzzle-actions .button { padding-inline: 8px; font-size: 12px; min-height: 38px; }
   .puzzle-actions .icon-button { width: 35px; min-height: 38px; }
   .puzzle { --board-frame-width: min(calc(100vw - 48px), max(130px, calc(100dvh - var(--mobile-controls-height, 280px) - 220px))); }
@@ -2011,20 +2020,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     grid-template-rows: auto auto;
     align-content: space-evenly;
   }
-  .standard-workspace-page .puzzle {
-    display: grid;
-    grid-template:
-      "metadata actions" auto
-      "grid grid" auto / minmax(0, 1fr) auto;
-    gap: 4px 8px;
-    padding: 6px 8px 8px;
-  }
-  .standard-workspace-page .puzzle:has(.draft-tip) {
-    grid-template:
-      ". actions" auto
-      "grid grid" auto
-      "draft draft" auto / minmax(0, 1fr) auto;
-  }
+  .standard-workspace-page .puzzle { gap: 4px 8px; padding: 6px 8px 8px; }
   .standard-workspace-page .puzzle-actions { grid-area: actions; margin: 0; }
   .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger) { width: 44px; min-height: 44px; }
   .mobile-puzzle-menu { max-width: calc(100vw - 16px); overscroll-behavior: contain; }
@@ -2041,13 +2037,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .mobile-solving-controls { gap: 8px; }
   .mobile-solving-controls > .workspace-controls { grid-area: auto; }
-  .standard-workspace-page .puzzle-footer {
-    grid-area: metadata;
-    width: auto;
-    margin: 0;
-    translate: none;
-  }
-  .standard-workspace-page .duration-counter { margin-inline-start: 0; }
   .standard-workspace-page .draft-tip {
     grid-area: draft;
     width: auto;

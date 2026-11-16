@@ -1346,6 +1346,15 @@ export function Worktable({
       <div className="puzzle-column" ref={puzzlePanelRef}>
         <section className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
           style={{ '--board-font-scale': appearance.gridTextScale } as CSSProperties}>
+        {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
+          {difficulty && <span className="puzzle-difficulty">
+            <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
+          </span>}
+          {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
+          <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
+            {formatTime(game.elapsed)}
+          </span>
+        </div>}
         <div className="puzzle-actions">
           {presentationDraft ? (
             <>
@@ -1406,15 +1415,7 @@ export function Worktable({
           ) : livePuzzleStage}
         </div>
         {presentationDraft && <div className="draft-tip"><PencilLine size={16} /> Enter the givens, then save your puzzle.</div>}
-        {(!draft || placeholder) && <div className="puzzle-footer" aria-hidden={Boolean(placeholder) || undefined}>
-          {difficulty && <span className="puzzle-difficulty">
-            <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
-          </span>}
-          {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
-          <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
-            {formatTime(game.elapsed)}
-          </span>
-        </div>}
+
         </section>
       </div>
   )
