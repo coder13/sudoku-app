@@ -1,10 +1,10 @@
 import {
   type CSSProperties, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from 'react'
-import { Braces, Check, CheckCheck, Eye, Lightbulb, Link2, ListFilter, ListOrdered, MoreHorizontal, Palette, PencilLine, RotateCcw, Share2, X } from 'lucide-react'
+import { Braces, Check, CheckCheck, Eye, Lightbulb, ListFilter, ListOrdered, MoreHorizontal, PencilLine, RotateCcw, Share2, X } from 'lucide-react'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { formatPuzzleRating } from '../sudoku/difficulty'
-import { EngineError, replayStep, runEngine, type Deduction, type Difficulty, type HintChoice } from '../sudoku/engine'
+import { EngineError, replayStep, runEngine, type Deduction, type DeductionAction, type Difficulty, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, applyDeduction, candidateCount, completeCandidateMasks, conflictsOf, enter, fillEntries, formatTime, isSolved, redo, replaceCandidates, restartGame,
   singleFromCandidates, undo, valuesOf,
@@ -25,7 +25,7 @@ import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
 import { HintCard } from './HintCard'
-import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
+import { useMobileLayout } from './mobile-layout'
 import { Modal } from './Modal'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
@@ -144,7 +144,6 @@ export function Worktable({
   const [selectedDigit, setSelectedDigit] = useState<number | null>(null)
   const [selectedColor, setSelectedColor] = useState<number | null>(null)
   const [cellColorBrush, setCellColorBrush] = useState<number | null>(null)
-  const [mobileTool, setMobileTool] = useState<'colors' | 'chains' | null>(null)
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = useState(false)
   const [highlightMode, setHighlightMode] = useState(false)
@@ -161,7 +160,8 @@ export function Worktable({
   const [notes, setNotes] = useState<{ values: string; masks: number[] | null; failed?: boolean }>()
   const [hintState, setHint] = useState<HintState | null>(null)
   const [hintRevealed, setHintRevealed] = useState(false)
-  const [desktop, setDesktop] = useState(false)
+  const mobile = useMobileLayout()
+  const desktop = !mobile
   const [solutionPath, setSolutionPath] = useState<SolutionPathState | null>(null)
   const [solutionPathRevealed, setSolutionPathRevealed] = useState(false)
   const [solutionStep, setSolutionStep] = useState(0)
@@ -175,6 +175,9 @@ export function Worktable({
   const puzzlePanelRef = useRef<HTMLDivElement>(null)
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const hintButtonRef = useRef<HTMLButtonElement>(null)
+  const mobileHintPanelRef = useRef<HTMLDivElement>(null)
+  const hintReturnFocus = useRef<'hint' | 'actions' | null>(null)
   const dragSelection = useRef<{ start: number; base: number[]; additive: boolean; moved: boolean } | null>(null)
   const suppressCellClick = useRef(false)
   const pathRequest = useRef(0)
@@ -187,9 +190,10 @@ export function Worktable({
     ? advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
     : 'value'
   const solved = isSolved(game)
+  const mobileHintOpen = mobile && hintRevealed && !draft && !solved
   const hint = hintState?.values === values && hintState.eliminations === eliminations ? hintState : null
   const visibleHint = hintRevealed ? hint : null
-  const hintOpen = visibleHint !== null || solutionHintOpen
+  const hintOpen = mobileHintOpen || visibleHint !== null || solutionHintOpen
   const deduction = visibleHint?.choices[visibleHint.index]
   const hintCopy = deduction
     ? describeHint(deduction, { difficulty: techniqueDifficulties[deduction.technique], cellReferenceStyle })
@@ -202,16 +206,14 @@ export function Worktable({
   const showResults = solved && solvedView === 'results'
   const showDifficulty = solved && solvedView === 'difficulty'
   const showSolvedGrid = solved && solvedView === 'grid'
+  const mobileResults = mobile && (showResults || showDifficulty)
   const { id, givens, difficulty, score } = game
   const ratingPending = !draft && (difficulty === undefined || score === undefined) && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const previewing = desktop && !draft && solutionPathRevealed && solutionPath !== null
   const disabled = previewing
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
-  const mobileAdvanced = !desktop && workspaceMode === 'advanced'
-  const showMobileColors = mobileAdvanced && !cellColorsDisabled && mobileTool === 'colors'
-  const showMobileChains = mobileAdvanced && !draft && !solved && mobileTool === 'chains'
-  const chainsVisible = (advancedWorkspace && showRightPanel && desktopChainsVisible) || showMobileChains
+  const chainsVisible = advancedWorkspace && showRightPanel && desktopChainsVisible
   const currentNotes = notes?.values === values ? notes : undefined
   const masks = currentNotes?.masks
   const hasSingles = useMemo(() => !draft && !solved && Boolean(masks &&
@@ -221,7 +223,7 @@ export function Worktable({
   [chainsVisible, draft, solved, previewing, masks, eliminations])
   const chainGraph = useMemo(() => chainMasks && makeChainGraph(chainMasks), [chainMasks])
   const sketch = useChainSketch(chainGraph, `${id}:${values}:${eliminations?.join(',') ?? ''}`, Boolean(chainGraph))
-  const canPaint = !cellColorsDisabled && (advancedWorkspace ? showRightPanel : showMobileColors)
+  const canPaint = !cellColorsDisabled && advancedWorkspace && showRightPanel
   const brush = canPaint ? cellColorBrush : null
   const trace = solutionPath?.status === 'ready' ? solutionPath.trace : undefined
   const previewPosition = trace?.positions?.[solutionStep]
@@ -256,6 +258,7 @@ export function Worktable({
     setResetOpen(false)
     setHint(null)
     setHintRevealed(false)
+    hintReturnFocus.current = null
     setSolutionPath(null)
     setSolutionPathRevealed(false)
     setSolutionStep(0)
@@ -280,21 +283,12 @@ export function Worktable({
   }, [])
 
   useEffect(() => {
-    const query = window.matchMedia(MOBILE_LAYOUT_QUERY)
-    let wasDesktop = !query.matches
-    function update() {
-      const nextDesktop = !query.matches
-      setDesktop(nextDesktop)
-      if (wasDesktop && !nextDesktop) {
-        pathRequest.current++
-        setSolutionPath(null)
-      }
-      wasDesktop = nextDesktop
-    }
-    update()
-    query.addEventListener('change', update)
-    return () => query.removeEventListener('change', update)
-  }, [])
+    if (!mobile) return
+    pathRequest.current++
+    setSolutionPath(null)
+    setSolutionPathRevealed(false)
+    setSolutionHintOpen(false)
+  }, [mobile])
 
   useEffect(() => {
     setSolutionPath(null)
@@ -366,13 +360,23 @@ export function Worktable({
   useEffect(() => {
     if (!hintOpen) return
     function closeHint(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return
+      if (event.key !== 'Escape' || (event.target instanceof HTMLElement && event.target.closest('dialog[open]'))) return
       if (solutionHintOpen) setSolutionHintOpen(false)
       else setHintRevealed(false)
     }
     window.addEventListener('keydown', closeHint)
     return () => window.removeEventListener('keydown', closeHint)
-  }, [desktop, hintOpen, solutionHintOpen])
+  }, [hintOpen, solutionHintOpen])
+
+  useEffect(() => {
+    if (mobileHintOpen) {
+      mobileHintPanelRef.current?.querySelector<HTMLButtonElement>('.hint-card-close')?.focus({ preventScroll: true })
+    } else if (hintReturnFocus.current) {
+      const trigger = hintReturnFocus.current === 'hint' ? hintButtonRef.current : puzzleMenuButtonRef.current
+      if (!solved) trigger?.focus({ preventScroll: true })
+      hintReturnFocus.current = null
+    }
+  }, [mobileHintOpen, solved])
 
   useEffect(() => {
     if (!solved) setSolvedView('results')
@@ -380,7 +384,7 @@ export function Worktable({
   }, [solved, showSolvedGrid])
 
   useEffect(() => {
-    if (!puzzleMenuOpen) return
+    if (!puzzleMenuOpen || mobile) return
 
     function handlePointerDown(event: PointerEvent) {
       if (!puzzleMenuRef.current?.contains(event.target as Node)) setPuzzleMenuOpen(false)
@@ -398,7 +402,7 @@ export function Worktable({
       document.removeEventListener('pointerdown', handlePointerDown)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [puzzleMenuOpen])
+  }, [mobile, puzzleMenuOpen])
 
   useEffect(() => {
     function finishDragSelection() {
@@ -565,7 +569,7 @@ export function Worktable({
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       const target = event.target
-      if (previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || dialogResult !== null || resetOpen || cancelDraftOpen || event.altKey ||
+      if (previewing || mobileHintOpen || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || dialogResult !== null || resetOpen || cancelDraftOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
@@ -713,9 +717,13 @@ export function Worktable({
     }
   }
 
-  async function showHint(limit: 10 | 'all' = 10) {
+  async function showHint(limit: 10 | 'all' = 10, source: 'hint' | 'actions' = 'actions') {
     if (busy || solved) return
     if (sketch.drawing) sketch.stop()
+    if (mobile) {
+      hintReturnFocus.current = source
+      setHint(null)
+    }
     setPuzzleMenuOpen(false)
     setHintRevealed(true)
     setBusy(true)
@@ -744,14 +752,27 @@ export function Worktable({
     })
   }
 
+  function applyToCurrentPosition(actions: readonly DeductionAction[], candidates: readonly number[]) {
+    let applied = false
+    edit((current) => {
+      if (valuesOf(current) !== values || current.position.eliminations !== eliminations) return current
+      const next = applyDeduction(current, actions, candidates)
+      applied = next !== current
+      return next
+    })
+    return applied
+  }
+
+  function applyChainEdits(actions: readonly DeductionAction[]) {
+    if (chainMasks && applyToCurrentPosition(actions, chainMasks)) sketch.stop()
+  }
+
   function applyHint() {
     if (!deduction || !hintCandidates) return
-    roomStore.update(game.id, (current) => valuesOf(current) === values && current.position.eliminations === eliminations
-      ? applyDeduction(current, deduction.actions, hintCandidates)
-      : current)
+    applyToCurrentPosition(deduction.actions, hintCandidates)
     setHint(null)
     setHintRevealed(false)
-    puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+    if (!mobile) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
   }
 
   async function showSolutionPath(force = false) {
@@ -798,9 +819,11 @@ export function Worktable({
   })
 
   const solutionHintPanel = previewing && solutionHintOpen && solutionHintCopy
-  const hintPanel = (solutionHintPanel || visibleHint) && (
-    <div className="hint-dock" aria-live="polite">
-      <HintCard hint={solutionHintPanel ? solutionHintCopy : hintCopy}
+  const hintPanel = (solutionHintPanel || visibleHint || mobileHintOpen) && (
+    <div className={`hint-dock${mobile ? ' workspace-controls mobile-hint-panel' : ''}`}
+      ref={mobile ? mobileHintPanelRef : undefined} aria-live="polite">
+      <HintCard hint={solutionHintPanel ? solutionHintCopy
+        : mobileHintOpen && !visibleHint ? { title: 'Finding a hint…', text: '' } : hintCopy}
         onClose={() => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)}
         onApply={!solutionHintPanel && deduction && hintCandidates ? applyHint : undefined}
         explanation={solutionHintPanel
@@ -821,7 +844,57 @@ export function Worktable({
     : currentNotes?.failed ? 'Candidates couldn’t load.'
     : currentNotes?.masks === null ? 'Resolve the grid conflicts to draw links.'
     : 'Loading candidates…'
-  const chainsPanel = <ChainsPanel sketch={sketch} unavailable={chainUnavailable} inspection={chainInspection} />
+  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} unavailable={chainUnavailable} inspection={chainInspection} />
+  const completionPanel = showResults ? (
+    <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
+      ratingPending={ratingPending} shortcutEnabled={!modalOpen && !puzzleMenuOpen && !cancelDraftOpen}
+      showGuides={appearance.showGuides} onChooseDifficulty={() => setSolvedView('difficulty')} />
+  ) : showDifficulty ? (
+    <PuzzleDifficulty value={preferredDifficulty} showGuides={appearance.showGuides}
+      onBack={() => setSolvedView('results')} onChange={onDifficultyChange} />
+  ) : null
+  const puzzleMenu = puzzleMenuOpen && (
+    <div className="app-menu puzzle-menu" id="puzzle-menu">
+      {previewing ? <button onClick={closeSolutionPath} disabled={busy}>
+        <ListOrdered size={17} /> Return to puzzle
+      </button> : <>
+        <button onClick={() => { void generateCandidates() }} disabled={busy || solved}>
+          <PencilLine size={17} /> Generate all candidates
+        </button>
+        <button onClick={() => { void solveAllSingles() }} disabled={busy || solved || !hasSingles}>
+          <CheckCheck size={17} /> Solve all singles
+        </button>
+        <button aria-pressed={highlightCandidatePairs} disabled={solved} onClick={() => {
+          setSelectedDigit(null)
+          setHighlightCandidatePairs((current) => !current)
+          setPuzzleMenuOpen(false)
+        }}>
+          <Braces size={17} /> Highlight {'{x,y}'} cells
+        </button>
+        <div className="app-menu-separator" />
+        <button onClick={() => { void showHint() }} disabled={busy || solved}>
+          <Lightbulb size={17} /> View hint
+        </button>
+        <button onClick={() => { void showHint('all') }} disabled={busy || solved}>
+          <ListFilter size={17} /> Analyze all moves
+        </button>
+        {desktop && <button onClick={() => { void showSolutionPath() }} disabled={busy}>
+          <ListOrdered size={17} /> Show solution
+        </button>}
+        <div className="app-menu-separator" />
+        <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
+          <Share2 size={17} /> Share puzzle
+        </button>
+        <button onClick={() => { void runCheck() }} disabled={busy}>
+          <Check size={17} /> Check puzzle
+        </button>
+        <button onClick={() => { setPuzzleMenuOpen(false); setResetOpen(true) }}>
+          <RotateCcw size={17} /> Reset puzzle
+        </button>
+      </>}
+    </div>
+  )
+  const canSelectCell = !mobileResults && !mobileHintOpen
   const puzzlePanel = (
       <div className="puzzle-column" ref={puzzlePanelRef}>
         <section className="surface puzzle" aria-label={game.title}
@@ -837,63 +910,17 @@ export function Worktable({
               {solved && !previewing && <button className="button soft puzzle-view-toggle" aria-pressed={showSolvedGrid} onClick={() => {
                 setSolvedView(showSolvedGrid ? 'results' : 'grid')
               }}>{showSolvedGrid ? 'View results' : 'View grid'}</button>}
-              {mobileAdvanced && !cellColorsDisabled && (
-                <button type="button" className={`button ${showMobileColors ? 'soft' : 'secondary'}`} aria-label="Cell colors"
-                  aria-expanded={showMobileColors} onClick={() => setMobileTool(showMobileColors ? null : 'colors')}>
-                  <Palette size={16} aria-hidden="true" /> Colors
-                </button>
-              )}
-              {mobileAdvanced && !solved && (
-                <button type="button" className={`button ${showMobileChains ? 'soft' : 'secondary'}`}
-                  aria-expanded={showMobileChains} onClick={() => setMobileTool(showMobileChains ? null : 'chains')}>
-                  <Link2 size={16} aria-hidden="true" /> Chains
-                </button>
-              )}
               <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
                 <button ref={puzzleMenuButtonRef} className="icon-button borderless puzzle-menu-trigger" aria-label="Open puzzle actions"
-                  title="Puzzle actions" aria-expanded={puzzleMenuOpen} aria-controls="puzzle-menu"
-                  onClick={() => setPuzzleMenuOpen((open) => !open)}>
+                  title="Puzzle actions" aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
+                  aria-haspopup={mobile ? 'dialog' : undefined}
+                  onClick={(event) => {
+                    if (mobile) event.currentTarget.focus({ preventScroll: true })
+                    setPuzzleMenuOpen((open) => !open)
+                  }}>
                   <MoreHorizontal size={20} />
                 </button>
-                {puzzleMenuOpen && <div className="app-menu puzzle-menu" id="puzzle-menu">
-                  {previewing ? <button onClick={closeSolutionPath} disabled={busy}>
-                    <ListOrdered size={17} /> Return to puzzle
-                  </button> : <>
-                    <button onClick={() => { void generateCandidates() }} disabled={busy || solved}>
-                      <PencilLine size={17} /> Generate all candidates
-                    </button>
-                    <button onClick={() => { void solveAllSingles() }} disabled={busy || solved || !hasSingles}>
-                      <CheckCheck size={17} /> Solve all singles
-                    </button>
-                    <button aria-pressed={highlightCandidatePairs} disabled={solved} onClick={() => {
-                      setSelectedDigit(null)
-                      setHighlightCandidatePairs((current) => !current)
-                      setPuzzleMenuOpen(false)
-                    }}>
-                      <Braces size={17} /> Highlight {'{x,y}'} cells
-                    </button>
-                    <div className="app-menu-separator" />
-                    <button onClick={() => { void showHint() }} disabled={busy || solved}>
-                      <Lightbulb size={17} /> View hint
-                    </button>
-                    <button onClick={() => { void showHint('all') }} disabled={busy || solved}>
-                      <ListFilter size={17} /> Analyze all moves
-                    </button>
-                    {desktop && <button onClick={() => { void showSolutionPath() }} disabled={busy}>
-                      <ListOrdered size={17} /> Show solution
-                    </button>}
-                    <div className="app-menu-separator" />
-                    <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
-                      <Share2 size={17} /> Share puzzle
-                    </button>
-                    <button onClick={() => { void runCheck() }} disabled={busy}>
-                      <Check size={17} /> Check puzzle
-                    </button>
-                    <button onClick={() => { setPuzzleMenuOpen(false); setResetOpen(true) }}>
-                      <RotateCcw size={17} /> Reset puzzle
-                    </button>
-                  </>}
-                </div>}
+                {!mobile && puzzleMenu}
               </div>
             </>
           )}
@@ -903,27 +930,22 @@ export function Worktable({
             <Board givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
               candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
               label="Solution preview" showGuides={appearance.showGuides} />
-          ) : showResults ? (
-            <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
-              ratingPending={ratingPending} shortcutEnabled={!modalOpen && !cancelDraftOpen} showGuides={appearance.showGuides}
-              onChooseDifficulty={() => setSolvedView('difficulty')} />
-          ) : showDifficulty ? (
-            <PuzzleDifficulty value={preferredDifficulty} showGuides={appearance.showGuides}
-              onBack={() => setSolvedView('results')} onChange={onDifficultyChange} />
-          ) : sketch.drawing && chainMasks ? (
+          ) : completionPanel && !mobileResults ? completionPanel
+          : sketch.drawing && chainMasks ? (
             <Board givens={givens} values={values} position={game.position} errors={errors}
               candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
-              showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select}
+              showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
+              isLinkTarget={sketch.isLinkTarget}
               selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
           ) : (
             <Board givens={game.givens} values={values} position={game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
               candidates={hintDiagram ? hintCandidates : undefined} annotations={hintDiagram?.annotations}
               showGuides={appearance.showGuides}
               highlighting={hintDiagram ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
-              highlightedDigit={selectedDigit} selected={selected} active={active}
+              highlightedDigit={mobileResults ? null : selectedDigit} selected={mobileResults ? undefined : selected} active={active}
               highlightCandidateCount={!hintDiagram && highlightCandidatePairs ? 2 : null}
-              boardRef={boardRef} onCell={clickCell} dragSelect={highlightMode}
-              onCellPointerDown={startCellDrag} onCellPointerMove={continueCellDrag} />
+              boardRef={boardRef} onCell={canSelectCell ? clickCell : undefined} dragSelect={canSelectCell && highlightMode}
+              onCellPointerDown={canSelectCell ? startCellDrag : undefined} onCellPointerMove={canSelectCell ? continueCellDrag : undefined} />
           )}
         </div>
         {draft && <div className="draft-tip"><PencilLine size={16} /> Enter the givens, then save your puzzle.</div>}
@@ -934,7 +956,6 @@ export function Worktable({
           </span>
         </div>}
         </section>
-        {!desktop && hintPanel}
       </div>
   )
   const inputPanel = (
@@ -943,7 +964,6 @@ export function Worktable({
           setCellColorBrush(null); setEraseMode(false); setColorMode(false); setHighlightMode(false); setPencil((current) => !current)
         }}
           candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
-          toolPanel={showMobileColors ? cellColorsPanel : showMobileChains ? chainsPanel : undefined}
           colorMode={colorMode} toggleColorMode={() => {
             setCellColorBrush(null); setEraseMode(false); setPencil(false); setHighlightMode(false); setColorMode((current) => !current)
           }}
@@ -957,6 +977,8 @@ export function Worktable({
           values={values} input={input}
           undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
           onCheck={draft || previewing ? undefined : () => { void runCheck() }}
+          compact={mobile} hintButtonRef={hintButtonRef} hintDisabled={busy}
+          onHint={mobile && !draft && !solved ? () => { void showHint(10, 'hint') } : undefined}
           disabled={disabled || sketch.drawing || (solved && !showSolvedGrid)} draft={draft} inputSize={inputSize} panelHeight={panelHeight}
           setPanelHeight={setPanelHeight} beginResize={beginResize} multi={multi} toggleMulti={toggleMulti} />
       </div>
@@ -1024,7 +1046,11 @@ export function Worktable({
           onChainsVisibleChange={setDesktopChainsVisible} />
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}{hintPanel}</div><div className="standard-input-stack">{inputPanel}{solutionPathPanel}</div></>
-          : <>{puzzlePanel}{inputPanel}</>}
+          : <>{puzzlePanel}{mobileResults
+            ? <div className="workspace-controls mobile-completion">{completionPanel}</div>
+            : mobileHintOpen ? hintPanel : inputPanel}</>}
+      {mobile && puzzleMenu && <Modal title="Puzzle actions" className="puzzle-actions-sheet"
+        onClose={() => setPuzzleMenuOpen(false)}>{puzzleMenu}</Modal>}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       {resetOpen && <Modal title="Reset puzzle" onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
         <p>Remove all placed digits, candidates, colors, and elapsed time from this puzzle?</p>
@@ -1037,6 +1063,7 @@ export function Worktable({
             setSelectedDigit(null)
             setHighlightCandidatePairs(false)
             setHint(null)
+            setHintRevealed(false)
             setSolutionPath(null)
             setResetOpen(false)
           }}>Reset puzzle</button>

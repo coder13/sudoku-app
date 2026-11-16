@@ -1,9 +1,9 @@
 import {
   type CSSProperties, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent,
-  type ReactNode, type SetStateAction,
+  type Ref, type SetStateAction,
   useEffect, useRef, useState,
 } from 'react'
-import { Check, Delete, Highlighter, Layers2, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { Check, Delete, Highlighter, Layers2, Lightbulb, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { COLORS, DIGITS, type Mode } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
 import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
@@ -17,7 +17,6 @@ type Props = {
   advancedModes: AdvancedModes
   colorMode: boolean
   toggleColorMode: () => void
-  toolPanel?: ReactNode
   eraseMode: boolean
   toggleEraseMode: () => void
   highlightMode: boolean
@@ -29,6 +28,10 @@ type Props = {
   undo: () => void
   redo: () => void
   onCheck?: () => void
+  onHint?: () => void
+  hintButtonRef?: Ref<HTMLButtonElement>
+  hintDisabled?: boolean
+  compact?: boolean
   canUndo: boolean
   canRedo: boolean
   disabled: boolean
@@ -50,6 +53,7 @@ export function Controls(props: Props) {
   for (const value of props.values) counts[Number(value)]++
 
   useEffect(() => {
+    if (props.compact) return
     const query = window.matchMedia(MOBILE_LAYOUT_QUERY)
     const update = () => {
       setMobile(query.matches)
@@ -68,17 +72,18 @@ export function Controls(props: Props) {
       query.removeEventListener('change', update)
       window.removeEventListener('resize', update)
     }
-  }, [props.advancedModes.candidateLayout, props.draft, props.inputSize, props.pencil, props.setPanelHeight])
+  }, [props.advancedModes.candidateLayout, props.compact, props.draft, props.inputSize, props.pencil, props.setPanelHeight])
 
   useEffect(() => {
-    if (!mobile) return
+    if (!mobile || props.compact) return
     document.documentElement.style.setProperty('--mobile-controls-height', `${props.panelHeight}px`)
-  }, [mobile, props.panelHeight])
+  }, [mobile, props.compact, props.panelHeight])
 
   useEffect(() => {
+    if (props.compact) return
     const clamped = Math.min(panelBounds.max, Math.max(panelBounds.min, props.panelHeight))
     if (clamped !== props.panelHeight) props.setPanelHeight(clamped)
-  }, [panelBounds, props.panelHeight, props.setPanelHeight])
+  }, [panelBounds, props.compact, props.panelHeight, props.setPanelHeight])
 
   function resizePanel(next: number) {
     props.setPanelHeight(Math.min(panelBounds.max, Math.max(panelBounds.min, Math.round(next))))
@@ -111,22 +116,29 @@ export function Controls(props: Props) {
   }
 
   return (
-    <section className="surface controls" aria-label="Sudoku controls"
+    <section className={`surface controls${props.compact ? ' compact-controls' : ''}`} aria-label="Sudoku controls"
       style={{ '--controls-height': `${props.panelHeight}px`, '--input-size': `${props.inputSize}px` } as CSSProperties}>
-      <button className="resize-handle" aria-label="Resize input panel" role="separator" aria-orientation="horizontal"
+      {!props.compact && <button className="resize-handle" aria-label="Resize input panel" role="separator" aria-orientation="horizontal"
         aria-valuemin={panelBounds.min} aria-valuemax={panelBounds.max} aria-valuenow={props.panelHeight}
         onPointerDown={startResize} onPointerMove={continueResize} onPointerUp={finishResize} onPointerCancel={finishResize}
-        onKeyDown={resizeWithKeyboard}><span /></button>
+        onKeyDown={resizeWithKeyboard}><span /></button>}
 
-      <div className={`controls-content${props.toolPanel ? ' with-tool-panel' : ''}`}>
+      <div className="controls-content">
           <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
             <button className="icon-button" onClick={props.undo} disabled={props.disabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
             <button className="icon-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
             {props.onCheck && <button className="icon-button puzzle-check-button" onClick={props.onCheck} disabled={props.disabled}
               aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></button>}
+            {props.onHint && (
+              <button type="button" ref={props.hintButtonRef} className="button soft hint-key"
+                disabled={props.disabled} aria-disabled={props.hintDisabled || undefined}
+                onClick={props.hintDisabled ? undefined : props.onHint}>
+                <Lightbulb size={16} aria-hidden="true" /> Hint
+              </button>
+            )}
           </div>
 
-          {props.toolPanel ?? <div className="keypad-stack">
+          <div className="keypad-stack">
             {!props.draft && props.pencil && props.advancedModes.candidateLayout === 'center-corner' && (
               <div className="candidate-kind" role="group" aria-label="Candidate position">
                 <button aria-pressed={props.candidateKind === 'center'} disabled={props.disabled} onClick={() => props.setCandidateKind('center')}>Center</button>
@@ -149,9 +161,9 @@ export function Controls(props: Props) {
                 )
               })}
             </div>
-          </div>}
+          </div>
 
-          {!props.toolPanel && <div className="side-actions right-actions" role="group" aria-label="Input modes">
+          <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
               <button className="icon-button pencil-button" title="Pencil mode · Cmd+1–9 or Ctrl+1–9 toggles candidates in selected cells" aria-label="Pencil mode"
                 aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts="P" onClick={props.togglePencil} disabled={props.disabled}>
@@ -171,7 +183,7 @@ export function Controls(props: Props) {
                 <Palette size={18} />
               </button>
             )}
-            {!props.draft && (mobile || props.advancedModes.multiSelectButton) && (
+            {!props.draft && (props.compact || mobile || props.advancedModes.multiSelectButton) && (
               <button className="icon-button multi-select-button" onClick={props.toggleMulti} disabled={props.disabled}
                 aria-label="Multi-select" title="Multi-select" aria-pressed={props.multi}>
                 <Layers2 size={18} />
@@ -179,7 +191,7 @@ export function Controls(props: Props) {
             )}
             <button className="icon-button erase-mode-button" onClick={props.toggleEraseMode} disabled={props.disabled}
               aria-label="Erase mode" title="Erase mode" aria-pressed={props.eraseMode}><Delete size={18} /></button>
-          </div>}
+          </div>
       </div>
 
     </section>

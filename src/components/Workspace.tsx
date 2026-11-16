@@ -1,7 +1,7 @@
 import { Link, useMatch, useNavigate } from '@tanstack/react-router'
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
-  ArrowDownToLine, BookOpen, Check, Grid3X3, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Play, Plus,
+  ArrowDownToLine, BookOpen, Check, Dices, Grid3X3, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Play, Plus,
   SlidersHorizontal,
 } from 'lucide-react'
 import { DEFAULT_DIFFICULTY } from '../sudoku/difficulty'
@@ -18,6 +18,7 @@ import {
 import { roomStore } from '../sudoku/storage'
 import { ImportPuzzle, NewPuzzle, openPuzzle, SavePuzzle, SharePuzzle } from './PuzzleDialogs'
 import type { PuzzleBrowserView } from './AdvancedPuzzleBrowser'
+import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
 import { isSettingsSection, Settings } from './Settings'
 import { usePageAppearance } from './usePageAppearance'
@@ -82,7 +83,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [cellReferenceStyle, setCellReferenceStyleState] = useState<CellReferenceStyle>(DEFAULT_CELL_REFERENCE_STYLE)
   const [inputSize, setInputSizeState] = useState(DEFAULT_INPUT_SIZE)
   const [difficulty, setDifficultyState] = useState<Difficulty>(DEFAULT_DIFFICULTY)
-  const [workspaceMode, setWorkspaceModeState] = useState<WorkspaceMode>(DEFAULT_WORKSPACE_MODE)
+  const [preferredWorkspaceMode, setPreferredWorkspaceMode] = useState<WorkspaceMode>(DEFAULT_WORKSPACE_MODE)
   const [advancedPanels, setAdvancedPanels] = useState<AdvancedPanelVisibility>(DEFAULT_ADVANCED_PANEL_VISIBILITY)
   const [puzzleBrowserView, setPuzzleBrowserView] = useState<PuzzleBrowserView>('active')
   const [panelHeight, setPanelHeight] = useState(280)
@@ -97,6 +98,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const resizeStartInputSize = useRef(inputSize)
   const automaticPuzzleStarted = useRef(false)
   const game = games.find((item) => item.id === active)
+  const mobile = useMobileLayout()
+  const workspaceMode = mobile ? 'standard' : preferredWorkspaceMode
   const advancedShell = workspaceMode === 'advanced' && (playing || learning)
   const activeLeftPanelOpen = learning ? advancedPanels.articles : advancedPanels.left
   const close = () => setPanel(null)
@@ -112,7 +115,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setCellReferenceStyleState(preferences.cellReferenceStyle)
     setInputSizeState(preferences.inputSize)
     setDifficultyState(preferences.difficulty)
-    setWorkspaceModeState(preferences.workspaceMode)
+    setPreferredWorkspaceMode(preferences.workspaceMode)
     setAdvancedPanels(readAdvancedPanelVisibility())
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
@@ -223,7 +226,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   }
 
   function setWorkspaceMode(next: WorkspaceMode) {
-    setWorkspaceModeState(next)
+    setPreferredWorkspaceMode(next)
     saveWorkspaceMode(next)
     setResizeMode(false)
   }
@@ -329,14 +332,15 @@ export function SudokuShell({ children }: { children: ReactNode }) {
             {menuOpen && <div className="app-menu" id="app-menu">
               <div className="mobile-primary-navigation">
                 <Link to="/" onClick={() => setMenuOpen(false)}><Play size={17} /> Play</Link>
-                {workspaceMode !== 'advanced' && <Link to="/puzzles" onClick={() => setMenuOpen(false)}><Grid3X3 size={17} /> Puzzles</Link>}
+                <Link to="/puzzles/new" onClick={() => setMenuOpen(false)}><Dices size={17} /> New puzzle</Link>
+                <Link to="/puzzles" onClick={() => setMenuOpen(false)}><Grid3X3 size={17} /> Puzzles</Link>
                 <Link to="/learn" onClick={() => setMenuOpen(false)}><BookOpen size={17} /> Learn</Link>
                 <div className="app-menu-separator" />
               </div>
-              <button aria-pressed={workspaceMode === 'advanced'} onClick={() => {
+              {!mobile && <button aria-pressed={workspaceMode === 'advanced'} onClick={() => {
                 setMenuOpen(false)
                 setWorkspaceMode(workspaceMode === 'advanced' ? 'standard' : 'advanced')
-              }}><PanelsTopLeft size={17} /> {workspaceMode === 'advanced' ? 'Standard mode' : 'Advanced mode'}</button>
+              }}><PanelsTopLeft size={17} /> {workspaceMode === 'advanced' ? 'Standard mode' : 'Advanced mode'}</button>}
               <button onClick={openSettings}><SlidersHorizontal size={17} /> Settings</button>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
               <div className="app-menu-separator" />
@@ -406,7 +410,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         highlighting={highlighting} setHighlighting={setHighlighting}
         errorMode={errorMode} setErrorMode={setErrorMode} inputSize={inputSize} setInputSize={setInputSize}
         cellReferenceStyle={cellReferenceStyle} setCellReferenceStyle={setCellReferenceStyle}
-        workspaceMode={workspaceMode} setWorkspaceMode={setWorkspaceMode}
+        workspaceMode={workspaceMode} setWorkspaceMode={mobile ? undefined : setWorkspaceMode}
         draft={game?.source === 'draft'} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}
     </div>

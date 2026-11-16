@@ -18,6 +18,9 @@ export function HintCard({ hint, onClose, navigation, onApply, explanation }: {
           <small>Hint</small>
           <h2>{hint.title}</h2>
         </div>
+        <button type="button" className="icon-button borderless hint-card-close" aria-label="Close hint" onClick={onClose}>
+          <X size={18} aria-hidden="true" />
+        </button>
         {(navigation || onApply) && <div className="hint-card-actions">
           {navigation && <div className="hint-card-navigation" role="group" aria-label="Hint navigation">
             <button type="button" className="icon-button" aria-label="Previous hint"
@@ -32,11 +35,8 @@ export function HintCard({ hint, onClose, navigation, onApply, explanation }: {
           </div>}
           {onApply && <button type="button" className="button primary" onClick={onApply}>Apply hint</button>}
         </div>}
-        <button type="button" className="icon-button borderless hint-card-close" aria-label="Close hint" onClick={onClose}>
-          <X size={18} aria-hidden="true" />
-        </button>
       </div>
-      <p>{hint.text}</p>
+      {hint.text && <p>{hint.text}</p>}
       {explanation && <details className="hint-card-explanation">
         <summary>Why this works</summary>
         <p>{explanation}</p>
