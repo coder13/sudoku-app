@@ -3,7 +3,7 @@ import type { Candidate, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
 import { activeHighlightDigit } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
-import { variantPeers } from '../sudoku/variants'
+import { regionMembership } from '../sudoku/variants'
 import { VariantClues, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 
@@ -45,7 +45,11 @@ export function Board({
   onCellPointerDown, onCellPointerMove, onPaintCandidate,
 }: Props) {
   const variantRules = variantPuzzle?.rules
+  const regions = variantPuzzle?.regions
+  const regionsAt = useMemo(() => regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [regions])
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules) : undefined, [variantRules])
+  const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
+    ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const focusDigit = activeHighlightDigit(values, selected, active, highlightedDigit)
   const candidateAction = onPaintCandidate ?? onCandidate
@@ -106,7 +110,7 @@ export function Board({
     <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}`} style={size}>
       {showGuides && <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>}
       {showGuides && <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>}
-      <div className={variantRules ? 'board-body variant-board' : 'board-body'}>
+      <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={label}
           aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           onKeyDown={candidateAction && navigateCandidates}
@@ -116,9 +120,11 @@ export function Board({
             if (cell && event.currentTarget.contains(cell)) onCellPointerMove(Number(cell.dataset.cell), event)
           })}>
           {rows.map((row) => (
-            <div className="grid-row" role="row" data-box-edge={row % 3 === 0 || undefined} key={row}>
+            <div className="grid-row" role="row" data-box-edge={!regionsAt && row % 3 === 0 || undefined} key={row}>
               {columns.map((col) => {
                 const index = (row - 1) * 9 + col - 1
+                const regionAtCell = regionsAt?.[index]
+                const cageTotal = cageTotals.get(index)
                 const alternateBox = (Math.floor((row - 1) / 3) + Math.floor((col - 1) / 3)) % 2 === 1
                 const value = Number(values[index])
                 const fixed = givens[index] !== '0'
@@ -153,6 +159,7 @@ export function Board({
                   !value && gridCandidates.length ? `${layout === 'grid' ? '' : 'corner '}candidates ${gridCandidates.join(' ')}` : '',
                   !value && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
                   color ? COLORS[color - 1] : '',
+                  regionAtCell !== undefined && `region ${regionAtCell + 1}`,
                   cellAnnotation?.label,
                   cellClues?.[index]?.join(', '),
                   !value && candidateLabel,
@@ -164,7 +171,7 @@ export function Board({
                 const classes = [
                   'cell',
                   fixed ? 'given' : 'entry',
-                  highlighting.relatedCells && selected.some((cell) => peer(index, cell) || variantPeers(variantPuzzle, index, cell)) ? 'peer' : '',
+                  highlighting.relatedCells && selected.some((cell) => peer(index, cell, variantPuzzle)) ? 'peer' : '',
                   highlighting.matchingDigits && value === focusDigit ? 'matching' : '',
                   candidateHighlightStyle === 'cell' ? 'candidate-highlight-cell' : '',
                   candidateHighlightStyle === 'outline' ? 'candidate-highlight-outline' : '',
@@ -208,12 +215,15 @@ export function Board({
 
                 return (
                   <Cell role="gridcell" key={col} data-cell={index} className={classes} style={cellStyle} aria-label={label}
-                    data-highlight={Boolean(cellAnnotation?.outline) || undefined} data-box-edge={col % 3 === 0 || undefined}
-                    data-alternate-box={alternateBox || undefined}
+                    data-highlight={Boolean(cellAnnotation?.outline) || undefined} data-box-edge={!regionsAt && col % 3 === 0 || undefined}
+                    data-region-right={regionsAt && col < 9 && regionAtCell !== regionsAt[index + 1] || undefined}
+                    data-region-bottom={regionsAt && row < 9 && regionAtCell !== regionsAt[index + 9] || undefined}
+                    data-alternate-box={!regionsAt && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
                     type={onCell && 'button'} tabIndex={onCell ? (active === index ? 0 : -1) : undefined}
                     aria-selected={onCell ? inSelection : undefined}
                     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
                     onClick={onCell && ((event) => onCell(index, event))}>
+                    {cageTotal !== undefined && <span className="variant-cage-total" aria-hidden="true">{cageTotal}</span>}
                     {value ? <span aria-hidden="true">{value}</span> : (
                       <>
                         {gridCandidates.length > 0 && (

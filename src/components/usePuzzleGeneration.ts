@@ -5,7 +5,7 @@ import { createGameId, makeGame } from '../sudoku/game'
 import { readSolverProfile } from '../sudoku/solver-profile'
 import { roomStore } from '../sudoku/storage'
 import { generatePlayableVariant } from '../sudoku/variant-play'
-import { VARIANTS, type VariantId } from '../sudoku/variants'
+import { VARIANTS, variantDifficulty, type VariantId } from '../sudoku/variants'
 
 export function usePlayerRating() {
   return useSyncExternalStore(roomStore.subscribe,
@@ -29,7 +29,7 @@ export function usePuzzleGeneration() {
     setBusy(true)
     setError('')
     try {
-      const difficulty = preference === 'auto' ? roomStore.getSnapshot().playerRating.recommended : preference
+      const difficulty = variantDifficulty(variant, preference === 'auto' ? roomStore.getSnapshot().playerRating.recommended : preference)
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
       if (variant !== 'classic') {
         const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games)

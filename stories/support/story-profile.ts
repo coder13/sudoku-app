@@ -6,3 +6,7 @@ export function withSolverProfile(request: EngineRequest) {
 }
 
 export const withHintPreferences = withSolverProfile
+
+export function readDisabledHintTechniques(): string[] {
+  return []
+}

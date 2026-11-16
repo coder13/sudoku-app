@@ -1,12 +1,13 @@
 import { useId, useState, type ComponentType } from 'react'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import { BarChart3, Check, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, Trophy } from 'lucide-react'
+import { BarChart3, Check, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
 import {
-  DIFFICULTY_LABELS, DIFFICULTY_OPTIONS, difficultyOptionLabel, formatPuzzleRating, type DifficultyPreference,
+  DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference,
 } from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
-import { type VariantId } from '../sudoku/variants'
+import { variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { StopPlaying } from './PuzzleDialogs'
 import { VariantSelector } from './VariantSelector'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 
@@ -38,18 +39,38 @@ function puzzleStatus(game: Game) {
   return `${rating} · Not started`
 }
 
-function PuzzleLibrary({ games, active, select }: { games: Game[]; active: string | null; select: (id: string) => void }) {
-  return <section className="main-menu-section" aria-labelledby="puzzle-library-title">
-    <header><h2 id="puzzle-library-title">Your puzzles</h2><p>Select a puzzle to continue solving.</p></header>
-    {games.length ? <ul className="game-list main-puzzle-list">
-      {games.map((game) => <li key={game.id}>
-        <button className="game-row" aria-current={game.id === active ? 'true' : undefined} onClick={() => select(game.id)}>
-          <MiniGrid values={valuesOf(game)} />
-          <span className="game-row-copy"><strong>{game.title}</strong><small>{puzzleStatus(game)}</small></span>
-          {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
-        </button>
-      </li>)}
-    </ul> : <p className="main-menu-empty">You don’t have any saved puzzles yet.</p>}
+function PuzzleLibrary({ games, active, select, manage }: {
+  games: Game[]; active: string | null; select: (id: string) => void; manage: (id: string) => void
+}) {
+  const title = useId()
+  const saved = games.filter((game) => game.savedForLater)
+
+  function list(items: Game[]) {
+    return <ul className="game-list main-puzzle-list">
+      {items.map((game) => {
+        const manageable = game.source !== 'draft' && !isSolved(game)
+        return <li key={game.id} className={manageable ? 'game-row-with-options' : undefined}>
+          <button className="game-row" aria-current={game.id === active ? 'true' : undefined} onClick={() => select(game.id)}>
+            <MiniGrid values={valuesOf(game)} />
+            <span className="game-row-copy"><strong>{game.title}</strong><small>{puzzleStatus(game)}</small></span>
+            {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
+          </button>
+          {manageable && <button type="button" className="icon-button borderless game-row-options" aria-haspopup="dialog"
+            aria-label={`Options for ${game.title}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></button>}
+        </li>
+      })}
+    </ul>
+  }
+
+  const other = games.filter((game) => !game.savedForLater)
+  return <section className="main-menu-section" aria-labelledby={title}>
+    <header><h2 id={title}>Your puzzles</h2><p>Select a puzzle to continue solving.</p></header>
+    {saved.length > 0 && <section className="saved-for-later">
+      <h3>Saved for later</h3>
+      {list(saved)}
+    </section>}
+    {other.length > 0 && list(other)}
+    {games.length === 0 && <p className="main-menu-empty">You don’t have any puzzles yet.</p>}
   </section>
 }
 
@@ -62,18 +83,18 @@ function NewPuzzleSection({ difficulty, setDifficulty, done }: {
   const { recommended } = usePlayerRating()
   const [variant, setVariant] = useState<VariantId>('classic')
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
-  const selected = selection ?? difficulty
+  const selected = variantDifficulty(variant, selection ?? difficulty)
   const group = useId()
   return <section className="main-menu-section" aria-labelledby="puzzles-new-title">
     <header><h2 id="puzzles-new-title">New puzzle</h2></header>
     <VariantSelector value={variant} onChange={setVariant} busy={busy} />
     <fieldset className="main-difficulty-options" disabled={busy}>
       <legend className="new-puzzle-difficulty-label">Difficulty</legend>
-      {DIFFICULTY_OPTIONS.map((value) => <label key={value}>
+      {variantDifficulties(variant).map((value) => <label key={value}>
         <input type="radio" name={group} value={value} checked={selected === value}
           onChange={() => setSelection(value)} />
         <span>{value === 'auto' ? 'Auto' : DIFFICULTY_LABELS[value]}</span>
-        {value === 'auto' && <small className="main-difficulty-next">{DIFFICULTY_LABELS[recommended]} next</small>}
+        {value === 'auto' && <small className="main-difficulty-next">{DIFFICULTY_LABELS[variantDifficulty(variant, recommended)]} next</small>}
         {selected === value && <Check size={18} aria-hidden="true" />}
       </label>)}
     </fieldset>
@@ -83,7 +104,7 @@ function NewPuzzleSection({ difficulty, setDifficulty, done }: {
       done()
     }, variant) }}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
-        ? `Start ${difficultyOptionLabel('auto', recommended)}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
+        ? `Start ${variantDifficultyLabel(variant, 'auto', recommended)}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
     </button>
   </section>
 }
@@ -121,6 +142,8 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty }: {
   setDifficulty: (difficulty: DifficultyPreference) => void
 }) {
   const navigate = useNavigate()
+  const [managingId, setManagingId] = useState<string | null>(null)
+  const managing = games.find((game) => game.id === managingId)
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const section: Section | null = pathname.endsWith('/browse') ? 'puzzles'
     : pathname.endsWith('/new') ? 'new'
@@ -136,7 +159,7 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty }: {
   }
 
   function content(current: Section) {
-    if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} select={selectPuzzle} />
+    if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} select={selectPuzzle} manage={setManagingId} />
     if (current === 'new') return <NewPuzzleSection difficulty={difficulty} setDifficulty={setDifficulty} done={play} />
     return <Statistics games={games} />
   }
@@ -165,5 +188,6 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty }: {
       {section ? content(section) : navigation}
     </div>
     <Outlet />
+    {section === 'puzzles' && managing && <StopPlaying game={managing} close={() => setManagingId(null)} />}
   </main>
 }

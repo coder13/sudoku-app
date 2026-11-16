@@ -4,7 +4,7 @@ import type { roomStore as appStore } from '../../src/sudoku/storage'
 
 type Room = ReturnType<typeof appStore.getSnapshot>
 const starter = { ...STARTER_GAME, difficulty: 'easy' } satisfies Game
-let room: Room = { games: [starter], active: starter.id, storageAvailable: true, playerRating: initialPlayerRating }
+let room: Room = { games: [starter], active: starter.id, stoppedPlaying: false, storageAvailable: true, playerRating: initialPlayerRating }
 const listeners = new Set<() => void>()
 
 function publish(next: Room) {
@@ -13,7 +13,7 @@ function publish(next: Room) {
 }
 
 export function seedRoom(games: Game[], active = games[0]?.id ?? null, storageAvailable = true) {
-  publish({ games, active, storageAvailable, playerRating: initialPlayerRating })
+  publish({ games, active, stoppedPlaying: false, storageAvailable, playerRating: initialPlayerRating })
 }
 
 export const roomStore: typeof appStore = {
@@ -25,10 +25,16 @@ export const roomStore: typeof appStore = {
   getServerSnapshot: () => room,
   connect: () => () => {},
   select(id) {
-    if (room.games.some((game) => game.id === id)) publish({ ...room, active: id })
+    const game = room.games.find((game) => game.id === id)
+    if (!game) return
+    if (game.savedForLater) roomStore.update(id, (saved) => ({ ...saved, savedForLater: undefined }))
+    publish({ ...room, active: id, stoppedPlaying: false })
+  },
+  stopPlaying(id) {
+    if (room.active === id) publish({ ...room, active: null, stoppedPlaying: true })
   },
   add(game) {
-    publish({ ...room, games: [game, ...room.games], active: game.id })
+    publish({ ...room, games: [game, ...room.games], active: game.id, stoppedPlaying: false })
   },
   update(id, update) {
     const game = room.games.find((item) => item.id === id)
@@ -39,6 +45,6 @@ export const roomStore: typeof appStore = {
   finishRatingAttempt() {},
   remove(id) {
     const games = room.games.filter((game) => game.id !== id)
-    publish({ ...room, games, active: room.active === id ? games[0]?.id ?? null : room.active })
+    publish({ ...room, games, active: room.active === id ? games.find((game) => !game.savedForLater)?.id ?? null : room.active })
   },
 }

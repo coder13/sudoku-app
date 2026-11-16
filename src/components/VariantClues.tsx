@@ -24,7 +24,7 @@ function Cage({ cells, sum }: { cells: readonly number[]; sum: number }) {
       const y1 = row + (top ? edge : 0)
       const y2 = row + 1 - (bottom ? edge : 0)
       const segments = [
-        top && `M${x1},${y1}H${x2}`,
+        top && `M${cell === corner ? col + (sum < 10 ? .27 : .4) : x1},${y1}H${x2}`,
         right && `M${x2},${y1}V${y2}`,
         bottom && `M${x2},${y2}H${x1}`,
         left && `M${x1},${y2}V${y1}`,
@@ -35,7 +35,6 @@ function Cage({ cells, sum }: { cells: readonly number[]; sum: number }) {
       ].filter(Boolean)
       return <path key={cell} className="variant-cage-edge" d={segments.join(' ')} />
     })}
-    <text className="variant-cage-total" x={x(corner) + .14} y={y(corner) + .28}>{sum}</text>
   </>
 }
 

@@ -1496,7 +1496,7 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.equal(malformed.code, 'invalid-technique')
 })
 
-test('every playable variant generates each difficulty with a unique solution and usable hints', async (t) => {
+test('every playable variant generates its supported difficulties with a unique solution and usable hints', async (t) => {
   const { run } = engineRequests()
   const [variant, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
   const techniqueOrder = variantTechniqueOrder(variant.defaultOrder, classic.defaultOrder)
@@ -1506,7 +1506,7 @@ test('every playable variant generates each difficulty with a unique solution an
     for (const difficulty of Object.keys(levels) as (keyof typeof levels)[]) {
       await t.test(`${id} / ${difficulty}`, async () => {
         const recipes = levels[difficulty]
-        assert.ok(recipes.length > 1)
+        assert.ok(recipes && recipes.length > 1)
         const puzzles = new Set<string>()
         for (const recipe of recipes) {
           const generated = await run(variantGenerationRequest(id, difficulty, recipe, techniqueOrder))
@@ -1518,19 +1518,24 @@ test('every playable variant generates each difficulty with a unique solution an
         const { puzzle, solution, rating } = await run(variantGenerationRequest(id, difficulty, recipes[0], techniqueOrder))
         const position = { puzzle }
         assert.equal(await run({ type: 'variant', position, operation: 'analyze' }), 'unique')
-        assert.equal(await run({
-          type: 'variant', position: { puzzle: { ...puzzle, rules: [] } }, operation: 'analyze',
-        }), 'multiple')
+        // Jigsaw generation checks uniqueness without regions in Rust. The public puzzle format always has regions.
+        if (id !== 'jigsaw') {
+          assert.equal(await run({
+            type: 'variant', position: { puzzle: { ...puzzle, rules: [] } }, operation: 'analyze',
+          }), 'multiple')
+        }
 
         const trace = await run({ type: 'variant', position, operation: 'trace', techniqueOrder })
         const path = variantSolutionPath(trace)
         assert.equal(path.board, solution)
         assert.deepEqual(trace.rating, rating)
 
-        const ruleStep = trace.steps.findIndex(({ evidence }) => id === 'diagonal'
-          ? evidence.type === 'single' && evidence.house && 'diagonal' in evidence.house ||
-            evidence.type === 'intersection' && ('diagonal' in evidence.source || 'diagonal' in evidence.target)
-          : evidence.type === 'constraint' || evidence.type === 'cage-sum')
+        const ruleStep = trace.steps.findIndex(({ evidence }) => {
+          if (id !== 'diagonal' && id !== 'jigsaw') return evidence.type === 'constraint' || evidence.type === 'cage-sum'
+          const house = id === 'jigsaw' ? 'region' : 'diagonal'
+          return evidence.type === 'single' && evidence.house && house in evidence.house ||
+            evidence.type === 'intersection' && (house in evidence.source || house in evidence.target)
+        })
         assert.ok(ruleStep >= 0, 'The logical path uses the variant rule.')
         const { entries: ruleEntries, eliminations: ruleRemovals } = path.positions![ruleStep]
         const ruleHints = await run({

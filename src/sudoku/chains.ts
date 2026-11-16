@@ -1,5 +1,6 @@
-import type { Candidate, DeductionAction } from './engine.ts'
+import type { Candidate, DeductionAction, VariantPuzzle } from './engine.ts'
 import { candidateCount, hasCandidate, marksOf, peer } from './game.ts'
+import { regionMembership, variantHouseCells } from './variants.ts'
 
 export type ChainEdge = readonly [from: number, to: number]
 export type LinkStrength = 'strong' | 'weak'
@@ -23,27 +24,36 @@ export function sameEdge([a, b]: ChainEdge, [c, d]: ChainEdge) {
 
 const opposite = (strength: LinkStrength): LinkStrength => strength === 'strong' ? 'weak' : 'strong'
 
-function housesAt(cell: number) {
+function housesAt(cell: number, regions?: readonly number[]) {
   const row = Math.floor(cell / 9)
   const column = cell % 9
-  const box = Math.floor(row / 3) * 3 + Math.floor(column / 3)
-  return [row, 9 + column, 18 + box]
+  const region = regions?.[cell] ?? Math.floor(row / 3) * 3 + Math.floor(column / 3)
+  return [row, 9 + column, 18 + region]
 }
 
-export function makeChainGraph(masks: readonly number[]) {
+export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle) {
   const candidates = masks.flatMap((mask, cell) => marksOf(mask).map((digit) => candidateId({ cell, digit })))
   const counts = Array.from({ length: 27 }, () => Array<number>(9).fill(0))
-  const houses = masks.map((_, cell) => housesAt(cell))
+  const regions = puzzle?.regions?.type === 'jigsaw' ? regionMembership(puzzle.regions.regions) : undefined
+  const houses = masks.map((_, cell) => housesAt(cell, regions))
+  for (const rule of puzzle?.rules ?? []) {
+    if (rule.type !== 'diagonal' && rule.type !== 'extra-house') continue
+    const cells = rule.type === 'extra-house' ? rule.cells : variantHouseCells({ diagonal: rule.diagonal }, puzzle!)
+    const house = counts.push(Array<number>(9).fill(0)) - 1
+    for (const cell of cells) houses[cell].push(house)
+  }
   for (const id of candidates) {
     const { cell, digit } = chainCandidate(id)
     for (const house of houses[cell]) counts[house][digit - 1]++
   }
 
+  function peers(a: number, b: number) { return peer(a, b, puzzle) }
+
   function conflicts(a: number, b: number) {
     if (a === b) return false
     const first = chainCandidate(a)
     const second = chainCandidate(b)
-    return first.cell === second.cell || (first.digit === second.digit && peer(first.cell, second.cell))
+    return first.cell === second.cell || (first.digit === second.digit && peers(first.cell, second.cell))
   }
 
   function strength(a: number, b: number): LinkStrength | undefined {
@@ -56,7 +66,7 @@ export function makeChainGraph(masks: readonly number[]) {
       ? 'strong' : 'weak'
   }
 
-  return { candidates, conflicts, strength }
+  return { candidates, peers, conflicts, strength }
 }
 
 export type ChainGraph = ReturnType<typeof makeChainGraph>
@@ -94,7 +104,7 @@ function commonEliminations(graph: ChainGraph, pairs: readonly ChainEdge[]): Ded
     .map((target) => ({ eliminate: chainCandidate(target) }))
 }
 
-function openTitle(nodes: number[], strengths: LinkStrength[]) {
+function openTitle(graph: ChainGraph, nodes: number[], strengths: LinkStrength[]) {
   if (strengths.length === 1) return strengths[0] === 'strong' ? 'Strong link' : 'Weak link'
   if (strengths[0] !== 'strong' || strengths.at(-1) !== 'strong') return 'Alternating chain'
   const candidates = nodes.map(chainCandidate)
@@ -106,7 +116,7 @@ function openTitle(nodes: number[], strengths: LinkStrength[]) {
     return 'XY-chain'
   }
   if (first.digit === last.digit) return 'Alternating inference chain (Type 1)'
-  return first.cell !== last.cell && peer(first.cell, last.cell)
+  return first.cell !== last.cell && graph.peers(first.cell, last.cell)
     ? 'Alternating inference chain (Type 2)' : 'Alternating inference chain'
 }
 
@@ -121,7 +131,7 @@ function analyzePath(graph: ChainGraph, nodes: number[]): ChainAnalysis {
     }
     const hasStrongEnds = strengths[0] === 'strong' && strengths.at(-1) === 'strong'
     return {
-      nodes, strengths, title: openTitle(nodes, strengths), canComplete: true,
+      nodes, strengths, title: openTitle(graph, nodes, strengths), canComplete: true,
       actions: hasStrongEnds ? commonEliminations(graph, [[first, last]]) : [],
       explanation: hasStrongEnds ? 'At least one end must be true. A candidate that conflicts with both ends can be removed.' : undefined,
     }

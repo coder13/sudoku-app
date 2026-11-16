@@ -8,7 +8,7 @@ const meta = {
   title: 'Large/Play/Completion results',
   component: CompletedPuzzle,
   args: { game: solved, games: [solved, quicker], preferredDifficulty: 'easy', ratingPending: false, shortcutEnabled: false,
-    showGuides: true, onChooseDifficulty: fn() },
+    showGuides: true, onChooseDifficulty: fn(), onChooseVariant: fn() },
   decorators: [(Story) => <Width stage width={540}><Story /></Width>],
 } satisfies Meta<typeof CompletedPuzzle>
 export default meta

@@ -1,10 +1,10 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react'
-import { Clipboard, Dices, FileUp, PencilLine } from 'lucide-react'
-import { DIFFICULTY_OPTIONS, difficultyOptionLabel, isDifficultyPreference, type DifficultyPreference } from '../sudoku/difficulty'
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
+import { Bookmark, Clipboard, Dices, FileUp, PencilLine, Trash2 } from 'lucide-react'
+import { isDifficultyPreference, type DifficultyPreference } from '../sudoku/difficulty'
 import { runEngine } from '../sudoku/engine'
 import { exportPuzzle, parsePuzzle, type ShareFormat } from '../sudoku/formats'
-import { createGameId, makeGame, valuesOf, type Game } from '../sudoku/game'
-import { isPlayablePuzzle, VARIANTS, type VariantGame, type VariantId } from '../sudoku/variants'
+import { createGameId, isSolved, makeGame, restartGame, valuesOf, type Game } from '../sudoku/game'
+import { isPlayablePuzzle, VARIANTS, variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantGame, type VariantId } from '../sudoku/variants'
 import { VariantSelector } from './VariantSelector'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
@@ -67,6 +67,46 @@ function useMounted() {
   return mounted
 }
 
+export function StopPlaying({ game, fromPlay = false, close, onDone }: {
+  game: Game
+  fromPlay?: boolean
+  close: () => void
+  onDone?: () => void
+}) {
+  const id = useId()
+
+  function stop(action: 'save' | 'delete') {
+    const current = roomStore.getSnapshot().games.find((puzzle) => puzzle.id === game.id)
+    if (current && current.source !== 'draft' && !isSolved(current)) {
+      roomStore.stopPlaying(game.id)
+      if (action === 'save') roomStore.update(game.id, (puzzle) => ({ ...restartGame(puzzle), savedForLater: true }))
+      else roomStore.remove(game.id)
+    }
+    close()
+    onDone?.()
+  }
+
+  return <Modal title={fromPlay ? 'Stop playing?' : game.title} onClose={close}>
+    <div className="stop-puzzle-options">
+      {!game.savedForLater && <button type="button" className="new-option" onClick={() => stop('save')}
+        aria-labelledby={`${id}-save`} aria-describedby={`${id}-save-description`}>
+        <span className="option-icon"><Bookmark size={20} aria-hidden="true" /></span>
+        <span><strong id={`${id}-save`}>Save for later</strong>
+          <small id={`${id}-save-description`}>Clear your progress and move the puzzle to Saved for later.</small></span>
+      </button>}
+      <button type="button" className="new-option delete-puzzle-option" onClick={() => stop('delete')}
+        aria-labelledby={`${id}-delete`} aria-describedby={`${id}-delete-description`}>
+        <span className="option-icon"><Trash2 size={20} aria-hidden="true" /></span>
+        <span><strong id={`${id}-delete`}>Delete puzzle</strong>
+          <small id={`${id}-delete-description`}>Remove the puzzle and its progress from Your puzzles.</small></span>
+      </button>
+    </div>
+    <div className="dialog-actions stop-puzzle-footer">
+      <button type="button" className="button secondary" onClick={close}>{fromPlay ? 'Keep playing' : 'Cancel'}</button>
+    </div>
+  </Modal>
+}
+
 export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
   close: () => void
   difficulty: DifficultyPreference
@@ -77,7 +117,7 @@ export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
   const { recommended } = usePlayerRating()
   const [variant, setVariant] = useState<VariantId>('classic')
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
-  const selected = selection ?? difficulty
+  const selected = variantDifficulty(variant, selection ?? difficulty)
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -96,7 +136,7 @@ export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
           const next = event.target.value
           if (isDifficultyPreference(next)) setSelection(next)
         }}>
-          {DIFFICULTY_OPTIONS.map((level) => <option key={level} value={level}>{difficultyOptionLabel(level, recommended)}</option>)}
+          {variantDifficulties(variant).map((level) => <option key={level} value={level}>{variantDifficultyLabel(variant, level, recommended)}</option>)}
         </select>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="button primary" disabled={busy}>

@@ -21,7 +21,7 @@ const meta = {
     workspaceMode: DEFAULT_WORKSPACE_MODE,
     cellReferenceStyle: DEFAULT_CELL_REFERENCE_STYLE,
     multi: false, actionsRef: { current: null }, inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(),
-    beginResize: fn(), toggleMulti: fn(), onDifficultyChange: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(),
+    beginResize: fn(), toggleMulti: fn(), onDifficultyChange: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(), onStopPlaying: fn(),
     onNewPuzzle: fn(), onCreatePuzzle: fn(), onEditPuzzle: fn(),
     showLeftPanel: true, showRightPanel: true, showBottomPanel: true,
     puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),

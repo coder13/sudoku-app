@@ -1,6 +1,6 @@
 # Sudoku
 
-Play Classic, Killer, Diagonal, Anti-Knight, Thermometer, Arrow, and Kropki Sudoku. Start several puzzles and switch between them at any time. The app saves each puzzle, its placed digits, candidates, and undo history in the browser.
+Play Classic, Killer, Diagonal, Jigsaw, Anti-Knight, Thermometer, Arrow, and Kropki Sudoku. Start several puzzles and switch between them at any time. The app saves each puzzle, its placed digits, candidates, and undo history in the browser.
 
 ## Run locally
 
@@ -51,7 +51,7 @@ The editor runs on its own local preview server. Set `LESSON_EDITOR_PORT` to use
 
 ## Play, create, and share
 
-The grid accepts keyboard or touch input. It supports two types of candidates, cell colors, multi-select, undo, and redo. Open **Puzzles → New puzzle** to choose a variant and a difficulty from Easy through Extreme. The variant name above the grid opens its rules. The engine checks that the variant rule is needed for a unique solution, then rates a full logical solve using that rule. Hints explain the active rules and show the candidates or cells involved.
+The grid accepts keyboard or touch input. It supports two types of candidates, cell colors, multi-select, undo, and redo. Open **Puzzles → New puzzle** to choose a variant and a difficulty. Jigsaw offers Easy through Hard. The other variants offer Easy through Extreme. The variant name above the grid opens its rules. The engine checks that the variant rule is needed for a unique solution, then rates a full logical solve using that rule. Hints explain the active rules and show the candidates or cells involved.
 
 Use **Create by hand** to enter givens for Classic Sudoku. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
 

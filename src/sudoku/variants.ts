@@ -1,4 +1,5 @@
-import type { VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
+import { DIFFICULTY_OPTIONS, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
+import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
 
 export const VARIANTS = {
   classic: {
@@ -12,6 +13,10 @@ export const VARIANTS = {
   diagonal: {
     name: 'Diagonal',
     rule: 'Each of the two marked diagonals must also contain the digits 1–9 once each.',
+  },
+  jigsaw: {
+    name: 'Jigsaw',
+    rule: 'Fill each row, column, and outlined region with the digits 1–9 once each.',
   },
   'anti-knight': {
     name: 'Anti-Knight',
@@ -35,9 +40,29 @@ export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>
 export type VariantGame = { id: PlayableVariant; puzzle: VariantPuzzle; solution: string }
 
+const jigsawDifficulties: readonly DifficultyPreference[] = ['auto', 'easy', 'medium', 'hard']
+
+export function variantDifficulties(variant?: VariantId) {
+  return variant === 'jigsaw' ? jigsawDifficulties : DIFFICULTY_OPTIONS
+}
+
+export function variantDifficulty<T extends DifficultyPreference>(variant: VariantId | undefined, preference: T): T | 'hard' {
+  return variantDifficulties(variant).includes(preference) ? preference : 'hard'
+}
+
+export function variantDifficultyLabel(variant: VariantId | undefined, preference: DifficultyPreference, recommended: Difficulty) {
+  return difficultyOptionLabel(preference, variantDifficulty(variant, recommended))
+}
+
 const cells = Array.from({ length: 9 }, (_, i) => i)
 const mainDiagonal = cells.map((i) => i * 10)
 const antiDiagonal = cells.map((i) => i * 8 + 8)
+
+export function regionMembership(regions: readonly (readonly number[])[]) {
+  const membership = new Array<number>(81)
+  regions.forEach((region, index) => region.forEach((cell) => { membership[cell] = index }))
+  return membership
+}
 
 export function variantHouseCells(house: VariantHouse, puzzle: VariantPuzzle): readonly number[] {
   if ('row' in house) return cells.map((i) => house.row * 9 + i)
@@ -88,6 +113,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       return rows * columns === 2
     }
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
+    if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
     if (rule.type === 'thermometer') return rule.cells.includes(a) && rule.cells.includes(b)
     return false
   })
@@ -102,11 +128,28 @@ function validCells(list: unknown, min: number) {
     new Set(list).size === list.length && list.every((cell) => Number.isInteger(cell) && cell >= 0 && cell < 81)
 }
 
+function validJigsawRegions(regions: unknown): boolean {
+  if (!Array.isArray(regions) || regions.length !== 9 ||
+    !regions.every((region) => validCells(region, 9) && region.length === 9) || new Set(regions.flat()).size !== 81) return false
+  return regions.every((region: number[]) => {
+    const reached = new Set([region[0]])
+    for (const cell of reached) {
+      for (const neighbor of region) {
+        const distance = Math.abs(cell % 9 - neighbor % 9) + Math.abs(Math.floor(cell / 9) - Math.floor(neighbor / 9))
+        if (distance === 1) reached.add(neighbor)
+      }
+    }
+    return reached.size === 9
+  })
+}
+
 export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is VariantPuzzle {
   if (typeof id !== 'string' || id === 'classic' || !Object.hasOwn(VARIANTS, id) || !puzzle || typeof puzzle !== 'object') return false
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
-  if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens) ||
-    (regions !== undefined && regions?.type !== 'boxes') || !Array.isArray(rules) || !rules.length || rules.length > 81) return false
+  if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
+  if (id === 'jigsaw') return regions?.type === 'jigsaw' && validJigsawRegions(regions.regions) &&
+    (rules === undefined || (Array.isArray(rules) && rules.length === 0))
+  if ((regions !== undefined && regions?.type !== 'boxes') || !Array.isArray(rules) || !rules.length || rules.length > 81) return false
   return rules.every((rule: VariantRule) => {
     if (!rule || rule.type !== id) return false
     switch (rule.type) {

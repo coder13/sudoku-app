@@ -14,7 +14,7 @@ import {
   type AdvancedModes, type AppearancePreferences, type HighlightPreferences, type WorkspaceMode,
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
-import { ImportPuzzle, NewPuzzle, openPuzzle, SavePuzzle, SharePuzzle } from './PuzzleDialogs'
+import { ImportPuzzle, NewPuzzle, openPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
 import type { PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
@@ -23,7 +23,8 @@ import { usePageAppearance } from './usePageAppearance'
 import { usePuzzleGeneration } from './usePuzzleGeneration'
 import { Worktable, type WorktableActions } from './Worktable'
 
-type Panel = 'new' | 'import' | 'share' | 'publish' | null
+type Panel = 'new' | 'import' | 'share' | 'publish' | 'stop' | null
+const PUZZLE_LINK = /^#(?:puzzle|variant)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
 const ADVANCED_PANEL_VISIBILITY_KEY = 'sudoku-app:v1:advanced-panel-visibility'
 const DEFAULT_ADVANCED_PANEL_VISIBILITY: AdvancedPanelVisibility = { left: true, right: true, bottom: true, articles: true }
@@ -71,7 +72,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const settingsParam = useMatch({ from: '/settings/$section', shouldThrow: false, select: ({ params }) => params.section })
   const settingsSection = isSettingsSection(settingsParam) ? settingsParam : null
   const navigate = useNavigate()
-  const { games, active, storageAvailable } = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot, roomStore.getServerSnapshot)
+  const { games, active, stoppedPlaying, storageAvailable } = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot, roomStore.getServerSnapshot)
   const [panel, setPanel] = useState<Panel>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [multi, setMulti] = useState(false)
@@ -122,25 +123,26 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     return disconnect
   }, [])
   useEffect(() => {
-    if (!workspaceReady || !playRoute) return
+    if (!workspaceReady || !playRoute || stoppedPlaying || PUZZLE_LINK.test(window.location.hash)) return
     if (game) {
       automaticPuzzleStarted.current = false
       return
     }
     if (games.length) {
-      roomStore.select(games[0].id)
+      const next = games.find((item) => !item.savedForLater)
+      if (next) roomStore.select(next.id)
       return
     }
     if (automaticPuzzleStarted.current) return
     automaticPuzzleStarted.current = true
     void automaticPuzzle.generate(difficulty)
-  }, [workspaceReady, playRoute, game, games.length, difficulty])
+  }, [workspaceReady, playRoute, game, games.length, stoppedPlaying, difficulty, linkError])
   useEffect(() => {
     if (!playing) return
     let attempt = 0
     async function handleLink() {
       const id = ++attempt
-      if (!/^#(?:puzzle|variant)=/.test(window.location.hash)) return
+      if (!PUZZLE_LINK.test(window.location.hash)) return
       setLinkError('')
       try {
         await openPuzzle(window.location.href, () => id !== attempt)
@@ -368,15 +370,18 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 showLeftPanel={advancedPanels.left} showRightPanel={advancedPanels.right} showBottomPanel={advancedPanels.bottom}
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
                 onNewPuzzle={() => setPanel('new')} onCreatePuzzle={createPuzzle} onEditPuzzle={editPuzzle}
-                onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')} />
+                onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
+                onStopPlaying={() => setPanel('stop')} />
             ) : (
               <section className="surface empty-board">
                 <h2>{automaticPuzzle.busy ? 'Generating a puzzle…' : 'Start a Sudoku'}</h2>
                 {automaticPuzzle.error && <p className="workspace-error" role="alert">{automaticPuzzle.error}</p>}
                 {!automaticPuzzle.busy && <button className="button primary" onClick={() => {
+                  if (stoppedPlaying || games.length) { setPanel('new'); return }
                   automaticPuzzleStarted.current = true
                   void automaticPuzzle.generate(difficulty)
                 }}><Plus size={18} /> {automaticPuzzle.error ? 'Try again' : 'New puzzle'}</button>}
+                {games.length > 0 && <Link className="button secondary" to="/puzzles/browse">Your puzzles</Link>}
               </section>
             )}
           </div>
@@ -403,6 +408,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       {panel === 'new' && <NewPuzzle close={close} difficulty={difficulty} onDifficultyChange={setDifficulty} onCreate={createPuzzle} />}
       {panel === 'import' && <ImportPuzzle close={close} onImport={openPuzzle} />}
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
+      {panel === 'stop' && game && <StopPlaying game={game} fromPlay close={close}
+        onDone={() => { void navigate({ to: '/puzzles/browse' }) }} />}
       {settingsRoute && <Settings close={() => { void navigate({ to: '/' }) }} section={settingsSection}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
         appearance={appearance} setAppearance={setAppearance}

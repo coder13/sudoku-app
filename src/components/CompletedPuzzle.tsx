@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react'
-import { DIFFICULTY_LABELS, DIFFICULTY_OPTIONS, difficultyOptionLabel, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
+import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
-import type { VariantId } from '../sudoku/variants'
+import { variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 
-export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, onChooseDifficulty }: {
+export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, onChooseDifficulty, onChooseVariant }: {
   game: Game
   games: Game[]
   preferredDifficulty: DifficultyPreference
@@ -13,12 +13,14 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   shortcutEnabled: boolean
   showGuides: boolean
   onChooseDifficulty: () => void
+  onChooseVariant: () => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended, results } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
-  const nextLabel = preferredDifficulty === 'auto'
-    ? `Next ${difficultyOptionLabel('auto', recommended)}` : `Next ${DIFFICULTY_LABELS[preferredDifficulty].toLowerCase()} puzzle`
+  const nextDifficulty = variantDifficulty(game.variant?.id, preferredDifficulty)
+  const nextLabel = nextDifficulty === 'auto'
+    ? `Next ${variantDifficultyLabel(game.variant?.id, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
   const result = results.get(game.id)
   const ratingChange = result && Math.round(result.after) - Math.round(result.before)
   const difficultyLabel = game.difficulty ? DIFFICULTY_LABELS[game.difficulty] : 'Unrated'
@@ -76,6 +78,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="completion-actions">
           <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
+          <button className="button secondary" aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</button>
           <button className="button primary completion-next" aria-keyshortcuts="N" disabled={!canGenerate}
             onClick={() => { void generate(preferredDifficulty, undefined, game.variant?.id) }}>
             {busy ? 'Generating…' : nextLabel}
@@ -128,9 +131,9 @@ export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack 
         </header>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="difficulty-options" role="radiogroup" aria-label="Next puzzle difficulty" aria-busy={busy}>
-          {DIFFICULTY_OPTIONS.map((difficulty) => {
-            const label = difficultyOptionLabel(difficulty, recommended)
-            const selected = difficulty === value
+          {variantDifficulties(variant).map((difficulty) => {
+            const label = variantDifficultyLabel(variant, difficulty, recommended)
+            const selected = difficulty === variantDifficulty(variant, value)
             const generating = pendingDifficulty === difficulty
             return (
               <button key={difficulty} role="radio" aria-checked={selected} disabled={busy}

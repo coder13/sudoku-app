@@ -9,10 +9,16 @@ export type VariantSeed = {
   dotCount?: number
   layout?: string
   lines?: number[][]
+  regions?: string
 }
 
 // The engine replays these bounded searches when a fresh attempt misses its target.
-export const variantSeeds: Record<PlayableVariant, Record<Difficulty, VariantSeed[]>> = seedBank
+export const variantSeeds: Record<PlayableVariant, Partial<Record<Difficulty, VariantSeed[]>>> = seedBank
+
+export function jigsawLayout(regionMap: string): Extract<NonNullable<VariantPuzzle['regions']>, { type: 'jigsaw' }> {
+  return { type: 'jigsaw', regions: Array.from({ length: 9 }, (_, region) =>
+    [...regionMap].flatMap((id, cell) => id === String(region) ? [cell] : [])) }
+}
 
 const omitted = new Set([
   'forcing-net', 'multi-sector-locked-sets', 'sk-loop', 'grouped-discontinuous-nice-loop', 'grouped-continuous-nice-loop',
@@ -50,7 +56,8 @@ export function variantGenerationRequest(
   }
   return {
     type: 'generate-variant', seed, maxAttempts: 1,
-    template: { version: 1, givens: recipe.layout ?? '0'.repeat(81), rules },
+    template: { version: 1, givens: recipe.layout ?? '0'.repeat(81), rules,
+      regions: id === 'jigsaw' ? jigsawLayout(recipe.regions!) : undefined },
     derivedClues, givens: [0, recipe.maxGivens], requiredRule: id, difficulty, techniqueOrder,
   }
 }
@@ -68,7 +75,10 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
   const givens = Array<string>(81)
   for (let index = 0; index < 81; index++) givens[cell(index)] = puzzle.givens[index]
   return {
-    ...puzzle, givens: givens.join(''), rules: puzzle.rules?.map((rule) => {
+    ...puzzle, givens: givens.join(''),
+    regions: puzzle.regions?.type === 'jigsaw'
+      ? { type: 'jigsaw', regions: puzzle.regions.regions.map((region) => region.map(cell)) } : puzzle.regions,
+    rules: puzzle.rules?.map((rule) => {
       switch (rule.type) {
         case 'diagonal': {
           const start = cell(rule.diagonal === 'main' ? 0 : 8)

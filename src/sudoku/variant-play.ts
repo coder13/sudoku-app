@@ -19,6 +19,7 @@ export function getVariantPlayOrder() {
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[]) {
   const techniqueOrder = await getVariantPlayOrder()
   const recipes = variantSeeds[id][difficulty]
+  if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')
   const seen = new Set(games.filter((game) => game.variant?.id === id).map((game) => game.givens))
   let previouslyPlayed: GeneratedVariant | undefined
   const initial = seed % recipes.length

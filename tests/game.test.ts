@@ -1,10 +1,34 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
+import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
+import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import {
   applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, paintCandidate, redo,
   needsInitialCandidates, replaceCandidates, restartGame, singleFromCandidates, STARTER_GAME, undo, valuesOf,
 } from '../src/sudoku/game.ts'
+
+test('Jigsaw uses irregular regions for candidate removal and conflicts', () => {
+  const givens = '0'.repeat(81)
+  const regions = jigsawLayout(variantSeeds.jigsaw.easy![0].regions!)
+  const puzzle = { version: 1, givens, regions } as const
+  assert.ok(isPlayablePuzzle('jigsaw', puzzle))
+  const solution = '387625149165947283924813765712569834853274691496138572539782416648351927271496358'
+  const game = { ...makeGame('jigsaw', 'Jigsaw', givens, 'generated'), variant: { id: 'jigsaw' as const, puzzle, solution } }
+
+  const moved = 56
+  const regionPeer = 27
+  const boxNeighbor = 64
+  const withCandidates = enter(game, [regionPeer, boxNeighbor], 'candidate', 1)
+  const placed = enter(withCandidates, [moved], 'value', 1)
+  assert.equal(hasCandidate(placed.position.center[regionPeer] | placed.position.corner[regionPeer], 1), false)
+  assert.equal(hasCandidate(placed.position.center[boxNeighbor] | placed.position.corner[boxNeighbor], 1), true)
+  const repeated = [...givens]
+  for (const cell of [moved, regionPeer, boxNeighbor]) repeated[cell] = '1'
+  assert.deepEqual(conflictsOf(repeated.join(''), puzzle), new Set([moved, regionPeer]))
+  const overlapping = { ...regions, regions: regions.regions.map((region, index) => index === 0 ? regions.regions[1] : region) }
+  assert.equal(isPlayablePuzzle('jigsaw', { ...puzzle, regions: overlapping }), false)
+})
 
 test('saved puzzle state is independent from its source and survives a reset', () => {
   assert.equal(isPuzzleSaved(STARTER_GAME), false)

@@ -16,8 +16,8 @@ const READY = PREFIX + 'initialized'
 const BUILT_IN_STARTER_ID = 'warmup'
 const sources = ['starter', 'generated', 'imported', 'custom', 'draft']
 
-type Room = { games: Game[]; active: string | null; storageAvailable: boolean; playerRating: PlayerRating }
-const initial: Room = { games: [], active: null, storageAvailable: true, playerRating: initialPlayerRating }
+type Room = { games: Game[]; active: string | null; stoppedPlaying: boolean; storageAvailable: boolean; playerRating: PlayerRating }
+const initial: Room = { games: [], active: null, stoppedPlaying: false, storageAvailable: true, playerRating: initialPlayerRating }
 const listeners = new Set<() => void>()
 const ratingEvents = new Map<string, RatingEvent>()
 const unsavedRatingEvents = new Set<string>()
@@ -70,6 +70,7 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
+      if (value.savedForLater !== true) delete value.savedForLater
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt
       if (attempt !== undefined && (value.source !== 'generated' || value.variant || !isRatingAttempt(attempt) ||
@@ -223,7 +224,9 @@ function hydrate() {
     }
     publish({
       games: sorted,
-      active: sorted.find((game) => game.id === last)?.id ?? sorted[0]?.id ?? null,
+      active: last === '' ? null : sorted.find((game) => game.id === last && !game.savedForLater)?.id ??
+        sorted.find((game) => !game.savedForLater)?.id ?? null,
+      stoppedPlaying: last === '',
       storageAvailable: migrated && removedStarter && outcomesSaved,
       playerRating: calculatePlayerRating(ratingEvents.values()),
     })
@@ -253,7 +256,8 @@ function onStorage(event: StorageEvent) {
   const games = room.games.filter((game) => game.id !== id)
   if (incoming) games.push(incoming)
   const sorted = orderGames(games)
-  const active = sorted.some((game) => game.id === room.active) ? room.active : sorted[0]?.id ?? null
+  const active = room.stoppedPlaying || sorted.some((game) => game.id === room.active && !game.savedForLater)
+    ? room.active : sorted.find((game) => !game.savedForLater)?.id ?? null
   publish({ ...room, games: sorted, active })
 }
 
@@ -265,7 +269,7 @@ function remember(id: string | null) {
 }
 
 function rememberActive(storage: Storage, id: string | null) {
-  if (id) storage.setItem(ACTIVE, id)
+  if (id !== null) storage.setItem(ACTIVE, id)
   else {
     storage.removeItem(legacyKey(ACTIVE))
     storage.removeItem(ACTIVE)
@@ -290,16 +294,24 @@ export const roomStore = {
     return () => window.removeEventListener('storage', onStorage)
   },
   select(id: string) {
-    if (!room.games.some((game) => game.id === id)) return
+    const game = room.games.find((game) => game.id === id)
+    if (!game) return
+    if (game.savedForLater) roomStore.update(id, (saved) => ({ ...saved, savedForLater: undefined }))
     const saved = remember(id)
-    publish({ ...room, active: id, storageAvailable: room.storageAvailable && saved })
+    publish({ ...room, active: id, stoppedPlaying: false, storageAvailable: room.storageAvailable && saved })
+  },
+  stopPlaying(id: string) {
+    if (room.active !== id) return
+    // An empty ID records that the player chose to leave. A missing key keeps the default selection behavior.
+    const saved = remember('')
+    publish({ ...room, active: null, stoppedPlaying: true, storageAvailable: room.storageAvailable && saved })
   },
   add(game: Game) {
     if (game.ratingAttempt && seenPuzzle(game)) game = { ...game, ratingAttempt: undefined }
     const seenSaved = rememberPuzzle(game)
     const saved = persist(() => localStorage.setItem(GAME_PREFIX + game.id, JSON.stringify(game)))
     const remembered = remember(game.id)
-    publish({ ...room, games: orderGames([game, ...room.games]), active: game.id,
+    publish({ ...room, games: orderGames([game, ...room.games]), active: game.id, stoppedPlaying: false,
       storageAvailable: room.storageAvailable && saved && remembered && seenSaved })
   },
   update(id: string, update: (game: Game) => Game) {
@@ -327,14 +339,14 @@ export const roomStore = {
     const removed = room.games.find((game) => game.id === id)
     const seenSaved = !removed || rememberPuzzle(removed)
     const games = room.games.filter((game) => game.id !== id)
-    const active = room.active === id ? games[0]?.id ?? null : room.active
+    const active = room.active === id ? games.find((game) => !game.savedForLater)?.id ?? null : room.active
     const saved = persist(() => {
       const key = GAME_PREFIX + id
       localStorage.removeItem(legacyKey(key))
       localStorage.removeItem(key)
     })
     const outcomeSaved = rememberOutcome(removed?.ratingAttempt?.outcome)
-    const remembered = remember(active)
+    const remembered = remember(room.stoppedPlaying ? '' : active)
     publish({ ...room, games, active, storageAvailable: room.storageAvailable && saved && remembered && seenSaved && outcomeSaved })
   },
 }

@@ -38,6 +38,7 @@ export type Game = {
   paused: boolean
   created: number
   saved?: boolean
+  savedForLater?: true
   archived?: boolean
   editingId?: string
   returnId?: string
@@ -82,6 +83,7 @@ export function restartGame(game: Game): Game {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
     },
     saved: game.saved,
+    savedForLater: game.savedForLater,
     archived: game.archived,
     editingId: game.editingId,
     returnId: game.returnId,
@@ -89,31 +91,33 @@ export function restartGame(game: Game): Game {
 }
 
 export function isPuzzleSaved(game: Game): boolean {
-  return game.saved ?? game.source === 'custom'
+  return game.savedForLater || (game.saved ?? game.source === 'custom')
 }
 
 export const STARTER_GAME = makeGame('warmup', 'The Warm-up', STARTER, 'starter', 0)
 
-export function peer(a: number, b: number): boolean {
+export function peer(a: number, b: number, puzzle?: VariantPuzzle): boolean {
   const ar = Math.floor(a / 9)
   const br = Math.floor(b / 9)
   const ac = a % 9
   const bc = b % 9
-  return ar === br || ac === bc || (
-    Math.floor(ar / 3) === Math.floor(br / 3) && Math.floor(ac / 3) === Math.floor(bc / 3)
-  )
+  if (ar === br || ac === bc) return true
+  if (puzzle?.regions?.type === 'jigsaw') {
+    return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
+  }
+  return (Math.floor(ar / 3) === Math.floor(br / 3) && Math.floor(ac / 3) === Math.floor(bc / 3)) || variantPeers(puzzle, a, b)
 }
 
 export function valuesOf(game: Game): string {
   return [...game.givens].map((digit, i) => digit === '0' ? game.position.entries[i] : digit).join('')
 }
 
-export function conflictsOf(values: string): Set<number> {
+export function conflictsOf(values: string, puzzle?: VariantPuzzle): Set<number> {
   const conflicts = new Set<number>()
   for (let i = 0; i < 81; i++) {
     if (values[i] === '0') continue
     for (let j = i + 1; j < 81; j++) {
-      if (values[i] === values[j] && peer(i, j)) {
+      if (values[i] === values[j] && peer(i, j, puzzle)) {
         conflicts.add(i)
         conflicts.add(j)
       }
@@ -252,7 +256,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
       if (digit) {
         const bit = 1 << (digit - 1)
         const clearDigit = (mask: number, i: number) => editable.some((cell) =>
-          peer(cell, i) || variantPeers(game.variant?.puzzle, cell, i)) ? mask & ~bit : mask
+          peer(cell, i, game.variant?.puzzle)) ? mask & ~bit : mask
         center = center.map(clearDigit)
         corner = corner.map(clearDigit)
       } else {
@@ -333,7 +337,7 @@ export function fillEntries(game: Game, nextValues: string): Game {
     corner[index] = 0
     const bit = 1 << (digit - 1)
     for (let peerIndex = 0; peerIndex < 81; peerIndex++) {
-      if (!peer(index, peerIndex) && !variantPeers(game.variant?.puzzle, index, peerIndex)) continue
+      if (!peer(index, peerIndex, game.variant?.puzzle)) continue
       center[peerIndex] &= ~bit
       corner[peerIndex] &= ~bit
     }

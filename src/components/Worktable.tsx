@@ -1,7 +1,7 @@
 import {
   type CSSProperties, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, ListFilter, ListOrdered, MoreHorizontal, PencilLine, RotateCcw, Share2, X } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, ListFilter, ListOrdered, LogOut, MoreHorizontal, PencilLine, RotateCcw, Share2, X } from 'lucide-react'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
@@ -130,7 +130,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false): 
 
 export function Worktable({
   game, games, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onDifficultyChange, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle,
+  beginResize, toggleMulti, onDifficultyChange, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onStopPlaying,
   cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -154,6 +154,7 @@ export function Worktable({
   onShare: () => void
   onPublish: () => void
   onCancelDraft: () => void
+  onStopPlaying: () => void
   onNewPuzzle: () => void
   onCreatePuzzle: () => void
   onEditPuzzle: () => void
@@ -219,7 +220,7 @@ export function Worktable({
   const displayedCandidates = useMemo(() => completeCandidateMasks(game), [values, center, corner])
   const hintPosition = useMemo(() => ({ gameId: game.id, values, center, corner, eliminations }),
     [game.id, values, center, corner, eliminations])
-  const conflicts = useMemo(() => conflictsOf(values), [values])
+  const conflicts = useMemo(() => conflictsOf(values, game.variant?.puzzle), [values, game.variant])
   const draft = game.source === 'draft'
   const mode: Mode = draft ? 'value' : colorMode ? 'color' : pencil
     ? advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
@@ -261,7 +262,7 @@ export function Worktable({
   const chainMasks = useMemo(() => chainsVisible && !draft && !solved && !previewing && masks
     ? masks.map((mask, index) => mask & ~(eliminations?.[index] ?? 0)) : null,
   [chainsVisible, draft, solved, previewing, masks, eliminations])
-  const chainGraph = useMemo(() => chainMasks && makeChainGraph(chainMasks), [chainMasks])
+  const chainGraph = useMemo(() => chainMasks && makeChainGraph(chainMasks, variant?.puzzle), [chainMasks, variant])
   const sketch = useChainSketch(chainGraph, `${id}:${values}:${eliminations?.join(',') ?? ''}`, Boolean(chainGraph))
   const canPaint = !cellColorsDisabled && advancedWorkspace && showRightPanel
   const brush = canPaint ? colorBrush : null
@@ -963,7 +964,7 @@ export function Worktable({
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={!modalOpen && !puzzleMenuOpen && !cancelDraftOpen && !tooHardOpen && !variantRulesOpen}
-      showGuides={appearance.showGuides} onChooseDifficulty={() => setSolvedView('difficulty')} />
+      showGuides={appearance.showGuides} onChooseDifficulty={() => setSolvedView('difficulty')} onChooseVariant={onNewPuzzle} />
   ) : showDifficulty ? (
     <PuzzleDifficulty value={preferredDifficulty} variant={variant?.id} showGuides={appearance.showGuides}
       onBack={() => setSolvedView('results')} onChange={onDifficultyChange} />
@@ -1011,6 +1012,9 @@ export function Worktable({
         <button onClick={() => { setPuzzleMenuOpen(false); setResetOpen(true) }}>
           <RotateCcw size={17} /> Reset puzzle
         </button>
+        {!solved && <button onClick={() => { setPuzzleMenuOpen(false); onStopPlaying() }} disabled={busy}>
+          <LogOut size={17} /> Stop playing…
+        </button>}
       </>}
     </div>
   )
@@ -1163,7 +1167,7 @@ export function Worktable({
     <AdvancedPuzzleBrowser games={games} active={game.id} view={puzzleBrowserView} onViewChange={setPuzzleBrowserView} onSelect={roomStore.select}
       onNew={onNewPuzzle} onCreate={onCreatePuzzle} onSave={onPublish} onEdit={onEditPuzzle}
       onSavePuzzle={(id) => roomStore.update(id, (puzzle) => ({ ...puzzle, saved: true }))}
-      onUnsavePuzzle={(id) => roomStore.update(id, (puzzle) => ({ ...puzzle, saved: false }))}
+      onUnsavePuzzle={(id) => roomStore.update(id, (puzzle) => ({ ...puzzle, saved: false, savedForLater: undefined }))}
       onArchivePuzzle={(id) => roomStore.update(id, (puzzle) => ({ ...puzzle, archived: true }))}
       onRestorePuzzle={(id) => roomStore.update(id, (puzzle) => ({ ...puzzle, archived: false }))} />
   )
@@ -1184,7 +1188,10 @@ export function Worktable({
       {mobile && puzzleMenu && <Modal title="Puzzle actions" className="puzzle-actions-sheet"
         onClose={() => setPuzzleMenuOpen(false)}>{puzzleMenu}</Modal>}
       {variant && variantRulesOpen && <Modal title={`${VARIANTS[variant.id].name} rules`} onClose={() => setVariantRulesOpen(false)}>
-        <div className="variant-rules-copy"><p>{VARIANTS.classic.rule}</p><p>{VARIANTS[variant.id].rule}</p></div>
+        <div className="variant-rules-copy">
+          {variant.id !== 'jigsaw' && <p>{VARIANTS.classic.rule}</p>}
+          <p>{VARIANTS[variant.id].rule}</p>
+        </div>
       </Modal>}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       {tooHardOpen && <Modal title="Too hard" onClose={() => { if (!nextAuto.busy) setTooHardOpen(false) }}>
