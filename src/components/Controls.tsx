@@ -7,8 +7,6 @@ import { Delete, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { COLORS, DIGITS, type Mode } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
 
-export type Feedback = { text: string; tone: 'error' | 'success' | 'neutral' }
-
 type Props = {
   mode: Mode
   pencil: boolean
@@ -34,7 +32,6 @@ type Props = {
   panelHeight: number
   setPanelHeight: Dispatch<SetStateAction<number>>
   beginResize: () => void
-  feedback: Feedback | null
 }
 
 export function Controls(props: Props) {
@@ -160,9 +157,6 @@ export function Controls(props: Props) {
           </div>
       </div>
 
-      <div className={`control-feedback ${props.feedback?.tone ?? ''}`} role="status">
-        {props.feedback?.text}
-      </div>
     </section>
   )
 }

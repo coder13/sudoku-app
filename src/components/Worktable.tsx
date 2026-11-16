@@ -1,7 +1,7 @@
 import {
   type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useEffect, useMemo, useRef, useState,
 } from 'react'
-import { Check, PencilLine, Share2 } from 'lucide-react'
+import { Check, CircleCheck, CircleX, Info, PencilLine, Share2 } from 'lucide-react'
 import { runEngine, type Analysis } from '../sudoku/engine'
 import {
   COLORS, conflictsOf, enter, isSolved, redo, undo, valuesOf,
@@ -10,12 +10,15 @@ import {
 import type { AdvancedModes } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { Board } from './Board'
-import { Controls, type Feedback } from './Controls'
+import { Controls } from './Controls'
+import { Modal } from './Modal'
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
 }
-export const validation: Record<Analysis, Feedback> = {
+export type CheckResult = { text: string; tone: 'error' | 'success' | 'neutral' }
+
+export const validation: Record<Analysis, CheckResult> = {
   conflict: { text: 'Resolve the highlighted conflicts first.', tone: 'error' },
   unsolvable: { text: 'The current grid has no solution.', tone: 'error' },
   unique: { text: 'This puzzle has exactly one solution.', tone: 'success' },
@@ -61,7 +64,7 @@ export function Worktable({
   const [colorMode, setColorMode] = useState(false)
   const [eraseMode, setEraseMode] = useState(false)
   const [solution, setSolution] = useState<string | null>(null)
-  const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [checkResult, setCheckResult] = useState<CheckResult | null>(null)
   const [busy, setBusy] = useState(false)
   const anchor = useRef(start)
   const boardRef = useRef<HTMLDivElement>(null)
@@ -105,7 +108,6 @@ export function Worktable({
 
   function edit(transform: (current: Game) => Game) {
     if (disabled) return
-    setFeedback(null)
     roomStore.update(game.id, transform)
   }
 
@@ -143,7 +145,7 @@ export function Worktable({
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       const target = event.target
-      if (modalOpen || event.altKey ||
+      if (modalOpen || checkResult !== null || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
@@ -193,19 +195,22 @@ export function Worktable({
   })
 
   async function runCheck() {
+    if (busy) return
     setBusy(true)
-    setFeedback(null)
+    setCheckResult(null)
     try {
       const status = await runEngine({ type: 'analyze', values })
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
       if (!current || valuesOf(current) !== values) return
-      if (!draft && status === 'unique') {
-        setFeedback({ text: solved ? 'Puzzle solved!' : 'Your entries are on track.', tone: 'success' })
+      if (!draft) {
+        setCheckResult(status === 'unique'
+          ? { text: solved ? 'This puzzle is correct.' : 'Everything entered so far is correct.', tone: 'success' }
+          : { text: 'This puzzle is not correct yet.', tone: 'error' })
       } else {
-        setFeedback(validation[status])
+        setCheckResult(validation[status])
       }
     } catch (error) {
-      setFeedback({ text: (error as Error).message, tone: 'error' })
+      setCheckResult({ text: (error as Error).message, tone: 'neutral' })
     } finally {
       setBusy(false)
     }
@@ -241,7 +246,16 @@ export function Worktable({
         values={values} input={input}
         undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
         disabled={disabled} draft={draft} inputSize={inputSize} panelHeight={panelHeight}
-        setPanelHeight={setPanelHeight} beginResize={beginResize} feedback={feedback} />
+        setPanelHeight={setPanelHeight} beginResize={beginResize} />
+      {checkResult && <Modal title="Puzzle check" onClose={() => setCheckResult(null)} className="check-dialog">
+        <div className={`check-result ${checkResult.tone}`}>
+          <span className="check-result-icon" aria-hidden="true">
+            {checkResult.tone === 'success' ? <CircleCheck size={30} />
+              : checkResult.tone === 'error' ? <CircleX size={30} /> : <Info size={30} />}
+          </span>
+          <p>{checkResult.text}</p>
+        </div>
+      </Modal>}
     </>
   )
 }
