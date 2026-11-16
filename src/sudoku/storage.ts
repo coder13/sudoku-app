@@ -70,6 +70,7 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
+      if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt
@@ -127,7 +128,7 @@ function playerRatingFor(games: readonly Game[]) {
     if (game.source === 'draft') continue
     const puzzleKey = puzzleIdentity(game)
     if (known.has(puzzleKey)) continue
-    if (isSolved(game) && game.difficulty) {
+    if (isSolved(game) && game.difficulty && !game.analysisUsed) {
       events.push({
         id: `saved:${game.id}`, gameId: game.id, givens: game.givens, puzzleKey, difficulty: game.difficulty,
         at: game.created + game.elapsed * 1000, finish: 'solved', elapsed: game.elapsed, viewed: 0, applied: 0, estimated: true,
