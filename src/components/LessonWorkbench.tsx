@@ -9,6 +9,7 @@ import { highlightedDigitShortcut, shortcutMatches, shortcutStore, type Editable
 import { Board } from './Board'
 import type { BoardAnnotations, BoardRegion } from './BoardAnnotations'
 import { Controls } from './Controls'
+import { useGridClickAway } from './useGridClickAway'
 
 export type LessonTools = {
   actions: DeductionAction[]
@@ -48,6 +49,10 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   const [preferences, setPreferences] = useState({ advancedModes: DEFAULT_ADVANCED_MODES,
     appearance: DEFAULT_APPEARANCE, errorMode: DEFAULT_ERROR_MODE, highlighting: DEFAULT_HIGHLIGHT_PREFERENCES, inputSize: DEFAULT_INPUT_SIZE })
   const board = useRef<HTMLDivElement>(null)
+  const tools = useRef<HTMLDivElement>(null)
+  useGridClickAway(board, () => setSelected([]), (target) => Boolean(
+    tools.current?.contains(target) && target.closest('button, input, select, textarea, a'),
+  ))
   const anchor = useRef(start)
   const drag = useRef<{ start: number; base: number[]; additive: boolean } | null>(null)
   const suppressClick = useRef(false)
@@ -199,7 +204,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
         } : undefined}
         onPaintCandidate={ready && painting ? (candidate: Candidate) => commit((current) => paintCandidate(current, candidate, selectedColor!)) : undefined} />
     </div>
-    <div className="lesson-workbench-tools">
+    <div className="lesson-workbench-tools" ref={tools}>
       {instruction && <p className="lesson-practice-instruction">{instruction}</p>}
       <Controls mode={mode} pencil={pencil} togglePencil={togglePencil} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
         advancedModes={preferences.advancedModes} colorMode={colorMode} colorTarget={colorTarget}

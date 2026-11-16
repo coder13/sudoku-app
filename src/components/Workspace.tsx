@@ -72,6 +72,10 @@ export function PuzzlesWorkspace() {
   return content ? <PuzzlesPage {...content} /> : null
 }
 
+// Never add this inert draft to roomStore. It reserves the real workspace layout.
+const pendingWorkspaceGame = { ...makeGame('pending-workspace', 'New puzzle', EMPTY, 'draft', 0),
+  paused: true, difficulty: 'easy' as const, score: 0 }
+
 export function SudokuShell({ children }: { children: ReactNode }) {
   const settingsRoute = Boolean(useMatch({ from: '/settings', shouldThrow: false }))
   const playRoute = Boolean(useMatch({ from: '/', shouldThrow: false }))
@@ -345,6 +349,17 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (returnId) roomStore.select(returnId)
   }
 
+  const emptyPuzzleContent = <div className="empty-puzzle-content" role={automaticPuzzle.busy ? 'status' : undefined}>
+    <h2>{automaticPuzzle.busy ? 'Generating a puzzle…' : 'Start a Sudoku'}</h2>
+    {automaticPuzzle.error && <p className="workspace-error" role="alert">{automaticPuzzle.error}</p>}
+    {!automaticPuzzle.busy && <button className="button primary" onClick={() => {
+      if (stoppedPlaying || games.length || (mobile && !automaticPuzzle.error)) { openNewPuzzle(); return }
+      automaticPuzzleStarted.current = true
+      void automaticPuzzle.generate(difficulty)
+    }}><Plus size={18} /> {automaticPuzzle.error ? 'Try again' : 'New puzzle'}</button>}
+    {games.length > 0 && <Link className="button secondary" to="/puzzles/browse">Your puzzles</Link>}
+  </div>
+
   return (
     <div className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
@@ -428,8 +443,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}
           {linkError && <p className="workspace-error" role="alert">{linkError}</p>}
           <div className="workspace">
-            {game ? (
-              <Worktable game={game} games={games} preferredDifficulty={difficulty}
+            {game || !mobile ? (
+              <Worktable game={game ?? pendingWorkspaceGame} placeholder={game ? undefined : emptyPuzzleContent} games={games} preferredDifficulty={difficulty}
                 modalOpen={panel !== null || menuOpen || resizeMode || settingsRoute}
                 advancedModes={advancedModes} appearance={appearance} highlighting={highlighting}
                 errorMode={errorMode} cellReferenceStyle={cellReferenceStyle} multi={multi} actionsRef={worktableActions}
@@ -443,16 +458,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
                 onStopPlaying={() => setPanel('stop')} />
             ) : (
-              <section className="surface empty-board">
-                <h2>{automaticPuzzle.busy ? 'Generating a puzzle…' : 'Start a Sudoku'}</h2>
-                {automaticPuzzle.error && <p className="workspace-error" role="alert">{automaticPuzzle.error}</p>}
-                {!automaticPuzzle.busy && <button className="button primary" onClick={() => {
-                  if (stoppedPlaying || games.length || (mobile && !automaticPuzzle.error)) { openNewPuzzle(); return }
-                  automaticPuzzleStarted.current = true
-                  void automaticPuzzle.generate(difficulty)
-                }}><Plus size={18} /> {automaticPuzzle.error ? 'Try again' : 'New puzzle'}</button>}
-                {games.length > 0 && <Link className="button secondary" to="/puzzles/browse">Your puzzles</Link>}
-              </section>
+              <section className="surface empty-board">{emptyPuzzleContent}</section>
             )}
           </div>
         </main>

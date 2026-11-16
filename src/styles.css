@@ -474,6 +474,11 @@ svg { flex-shrink: 0; }
 .puzzle-menu { width: 235px; }
 .puzzle-menu button { min-height: 38px; font-size: 13px; }
 .puzzle-stage { position: relative; min-width: 0; }
+.puzzle-placeholder-stage { position: relative; }
+.puzzle-grid-reservation { visibility: hidden; pointer-events: none; }
+.puzzle-placeholder-message { position: absolute; inset: 0; display: grid; place-items: center; overflow: auto; padding: 16px; }
+.empty-puzzle-content { display: grid; justify-items: center; align-content: center; gap: 14px; text-align: center; }
+.puzzle[data-placeholder] .puzzle-footer { visibility: hidden; }
 .puzzle-pause-trigger[aria-pressed="true"] { color: var(--dark-purple); }
 .pause-toggle-icons { position: relative; display: block; width: 18px; height: 18px; }
 .pause-toggle-icons svg {
