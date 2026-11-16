@@ -1,26 +1,27 @@
-import { type CSSProperties, useId } from 'react'
+import { useId } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Lightbulb, Minus, PanelsTopLeft, PenTool, Plus,
   SlidersHorizontal,
 } from 'lucide-react'
-import { DIGITS, type ErrorMode } from '../sudoku/game'
+import { type ErrorMode } from '../sudoku/game'
 import { CELL_REFERENCE_LABELS, type CellReferenceStyle } from '../sudoku/hints'
 import {
   gridTextScalePercentage, INPUT_SIZE_STEP, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
   stepGridTextScale,
-  type AdvancedModes, type AppearancePreferences, type CandidateHighlightStyle, type ColorMode,
+  type AdvancedModes, type AppearancePreferences, type CandidateHighlightStyle,
   type HighlightPreferences, type ThemeId, type WorkspaceMode,
 } from '../sudoku/preferences'
 import { THEME_OPTIONS, themePreview } from '../sudoku/themes'
 import { resetDesktopPanelLayout } from './DesktopDockLayout'
 import { Modal } from './Modal'
+import { SelectControl } from './SelectControl'
 
 export type SettingsSection = 'appearance' | 'input' | 'highlighting' | 'solving' | 'hints'
 type Section = SettingsSection
 
 const sections: { id: Section; label: string; description: string; icon: typeof Eye }[] = [
-  { id: 'appearance', label: 'Look & feel', description: 'Theme, size, and grid layout', icon: Eye },
+  { id: 'appearance', label: 'Look & feel', description: 'Theme, grid labels, and sizing', icon: Eye },
   { id: 'input', label: 'Input controls', description: 'Candidates, colors, and selection', icon: PenTool },
   { id: 'highlighting', label: 'Highlighting', description: 'Cells, digits, and candidates', icon: Highlighter },
   { id: 'solving', label: 'Solving style', description: 'Errors and solving behavior', icon: SlidersHorizontal },
@@ -102,40 +103,26 @@ export function ThemeSettings({ appearance, setAppearance }: {
   appearance: AppearancePreferences
   setAppearance: (appearance: AppearancePreferences) => void
 }) {
-  const colorModeName = `color-mode-${useId()}`
   return (
     <div className="settings-section theme-settings">
-      <h3>Theme</h3>
-      <p className="settings-intro">Choose how the app looks in light and dark mode.</p>
-      <fieldset className="theme-mode-setting">
-        <legend>Appearance</legend>
-        <div className="theme-mode-options">
-          {(['system', 'light', 'dark'] as ColorMode[]).map((mode) => (
-            <label key={mode}>
-              <input type="radio" name={colorModeName} value={mode} checked={appearance.colorMode === mode}
-                onChange={() => setAppearance({ ...appearance, colorMode: mode })} />
-              <span>{mode[0].toUpperCase() + mode.slice(1)}</span>
-            </label>
-          ))}
-        </div>
-        <small>System follows your device’s light or dark preference automatically.</small>
-      </fieldset>
+      <h3>Themes</h3>
+      <p className="settings-intro">Choose a palette for each color mode.</p>
       <div className="theme-palette-settings">
         <label className="settings-select theme-select">
           <strong>Light theme</strong>
           <ThemePreview theme={appearance.lightTheme} mode="light" />
-          <select aria-label="Light theme" value={appearance.lightTheme}
+          <SelectControl aria-label="Light theme" value={appearance.lightTheme}
             onChange={(event) => setAppearance({ ...appearance, lightTheme: event.target.value as ThemeId })}>
             {THEME_OPTIONS.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
-          </select>
+          </SelectControl>
         </label>
         <label className="settings-select theme-select">
           <strong>Dark theme</strong>
           <ThemePreview theme={appearance.darkTheme} mode="dark" />
-          <select aria-label="Dark theme" value={appearance.darkTheme}
+          <SelectControl aria-label="Dark theme" value={appearance.darkTheme}
             onChange={(event) => setAppearance({ ...appearance, darkTheme: event.target.value as ThemeId })}>
             {THEME_OPTIONS.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
-          </select>
+          </SelectControl>
         </label>
       </div>
     </div>
@@ -152,7 +139,8 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
   return (
     <div className="settings-section size-settings">
       <h3>Size & layout</h3>
-      <p className="settings-intro">Adjust puzzle text, digit buttons, and the input panel.</p>
+      <p className="settings-intro">Adjust grid labels, puzzle text, digit buttons, and the input panel.</p>
+      <GuideSetting appearance={appearance} setAppearance={setAppearance} heading={false} />
       <div className="setting-row-heading grid-text-size-setting">
         <span><strong>Puzzle text size</strong><small>Adjust digits and candidates in the Sudoku grid.</small></span>
         <div className="size-stepper" role="group" aria-label="Puzzle text size">
@@ -171,18 +159,13 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
             })}><Plus size={18} /></button>
         </div>
       </div>
-      <div className="input-size-setting">
-        <div className="setting-row-heading"><span><strong>Digit size</strong><small>Preview the digit buttons at their current size.</small></span>
-          <div className="size-stepper" role="group" aria-label="Digit size">
-            <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
-              onClick={() => setInputSize(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></button>
-            <button className="icon-button" aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
-              onClick={() => setInputSize(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></button>
-          </div>
-        </div>
-        <div className="keypad settings-keypad-preview" aria-label="Digit size preview"
-          style={{ '--preview-input-size': `${inputSize}px` } as CSSProperties}>
-          {DIGITS.map((digit) => <span className="key" key={digit}>{digit}</span>)}
+      <div className="input-size-setting setting-row-heading">
+        <span><strong>Digit size</strong><small>Adjust the digit buttons.</small></span>
+        <div className="size-stepper" role="group" aria-label="Digit size">
+          <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
+            onClick={() => setInputSize(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></button>
+          <button className="icon-button" aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
+            onClick={() => setInputSize(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></button>
         </div>
       </div>
       {workspaceMode === 'advanced' && <div className="desktop-layout-setting">
@@ -200,7 +183,7 @@ export function GuideSetting({ appearance, setAppearance, heading = true }: {
   heading?: boolean
 }) {
   return (
-    <div className="settings-section guide-settings">
+    <div className={heading ? 'settings-section guide-settings' : 'guide-settings'}>
       {heading && <h3>Grid</h3>}
       <label className="appearance-toggle">
         <input type="checkbox" checked={appearance.showGuides}
@@ -208,7 +191,7 @@ export function GuideSetting({ appearance, setAppearance, heading = true }: {
         <span className="settings-menu-icon" aria-hidden="true">
           {appearance.showGuides ? <Eye size={20} /> : <EyeOff size={20} />}
         </span>
-        <span><strong>Row and column guides</strong><small>Show the 1–9 labels around the Sudoku grid.</small></span>
+        <span><strong>Show row and column numbers</strong><small>Display the 1–9 row and column labels around the Sudoku grid.</small></span>
       </label>
     </div>
   )
@@ -242,7 +225,6 @@ export function AppearanceSettings({ appearance, setAppearance, inputSize, setIn
         </fieldset>
       </div>}
       <ThemeSettings appearance={appearance} setAppearance={setAppearance} />
-      <GuideSetting appearance={appearance} setAppearance={setAppearance} />
       <SizeSettings appearance={appearance} setAppearance={setAppearance}
         inputSize={inputSize} setInputSize={setInputSize} workspaceMode={workspaceMode} />
     </div>
@@ -273,30 +255,34 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
     return (
       <div className="settings-section mobile-title-duplicate">
         <h3>Input controls</h3>
-        <p className="settings-intro">Choose how digits, candidates, and selection tools work.</p>
-        <div className="advanced-options">
+        <div className="advanced-options input-control-options">
           <fieldset>
             <legend>Candidate layout</legend>
             <label>
               <input type="radio" name="candidate-layout" value="grid" checked={advancedModes.candidateLayout === 'grid'}
                 onChange={() => setAdvancedModes({ ...advancedModes, candidateLayout: 'grid' })} />
-              <span><strong>Grid</strong><small>Place every candidate in its fixed position in a 3×3 grid.</small></span>
+              <span><strong>Grid</strong><small>Use fixed positions in a 3×3 grid.</small></span>
             </label>
             <label>
               <input type="radio" name="candidate-layout" value="center-corner" checked={advancedModes.candidateLayout === 'center-corner'}
                 onChange={() => setAdvancedModes({ ...advancedModes, candidateLayout: 'center-corner' })} />
-              <span><strong>Center and corner</strong><small>Choose whether candidates appear in the center or corners.</small></span>
+              <span><strong>Center and corner</strong><small>Place candidates in cell centers or corners.</small></span>
             </label>
           </fieldset>
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.colorsEnabled}
               onChange={(event) => setAdvancedModes({ ...advancedModes, colorsEnabled: event.target.checked })} />
-            <span><strong>Enable Color mode</strong><small>Add cell and candidate coloring to the input controls.</small></span>
+            <span><strong>Color mode</strong><small>Add colors to cells and candidates.</small></span>
           </label>
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.multiSelectButton}
               onChange={(event) => setAdvancedModes({ ...advancedModes, multiSelectButton: event.target.checked })} />
-            <span><strong>Show Multi-select button</strong><small>Desktop users can always use Shift and Ctrl/⌘ to select multiple cells.</small></span>
+            <span><strong>Multi-select button</strong><small>Select multiple cells from the input controls.</small></span>
+          </label>
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={advancedModes.doubleClickSingles}
+              onChange={(event) => setAdvancedModes({ ...advancedModes, doubleClickSingles: event.target.checked })} />
+            <span><strong>Double-click naked singles</strong><small>Place a naked single with a double-click.</small></span>
           </label>
         </div>
       </div>
@@ -317,11 +303,11 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
           {!draft ? (
             <label className="advanced-select settings-select">
               <span><strong>Error display</strong><small>Choose when mistakes are highlighted.</small></span>
-              <select value={errorMode} onChange={(event) => setErrorMode(event.target.value as ErrorMode)}>
+              <SelectControl value={errorMode} onChange={(event) => setErrorMode(event.target.value as ErrorMode)}>
                 <option value="all">Flag all errors immediately</option>
                 <option value="incorrect">Flag incorrect digits immediately</option>
                 <option value="none">Don’t flag errors</option>
-              </select>
+              </SelectControl>
             </label>
           ) : (
             <div className="settings-placeholder"><SlidersHorizontal size={20} /><span><strong>Error display</strong><small>Error options become available while solving a puzzle.</small></span></div>

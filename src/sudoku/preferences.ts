@@ -14,6 +14,7 @@ export type AdvancedModes = {
   colorsEnabled: boolean
   multiSelectButton: boolean
   autoGenerateCandidates: boolean
+  doubleClickSingles: boolean
 }
 
 export type WorkspaceMode = 'standard' | 'advanced'
@@ -41,6 +42,7 @@ export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
   colorsEnabled: false,
   multiSelectButton: false,
   autoGenerateCandidates: false,
+  doubleClickSingles: true,
 }
 
 export const DEFAULT_ERROR_MODE: ErrorMode = 'all'
@@ -102,6 +104,7 @@ export function readPreferences() {
         colorsEnabled: savedModes.colorsEnabled === true,
         multiSelectButton: savedModes.multiSelectButton === true,
         autoGenerateCandidates: savedModes.autoGenerateCandidates === true,
+        doubleClickSingles: savedModes.doubleClickSingles !== false,
       }
     }
     const savedInputSizeText = localStorage.getItem(INPUT_SIZE_KEY)

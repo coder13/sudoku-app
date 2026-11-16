@@ -43,6 +43,31 @@ export const ClickAwayClearsCell: Story = {
   },
 }
 export const InProgress: Story = { args: { game: inProgress, games: [inProgress] } }
+export const Paused: Story = {
+  args: {
+    game: { ...inProgress, paused: true }, games: [{ ...inProgress, paused: true }],
+    appearance: { ...DEFAULT_APPEARANCE, showGuides: true },
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const stage = canvasElement.querySelector<HTMLElement>('.puzzle-stage')!
+    const puzzle = canvasElement.querySelector<HTMLElement>('.puzzle')!
+    const stageBefore = stage.getBoundingClientRect()
+    const puzzleBefore = puzzle.getBoundingClientRect()
+
+    await userEvent.click(canvas.getAllByRole('button', { name: 'Resume puzzle' }).at(-1)!)
+    await canvas.findByRole('grid', { name: 'Sudoku grid' })
+
+    const stageAfter = stage.getBoundingClientRect()
+    const puzzleAfter = puzzle.getBoundingClientRect()
+    expect(stageAfter.width).toBeCloseTo(stageBefore.width, 2)
+    expect(stageAfter.height).toBeCloseTo(stageBefore.height, 2)
+    expect(puzzleAfter.width).toBeCloseTo(puzzleBefore.width, 2)
+    expect(puzzleAfter.height).toBeCloseTo(puzzleBefore.height, 2)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Pause puzzle' }))
+    await canvas.findByRole('status', { name: 'Puzzle paused' })
+  },
+}
 export const LargeGridText: Story = { args: { appearance: { ...DEFAULT_APPEARANCE, gridTextScale: MAX_GRID_TEXT_SCALE } } }
 export const Draft: Story = { args: { game: namedDraft, games: [namedDraft] } }
 export const Solved: Story = { args: { game: solved, games: [solved] } }

@@ -145,6 +145,11 @@ export function isSolved(game: Game): boolean {
   return game.source !== 'draft' && (game.variant ? values === game.variant.solution : !values.includes('0') && !conflictsOf(values).size)
 }
 
+export function setGamePaused(game: Game, paused: boolean): Game {
+  if (game.paused === paused || game.source === 'draft' || !game.started || isSolved(game)) return game
+  return { ...game, paused }
+}
+
 export function progressOf(game: Game) {
   const total = [...game.givens].filter(digit => digit === '0').length
   const filled = [...game.position.entries].filter(digit => digit !== '0').length
@@ -412,6 +417,11 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
 
 export function marksOf(mask: number): number[] {
   return DIGITS.filter((digit) => mask & (1 << (digit - 1)))
+}
+
+export function onlyCandidate(mask: number): number | null {
+  const candidates = marksOf(mask)
+  return candidates.length === 1 ? candidates[0] : null
 }
 
 export function formatTime(elapsed: number): string {

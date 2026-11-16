@@ -1,8 +1,8 @@
 import { Link, useMatch, useNavigate } from '@tanstack/react-router'
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
-  ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Play, Plus,
-  SlidersHorizontal,
+  ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Play, Plus,
+  Monitor, Moon, SlidersHorizontal, Sun,
 } from 'lucide-react'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
@@ -11,9 +11,10 @@ import {
   DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, INPUT_SIZE_STEP, MAX_INPUT_SIZE,
   MIN_INPUT_SIZE, readNewPuzzlePreference, readPanelHeight, readPreferences, saveAdvancedModes, saveAppearance, saveCellReferenceStyle, saveDifficulty, saveErrorMode,
   saveHighlightPreferences, saveInputSize, savePanelHeight, saveWorkspaceMode, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_WORKSPACE_MODE,
-  saveNewPuzzlePreference, type AdvancedModes, type AppearancePreferences, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
+  saveNewPuzzlePreference, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
+import { shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { ImportPuzzle, NewPuzzle, openPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
 import { Presence } from './Presence'
 import type { PuzzleBrowserView } from './AdvancedPuzzleBrowser'
@@ -29,6 +30,8 @@ const PUZZLE_LINK = /^#(?:puzzle|variant)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
 const ADVANCED_PANEL_VISIBILITY_KEY = 'sudoku-app:v1:advanced-panel-visibility'
 const DEFAULT_ADVANCED_PANEL_VISIBILITY: AdvancedPanelVisibility = { left: true, right: true, bottom: true, articles: true }
+const COLOR_MODE_ORDER: ColorMode[] = ['system', 'light', 'dark']
+const COLOR_MODE_LABELS: Record<ColorMode, string> = { system: 'System', light: 'Light', dark: 'Dark' }
 
 function readAdvancedPanelVisibility() {
   try {
@@ -78,6 +81,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const settingsSection = isSettingsSection(settingsParam) ? settingsParam : null
   const navigate = useNavigate()
   const { games, active, stoppedPlaying, storageAvailable } = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot, roomStore.getServerSnapshot)
+  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [panel, setPanel] = useState<Panel>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [multi, setMulti] = useState(false)
@@ -108,8 +112,29 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const workspaceMode = mobile ? 'standard' : preferredWorkspaceMode
   const advancedShell = workspaceMode === 'advanced' && (playing || learning)
   const activeLeftPanelOpen = learning ? advancedPanels.articles : advancedPanels.left
+  const colorModeIndex = COLOR_MODE_ORDER.indexOf(appearance.colorMode)
+  const nextColorMode = COLOR_MODE_ORDER[(colorModeIndex + 1) % COLOR_MODE_ORDER.length]
+  const ColorModeIcon = appearance.colorMode === 'system' ? Monitor : appearance.colorMode === 'light' ? Sun : Moon
   const close = () => setPanel(null)
   usePageAppearance(appearance)
+
+  function cycleColorMode() {
+    setAppearance({ ...appearance, colorMode: nextColorMode })
+  }
+
+  useEffect(() => {
+    function openShortcutHelp(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.repeat || !shortcutMatches(event, shortcuts, 'shortcutHelp')) return
+      const target = event.target
+      if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, [data-shortcut-capture]'))) return
+      event.preventDefault()
+      setMenuOpen(false)
+      setPanel(null)
+      void navigate({ to: '/shortcuts' })
+    }
+    window.addEventListener('keydown', openShortcutHelp)
+    return () => window.removeEventListener('keydown', openShortcutHelp)
+  }, [navigate, shortcuts])
 
   useEffect(() => {
     const disconnect = roomStore.connect()
@@ -353,6 +378,11 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                   onClick={() => setPanelVisibility('bottom')}><PanelBottom size={17} /></button>
               </>}
             </div>}
+            <button className="icon-button desktop-color-mode-toggle" onClick={cycleColorMode}
+              aria-label={`Color mode: ${COLOR_MODE_LABELS[appearance.colorMode]}. Switch to ${COLOR_MODE_LABELS[nextColorMode]} mode.`}
+              title={`${COLOR_MODE_LABELS[appearance.colorMode]} color mode`}>
+              <ColorModeIcon size={19} />
+            </button>
             <button ref={menuButtonRef} className="icon-button app-menu-trigger" aria-label="Open options menu" title="Options"
               aria-expanded={menuOpen} aria-controls="app-menu" onClick={() => setMenuOpen((open) => !open)}>
               <Menu size={20} />
@@ -370,10 +400,15 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 setMenuOpen(false)
                 setWorkspaceMode(workspaceMode === 'advanced' ? 'standard' : 'advanced')
               }}><PanelsTopLeft size={17} /> {workspaceMode === 'advanced' ? 'Standard mode' : 'Advanced mode'}</button>}
+              <button className="mobile-menu-only" onClick={cycleColorMode}
+                aria-label={`Color mode: ${COLOR_MODE_LABELS[appearance.colorMode]}. Switch to ${COLOR_MODE_LABELS[nextColorMode]} mode.`}>
+                <ColorModeIcon size={17} /> Color mode: {COLOR_MODE_LABELS[appearance.colorMode]}
+              </button>
               {workspaceMode === 'advanced' && <Link to="/puzzles/statistics" onClick={() => setMenuOpen(false)}>
                 <BarChart3 size={17} /> Statistics
               </Link>}
               <button onClick={openSettings}><SlidersHorizontal size={17} /> Settings</button>
+              <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
               <div className="app-menu-separator" />
               <button onClick={() => openPanel('import')}><ArrowDownToLine size={17} /> Import</button>

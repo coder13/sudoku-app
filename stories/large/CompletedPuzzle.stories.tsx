@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { fn } from 'storybook/test'
-import { CompletedPuzzle } from '../../src/components/CompletedPuzzle'
+import { fn, userEvent, within } from 'storybook/test'
+import { CompletedPuzzle, CompletionTechniques } from '../../src/components/CompletedPuzzle'
 import { calculatePlayerRating, initialPlayerRating } from '../../src/sudoku/player-rating'
 import { quicker, solved } from '../support/fixtures'
 import { Width } from '../support/frames'
@@ -28,3 +28,15 @@ export const RatedWithHints: Story = {
 export const FirstSolve: Story = { args: { games: [solved], preferredDifficulty: 'medium' } }
 export const RatingPending: Story = { args: { ratingPending: true, game: { ...solved, difficulty: undefined } } }
 export const Unrated: Story = { args: { showGuides: false, game: { ...solved, difficulty: null } } }
+export const TechniquesUsed: Story = {
+  render: () => <section className="board-frame completion-frame guides-hidden"><div className="completion">
+    <CompletionTechniques techniques={[
+      { technique: 'hidden-single', independent: 4, hints: 0 },
+      { technique: 'locked-pair', independent: 2, hints: 1 },
+      { technique: 'x-wing', independent: 0, hints: 2 },
+    ]} />
+  </div></section>,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByText('Techniques used'))
+  },
+}

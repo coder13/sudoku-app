@@ -4,7 +4,7 @@ import { getVariantPlayOrder, variantPosition } from './variant-play'
 import type { VariantGame } from './variants'
 import {
   rememberTechniqueAction, summarizeTechniques, techniqueActionKey,
-  type PuzzleTechniqueHistory, type TechniqueObservation, type TechniqueProgress,
+  summarizePuzzleTechniques, type PuzzleTechniqueHistory, type PuzzleTechniqueUse, type TechniqueObservation, type TechniqueProgress,
 } from './technique-progress'
 
 const EMPTY_PROGRESS: readonly TechniqueProgress[] = []
@@ -53,6 +53,17 @@ async function readProgress(): Promise<TechniqueProgress[]> {
   } catch { return [] }
 }
 
+async function readPuzzle(givens: string): Promise<PuzzleTechniqueHistory | undefined> {
+  try {
+    const db = await openHistory()
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction(PUZZLES).objectStore(PUZZLES).get(givens)
+      request.onsuccess = () => resolve(request.result as PuzzleTechniqueHistory | undefined)
+      request.onerror = () => reject(request.error)
+    })
+  } catch { return undefined }
+}
+
 function historyChannel() {
   if (typeof BroadcastChannel === 'undefined') return undefined
   channel ??= new BroadcastChannel('sudoku-technique-history')
@@ -95,6 +106,10 @@ export const techniqueHistory = {
   async readProgress() {
     await Promise.allSettled(pending)
     return readProgress()
+  },
+  async readPuzzle(game: Pick<Game, 'givens' | 'variant'>): Promise<PuzzleTechniqueUse[]> {
+    await Promise.allSettled(pending)
+    return summarizePuzzleTechniques(await readPuzzle(puzzleIdentity(game)))
   },
 }
 

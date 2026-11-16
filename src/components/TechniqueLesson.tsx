@@ -9,6 +9,7 @@ import { Board } from './Board'
 import type { BoardRegion } from './BoardAnnotations'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
 import { PracticePuzzle } from './LessonPractice'
+import { SelectControl } from './SelectControl'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, LessonExample>
 
@@ -66,12 +67,12 @@ export function Practice({ block, variant }: { block: Extract<LessonBlock, { typ
         <h2 id={heading}>{title ?? 'Try a move'}</h2>
         {drills.length > 1 && <label className="lesson-drill">
           <span>{selectLabel ?? 'Technique'}</span>
-          <select value={chosen.example} onChange={(event) => {
+          <SelectControl value={chosen.example} onChange={(event) => {
             const next = drills.find(({ example }) => example === event.target.value)
             if (next) setChosen(next)
           }}>
             {drills.map(({ example, title }) => <option key={example} value={example}>{title}</option>)}
-          </select>
+          </SelectControl>
         </label>}
       </header>
     <PracticePuzzle key={chosen.example} puzzle={lessonExamples[chosen.example].practice} technique={chosen.title} instruction={block.instruction} />

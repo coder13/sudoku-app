@@ -4,8 +4,8 @@ import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sud
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import {
-  applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, paintCandidate, redo,
-  needsInitialCandidates, replaceCandidates, restartGame, singleFromCandidates, STARTER_GAME, undo, valuesOf,
+  applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, onlyCandidate, paintCandidate, redo,
+  needsInitialCandidates, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, undo, valuesOf,
 } from '../src/sudoku/game.ts'
 
 test('Jigsaw uses irregular regions for candidate removal and conflicts', () => {
@@ -40,6 +40,16 @@ test('saved puzzle state is independent from its source and survives a reset', (
   assert.equal(reset.archived, true)
 })
 
+test('only a started puzzle can be paused and resumed', () => {
+  assert.equal(setGamePaused(STARTER_GAME, true), STARTER_GAME)
+
+  const started = enter(STARTER_GAME, [2], 'candidate', 4)
+  const paused = setGamePaused(started, true)
+  assert.equal(paused.paused, true)
+  assert.equal(setGamePaused(paused, true), paused)
+  assert.equal(setGamePaused(paused, false).paused, false)
+})
+
 test('candidate matching treats masks as sets', () => {
   const pair = (1 << (2 - 1)) | (1 << (7 - 1))
   assert.equal(candidateCount(pair), 2)
@@ -47,6 +57,12 @@ test('candidate matching treats masks as sets', () => {
   assert.equal(hasCandidate(pair, 2), true)
   assert.equal(hasCandidate(pair, 7), true)
   assert.equal(hasCandidate(pair, 4), false)
+})
+
+test('a naked single is the only displayed candidate in its cell', () => {
+  assert.equal(onlyCandidate(1 << (4 - 1)), 4)
+  assert.equal(onlyCandidate(0), null)
+  assert.equal(onlyCandidate((1 << (2 - 1)) | (1 << (7 - 1))), null)
 })
 
 test('all share formats round-trip to the original givens', () => {

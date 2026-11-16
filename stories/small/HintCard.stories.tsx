@@ -1,6 +1,7 @@
 import { useState, type ComponentProps } from 'react'
 import type { StoryObj } from '@storybook/react-vite'
 import { HintCard } from '../../src/components/HintCard'
+import { SelectControl } from '../../src/components/SelectControl'
 import { DIFFICULTY_LABELS } from '../../src/sudoku/difficulty'
 import {
   CELL_REFERENCE_LABELS, DEFAULT_CELL_REFERENCE_STYLE, describeHint, isCellReferenceStyle, type CellReferenceStyle,
@@ -37,12 +38,12 @@ function CopyGallery() {
         <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try X-wing or place digit" />
       </label>
       <label>Cell references
-        <select value={cellReferenceStyle} onChange={(event) => {
+        <SelectControl value={cellReferenceStyle} onChange={(event) => {
           const style = event.target.value
           if (isCellReferenceStyle(style)) setCellReferenceStyle(style)
         }}>
           {Object.entries(CELL_REFERENCE_LABELS).map(([style, label]) => <option key={style} value={style}>{label}</option>)}
-        </select>
+        </SelectControl>
       </label>
     </div>
     {dismissed.length > 0 && <div><button className="button secondary" onClick={() => setDismissed([])}>Restore dismissed hints</button></div>}

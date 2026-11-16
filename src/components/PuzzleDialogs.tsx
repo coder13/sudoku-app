@@ -9,6 +9,7 @@ import { isPlayablePuzzle, VARIANTS, variantDifficulties, variantDifficulty, var
 import { VariantSelector } from './VariantSelector'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
+import { SelectControl } from './SelectControl'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { validation } from './PuzzleCheckResult'
 
@@ -138,14 +139,14 @@ export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDif
       <form className="dialog-form" onSubmit={submit}>
         <VariantSelector value={variant} onChange={setVariant} busy={busy} />
         <label htmlFor="puzzle-difficulty">Difficulty</label>
-        <select id="puzzle-difficulty" value={selected} disabled={busy} onChange={(event) => {
+        <SelectControl id="puzzle-difficulty" value={selected} disabled={busy} onChange={(event) => {
           const next = event.target.value
           if (isDifficultyPreference(next)) setSelection(next)
         }}>
           {variantDifficulties(variant).map((level) => <option key={level} value={level}>
             {level === 'auto' ? autoLabel : variantDifficultyLabel(variant, level, recommended)}
           </option>)}
-        </select>
+        </SelectControl>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="button primary" disabled={busy}>
           <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
@@ -245,9 +246,9 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
         <p>Share the starting grid for {game.title}.</p>
         {!game.variant && <>
           <label htmlFor="share-format">Format</label>
-          <select id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
+          <SelectControl id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
             {formats.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-          </select>
+          </SelectControl>
         </>}
         {loopback && format === 'link' && <p>This link opens only on this device.</p>}
         <label htmlFor="share-output">Puzzle to share</label>

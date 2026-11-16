@@ -26,6 +26,7 @@ type Props = {
   active?: number
   boardRef?: RefObject<HTMLDivElement | null>
   onCell?: (index: number, event: MouseEvent) => void
+  onCellDoubleClick?: (index: number, event: MouseEvent) => void
   onCandidate?: (candidate: Candidate) => void
   onPaintCandidate?: (candidate: Candidate) => void
   onCandidateHover?: (candidate: Candidate | null) => void
@@ -41,7 +42,7 @@ type CandidateSlot = Candidate & { slotted: boolean }
 export function Board({
   variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, annotations, region, label = 'Sudoku grid', showGuides,
   highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
-  selected = [], active = 0, boardRef, onCell, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
+  selected = [], active = 0, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onPaintCandidate,
 }: Props) {
   const variantRules = variantPuzzle?.rules
@@ -222,7 +223,8 @@ export function Board({
                     type={onCell && 'button'} tabIndex={onCell ? (active === index ? 0 : -1) : undefined}
                     aria-selected={onCell ? inSelection : undefined}
                     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
-                    onClick={onCell && ((event) => onCell(index, event))}>
+                    onClick={onCell && ((event) => onCell(index, event))}
+                    onDoubleClick={onCellDoubleClick && ((event) => onCellDoubleClick(index, event))}>
                     {cageTotal !== undefined && <span className="variant-cage-total" aria-hidden="true">{cageTotal}</span>}
                     {value ? <span aria-hidden="true">{value}</span> : (
                       <>

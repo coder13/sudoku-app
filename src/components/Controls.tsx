@@ -1,11 +1,12 @@
 import {
   type CSSProperties, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent,
   type ReactNode, type Ref, type SetStateAction,
-  useEffect, useRef, useState,
+  useEffect, useRef, useState, useSyncExternalStore,
 } from 'react'
 import { Check, Delete, Eraser, Highlighter, Layers2, ListChecks, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { COLORS, DIGITS, type ColorTarget, type Mode } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
+import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 import { ColorTargetPicker } from './CellColorPalette'
 import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
 
@@ -49,6 +50,7 @@ type Props = {
 }
 
 export function Controls(props: Props) {
+  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [mobile, setMobile] = useState(false)
   const [panelBounds, setPanelBounds] = useState({ min: 250, max: 420 })
   const drag = useRef<{ y: number; height: number } | null>(null)
@@ -138,8 +140,8 @@ export function Controls(props: Props) {
             {props.onActions && (
               <div className="controls-actions-wrap">
                 <button type="button" ref={props.actionsButtonRef} className="icon-button actions-key"
-                  aria-label="Actions" title="Actions" disabled={props.disabled} aria-expanded={props.actionsOpen}
-
+                  aria-label="Actions" title={`Actions (${shortcutLabel(shortcuts.actions)})`} disabled={props.disabled} aria-expanded={props.actionsOpen}
+                  aria-keyshortcuts={shortcutLabel(shortcuts.actions)}
                   aria-controls={props.actionsOpen ? (props.compact ? 'mobile-actions-menu' : 'input-actions-menu') : undefined}
                   aria-haspopup={props.compact ? 'dialog' : undefined} onClick={props.onActions}>
                   <ListChecks size={20} aria-hidden="true" />
@@ -165,7 +167,7 @@ export function Controls(props: Props) {
                   <button type="button" key={digit}
                     className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && props.mode === 'value' && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
                     aria-label={colors ? COLORS[digit - 1] : digitLabel}
-                    aria-keyshortcuts={colors ? `${digit}` : `F${digit}`}
+                    aria-keyshortcuts={colors ? `${digit}` : `Shift+${digit} F${digit}`}
                     aria-pressed={armed} disabled={props.disabled}
                     onClick={() => props.input(digit)}>
                     {colors ? <span className="swatch" /> : <span>{digit}</span>}
@@ -180,21 +182,21 @@ export function Controls(props: Props) {
 
           <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
-              <button className="icon-button pencil-button" title="Pencil mode · Cmd+1–9 or Ctrl+1–9 toggles candidates in selected cells" aria-label="Pencil mode"
-                aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts="P" onClick={props.togglePencil} disabled={props.disabled}>
+              <button className="icon-button pencil-button" title={`Pencil mode (${shortcutLabel(shortcuts.pencilMode)}) · Cmd+1–9 or Ctrl+1–9 toggles candidates in selected cells`} aria-label="Pencil mode"
+                aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.pencilMode)} onClick={props.togglePencil} disabled={props.disabled}>
                 <Pencil size={18} />
               </button>
             )}
             {!props.draft && (
-              <button className="icon-button highlight-mode-button" title="Highlight mode · edits selected cells"
-                aria-label="Highlight mode" aria-pressed={props.highlightMode} aria-keyshortcuts="H"
+              <button className="icon-button highlight-mode-button" title={`Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
+                aria-label="Highlight mode" aria-pressed={props.highlightMode} aria-keyshortcuts={shortcutLabel(shortcuts.highlightMode)}
                 onClick={props.toggleHighlightMode} disabled={props.disabled}>
                 <Highlighter size={18} />
               </button>
             )}
             {!props.draft && props.advancedModes.colorsEnabled && (
-              <button className="icon-button color-mode-button" title="Color mode" aria-label="Color mode"
-                aria-pressed={props.colorMode} aria-keyshortcuts="B" onClick={props.toggleColorMode} disabled={props.disabled}>
+              <button className="icon-button color-mode-button" title={`Color mode (${shortcutLabel(shortcuts.colorMode)})`} aria-label="Color mode"
+                aria-pressed={props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)} onClick={props.toggleColorMode} disabled={props.disabled}>
                 <Palette size={18} />
               </button>
             )}
@@ -205,8 +207,8 @@ export function Controls(props: Props) {
               </button>
             )}
             <button className="icon-button erase-mode-button" onClick={props.toggleEraseMode} disabled={props.disabled}
-              aria-label="Erase mode" title="Erase mode"
-              aria-pressed={props.eraseMode}><Delete size={18} /></button>
+              aria-label="Erase mode" title={`Erase mode (${shortcutLabel(shortcuts.eraseMode)})`}
+              aria-keyshortcuts={shortcutLabel(shortcuts.eraseMode)} aria-pressed={props.eraseMode}><Delete size={18} /></button>
           </div>
       </div>
 

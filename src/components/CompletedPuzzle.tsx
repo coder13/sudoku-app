@@ -1,9 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { ArrowLeft, ArrowRight, Check, ChevronDown, CircleCheck, Sparkles } from 'lucide-react'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
+import { techniqueLabel } from '../sudoku/hints'
+import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
+import { techniqueHistory } from '../sudoku/technique-history'
+import type { PuzzleTechniqueUse } from '../sudoku/technique-progress'
 import { variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
+
+function techniqueUseDescription({ independent, hints }: PuzzleTechniqueUse) {
+  if (independent && hints) return 'Detected in your solve and shown in hints'
+  if (independent) return 'Detected in your solve'
+  return 'Shown in hints'
+}
+
+export function CompletionTechniques({ techniques }: { techniques: PuzzleTechniqueUse[] | null }) {
+  return <details className="completion-techniques">
+    <summary>
+      <span className="completion-techniques-title"><Sparkles size={16} aria-hidden="true" /><strong>Techniques used</strong></span>
+      <small>{techniques === null ? 'Checking…' : techniques.length ? `${techniques.length} detected` : 'None'}</small>
+      <ChevronDown size={16} aria-hidden="true" />
+    </summary>
+    <div className="completion-techniques-panel">
+      {techniques === null ? <p role="status">Checking this solve…</p>
+        : techniques.length === 0 ? <p>No techniques were detected for this solve.</p>
+          : <ul>{techniques.map((use) => <li key={use.technique}>
+            <strong>{techniqueLabel(use.technique)}</strong>
+            <small>{techniqueUseDescription(use)}</small>
+          </li>)}</ul>}
+    </div>
+  </details>
+}
 
 export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, onChooseDifficulty, onChooseVariant }: {
   game: Game
@@ -15,9 +43,11 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   onChooseDifficulty: () => void
   onChooseVariant: () => void
 }) {
+  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended, results } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
+  const [techniques, setTechniques] = useState<PuzzleTechniqueUse[] | null>(null)
   const nextDifficulty = variantDifficulty(game.variant?.id, preferredDifficulty)
   const nextLabel = nextDifficulty === 'auto'
     ? `Next ${variantDifficultyLabel(game.variant?.id, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
@@ -33,10 +63,18 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
 
   useEffect(() => {
+    let current = true
+    setTechniques(null)
+    void techniqueHistory.readPuzzle(game)
+      .then((uses) => { if (current) setTechniques(uses) })
+      .catch(() => { if (current) setTechniques([]) })
+    return () => { current = false }
+  }, [game.id])
+
+  useEffect(() => {
     if (!shortcutEnabled || !canGenerate) return
     function keydown(event: KeyboardEvent) {
-      if (event.defaultPrevented || event.repeat || event.key.toLowerCase() !== 'n' ||
-        event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      if (event.defaultPrevented || event.repeat || !shortcutMatches(event, shortcuts, 'nextPuzzle')) return
       const target = event.target
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, dialog'))) return
       event.preventDefault()
@@ -44,7 +82,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
     }
     window.addEventListener('keydown', keydown)
     return () => window.removeEventListener('keydown', keydown)
-  }, [canGenerate, game.variant?.id, generate, preferredDifficulty, shortcutEnabled])
+  }, [canGenerate, game.variant?.id, generate, preferredDifficulty, shortcutEnabled, shortcuts])
 
   return (
     <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
@@ -74,9 +112,10 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
           <div><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
           {game.difficulty && <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
         </dl>
+        <CompletionTechniques techniques={techniques} />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="completion-actions">
-          <button className="button primary completion-next" aria-keyshortcuts="N" disabled={!canGenerate}
+          <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canGenerate}
             onClick={() => { void generate(preferredDifficulty, undefined, game.variant?.id) }}>
             {busy ? 'Generating…' : nextLabel}
             {!busy && <ArrowRight size={18} aria-hidden="true" />}

@@ -23,6 +23,12 @@ export type TechniqueProgress = {
   independence: number | null
 }
 
+export type PuzzleTechniqueUse = {
+  technique: string
+  independent: number
+  hints: number
+}
+
 export function autoTechniqueFocus(progress: readonly TechniqueProgress[], available: readonly string[]): string | undefined {
   // Prefer a technique the player has needed help with on more than one puzzle.
   const candidates = progress.filter(({ technique, puzzles, withHints, withoutHints, independence }) =>
@@ -91,4 +97,20 @@ export function summarizeTechniques(history: readonly PuzzleTechniqueHistory[]):
       independence: samples.length < MIN_TECHNIQUE_PUZZLES ? null : Math.round(100 * evidence / samples.length),
     }
   }).sort((a, b) => b.puzzles - a.puzzles || a.technique.localeCompare(b.technique))
+}
+
+export function summarizePuzzleTechniques(history?: PuzzleTechniqueHistory): PuzzleTechniqueUse[] {
+  if (!history) return []
+  const techniques = new Map<string, PuzzleTechniqueUse & { firstSeen: number }>()
+  for (const { technique, source, at } of Object.values(history.actions)) {
+    if (technique === null || source === 'automated' || at >= (history.solutionRevealedAt ?? Infinity)) continue
+    const use = techniques.get(technique) ?? { technique, independent: 0, hints: 0, firstSeen: at }
+    if (source === 'independent') use.independent++
+    else use.hints++
+    use.firstSeen = Math.min(use.firstSeen, at)
+    techniques.set(technique, use)
+  }
+  return Array.from(techniques.values())
+    .sort((first, second) => first.firstSeen - second.firstSeen || first.technique.localeCompare(second.technique))
+    .map(({ firstSeen: _, ...use }) => use)
 }

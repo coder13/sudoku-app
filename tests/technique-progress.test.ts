@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { enter, makeGame } from '../src/sudoku/game.ts'
-import { autoTechniqueFocus, playerActions, rememberTechniqueAction, summarizeTechniques, type PuzzleTechniqueHistory } from '../src/sudoku/technique-progress.ts'
+import {
+  autoTechniqueFocus, playerActions, rememberTechniqueAction, summarizePuzzleTechniques, summarizeTechniques,
+  type PuzzleTechniqueHistory,
+} from '../src/sudoku/technique-progress.ts'
 
 test('only intentional placements and complete candidate removals count as player actions', () => {
   const game = makeGame('test', 'Test', '0'.repeat(81), 'generated')
@@ -24,6 +27,24 @@ test('a hint seen first stays assisted even if the player move is classified fir
   assert.equal(rememberTechniqueAction(puzzle, 'e2:4', { at: 12, technique: 'naked-pair', source: 'independent' }), false)
   assert.deepEqual(summarizeTechniques([puzzle]), [
     { technique: 'locked-pair', withoutHints: 0, withHints: 1, puzzles: 1, independence: null },
+  ])
+})
+
+test('a solved puzzle lists each detected technique in first-use order', () => {
+  const puzzle: PuzzleTechniqueHistory = {
+    givens: 'puzzle',
+    solutionRevealedAt: 20,
+    actions: {
+      first: { at: 4, technique: 'hidden-single', source: 'independent' },
+      hint: { at: 8, technique: 'locked-pair', source: 'hint' },
+      repeated: { at: 12, technique: 'hidden-single', source: 'hint' },
+      automated: { at: 14, technique: 'naked-single', source: 'automated' },
+      revealed: { at: 21, technique: 'x-wing', source: 'independent' },
+    },
+  }
+  assert.deepEqual(summarizePuzzleTechniques(puzzle), [
+    { technique: 'hidden-single', independent: 1, hints: 1 },
+    { technique: 'locked-pair', independent: 0, hints: 1 },
   ])
 })
 

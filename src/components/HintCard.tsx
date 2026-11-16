@@ -4,13 +4,15 @@ import type { PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
 
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
+type HintAction = { label: string; onClick: () => void }
 
-export function HintCard({ hint, onClose, onShown, navigation, action, explanation, collapseExplanation, trace }: {
+export function HintCard({ hint, onClose, onShown, navigation, action, secondaryAction, explanation, collapseExplanation, trace }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
   navigation?: HintNavigation
-  action?: { label: string; onClick: () => void }
+  action?: HintAction
+  secondaryAction?: HintAction & { expanded?: boolean }
   explanation?: string
   collapseExplanation?: boolean
   trace?: ReturnType<typeof lessonDiagram>['trace']
@@ -31,7 +33,7 @@ export function HintCard({ hint, onClose, onShown, navigation, action, explanati
         <button type="button" className="icon-button borderless hint-card-close" aria-label="Close hint" onClick={onClose}>
           <X size={18} aria-hidden="true" />
         </button>
-        {(navigation || action) && <div className="hint-card-actions">
+        {(navigation || action || secondaryAction) && <div className="hint-card-actions">
           {navigation && <div className="hint-card-navigation" role="group" aria-label="Hint navigation">
             <button type="button" className="icon-button" aria-label="Previous hint"
               disabled={navigation.index === 0} onClick={() => navigation.onMove(-1)}>
@@ -43,6 +45,8 @@ export function HintCard({ hint, onClose, onShown, navigation, action, explanati
               <ArrowRight size={16} aria-hidden="true" />
             </button>
           </div>}
+          {secondaryAction && <button type="button" className="button secondary" aria-expanded={secondaryAction.expanded}
+            onClick={secondaryAction.onClick}>{secondaryAction.label}</button>}
           {action && <button type="button" className="button primary" onClick={action.onClick}>{action.label}</button>}
         </div>}
       </div>
