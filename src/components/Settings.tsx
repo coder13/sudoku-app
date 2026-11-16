@@ -8,6 +8,7 @@ import {
   INPUT_SIZE_STEP, MAX_INPUT_SIZE, MIN_INPUT_SIZE,
   type AdvancedModes, type AppearancePreferences, type ColorMode, type ThemeId,
 } from '../sudoku/preferences'
+import { THEME_OPTIONS, themePreview } from '../sudoku/themes'
 import { Modal } from './Modal'
 
 type Section = 'appearance' | 'input' | 'solving' | 'hints'
@@ -25,7 +26,15 @@ const screenLabels: Record<Section, string> = {
   hints: 'Hints',
 }
 const screenIds = new Set<Section>(Object.keys(screenLabels) as Section[])
-const themeNames: Record<ThemeId, string> = { violet: 'Violet', ocean: 'Ocean', forest: 'Forest' }
+
+function ThemePreview({ theme, mode }: { theme: ThemeId; mode: 'light' | 'dark' }) {
+  const preview = themePreview(theme, mode)
+  return (
+    <span className="theme-preview" style={{ background: preview.background, borderColor: preview.border }} aria-hidden="true">
+      {preview.colors.map((color, index) => <i key={`${index}-${color}`} style={{ background: color }} />)}
+    </span>
+  )
+}
 
 function ThemeSettings({ appearance, setAppearance }: {
   appearance: AppearancePreferences
@@ -52,18 +61,18 @@ function ThemeSettings({ appearance, setAppearance }: {
       <div className="theme-palette-settings">
         <label className="settings-select theme-select">
           <span><strong>Light theme</strong><small>Palette used when the app is light.</small></span>
-          <span className={`theme-preview light ${appearance.lightTheme}`} aria-hidden="true"><i /><i /><i /></span>
+          <ThemePreview theme={appearance.lightTheme} mode="light" />
           <select aria-label="Light theme" value={appearance.lightTheme}
             onChange={(event) => setAppearance({ ...appearance, lightTheme: event.target.value as ThemeId })}>
-            {Object.entries(themeNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            {THEME_OPTIONS.map(({ id, name, category }) => <option key={id} value={id}>{name} · {category}</option>)}
           </select>
         </label>
         <label className="settings-select theme-select">
           <span><strong>Dark theme</strong><small>Palette used when the app is dark.</small></span>
-          <span className={`theme-preview dark ${appearance.darkTheme}`} aria-hidden="true"><i /><i /><i /></span>
+          <ThemePreview theme={appearance.darkTheme} mode="dark" />
           <select aria-label="Dark theme" value={appearance.darkTheme}
             onChange={(event) => setAppearance({ ...appearance, darkTheme: event.target.value as ThemeId })}>
-            {Object.entries(themeNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            {THEME_OPTIONS.map(({ id, name, category }) => <option key={id} value={id}>{name} · {category}</option>)}
           </select>
         </label>
       </div>

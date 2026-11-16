@@ -1,4 +1,5 @@
 import type { CandidateLayout, ErrorMode } from './game'
+import { THEME_IDS_SET, type ThemeId } from './themes'
 
 export type AdvancedModes = {
   candidateLayout: CandidateLayout
@@ -7,7 +8,7 @@ export type AdvancedModes = {
 }
 
 export type ColorMode = 'system' | 'light' | 'dark'
-export type ThemeId = 'violet' | 'ocean' | 'forest'
+export type { ThemeId } from './themes'
 export type AppearancePreferences = {
   colorMode: ColorMode
   lightTheme: ThemeId
@@ -40,7 +41,6 @@ export const APPEARANCE_KEY = 'sudoku-app:v1:appearance'
 
 const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'none'])
 const COLOR_MODES = new Set<ColorMode>(['system', 'light', 'dark'])
-const THEMES = new Set<ThemeId>(['violet', 'ocean', 'forest'])
 
 export function readPreferences() {
   let advancedModes = DEFAULT_ADVANCED_MODES
@@ -68,9 +68,9 @@ export function readPreferences() {
       appearance = {
         colorMode: savedAppearance.colorMode && COLOR_MODES.has(savedAppearance.colorMode)
           ? savedAppearance.colorMode : DEFAULT_APPEARANCE.colorMode,
-        lightTheme: savedAppearance.lightTheme && THEMES.has(savedAppearance.lightTheme)
+        lightTheme: savedAppearance.lightTheme && THEME_IDS_SET.has(savedAppearance.lightTheme)
           ? savedAppearance.lightTheme : DEFAULT_APPEARANCE.lightTheme,
-        darkTheme: savedAppearance.darkTheme && THEMES.has(savedAppearance.darkTheme)
+        darkTheme: savedAppearance.darkTheme && THEME_IDS_SET.has(savedAppearance.darkTheme)
           ? savedAppearance.darkTheme : DEFAULT_APPEARANCE.darkTheme,
         showGuides: savedAppearance.showGuides !== false,
       }

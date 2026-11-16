@@ -10,6 +10,7 @@ import {
   savePanelHeight, type AdvancedModes, type AppearancePreferences,
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
+import { applyTheme } from '../sudoku/themes'
 import { Modal } from './Modal'
 import { ImportPuzzle, NewPuzzle, openPuzzle, PuzzleOptions, SavePuzzle, SharePuzzle, Shortcuts } from './PuzzleDialogs'
 import { PuzzleLibrary } from './PuzzleLibrary'
@@ -65,6 +66,7 @@ export function Workspace() {
     root.dataset.colorMode = colorMode
     root.dataset.theme = activeTheme
     root.style.colorScheme = colorMode
+    applyTheme(root, activeTheme, colorMode)
     const background = getComputedStyle(root).getPropertyValue('--page-bg').trim()
     const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
     if (themeColor && background) themeColor.content = background
