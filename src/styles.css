@@ -686,6 +686,11 @@ svg { flex-shrink: 0; }
 }
 .dialog.check-dialog { width: min(410px, calc(100vw - 28px)); }
 .dialog::backdrop { background: #251c3b65; }
+.dialog.settings-dialog::backdrop {
+  background: #251c3b80;
+  -webkit-backdrop-filter: blur(12px) saturate(.75);
+  backdrop-filter: blur(12px) saturate(.75);
+}
 .check-result { display: grid; justify-items: center; gap: 12px; padding: 7px 5px 13px; text-align: center; }
 .check-result-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 50%; }
 .check-result.success .check-result-icon { background: #e7f6ee; color: #287052; }
