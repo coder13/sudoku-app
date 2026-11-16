@@ -1,11 +1,13 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Clipboard, Dices, FileUp, PencilLine } from 'lucide-react'
-import { runEngine } from '../sudoku/engine'
+import { DIFFICULTY_LABELS, isDifficulty } from '../sudoku/difficulty'
+import { runEngine, type Difficulty } from '../sudoku/engine'
 import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
-import { EMPTY, makeGame, valuesOf, type Game } from '../sudoku/game'
+import { createGameId, makeGame, valuesOf, type Game } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
-import { validation } from './Worktable'
+import { usePuzzleGeneration } from './usePuzzleGeneration'
+import { validation } from './PuzzleCheckResult'
 
 export async function openPuzzle(givens: string, cancelled: () => boolean) {
   const existing = roomStore.getSnapshot().games.find((game) => game.givens === givens && game.source !== 'draft')
@@ -18,9 +20,8 @@ export async function openPuzzle(givens: string, cancelled: () => boolean) {
   if (cancelled()) return
   const current = roomStore.getSnapshot().games.find((game) => game.givens === givens && game.source !== 'draft')
   if (current) roomStore.select(current.id)
-  else roomStore.add(makeGame(crypto.randomUUID(), 'Imported puzzle', givens, 'imported'))
+  else roomStore.add(makeGame(createGameId(), 'Imported puzzle', givens, 'imported'))
 }
-
 function useMounted() {
   const mounted = useRef(true)
   useEffect(() => {
@@ -30,49 +31,41 @@ function useMounted() {
   return mounted
 }
 
-export function NewPuzzle({ close }: { close: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const mounted = useMounted()
-
-  async function generate() {
-    setBusy(true)
-    setError('')
-    try {
-      const seed = crypto.getRandomValues(new Uint32Array(1))[0]
-      const puzzle = await runEngine({ type: 'generate', seed })
-      if (!mounted.current) return
-      const used = new Set(roomStore.getSnapshot().games.map((game) => game.title))
-      let n = 1
-      while (used.has(`Puzzle ${n}`)) n++
-      roomStore.add(makeGame(crypto.randomUUID(), `Puzzle ${n}`, puzzle, 'generated'))
-      close()
-    } catch (reason) {
-      setError((reason as Error).message)
-      setBusy(false)
-    }
-  }
+export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
+  close: () => void
+  difficulty: Difficulty
+  onDifficultyChange: (difficulty: Difficulty) => void
+  onCreate: () => void
+}) {
+  const { busy, error, generate } = usePuzzleGeneration()
 
   return (
     <Modal title="New puzzle" onClose={close}>
-      <div className="new-options">
-        <button className="new-option" disabled={busy} onClick={generate}>
-          <span className="option-icon"><Dices size={22} /></span>
-          <span><strong>{busy ? 'Generating…' : 'Generate a puzzle'}</strong><small>Start a fresh classic Sudoku.</small></span>
+      <form className="dialog-form" onSubmit={(event) => { event.preventDefault(); void generate(difficulty, close) }}>
+        <label htmlFor="puzzle-difficulty">Difficulty</label>
+        <select id="puzzle-difficulty" value={difficulty} disabled={busy} autoFocus onChange={(event) => {
+          const next = event.target.value
+          if (isDifficulty(next)) onDifficultyChange(next)
+        }}>
+          {Object.entries(DIFFICULTY_LABELS).map(([level, label]) => <option key={level} value={level}>{label}</option>)}
+        </select>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <button type="submit" className="button primary" disabled={busy}>
+          <Dices size={18} /> {busy ? 'Generating…' : 'Generate a puzzle'}
         </button>
+      </form>
+      <div className="new-options">
         <button className="new-option" disabled={busy} onClick={() => {
-          roomStore.add(makeGame(crypto.randomUUID(), 'Untitled puzzle', EMPTY, 'draft'))
+          onCreate()
           close()
         }}>
           <span className="option-icon"><PencilLine size={21} /></span>
           <span><strong>Create by hand</strong><small>Enter your own givens on a blank grid.</small></span>
         </button>
       </div>
-      {error && <p className="form-error" role="alert">{error}</p>}
     </Modal>
   )
 }
-
 export function ImportPuzzle({ close, onImport }: { close: () => void; onImport: (input: string, cancelled: () => boolean) => Promise<void> }) {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -187,7 +180,15 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
       if (!current || current.source !== 'draft' || valuesOf(current) !== givens) {
         throw new Error('The draft changed. Reopen this dialog to save the latest grid.')
       }
-      roomStore.update(game.id, () => makeGame(game.id, title.trim(), givens, 'custom', game.created))
+      if (game.editingId) {
+        const original = roomStore.getSnapshot().games.find((item) => item.id === game.editingId)
+        if (!original) throw new Error('The saved puzzle is no longer available.')
+        roomStore.update(original.id, () => ({ ...makeGame(original.id, title.trim(), givens, 'custom', original.created), saved: true }))
+        roomStore.remove(game.id)
+        roomStore.select(original.id)
+      } else {
+        roomStore.update(game.id, () => ({ ...makeGame(game.id, title.trim(), givens, 'custom', game.created), saved: true }))
+      }
       close()
     } catch (reason) {
       setError((reason as Error).message)
@@ -205,80 +206,6 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
           <button type="submit" className="button primary" disabled={busy || !title.trim()}>{busy ? 'Checking…' : 'Save and play'}</button>
         </div>
       </form>
-    </Modal>
-  )
-}
-
-export function PuzzleOptions({ game, close, onSwitch, onShortcuts }: {
-  game: Game
-  close: () => void
-  onSwitch?: () => void
-  onShortcuts: () => void
-}) {
-  const [title, setTitle] = useState(game.title)
-  const [confirm, setConfirm] = useState<'remove' | 'restart' | null>(null)
-  const draft = game.source === 'draft'
-  function rename(event: FormEvent) {
-    event.preventDefault()
-    if (!title.trim()) return
-    roomStore.update(game.id, (current) => ({ ...current, title: title.trim() }))
-    close()
-  }
-
-  return (
-    <Modal title="Puzzle options" onClose={close}>
-      {confirm ? (
-        <div className="dialog-form">
-          <p>{confirm === 'remove' ? `Remove “${game.title}” and its saved progress?` : 'Restart from the original givens? This clears your entries and notes.'}</p>
-          <div className="dialog-actions">
-            <button className="button secondary" onClick={() => setConfirm(null)}>Back</button>
-            <button className="button danger" onClick={() => {
-              if (confirm === 'remove') roomStore.remove(game.id)
-              else roomStore.update(game.id, (current) => makeGame(current.id, current.title, current.givens, current.source, current.created))
-              close()
-            }}>{confirm === 'remove' ? 'Remove puzzle' : 'Restart puzzle'}</button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <form className="dialog-form" onSubmit={rename}>
-            <label htmlFor="puzzle-name-input">Puzzle name</label>
-            <input id="puzzle-name-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={72} required />
-            <div className="dialog-actions"><button type="submit" className="button primary" disabled={!title.trim() || title.trim() === game.title}>Save name</button></div>
-          </form>
-          <div className="manage-actions">
-            {onSwitch && <button className="button secondary" onClick={onSwitch}>Switch puzzle</button>}
-            <button className="button secondary" onClick={onShortcuts}>Keyboard shortcuts</button>
-            {!draft && <button className="button secondary" onClick={() => setConfirm('restart')}>Restart puzzle</button>}
-            <button className="button quiet remove-action" onClick={() => setConfirm('remove')}>Remove puzzle</button>
-          </div>
-        </>
-      )}
-    </Modal>
-  )
-}
-
-const keys = [
-  ['Move through the grid', '←', '↑', '↓', '→'],
-  ['Select a rectangle', 'Shift', 'Click/Arrow'],
-  ['Toggle individual cells', 'Ctrl/⌘', 'Click'],
-  ['Enter a digit or note', '1–9'],
-  ['Filled number mode', 'N'],
-  ['Toggle pencil mode', 'P', 'or', 'C'],
-  ['Toggle Color tab (when enabled)', 'B'],
-  ['Erase', 'Backspace'],
-  ['Undo', 'Ctrl/⌘', 'Z'],
-  ['Redo', 'Ctrl/⌘', 'Shift', 'Z'],
-]
-
-export function Shortcuts({ close }: { close: () => void }) {
-  return (
-    <Modal title="Keyboard shortcuts" onClose={close}>
-      <dl className="shortcuts">
-        {keys.map(([label, ...commands]) => (
-          <div key={label}><dt>{label}</dt><dd>{commands.map((key) => <kbd key={key}>{key}</kbd>)}</dd></div>
-        ))}
-      </dl>
     </Modal>
   )
 }

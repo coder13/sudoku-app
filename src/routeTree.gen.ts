@@ -10,33 +10,146 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LearnRouteImport } from './routes/learn'
+import { Route as PuzzlesRouteImport } from './routes/puzzles'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as LearnIndexRouteImport } from './routes/learn.index'
+import { Route as LearnTechniqueRouteImport } from './routes/learn.$technique'
+import { Route as PuzzlesBrowseRouteImport } from './routes/puzzles.browse'
+import { Route as PuzzlesNewRouteImport } from './routes/puzzles.new'
+import { Route as PuzzlesStatisticsRouteImport } from './routes/puzzles.statistics'
+import { Route as SettingsSectionRouteImport } from './routes/settings.$section'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LearnRoute = LearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PuzzlesRoute = PuzzlesRouteImport.update({
+  id: '/puzzles',
+  path: '/puzzles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LearnIndexRoute = LearnIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnTechniqueRoute = LearnTechniqueRouteImport.update({
+  id: '/$technique',
+  path: '/$technique',
+  getParentRoute: () => LearnRoute,
+} as any)
+const PuzzlesBrowseRoute = PuzzlesBrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
+  getParentRoute: () => PuzzlesRoute,
+} as any)
+const PuzzlesNewRoute = PuzzlesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => PuzzlesRoute,
+} as any)
+const PuzzlesStatisticsRoute = PuzzlesStatisticsRouteImport.update({
+  id: '/statistics',
+  path: '/statistics',
+  getParentRoute: () => PuzzlesRoute,
+} as any)
+const SettingsSectionRoute = SettingsSectionRouteImport.update({
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => SettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/learn': typeof LearnRouteWithChildren
+  '/puzzles': typeof PuzzlesRouteWithChildren
+  '/settings': typeof SettingsRouteWithChildren
+  '/learn/$technique': typeof LearnTechniqueRoute
+  '/puzzles/browse': typeof PuzzlesBrowseRoute
+  '/puzzles/new': typeof PuzzlesNewRoute
+  '/puzzles/statistics': typeof PuzzlesStatisticsRoute
+  '/settings/$section': typeof SettingsSectionRoute
+  '/learn/': typeof LearnIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/puzzles': typeof PuzzlesRouteWithChildren
+  '/settings': typeof SettingsRouteWithChildren
+  '/learn/$technique': typeof LearnTechniqueRoute
+  '/puzzles/browse': typeof PuzzlesBrowseRoute
+  '/puzzles/new': typeof PuzzlesNewRoute
+  '/puzzles/statistics': typeof PuzzlesStatisticsRoute
+  '/settings/$section': typeof SettingsSectionRoute
+  '/learn': typeof LearnIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/learn': typeof LearnRouteWithChildren
+  '/puzzles': typeof PuzzlesRouteWithChildren
+  '/settings': typeof SettingsRouteWithChildren
+  '/learn/$technique': typeof LearnTechniqueRoute
+  '/puzzles/browse': typeof PuzzlesBrowseRoute
+  '/puzzles/new': typeof PuzzlesNewRoute
+  '/puzzles/statistics': typeof PuzzlesStatisticsRoute
+  '/settings/$section': typeof SettingsSectionRoute
+  '/learn/': typeof LearnIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/learn'
+    | '/puzzles'
+    | '/settings'
+    | '/learn/$technique'
+    | '/puzzles/browse'
+    | '/puzzles/new'
+    | '/puzzles/statistics'
+    | '/settings/$section'
+    | '/learn/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/puzzles'
+    | '/settings'
+    | '/learn/$technique'
+    | '/puzzles/browse'
+    | '/puzzles/new'
+    | '/puzzles/statistics'
+    | '/settings/$section'
+    | '/learn'
+  id:
+    | '__root__'
+    | '/'
+    | '/learn'
+    | '/puzzles'
+    | '/settings'
+    | '/learn/$technique'
+    | '/puzzles/browse'
+    | '/puzzles/new'
+    | '/puzzles/statistics'
+    | '/settings/$section'
+    | '/learn/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LearnRoute: typeof LearnRouteWithChildren
+  PuzzlesRoute: typeof PuzzlesRouteWithChildren
+  SettingsRoute: typeof SettingsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +161,116 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learn': {
+      id: '/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/puzzles': {
+      id: '/puzzles'
+      path: '/puzzles'
+      fullPath: '/puzzles'
+      preLoaderRoute: typeof PuzzlesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/learn/': {
+      id: '/learn/'
+      path: '/'
+      fullPath: '/learn/'
+      preLoaderRoute: typeof LearnIndexRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/$technique': {
+      id: '/learn/$technique'
+      path: '/$technique'
+      fullPath: '/learn/$technique'
+      preLoaderRoute: typeof LearnTechniqueRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/puzzles/browse': {
+      id: '/puzzles/browse'
+      path: '/browse'
+      fullPath: '/puzzles/browse'
+      preLoaderRoute: typeof PuzzlesBrowseRouteImport
+      parentRoute: typeof PuzzlesRoute
+    }
+    '/puzzles/new': {
+      id: '/puzzles/new'
+      path: '/new'
+      fullPath: '/puzzles/new'
+      preLoaderRoute: typeof PuzzlesNewRouteImport
+      parentRoute: typeof PuzzlesRoute
+    }
+    '/puzzles/statistics': {
+      id: '/puzzles/statistics'
+      path: '/statistics'
+      fullPath: '/puzzles/statistics'
+      preLoaderRoute: typeof PuzzlesStatisticsRouteImport
+      parentRoute: typeof PuzzlesRoute
+    }
+    '/settings/$section': {
+      id: '/settings/$section'
+      path: '/$section'
+      fullPath: '/settings/$section'
+      preLoaderRoute: typeof SettingsSectionRouteImport
+      parentRoute: typeof SettingsRoute
+    }
   }
 }
 
+interface LearnRouteChildren {
+  LearnTechniqueRoute: typeof LearnTechniqueRoute
+  LearnIndexRoute: typeof LearnIndexRoute
+}
+
+const LearnRouteChildren: LearnRouteChildren = {
+  LearnTechniqueRoute: LearnTechniqueRoute,
+  LearnIndexRoute: LearnIndexRoute,
+}
+
+const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren)
+
+interface PuzzlesRouteChildren {
+  PuzzlesBrowseRoute: typeof PuzzlesBrowseRoute
+  PuzzlesNewRoute: typeof PuzzlesNewRoute
+  PuzzlesStatisticsRoute: typeof PuzzlesStatisticsRoute
+}
+
+const PuzzlesRouteChildren: PuzzlesRouteChildren = {
+  PuzzlesBrowseRoute: PuzzlesBrowseRoute,
+  PuzzlesNewRoute: PuzzlesNewRoute,
+  PuzzlesStatisticsRoute: PuzzlesStatisticsRoute,
+}
+
+const PuzzlesRouteWithChildren =
+  PuzzlesRoute._addFileChildren(PuzzlesRouteChildren)
+
+interface SettingsRouteChildren {
+  SettingsSectionRoute: typeof SettingsSectionRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsSectionRoute: SettingsSectionRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LearnRoute: LearnRouteWithChildren,
+  PuzzlesRoute: PuzzlesRouteWithChildren,
+  SettingsRoute: SettingsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

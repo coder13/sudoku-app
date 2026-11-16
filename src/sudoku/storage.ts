@@ -1,3 +1,4 @@
+import { isDifficulty } from './difficulty'
 import { STARTER_GAME, type Game, type Position } from './game'
 
 const PREFIX = 'sudoku-app:v1:'
@@ -19,10 +20,12 @@ function publish(next: Room) {
 
 function validPosition(value: unknown): value is Position {
   if (!value || typeof value !== 'object') return false
-  const { entries, center, corner, colors } = value as Position
+  const { entries, center, corner, colors, eliminations } = value as Position
+  const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === 81 &&
+    items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
   return typeof entries === 'string' && /^[0-9]{81}$/.test(entries) &&
-    [center, corner, colors].every((items, i) => Array.isArray(items) && items.length === 81 &&
-      items.every((item) => Number.isInteger(item) && item >= 0 && item <= (i === 2 ? 6 : 511)))
+    validDigits(center, 511) && validDigits(corner, 511) && validDigits(colors, 6) &&
+    (eliminations === undefined || validDigits(eliminations, 511))
 }
 
 function readGame(id: string, data: string | null): Game | undefined {
@@ -35,8 +38,16 @@ function readGame(id: string, data: string | null): Game | undefined {
       validPosition(value.position) && Array.isArray(value.past) && value.past.every(validPosition) &&
       Array.isArray(value.future) && value.future.every(validPosition) &&
       Number.isSafeInteger(value.elapsed) && value.elapsed >= 0 && Number.isSafeInteger(value.created) &&
-      typeof value.started === 'boolean' && typeof value.paused === 'boolean'
-    ) return value
+      typeof value.started === 'boolean' && typeof value.paused === 'boolean' &&
+      (value.saved === undefined || typeof value.saved === 'boolean') &&
+      (value.archived === undefined || typeof value.archived === 'boolean') &&
+      (value.editingId === undefined || (typeof value.editingId === 'string' && value.editingId.length <= 100)) &&
+      (value.returnId === undefined || (typeof value.returnId === 'string' && value.returnId.length <= 100))
+    ) {
+      if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
+      if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
+      return value
+    }
   } catch {
     // Skip isolated corrupt records so the rest of the library still opens.
   }

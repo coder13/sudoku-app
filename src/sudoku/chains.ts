@@ -1,0 +1,256 @@
+import type { Candidate, DeductionAction } from './engine.ts'
+import { candidateCount, hasCandidate, marksOf, peer } from './game.ts'
+
+export type ChainEdge = readonly [from: number, to: number]
+export type LinkStrength = 'strong' | 'weak'
+
+export type ChainAnalysis = {
+  nodes: number[]
+  strengths: LinkStrength[]
+  title: string
+  actions: DeductionAction[]
+  explanation?: string
+  loop?: 'continuous' | 'discontinuous'
+  canComplete: boolean
+}
+
+export const candidateId = ({ cell, digit }: Candidate) => cell * 9 + digit - 1
+export const chainCandidate = (id: number): Candidate => ({ cell: Math.floor(id / 9), digit: id % 9 + 1 })
+
+export function sameEdge([a, b]: ChainEdge, [c, d]: ChainEdge) {
+  return (a === c && b === d) || (a === d && b === c)
+}
+
+const opposite = (strength: LinkStrength): LinkStrength => strength === 'strong' ? 'weak' : 'strong'
+
+function housesAt(cell: number) {
+  const row = Math.floor(cell / 9)
+  const column = cell % 9
+  const box = Math.floor(row / 3) * 3 + Math.floor(column / 3)
+  return [row, 9 + column, 18 + box]
+}
+
+export function makeChainGraph(masks: readonly number[]) {
+  const candidates = masks.flatMap((mask, cell) => marksOf(mask).map((digit) => candidateId({ cell, digit })))
+  const counts = Array.from({ length: 27 }, () => Array<number>(9).fill(0))
+  const houses = masks.map((_, cell) => housesAt(cell))
+  for (const id of candidates) {
+    const { cell, digit } = chainCandidate(id)
+    for (const house of houses[cell]) counts[house][digit - 1]++
+  }
+
+  function conflicts(a: number, b: number) {
+    if (a === b) return false
+    const first = chainCandidate(a)
+    const second = chainCandidate(b)
+    return first.cell === second.cell || (first.digit === second.digit && peer(first.cell, second.cell))
+  }
+
+  function strength(a: number, b: number): LinkStrength | undefined {
+    if (!conflicts(a, b)) return
+    const first = chainCandidate(a)
+    const second = chainCandidate(b)
+    if (!hasCandidate(masks[first.cell], first.digit) || !hasCandidate(masks[second.cell], second.digit)) return
+    if (first.cell === second.cell) return candidateCount(masks[first.cell]) === 2 ? 'strong' : 'weak'
+    return houses[first.cell].some((house) => houses[second.cell].includes(house) && counts[house][first.digit - 1] === 2)
+      ? 'strong' : 'weak'
+  }
+
+  return { candidates, conflicts, strength }
+}
+
+export type ChainGraph = ReturnType<typeof makeChainGraph>
+
+function alternate(links: readonly LinkStrength[], first: LinkStrength) {
+  const roles = links.map((_, i) => i % 2 === 0 ? first : opposite(first))
+  return roles.every((role, i) => role === 'weak' || links[i] === 'strong') ? roles : undefined
+}
+
+type LoopPrefix = { first: LinkStrength; last: LinkStrength; discontinuous: boolean }
+
+function loopPrefixes(links: readonly LinkStrength[]) {
+  let prefixes: LoopPrefix[] = [{ first: 'weak', last: 'weak', discontinuous: false }]
+  if (links[0] === 'strong') prefixes.push({ first: 'strong', last: 'strong', discontinuous: false })
+  for (const strength of links.slice(1)) {
+    const next = new Map<string, LoopPrefix>()
+    const roles: LinkStrength[] = strength === 'strong' ? ['strong', 'weak'] : ['weak']
+    for (const prefix of prefixes) {
+      for (const role of roles) {
+        const repeats = role === prefix.last
+        if (prefix.discontinuous && repeats) continue
+        const candidate = { first: prefix.first, last: role, discontinuous: prefix.discontinuous || repeats }
+        next.set(`${candidate.first}:${candidate.last}:${candidate.discontinuous}`, candidate)
+      }
+    }
+    prefixes = [...next.values()]
+    if (prefixes.length === 0) break
+  }
+  return prefixes
+}
+
+function commonEliminations(graph: ChainGraph, pairs: readonly ChainEdge[]): DeductionAction[] {
+  return graph.candidates
+    .filter((target) => pairs.some(([a, b]) => graph.conflicts(target, a) && graph.conflicts(target, b)))
+    .map((target) => ({ eliminate: chainCandidate(target) }))
+}
+
+function openTitle(nodes: number[], strengths: LinkStrength[]) {
+  if (strengths.length === 1) return strengths[0] === 'strong' ? 'Strong link' : 'Weak link'
+  if (strengths[0] !== 'strong' || strengths.at(-1) !== 'strong') return 'Alternating chain'
+  const candidates = nodes.map(chainCandidate)
+  const first = candidates[0]
+  const last = candidates.at(-1)!
+  if (candidates.every(({ digit }) => digit === first.digit)) return 'X-chain'
+  if (first.digit === last.digit && strengths.length >= 5 && strengths.every((strength, i) =>
+    strength === 'strong' ? candidates[i].cell === candidates[i + 1].cell : candidates[i].digit === candidates[i + 1].digit)) {
+    return 'XY-chain'
+  }
+  if (first.digit === last.digit) return 'Alternating inference chain (Type 1)'
+  return first.cell !== last.cell && peer(first.cell, last.cell)
+    ? 'Alternating inference chain (Type 2)' : 'Alternating inference chain'
+}
+
+function analyzePath(graph: ChainGraph, nodes: number[]): ChainAnalysis {
+  const links = nodes.slice(1).map((node, i) => graph.strength(nodes[i], node)!)
+  const first = nodes[0]
+  const last = nodes.at(-1)!
+  if (first !== last) {
+    const strengths = alternate(links, 'strong') ?? alternate(links, 'weak')
+    if (!strengths) {
+      return { nodes, strengths: links, title: 'Non-alternating chain', actions: [], canComplete: loopPrefixes(links).length > 0 }
+    }
+    const hasStrongEnds = strengths[0] === 'strong' && strengths.at(-1) === 'strong'
+    return {
+      nodes, strengths, title: openTitle(nodes, strengths), canComplete: true,
+      actions: hasStrongEnds ? commonEliminations(graph, [[first, last]]) : [],
+      explanation: hasStrongEnds ? 'At least one end must be true. A candidate that conflicts with both ends can be removed.' : undefined,
+    }
+  }
+
+  if (links.length % 2 === 0) {
+    const strengths = alternate(links, 'strong') ?? alternate(links, 'weak')
+    if (strengths) {
+      const pairs: ChainEdge[] = strengths.flatMap((strength, i) => strength === 'weak' ? [[nodes[i], nodes[i + 1]]] : [])
+      return {
+        nodes, strengths, title: 'Continuous nice loop', loop: 'continuous', canComplete: false,
+        explanation: 'At least one end of each weak link must be true. Remove candidates that conflict with both ends of any weak link.',
+        actions: commonEliminations(graph, pairs),
+      }
+    }
+  } else {
+    for (const seam of ['strong', 'weak'] as const) {
+      for (let start = 0; start < links.length; start++) {
+        const rotated = [...links.slice(start), ...links.slice(0, start)]
+        const strengths = alternate(rotated, seam)
+        if (!strengths) continue
+        const candidate = chainCandidate(nodes[start])
+        return {
+          nodes,
+          strengths: [...strengths.slice(strengths.length - start), ...strengths.slice(0, strengths.length - start)],
+          title: 'Discontinuous nice loop', loop: 'discontinuous', canComplete: false,
+          actions: [seam === 'strong' ? { place: candidate } : { eliminate: candidate }],
+          explanation: seam === 'strong'
+            ? 'Ruling out the candidate where two strong links meet would force that candidate to be true.'
+            : 'Placing the candidate where two weak links meet would force that candidate to be false.',
+        }
+      }
+    }
+  }
+  return { nodes, strengths: links, title: 'Non-alternating loop', actions: [], canComplete: false }
+}
+
+export function analyzeChains(graph: ChainGraph, edges: readonly ChainEdge[]) {
+  const neighbors = new Map<number, number[]>()
+  for (const [a, b] of edges) {
+    if (!graph.strength(a, b)) continue
+    for (const [from, to] of [[a, b], [b, a]]) {
+      const list = neighbors.get(from)
+      if (list) list.push(to)
+      else neighbors.set(from, [to])
+    }
+  }
+
+  const chains: ChainAnalysis[] = []
+  const visited = new Set<number>()
+  for (const node of neighbors.keys()) {
+    if (visited.has(node)) continue
+    const component = [node]
+    visited.add(node)
+    for (const from of component) {
+      for (const to of neighbors.get(from)!) {
+        if (visited.has(to)) continue
+        visited.add(to)
+        component.push(to)
+      }
+    }
+
+    if (component.some((id) => neighbors.get(id)!.length > 2)) {
+      chains.push({ nodes: component, strengths: [], title: 'Branched links', actions: [], canComplete: false })
+      continue
+    }
+
+    const start = component.find((id) => neighbors.get(id)!.length === 1) ?? node
+    const path = [start]
+    let previous = -1
+    let current = start
+    while (true) {
+      const next = neighbors.get(current)!.find((id) => id !== previous)
+      if (next === undefined) break
+      path.push(next)
+      if (next === start) break
+      previous = current
+      current = next
+    }
+    chains.push(analyzePath(graph, path))
+  }
+  return chains
+}
+
+type LoopSearch = { status: 'found'; edges: ChainEdge[] } | { status: 'exhausted' | 'limited' }
+const LOOP_SEARCH_LIMIT = 12_000
+
+export function completeChainLoop(graph: ChainGraph, path: readonly number[], excluded: ReadonlySet<number> = new Set()): LoopSearch {
+  if (path.length < 2 || new Set(path).size !== path.length) return { status: 'exhausted' }
+  const links = path.slice(1).map((node, i) => graph.strength(path[i], node))
+  if (!links.every((link) => link !== undefined)) return { status: 'exhausted' }
+  const start = path[0]
+  const end = path.at(-1)!
+  const used = new Set(path)
+  const extensions = graph.candidates.filter((node) => !used.has(node) && !excluded.has(node))
+  const queue: { nodes: number[]; next: LinkStrength; first: LinkStrength; discontinuous: boolean }[] = []
+  for (const { first, last, discontinuous } of loopPrefixes(links)) {
+    queue.push({ nodes: [end], next: opposite(last), first, discontinuous })
+    if (!discontinuous) queue.push({ nodes: [end], next: last, first, discontinuous: true })
+  }
+
+  const neighbors = new Map<number, number[]>()
+  let limited = false
+  for (const { nodes, next, first, discontinuous } of queue) {
+    const from = nodes.at(-1)!
+    const closing = graph.strength(from, start)
+    if (path.length + nodes.length > 3 && closing && (next === 'weak' || closing === 'strong') &&
+      (!discontinuous || next !== first)) {
+      const closed = [...nodes, start]
+      return { status: 'found', edges: closed.slice(1).map((node, i) => [closed[i], node]) }
+    }
+
+    const key = from * 2 + Number(next === 'strong')
+    let choices = neighbors.get(key)
+    if (!choices) {
+      choices = extensions.filter((to) => {
+        const strength = graph.strength(from, to)
+        return strength && (next === 'weak' || strength === 'strong')
+      })
+      neighbors.set(key, choices)
+    }
+    for (const to of choices) {
+      if (nodes.includes(to)) continue
+      if (queue.length >= LOOP_SEARCH_LIMIT) {
+        limited = true
+        break
+      }
+      queue.push({ nodes: [...nodes, to], next: opposite(next), first, discontinuous })
+    }
+  }
+  return { status: limited ? 'limited' : 'exhausted' }
+}

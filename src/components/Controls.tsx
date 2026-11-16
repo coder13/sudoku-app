@@ -1,11 +1,12 @@
 import {
   type CSSProperties, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent,
-  type SetStateAction,
+  type ReactNode, type SetStateAction,
   useEffect, useRef, useState,
 } from 'react'
-import { Delete, Layers2, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { Check, Delete, Highlighter, Layers2, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { COLORS, DIGITS, type Mode } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
+import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
 
 type Props = {
   mode: Mode
@@ -16,14 +17,18 @@ type Props = {
   advancedModes: AdvancedModes
   colorMode: boolean
   toggleColorMode: () => void
+  toolPanel?: ReactNode
   eraseMode: boolean
   toggleEraseMode: () => void
+  highlightMode: boolean
+  toggleHighlightMode: () => void
   selectedDigit: number | null
   hasCellSelection: boolean
   values: string
   input: (digit: number) => void
   undo: () => void
   redo: () => void
+  onCheck?: () => void
   canUndo: boolean
   canRedo: boolean
   disabled: boolean
@@ -45,7 +50,7 @@ export function Controls(props: Props) {
   for (const value of props.values) counts[Number(value)]++
 
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 760px)')
+    const query = window.matchMedia(MOBILE_LAYOUT_QUERY)
     const update = () => {
       setMobile(query.matches)
       const candidateControls = !props.draft && props.pencil && props.advancedModes.candidateLayout === 'center-corner' ? 44 : 0
@@ -113,39 +118,51 @@ export function Controls(props: Props) {
         onPointerDown={startResize} onPointerMove={continueResize} onPointerUp={finishResize} onPointerCancel={finishResize}
         onKeyDown={resizeWithKeyboard}><span /></button>
 
-      <div className="controls-content">
-          <div className="side-actions left-actions" role="group" aria-label="History actions">
+      <div className={`controls-content${props.toolPanel ? ' with-tool-panel' : ''}`}>
+          <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
             <button className="icon-button" onClick={props.undo} disabled={props.disabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
             <button className="icon-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
+            {props.onCheck && <button className="icon-button puzzle-check-button" onClick={props.onCheck} disabled={props.disabled}
+              aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></button>}
           </div>
 
-          <div className="keypad-stack">
+          {props.toolPanel ?? <div className="keypad-stack">
             {!props.draft && props.pencil && props.advancedModes.candidateLayout === 'center-corner' && (
               <div className="candidate-kind" role="group" aria-label="Candidate position">
-                <button aria-pressed={props.candidateKind === 'center'} onClick={() => props.setCandidateKind('center')}>Center</button>
-                <button aria-pressed={props.candidateKind === 'corner'} onClick={() => props.setCandidateKind('corner')}>Corner</button>
+                <button aria-pressed={props.candidateKind === 'center'} disabled={props.disabled} onClick={() => props.setCandidateKind('center')}>Center</button>
+                <button aria-pressed={props.candidateKind === 'corner'} disabled={props.disabled} onClick={() => props.setCandidateKind('corner')}>Corner</button>
               </div>
             )}
-            <div className={`keypad ${props.mode === 'color' ? 'palette' : ''}`} role="group" aria-label={props.mode === 'color' ? 'Cell colors' : 'Number pad'}>
+            <div className={`keypad ${props.mode === 'color' ? 'palette' : ''}`} role="group" aria-label={props.mode === 'color' ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
-                const armed = !props.hasCellSelection && props.selectedDigit === digit
+                const armed = props.selectedDigit === digit
+                const digitLabel = `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
                 return (
                   <button type="button" key={digit}
                     className={`key ${props.mode === 'color' ? `tone-key color-${digit}` : ''} ${!props.draft && props.mode === 'value' && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
-                    aria-label={props.mode === 'color' ? COLORS[digit - 1] : `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`}
-                    aria-pressed={armed} disabled={props.disabled} onClick={() => props.input(digit)}>
+                    aria-label={props.mode === 'color' ? COLORS[digit - 1] : digitLabel}
+                    aria-keyshortcuts={props.mode === 'color' ? undefined : `F${digit}`}
+                    aria-pressed={armed} disabled={props.disabled}
+                    onClick={() => props.input(digit)}>
                     {props.mode === 'color' ? <span className="swatch" /> : <span>{digit}</span>}
                   </button>
                 )
               })}
             </div>
-          </div>
+          </div>}
 
-          <div className="side-actions right-actions" role="group" aria-label="Input modes">
+          {!props.toolPanel && <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
-              <button className="icon-button pencil-button" title="Pencil mode" aria-label="Pencil mode"
+              <button className="icon-button pencil-button" title="Pencil mode · Cmd+1–9 or Ctrl+1–9 toggles candidates in selected cells" aria-label="Pencil mode"
                 aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts="P" onClick={props.togglePencil} disabled={props.disabled}>
                 <Pencil size={18} />
+              </button>
+            )}
+            {!props.draft && (
+              <button className="icon-button highlight-mode-button" title="Highlight mode · edits selected cells"
+                aria-label="Highlight mode" aria-pressed={props.highlightMode} aria-keyshortcuts="H"
+                onClick={props.toggleHighlightMode} disabled={props.disabled}>
+                <Highlighter size={18} />
               </button>
             )}
             {!props.draft && props.advancedModes.colorsEnabled && (
@@ -162,7 +179,7 @@ export function Controls(props: Props) {
             )}
             <button className="icon-button erase-mode-button" onClick={props.toggleEraseMode} disabled={props.disabled}
               aria-label="Erase mode" title="Erase mode" aria-pressed={props.eraseMode}><Delete size={18} /></button>
-          </div>
+          </div>}
       </div>
 
     </section>

@@ -1,21 +1,26 @@
 import { STARTER } from './formats.ts'
+import type { DeductionAction, Difficulty } from './engine.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
 export type ErrorMode = 'all' | 'incorrect' | 'none'
 export type Source = 'starter' | 'generated' | 'imported' | 'custom' | 'draft'
+export type EnterOptions = { allowMultipleValues?: boolean }
 
 export type Position = {
   entries: string
   center: number[]
   corner: number[]
   colors: number[]
+  eliminations?: number[]
 }
 
 export type Game = {
   id: string
   title: string
   source: Source
+  difficulty?: Difficulty | null
+  score?: number | null
   givens: string
   position: Position
   past: Position[]
@@ -24,6 +29,10 @@ export type Game = {
   started: boolean
   paused: boolean
   created: number
+  saved?: boolean
+  archived?: boolean
+  editingId?: string
+  returnId?: string
 }
 
 export const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -37,12 +46,37 @@ const HOUSES = [
     Math.floor(box / 3) * 27 + (box % 3) * 3 + Math.floor(offset / 3) * 9 + offset % 3)),
 ]
 
+export function createGameId(): string {
+  // getRandomValues works on plain HTTP. Set the UUID v4 version and variant bits.
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const id = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`
+}
+
 export function makeGame(id: string, title: string, givens: string, source: Source, created = Date.now()): Game {
   return {
     id, title, givens, source, created,
     position: { entries: EMPTY, center: Array(81).fill(0), corner: Array(81).fill(0), colors: Array(81).fill(0) },
     past: [], future: [], elapsed: 0, started: false, paused: false,
   }
+}
+
+export function restartGame(game: Game): Game {
+  return {
+    ...makeGame(game.id, game.title, game.givens, game.source, game.created),
+    difficulty: game.difficulty,
+    score: game.score,
+    saved: game.saved,
+    archived: game.archived,
+    editingId: game.editingId,
+    returnId: game.returnId,
+  }
+}
+
+export function isPuzzleSaved(game: Game): boolean {
+  return game.saved ?? game.source === 'custom'
 }
 
 export const STARTER_GAME = makeGame('warmup', 'The Warm-up', STARTER, 'starter', 0)
@@ -128,16 +162,18 @@ export function redo(game: Game): Game {
   }
 }
 
-export function enter(game: Game, selection: number[], mode: Mode, digit: number): Game {
+export function enter(game: Game, selection: number[], mode: Mode, digit: number, options: EnterOptions = {}): Game {
   let { entries, center, corner, colors } = game.position
+  let replacedEntry = false
   if (mode === 'color') {
     const add = digit !== 0 && selection.some((i) => colors[i] !== digit)
     colors = colors.map((color, i) => selection.includes(i) ? (add ? digit : 0) : color)
   } else {
     const editable = selection.filter((i) => game.givens[i] === '0')
     if (mode === 'value') {
-      if (digit && editable.length !== 1) return game
+      if (digit && editable.length !== 1 && !options.allowMultipleValues) return game
       for (const i of editable) {
+        if (entries[i] !== '0' && entries[i] !== String(digit)) replacedEntry = true
         entries = entries.slice(0, i) + digit + entries.slice(i + 1)
       }
       if (digit) {
@@ -171,19 +207,30 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
     corner.every((mask, i) => mask === game.position.corner[i]) &&
     colors.every((color, i) => color === game.position.colors[i])
   ) return game
-  return move(game, { entries, center, corner, colors })
+  const position = { ...game.position, entries, center, corner, colors }
+  if (replacedEntry) delete position.eliminations
+  return move(game, position)
 }
 
-export function replaceCandidates(game: Game, masks: readonly number[]): Game {
+export function replaceCandidates(game: Game, masks: readonly number[], options: { recordHistory?: boolean } = {}): Game {
   if (masks.length !== 81) return game
   const center = Array(81).fill(0)
   const corner = masks.map((mask, index) =>
-    game.givens[index] === '0' && game.position.entries[index] === '0' ? mask & 0x1ff : 0)
+    game.givens[index] === '0' && game.position.entries[index] === '0'
+      ? mask & 0x1ff & ~(game.position.eliminations?.[index] ?? 0)
+      : 0)
   if (
     center.every((mask, index) => mask === game.position.center[index]) &&
     corner.every((mask, index) => mask === game.position.corner[index])
   ) return game
-  return move(game, { ...game.position, center, corner })
+  const position = { ...game.position, center, corner }
+  return options.recordHistory === false ? { ...game, position, future: [] } : move(game, position)
+}
+
+export function completeCandidateMasks(game: Game): number[] | null {
+  const values = valuesOf(game)
+  const masks = game.position.center.map((mask, index) => mask | game.position.corner[index])
+  return [...values].every((digit, index) => digit !== '0' || masks[index] !== 0) ? masks : null
 }
 
 export function fillEntries(game: Game, nextValues: string): Game {
@@ -211,10 +258,43 @@ export function fillEntries(game: Game, nextValues: string): Game {
   return changed ? move(game, { ...game.position, entries: entries.join(''), center, corner }) : game
 }
 
-export function singleFromCandidates(values: string, masks: readonly number[]): [number, number] | null {
+export function applyDeduction(game: Game, actions: readonly DeductionAction[], candidates: readonly number[]): Game {
+  const first = actions[0]
+  if (!first) return game
+  const values = valuesOf(game)
+  if ('place' in first) {
+    const { cell, digit } = first.place
+    if (values[cell] !== '0' || !hasCandidate(candidates[cell], digit)) return game
+    return fillEntries(game, values.slice(0, cell) + digit + values.slice(cell + 1))
+  }
+
+  const { center, corner } = game.position
+  const eliminations = [...(game.position.eliminations ?? Array(81).fill(0))]
+  const affected = new Set<number>()
+  for (const action of actions) {
+    if (!('eliminate' in action)) return game
+    const { cell, digit } = action.eliminate
+    if (values[cell] !== '0' || !hasCandidate(candidates[cell] & ~eliminations[cell], digit)) return game
+    eliminations[cell] |= 1 << (digit - 1)
+    affected.add(cell)
+  }
+  return move(game, {
+    ...game.position,
+    eliminations,
+    center: center.map((mask, cell) => affected.has(cell) ? mask & ~eliminations[cell] : mask),
+    corner: corner.map((mask, cell) => {
+      if (!affected.has(cell)) return mask
+      const displayed = mask || center[cell] ? mask : candidates[cell]
+      return displayed & ~eliminations[cell]
+    }),
+  })
+}
+
+export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[]): [number, number] | null {
   if (values.length !== 81 || masks.length !== 81) return null
+  const remaining = (cell: number) => masks[cell] & ~(eliminations?.[cell] ?? 0)
   for (let index = 0; index < 81; index++) {
-    const mask = masks[index]
+    const mask = remaining(index)
     if (values[index] === '0' && mask && (mask & (mask - 1)) === 0) {
       return [index, Math.log2(mask) + 1]
     }
@@ -223,7 +303,7 @@ export function singleFromCandidates(values: string, masks: readonly number[]): 
     for (let digit = 1; digit <= 9; digit++) {
       if (house.some((index) => values[index] === String(digit))) continue
       const bit = 1 << (digit - 1)
-      const cells = house.filter((index) => values[index] === '0' && (masks[index] & bit) !== 0)
+      const cells = house.filter((index) => values[index] === '0' && (remaining(index) & bit) !== 0)
       if (cells.length === 1) return [cells[0], digit]
     }
   }

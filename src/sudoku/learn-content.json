@@ -1,0 +1,1959 @@
+{
+  "overview": {
+    "pageTitle": "Learn Sudoku techniques",
+    "title": "Learn",
+    "intro": "When you can’t place a digit, look for a candidate you can cross out. A few removals can leave a cell with only one choice.",
+    "difficultyTitle": "Difficulty ratings",
+    "difficultyParagraphs": [
+      "Easy moves look for a single choice, such as the last place a digit can go in a house. Medium moves use small sets of candidates or the overlap between a line and a box. Hard patterns can span several houses. Unfair moves often need longer chains or more cases to check. For an Extreme move, you may have to follow several possible placements and see where each one leads.",
+      "The menu puts each lesson under its easiest variant. The labels below show the range for that lesson. A puzzle’s rating counts the whole solve, including how many steps it takes."
+    ],
+    "fundamentalsNote": "For the rules, cell addresses, and candidates, start with"
+  },
+  "fundamentals": {
+    "id": "fundamentals",
+    "title": "Fundamentals",
+    "summary": "Read a cell address and work out which digits can go there.",
+    "blocks": [
+      {
+        "type": "heading",
+        "id": "houses",
+        "title": "Houses"
+      },
+      {
+        "type": "text",
+        "paragraphs": [
+          "A house is a row, a column, or a 3×3 box. Thick lines mark the boxes. Each house must contain the digits 1 through 9 once each. The digits you start with are called givens, or clues.",
+          "Every cell belongs to three houses. A line is either a row or a column."
+        ]
+      },
+      {
+        "type": "heading",
+        "id": "cell-addresses",
+        "title": "Cell addresses"
+      },
+      {
+        "type": "text",
+        "paragraphs": [
+          "Count rows down from the top and columns across from the left. Both counts start at 1. To find R2C4, go to row 2 and across to column 4.",
+          "Number the boxes across the top first, then across the middle, then across the bottom. The top-left box is box 1 and the bottom-right box is box 9."
+        ]
+      },
+      {
+        "type": "heading",
+        "id": "peers",
+        "title": "Cells that see each other"
+      },
+      {
+        "type": "text",
+        "paragraphs": [
+          "Two cells that share a house see each other. They can’t hold the same digit. These cells are also called peers.",
+          "R2C4 shares row 2 with R2C5 and column 4 with R3C4. It also sees R3C5 through box 2."
+        ]
+      },
+      {
+        "type": "heading",
+        "id": "candidates",
+        "title": "Candidates"
+      },
+      {
+        "type": "text",
+        "paragraphs": [
+          "The small digits in an empty cell are its candidates. To work them out, start with 1 through 9 and cross off the digits you find in the cell’s three houses."
+        ]
+      },
+      {
+        "type": "diagram",
+        "example": "naked-single",
+        "region": {
+          "row": 0,
+          "column": 0,
+          "rows": 9,
+          "columns": 9
+        },
+        "copy": {
+          "description": "Check R2C4. Row 2 rules out 2, 4, and 9.",
+          "reason": "Column 4 rules out five more digits, 1, 5, 6, 7, and 8. You’ve already crossed off the digits you see in box 2. Only 3 is left."
+        }
+      },
+      {
+        "type": "text",
+        "paragraphs": [
+          "Place the 3. A cell with just one candidate gives you a naked single. This can also happen later, after another move lets you cross out a candidate."
+        ]
+      },
+      {
+        "type": "practice",
+        "title": "Place a single",
+        "instruction": "Pick an empty cell with one candidate. Enter that digit.",
+        "drills": [
+          {
+            "example": "naked-single",
+            "title": "Naked Single"
+          }
+        ]
+      }
+    ],
+    "references": [
+      {
+        "label": "Nikoli’s Sudoku rules",
+        "href": "https://www.nikoli.com/en/puzzles/sudoku/"
+      },
+      {
+        "label": "HoDoKu’s terminology guide",
+        "href": "https://hodoku.dev/tech_intro"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "title": "Singles",
+      "overview": "Three checks can give you a digit to place. Look for the last empty cell in a house, the last candidate in a cell, or the last place a digit can go in a house.",
+      "lessons": [
+        {
+          "id": "full-house",
+          "title": "Full House",
+          "summary": "Fill the last empty cell in a house.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a house with eight digits filled in. Check which digit from 1 to 9 is missing and put it in the gap."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "full-house"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For a box, count the nine cells inside its thick border. If you find two gaps in a house, check the candidates in each empty cell to see if one has a single choice."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "full-house",
+                  "title": "Full House"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_singles.php"
+            }
+          ]
+        },
+        {
+          "id": "naked-single",
+          "title": "Naked Single",
+          "summary": "Place a digit when it’s the only candidate left in its cell.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick an empty cell. Cross off the digits you see in its three houses. One candidate left means you can fill the cell."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "naked-single",
+              "region": {
+                "row": 0,
+                "column": 2,
+                "rows": 4,
+                "columns": 4
+              }
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Check a cell again after you erase candidates. A pair, for instance, can cut a cell’s two candidates down to one."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "naked-single",
+                  "title": "Naked Single"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_singles.php"
+            },
+            {
+              "label": "Sudoku Snake",
+              "href": "https://www.sudokusnake.com/nakedsingles.php"
+            }
+          ]
+        },
+        {
+          "id": "hidden-single",
+          "title": "Hidden Single",
+          "summary": "Place a digit when it has only one possible cell in a house.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose a digit a house still needs. Check every empty cell in that house for it. If just one cell can take the digit, put it there. Other candidates in that cell make the single easy to miss."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "hidden-single"
+            },
+            {
+              "type": "heading",
+              "id": "where-to-scan",
+              "title": "Where to look for blockers"
+            },
+            {
+              "type": "list",
+              "items": [
+                "In a row, look for copies of your digit in the crossing columns and boxes.",
+                "In a column, check the crossing rows and boxes.",
+                "In a box, follow the rows and columns through the box. A placed copy on either line rules out the cells it crosses."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "hidden-single",
+                  "title": "Hidden Single"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_singles.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Hidden_Candidates"
+            },
+            {
+              "label": "Sudoku Snake",
+              "href": "https://www.sudokusnake.com/hiddensingles.php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Box and line",
+      "overview": "Say a box can put its 5 only in row 2. Wherever the 5 goes in that box, it also fills row 2’s spot for 5. Cross out 5 from row 2 outside the box. You can also start in the row and make removals in the box.",
+      "lessons": [
+        {
+          "id": "locked-candidates",
+          "title": "Locked Candidates",
+          "summary": "Erase a candidate when its only places in one house are also in another.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "A line crosses three cells of a box. When one house has to put a digit in those three cells, both houses get the digit from that placement."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "pointing",
+              "title": "Pointing from a box"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Check where a digit can go in the box. If all its candidates sit on one line, erase the digit from that line outside the box. Two candidates in the box make a pointing pair. Three make a pointing triple."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "pointing"
+            },
+            {
+              "type": "heading",
+              "id": "claiming",
+              "title": "Claiming from a line"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Read along a row or column. If all its candidates for your digit sit inside one box, the line has claimed that box’s copy. Erase the digit from the rest of the box."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "claiming"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "pointing",
+                  "title": "Pointing"
+                },
+                {
+                  "example": "claiming",
+                  "title": "Claiming"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_intersections.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Intersection_Removal"
+            },
+            {
+              "label": "Sudoku Snake",
+              "href": "https://www.sudokusnake.com/pointing.php"
+            },
+            {
+              "label": "Sudoku Snake",
+              "href": "https://www.sudokusnake.com/claiming.php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Pairs, triples, and quadruples",
+      "overview": "Two cells in a house each show only 2 and 7. Those two cells need both digits, so the rest of the house loses them. For a hidden pair, look for the 2s and 7s first. If those digits have only the same two cells available, erase the other candidates from those cells. Triples and quadruples use the same count, with more marks to keep track of.",
+      "lessons": [
+        {
+          "id": "naked-subsets",
+          "title": "Naked Subsets",
+          "summary": "When several cells have just enough digits to fill them, erase those digits from the rest of the house.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick cells in one house and count the different digits in their candidate lists. Three cells with only three digits between them have to use all three. The same count works with two or four cells."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "naked-pair",
+              "title": "Naked pair"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Two cells each show only 4 and 6. Whichever takes 4, the other takes 6. Erase 4 and 6 from the rest of the house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "naked-pair"
+            },
+            {
+              "type": "heading",
+              "id": "naked-triple",
+              "title": "Naked triple"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A triple could have cells with 2 and 3, 2 and 5, and 3 and 5. Together they need all of 2, 3, and 5. Erase those digits from the rest of the house."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "naked-quadruple",
+              "title": "Naked quadruple"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The lists 12, 24, 34, and 123 contain only four distinct digits. In one house, those four cells take up 1, 2, 3, and 4. Erase the four digits elsewhere in the house."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "locked-pair",
+              "title": "Locked pair"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "When both cells sit where a line crosses a box, the pair uses its digits in both houses. Erase them from the other cells of the line and the box."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "locked-triple",
+              "title": "Locked triple"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Three cells can also fill the stretch where a line crosses a box. Erase the triple’s digits in both houses. A quadruple is too large for that three-cell overlap."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "locked-triple"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "naked-pair",
+                  "title": "Naked pair"
+                },
+                {
+                  "example": "naked-triple",
+                  "title": "Naked triple"
+                },
+                {
+                  "example": "naked-quadruple",
+                  "title": "Naked quadruple"
+                },
+                {
+                  "example": "locked-pair",
+                  "title": "Locked pair"
+                },
+                {
+                  "example": "locked-triple",
+                  "title": "Locked triple"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_naked.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Naked_Candidates"
+            },
+            {
+              "label": "Sudoku Coach",
+              "href": "https://sudoku.coach/en/learn/naked-pair"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "hidden-subsets",
+          "title": "Hidden Subsets",
+          "summary": "If several digits have only the same few cells available, erase the other candidates from those cells.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with digits a house still needs. Count every cell that can take at least one of your chosen digits. If there are as many cells as digits, those cells are all spoken for."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "hidden-pair",
+              "title": "Hidden pair"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "When two digits can only go in the same two cells, those cells have to take the pair. Check all nine cells of the house before you erase the other candidates in those two cells."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "hidden-pair"
+            },
+            {
+              "type": "heading",
+              "id": "hidden-triple",
+              "title": "Hidden triple"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Count the cells that can take any of three digits. If there are exactly three such cells in the house, erase their other candidates. A cell can show any one, two, or all three of the chosen digits."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "hidden-quadruple",
+              "title": "Hidden quadruple"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Try four digits that appear only a few times each. Before you erase the other candidates from their four cells, scan the whole house for another copy of any of the chosen digits."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "hidden-quadruple"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "hidden-pair",
+                  "title": "Hidden pair"
+                },
+                {
+                  "example": "hidden-triple",
+                  "title": "Hidden triple"
+                },
+                {
+                  "example": "hidden-quadruple",
+                  "title": "Hidden quadruple"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_hidden.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Hidden_Candidates"
+            },
+            {
+              "label": "Sudoku Snake",
+              "href": "https://www.sudokusnake.com/hiddensubsets.php"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Fish",
+      "overview": "Suppose rows 1 and 5 can put a 2 only in columns 7 and 8. Both rows need a 2, and they have to use different columns. Erase the other 2s in those columns. A Swordfish uses three lines each way and a Jellyfish uses four. With extra candidates, called fins, check what you can erase whether a fin is placed or all fins are ruled out.",
+      "lessons": [
+        {
+          "id": "x-wing",
+          "title": "X-Wing",
+          "summary": "Look for two rows that use the same two columns for a digit, or the same pattern turned sideways.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a digit with exactly two places in each of two rows, lined up in the same columns. One row takes one column and the other takes the second. That uses up both columns for this digit."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "x-wing"
+            },
+            {
+              "type": "heading",
+              "id": "row-and-column",
+              "title": "Rows and columns"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "With a pair of rows, erase the digit from both columns outside those rows. If you spot the rectangle by checking two columns first, erase from the crossing rows outside those columns."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "finned-x-wing",
+              "title": "Finned X-Wing"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The four corners can come with extra candidates, called fins, outside the crossing lines. All fins must share a box. A target sits in that box on a crossing line, outside the starting lines. If a fin takes the digit, the box rules out the target. If all fins are gone, the X-Wing rules it out."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "finned-x-wing"
+            },
+            {
+              "type": "heading",
+              "id": "sashimi-x-wing",
+              "title": "Sashimi X-Wing"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Set the fins aside and look at what’s left of the rectangle. With a sashimi, one starting line has only one corner left. That corner fixes the digit in one crossing line, and the other starting line uses the second. Check for removals in the same part of the fin box."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "sashimi-x-wing"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "x-wing",
+                  "title": "X-Wing"
+                },
+                {
+                  "example": "finned-x-wing",
+                  "title": "Finned X-Wing"
+                },
+                {
+                  "example": "sashimi-x-wing",
+                  "title": "Sashimi X-Wing"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu basic fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishb.php"
+            },
+            {
+              "label": "HoDoKu finned fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishfs.php"
+            },
+            {
+              "label": "SudokuWiki X-Wing",
+              "href": "https://www.sudokuwiki.org/X_Wing_Strategy"
+            },
+            {
+              "label": "SudokuWiki Finned X-Wing",
+              "href": "https://www.sudokuwiki.org/Finned_X_Wing"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "swordfish",
+          "title": "Swordfish",
+          "summary": "Find a digit that three rows can place only in the same three columns.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look across three rows for one digit. Each row must have at least two candidates, and together they can use only three columns. Those rows need three copies in distinct columns. Erase the other candidates in those columns. You can also start with three columns and erase from the crossing rows."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "swordfish"
+            },
+            {
+              "type": "heading",
+              "id": "finned-swordfish",
+              "title": "Finned Swordfish"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Set aside the candidates outside the crossing lines. If they all sit in one box and you can see an ordinary Swordfish without them, check where the crossing lines enter that box. Erase only outside the starting lines. A fin in the box rules out the target if it takes the digit, and the Swordfish rules it out if all fins are gone."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "finned-swordfish"
+            },
+            {
+              "type": "heading",
+              "id": "sashimi-swordfish",
+              "title": "Sashimi Swordfish"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If at least one starting line has just one candidate once you set the fins aside, you have a sashimi. That candidate fixes one of the three placements. The others still have to use different crossing lines. Look for the same targets as in the finned version."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "sashimi-swordfish"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "swordfish",
+                  "title": "Swordfish"
+                },
+                {
+                  "example": "finned-swordfish",
+                  "title": "Finned Swordfish"
+                },
+                {
+                  "example": "sashimi-swordfish",
+                  "title": "Sashimi Swordfish"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu basic fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishb.php"
+            },
+            {
+              "label": "HoDoKu finned fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishfs.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Sword_Fish_Strategy"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "jellyfish",
+          "title": "Jellyfish",
+          "summary": "Find a digit that four rows can place only in the same four columns.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a digit and four rows with at least two candidates each. Count the distinct columns that contain those candidates. If the count is four, those four rows use up the columns for that digit. Erase the other copies in the columns. Four starting columns work the same way."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "jellyfish"
+            },
+            {
+              "type": "heading",
+              "id": "finned-jellyfish",
+              "title": "Finned Jellyfish"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If you have a Jellyfish plus a few extra candidates outside the crossing lines, check where the extras are. They must all be in one box. The target is in that box and on a crossing line, outside the starting lines. It loses if a fin takes the digit and if the Jellyfish uses up the crossing lines."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "finned-jellyfish"
+            },
+            {
+              "type": "heading",
+              "id": "sashimi-jellyfish",
+              "title": "Sashimi Jellyfish"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "When you set the fins aside, one or more starting lines can be left with just one candidate. Those candidates fix some of the placements. All four starting lines still need different crossing lines. Use the same target area as for a finned Jellyfish."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "sashimi-jellyfish"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "jellyfish",
+                  "title": "Jellyfish"
+                },
+                {
+                  "example": "finned-jellyfish",
+                  "title": "Finned Jellyfish"
+                },
+                {
+                  "example": "sashimi-jellyfish",
+                  "title": "Sashimi Jellyfish"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu basic fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishb.php"
+            },
+            {
+              "label": "HoDoKu finned fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishfs.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Jelly_Fish_Strategy"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Single-digit patterns",
+      "overview": "When a house has two places for a digit, crossing out one forces the other. A Skyscraper and a Two-String Kite use two such pairs. An Empty Rectangle uses one pair and the way candidates line up in a box. In each, trace the possible placements to find a candidate that loses in either case.",
+      "lessons": [
+        {
+          "id": "skyscraper",
+          "title": "Skyscraper",
+          "summary": "Find two rows with two places each for a digit and one pair of ends in the same column.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a digit with two candidates in each of two rows. Find a candidate in one row directly above the matching candidate in the other. The two far ends must sit in different columns."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "skyscraper"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Only one of the aligned cells can take the digit. At least one row has to put it at its far end. Erase the digit from cells that see both far ends. You can also use two columns with one pair of ends in the same row."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "skyscraper",
+                  "title": "Skyscraper"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_sdp.php"
+            },
+            {
+              "label": "Sudoku Coach",
+              "href": "https://sudoku.coach/en/learn/skyscraper"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "two-string-kite",
+          "title": "Two-String Kite",
+          "summary": "Join a row pair and a column pair for one digit through the box they share.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a row and a column with exactly two places each for the same digit. You need four different cells, with one end from each pair in the same box. Only one of those ends can take the digit, so at least one far end has to take it."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "two-string-kite"
+            },
+            {
+              "type": "heading",
+              "id": "dual-kite",
+              "title": "Dual kite"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For each kite, erase the digit from cells that see both far ends. A second pair can use the same joining cells in the box. Trace the two kites separately so you use the right far ends for each removal."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "two-string-kite",
+                  "title": "Two-String Kite"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_sdp.php"
+            },
+            {
+              "label": "Sudoku Coach",
+              "href": "https://sudoku.coach/en/learn/two-string-kite"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "empty-rectangle",
+          "title": "Empty Rectangle",
+          "summary": "Use a box’s two candidate lines and a pair outside it to erase a candidate.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit in a box. All its candidates must fit along one row and one column, with marks on both arms. The four cells off those lines give the pattern its name. The cell where the arms meet can also show the digit."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "empty-rectangle"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a line outside the box with only two places for the digit. One end of the pair must line up with one arm. If that end takes the digit, the box has to put its copy on the other arm. Look for a target on that other arm’s line that also sees the far end of the pair. Either placement rules it out."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "rectangle-variants",
+              "title": "Removals in the other direction"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "You can start from either arm. If the target and the far end are the only two places for the digit in their line, follow the same argument backwards for a second removal. When the box has just two candidates, you can also read the pattern as a short X-Chain."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "empty-rectangle",
+                  "title": "Empty Rectangle"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_sdp.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Rectangle_Elimination"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Wings",
+      "overview": "In an XY-Wing, either choice for the middle cell makes one of the two wings take the same digit. A cell that sees both wings loses that candidate. The other wings use different ways to force a digit. With WXYZ-Wing, check which digits could occur twice in the four cells.",
+      "lessons": [
+        {
+          "id": "xy-wing",
+          "title": "XY-Wing",
+          "summary": "Either digit in the pivot makes one of the wings take their common digit.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "In the example, the middle cell, or pivot, has 1 and 2. Look for two cells that see it. One has only 1 and 3 and the other has only 2 and 3. Those two cells are the wings."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "xy-wing"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A 1 in the pivot leaves the 1 and 3 wing with 3. A 2 leaves the other wing with 3. Erase 3 anywhere that sees both wings. Check each wing against the pivot separately. They can see it through different houses."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "xy-wing",
+                  "title": "XY-Wing"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_wings.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Y_Wing_Strategy"
+            },
+            {
+              "label": "Sudoku Snake",
+              "href": "https://www.sudokusnake.com/xywings.php"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "xyz-wing",
+          "title": "XYZ-Wing",
+          "summary": "The pivot holds the wings’ common digit, so a target has to see all three cells.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "The pivot in the figure has 2, 8, and 9. The wings see the pivot and have only 2 and 8, or 8 and 9. If the pivot takes 2 or 9, one wing takes 8. The pivot could also take 8 itself."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "xyz-wing"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Erase 8 from a cell that sees all three. R6C5 sees the wing in R2C5 through column 5, and sees the pivot and the other wing through the middle box."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "xyz-wing",
+                  "title": "XYZ-Wing"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_wings.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/XYZ_Wing"
+            },
+            {
+              "label": "Sudoku Snake",
+              "href": "https://www.sudokusnake.com/xyzwings.php"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "w-wing",
+          "title": "W-Wing",
+          "summary": "Link two cells with the same two candidates so one wing must take the other digit.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "In the figure, both wings have 5 and 7. Column 2 has just two places for 7, and each of those places sees a different wing. Whichever place takes 7 leaves the wing it sees with only 5."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "w-wing"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Erase 5 in any cell that sees both wings. If you find a house with two places for 5 instead, use that link to look for a removal of 7."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "w-wing",
+                  "title": "W-Wing"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_wings.php"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "wxyz-wing",
+          "title": "WXYZ-Wing",
+          "summary": "Four cells with four digits can force a digit across houses.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick four cells with exactly four different candidates between them. Look at one digit at a time. If all the cells that could take it in the wing see one another, that digit is restricted. Only one of those cells can take it."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "one-unrestricted-digit",
+              "title": "One unrestricted digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If three digits are restricted, they can fill at most three cells. The fourth digit has to fill at least one. Erase it from a cell that sees every place it could go in the wing."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "wxyz-wing"
+            },
+            {
+              "type": "heading",
+              "id": "all-digits-restricted",
+              "title": "All four digits restricted"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "All four cells need digits, so when every digit is restricted, each goes in exactly one cell. For each digit, erase it from cells that see all its places in the wing. With two unrestricted digits, this count gives no specific digit to erase."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "wxyz-wing",
+                  "title": "WXYZ-Wing"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/WXYZ_Wing"
+            }
+          ],
+          "credits": [
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/WXYZ_Wing"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Coloring and chains",
+      "overview": "Use two colors to mark candidates that would be placed together. If one color puts the same digit in a house twice, the other color wins. In a chain, follow one candidate at a time to see what placing or removing it forces. Some chains switch digits, use groups of candidates, or join their ends to form a loop.",
+      "lessons": [
+        {
+          "id": "simple-coloring",
+          "title": "Simple Coloring",
+          "summary": "Use two colors to follow the possible placements of one digit.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find two candidates for the same digit that are the only places for it in one house. Color them differently. When either candidate forms another such pair, color the new end with the opposite color. Within one connected set, placing one color rules out the other."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "simple-coloring"
+            },
+            {
+              "type": "heading",
+              "id": "color-trap",
+              "title": "Color trap"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If an uncolored candidate sees one of each color, it can’t take the digit whichever color is placed. Erase it."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "color-wrap",
+              "title": "Color wrap"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Two candidates of the same color can’t both be placed if they see each other. Erase that color throughout the connected set and place the other color. Give disconnected sets their own colors until you can link them."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "color-empty-group",
+              "title": "No place for the digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Check whether every candidate for the digit in a house would disappear if you placed one color. That would leave the house without the digit. Erase that color and place the other one."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "simple-coloring",
+                  "title": "Simple Coloring"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_col.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Simple_Colouring"
+            }
+          ]
+        },
+        {
+          "id": "3d-medusa",
+          "title": "3D Medusa",
+          "summary": "Use cells with two candidates to carry two-color reasoning from one digit to another.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Color the two places for a digit as in Simple Coloring. When you reach a cell with exactly two candidates, its other mark gets the opposite color. Keep following pairs in houses and in cells. In the connected set, all the candidates of one color can be placed together when that color is true."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "3d-medusa"
+            },
+            {
+              "type": "heading",
+              "id": "medusa-conflicts",
+              "title": "When one color breaks a rule"
+            },
+            {
+              "type": "list",
+              "items": [
+                "One cell would get two digits of the same color.",
+                "One house would get two copies of the same digit.",
+                "Placing the color would erase every candidate from an empty cell.",
+                "Placing the color would leave a house with no place for a missing digit."
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Any one of these checks rules out the entire color. Place the candidates of the other color in this set."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "medusa-traps",
+              "title": "When either color rules out the same candidate"
+            },
+            {
+              "type": "list",
+              "items": [
+                "A cell contains both colors. Both choices for the cell rule out its uncolored candidates.",
+                "An uncolored candidate sees its own digit in both colors. It loses whichever color is placed.",
+                "An uncolored candidate has one color in its cell and sees its own digit in the other color. Either placement rules it out."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "3d-medusa",
+                  "title": "3D Medusa"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/3D_Medusa"
+            }
+          ],
+          "credits": [
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/3D_Medusa"
+            }
+          ]
+        },
+        {
+          "id": "x-chain",
+          "title": "X-Chain",
+          "summary": "Follow strong and weak links for one digit to find a candidate that sees both ends.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "When a house has just two places for a digit, the pair forms a strong link. If one end is ruled out, the other must be placed. Any two candidates for the same digit that see each other form a weak link. If one end is placed, the other must be ruled out."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "x-chain"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Use a strong link at each end of the chain and alternate the links in between. Rule out the first candidate and trace the result. At each solid link, place the next candidate. At each dashed link, rule it out. This forces the final candidate, so a cell that sees both ends loses the digit."
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A Skyscraper or Two-String Kite uses three links. You can keep going through more houses as long as the links alternate and the last one is strong."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "x-chain",
+                  "title": "X-Chain"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            }
+          ]
+        },
+        {
+          "id": "xy-chain",
+          "title": "XY-Chain",
+          "summary": "Link cells with two candidates until the same digit appears at both ends.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one candidate to cross out in a cell with two marks. That forces its other digit. Find another two-candidate cell that sees the first and shares the forced digit. Cross out that digit there and use the other mark to continue."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "xy-chain"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Stop when the last cell has to take the digit you first crossed out. One of the two ends has to take it. Erase that digit wherever a cell sees both ends. An XY-Wing uses the same argument with three cells."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "xy-chain",
+                  "title": "XY-Chain"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/XY_Chains"
+            }
+          ]
+        },
+        {
+          "id": "aic",
+          "title": "Alternating Inference Chains",
+          "summary": "Follow alternating links to show that at least one end of the chain must be true.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Use a strong link at both ends and alternate strong and weak links in between. Suppose the first candidate is false. A strong link forces the next candidate to be true, then a weak link makes the next one false. Continue to the last link, which forces the candidate at that end."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "aic-type-1",
+              "title": "Type 1 with the same digit at both ends"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If the ends show the same digit, erase it from any cell that sees both. The links in the middle can switch digits."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "aic"
+            },
+            {
+              "type": "heading",
+              "id": "aic-type-2",
+              "title": "Type 2 with different digits"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Suppose the ends are 2 in cell A and 7 in cell B, and the two cells see each other. A 7 in A would cross out the 2 in A and the 7 in B, leaving both ends false. Erase 7 from A. The same reasoning rules out 2 in B if it’s there."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "grouped-aic",
+              "title": "Grouped AIC"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Candidates for one digit where a line crosses a box can act as a single end of a link. The group is true when any member is true. A weak link into the group has to rule out all its members. A strong link can join two groups, or a group and a single candidate, if they cover every place for the digit in a house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "grouped-aic"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "aic",
+                  "title": "Alternating Inference Chain"
+                },
+                {
+                  "example": "grouped-aic",
+                  "title": "Grouped AIC"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            },
+            {
+              "label": "SudokuWiki AIC",
+              "href": "https://www.sudokuwiki.org/Alternating_Inference_Chains"
+            },
+            {
+              "label": "SudokuWiki grouped AIC",
+              "href": "https://www.sudokuwiki.org/AIC_with_Groups"
+            }
+          ]
+        },
+        {
+          "id": "nice-loops",
+          "title": "Nice Loops",
+          "summary": "Follow a chain back to the same candidate and check the two links that meet there.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a candidate and alternate strong and weak links until you’re back where you started. The first and last links can be different or the same. The deduction comes from that join."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "discontinuous-nice-loop",
+              "title": "Discontinuous Nice Loop"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "With two weak links at the join, assume the starting candidate is true. The loop takes you back to that candidate and makes it false, so erase it. With two strong links, starting with it false forces it to be true. Place it."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "discontinuous-nice-loop"
+            },
+            {
+              "type": "heading",
+              "id": "continuous-nice-loop",
+              "title": "Continuous Nice Loop"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If the links alternate at the join, pick a weak link and assume one end is false. Follow the rest of the loop to force the other end true. Any candidate that conflicts with both ends can go. Check each weak link separately."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "continuous-nice-loop"
+            },
+            {
+              "type": "heading",
+              "id": "grouped-discontinuous-nice-loop",
+              "title": "Grouped Discontinuous Nice Loop"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A group stands for at least one of its candidates. When a link makes the group false, all its candidates are false. Trace the rest of the loop to see whether it contradicts the starting assumption."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "grouped-discontinuous-nice-loop"
+            },
+            {
+              "type": "heading",
+              "id": "grouped-continuous-nice-loop",
+              "title": "Grouped Continuous Nice Loop"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "At least one end of the weak link must be true. When one end is a group, the target has to conflict with every member of that group and with the other end. If both ends are groups, check all the members at both ends."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "grouped-continuous-nice-loop"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "discontinuous-nice-loop",
+                  "title": "Discontinuous Nice Loop"
+                },
+                {
+                  "example": "continuous-nice-loop",
+                  "title": "Continuous Nice Loop"
+                },
+                {
+                  "example": "grouped-discontinuous-nice-loop",
+                  "title": "Grouped Discontinuous Nice Loop"
+                },
+                {
+                  "example": "grouped-continuous-nice-loop",
+                  "title": "Grouped Continuous Nice Loop"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            },
+            {
+              "label": "SudokuWiki AIC",
+              "href": "https://www.sudokuwiki.org/Alternating_Inference_Chains"
+            },
+            {
+              "label": "SudokuWiki grouped AIC",
+              "href": "https://www.sudokuwiki.org/AIC_with_Groups"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Uniqueness",
+      "overview": "On a puzzle with one solution, any arrangement that lets you swap digits and keep a valid grid can be ruled out. A Unique Rectangle looks for a swap across four corners. BUG+1 looks for a swap across all the empty cells.",
+      "lessons": [
+        {
+          "id": "unique-rectangle",
+          "title": "Unique Rectangle",
+          "summary": "Look for four corners where swapping two digits would give a second solution.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Use this on a puzzle with exactly one solution. Look for four empty corners in two rows and two columns, across exactly two boxes. All four can take the same two digits. If they used only those digits, each diagonal would hold one of them. You could swap the two digits without changing which digits any house contains. At least one corner has to use an extra digit to prevent that swap."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "unique-rectangle-1",
+              "title": "Type 1 with extras in one corner"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If three corners have only the pair, the fourth has to use an extra digit. Erase both digits of the pair from that corner."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-1"
+            },
+            {
+              "type": "heading",
+              "id": "unique-rectangle-2",
+              "title": "Type 2 with the same extra on adjacent corners"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for two neighboring corners with the same extra digit and the other two corners with just the pair. One of the two extras must be placed. Erase that digit in any cell that sees both corners with the extra."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-2"
+            },
+            {
+              "type": "heading",
+              "id": "unique-rectangle-3",
+              "title": "Type 3 with a subset of extra digits"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Two adjacent corners have extras, and between them they need at least one extra digit. Count the two corners as one slot for those digits. Add cells from a house they share until the number of distinct digits equals the number of slots. Erase those digits from the other cells of that house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-3"
+            },
+            {
+              "type": "heading",
+              "id": "unique-rectangle-4",
+              "title": "Type 4 with a strong link on one side"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Two adjacent corners have extras. Look for a digit of the rectangle pair that has only those two places in a shared house. One corner must take it. If the other corner took the second digit of the pair, all four corners would use only the pair. Erase the second digit from both corners with extras."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-4"
+            },
+            {
+              "type": "heading",
+              "id": "unique-rectangle-5",
+              "title": "Type 5 with the same extra across the diagonals"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find the same extra digit in two opposite corners or in three corners, with no other extras. At least one of those corners must take the extra. Erase it from any cell that sees all the corners where it appears."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-5"
+            },
+            {
+              "type": "heading",
+              "id": "unique-rectangle-6",
+              "title": "Type 6 with one digit locked to a diagonal"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The two corners with extras are opposite each other. Find a digit of the pair whose only places in both rows and both columns are the four corners. It must take one whole diagonal. If it took the diagonal with extras, the other two corners would take the second digit and allow the swap. Erase the linked digit from the corners with extras."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-6"
+            },
+            {
+              "type": "heading",
+              "id": "hidden-rectangle",
+              "title": "Hidden Rectangle"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a corner that contains just the pair and look at the opposite corner. One digit of the pair must have no places beyond the rectangle in that opposite corner’s row and column. If the opposite corner took the other digit, both lines would force the rectangle into the swappable arrangement. Erase that other digit from the opposite corner."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "hidden-rectangle"
+            },
+            {
+              "type": "heading",
+              "id": "rectangle-already-placed",
+              "title": "Avoidable rectangles"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The swap can also involve digits you’ve already placed. Check that none of the corners is a given. With three filled corners, erase the candidate that would complete the swap. With two filled corners and the same extra candidate in both empty corners, erase that extra from cells that see both empty corners."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "rectangle-missing-candidates",
+              "title": "When earlier moves removed candidates"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The swap has to respect the givens. A rectangle digit might have been crossed out during an earlier move even though the givens allow it there. Check that both digits could go in all four corners from the givens before you use this version."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "unique-rectangle-1",
+                  "title": "Type 1"
+                },
+                {
+                  "example": "unique-rectangle-2",
+                  "title": "Type 2"
+                },
+                {
+                  "example": "unique-rectangle-3",
+                  "title": "Type 3"
+                },
+                {
+                  "example": "unique-rectangle-4",
+                  "title": "Type 4"
+                },
+                {
+                  "example": "unique-rectangle-5",
+                  "title": "Type 5"
+                },
+                {
+                  "example": "unique-rectangle-6",
+                  "title": "Type 6"
+                },
+                {
+                  "example": "hidden-rectangle",
+                  "title": "Hidden Rectangle"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_ur.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Unique_Rectangles"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        },
+        {
+          "id": "bug-plus-one",
+          "title": "BUG+1",
+          "summary": "In a puzzle with one solution, look for the extra candidate that keeps all the empty cells from having two choices.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "BUG stands for Bivalue Universal Grave. In a BUG, every empty cell has two candidates and every missing digit has two places in each house that needs it. If you solved that grid, changing every originally empty cell to its other digit would still leave one of each digit in every house. You’d have two solutions."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "bug-plus-one"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For BUG+1, look for one cell with three candidates and two candidates in every other empty cell. In the three-candidate cell, find the digit with three places in each of its houses. If crossing it out leaves a BUG, solving without that candidate would let you swap the choices to make another solution. A one-solution puzzle has to use the extra digit."
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Check the counts across the grid before placing it. A cell with three candidates can also occur without a BUG pattern."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "bug-plus-one",
+                  "title": "BUG+1"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_ur.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/BUG"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Forcing proofs",
+      "overview": "Try a candidate and follow the moves it would force. If a house runs out of places for a digit, the original choice has to go. If every possible choice leads to the same move, make that move. A net can use several earlier deductions to force a single step.",
+      "lessons": [
+        {
+          "id": "forcing-chain",
+          "title": "Forcing Chains and Nets",
+          "summary": "Follow a possible move until it breaks a rule or leads to the same result as every other choice.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a candidate. Try placing it or crossing it out and track the moves that follow. A placement rules out the other digits in that cell and the same digit in its peers. Whenever a cell or a missing digit in a house has one choice left, follow that placement too."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "contradiction",
+              "title": "A choice breaks a rule"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Stop if a cell loses every candidate, a house runs out of places for a digit, or a candidate has to be both true and false. The starting assumption can’t hold. Erase a candidate if placing it caused the contradiction. Place it if crossing it out caused the contradiction."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "forcing-chain"
+            },
+            {
+              "type": "heading",
+              "id": "common-result",
+              "title": "All choices lead to the same move"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Try each candidate in a cell, each place for one digit in a house, or both possibilities for a single candidate. Follow every choice separately. If they all give the same placement or removal, make that move."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "forcing-net",
+              "title": "Forcing nets"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A chain goes from one deduction to the next. A net can use several earlier deductions for a single step. For instance, three separate removals might leave only one place for a digit in a column. Check that each of those removals follows from the same starting assumption before you place the digit."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "forcing-net"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "forcing-chain",
+                  "title": "Forcing Chain"
+                },
+                {
+                  "example": "forcing-net",
+                  "title": "Forcing Net"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php"
+            },
+            {
+              "label": "SudokuWiki",
+              "href": "https://www.sudokuwiki.org/Cell_Forcing_Chains"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

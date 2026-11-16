@@ -24,7 +24,8 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
   const url = new URL(event.request.url)
   if (url.origin !== self.location.origin) return
-  const path = event.request.mode === 'navigate' && url.pathname === '/' ? '/index.html' : url.pathname
+  const indexPath = `${url.pathname.replace(/\/$/, '')}/index.html`
+  const path = event.request.mode === 'navigate' && cachedPaths.has(indexPath) ? indexPath : url.pathname
   if (!cachedPaths.has(path)) return
   event.respondWith((async () => {
     const cache = await caches.open(cacheName)

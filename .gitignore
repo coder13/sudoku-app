@@ -5,3 +5,5 @@ src/sudoku/generated/
 .env.local
 .DS_Store
 .tanstack/
+storybook-static/
+stories/generated/

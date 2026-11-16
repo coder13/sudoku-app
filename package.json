@@ -6,26 +6,35 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "npm run build:wasm && vite",
+    "dev": "node scripts/ensure-wasm.mjs && vite",
+    "dev:lessons": "node tools/lesson-editor/server.mjs",
     "build:wasm": "node scripts/build-wasm.mjs",
     "build": "npm run build:wasm && vite build && node scripts/build-offline.mjs",
     "check": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "start": "cargo run --locked -p sudoku-app-server"
+    "test:wasm": "npm run build:wasm && node --experimental-strip-types --test tests/engine-wasm.mts",
+    "start": "cargo run --locked -p sudoku-app-server",
+    "storybook": "node scripts/ensure-wasm.mjs && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook dev -p 6006 --host 127.0.0.1",
+    "build-storybook": "npm run build:wasm && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook build"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.2.0",
     "@tanstack/react-router": "^1.169.5",
     "@tanstack/react-start": "^1.169.5",
+    "dockview-react": "^8.9.0",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^10.6.7",
+    "@storybook/addon-docs": "^10.6.7",
+    "@storybook/react-vite": "^10.6.7",
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.0",
+    "storybook": "^10.6.7",
     "typescript": "^5.9.0",
     "vite": "^8.0.0"
   }

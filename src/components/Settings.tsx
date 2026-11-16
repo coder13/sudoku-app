@@ -1,33 +1,95 @@
-import { type CSSProperties, useEffect, useId, useRef, useState } from 'react'
+import { type CSSProperties, useId } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
-  ChevronLeft, ChevronRight, Eye, EyeOff, Lightbulb, Maximize2, Minus, PenTool, Plus,
+  ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Lightbulb, Minus, PanelsTopLeft, PenTool, Plus,
   SlidersHorizontal,
 } from 'lucide-react'
 import { DIGITS, type ErrorMode } from '../sudoku/game'
+import { CELL_REFERENCE_LABELS, type CellReferenceStyle } from '../sudoku/hints'
 import {
-  INPUT_SIZE_STEP, MAX_INPUT_SIZE, MIN_INPUT_SIZE,
-  type AdvancedModes, type AppearancePreferences, type ColorMode, type ThemeId,
+  gridTextScalePercentage, INPUT_SIZE_STEP, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
+  stepGridTextScale,
+  type AdvancedModes, type AppearancePreferences, type CandidateHighlightStyle, type ColorMode,
+  type HighlightPreferences, type ThemeId, type WorkspaceMode,
 } from '../sudoku/preferences'
 import { THEME_OPTIONS, themePreview } from '../sudoku/themes'
+import { resetDesktopPanelLayout } from './DesktopDockLayout'
 import { Modal } from './Modal'
 
-type Section = 'appearance' | 'input' | 'solving' | 'hints'
+export type SettingsSection = 'appearance' | 'input' | 'highlighting' | 'solving' | 'hints'
+type Section = SettingsSection
 
 const sections: { id: Section; label: string; description: string; icon: typeof Eye }[] = [
-  { id: 'appearance', label: 'Look & feel', description: 'Theme, size, and board layout', icon: Eye },
+  { id: 'appearance', label: 'Look & feel', description: 'Theme, size, and grid layout', icon: Eye },
   { id: 'input', label: 'Input controls', description: 'Candidates, colors, and selection', icon: PenTool },
+  { id: 'highlighting', label: 'Highlighting', description: 'Cells, digits, and candidates', icon: Highlighter },
   { id: 'solving', label: 'Solving style', description: 'Errors and solving behavior', icon: SlidersHorizontal },
   { id: 'hints', label: 'Hints', description: 'Help while solving', icon: Lightbulb },
 ]
 const screenLabels: Record<Section, string> = {
   appearance: 'Look & feel',
   input: 'Input controls',
+  highlighting: 'Highlighting',
   solving: 'Solving style',
   hints: 'Hints',
 }
+
+const candidateStyles: { id: CandidateHighlightStyle; label: string; description: string }[] = [
+  { id: 'text', label: 'Candidate color', description: 'Change only the matching candidate’s color.' },
+  { id: 'spotlight', label: 'Candidate spot', description: 'Add a small background behind the matching candidate.' },
+  { id: 'cell', label: 'Cell tint', description: 'Tint every cell that contains the matching candidate.' },
+  { id: 'outline', label: 'Cell outline', description: 'Outline every cell that contains the matching candidate.' },
+]
+
+export function HighlightSettings({ highlighting, setHighlighting }: {
+  highlighting: HighlightPreferences
+  setHighlighting: (highlighting: HighlightPreferences) => void
+}) {
+  return (
+    <div className="settings-section mobile-title-duplicate">
+      <h3>Highlighting</h3>
+      <p className="settings-intro">Choose what follows the active cell or selected digit.</p>
+      <div className="advanced-options">
+        <fieldset>
+          <legend>Automatic highlights</legend>
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={highlighting.relatedCells}
+              onChange={(event) => setHighlighting({ ...highlighting, relatedCells: event.target.checked })} />
+            <span><strong>Related cells</strong><small>Highlight the cells that share a house with the active cell.</small></span>
+          </label>
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={highlighting.matchingDigits}
+              onChange={(event) => setHighlighting({ ...highlighting, matchingDigits: event.target.checked })} />
+            <span><strong>Matching digits</strong><small>Highlight every cell containing the active digit.</small></span>
+          </label>
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={highlighting.matchingCandidates}
+              onChange={(event) => setHighlighting({ ...highlighting, matchingCandidates: event.target.checked })} />
+            <span><strong>Matching candidates</strong><small>Highlight candidates matching the active digit.</small></span>
+          </label>
+        </fieldset>
+        <fieldset className="highlight-style-options" disabled={!highlighting.matchingCandidates}>
+          <legend>Candidate highlight style</legend>
+          {candidateStyles.map((style) => (
+            <label key={style.id}>
+              <input type="radio" name="candidate-highlight-style" value={style.id}
+                checked={highlighting.candidateStyle === style.id}
+                onChange={() => setHighlighting({ ...highlighting, candidateStyle: style.id })} />
+              <span><strong>{style.label}</strong><small>{style.description}</small></span>
+            </label>
+          ))}
+        </fieldset>
+      </div>
+    </div>
+  )
+}
 const screenIds = new Set<Section>(Object.keys(screenLabels) as Section[])
 
-function ThemePreview({ theme, mode }: { theme: ThemeId; mode: 'light' | 'dark' }) {
+export function isSettingsSection(value: unknown): value is SettingsSection {
+  return typeof value === 'string' && screenIds.has(value as Section)
+}
+
+export function ThemePreview({ theme, mode }: { theme: ThemeId; mode: 'light' | 'dark' }) {
   const preview = themePreview(theme, mode)
   return (
     <span className="theme-preview" style={{ background: preview.background, borderColor: preview.border }} aria-hidden="true">
@@ -36,7 +98,7 @@ function ThemePreview({ theme, mode }: { theme: ThemeId; mode: 'light' | 'dark' 
   )
 }
 
-function ThemeSettings({ appearance, setAppearance }: {
+export function ThemeSettings({ appearance, setAppearance }: {
   appearance: AppearancePreferences
   setAppearance: (appearance: AppearancePreferences) => void
 }) {
@@ -44,7 +106,7 @@ function ThemeSettings({ appearance, setAppearance }: {
   return (
     <div className="settings-section theme-settings">
       <h3>Theme</h3>
-      <p className="settings-intro">Choose when light and dark appearances are used, then select a palette for each.</p>
+      <p className="settings-intro">Choose how the app looks in light and dark mode.</p>
       <fieldset className="theme-mode-setting">
         <legend>Appearance</legend>
         <div className="theme-mode-options">
@@ -60,19 +122,19 @@ function ThemeSettings({ appearance, setAppearance }: {
       </fieldset>
       <div className="theme-palette-settings">
         <label className="settings-select theme-select">
-          <span><strong>Light theme</strong><small>Palette used when the app is light.</small></span>
+          <strong>Light theme</strong>
           <ThemePreview theme={appearance.lightTheme} mode="light" />
           <select aria-label="Light theme" value={appearance.lightTheme}
             onChange={(event) => setAppearance({ ...appearance, lightTheme: event.target.value as ThemeId })}>
-            {THEME_OPTIONS.map(({ id, name, category }) => <option key={id} value={id}>{name} · {category}</option>)}
+            {THEME_OPTIONS.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
           </select>
         </label>
         <label className="settings-select theme-select">
-          <span><strong>Dark theme</strong><small>Palette used when the app is dark.</small></span>
+          <strong>Dark theme</strong>
           <ThemePreview theme={appearance.darkTheme} mode="dark" />
           <select aria-label="Dark theme" value={appearance.darkTheme}
             onChange={(event) => setAppearance({ ...appearance, darkTheme: event.target.value as ThemeId })}>
-            {THEME_OPTIONS.map(({ id, name, category }) => <option key={id} value={id}>{name} · {category}</option>)}
+            {THEME_OPTIONS.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
           </select>
         </label>
       </div>
@@ -80,17 +142,37 @@ function ThemeSettings({ appearance, setAppearance }: {
   )
 }
 
-function SizeSettings({ inputSize, setInputSize, onResize }: {
+export function SizeSettings({ appearance, setAppearance, inputSize, setInputSize, workspaceMode }: {
+  appearance: AppearancePreferences
+  setAppearance: (appearance: AppearancePreferences) => void
   inputSize: number
   setInputSize: (size: number) => void
-  onResize: () => void
+  workspaceMode: WorkspaceMode
 }) {
   return (
     <div className="settings-section size-settings">
       <h3>Size & layout</h3>
-      <p className="settings-intro">Adjust the number buttons and input panel to fit your screen and hands.</p>
+      <p className="settings-intro">Adjust puzzle text, digit buttons, and the input panel.</p>
+      <div className="setting-row-heading grid-text-size-setting">
+        <span><strong>Puzzle text size</strong><small>Adjust digits and candidates in the Sudoku grid.</small></span>
+        <div className="size-stepper" role="group" aria-label="Puzzle text size">
+          <button className="icon-button" aria-label="Decrease puzzle text size"
+            disabled={appearance.gridTextScale <= MIN_GRID_TEXT_SCALE}
+            onClick={() => setAppearance({
+              ...appearance,
+              gridTextScale: stepGridTextScale(appearance.gridTextScale, -1),
+            })}><Minus size={18} /></button>
+          <output aria-label="Puzzle text size percentage">{gridTextScalePercentage(appearance.gridTextScale)}%</output>
+          <button className="icon-button" aria-label="Increase puzzle text size"
+            disabled={appearance.gridTextScale >= MAX_GRID_TEXT_SCALE}
+            onClick={() => setAppearance({
+              ...appearance,
+              gridTextScale: stepGridTextScale(appearance.gridTextScale, 1),
+            })}><Plus size={18} /></button>
+        </div>
+      </div>
       <div className="input-size-setting">
-        <div className="setting-row-heading"><span><strong>Digit size</strong><small>Preview the number buttons at their current size.</small></span>
+        <div className="setting-row-heading"><span><strong>Digit size</strong><small>Preview the digit buttons at their current size.</small></span>
           <div className="size-stepper" role="group" aria-label="Digit size">
             <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
               onClick={() => setInputSize(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></button>
@@ -103,23 +185,23 @@ function SizeSettings({ inputSize, setInputSize, onResize }: {
           {DIGITS.map((digit) => <span className="key" key={digit}>{digit}</span>)}
         </div>
       </div>
-      <button className="resize-panels-option" onClick={onResize}>
-        <span className="settings-menu-icon"><Maximize2 size={20} /></span>
-        <span><strong>Panel size</strong><small>Open the puzzle and drag the input panel to the height you want.</small></span>
-        <ChevronRight size={19} />
-      </button>
+      {workspaceMode === 'advanced' && <div className="desktop-layout-setting">
+        <span className="settings-menu-icon"><PanelsTopLeft size={20} /></span>
+        <span><strong>Advanced panel layout</strong><small>Restore the default positions and sizes for every named panel.</small></span>
+        <button className="button secondary" onClick={resetDesktopPanelLayout}>Reset</button>
+      </div>}
     </div>
   )
 }
 
-function GuideSetting({ appearance, setAppearance, heading = true }: {
+export function GuideSetting({ appearance, setAppearance, heading = true }: {
   appearance: AppearancePreferences
   setAppearance: (appearance: AppearancePreferences) => void
   heading?: boolean
 }) {
   return (
     <div className="settings-section guide-settings">
-      {heading && <h3>Board</h3>}
+      {heading && <h3>Grid</h3>}
       <label className="appearance-toggle">
         <input type="checkbox" checked={appearance.showGuides}
           onChange={(event) => setAppearance({ ...appearance, showGuides: event.target.checked })} />
@@ -132,30 +214,61 @@ function GuideSetting({ appearance, setAppearance, heading = true }: {
   )
 }
 
-function AppearanceSettings({ appearance, setAppearance, inputSize, setInputSize, onResize }: {
+export function AppearanceSettings({ appearance, setAppearance, inputSize, setInputSize, workspaceMode, setWorkspaceMode }: {
   appearance: AppearancePreferences
   setAppearance: (appearance: AppearancePreferences) => void
   inputSize: number
   setInputSize: (size: number) => void
-  onResize: () => void
+  workspaceMode: WorkspaceMode
+  setWorkspaceMode: (mode: WorkspaceMode) => void
 }) {
   return (
     <div className="appearance-flat-settings">
+      <div className="settings-section workspace-mode-settings">
+        <h3>Workspace</h3>
+        <p className="settings-intro">Choose a focused layout or a full desktop workspace.</p>
+        <fieldset className="workspace-mode-options">
+          <legend className="sr-only">Workspace mode</legend>
+          <label>
+            <input type="radio" name="workspace-mode" value="standard" checked={workspaceMode === 'standard'}
+              onChange={() => setWorkspaceMode('standard')} />
+            <span><strong>Standard</strong><small>Keep the puzzle and input controls in a fixed, uncluttered layout.</small></span>
+          </label>
+          <label>
+            <input type="radio" name="workspace-mode" value="advanced" checked={workspaceMode === 'advanced'}
+              onChange={() => setWorkspaceMode('advanced')} />
+            <span><strong>Advanced</strong><small>Use a full desktop workspace with named, movable, resizable panels and additional puzzle data.</small></span>
+          </label>
+        </fieldset>
+      </div>
       <ThemeSettings appearance={appearance} setAppearance={setAppearance} />
-      <SizeSettings inputSize={inputSize} setInputSize={setInputSize} onResize={onResize} />
       <GuideSetting appearance={appearance} setAppearance={setAppearance} />
+      <SizeSettings appearance={appearance} setAppearance={setAppearance}
+        inputSize={inputSize} setInputSize={setInputSize} workspaceMode={workspaceMode} />
     </div>
   )
 }
 
-function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, setErrorMode, draft }: {
-  section: Exclude<Section, 'appearance'>
+const cellReferenceDescriptions: Record<CellReferenceStyle, string> = {
+  automatic: 'Use concise references for Hard, Unfair, and Extreme techniques.',
+  concise: 'Show cells as r1c6.',
+  verbose: 'Show cells as row 1, column 6.',
+}
+const cellReferenceStyles = Object.keys(CELL_REFERENCE_LABELS) as CellReferenceStyle[]
+
+export function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, setErrorMode, draft,
+  cellReferenceStyle, setCellReferenceStyle,
+}: {
+  section: Exclude<Section, 'appearance' | 'highlighting'>
   advancedModes: AdvancedModes
   setAdvancedModes: (modes: AdvancedModes) => void
   errorMode: ErrorMode
   setErrorMode: (mode: ErrorMode) => void
   draft: boolean
+  cellReferenceStyle: CellReferenceStyle
+  setCellReferenceStyle: (style: CellReferenceStyle) => void
 }) {
+  const cellReferenceGroup = useId()
   if (section === 'input') {
     return (
       <div className="settings-section mobile-title-duplicate">
@@ -172,7 +285,7 @@ function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, 
             <label>
               <input type="radio" name="candidate-layout" value="center-corner" checked={advancedModes.candidateLayout === 'center-corner'}
                 onChange={() => setAdvancedModes({ ...advancedModes, candidateLayout: 'center-corner' })} />
-              <span><strong>Center and corner</strong><small>Choose whether pencil marks go in the center or corners.</small></span>
+              <span><strong>Center and corner</strong><small>Choose whether candidates appear in the center or corners.</small></span>
             </label>
           </fieldset>
           <label className="advanced-toggle">
@@ -195,18 +308,25 @@ function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, 
       <div className="settings-section mobile-title-duplicate">
         <h3>Solving style</h3>
         <p className="settings-intro">Choose how the app responds while you solve.</p>
-        {!draft ? (
-          <label className="advanced-select settings-select">
-            <span><strong>Error display</strong><small>Choose when mistakes are highlighted.</small></span>
-            <select value={errorMode} onChange={(event) => setErrorMode(event.target.value as ErrorMode)}>
-              <option value="all">Flag all errors immediately</option>
-              <option value="incorrect">Flag incorrect digits immediately</option>
-              <option value="none">Don’t flag errors</option>
-            </select>
+        <div className="advanced-options">
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={advancedModes.autoGenerateCandidates}
+              onChange={(event) => setAdvancedModes({ ...advancedModes, autoGenerateCandidates: event.target.checked })} />
+            <span><strong>Automatically generate candidates</strong><small>Add every valid candidate when you start or open a puzzle.</small></span>
           </label>
-        ) : (
-          <div className="settings-placeholder"><SlidersHorizontal size={20} /><span><strong>Solving options</strong><small>These options become available while solving a puzzle.</small></span></div>
-        )}
+          {!draft ? (
+            <label className="advanced-select settings-select">
+              <span><strong>Error display</strong><small>Choose when mistakes are highlighted.</small></span>
+              <select value={errorMode} onChange={(event) => setErrorMode(event.target.value as ErrorMode)}>
+                <option value="all">Flag all errors immediately</option>
+                <option value="incorrect">Flag incorrect digits immediately</option>
+                <option value="none">Don’t flag errors</option>
+              </select>
+            </label>
+          ) : (
+            <div className="settings-placeholder"><SlidersHorizontal size={20} /><span><strong>Error display</strong><small>Error options become available while solving a puzzle.</small></span></div>
+          )}
+        </div>
       </div>
     )
   }
@@ -214,159 +334,108 @@ function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, 
   return (
     <div className="settings-section mobile-title-duplicate">
       <h3>Hints</h3>
-      <p className="settings-intro">Control the help you receive while solving.</p>
-      <div className="settings-placeholder"><Lightbulb size={20} /><span><strong>Hint options</strong><small>Hint controls will be available here when hints are added.</small></span></div>
+      <div className="advanced-options">
+        <fieldset>
+          <legend>Cell references</legend>
+          {cellReferenceStyles.map((style) => (
+            <label key={style}>
+              <input type="radio" name={cellReferenceGroup} value={style} checked={cellReferenceStyle === style}
+                onChange={() => setCellReferenceStyle(style)} />
+              <span><strong>{CELL_REFERENCE_LABELS[style]}</strong><small>{cellReferenceDescriptions[style]}</small></span>
+            </label>
+          ))}
+        </fieldset>
+      </div>
     </div>
   )
 }
 
 type SettingsProps = {
   close: () => void
+  section?: SettingsSection | null
   advancedModes: AdvancedModes
   setAdvancedModes: (modes: AdvancedModes) => void
   appearance: AppearancePreferences
   setAppearance: (appearance: AppearancePreferences) => void
+  highlighting: HighlightPreferences
+  setHighlighting: (highlighting: HighlightPreferences) => void
   errorMode: ErrorMode
   setErrorMode: (mode: ErrorMode) => void
   inputSize: number
   setInputSize: (size: number) => void
-  onResize: () => void
   draft: boolean
+  cellReferenceStyle: CellReferenceStyle
+  setCellReferenceStyle: (style: CellReferenceStyle) => void
+  workspaceMode: WorkspaceMode
+  setWorkspaceMode: (mode: WorkspaceMode) => void
 }
 
 export function Settings({
-  close, advancedModes, setAdvancedModes, appearance, setAppearance, errorMode, setErrorMode,
-  inputSize, setInputSize, onResize, draft,
+  close, section = null, advancedModes, setAdvancedModes, appearance, setAppearance, highlighting, setHighlighting, errorMode, setErrorMode,
+  inputSize, setInputSize, draft, cellReferenceStyle, setCellReferenceStyle, workspaceMode, setWorkspaceMode,
 }: SettingsProps) {
-  const [section, setSection] = useState<Section>('appearance')
-  const [mobileScreens, setMobileScreens] = useState<Section[]>([])
-  const mobileScreensRef = useRef<Section[]>([])
-  const navigationId = useRef(`settings-${Math.random().toString(36).slice(2)}`)
-  const historyEnabled = useRef(typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches)
-  const historyInitialized = useRef(false)
-  const afterClose = useRef<(() => void) | null>(null)
-  const mobileScreen = mobileScreens.at(-1) ?? null
-  const previousScreen = mobileScreens.at(-2) ?? null
-
-  function setMobileStack(next: Section[]) {
-    mobileScreensRef.current = next
-    setMobileScreens(next)
-  }
-
-  function historyState(next: Section[]) {
-    return {
-      ...(window.history.state ?? {}),
-      settingsNavigation: { id: navigationId.current, screens: next },
-    }
-  }
-
-  useEffect(() => {
-    if (!historyEnabled.current) return
-    if (!historyInitialized.current) {
-      window.history.pushState(historyState([]), '')
-      historyInitialized.current = true
-    }
-
-    function handlePopState(event: PopStateEvent) {
-      const navigation = event.state?.settingsNavigation
-      if (navigation?.id === navigationId.current && Array.isArray(navigation.screens)) {
-        const next = navigation.screens.filter((screen: unknown): screen is Section =>
-          typeof screen === 'string' && screenIds.has(screen as Section))
-        setMobileStack(next)
-        return
-      }
-      const callback = afterClose.current
-      afterClose.current = null
-      close()
-      callback?.()
-    }
-
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
-
-  function openMobileScreen(next: Section) {
-    const stack = [...mobileScreensRef.current, next]
-    setMobileStack(stack)
-    if (historyEnabled.current) window.history.pushState(historyState(stack), '')
-  }
-
-  function backMobileScreen() {
-    if (!mobileScreensRef.current.length) return
-    if (historyEnabled.current && window.history.state?.settingsNavigation?.id === navigationId.current) {
-      window.history.back()
-      return
-    }
-    setMobileStack(mobileScreensRef.current.slice(0, -1))
-  }
-
   function exitSettings(callback?: () => void) {
-    if (historyEnabled.current && window.history.state?.settingsNavigation?.id === navigationId.current) {
-      afterClose.current = callback ?? null
-      window.history.go(-(mobileScreensRef.current.length + 1))
-      return
-    }
     close()
     callback?.()
   }
 
-  function renderGeneral(currentSection: Exclude<Section, 'appearance'>) {
+  function renderGeneral(currentSection: Exclude<Section, 'appearance' | 'highlighting'>) {
     return <GeneralSettings section={currentSection} advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
-      errorMode={errorMode} setErrorMode={setErrorMode} draft={draft} />
+      errorMode={errorMode} setErrorMode={setErrorMode} draft={draft}
+      cellReferenceStyle={cellReferenceStyle} setCellReferenceStyle={setCellReferenceStyle} />
   }
 
-  function renderMobileScreen(screen: Section) {
+  function renderSection(screen: Section) {
     if (screen === 'appearance') {
       return <AppearanceSettings appearance={appearance} setAppearance={setAppearance} inputSize={inputSize}
-        setInputSize={setInputSize} onResize={() => exitSettings(onResize)} />
+        setInputSize={setInputSize} workspaceMode={workspaceMode} setWorkspaceMode={setWorkspaceMode} />
+    }
+    if (screen === 'highlighting') {
+      return <HighlightSettings highlighting={highlighting} setHighlighting={setHighlighting} />
     }
     return renderGeneral(screen)
   }
 
   return (
-    <Modal title={mobileScreen ? screenLabels[mobileScreen] : 'Settings'} onClose={() => exitSettings()}
-      className={`settings-dialog ${mobileScreen ? 'settings-subscreen' : ''}`}
-      leading={mobileScreen ? (
-        <button className="icon-button settings-header-back"
-          aria-label={`Back to ${previousScreen ? screenLabels[previousScreen] : 'settings'}`} onClick={backMobileScreen}>
+    <Modal title={section ? screenLabels[section] : 'Settings'} onClose={() => exitSettings()}
+      className={`settings-dialog ${section ? 'settings-subscreen' : ''}`}
+      leading={section ? (
+        <Link to="/settings" className="icon-button settings-header-back" aria-label="Back to Settings">
           <ChevronLeft size={21} />
-        </button>
+        </Link>
       ) : undefined}>
       <div className="settings-desktop">
-        <nav className="settings-tabs" aria-label="Settings sections" role="tablist" aria-orientation="vertical">
+        <nav className="settings-tabs" aria-label="Settings sections">
           {sections.map((item) => {
             const Icon = item.icon
             return (
-              <button key={item.id} role="tab" aria-selected={section === item.id} onClick={() => setSection(item.id)}>
+              <Link key={item.id} to="/settings/$section" params={{ section: item.id }}>
                 <Icon size={18} /><span>{item.label}</span>
-              </button>
+              </Link>
             )
           })}
         </nav>
-        <div className="settings-panel" role="tabpanel">
-          {section === 'appearance' ? (
-            <AppearanceSettings appearance={appearance} setAppearance={setAppearance} inputSize={inputSize}
-              setInputSize={setInputSize} onResize={onResize} />
-          ) : renderGeneral(section)}
+        <div className="settings-panel">
+          {section ? renderSection(section) : <div className="settings-overview"><h3>Settings</h3><p>Choose a section to configure the app.</p></div>}
         </div>
       </div>
 
       <div className="settings-mobile">
-        {mobileScreen === null ? (
+        {section === null ? (
           <nav className="settings-mobile-menu" aria-label="Settings sections">
             {sections.map((item) => {
               const Icon = item.icon
               return (
-                <button key={item.id} onClick={() => openMobileScreen(item.id)}>
+                <Link key={item.id} to="/settings/$section" params={{ section: item.id }}>
                   <span className="settings-menu-icon"><Icon size={20} /></span>
                   <span><strong>{item.label}</strong><small>{item.description}</small></span>
                   <ChevronRight size={19} />
-                </button>
+                </Link>
               )
             })}
           </nav>
         ) : (
-          <div className="settings-mobile-section">{renderMobileScreen(mobileScreen)}</div>
+          <div className="settings-mobile-section">{renderSection(section)}</div>
         )}
       </div>
     </Modal>

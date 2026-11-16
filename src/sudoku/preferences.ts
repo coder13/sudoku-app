@@ -1,11 +1,22 @@
+import { DEFAULT_DIFFICULTY, isDifficulty } from './difficulty'
+import type { Difficulty } from './engine'
 import type { CandidateLayout, ErrorMode } from './game'
+import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale'
+import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints'
 import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes'
+
+export {
+  gridTextScalePercentage, MAX_GRID_TEXT_SCALE, MIN_GRID_TEXT_SCALE, stepGridTextScale,
+} from './grid-text-scale'
 
 export type AdvancedModes = {
   candidateLayout: CandidateLayout
   colorsEnabled: boolean
   multiSelectButton: boolean
+  autoGenerateCandidates: boolean
 }
+
+export type WorkspaceMode = 'standard' | 'advanced'
 
 export type ColorMode = 'system' | 'light' | 'dark'
 export type { ThemeId } from './themes'
@@ -14,12 +25,22 @@ export type AppearancePreferences = {
   lightTheme: ThemeId
   darkTheme: ThemeId
   showGuides: boolean
+  gridTextScale: number
+}
+
+export type CandidateHighlightStyle = 'text' | 'spotlight' | 'cell' | 'outline'
+export type HighlightPreferences = {
+  relatedCells: boolean
+  matchingDigits: boolean
+  matchingCandidates: boolean
+  candidateStyle: CandidateHighlightStyle
 }
 
 export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
   candidateLayout: 'grid',
   colorsEnabled: false,
   multiSelectButton: false,
+  autoGenerateCandidates: false,
 }
 
 export const DEFAULT_ERROR_MODE: ErrorMode = 'all'
@@ -28,8 +49,16 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   lightTheme: 'violet',
   darkTheme: DEFAULT_DARK_THEME,
   showGuides: true,
+  gridTextScale: DEFAULT_GRID_TEXT_SCALE,
+}
+export const DEFAULT_HIGHLIGHT_PREFERENCES: HighlightPreferences = {
+  relatedCells: true,
+  matchingDigits: true,
+  matchingCandidates: true,
+  candidateStyle: 'cell',
 }
 export const DEFAULT_INPUT_SIZE = 210
+export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = 'standard'
 export const MIN_INPUT_SIZE = 162
 export const MAX_INPUT_SIZE = 234
 export const INPUT_SIZE_STEP = 12
@@ -38,16 +67,31 @@ export const ERROR_MODE_KEY = 'sudoku-app:v1:error-mode'
 export const INPUT_SIZE_KEY = 'sudoku-app:v1:input-size'
 export const PANEL_HEIGHT_KEY = 'sudoku-app:v1:input-panel-height'
 export const APPEARANCE_KEY = 'sudoku-app:v1:appearance'
+export const HIGHLIGHT_KEY = 'sudoku-app:v1:highlighting'
+export const WORKSPACE_MODE_KEY = 'sudoku-app:v1:workspace-mode'
+const DIFFICULTY_KEY = 'sudoku-app:v1:difficulty'
+const CELL_REFERENCE_STYLE_KEY = 'sudoku-app:v1:hint-cell-reference-style'
 
 const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'none'])
 const COLOR_MODES = new Set<ColorMode>(['system', 'light', 'dark'])
+const CANDIDATE_HIGHLIGHT_STYLES = new Set<CandidateHighlightStyle>(['text', 'spotlight', 'cell', 'outline'])
 
 export function readPreferences() {
   let advancedModes = DEFAULT_ADVANCED_MODES
   let errorMode = DEFAULT_ERROR_MODE
   let inputSize = DEFAULT_INPUT_SIZE
   let appearance = DEFAULT_APPEARANCE
+  let highlighting = DEFAULT_HIGHLIGHT_PREFERENCES
+  let difficulty = DEFAULT_DIFFICULTY
+  let cellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE
+  let workspaceMode = DEFAULT_WORKSPACE_MODE
   try {
+    const savedWorkspaceMode = localStorage.getItem(WORKSPACE_MODE_KEY)
+    if (savedWorkspaceMode === 'standard' || savedWorkspaceMode === 'advanced') workspaceMode = savedWorkspaceMode
+    const savedDifficulty = localStorage.getItem(DIFFICULTY_KEY)
+    if (isDifficulty(savedDifficulty)) difficulty = savedDifficulty
+    const savedCellReferenceStyle = localStorage.getItem(CELL_REFERENCE_STYLE_KEY)
+    if (isCellReferenceStyle(savedCellReferenceStyle)) cellReferenceStyle = savedCellReferenceStyle
     const savedErrorMode = localStorage.getItem(ERROR_MODE_KEY) as ErrorMode | null
     if (savedErrorMode && ERROR_MODES.has(savedErrorMode)) errorMode = savedErrorMode
     const savedModes = JSON.parse(localStorage.getItem(ADVANCED_MODE_KEY) ?? 'null') as Partial<AdvancedModes> | null
@@ -56,6 +100,7 @@ export function readPreferences() {
         candidateLayout: savedModes.candidateLayout,
         colorsEnabled: savedModes.colorsEnabled === true,
         multiSelectButton: savedModes.multiSelectButton === true,
+        autoGenerateCandidates: savedModes.autoGenerateCandidates === true,
       }
     }
     const savedInputSizeText = localStorage.getItem(INPUT_SIZE_KEY)
@@ -75,10 +120,39 @@ export function readPreferences() {
           ? savedAppearance.lightTheme : DEFAULT_APPEARANCE.lightTheme,
         darkTheme: darkTheme && THEME_IDS_SET.has(darkTheme) ? darkTheme : DEFAULT_APPEARANCE.darkTheme,
         showGuides: savedAppearance.showGuides !== false,
+        gridTextScale: clampGridTextScale(savedAppearance.gridTextScale),
+      }
+    }
+    const savedHighlighting = JSON.parse(localStorage.getItem(HIGHLIGHT_KEY) ?? 'null') as
+      (Partial<HighlightPreferences> & { defaultsVersion?: number }) | null
+    if (savedHighlighting) {
+      const candidateStyle = savedHighlighting.defaultsVersion !== 2 && savedHighlighting.candidateStyle === 'text'
+        ? DEFAULT_HIGHLIGHT_PREFERENCES.candidateStyle : savedHighlighting.candidateStyle
+      highlighting = {
+        relatedCells: savedHighlighting.relatedCells !== false,
+        matchingDigits: savedHighlighting.matchingDigits !== false,
+        matchingCandidates: savedHighlighting.matchingCandidates !== false,
+        candidateStyle: candidateStyle && CANDIDATE_HIGHLIGHT_STYLES.has(candidateStyle)
+          ? candidateStyle : DEFAULT_HIGHLIGHT_PREFERENCES.candidateStyle,
       }
     }
   } catch { /* Keep defaults when preferences cannot be read. */ }
-  return { advancedModes, errorMode, inputSize, appearance }
+  return { advancedModes, errorMode, inputSize, appearance, highlighting, difficulty, cellReferenceStyle, workspaceMode }
+}
+
+export function saveWorkspaceMode(value: WorkspaceMode) {
+  try { localStorage.setItem(WORKSPACE_MODE_KEY, value) }
+  catch { /* The setting remains active for this session. */ }
+}
+
+export function saveCellReferenceStyle(value: CellReferenceStyle) {
+  try { localStorage.setItem(CELL_REFERENCE_STYLE_KEY, value) }
+  catch { /* The setting remains active for this session. */ }
+}
+
+export function saveDifficulty(value: Difficulty) {
+  try { localStorage.setItem(DIFFICULTY_KEY, value) }
+  catch { /* The setting remains active for this session. */ }
 }
 
 export function saveAdvancedModes(value: AdvancedModes) {
@@ -98,6 +172,11 @@ export function saveInputSize(value: number) {
 
 export function saveAppearance(value: AppearancePreferences) {
   try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ ...value, themeDefaultsVersion: 2 })) }
+  catch { /* The setting remains active for this session. */ }
+}
+
+export function saveHighlightPreferences(value: HighlightPreferences) {
+  try { localStorage.setItem(HIGHLIGHT_KEY, JSON.stringify({ ...value, defaultsVersion: 2 })) }
   catch { /* The setting remains active for this session. */ }
 }
 
