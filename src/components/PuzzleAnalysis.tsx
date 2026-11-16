@@ -54,9 +54,9 @@ export function PuzzleAnalysis({ game, close }: { game: Game; close: () => void 
         const latestMasks = hintEliminations(values, completeCandidateMasks(current), current.position.eliminations)
         if ((latestMasks?.join(',') ?? '') !== eliminationKey) return current
         const attempt = current.ratingAttempt
-        if (!attempt) return current
-        const ratingAttempt = addAnalysisAssistance(attempt)
-        return ratingAttempt === attempt ? current : { ...current, ratingAttempt }
+        const ratingAttempt = attempt && addAnalysisAssistance(attempt)
+        return current.analysisUsed && ratingAttempt === attempt ? current
+          : { ...current, analysisUsed: true, ratingAttempt }
       })
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : 'The scan could not finish.')
