@@ -147,6 +147,8 @@ Start with single 9×9 grids. A constraint is a rule that limits which digits ca
 
 Build rule families that work on their own and in combinations. Store the rule and its parameters explicitly when a puzzle uses a variation.
 
+See [Sudoku variant research](SUDOKU_VARIANT_RESEARCH.md) for additional rules, published examples, and choices to consider when defining the puzzle format.
+
 - [ ] Add extra houses for Windoku and Disjoint Groups. Add odd and even cell restrictions and groups of cells with matching digits for Clone Sudoku.
 - [ ] Add Anti-Knight, Anti-King, and orthogonal Non-Consecutive rules. Test their combination for Miracle Sudoku.
 - [ ] Add relationships between marked cells. Cover inequalities, consecutive and double-ratio Kropki dots, and XV sums of 5 and 10. An unmarked pair can exclude a relationship only when the puzzle declares that rule. Apply that setting separately for each marker type.

@@ -1,22 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react'
-import { DIFFICULTY_LABELS, formatPuzzleRating } from '../sudoku/difficulty'
-import type { Difficulty } from '../sudoku/engine'
+import { DIFFICULTY_LABELS, DIFFICULTY_OPTIONS, difficultyOptionLabel, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
-import { usePuzzleGeneration } from './usePuzzleGeneration'
+import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 
 export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, onChooseDifficulty }: {
   game: Game
   games: Game[]
-  preferredDifficulty: Difficulty
+  preferredDifficulty: DifficultyPreference
   ratingPending: boolean
   shortcutEnabled: boolean
   showGuides: boolean
   onChooseDifficulty: () => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
+  const { recommended, results } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
-  const nextDifficulty = preferredDifficulty
+  const nextLabel = preferredDifficulty === 'auto'
+    ? `Next ${difficultyOptionLabel('auto', recommended)}` : `Next ${DIFFICULTY_LABELS[preferredDifficulty].toLowerCase()} puzzle`
+  const result = results.get(game.id)
+  const ratingChange = result && Math.round(result.after) - Math.round(result.before)
   const difficultyLabel = game.difficulty ? DIFFICULTY_LABELS[game.difficulty] : 'Unrated'
   const ratingLabel = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : difficultyLabel
   const solved = games.filter(isSolved)
@@ -34,11 +37,11 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
       const target = event.target
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, dialog'))) return
       event.preventDefault()
-      void generate(nextDifficulty)
+      void generate(preferredDifficulty)
     }
     window.addEventListener('keydown', keydown)
     return () => window.removeEventListener('keydown', keydown)
-  }, [canGenerate, generate, nextDifficulty, shortcutEnabled])
+  }, [canGenerate, generate, preferredDifficulty, shortcutEnabled])
 
   return (
     <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
@@ -53,9 +56,18 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
           <div><dt>Solve time</dt><dd>{formatTime(game.elapsed)}</dd></div>
           <div>
             <dt>Difficulty</dt>
-            <dd>{ratingPending ? <span role="status">Rating…</span> : ratingLabel}</dd>
+            <dd>
+              {ratingPending ? <span role="status">Rating…</span> : ratingLabel}
+              {game.generatedWithAuto && <small className="completion-mode">Auto</small>}
+            </dd>
           </div>
         </dl>
+        {result?.event.finish === 'solved' && ratingChange !== undefined ? <div className="completion-player-rating">
+          <strong>Player rating {Math.round(result.after)} ({ratingChange >= 0 ? '+' : '−'}{Math.abs(ratingChange)})</strong>
+          <small>{result.event.viewed ? `${result.event.viewed} ${result.event.viewed === 1 ? 'hint' : 'hints'} viewed` : 'No hints'}
+            {result.event.applied > 0 && ` · ${result.event.applied} applied`}
+            {result.speedBonus >= 0.05 && ` · Speed bonus +${Number(result.speedBonus.toFixed(1))}`}</small>
+        </div> : game.source === 'generated' && <p className="completion-practice">Practice solve</p>}
         <dl className="completion-stats">
           <div><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
           {game.difficulty && <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
@@ -64,8 +76,8 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         <div className="completion-actions">
           <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
           <button className="button primary completion-next" aria-keyshortcuts="N" disabled={!canGenerate}
-            onClick={() => { void generate(nextDifficulty) }}>
-            {busy ? 'Generating…' : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`}
+            onClick={() => { void generate(preferredDifficulty) }}>
+            {busy ? 'Generating…' : nextLabel}
             {!busy && <><ArrowRight size={18} aria-hidden="true" /><kbd aria-hidden="true">N</kbd></>}
           </button>
         </div>
@@ -75,15 +87,16 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
 }
 
 export function PuzzleDifficulty({ value, showGuides, onChange, onBack }: {
-  value: Difficulty
+  value: DifficultyPreference
   showGuides: boolean
-  onChange: (difficulty: Difficulty) => void
+  onChange: (difficulty: DifficultyPreference) => void
   onBack: () => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
+  const { recommended } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
   const mounted = useRef(true)
-  const [pendingDifficulty, setPendingDifficulty] = useState<Difficulty | null>(null)
+  const [pendingDifficulty, setPendingDifficulty] = useState<DifficultyPreference | null>(null)
 
   useEffect(() => {
     mounted.current = true
@@ -91,11 +104,10 @@ export function PuzzleDifficulty({ value, showGuides, onChange, onBack }: {
     return () => { mounted.current = false }
   }, [])
 
-  async function selectDifficulty(difficulty: Difficulty) {
+  async function selectDifficulty(difficulty: DifficultyPreference) {
     if (busy) return
-    onChange(difficulty)
     setPendingDifficulty(difficulty)
-    await generate(difficulty)
+    await generate(difficulty, () => onChange(difficulty))
     if (mounted.current) setPendingDifficulty(null)
   }
 
@@ -114,12 +126,13 @@ export function PuzzleDifficulty({ value, showGuides, onChange, onBack }: {
         </header>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="difficulty-options" role="radiogroup" aria-label="Next puzzle difficulty" aria-busy={busy}>
-          {Object.entries(DIFFICULTY_LABELS).map(([difficulty, label]) => {
+          {DIFFICULTY_OPTIONS.map((difficulty) => {
+            const label = difficultyOptionLabel(difficulty, recommended)
             const selected = difficulty === value
             const generating = pendingDifficulty === difficulty
             return (
               <button key={difficulty} role="radio" aria-checked={selected} disabled={busy}
-                onClick={() => { void selectDifficulty(difficulty as Difficulty) }}>
+                onClick={() => { void selectDifficulty(difficulty) }}>
                 <span>{generating ? `Generating ${label.toLowerCase()}…` : label}</span>
                 {selected && !generating && <Check size={19} aria-hidden="true" />}
               </button>

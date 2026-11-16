@@ -20,6 +20,10 @@ export const NO_HINT: PuzzleHint = {
 export const HINT_ERROR: PuzzleHint = {
   title: 'Hint unavailable', text: 'Resolve any conflicts in the grid, then try again.',
 }
+export const HINT_CANDIDATES_ERROR: PuzzleHint = {
+  title: 'Review your candidates',
+  text: 'The current candidates rule out the solution. Restore any candidates you removed by mistake, or generate all candidates again.',
+}
 
 const TECHNIQUE_LABELS: Record<string, string> = {
   'aic': 'Alternating inference chain',

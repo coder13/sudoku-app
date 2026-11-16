@@ -1,9 +1,10 @@
 import { STARTER_GAME, type Game } from '../../src/sudoku/game'
+import { initialPlayerRating } from '../../src/sudoku/player-rating'
 import type { roomStore as appStore } from '../../src/sudoku/storage'
 
 type Room = ReturnType<typeof appStore.getSnapshot>
 const starter = { ...STARTER_GAME, difficulty: 'easy' } satisfies Game
-let room: Room = { games: [starter], active: starter.id, storageAvailable: true }
+let room: Room = { games: [starter], active: starter.id, storageAvailable: true, playerRating: initialPlayerRating }
 const listeners = new Set<() => void>()
 
 function publish(next: Room) {
@@ -12,7 +13,7 @@ function publish(next: Room) {
 }
 
 export function seedRoom(games: Game[], active = games[0]?.id ?? null, storageAvailable = true) {
-  publish({ games, active, storageAvailable })
+  publish({ games, active, storageAvailable, playerRating: initialPlayerRating })
 }
 
 export const roomStore: typeof appStore = {
@@ -35,6 +36,7 @@ export const roomStore: typeof appStore = {
     const next = update(game)
     if (next !== game) publish({ ...room, games: room.games.map((item) => item.id === id ? next : item) })
   },
+  finishRatingAttempt() {},
   remove(id) {
     const games = room.games.filter((game) => game.id !== id)
     publish({ ...room, games, active: room.active === id ? games[0]?.id ?? null : room.active })

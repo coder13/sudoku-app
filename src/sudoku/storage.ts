@@ -1,17 +1,25 @@
 import { isDifficulty } from './difficulty.ts'
-import type { Game, Position } from './game.ts'
+import { COLORS, createGameId, isSolved, type Game, type Position } from './game.ts'
+import {
+  calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent,
+  type PlayerRating, type RatingEvent, type RatingFinish,
+} from './player-rating.ts'
 
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
 const GAME_PREFIX = PREFIX + 'game:'
+const RATING_PREFIX = PREFIX + 'rating-result:'
+const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
 const ACTIVE = PREFIX + 'active'
 const READY = PREFIX + 'initialized'
 const BUILT_IN_STARTER_ID = 'warmup'
 const sources = ['starter', 'generated', 'imported', 'custom', 'draft']
 
-type Room = { games: Game[]; active: string | null; storageAvailable: boolean }
-const initial: Room = { games: [], active: null, storageAvailable: true }
+type Room = { games: Game[]; active: string | null; storageAvailable: boolean; playerRating: PlayerRating }
+const initial: Room = { games: [], active: null, storageAvailable: true, playerRating: initialPlayerRating }
 const listeners = new Set<() => void>()
+const ratingEvents = new Map<string, RatingEvent>()
+const unsavedRatingEvents = new Set<string>()
 let room = initial
 
 function publish(next: Room) {
@@ -19,13 +27,25 @@ function publish(next: Room) {
   listeners.forEach((listener) => listener())
 }
 
+function validCandidateColors(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  return Object.entries(value).every(([key, colors]) => {
+    const index = Number(key)
+    return Number.isInteger(index) && index >= 0 && index < 81 && String(index) === key &&
+      colors && typeof colors === 'object' && !Array.isArray(colors) &&
+      Object.entries(colors).every(([digit, color]) => /^[1-9]$/.test(digit) &&
+        typeof color === 'number' && Number.isInteger(color) && color >= 1 && color <= COLORS.length)
+  })
+}
+
 function validPosition(value: unknown): value is Position {
   if (!value || typeof value !== 'object') return false
-  const { entries, center, corner, colors, eliminations } = value as Position
+  const { entries, center, corner, colors, candidateColors, eliminations } = value as Position
   const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === 81 &&
     items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
   return typeof entries === 'string' && /^[0-9]{81}$/.test(entries) &&
-    validDigits(center, 511) && validDigits(corner, 511) && validDigits(colors, 6) &&
+    validDigits(center, 511) && validDigits(corner, 511) && validDigits(colors, COLORS.length) &&
+    (candidateColors === undefined || validCandidateColors(candidateColors)) &&
     (eliminations === undefined || validDigits(eliminations, 511))
 }
 
@@ -47,6 +67,12 @@ function readGame(id: string, data: string | null): Game | undefined {
     ) {
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
+      if (value.candidatesInitialized !== true) delete value.candidatesInitialized
+      if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
+      const attempt = value.ratingAttempt
+      if (attempt !== undefined && (value.source !== 'generated' || !isRatingAttempt(attempt) ||
+        (attempt.outcome && (attempt.outcome.gameId !== id || attempt.outcome.givens !== value.givens ||
+          attempt.outcome.difficulty !== attempt.grade.difficulty)))) delete value.ratingAttempt
       return value
     }
   } catch {
@@ -61,6 +87,70 @@ function persist(write: () => void): boolean {
   } catch {
     return false
   }
+}
+
+function readRatingEvent(id: string) {
+  try {
+    const event: unknown = JSON.parse(localStorage.getItem(RATING_PREFIX + id) ?? 'null')
+    if (isRatingEvent(event) && event.id === id) return event
+  } catch { /* Ignore a malformed result. */ }
+}
+
+function rememberOutcome(event: RatingEvent | undefined) {
+  if (event === undefined || (ratingEvents.has(event.id) && !unsavedRatingEvents.has(event.id))) return true
+  ratingEvents.set(event.id, event)
+  const saved = persist(() => localStorage.setItem(RATING_PREFIX + event.id, JSON.stringify(event)))
+  if (saved) unsavedRatingEvents.delete(event.id)
+  else unsavedRatingEvents.add(event.id)
+  return saved
+}
+
+function finishAttempt(game: Game, finish: RatingFinish): Game {
+  const attempt = game.ratingAttempt
+  if (!attempt || attempt.outcome) return game
+  let at = Date.now()
+  for (const event of ratingEvents.values()) at = Math.max(at, event.at + 1)
+  const outcome: RatingEvent = {
+    id: createGameId(), gameId: game.id, givens: game.givens, difficulty: attempt.grade.difficulty,
+    at,
+    finish, viewed: attempt.viewed.length, applied: attempt.applied.length, elapsed: attempt.priorElapsed + game.elapsed,
+  }
+  return { ...game, ratingAttempt: { ...attempt, outcome } }
+}
+
+function mergeRatingAttempt(game: Game): Game {
+  const attempt = game.ratingAttempt
+  if (!attempt) return game
+  try {
+    const current = JSON.parse(localStorage.getItem(GAME_PREFIX + game.id) ?? 'null') as Game | null
+    const saved = current?.givens === game.givens ? current.ratingAttempt : undefined
+    if (!isRatingAttempt(saved)) return game
+    const outcome = attempt.outcome ?? saved.outcome
+    const viewed = [...new Set([...attempt.viewed, ...saved.viewed])]
+    const applied = [...new Set([...attempt.applied, ...saved.applied])]
+    const priorElapsed = Math.max(attempt.priorElapsed, saved.priorElapsed)
+    if (outcome !== attempt.outcome || priorElapsed !== attempt.priorElapsed ||
+      viewed.length !== attempt.viewed.length || applied.length !== attempt.applied.length) {
+      return { ...game, ratingAttempt: { ...attempt, viewed, applied, outcome, priorElapsed } }
+    }
+  } catch { /* The in-memory attempt still has this tab’s assistance. */ }
+  return game
+}
+
+function rememberPuzzle(game: Game) {
+  return persist(() => {
+    if (game.source === 'draft') return
+    const key = SEEN_PREFIX + game.givens
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, game.id)
+  })
+}
+
+function seenPuzzle(game: Game) {
+  if (room.games.some((item) => item.source !== 'draft' && item.id !== game.id && item.givens === game.givens)) return true
+  try {
+    const previous = localStorage.getItem(SEEN_PREFIX + game.givens)
+    return previous !== null && previous !== game.id
+  } catch { return false }
 }
 
 function orderGames(games: Game[]) {
@@ -95,6 +185,13 @@ function hydrate() {
   try {
     const migrated = migrateStorage(localStorage)
     const keys = Array.from(new Set(Object.keys(localStorage).map(storageKey)))
+    ratingEvents.clear()
+    unsavedRatingEvents.clear()
+    for (const key of keys) {
+      if (!key.startsWith(RATING_PREFIX)) continue
+      const event = readRatingEvent(key.slice(RATING_PREFIX.length))
+      if (event) ratingEvents.set(event.id, event)
+    }
     const storedGames = keys
       .filter((key) => key.startsWith(GAME_PREFIX))
       .map((key) => readGame(key.slice(GAME_PREFIX.length), readSaved(localStorage, key)))
@@ -118,10 +215,15 @@ function hydrate() {
       last = readSaved(sessionStorage, ACTIVE) ?? last
     } catch { /* local fallback */ }
     const sorted = orderGames(games)
+    let outcomesSaved = true
+    for (const game of games) {
+      outcomesSaved = rememberOutcome(game.ratingAttempt?.outcome) && outcomesSaved
+    }
     publish({
       games: sorted,
       active: sorted.find((game) => game.id === last)?.id ?? sorted[0]?.id ?? null,
-      storageAvailable: migrated && removedStarter,
+      storageAvailable: migrated && removedStarter && outcomesSaved,
+      playerRating: calculatePlayerRating(ratingEvents.values()),
     })
   } catch {
     publish({ ...room, storageAvailable: false })
@@ -135,6 +237,14 @@ function onStorage(event: StorageEvent) {
     return
   }
   const key = storageKey(event.key)
+  if (key.startsWith(RATING_PREFIX)) {
+    const id = key.slice(RATING_PREFIX.length)
+    const outcome = readRatingEvent(id)
+    if (outcome) ratingEvents.set(id, outcome)
+    else ratingEvents.delete(id)
+    publish({ ...room, playerRating: calculatePlayerRating(ratingEvents.values()) })
+    return
+  }
   if (!key.startsWith(GAME_PREFIX)) return
   const id = key.slice(GAME_PREFIX.length)
   const incoming = readGame(id, readSaved(localStorage, key))
@@ -183,19 +293,37 @@ export const roomStore = {
     publish({ ...room, active: id, storageAvailable: room.storageAvailable && saved })
   },
   add(game: Game) {
+    if (game.ratingAttempt && seenPuzzle(game)) game = { ...game, ratingAttempt: undefined }
+    const seenSaved = rememberPuzzle(game)
     const saved = persist(() => localStorage.setItem(GAME_PREFIX + game.id, JSON.stringify(game)))
     const remembered = remember(game.id)
-    publish({ games: orderGames([game, ...room.games]), active: game.id, storageAvailable: room.storageAvailable && saved && remembered })
+    publish({ ...room, games: orderGames([game, ...room.games]), active: game.id,
+      storageAvailable: room.storageAvailable && saved && remembered && seenSaved })
   },
   update(id: string, update: (game: Game) => Game) {
     const current = room.games.find((game) => game.id === id)
     if (!current) return
-    const next = update(current)
+    const merged = mergeRatingAttempt(current)
+    let next = update(merged)
     if (current === next) return
+    if (next.ratingAttempt && !next.ratingAttempt.outcome && next.position.entries !== current.position.entries && isSolved(next)) {
+      next = finishAttempt(next, 'solved')
+    }
     const saved = persist(() => localStorage.setItem(GAME_PREFIX + id, JSON.stringify(next)))
-    publish({ ...room, games: room.games.map((game) => game.id === id ? next : game), storageAvailable: room.storageAvailable && saved })
+    const seenSaved = current.givens === next.givens && current.source === next.source || rememberPuzzle(next)
+    const outcome = next.ratingAttempt?.outcome
+    const newOutcome = outcome && !ratingEvents.has(outcome.id)
+    const outcomeSaved = rememberOutcome(outcome)
+    publish({ ...room, games: room.games.map((game) => game.id === id ? next : game),
+      storageAvailable: room.storageAvailable && saved && outcomeSaved && seenSaved,
+      playerRating: newOutcome ? calculatePlayerRating(ratingEvents.values()) : room.playerRating })
+  },
+  finishRatingAttempt(id: string, finish: Exclude<RatingFinish, 'solved'>) {
+    roomStore.update(id, (game) => isSolved(game) ? game : finishAttempt(game, finish))
   },
   remove(id: string) {
+    const removed = room.games.find((game) => game.id === id)
+    const seenSaved = !removed || rememberPuzzle(removed)
     const games = room.games.filter((game) => game.id !== id)
     const active = room.active === id ? games[0]?.id ?? null : room.active
     const saved = persist(() => {
@@ -203,7 +331,8 @@ export const roomStore = {
       localStorage.removeItem(legacyKey(key))
       localStorage.removeItem(key)
     })
+    const outcomeSaved = rememberOutcome(removed?.ratingAttempt?.outcome)
     const remembered = remember(active)
-    publish({ games, active, storageAvailable: room.storageAvailable && saved && remembered })
+    publish({ ...room, games, active, storageAvailable: room.storageAvailable && saved && remembered && seenSaved && outcomeSaved })
   },
 }

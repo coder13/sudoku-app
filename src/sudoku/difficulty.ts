@@ -8,19 +8,21 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   extreme: 'Extreme',
 }
 
-// Score bands from Difficulty::from_score in crates/engine/src/logical.rs.
-export const DIFFICULTY_SCORE_RANGES: Record<Difficulty, string> = {
-  easy: '0–800',
-  medium: '801–1,000',
-  hard: '1,001–1,600',
-  unfair: '1,601–1,800',
-  extreme: '1,801+',
-}
-
 export const DEFAULT_DIFFICULTY: Difficulty = 'easy'
+
+export type DifficultyPreference = Difficulty | 'auto'
+export const DIFFICULTY_OPTIONS: DifficultyPreference[] = ['auto', ...Object.keys(DIFFICULTY_LABELS) as Difficulty[]]
 
 export function isDifficulty(value: unknown): value is Difficulty {
   return typeof value === 'string' && Object.hasOwn(DIFFICULTY_LABELS, value)
+}
+
+export function isDifficultyPreference(value: unknown): value is DifficultyPreference {
+  return value === 'auto' || isDifficulty(value)
+}
+
+export function difficultyOptionLabel(value: DifficultyPreference, recommended: Difficulty): string {
+  return value === 'auto' ? `Auto (${DIFFICULTY_LABELS[recommended]})` : DIFFICULTY_LABELS[value]
 }
 
 export function formatPuzzleRating(difficulty: Difficulty, score?: number | null): string {

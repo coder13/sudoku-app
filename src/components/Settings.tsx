@@ -291,7 +291,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.colorsEnabled}
               onChange={(event) => setAdvancedModes({ ...advancedModes, colorsEnabled: event.target.checked })} />
-            <span><strong>Enable Color tab</strong><small>Add cell coloring to the input controls.</small></span>
+            <span><strong>Enable Color mode</strong><small>Add cell and candidate coloring to the input controls.</small></span>
           </label>
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.multiSelectButton}
@@ -312,7 +312,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.autoGenerateCandidates}
               onChange={(event) => setAdvancedModes({ ...advancedModes, autoGenerateCandidates: event.target.checked })} />
-            <span><strong>Automatically generate candidates</strong><small>Add every valid candidate when you start or open a puzzle.</small></span>
+            <span><strong>Automatically generate candidates</strong><small>Add candidates once per puzzle and again after a reset.</small></span>
           </label>
           {!draft ? (
             <label className="advanced-select settings-select">

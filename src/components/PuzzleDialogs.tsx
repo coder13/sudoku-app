@@ -1,12 +1,12 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Clipboard, Dices, FileUp, PencilLine } from 'lucide-react'
-import { DIFFICULTY_LABELS, isDifficulty } from '../sudoku/difficulty'
-import { runEngine, type Difficulty } from '../sudoku/engine'
+import { DIFFICULTY_OPTIONS, difficultyOptionLabel, isDifficultyPreference, type DifficultyPreference } from '../sudoku/difficulty'
+import { runEngine } from '../sudoku/engine'
 import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
 import { createGameId, makeGame, valuesOf, type Game } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
-import { usePuzzleGeneration } from './usePuzzleGeneration'
+import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { validation } from './PuzzleCheckResult'
 
 export async function openPuzzle(givens: string, cancelled: () => boolean) {
@@ -33,21 +33,32 @@ function useMounted() {
 
 export function NewPuzzle({ close, difficulty, onDifficultyChange, onCreate }: {
   close: () => void
-  difficulty: Difficulty
-  onDifficultyChange: (difficulty: Difficulty) => void
+  difficulty: DifficultyPreference
+  onDifficultyChange: (difficulty: DifficultyPreference) => void
   onCreate: () => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
+  const { recommended } = usePlayerRating()
+  const [selection, setSelection] = useState<DifficultyPreference | null>(null)
+  const selected = selection ?? difficulty
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    void generate(selected, () => {
+      onDifficultyChange(selected)
+      close()
+    })
+  }
 
   return (
     <Modal title="New puzzle" onClose={close}>
-      <form className="dialog-form" onSubmit={(event) => { event.preventDefault(); void generate(difficulty, close) }}>
+      <form className="dialog-form" onSubmit={submit}>
         <label htmlFor="puzzle-difficulty">Difficulty</label>
-        <select id="puzzle-difficulty" value={difficulty} disabled={busy} autoFocus onChange={(event) => {
+        <select id="puzzle-difficulty" value={selected} disabled={busy} autoFocus onChange={(event) => {
           const next = event.target.value
-          if (isDifficulty(next)) onDifficultyChange(next)
+          if (isDifficultyPreference(next)) setSelection(next)
         }}>
-          {Object.entries(DIFFICULTY_LABELS).map(([level, label]) => <option key={level} value={level}>{label}</option>)}
+          {DIFFICULTY_OPTIONS.map((level) => <option key={level} value={level}>{difficultyOptionLabel(level, recommended)}</option>)}
         </select>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="button primary" disabled={busy}>

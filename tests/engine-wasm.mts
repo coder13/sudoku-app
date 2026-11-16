@@ -4,6 +4,7 @@ import test from 'node:test'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
 import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult } from '../src/sudoku/engine.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
+import { completeCandidateMasks, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
 import { saveSolverProfile } from '../src/sudoku/solver-profile.ts'
 
 const SPARSE = '345000000000200010000000000020100000000004500600000007800750000000060040000000300'
@@ -85,6 +86,41 @@ test('hint diagrams use the current candidates and exclude previously removed ca
   assert.ok(fresh.candidates?.every((mask, cell) => (mask & eliminations[cell]) === 0))
   assert.ok(fresh.choices.every(({ actions }) => actions.every((action) =>
     'place' in action || !(eliminations[action.eliminate.cell] & (1 << (action.eliminate.digit - 1))))))
+})
+
+test('hints use a complete candidate grid after manual removals and respect undo', async () => {
+  const { run } = engineRequests()
+  const values = ['940020067', '756010002', '230067004', '890071256', '570206819',
+    '612008743', '065782001', '029100678', '187600025'].join('')
+  const request = { type: 'hints', values, includePatterns: true, limit: 10 } as const
+  const original = await run(request)
+  assert.deepEqual(original.choices[0].actions, [{ eliminate: { cell: 78, digit: 9 } }])
+  assert.ok(original.candidates)
+  const generated = replaceCandidates(makeGame('pointing-example', 'Pointing example', values, 'custom'), original.candidates)
+  const manualRemovals = [[6, 3], [24, 9], [78, 9]] as const
+  const edited = manualRemovals.reduce((game, [cell, digit]) => enter(game, [cell], 'candidate', digit), generated)
+  const displayed = completeCandidateMasks(edited)
+  assert.ok(displayed)
+  const current = await run({ ...request, eliminations: hintEliminations(values, displayed) })
+
+  assert.deepEqual(current.candidates, displayed)
+  assert.ok(current.choices.length)
+  for (const { actions } of current.choices) {
+    for (const action of actions) {
+      const { cell, digit } = 'eliminate' in action ? action.eliminate : action.place
+      assert.ok(hasCandidate(displayed[cell], digit))
+    }
+  }
+
+  const undone = await run({ ...request, eliminations: hintEliminations(values, completeCandidateMasks(undo(edited))) })
+  assert.equal(hasCandidate(undone.candidates![78], 9), true)
+
+  const partial = enter(edited, [2], 'candidate', 0)
+  const applied = Array<number>(81).fill(0)
+  applied[78] = 1 << 8
+  assert.equal(hintEliminations(values, completeCandidateMasks(partial), applied), applied)
+  const combined = hintEliminations(values, completeCandidateMasks(undo(edited)), applied)
+  assert.ok(hasCandidate(combined![78], 9))
 })
 
 test('hint limits and disabled techniques apply before ranking and choosing a proof', async () => {

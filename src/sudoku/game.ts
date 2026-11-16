@@ -1,8 +1,10 @@
 import { STARTER } from './formats.ts'
-import type { DeductionAction, Difficulty } from './engine.ts'
+import type { Candidate, DeductionAction, Difficulty } from './engine.ts'
+import type { RatingAttempt } from './player-rating.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
+export type ColorTarget = 'cell' | 'candidate'
 export type ErrorMode = 'all' | 'incorrect' | 'none'
 export type Source = 'starter' | 'generated' | 'imported' | 'custom' | 'draft'
 export type EnterOptions = { allowMultipleValues?: boolean }
@@ -12,6 +14,7 @@ export type Position = {
   center: number[]
   corner: number[]
   colors: number[]
+  candidateColors?: Record<number, Record<number, number>>
   eliminations?: number[]
 }
 
@@ -21,12 +24,15 @@ export type Game = {
   source: Source
   difficulty?: Difficulty | null
   score?: number | null
+  generatedWithAuto?: true
+  ratingAttempt?: RatingAttempt
   givens: string
   position: Position
   past: Position[]
   future: Position[]
   elapsed: number
   started: boolean
+  candidatesInitialized?: true
   paused: boolean
   created: number
   saved?: boolean
@@ -68,6 +74,10 @@ export function restartGame(game: Game): Game {
     ...makeGame(game.id, game.title, game.givens, game.source, game.created),
     difficulty: game.difficulty,
     score: game.score,
+    generatedWithAuto: game.generatedWithAuto,
+    ratingAttempt: game.ratingAttempt && {
+      ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
+    },
     saved: game.saved,
     archived: game.archived,
     editingId: game.editingId,
@@ -130,14 +140,74 @@ export function progressOf(game: Game) {
   return { total, filled }
 }
 
+function hasCandidates({ center, corner }: Position): boolean {
+  return center.some(Boolean) || corner.some(Boolean)
+}
+
+export function needsInitialCandidates(game: Game): boolean {
+  // Older saves have candidate masks in their undo history without the marker.
+  return !game.candidatesInitialized && !hasCandidates(game.position) &&
+    !game.past.some(hasCandidates) && !game.future.some(hasCandidates)
+}
+
 export function move(game: Game, position: Position): Game {
+  const { entries, center, corner } = game.position
+  const candidatesInitialized = !needsInitialCandidates(game) || hasCandidates(position)
   return {
     ...game,
-    position,
+    candidatesInitialized: candidatesInitialized || undefined,
+    position: entries === position.entries && center === position.center && corner === position.corner
+      ? position : retainVisibleCandidateColors(game.givens, position),
     past: [...game.past.slice(1 - HISTORY_SIZE), game.position],
     future: [],
     started: true,
   }
+}
+
+function retainVisibleCandidateColors(givens: string, position: Position): Position {
+  const { candidateColors, entries, center, corner } = position
+  if (!candidateColors) return position
+
+  const visible: NonNullable<Position['candidateColors']> = {}
+  let removed = false
+  for (const [key, colors] of Object.entries(candidateColors)) {
+    const cell = Number(key)
+    const mask = givens[cell] === '0' && entries[cell] === '0' ? center[cell] | corner[cell] : 0
+    const marks = Object.entries(colors)
+    const kept = marks.filter(([digit]) => hasCandidate(mask, Number(digit)))
+    if (kept.length) visible[cell] = Object.fromEntries(kept)
+    if (kept.length !== marks.length) removed = true
+  }
+  if (!removed) return position
+  const next: Position = { ...position, candidateColors: visible }
+  if (!Object.keys(visible).length) delete next.candidateColors
+  return next
+}
+
+export function paintCandidate(game: Game, { cell, digit }: Candidate, color: number): Game {
+  const { candidateColors, entries, center, corner } = game.position
+  if (!Number.isInteger(color) || color < 0 || color > COLORS.length || !DIGITS.includes(digit) ||
+    game.givens[cell] !== '0' || entries[cell] !== '0' || !hasCandidate(center[cell] | corner[cell], digit)) return game
+
+  const current = candidateColors?.[cell]
+  if ((current?.[digit] ?? 0) === color) return game
+  const colors = { ...current }
+  if (color) colors[digit] = color
+  else delete colors[digit]
+
+  const next = { ...candidateColors }
+  if (Object.keys(colors).length) next[cell] = colors
+  else delete next[cell]
+  const position: Position = { ...game.position, candidateColors: next }
+  if (!Object.keys(next).length) delete position.candidateColors
+  return move(game, position)
+}
+
+export function clearCandidateColors(game: Game): Game {
+  if (!game.position.candidateColors) return game
+  const position = { ...game.position }
+  delete position.candidateColors
+  return move(game, position)
 }
 
 export function undo(game: Game): Game {
@@ -224,13 +294,23 @@ export function replaceCandidates(game: Game, masks: readonly number[], options:
     corner.every((mask, index) => mask === game.position.corner[index])
   ) return game
   const position = { ...game.position, center, corner }
-  return options.recordHistory === false ? { ...game, position, future: [] } : move(game, position)
+  return options.recordHistory === false
+    ? { ...game, candidatesInitialized: true, position: retainVisibleCandidateColors(game.givens, position), future: [] }
+    : move(game, position)
 }
 
 export function completeCandidateMasks(game: Game): number[] | null {
   const values = valuesOf(game)
   const masks = game.position.center.map((mask, index) => mask | game.position.corner[index])
   return [...values].every((digit, index) => digit !== '0' || masks[index] !== 0) ? masks : null
+}
+
+export function hintEliminations(values: string, displayedCandidates: readonly number[] | null, applied?: readonly number[]) {
+  if (!displayedCandidates) return applied
+  return displayedCandidates.map((mask, cell) => {
+    const removed = applied?.[cell] ?? 0
+    return values[cell] === '0' ? removed | (0x1ff & ~mask) : removed
+  })
 }
 
 export function fillEntries(game: Game, nextValues: string): Game {

@@ -156,13 +156,14 @@ function addRightPanels(api: DockviewApi, showChains: boolean) {
       minimumWidth: 240, minimumHeight: 130, initialHeight: detailsPanelHeight(api),
       position: { referencePanel: input, direction: 'below' },
     })
-  if (!api.getPanel('cell-colors')) {
+  const colors = api.getPanel('cell-colors')
+  if (!colors) {
     api.addPanel({
-      id: 'cell-colors', component: 'cellColors', title: 'Cell colors', inactive: true,
+      id: 'cell-colors', component: 'cellColors', title: 'Colors', inactive: true,
       minimumWidth: 240, minimumHeight: 130,
       position: { referencePanel: details, index: 1 },
     })
-  }
+  } else if (colors.title === 'Cell colors') colors.api.setTitle('Colors')
   if (!api.getPanel('solution-path')) {
     api.addPanel({
       id: 'solution-path', component: 'solutionPath', title: 'Solution', inactive: true,

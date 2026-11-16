@@ -8,7 +8,7 @@ import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnno
 type Props = {
   givens: string
   values: string
-  position?: Pick<Position, 'center' | 'corner' | 'colors'>
+  position?: Pick<Position, 'center' | 'corner' | 'colors' | 'candidateColors'>
   errors?: ReadonlySet<number>
   candidateLayout?: CandidateLayout
   candidates?: readonly number[]
@@ -24,6 +24,7 @@ type Props = {
   boardRef?: RefObject<HTMLDivElement | null>
   onCell?: (index: number, event: MouseEvent) => void
   onCandidate?: (candidate: Candidate) => void
+  onPaintCandidate?: (candidate: Candidate) => void
   onCandidateHover?: (candidate: Candidate | null) => void
   isLinkTarget?: (candidate: Candidate) => boolean
   selectedCandidate?: Candidate
@@ -32,31 +33,47 @@ type Props = {
   onCellPointerMove?: (index: number, event: PointerEvent) => void
 }
 
+type CandidateSlot = Candidate & { slotted: boolean }
+
 export function Board({
   givens, values, position, errors, candidateLayout = 'grid', candidates, annotations, region, label = 'Sudoku grid', showGuides,
   highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, boardRef, onCell, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove,
+  onCellPointerDown, onCellPointerMove, onPaintCandidate,
 }: Props) {
-  const [candidateFocus, setCandidateFocus] = useState<Candidate>()
+  const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const focusDigit = activeHighlightDigit(values, selected, active, highlightedDigit)
-  const Cell = onCell && !onCandidate ? 'button' : 'div'
+  const candidateAction = onPaintCandidate ?? onCandidate
+  const Cell = onCell && !candidateAction ? 'button' : 'div'
   const layout = candidates ? 'grid' : candidateLayout
   const rows = region ? DIGITS.slice(region.row, region.row + region.rows) : DIGITS
   const columns = region ? DIGITS.slice(region.column, region.column + region.columns) : DIGITS
   const size = region && { '--board-rows': rows.length, '--board-columns': columns.length } as CSSProperties
-  const firstCandidateCell = onCandidate ? candidates?.findIndex((mask, cell) =>
-    mask && values[cell] === '0' && rows.includes(Math.floor(cell / 9) + 1) && columns.includes(cell % 9 + 1)) ?? -1 : -1
-  const tabCandidate = candidateFocus && values[candidateFocus.cell] === '0' &&
-    hasCandidate(candidates?.[candidateFocus.cell] ?? 0, candidateFocus.digit) &&
-    rows.includes(Math.floor(candidateFocus.cell / 9) + 1) && columns.includes(candidateFocus.cell % 9 + 1) ? candidateFocus
-    : firstCandidateCell === -1 ? undefined : { cell: firstCandidateCell, digit: marksOf(candidates![firstCandidateCell])[0] }
+  const playableCell = (cell: number) => values[cell] === '0' &&
+    rows.includes(Math.floor(cell / 9) + 1) && columns.includes(cell % 9 + 1)
+  const gridMask = (cell: number) => candidates?.[cell] ??
+    ((position?.corner[cell] ?? 0) | (layout === 'grid' ? position?.center[cell] ?? 0 : 0))
+  const centerMask = (cell: number) => layout === 'center-corner' ? position?.center[cell] ?? 0 : 0
+  let tabCandidate: CandidateSlot | undefined
+  if (candidateAction) {
+    if (candidateFocus && playableCell(candidateFocus.cell) &&
+      hasCandidate((candidateFocus.slotted ? gridMask : centerMask)(candidateFocus.cell), candidateFocus.digit)) {
+      tabCandidate = candidateFocus
+    } else {
+      const hasCandidates = (cell: number) => playableCell(cell) && (gridMask(cell) || centerMask(cell))
+      const cell = onPaintCandidate && hasCandidates(active) ? active : Array.from(values).findIndex((_, index) => hasCandidates(index))
+      if (cell !== -1) {
+        const slotted = Boolean(gridMask(cell))
+        tabCandidate = { cell, digit: marksOf((slotted ? gridMask : centerMask)(cell))[0], slotted }
+      }
+    }
+  }
 
   function navigateCandidates(event: KeyboardEvent<HTMLDivElement>) {
-    if (!(event.target instanceof HTMLButtonElement) || !event.target.matches('.chain-candidate')) return
+    if (!(event.target instanceof HTMLButtonElement) || !event.target.matches('.candidate-button')) return
     const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
     if (!keys.includes(event.key) || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return
-    const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('.chain-candidate')]
+    const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('.candidate-button')]
     if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault()
       buttons.at(event.key === 'Home' ? 0 : -1)?.focus()
@@ -86,8 +103,8 @@ export function Board({
       {showGuides && <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>}
       <div className="board-body">
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={label}
-          aria-readonly={(!onCell && !onCandidate) || undefined} ref={boardRef}
-          onKeyDown={onCandidate && navigateCandidates}
+          aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
+          onKeyDown={candidateAction && navigateCandidates}
           onPointerMove={onCellPointerMove && ((event) => {
             const target = document.elementFromPoint(event.clientX, event.clientY)
             const cell = target?.closest<HTMLElement>('[data-cell]')
@@ -102,9 +119,10 @@ export function Board({
                 const fixed = givens[index] !== '0'
                 const center = position?.center[index] ?? 0
                 const corner = position?.corner[index] ?? 0
-                const centerCandidates = layout === 'center-corner' ? marksOf(center) : []
+                const centerCandidates = marksOf(centerMask(index))
                 const candidateMask = candidates?.[index] ?? (center | corner)
-                const gridCandidates = marksOf(candidates?.[index] ?? (layout === 'grid' ? candidateMask : corner))
+                const gridCandidates = marksOf(gridMask(index))
+                const candidateColors = candidates ? undefined : position?.candidateColors?.[index]
                 const color = position?.colors[index]
                 const inSelection = selected.includes(index)
                 const error = errors?.has(index)
@@ -118,9 +136,10 @@ export function Board({
                   color: error ? undefined : cellAnnotation.ink,
                   '--annotation-outline': cellAnnotation.outline,
                 } as CSSProperties
-                const candidateLabel = candidateAnnotations && [...new Set([...gridCandidates, ...centerCandidates])]
+                const candidateLabel = (candidateAnnotations || candidateColors) && [...new Set([...gridCandidates, ...centerCandidates])]
                   .map((digit) => {
-                    const note = candidateAnnotations.get(digit)?.label
+                    const color = candidateColors?.[digit]
+                    const note = candidateAnnotations?.get(digit)?.label ?? (color ? COLORS[color - 1].toLowerCase() : undefined)
                     return note && `${digit} ${note}`
                   }).filter(Boolean).join(', ')
                 const label = [
@@ -151,29 +170,33 @@ export function Board({
 
                 function renderCandidate(digit: number, slotted: boolean) {
                   const annotation = candidateAnnotations?.get(digit)
+                  const color = candidateColors?.[digit]
+                  const colorClass = color ? `candidate-color color-${color}` : ''
                   const style = {
                     gridArea: slotted ? `${Math.floor((digit - 1) / 3) + 1} / ${(digit - 1) % 3 + 1}` : undefined,
                     '--annotation-color': annotation?.color,
                   } as CSSProperties
                   const highlightClass = digit === focusDigit && candidateHighlightStyle && candidateHighlightStyle !== 'cell'
                     ? `candidate-match candidate-match-${candidateHighlightStyle}` : undefined
-                  if (onCandidate && slotted) {
+                  if (candidateAction) {
                     const candidate = { cell: index, digit }
                     const pending = selectedCandidate?.cell === index && selectedCandidate.digit === digit
                     const linkTarget = isLinkTarget?.(candidate)
-                    const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label,
+                    const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],
                       linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
-                    return <button type="button" key={digit} className="chain-candidate" style={style}
+                    return <button type="button" key={digit} className={`candidate-button ${onPaintCandidate ? 'paint-candidate' : 'chain-candidate'}`} style={style}
                       aria-label={candidateLabel} data-link-target={linkTarget || undefined}
-                      aria-pressed={pending} data-mark={annotation && (annotation.mark ?? 'ring')}
-                      tabIndex={tabCandidate?.cell === index && tabCandidate.digit === digit ? 0 : -1}
+                      aria-pressed={onCandidate ? pending : undefined} data-mark={annotation && (annotation.mark ?? 'ring')}
+                      tabIndex={tabCandidate?.cell === index && tabCandidate.digit === digit && tabCandidate.slotted === slotted ? 0 : -1}
                       onPointerEnter={onCandidateHover && ((event) => {
                         if (event.pointerType !== 'touch') onCandidateHover(candidate)
                       })}
                       onPointerLeave={onCandidateHover && (() => onCandidateHover(null))}
-                      onFocus={() => setCandidateFocus(candidate)} onClick={() => onCandidate(candidate)}>{digit}</button>
+                      onFocus={() => setCandidateFocus({ ...candidate, slotted })} onClick={() => candidateAction(candidate)}>
+                      {color ? <span className={colorClass}>{digit}</span> : digit}
+                    </button>
                   }
-                  return <span key={digit} className={highlightClass}
+                  return <span key={digit} className={color ? `${colorClass}${highlightClass ? ` ${highlightClass}` : ''}` : highlightClass}
                     style={style} data-mark={annotation && (annotation.mark ?? 'ring')}>{digit}</span>
                 }
 
@@ -188,10 +211,10 @@ export function Board({
                     {value ? <span aria-hidden="true">{value}</span> : (
                       <>
                         {gridCandidates.length > 0 && (
-                          <span className="candidate-marks" aria-hidden={onCandidate ? undefined : true}>{gridCandidates.map((digit) => renderCandidate(digit, true))}</span>
+                          <span className="candidate-marks" aria-hidden={candidateAction ? undefined : true}>{gridCandidates.map((digit) => renderCandidate(digit, true))}</span>
                         )}
                         {centerCandidates.length > 0 && (
-                          <span className="center-marks" aria-hidden="true">{centerCandidates.map((digit) => renderCandidate(digit, false))}</span>
+                          <span className="center-marks" aria-hidden={candidateAction ? undefined : true}>{centerCandidates.map((digit) => renderCandidate(digit, false))}</span>
                         )}
                       </>
                     )}

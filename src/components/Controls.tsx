@@ -3,9 +3,10 @@ import {
   type Ref, type SetStateAction,
   useEffect, useRef, useState,
 } from 'react'
-import { Check, Delete, Highlighter, Layers2, Lightbulb, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
-import { COLORS, DIGITS, type Mode } from '../sudoku/game'
+import { Check, Delete, Eraser, Highlighter, Layers2, Lightbulb, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { COLORS, DIGITS, type ColorTarget, type Mode } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
+import { ColorTargetPicker } from './CellColorPalette'
 import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
 
 type Props = {
@@ -17,6 +18,8 @@ type Props = {
   advancedModes: AdvancedModes
   colorMode: boolean
   toggleColorMode: () => void
+  colorTarget: ColorTarget
+  setColorTarget: (target: ColorTarget) => void
   eraseMode: boolean
   toggleEraseMode: () => void
   highlightMode: boolean
@@ -48,7 +51,9 @@ export function Controls(props: Props) {
   const [mobile, setMobile] = useState(false)
   const [panelBounds, setPanelBounds] = useState({ min: 250, max: 420 })
   const drag = useRef<{ y: number; height: number } | null>(null)
-  const choices = props.mode === 'color' ? COLORS.map((_, i) => i + 1) : DIGITS
+  const colors = props.mode === 'color'
+  const candidateColors = colors && props.colorTarget === 'candidate'
+  const choices = colors ? COLORS.map((_, i) => i + 1) : DIGITS
   const counts = Array(10).fill(0) as number[]
   for (const value of props.values) counts[Number(value)]++
 
@@ -140,27 +145,31 @@ export function Controls(props: Props) {
 
           <div className="keypad-stack">
             {!props.draft && props.pencil && props.advancedModes.candidateLayout === 'center-corner' && (
-              <div className="candidate-kind" role="group" aria-label="Candidate position">
+              <div className="input-switch" role="group" aria-label="Candidate position">
                 <button aria-pressed={props.candidateKind === 'center'} disabled={props.disabled} onClick={() => props.setCandidateKind('center')}>Center</button>
                 <button aria-pressed={props.candidateKind === 'corner'} disabled={props.disabled} onClick={() => props.setCandidateKind('corner')}>Corner</button>
               </div>
             )}
-            <div className={`keypad ${props.mode === 'color' ? 'palette' : ''}`} role="group" aria-label={props.mode === 'color' ? 'Cell colors' : 'Digit pad'}>
+            {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
+            <div className={`keypad ${colors ? 'palette' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
                 const armed = props.selectedDigit === digit
                 const digitLabel = `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
                 return (
                   <button type="button" key={digit}
-                    className={`key ${props.mode === 'color' ? `tone-key color-${digit}` : ''} ${!props.draft && props.mode === 'value' && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
-                    aria-label={props.mode === 'color' ? COLORS[digit - 1] : digitLabel}
-                    aria-keyshortcuts={props.mode === 'color' ? undefined : `F${digit}`}
+                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && props.mode === 'value' && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
+                    aria-label={colors ? COLORS[digit - 1] : digitLabel}
+                    aria-keyshortcuts={colors ? `${digit}` : `F${digit}`}
                     aria-pressed={armed} disabled={props.disabled}
                     onClick={() => props.input(digit)}>
-                    {props.mode === 'color' ? <span className="swatch" /> : <span>{digit}</span>}
+                    {colors ? <span className="swatch" /> : <span>{digit}</span>}
                   </button>
                 )
               })}
             </div>
+            {candidateColors && <button type="button" className="button secondary candidate-color-eraser"
+              aria-label="Erase candidate color" aria-pressed={props.selectedDigit === 0} aria-keyshortcuts="0 Delete Backspace"
+              disabled={props.disabled} onClick={() => props.input(0)}><Eraser size={15} aria-hidden="true" /> Erase</button>}
           </div>
 
           <div className="side-actions right-actions" role="group" aria-label="Input modes">

@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
-import { useEffect, useRef, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react'
 import type { LogicalSolution, MoveAvailability } from '../sudoku/engine'
 import { techniqueLabel } from '../sudoku/hints'
 import { deductionResults } from '../sudoku/lesson-diagram'
@@ -15,6 +15,7 @@ type Props = {
   onSelect: (index: number) => void
   onRetry: () => void
   onClose: () => void
+  onReveal?: () => void
 }
 
 function bottleneckLabel(availability?: MoveAvailability) {
@@ -22,7 +23,7 @@ function bottleneckLabel(availability?: MoveAvailability) {
   return availability.easyMoves === 0 ? 'No easy moves' : 'Only one easy move'
 }
 
-export function SolutionPath({ state, index, onSelect, onRetry, onClose }: Props) {
+export function SolutionPath({ state, index, onSelect, onRetry, onClose, onReveal }: Props) {
   const list = useRef<HTMLOListElement>(null)
   const close = useRef<HTMLButtonElement>(null)
   const steps = state.status === 'ready' ? state.trace.steps : undefined
@@ -33,6 +34,10 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose }: Props
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
 
   useEffect(() => { close.current?.focus({ preventScroll: true }) }, [])
+
+  useLayoutEffect(() => {
+    if (count > 0) onReveal?.()
+  }, [count, onReveal])
 
   useEffect(() => {
     const viewport = list.current

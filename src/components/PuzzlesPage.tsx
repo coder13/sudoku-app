@@ -1,11 +1,12 @@
-import { useId, type ComponentType } from 'react'
+import { useId, useState, type ComponentType } from 'react'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { BarChart3, Check, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, Trophy } from 'lucide-react'
-import { DIFFICULTY_LABELS, DIFFICULTY_SCORE_RANGES, formatPuzzleRating } from '../sudoku/difficulty'
-import type { Difficulty } from '../sudoku/engine'
+import {
+  DIFFICULTY_LABELS, DIFFICULTY_OPTIONS, difficultyOptionLabel, formatPuzzleRating, type DifficultyPreference,
+} from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
-import { usePuzzleGeneration } from './usePuzzleGeneration'
+import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 
 type Section = 'puzzles' | 'new' | 'statistics'
 type SectionItem = { id: Section; label: string; description: string; icon: ComponentType<{ size?: number }> }
@@ -51,32 +52,40 @@ function PuzzleLibrary({ games, active, select }: { games: Game[]; active: strin
 }
 
 function NewPuzzleSection({ difficulty, setDifficulty, done }: {
-  difficulty: Difficulty
-  setDifficulty: (difficulty: Difficulty) => void
+  difficulty: DifficultyPreference
+  setDifficulty: (difficulty: DifficultyPreference) => void
   done: () => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
+  const { recommended } = usePlayerRating()
+  const [selection, setSelection] = useState<DifficultyPreference | null>(null)
+  const selected = selection ?? difficulty
   const group = useId()
   return <section className="main-menu-section" aria-labelledby="puzzles-new-title">
-    <header><h2 id="puzzles-new-title">New puzzle</h2><p>Choose the difficulty before starting.</p></header>
+    <header><h2 id="puzzles-new-title">New puzzle</h2><p>Choose a difficulty or let Auto adjust it as you play.</p></header>
     <fieldset className="main-difficulty-options" disabled={busy}>
       <legend className="sr-only">Puzzle difficulty</legend>
-      {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((value) => <label key={value}>
-        <input type="radio" name={group} value={value} checked={difficulty === value}
-          onChange={() => setDifficulty(value)} />
-        <span>{DIFFICULTY_LABELS[value]}</span>
-        <small className="main-difficulty-score">{DIFFICULTY_SCORE_RANGES[value]}</small>
-        {difficulty === value && <Check size={18} aria-hidden="true" />}
+      {DIFFICULTY_OPTIONS.map((value) => <label key={value}>
+        <input type="radio" name={group} value={value} checked={selected === value}
+          onChange={() => setSelection(value)} />
+        <span>{value === 'auto' ? 'Auto' : DIFFICULTY_LABELS[value]}</span>
+        {value === 'auto' && <small className="main-difficulty-next">{DIFFICULTY_LABELS[recommended]} next</small>}
+        {selected === value && <Check size={18} aria-hidden="true" />}
       </label>)}
     </fieldset>
     {error && <p className="form-error" role="alert">{error}</p>}
-    <button className="button primary main-start-puzzle" disabled={busy} onClick={() => { void generate(difficulty, done) }}>
-      <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : `Start ${DIFFICULTY_LABELS[difficulty].toLowerCase()} puzzle`}
+    <button className="button primary main-start-puzzle" disabled={busy} onClick={() => { void generate(selected, () => {
+      setDifficulty(selected)
+      done()
+    }) }}>
+      <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
+        ? `Start ${difficultyOptionLabel('auto', recommended)}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
     </button>
   </section>
 }
 
 function Statistics({ games }: { games: Game[] }) {
+  const { rating, recommended, count } = usePlayerRating()
   const solved = games.filter(isSolved)
   const inProgress = games.filter((game) => game.started && !isSolved(game) && game.source !== 'draft')
   const totalTime = games.reduce((sum, game) => sum + game.elapsed, 0)
@@ -87,6 +96,8 @@ function Statistics({ games }: { games: Game[] }) {
   return <section className="main-menu-section" aria-labelledby="statistics-title">
     <header><h2 id="statistics-title">Statistics</h2><p>Your solving history on this device.</p></header>
     <dl className="main-stat-cards">
+      <div><Trophy size={18} aria-hidden="true" /><dt>{count ? 'Player rating' : 'Starting rating'}</dt><dd>{Math.round(rating)}</dd></div>
+      <div><Dices size={18} aria-hidden="true" /><dt>Auto difficulty</dt><dd>{DIFFICULTY_LABELS[recommended]}</dd></div>
       <div><Trophy size={18} aria-hidden="true" /><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
       <div><Grid3X3 size={18} aria-hidden="true" /><dt>In progress</dt><dd>{inProgress.length}</dd></div>
       <div><Clock3 size={18} aria-hidden="true" /><dt>Total solving time</dt><dd>{formatTime(totalTime)}</dd></div>
@@ -102,8 +113,8 @@ function Statistics({ games }: { games: Game[] }) {
 export function PuzzlesPage({ games, active, difficulty, setDifficulty }: {
   games: Game[]
   active: string | null
-  difficulty: Difficulty
-  setDifficulty: (difficulty: Difficulty) => void
+  difficulty: DifficultyPreference
+  setDifficulty: (difficulty: DifficultyPreference) => void
 }) {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })

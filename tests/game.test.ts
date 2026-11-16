@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
 import {
-  applyDeduction, candidateCount, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, redo,
-  replaceCandidates, restartGame, singleFromCandidates, STARTER_GAME, undo, valuesOf,
+  applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, paintCandidate, redo,
+  needsInitialCandidates, replaceCandidates, restartGame, singleFromCandidates, STARTER_GAME, undo, valuesOf,
 } from '../src/sudoku/game.ts'
 
 test('saved puzzle state is independent from its source and survives a reset', () => {
@@ -116,6 +116,49 @@ test('advanced candidate input keeps center and corner notes separate', () => {
   assert.deepEqual(undo(marked).position, centered.position)
 })
 
+test('individual candidates in one cell can have different colors alongside a cell color', () => {
+  const rose = { cell: 2, digit: 4 }
+  const lavender = { cell: 2, digit: 7 }
+  const candidates = enter(enter(STARTER_GAME, [2], 'center', 4), [2], 'corner', 7)
+  const cell = enter(candidates, [2], 'color', 5)
+  const painted = paintCandidate(paintCandidate(cell, rose, 1), lavender, 6)
+
+  assert.deepEqual(painted.position.candidateColors, { 2: { 4: 1, 7: 6 } })
+  assert.equal(painted.position.colors[2], 5)
+  assert.equal(paintCandidate(painted, lavender, 6), painted)
+  assert.equal(paintCandidate(painted, { cell: 2, digit: 9 }, 1), painted)
+
+  const erased = paintCandidate(painted, lavender, 0)
+  assert.deepEqual(erased.position.candidateColors, { 2: { 4: 1 } })
+  assert.equal(erased.position.corner[2], painted.position.corner[2])
+  assert.equal(undo(erased).position, painted.position)
+  assert.equal(redo(undo(erased)).position, erased.position)
+
+  const cleared = clearCandidateColors(painted)
+  assert.equal(cleared.position.candidateColors, undefined)
+  assert.equal(cleared.position.colors[2], 5)
+  assert.equal(undo(cleared).position, painted.position)
+})
+
+test('candidate colors follow a digit across layouts and are removed with the candidate', () => {
+  const candidate = { cell: 2, digit: 4 }
+  const marked = paintCandidate(enter(STARTER_GAME, [2], 'center', 4), candidate, 1)
+  const both = enter(marked, [2], 'corner', 4)
+  const corner = enter(both, [2], 'center', 4)
+  assert.equal(corner.position.candidateColors, marked.position.candidateColors)
+  assert.equal(enter(corner, [2], 'corner', 4).position.candidateColors, undefined)
+  assert.equal(enter(corner, [2], 'value', 7).position.candidateColors, undefined)
+  assert.equal(enter(corner, [3], 'value', 4).position.candidateColors, undefined)
+
+  const generated = replaceCandidates(marked, corner.position.corner)
+  assert.equal(generated.position.candidateColors, marked.position.candidateColors)
+  const removed = replaceCandidates(generated, STARTER_GAME.position.corner, { recordHistory: false })
+  assert.equal(removed.position.candidateColors, undefined)
+  const eliminated = applyDeduction(generated, [{ eliminate: candidate }], generated.position.corner)
+  assert.equal(eliminated.position.candidateColors, undefined)
+  assert.equal(undo(eliminated).position, generated.position)
+})
+
 test('generated candidates replace notes as one undoable grid-candidate action', () => {
   const masks = Array(81).fill(0)
   masks[2] = (1 << (4 - 1)) | (1 << (7 - 1))
@@ -138,6 +181,31 @@ test('automatic candidates do not create an undo step', () => {
   assert.deepEqual(marksOf(generated.position.corner[2]), [4, 7])
   assert.deepEqual(generated.past, centered.past)
   assert.deepEqual(generated.future, [])
+})
+
+test('automatic generation only initializes puzzles without existing candidate work', () => {
+  const puzzle = makeGame('candidate-initialization', 'Candidate initialization', STARTER, 'custom')
+  const masks = Array<number>(81).fill(0)
+  masks[2] = (1 << (4 - 1)) | (1 << (7 - 1))
+  assert.equal(needsInitialCandidates(puzzle), true)
+  assert.equal(needsInitialCandidates(enter(puzzle, [3], 'value', 6)), true)
+
+  const generated = replaceCandidates(puzzle, masks, { recordHistory: false })
+  assert.equal(generated.candidatesInitialized, true)
+  assert.equal(generated.started, false)
+  const edited = enter(generated, [2], 'candidate', 7)
+  assert.deepEqual(marksOf(edited.position.corner[2]), [4])
+  assert.equal(needsInitialCandidates(edited), false)
+
+  const legacy = { ...enter(edited, [2], 'candidate', 0), candidatesInitialized: undefined }
+  assert.equal(needsInitialCandidates(legacy), false, 'older saves can have empty grids with candidate history')
+  const changed = enter(legacy, [3], 'value', 6)
+  assert.equal(changed.candidatesInitialized, true)
+  assert.equal(needsInitialCandidates({ ...changed, past: [], future: [] }), false)
+
+  const undone = undo(enter(puzzle, [2], 'corner', 4))
+  assert.equal(needsInitialCandidates({ ...undone, candidatesInitialized: undefined }), false, 'redo can restore legacy candidates')
+  assert.equal(needsInitialCandidates(restartGame(edited)), true)
 })
 
 test('solving singles fills entries and restores candidates with one undo', () => {

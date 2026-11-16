@@ -13,7 +13,7 @@ const meta = {
   args: {
     mode: 'value', pencil: false, togglePencil: fn(), candidateKind: 'corner', setCandidateKind: fn(),
     advancedModes: { ...DEFAULT_ADVANCED_MODES, colorsEnabled: true, multiSelectButton: true },
-    colorMode: false, toggleColorMode: fn(), eraseMode: false, toggleEraseMode: fn(), highlightMode: false,
+    colorMode: false, toggleColorMode: fn(), colorTarget: 'cell', setColorTarget: fn(), eraseMode: false, toggleEraseMode: fn(), highlightMode: false,
     toggleHighlightMode: fn(), selectedDigit: null, hasCellSelection: false, values: starter.givens,
     input: fn(), undo: fn(), redo: fn(), canUndo: true, canRedo: false, disabled: false, draft: false,
     inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(), beginResize: fn(), multi: false, toggleMulti: fn(),
@@ -34,6 +34,7 @@ type Props = ComponentProps<typeof Controls>
 function InputExample(args: Props) {
   const [mode, setMode] = useState(args.mode)
   const [kind, setKind] = useState(args.candidateKind)
+  const [colorTarget, setColorTarget] = useState(args.colorTarget)
   const [digit, setDigit] = useState(args.selectedDigit)
   const [erase, setErase] = useState(args.eraseMode)
   const [highlight, setHighlight] = useState(args.highlightMode)
@@ -41,6 +42,7 @@ function InputExample(args: Props) {
   const [height, setHeight] = useState(args.panelHeight)
   const pencil = mode === 'candidate' || mode === 'center' || mode === 'corner'
   return <Controls {...args} mode={mode} pencil={pencil} colorMode={mode === 'color'} candidateKind={kind}
+    colorTarget={colorTarget} setColorTarget={(target) => { args.setColorTarget(target); setColorTarget(target); setDigit(null) }}
     eraseMode={erase} highlightMode={highlight} selectedDigit={digit} multi={multi} panelHeight={height}
     setPanelHeight={setHeight}
     input={(value) => { args.input(value); setDigit((current) => current === value ? null : value) }}

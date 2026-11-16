@@ -4,8 +4,7 @@ import {
   ArrowDownToLine, BookOpen, Check, Dices, Grid3X3, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Play, Plus,
   SlidersHorizontal,
 } from 'lucide-react'
-import { DEFAULT_DIFFICULTY } from '../sudoku/difficulty'
-import type { Difficulty } from '../sudoku/engine'
+import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { parsePuzzle } from '../sudoku/formats'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
@@ -51,8 +50,8 @@ const PlayContent = createContext<ReactNode>(null)
 type PuzzlesContentValue = {
   games: ReturnType<typeof roomStore.getSnapshot>['games']
   active: string | null
-  difficulty: Difficulty
-  setDifficulty: (difficulty: Difficulty) => void
+  difficulty: DifficultyPreference
+  setDifficulty: (difficulty: DifficultyPreference) => void
 }
 const PuzzlesContent = createContext<PuzzlesContentValue | null>(null)
 
@@ -67,7 +66,8 @@ export function PuzzlesWorkspace() {
 
 export function SudokuShell({ children }: { children: ReactNode }) {
   const settingsRoute = Boolean(useMatch({ from: '/settings', shouldThrow: false }))
-  const playing = Boolean(useMatch({ from: '/', shouldThrow: false })) || settingsRoute
+  const playRoute = Boolean(useMatch({ from: '/', shouldThrow: false }))
+  const playing = playRoute || settingsRoute
   const learning = Boolean(useMatch({ from: '/learn', shouldThrow: false }))
   const settingsParam = useMatch({ from: '/settings/$section', shouldThrow: false, select: ({ params }) => params.section })
   const settingsSection = isSettingsSection(settingsParam) ? settingsParam : null
@@ -82,7 +82,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [errorMode, setErrorModeState] = useState<ErrorMode>(DEFAULT_ERROR_MODE)
   const [cellReferenceStyle, setCellReferenceStyleState] = useState<CellReferenceStyle>(DEFAULT_CELL_REFERENCE_STYLE)
   const [inputSize, setInputSizeState] = useState(DEFAULT_INPUT_SIZE)
-  const [difficulty, setDifficultyState] = useState<Difficulty>(DEFAULT_DIFFICULTY)
+  const [difficulty, setDifficultyState] = useState<DifficultyPreference>(DEFAULT_DIFFICULTY)
   const [preferredWorkspaceMode, setPreferredWorkspaceMode] = useState<WorkspaceMode>(DEFAULT_WORKSPACE_MODE)
   const [advancedPanels, setAdvancedPanels] = useState<AdvancedPanelVisibility>(DEFAULT_ADVANCED_PANEL_VISIBILITY)
   const [puzzleBrowserView, setPuzzleBrowserView] = useState<PuzzleBrowserView>('active')
@@ -123,7 +123,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     return disconnect
   }, [])
   useEffect(() => {
-    if (!workspaceReady) return
+    if (!workspaceReady || !playRoute) return
     if (game) {
       automaticPuzzleStarted.current = false
       return
@@ -135,7 +135,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (automaticPuzzleStarted.current) return
     automaticPuzzleStarted.current = true
     void automaticPuzzle.generate(difficulty)
-  }, [workspaceReady, game, games.length, difficulty])
+  }, [workspaceReady, playRoute, game, games.length, difficulty])
   useEffect(() => {
     if (!playing) return
     let attempt = 0
@@ -220,7 +220,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     saveInputSize(next)
   }
 
-  function setDifficulty(next: Difficulty) {
+  function setDifficulty(next: DifficultyPreference) {
     setDifficultyState(next)
     saveDifficulty(next)
   }
