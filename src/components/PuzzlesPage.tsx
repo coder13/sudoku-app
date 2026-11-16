@@ -219,10 +219,10 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
   const heading = useRef<HTMLHeadingElement>(null)
   const [managingId, setManagingId] = useState<string | null>(null)
   const managing = games.find((game) => game.id === managingId)
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const section: Section | null = pathname.endsWith('/browse') ? 'puzzles'
-    : pathname.endsWith('/new') ? 'new'
-      : pathname.endsWith('/statistics') ? 'statistics' : null
+  const routeId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
+  const section: Section | null = routeId === sectionRoutes.puzzles ? 'puzzles'
+    : routeId === sectionRoutes.new ? 'new'
+      : routeId === sectionRoutes.statistics ? 'statistics' : null
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
   const mobileNewPuzzle = mobile && section === 'new'
   const screen = mobileNewPuzzle && preferencesReady
