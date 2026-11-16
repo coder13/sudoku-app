@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { addRatingHints, addSinglesAssistance, calculatePlayerRating, ratingAttemptFor, STARTING_PLAYER_RATING, type RatingEvent } from '../src/sudoku/player-rating.ts'
+import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, calculatePlayerRating, isRatingAttempt, isRatingEvent, ratingAttemptFor, STARTING_PLAYER_RATING, type RatingEvent } from '../src/sudoku/player-rating.ts'
 
 function outcome(index: number, settings: Partial<RatingEvent> = {}): RatingEvent {
   return {
@@ -132,4 +132,35 @@ test('speed only adds a small bonus against clean solves at the same tier', () =
   assert.equal(atTime(20, { viewed: 1 }).speedBonus, 0)
   assert.equal(atTime(20, { finish: 'solution' }).speedBonus, 0)
   assert.equal(calculatePlayerRating(baseline).results.get('puzzle-3')?.speedBonus, 0)
+})
+
+test('technique analysis lowers rating weight and never promotes Auto difficulty', () => {
+  const assistedFast = outcome(1, { elapsed: 90, analysisUsed: true })
+  const assisted = calculatePlayerRating([assistedFast])
+  assert.equal(assisted.rating, STARTING_PLAYER_RATING)
+  assert.equal(assisted.recommended, 'medium')
+  assert.equal(assisted.results.get(assistedFast.gameId)?.speedBonus, 0)
+
+  // Using a scan does not consume one of the four early calibration results.
+  const nextFast = outcome(2, { elapsed: 90 })
+  assert.equal(calculatePlayerRating([assistedFast, nextFast]).recommended, 'hard')
+
+  const failed = outcome(1, { finish: 'too-hard', analysisUsed: true })
+  const weaklyWeighted = calculatePlayerRating([failed])
+  const normal = calculatePlayerRating([{ ...failed, analysisUsed: undefined }])
+  assert.ok(weaklyWeighted.rating < STARTING_PLAYER_RATING)
+  assert.ok(weaklyWeighted.rating > normal.rating)
+  assert.equal(weaklyWeighted.recommended, 'medium')
+})
+
+test('scan assistance is a valid, persistent, one-time rating flag', () => {
+  const fresh = ratingAttemptFor({ difficulty: 'medium', points: 850, scoringVersion: 1, techniqueOrder: ['pointing'] })
+  const assisted = addAnalysisAssistance(fresh)
+  assert.equal(assisted.analysisUsed, true)
+  assert.equal(isRatingAttempt(assisted), true)
+  assert.equal(addAnalysisAssistance(assisted), assisted)
+  assert.equal(isRatingEvent(outcome(3, { analysisUsed: true })), true)
+  assert.equal(isRatingEvent(outcome(3, { analysisUsed: false } as unknown as Partial<RatingEvent>)), false)
+  const finished = { ...assisted, outcome: outcome(3) }
+  assert.equal(addAnalysisAssistance(finished), finished)
 })
