@@ -1,5 +1,4 @@
 import type { MouseEvent, RefObject } from 'react'
-import { Play } from 'lucide-react'
 import { COLORS, DIGITS, marksOf, peer, type CandidateLayout, type Game } from '../sudoku/game'
 
 type Props = {
@@ -12,18 +11,16 @@ type Props = {
   active: number
   boardRef: RefObject<HTMLDivElement | null>
   onCell: (index: number, event: MouseEvent) => void
-  onResume: () => void
 }
 
-export function Board({ game, values, errors, candidateLayout, highlightedDigit, selected, active, boardRef, onCell, onResume }: Props) {
+export function Board({ game, values, errors, candidateLayout, highlightedDigit, selected, active, boardRef, onCell }: Props) {
   const focusValue = selected.includes(active) ? values[active] : highlightedDigit ? String(highlightedDigit) : ''
-  const paused = game.source !== 'draft' && game.paused
   return (
     <div className="board-frame">
       <div className="col-labels" aria-hidden="true">{DIGITS.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{DIGITS.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="board-body">
-        <div className="sudoku-grid" role="grid" aria-label="Sudoku grid" aria-hidden={paused || undefined} ref={boardRef}>
+        <div className="sudoku-grid" role="grid" aria-label="Sudoku grid" ref={boardRef}>
           {DIGITS.map((row) => (
             <div className="grid-row" role="row" key={row}>
               {DIGITS.map((col) => {
@@ -55,8 +52,8 @@ export function Board({ game, values, errors, candidateLayout, highlightedDigit,
                   inSelection ? 'selected' : '',
                 ].join(' ')
                 return (
-                  <button type="button" role="gridcell" key={col} data-cell={index} className={classes} tabIndex={active === index && !paused ? 0 : -1}
-                    aria-label={label} aria-selected={inSelection} onClick={(event) => onCell(index, event)} disabled={paused}>
+                  <button type="button" role="gridcell" key={col} data-cell={index} className={classes} tabIndex={active === index ? 0 : -1}
+                    aria-label={label} aria-selected={inSelection} onClick={(event) => onCell(index, event)}>
                     {value ? <span aria-hidden="true">{value}</span> : (
                       <>
                         {candidateLayout === 'grid' && gridCandidates.length > 0 && (
@@ -84,11 +81,6 @@ export function Board({ game, values, errors, candidateLayout, highlightedDigit,
             </div>
           ))}
         </div>
-        {paused && (
-          <div className="paused-board">
-            <button className="button primary" onClick={onResume}><Play size={17} /> Resume puzzle</button>
-          </div>
-        )}
       </div>
     </div>
   )

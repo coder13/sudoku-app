@@ -229,7 +229,7 @@ export function PuzzleOptions({ game, close, onSwitch, onShortcuts }: {
     <Modal title="Puzzle options" onClose={close}>
       {confirm ? (
         <div className="dialog-form">
-          <p>{confirm === 'remove' ? `Remove “${game.title}” and its saved progress?` : 'Restart from the original givens? This clears your entries, notes, and timer.'}</p>
+          <p>{confirm === 'remove' ? `Remove “${game.title}” and its saved progress?` : 'Restart from the original givens? This clears your entries and notes.'}</p>
           <div className="dialog-actions">
             <button className="button secondary" onClick={() => setConfirm(null)}>Back</button>
             <button className="button danger" onClick={() => {

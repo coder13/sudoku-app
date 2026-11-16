@@ -80,7 +80,7 @@ svg { flex-shrink: 0; }
   font-weight: 720;
   text-align: left;
 }
-.button, .icon-button, .timer {
+.button, .icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -96,7 +96,7 @@ svg { flex-shrink: 0; }
   line-height: 1.1;
   transition: background-color 140ms ease, border-color 140ms ease;
 }
-.button:disabled, .icon-button:disabled, .timer:disabled { opacity: .48; }
+.button:disabled, .icon-button:disabled { opacity: .48; }
 .primary { background: var(--purple); color: #fff; box-shadow: 0 2px 3px #5b3dba16; }
 .secondary, .icon-button { background: #fff; border-color: var(--border); color: #493e5e; }
 .soft { background: var(--lavender); color: var(--dark-purple); }
@@ -127,17 +127,6 @@ svg { flex-shrink: 0; }
 }
 .puzzle { grid-area: puzzle; padding: 22px 27px; min-width: 0; }
 .puzzle-actions { justify-content: flex-end; margin-bottom: 14px; }
-.timer {
-  min-height: 36px;
-  padding: 0 9px;
-  gap: 6px;
-  color: #4d4260;
-  background: #f8f6fb;
-  border-color: #eeeaf3;
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-}
-.timer svg:last-child { color: #796b8b; }
 .puzzle-icon { flex-shrink: 0; }
 
 .board-frame {
@@ -164,7 +153,6 @@ svg { flex-shrink: 0; }
   touch-action: manipulation;
   background: #fff;
 }
-.sudoku-grid[aria-hidden="true"] { visibility: hidden; }
 .grid-row { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); min-height: 0; }
 .cell {
   background: #fff;
@@ -229,28 +217,16 @@ svg { flex-shrink: 0; }
   line-height: 1;
   overflow-wrap: anywhere;
 }
-.paused-board {
-  position: absolute;
-  inset: 0;
-  border: 1px solid #ddd3eb;
-  border-radius: 8px;
-  background: #f3eff9;
-  display: grid;
-  place-items: center;
-}
 .draft-tip { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(calc(100% - 20px), 509px); margin: 18px auto 0; translate: 10px 0; color: var(--muted); font-size: 13px; }
 
-.controls { grid-area: controls; container-type: inline-size; display: grid; justify-items: center; align-content: start; padding: 16px; min-width: 0; }
-.controls-heading { width: min(100%, 240px); display: grid; gap: 8px; margin-bottom: 10px; }
-.control-modes { display: flex; align-items: center; gap: 7px; }
-.pencil-button, .color-mode-button { flex: 1; min-width: 0; min-height: 44px; }
-.pencil-button[aria-pressed="true"], .color-mode-button[aria-pressed="true"] {
-  background: #ebe3fb;
-  border-color: #cbb8f4;
-  color: var(--dark-purple);
-}
+.controls { grid-area: controls; container-type: inline-size; position: relative; display: grid; place-items: center; padding: 16px; min-width: 0; }
+.controls-content { width: 100%; display: grid; grid-template-columns: auto 44px; align-items: center; justify-content: center; gap: 10px; }
+.keypad-stack { width: 210px; display: grid; gap: 6px; }
+.side-actions { display: grid; gap: 6px; align-content: center; }
+.side-actions .icon-button { width: 44px; min-height: 44px; }
+.resize-handle { display: none; }
 .control-menu-trigger { flex: none; width: 44px; min-height: 44px; }
-.control-overflow { position: relative; flex: none; }
+.control-overflow { position: absolute; z-index: 22; top: 12px; right: 12px; }
 .control-menu {
   position: absolute;
   z-index: 20;
@@ -303,10 +279,6 @@ svg { flex-shrink: 0; }
 }
 .candidate-kind button[aria-pressed="true"] { background: #fff; border-color: #e6dfee; box-shadow: 0 1px 2px #3d20500d; color: var(--dark-purple); }
 .candidate-kind button:disabled, .key:disabled { opacity: .55; }
-@container (max-width: 310px) {
-  .color-mode-button { flex: 0 0 44px; padding: 0; }
-  .color-mode-button span { display: none; }
-}
 .keypad { width: min(100%, 210px); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .keypad:not(.palette) { aspect-ratio: 1; grid-template-rows: repeat(3, minmax(0, 1fr)); }
 .key {
@@ -329,11 +301,8 @@ svg { flex-shrink: 0; }
 .key.selected-key { background: #e9e0fa; border-color: #8b6bd0; box-shadow: inset 0 0 0 1px #8b6bd0; }
 .key.tone-key { background: var(--tone); border-color: #4e38551a; }
 .swatch { width: 17px; height: 17px; background: #fff5; border: 1px solid #4e38554d; border-radius: 50%; }
-.edit-actions { width: min(100%, 240px); display: flex; gap: 6px; margin-top: 10px; }
-.edit-actions .button { flex: 1; min-width: 0; padding-inline: 5px; gap: 5px; font-size: 13px; }
-.edit-actions .button { min-height: 36px; }
-.control-feedback { width: min(100%, 240px); text-align: center; font-size: 13px; font-weight: 650; color: var(--muted); }
-.control-feedback:not(:empty) { padding-top: 10px; }
+.control-feedback { position: absolute; left: 50%; bottom: 5px; width: min(calc(100% - 24px), 240px); translate: -50% 0; text-align: center; font-size: 12px; font-weight: 650; color: var(--muted); pointer-events: none; }
+.control-feedback:not(:empty) { padding: 4px 7px; border-radius: 7px; background: #fffffff2; box-shadow: 0 1px 5px #31204612; }
 .control-feedback.error { color: #9c2f42; }
 .control-feedback.success { color: #2d684e; }
 .advanced-options { display: grid; gap: 14px; }
@@ -450,7 +419,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 
 @media (hover: hover) {
   .primary:not(:disabled):hover { background: var(--dark-purple); }
-  .secondary:not(:disabled):hover, .icon-button:not(:disabled):hover, .timer:not(:disabled):hover { background: #f5f0fa; border-color: #dcd1e9; }
+  .secondary:not(:disabled):hover, .icon-button:not(:disabled):hover { background: #f5f0fa; border-color: #dcd1e9; }
   .quiet:not(:disabled):hover, .candidate-kind button:not(:disabled):hover, .key:not(:disabled):hover, .new-option:not(:disabled):hover { background: #f0eafa; }
   .key.tone-key:not(:disabled):hover { background: var(--tone); border-color: #644d78; }
   .soft:not(:disabled):hover, .game-row:hover { background: #eae0f8; }
@@ -465,7 +434,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzle { padding-inline: 17px; }
   .controls { padding: 14px; }
   .puzzle-actions { gap: 5px; }
-  .timer-clock { display: none; }
 }
 
 @media (max-width: 760px) {
@@ -486,17 +454,35 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzle-actions { margin-bottom: 8px; }
   .puzzle-actions .button { padding-inline: 8px; font-size: 12px; min-height: 38px; }
   .puzzle-actions .icon-button { width: 35px; min-height: 38px; }
-  .timer { min-height: 38px; padding-inline: 6px; }
-  .board-frame { width: min(calc(100vw - 48px), max(130px, calc(100dvh - 455px))); }
+  .board-frame { width: min(calc(100vw - 48px), max(130px, calc(100dvh - var(--mobile-controls-height, 280px) - 220px))); }
   .draft-tip { margin-top: 4px; font-size: 11px; }
-  .controls { padding: 8px 10px; }
-  .controls-heading { width: clamp(180px, 54vw, 220px); margin-bottom: 6px; }
-  .candidate-kind button, .edit-actions .button { min-height: 42px; }
-  .keypad { width: clamp(126px, min(46vw, 22dvh), 178px); gap: 5px; }
+  .controls { height: var(--controls-height, 280px); padding: 26px 10px 8px; }
+  .controls-content { height: 100%; grid-template-columns: auto 42px; gap: 9px; }
+  .keypad-stack { width: clamp(126px, min(54vw, calc(var(--mobile-controls-height, 280px) - 80px)), 210px); }
+  .candidate-kind button { min-height: 38px; }
+  .keypad { gap: 5px; }
   .key { min-height: 44px; font-size: 21px; }
-  .edit-actions { width: clamp(180px, 54vw, 220px); margin-top: 6px; }
-  .control-feedback { width: min(100%, 220px); font-size: 12px; }
-  .control-feedback:not(:empty) { padding-top: 5px; }
+  .side-actions { gap: 4px; }
+  .side-actions .icon-button { width: 42px; min-height: 42px; }
+  .control-overflow { top: 25px; right: 10px; }
+  .resize-handle {
+    position: absolute;
+    z-index: 24;
+    top: 0;
+    left: 50%;
+    width: 72px;
+    height: 25px;
+    display: grid;
+    place-items: center;
+    translate: -50% 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+  .resize-handle span { width: 38px; height: 4px; border-radius: 4px; background: #c9bfd5; }
+  .resize-handle:hover span, .resize-handle:focus-visible span { background: #816fa0; }
 }
 
 @media (max-width: 355px) {

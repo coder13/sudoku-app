@@ -100,7 +100,7 @@ export function Workspace() {
         {linkError && <p className="workspace-error" role="alert">{linkError}</p>}
         <div className="workspace">
           {game ? (
-            <Worktable key={`${game.id}-${game.source}`} game={game} modalOpen={panel !== null}
+            <Worktable key={`${game.id}-${game.source}`} game={game}
               onShare={() => setPanel('share')} onManage={() => setPanel('manage')} onPublish={() => setPanel('publish')} />
           ) : (
             <section className="surface empty-board">

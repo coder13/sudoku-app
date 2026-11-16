@@ -1,8 +1,8 @@
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Clock3, Pause, PencilLine, Play, Share2 } from 'lucide-react'
+import { Check, PencilLine, Share2 } from 'lucide-react'
 import { runEngine, type Analysis } from '../sudoku/engine'
 import {
-  COLORS, conflictsOf, enter, formatTime, isSolved, redo, undo, valuesOf,
+  COLORS, conflictsOf, enter, isSolved, redo, undo, valuesOf,
   type CandidateLayout, type ErrorMode, type Game, type Mode,
 } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
@@ -36,40 +36,8 @@ function rectangle(start: number, end: number) {
   return result
 }
 
-function useTimer(id: string, running: boolean) {
-  useEffect(() => {
-    if (!running) return
-    let started = document.visibilityState === 'visible' ? performance.now() : null
-    function tick() {
-      if (started === null) return
-      const seconds = Math.floor((performance.now() - started) / 1000)
-      if (seconds < 1) return
-      started += seconds * 1000
-      roomStore.update(id, (current) => ({ ...current, elapsed: current.elapsed + seconds }))
-    }
-    function visibility() {
-      if (document.visibilityState === 'hidden') {
-        tick()
-        started = null
-      } else {
-        started = performance.now()
-      }
-    }
-    const timer = window.setInterval(tick, 500)
-    document.addEventListener('visibilitychange', visibility)
-    window.addEventListener('pagehide', tick)
-    return () => {
-      tick()
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', visibility)
-      window.removeEventListener('pagehide', tick)
-    }
-  }, [id, running])
-}
-
-export function Worktable({ game, modalOpen, onShare, onManage, onPublish }: {
+export function Worktable({ game, onShare, onManage, onPublish }: {
   game: Game
-  modalOpen: boolean
   onShare: () => void
   onManage: () => void
   onPublish: () => void
@@ -97,8 +65,7 @@ export function Worktable({ game, modalOpen, onShare, onManage, onPublish }: {
     ? advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
     : 'value'
   const solved = isSolved(game)
-  const disabled = !draft && game.paused
-  useTimer(game.id, !draft && !solved && !disabled && game.started && !modalOpen && !advancedOpen)
+  const disabled = false
 
   useEffect(() => {
     try {
@@ -188,7 +155,7 @@ export function Worktable({ game, modalOpen, onShare, onManage, onPublish }: {
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       const target = event.target
-      if (disabled || modalOpen || advancedOpen || event.altKey ||
+      if (advancedOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
@@ -234,10 +201,6 @@ export function Worktable({ game, modalOpen, onShare, onManage, onPublish }: {
     return () => window.removeEventListener('keydown', keydown)
   })
 
-  function togglePause() {
-    roomStore.update(game.id, (current) => ({ ...current, paused: !current.paused, started: true }))
-  }
-
   async function runCheck() {
     setBusy(true)
     setFeedback(null)
@@ -264,17 +227,12 @@ export function Worktable({ game, modalOpen, onShare, onManage, onPublish }: {
           {draft ? (
             <button className="button primary publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</button>
           ) : (
-            <>
-              <button className="timer" onClick={togglePause} disabled={solved} aria-label={game.paused ? 'Resume timer' : 'Pause timer'} title={game.paused ? 'Resume timer' : 'Pause timer'}>
-                <Clock3 size={16} className="timer-clock" /><span>{formatTime(game.elapsed)}</span>{game.paused ? <Play size={13} /> : <Pause size={13} />}
-              </button>
-              <button className="icon-button puzzle-icon" title="Share puzzle" aria-label="Share puzzle" onClick={onShare}><Share2 size={18} /></button>
-            </>
+            <button className="icon-button puzzle-icon" title="Share puzzle" aria-label="Share puzzle" onClick={onShare}><Share2 size={18} /></button>
           )}
         </div>
         <Board game={game} values={values} errors={errors} candidateLayout={advancedModes.candidateLayout}
           highlightedDigit={mode === 'color' ? null : selectedDigit} selected={selected} active={active}
-          boardRef={boardRef} onCell={clickCell} onResume={togglePause} />
+          boardRef={boardRef} onCell={clickCell} />
         {draft && <div className="draft-tip"><PencilLine size={16} /> Enter the starting digits, then save your puzzle.</div>}
       </section>
       <Controls mode={mode} pencil={pencil} togglePencil={() => { setColorMode(false); setPencil((current) => !current) }}
