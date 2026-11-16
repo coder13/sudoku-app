@@ -989,6 +989,125 @@
       ]
     },
     {
+      "title": "Almost locked sets",
+      "overview": "An almost locked set has one extra candidate digit. Links between these sets explain ALS-XZ, ALS-XY-Wing, ALS Chains, and many WXYZ-Wings.",
+      "lessons": [
+        {
+          "id": "almost-locked-sets",
+          "title": "Almost Locked Sets (ALS)",
+          "summary": "One extra candidate digit lets a set connect to another set and force a removal.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "An almost locked set (ALS) contains one more candidate digit than cells. All its cells share one house.",
+                "A cell with candidates 2 and 7 is an ALS. Two cells in one row with candidates 1, 2, and 3 between them also form an ALS."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "one-digit-short",
+              "title": "One digit short of a locked subset"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A naked pair has two cells and two candidate digits. An ALS with two cells has three candidate digits.",
+                "If one digit is absent from an ALS, its cells must use every other digit. The ALS then becomes a locked subset.",
+                "For example, two cells in one row contain {1, 2} and {2, 3}. Without 1, they must take 2 and 3."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "als-xz",
+              "title": "ALS-XZ: connect two sets"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Two separate ALSs can share a restricted common candidate, called X. Every cell that contains X in one set sees every X cell in the other.",
+                "The sets cannot both use X. At least one set must therefore use all its other digits.",
+                "If both sets contain another digit Z, at least one set must use Z. If an outside cell sees every Z candidate in both sets, it loses Z."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "als-xz"
+            },
+            {
+              "type": "heading",
+              "id": "als-xz-example",
+              "title": "The shared digits in this example"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The column set contains R3C7 and R5C7, with digits 1, 3, and 4. The row set contains R2C4, R2C5, R2C7, and R2C9.",
+                "The row set has five candidate digits: 1, 3, 4, 5, and 9. Both sets therefore have one more candidate digit than cells.",
+                "Their 3 candidates both lie in column 7, so the sets cannot both use 3. At least one set must use 1.",
+                "R2C8 sees every 1 candidate in both sets. It therefore loses candidate 1."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "named-als-patterns",
+              "title": "Named patterns in the ALS family"
+            },
+            {
+              "type": "list",
+              "items": [
+                "ALS-XZ connects two ALSs through a restricted common candidate.",
+                "A common WXYZ-Wing is an ALS-XZ pattern with four cells in total. The wing combines ALSs rather than forming one ALS.",
+                "ALS-XY-Wing connects three ALSs through two different restricted common candidates.",
+                "An ALS Chain connects a sequence of ALSs. Each internal set uses different digits for its incoming and outgoing links."
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The names describe different arrangements of the same idea. A forced digit in one ALS restricts the choices in another."
+              ]
+            },
+            {
+              "type": "practice",
+              "title": "Try an ALS pattern",
+              "drills": [
+                {
+                  "example": "als-xz",
+                  "title": "ALS-XZ"
+                },
+                {
+                  "example": "als-xy-wing",
+                  "title": "ALS-XY-Wing"
+                },
+                {
+                  "example": "als-chain",
+                  "title": "ALS Chain"
+                }
+              ]
+            }
+          ],
+          "referencesTitle": "Related lessons and references",
+          "references": [
+            {
+              "label": "WXYZ-Wing: a four-cell ALS connection",
+              "href": "/learn/wxyz-wing"
+            },
+            {
+              "label": "HoDoKu: Almost Locked Sets",
+              "href": "https://hodoku.sourceforge.net/en/tech_als.php"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu regression library",
+              "href": "https://hodoku.sourceforge.net/en/libs.php"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "Wings",
       "overview": "In an XY-Wing, either choice for the middle cell makes one of the two wings take the same digit. A cell that sees both wings loses that candidate. The other wings use different ways to force a digit. With WXYZ-Wing, check which digits could occur twice in the four cells.",
       "lessons": [
@@ -1153,6 +1272,19 @@
             },
             {
               "type": "heading",
+              "id": "als-connection",
+              "title": "The ALS connection"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "An almost locked set (ALS) has one more candidate digit than cells. All its cells share one house.",
+                "A common WXYZ-Wing connects two ALSs with four cells in total. This arrangement is a small ALS-XZ pattern.",
+                "The whole wing can span several houses. It is not necessarily one ALS."
+              ]
+            },
+            {
+              "type": "heading",
               "id": "one-unrestricted-digit",
               "title": "One unrestricted digit"
             },
@@ -1165,6 +1297,20 @@
             {
               "type": "diagram",
               "example": "wxyz-wing"
+            },
+            {
+              "type": "heading",
+              "id": "wxyz-als-example",
+              "title": "Read this example as ALS-XZ"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "R4C3, R4C4, and R4C6 form a three-cell ALS with digits 1, 2, 5, and 9. R6C1 forms another ALS with candidates 1 and 9.",
+                "The two 1 candidates share box 4, so the sets cannot both use 1. At least one set must use 9.",
+                "R4C2 sees all the 9 candidates in both sets. It therefore loses candidate 9.",
+                "The restricted-digit count also explains this removal. It does not require every four-cell arrangement to have the same ALS layout."
+              ]
             },
             {
               "type": "heading",
@@ -1189,6 +1335,10 @@
           ],
           "references": [
             {
+              "label": "Almost Locked Sets (ALS): the shared idea",
+              "href": "/learn/almost-locked-sets"
+            },
+            {
               "label": "SudokuWiki",
               "href": "https://www.sudokuwiki.org/WXYZ_Wing"
             }
@@ -1198,7 +1348,8 @@
               "label": "SudokuWiki",
               "href": "https://www.sudokuwiki.org/WXYZ_Wing"
             }
-          ]
+          ],
+          "referencesTitle": "Related lessons and references"
         }
       ]
     },

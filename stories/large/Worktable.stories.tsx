@@ -2,6 +2,7 @@ import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'rea
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor } from 'storybook/test'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
+import { EMPTY, makeGame } from '../../src/sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
 import {
   DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_INPUT_SIZE,
@@ -33,12 +34,30 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Starter: Story = {}
+export const Generating: Story = {
+  args: {
+    game: { ...makeGame('generating', 'New puzzle', EMPTY, 'draft', 0), paused: true, difficulty: 'easy', score: 0 },
+    games: [],
+    placeholder: <div role="status"><h2>Generating a puzzle…</h2></div>,
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('status')).toHaveTextContent('Generating a puzzle…')
+    await expect(canvas.getByRole('button', { name: 'Select 1' })).toBeDisabled()
+  },
+}
 export const ClickAwayClearsCell: Story = {
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })
     await userEvent.click(cell)
     await expect(cell).toHaveAttribute('aria-selected', 'true')
-    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Pencil mode' }))
+    await expect(cell).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(canvas.getByRole('button', { name: 'Enter 4' }))
+    await expect(cell).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(canvasElement.querySelector('.puzzle-actions')!)
+    await expect(cell).toHaveAttribute('aria-selected', 'false')
+    await userEvent.click(cell)
+    await userEvent.click(canvasElement)
     await expect(cell).toHaveAttribute('aria-selected', 'false')
   },
 }

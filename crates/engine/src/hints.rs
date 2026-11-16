@@ -1262,6 +1262,113 @@ fn technique_rank(technique: &Technique) -> (super::Difficulty, u16) {
     (technique.difficulty(), technique.cost())
 }
 
+/// Play hints prefer the cheapest proof that unlocks placements through singles.
+/// This bounded probe does not change rating, attribution, or the solver profile.
+pub(crate) fn rank_useful_position(
+    position: &Position,
+    limit: usize,
+    disabled: &[Technique],
+    difficulty: super::Difficulty,
+) -> Vec<Hint> {
+    if limit == 0 || position.is_solved() {
+        return Vec::new();
+    }
+    let techniques = ordered_hint_techniques(disabled);
+    let search = DeductionSearch::new(position.board(), position.masks());
+    let baseline = singles_progress(position.clone());
+    let mut probes: Vec<(Hint, usize)> = Vec::new();
+    // Bound rollout work independently of the requested result count. Each
+    // rollout places at most 81 digits and uses only naked and hidden singles.
+    const PER_TIER: usize = 64;
+    const TOTAL: usize = 512;
+    for tier in techniques.chunk_by(|a, b| technique_rank(a) == technique_rank(b)) {
+        if probes.len() >= TOTAL || (tier[0].difficulty() > difficulty && !probes.is_empty()) {
+            break;
+        }
+        let mut hints: Vec<_> = tier.iter().flat_map(|&t| search.hints(t)).collect();
+        hints.sort_by_cached_key(Hint::rank_within_tier);
+        let mut useful = false;
+        let mut count = 0;
+        for hint in hints {
+            if probes
+                .iter()
+                .any(|(other, _)| other.actions == hint.actions)
+            {
+                continue;
+            }
+            let placements = hint
+                .actions
+                .iter()
+                .filter(|a| matches!(a, HintAction::Place(_)))
+                .count();
+            let mut after = position.clone();
+            after.apply(&hint.actions);
+            let progress = placements + singles_progress(after);
+            let gain = progress.saturating_sub(baseline);
+            // A direct placement remains useful even if it was already in the
+            // baseline closure. Unrelated existing singles do not earn credit.
+            useful |= placements > 0 || gain > 0;
+            probes.push((
+                hint,
+                if placements > 0 {
+                    progress.max(1)
+                } else {
+                    gain
+                },
+            ));
+            count += 1;
+            if count == PER_TIER || probes.len() == TOTAL {
+                break;
+            }
+        }
+        if useful {
+            break;
+        }
+    }
+    probes.sort_by_cached_key(|(hint, gain)| {
+        (
+            *gain == 0,
+            technique_rank(&hint.technique),
+            std::cmp::Reverse(*gain),
+            hint.rank_within_tier(),
+        )
+    });
+    let mut choices: Vec<Hint> = probes
+        .into_iter()
+        .map(|(hint, _)| hint)
+        .take(limit)
+        .collect();
+    // Keep the requested alternatives (and exhaustive Analyze all behavior),
+    // including enabled moves above the preferred difficulty when necessary.
+    if choices.len() < limit {
+        for hint in rank_position(position, limit, disabled) {
+            if choices.iter().all(|other| other.actions != hint.actions) {
+                choices.push(hint);
+                if choices.len() == limit {
+                    break;
+                }
+            }
+        }
+    }
+    choices
+}
+
+fn singles_progress(mut position: Position) -> usize {
+    let mut placed = 0;
+    while !position.is_solved() {
+        let search = DeductionSearch::new(position.board(), position.masks());
+        let Some(step) = search
+            .first(Technique::NakedSingle)
+            .or_else(|| search.first(Technique::HiddenSingle))
+        else {
+            break;
+        };
+        position.apply(step.actions());
+        placed += 1;
+    }
+    placed
+}
+
 fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
     let mut techniques: Vec<_> = Technique::ALL
         .into_iter()
@@ -1662,6 +1769,105 @@ mod tests {
 
     const WARMUP: &str =
         "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
+
+    const PROGRESS_PUZZLE: &str =
+        "970500060000007103800040000000080900685000000100003002000000000000600057008090200";
+
+    fn progress_techniques() -> Vec<Technique> {
+        Technique::ALL
+            .into_iter()
+            .filter(|t| !matches!(t, Technique::Pointing | Technique::NakedPair))
+            .collect()
+    }
+
+    #[test]
+    fn useful_play_hints_skip_idle_eliminations_for_the_simplest_breakthrough() {
+        let position = checked_position(&parse_givens(PROGRESS_PUZZLE).unwrap(), None).unwrap();
+        let original = position.clone();
+        let disabled = progress_techniques();
+        assert_eq!(singles_progress(position.clone()), 0);
+        let easiest = rank_position(&position, 1, &disabled).remove(0);
+        assert_eq!(easiest.technique, Technique::Pointing);
+        let mut after = position.clone();
+        after.apply(&easiest.actions);
+        assert_eq!(singles_progress(after), 0);
+        let useful =
+            rank_useful_position(&position, 1, &disabled, crate::Difficulty::Medium).remove(0);
+        assert_eq!(useful.technique, Technique::NakedPair);
+        let mut after = position.clone();
+        after.apply(&useful.actions);
+        assert_eq!(singles_progress(after), 58);
+        assert_eq!(position.board(), original.board());
+        assert_eq!(position.masks(), original.masks());
+    }
+
+    #[test]
+    fn useful_play_hints_respect_difficulty_and_keep_fallbacks_and_all_moves() {
+        let position = checked_position(&parse_givens(PROGRESS_PUZZLE).unwrap(), None).unwrap();
+        let disabled = progress_techniques();
+        let easy = rank_useful_position(&position, 1, &disabled, crate::Difficulty::Easy);
+        assert_eq!(easy[0].technique, Technique::Pointing);
+        let medium = rank_useful_position(&position, 1, &disabled, crate::Difficulty::Medium);
+        assert_eq!(medium[0].technique, Technique::NakedPair);
+        let old = rank_position(&position, usize::MAX, &disabled);
+        let all = rank_useful_position(&position, usize::MAX, &disabled, crate::Difficulty::Medium);
+        assert_eq!(all[0], medium[0]);
+        assert_eq!(all.len(), old.len());
+        assert!(
+            old.iter()
+                .all(|h| all.iter().any(|other| other.actions == h.actions))
+        );
+        assert!(
+            rank_useful_position(&position, 0, &disabled, crate::Difficulty::Medium).is_empty()
+        );
+        let mut no_pairs = disabled;
+        no_pairs.push(Technique::NakedPair);
+        assert_eq!(
+            rank_useful_position(&position, 1, &no_pairs, crate::Difficulty::Medium)[0].technique,
+            Technique::Pointing
+        );
+    }
+
+    #[test]
+    fn useful_play_hints_do_not_credit_singles_already_available() {
+        let position = checked_position(&parse_givens(WARMUP).unwrap(), None).unwrap();
+        let disabled = progress_techniques();
+        assert!(singles_progress(position.clone()) > 0);
+        assert_eq!(
+            rank_useful_position(&position, 1, &disabled, crate::Difficulty::Medium),
+            rank_position(&position, 1, &disabled)
+        );
+    }
+
+    #[test]
+    fn useful_variant_play_hints_also_prefer_a_single_unlocking_move() {
+        use crate::{Difficulty, VariantPuzzle, VariantTechnique};
+        let compiled = VariantPuzzle::classic(parse_givens(PROGRESS_PUZZLE).unwrap())
+            .compile()
+            .unwrap();
+        let enabled = [
+            VariantTechnique::Classic(Technique::Pointing),
+            VariantTechnique::Classic(Technique::NakedPair),
+        ];
+        let old = compiled
+            .ranked_hints(&[0; CELLS], &[0; CELLS], &enabled, 1)
+            .unwrap();
+        assert_eq!(old[0].technique, enabled[0]);
+        let useful = compiled
+            .useful_hints(&[0; CELLS], &[0; CELLS], &enabled, 1, Difficulty::Medium)
+            .unwrap();
+        assert_eq!(useful[0].technique, enabled[1]);
+        let fallback = compiled
+            .useful_hints(
+                &[0; CELLS],
+                &[0; CELLS],
+                &enabled[..1],
+                1,
+                Difficulty::Medium,
+            )
+            .unwrap();
+        assert_eq!(fallback, old);
+    }
 
     #[test]
     fn ranks_chains_by_length_and_distinct_houses_independently_of_effect_count() {

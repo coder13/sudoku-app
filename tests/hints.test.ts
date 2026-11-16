@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Deduction } from '../src/sudoku/engine.ts'
-import { describeHint, describeSingleHint, techniqueLabel } from '../src/sudoku/hints.ts'
+import { describeHint, describeHintRemovals, describeSingleHint, moveHintIndex, techniqueLabel } from '../src/sudoku/hints.ts'
+
+test('Next wraps the hint list while Previous stops at the first hint', () => {
+  assert.equal(moveHintIndex(8, 10, 1), 9)
+  assert.equal(moveHintIndex(9, 10, 1), 0)
+  assert.equal(moveHintIndex(0, 10, -1), 0)
+  assert.equal(moveHintIndex(9, 10, -1), 8)
+  assert.equal(moveHintIndex(0, 1, 1), 0)
+  assert.equal(moveHintIndex(0, 0, 1), 0)
+})
 
 test('hint copy uses Sudoku terms and one-based cell coordinates', () => {
   assert.deepEqual(describeHint({
@@ -52,4 +61,22 @@ test('single fallback uses the same cell and digit terminology', () => {
     text: 'Place digit 5 in row 5, column 5.',
   })
   assert.equal(describeSingleHint([40, 5], 'concise').text, 'Place digit 5 in r5c5.')
+})
+
+test('structured removals group cells by digit and preserve reference preferences', () => {
+  const deduction: Deduction = {
+    technique: '3d-medusa', evidence: { cell: 0 },
+    actions: [
+      { eliminate: { cell: 27, digit: 1 } },
+      { eliminate: { cell: 60, digit: 1 } },
+      { eliminate: { cell: 29, digit: 8 } },
+      { eliminate: { cell: 27, digit: 1 } },
+    ],
+  }
+  assert.deepEqual(describeHintRemovals(deduction, { difficulty: 'unfair' }), [
+    { digit: 1, cells: ['r4c1', 'r7c7'] }, { digit: 8, cells: ['r4c3'] },
+  ])
+  assert.equal(describeHintRemovals(deduction, { difficulty: 'unfair', cellReferenceStyle: 'verbose' })[0].cells[0], 'row 4, column 1')
+  assert.deepEqual(describeHintRemovals({ ...deduction, actions: [{ place: { cell: 27, digit: 1 } }] }), [])
+  assert.deepEqual(describeHintRemovals({ ...deduction, actions: [] }), [])
 })

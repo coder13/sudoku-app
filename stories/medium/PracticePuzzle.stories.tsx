@@ -28,7 +28,7 @@ export const CorrectMove: Story = {
     await userEvent.click(canvas.getByRole('gridcell', {
       name: new RegExp(`^Row ${Math.floor(action.place.cell / 9) + 1}, column ${action.place.cell % 9 + 1},`),
     }))
-    await userEvent.click(canvas.getByRole('button', { name: String(action.place.digit) }))
+    await userEvent.click(canvas.getByRole('button', { name: `Enter ${action.place.digit}` }))
     await userEvent.click(canvas.getByRole('button', { name: 'Check move' }))
     await expect(canvas.getByRole('status')).toHaveTextContent('Correct.')
   },

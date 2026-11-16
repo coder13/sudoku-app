@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react'
-import { Fragment, useEffect, useId, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useId, useState } from 'react'
 import type { LessonExample } from '../sudoku/engine'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
-import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
+import { lessonDiagram } from '../sudoku/lesson-diagram'
 import { articles, type Drill, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
-import { Board } from './Board'
+import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardRegion } from './BoardAnnotations'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
 import { PracticePuzzle } from './LessonPractice'
@@ -18,22 +18,19 @@ export function Diagram({ example, crop, copy }: {
   crop?: BoardRegion
   copy?: Extract<LessonBlock, { type: 'diagram' }>['copy']
 }) {
-  const { annotations, region, description, reason, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
+  const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
   const view = crop ?? region
   const results = copy?.results ?? defaultResults
   const trace = copy?.trace ?? defaultTrace
-  const style = { '--diagram-columns': view.columns } as CSSProperties
   const strong = annotations.links?.some((link) => !link.dashed)
   const weak = annotations.links?.some((link) => link.dashed && !link.arrow)
   return (
     <figure className="lesson-diagram">
-      <div className="lesson-board lesson-diagram-board" style={style}>
-        <Board givens={example.givens} values={lessonValues(example)} candidates={example.candidates}
-          region={view} annotations={annotations} label="Sudoku diagram" showGuides />
-      </div>
+      <LessonWorkbench puzzle={example} region={view} annotations={annotations} label="Sudoku diagram" />
       <figcaption>
         <p>{copy?.description ?? description}</p>
-        <p>{copy?.reason ?? reason}</p>
+        {reasonSteps && !copy?.reason ? <ol className="lesson-reason-steps">{reasonSteps.map((step, index) => <li key={index}>{step}</li>)}</ol>
+          : <p>{copy?.reason ?? reason}</p>}
         {results.length === 1 ? <p className="lesson-outcomes">{results[0]}</p>
           : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}>{result}</li>)}</ul>}
         {(accentLabel || strong || weak) && <div className="lesson-legend" aria-label="Diagram key">

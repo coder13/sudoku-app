@@ -66,6 +66,9 @@ pub(super) struct Options {
     technique_order: Option<Vec<String>>,
     technique: Option<String>,
     limit: Option<usize>,
+    #[serde(default)]
+    prefer_progress: bool,
+    difficulty: Option<Difficulty>,
     step_index: Option<usize>,
     action: Option<HintAction>,
     visibility: Option<Box<VariantVisibility>>,
@@ -270,16 +273,22 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             };
             json!(grid_string(solution.map_err(position_error)?))
         }
-        Operation::Hints => json!(
-            compiled
-                .ranked_hints(
+        Operation::Hints => {
+            let enabled = order()?;
+            let limit = options.limit.unwrap_or(DEFAULT_HINT_LIMIT);
+            let hints = if options.prefer_progress {
+                compiled.useful_hints(
                     entries,
                     eliminations,
-                    &order()?,
-                    options.limit.unwrap_or(DEFAULT_HINT_LIMIT)
+                    &enabled,
+                    limit,
+                    options.difficulty.unwrap_or(Difficulty::Medium),
                 )
-                .map_err(position_error)?
-        ),
+            } else {
+                compiled.ranked_hints(entries, eliminations, &enabled, limit)
+            };
+            json!(hints.map_err(position_error)?)
+        }
         Operation::CheckPracticeMove => {
             let action = options.action.ok_or((
                 "invalid-action",

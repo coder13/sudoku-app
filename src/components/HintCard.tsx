@@ -1,23 +1,27 @@
-import { ArrowLeft, ArrowRight, Lightbulb, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Lightbulb, X } from 'lucide-react'
 import { useLayoutEffect, useRef } from 'react'
-import type { PuzzleHint } from '../sudoku/hints'
+import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
 
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
 type HintAction = { label: string; onClick: () => void }
 
-export function HintCard({ hint, onClose, onShown, navigation, action, secondaryAction, explanation, collapseExplanation, trace }: {
+export function HintCard({ hint, onClose, onShown, navigation, action, secondaryAction, explanation, explanationSteps, collapseExplanation, trace, lesson, removals }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
   navigation?: HintNavigation
   action?: HintAction
   secondaryAction?: HintAction & { expanded?: boolean }
-  explanation?: string
+  explanation?: string | readonly string[]
+  explanationSteps?: readonly string[]
   collapseExplanation?: boolean
   trace?: ReturnType<typeof lessonDiagram>['trace']
+  lesson?: { id: string; title: string }
+  removals?: readonly HintRemoval[]
 }) {
   const card = useRef<HTMLElement>(null)
+  const paragraphs = typeof explanation === 'string' ? [explanation] : explanation ?? []
   useLayoutEffect(() => {
     if (card.current?.getClientRects().length) onShown?.()
   }, [onShown])
@@ -29,6 +33,9 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
         <div>
           <small>Hint</small>
           <h2>{hint.title}</h2>
+          {lesson && <a className="hint-card-lesson" href={`/learn/${lesson.id}`} aria-label={`Review ${lesson.title} lesson`}>
+            <BookOpen size={14} aria-hidden="true" /> Review lesson
+          </a>}
         </div>
         <button type="button" className="icon-button borderless hint-card-close" aria-label="Close hint" onClick={onClose}>
           <X size={18} aria-hidden="true" />
@@ -41,7 +48,7 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
             </button>
             <span>{navigation.index + 1}/{navigation.count}</span>
             <button type="button" className="icon-button" aria-label="Next hint"
-              disabled={navigation.index + 1 === navigation.count} onClick={() => navigation.onMove(1)}>
+              disabled={navigation.count < 2} onClick={() => navigation.onMove(1)}>
               <ArrowRight size={16} aria-hidden="true" />
             </button>
           </div>}
@@ -50,11 +57,15 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
           {action && <button type="button" className="button primary" onClick={action.onClick}>{action.label}</button>}
         </div>}
       </div>
-      {hint.text && <p>{hint.text}</p>}
-      {explanation && (collapseExplanation ? <details className="hint-card-explanation">
+      {(paragraphs.length > 0 || Boolean(explanationSteps?.length)) && (collapseExplanation ? <details className="hint-card-explanation">
         <summary>Why this works</summary>
-        <p>{explanation}</p>
-      </details> : <p>{explanation}</p>)}
+        {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+        {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}>{step}</li>)}</ol> : null}
+      </details> : <section className="hint-card-reason" aria-label="Why this works">
+        <h3>Why this works</h3>
+        {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+        {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}>{step}</li>)}</ol> : null}
+      </section>)}
       {trace && <details className="hint-card-explanation">
         <summary>Read the proof step by step</summary>
         {trace.map(({ assumption, steps, conclusion }, index) => <div key={index}>
@@ -63,6 +74,12 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
           <p>{conclusion}</p>
         </div>)}
       </details>}
+      {removals?.length ? <section className="hint-card-removals" aria-label="Remove candidates">
+        <h3>Remove candidates</h3>
+        <ul>{removals.map(({ digit, cells }) => <li key={digit}>
+          <strong>Digit {digit}</strong><span>{cells.join(' · ')}</span>
+        </li>)}</ul>
+      </section> : hint.text && <p>{hint.text}</p>}
     </aside>
   )
 }
