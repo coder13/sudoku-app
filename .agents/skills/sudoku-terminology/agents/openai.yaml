@@ -1,0 +1,3 @@
+interface:
+  display_name: "Sudoku Terminology"
+  short_description: "Keep Sudoku UI language consistent"
