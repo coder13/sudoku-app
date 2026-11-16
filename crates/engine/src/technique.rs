@@ -145,6 +145,7 @@ catalog! {
     UniqueRectangle5: "unique-rectangle-5", 100, Hard, true, ["Uniqueness Test 5"];
     UniqueRectangle6: "unique-rectangle-6", 100, Hard, true, ["Uniqueness Test 6"];
     HiddenRectangle: "hidden-rectangle", 100, Hard, true, [];
+    UniqueLoop: "unique-loop", 140, Hard, true, ["Uniqueness Loop"];
     BugPlusOne: "bug-plus-one", 100, Hard, true, ["BUG+1", "Bivalue Universal Grave + 1"];
     WxyzWing: "wxyz-wing", 220, Unfair, false, [];
     AlignedPairExclusion: "aligned-pair-exclusion", 310, Unfair, false, [];
@@ -154,6 +155,7 @@ catalog! {
     ForcingChain: "forcing-chain", 500, Extreme, false, [];
     ForcingNet: "forcing-net", 700, Extreme, false, [];
     DynamicForcingNet: "dynamic-forcing-net", 800, Extreme, false, [];
+    AdvancedForcingNet: "advanced-forcing-net", 900, Extreme, false, [];
     NestedForcingNet: "nested-forcing-net", 950, Extreme, false, [];
     AlsXz: "als-xz", 300, Unfair, false, ["ALS-XZ Rule"];
     AlsXyWing: "als-xy-wing", 320, Unfair, false, [];
@@ -165,6 +167,8 @@ catalog! {
     MultiSectorLockedSets: "multi-sector-locked-sets", 480, Extreme, false, ["MSLS"];
     FrankenFish: "franken-fish", 420, Extreme, false, [];
     MutantFish: "mutant-fish", 460, Extreme, false, [];
+    KrakenFish1: "kraken-fish-1", 900, Extreme, false, ["Kraken Fish Type 1"];
+    KrakenFish2: "kraken-fish-2", 950, Extreme, false, ["Kraken Fish Type 2"];
 }
 
 impl Technique {

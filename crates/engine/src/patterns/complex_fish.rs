@@ -6,12 +6,12 @@ use super::{
 };
 use crate::CELLS;
 
-const HOUSE_COUNT: usize = 27;
+pub(super) const HOUSE_COUNT: usize = 27;
 const ROWS: u32 = 0x1ff;
 const COLUMNS: u32 = ROWS << 9;
 const BOXES: u32 = COLUMNS << 9;
 
-fn houses_in(mut mask: u32) -> impl Iterator<Item = usize> {
+pub(super) fn houses_in(mut mask: u32) -> impl Iterator<Item = usize> {
     std::iter::from_fn(move || {
         let house = mask.trailing_zeros() as usize;
         if house == u32::BITS as usize {
@@ -22,7 +22,7 @@ fn houses_in(mut mask: u32) -> impl Iterator<Item = usize> {
     })
 }
 
-const CELL_HOUSES: [u32; CELLS] = {
+pub(super) const CELL_HOUSES: [u32; CELLS] = {
     let mut sites = [0; CELLS];
     let mut cell = 0;
     while cell < CELLS {
@@ -34,14 +34,14 @@ const CELL_HOUSES: [u32; CELLS] = {
 };
 
 #[derive(Clone, Copy, Default)]
-struct Houses {
-    selected: u32,
+pub(super) struct Houses {
+    pub(super) selected: u32,
     // Candidates in at least one, two, and three selected houses.
-    counts: [u128; 3],
+    pub(super) counts: [u128; 3],
 }
 
 impl Houses {
-    fn with(self, house: usize, candidates: u128) -> Self {
+    pub(super) fn with(self, house: usize, candidates: u128) -> Self {
         let [once, twice, three] = self.counts;
         Self {
             selected: self.selected | (1 << house),
@@ -53,7 +53,7 @@ impl Houses {
         }
     }
 
-    fn deficit(self, covers: Self) -> u128 {
+    pub(super) fn deficit(self, covers: Self) -> u128 {
         let [a, b, c] = self.counts;
         let [x, y, z] = covers.counts;
         (a & !x) | (b & !y) | (c & !z)
@@ -71,11 +71,15 @@ impl Houses {
 
 pub(super) fn visit(
     positions: &[u128; 9],
+    targets: &[u128; 9],
     technique: Technique,
     visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
 ) -> ControlFlow<Deduction> {
     for size in 2..=4 {
-        for (index, &positions) in positions.iter().enumerate() {
+        for (index, (&positions, &targets)) in positions.iter().zip(targets).enumerate() {
+            if targets == 0 {
+                continue;
+            }
             let sites =
                 std::array::from_fn(|house| positions & house_cells(House::from_index(house)));
             let eligible = sites
@@ -88,9 +92,11 @@ pub(super) fn visit(
                 digit: index as u8 + 1,
                 size,
                 sites,
-                positions,
+                targets,
             };
-            search.bases(Houses::default(), eligible, size, visit)?;
+            visit_bases(&sites, Houses::default(), eligible, size, &mut |bases| {
+                search.covers(bases, visit)
+            })?;
         }
     }
     ControlFlow::Continue(())
@@ -101,33 +107,10 @@ struct FishSearch {
     digit: u8,
     size: u32,
     sites: [u128; HOUSE_COUNT],
-    positions: u128,
+    targets: u128,
 }
 
 impl FishSearch {
-    fn bases(
-        &self,
-        selected: Houses,
-        mut remaining: u32,
-        need: u32,
-        visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
-    ) -> ControlFlow<Deduction> {
-        if need == 0 {
-            return self.covers(selected, visit);
-        }
-        while remaining.count_ones() >= need {
-            let house = remaining.trailing_zeros() as usize;
-            remaining &= remaining - 1;
-            self.bases(
-                selected.with(house, self.sites[house]),
-                remaining,
-                need - 1,
-                visit,
-            )?;
-        }
-        ControlFlow::Continue(())
-    }
-
     fn covers(
         &self,
         bases: Houses,
@@ -150,7 +133,7 @@ impl FishSearch {
             return ControlFlow::Continue(());
         }
         let mut reported = BTreeSet::new();
-        for target in cells(self.positions) {
+        for target in cells(self.targets) {
             let target_houses = CELL_HOUSES[target];
             let needed = (target_houses & bases.selected).count_ones() + 1;
             let choices = target_houses & eligible;
@@ -162,8 +145,8 @@ impl FishSearch {
             // houses needed by unseen base candidates once for all target houses.
             for count in needed..=choices.count_ones().min(self.size) {
                 let search = CoverSearch {
-                    fish: self,
-                    bases,
+                    sites: &self.sites,
+                    required: bases,
                     eligible: eligible & !target_houses,
                     unseen: !(PEERS[target] | cell_bit(target)),
                     need: self.size - count,
@@ -228,21 +211,45 @@ impl FishSearch {
     }
 }
 
-struct CoverSearch<'a> {
-    fish: &'a FishSearch,
-    bases: Houses,
-    eligible: u32,
-    unseen: u128,
+pub(super) fn visit_bases<B>(
+    sites: &[u128; HOUSE_COUNT],
+    selected: Houses,
+    mut remaining: u32,
     need: u32,
+    visit: &mut impl FnMut(Houses) -> ControlFlow<B>,
+) -> ControlFlow<B> {
+    if need == 0 {
+        return visit(selected);
+    }
+    while remaining.count_ones() >= need {
+        let house = remaining.trailing_zeros() as usize;
+        remaining &= remaining - 1;
+        visit_bases(
+            sites,
+            selected.with(house, sites[house]),
+            remaining,
+            need - 1,
+            visit,
+        )?;
+    }
+    ControlFlow::Continue(())
+}
+
+pub(super) struct CoverSearch<'a> {
+    pub(super) sites: &'a [u128; HOUSE_COUNT],
+    pub(super) required: Houses,
+    pub(super) eligible: u32,
+    pub(super) unseen: u128,
+    pub(super) need: u32,
 }
 
 impl CoverSearch<'_> {
-    fn fill(
+    pub(super) fn fill<B>(
         &self,
         covers: Houses,
-        found: &mut impl FnMut(Houses) -> ControlFlow<Deduction>,
-    ) -> ControlFlow<Deduction> {
-        let unfilled = self.bases.deficit(covers) & self.unseen;
+        found: &mut impl FnMut(Houses) -> ControlFlow<B>,
+    ) -> ControlFlow<B> {
+        let unfilled = self.required.deficit(covers) & self.unseen;
         let remaining = self.need - covers.selected.count_ones();
         if remaining == 0 {
             return if unfilled == 0 {
@@ -273,8 +280,70 @@ impl CoverSearch<'_> {
             available & CELL_HOUSES[unfilled.trailing_zeros() as usize]
         };
         for house in houses_in(choices) {
-            self.fill(covers.with(house, self.fish.sites[house]), found)?;
+            self.fill(covers.with(house, self.sites[house]), found)?;
         }
         ControlFlow::Continue(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::PatternSearch;
+    use super::*;
+    use crate::{Hint, VerifiedTemplate, candidates, hints::digit_bit};
+
+    #[test]
+    fn the_template_filter_keeps_all_published_complex_fish_proofs() {
+        for technique in [Technique::FrankenFish, Technique::MutantFish] {
+            for example in technique.practice_examples() {
+                let position = example.position().unwrap();
+                let board = position.values().unwrap();
+                let legal = candidates(&board).unwrap();
+                let solution = VerifiedTemplate::verify(position.givens).unwrap();
+                let normal = std::array::from_fn(|cell| legal[cell] & !position.eliminations[cell]);
+                // Compare published positions and denser masks where all legal candidates
+                // remain. Also cover a different set of removals that preserves the solution.
+                let pruned = std::array::from_fn(|cell| {
+                    normal[cell] & (0x155 | digit_bit(solution.solution()[cell]))
+                });
+                for masks in [normal, legal, pruned] {
+                    let search = PatternSearch::new(&board, &masks);
+                    let positions = search.positions_by_digit();
+                    let collect = |targets: &[u128; 9]| {
+                        let mut proofs = Vec::new();
+                        let _ = visit(positions, targets, technique, &mut |step| {
+                            proofs.push(Hint::from(step));
+                            ControlFlow::Continue(())
+                        });
+                        proofs
+                    };
+                    assert_eq!(collect(search.complex_fish_targets()), collect(positions));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn ho_dokus_kraken_removals_can_support_single_digit_layouts() {
+        let position = Technique::KrakenFish1
+            .practice_example()
+            .position()
+            .unwrap();
+        let board = position.values().unwrap();
+        let answer = VerifiedTemplate::verify(position.givens).unwrap();
+        let legal = candidates(&board).unwrap();
+        let masks = std::array::from_fn(|cell| legal[cell] & !position.eliminations[cell]);
+        let search = PatternSearch::new(&board, &masks);
+        for (target, digit) in [(69, 2), (44, 7)] {
+            assert_ne!(
+                search.positions_by_digit()[usize::from(digit - 1)] & cell_bit(target),
+                0
+            );
+            assert_eq!(
+                search.complex_fish_targets()[usize::from(digit - 1)] & cell_bit(target),
+                0
+            );
+            assert_ne!(answer.solution()[target], digit);
+        }
     }
 }

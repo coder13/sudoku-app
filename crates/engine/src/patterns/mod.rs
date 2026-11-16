@@ -16,12 +16,14 @@ mod fish;
 mod forcing;
 mod inference;
 mod inference_graph;
+mod kraken;
 mod links;
 mod multi_sector;
 mod rank_zero;
 mod single_digit;
 mod sk_loop;
 mod sue_de_coq;
+mod templates;
 mod tridagon;
 mod uniqueness;
 mod wings;
@@ -35,6 +37,8 @@ pub(super) struct PatternSearch<'a> {
     conjugates: OnceCell<[u32; 9]>,
     inference: OnceCell<inference_graph::InferenceGraph>,
     rectangles: OnceCell<Vec<uniqueness::Rectangle>>,
+    complex_fish_targets: OnceCell<[u128; 9]>,
+    kraken: OnceCell<Box<kraken::Search>>,
     forcing: OnceCell<forcing::ForcingGraph>,
     als: OnceCell<als::AlsSearch>,
 }
@@ -50,6 +54,8 @@ impl<'a> PatternSearch<'a> {
             conjugates: OnceCell::new(),
             inference: OnceCell::new(),
             rectangles: OnceCell::new(),
+            complex_fish_targets: OnceCell::new(),
+            kraken: OnceCell::new(),
             forcing: OnceCell::new(),
             als: OnceCell::new(),
         }
@@ -67,10 +73,7 @@ impl<'a> PatternSearch<'a> {
             return rule.visit(lines, visit);
         }
         if let Some(rule) = inference::Rule::for_technique(technique) {
-            let graph = self.inference.get_or_init(|| {
-                inference_graph::InferenceGraph::new(self.masks, *self.positions_by_digit())
-            });
-            return rule.visit(graph, visit);
+            return rule.visit(self.inference_graph(), visit);
         }
         match technique {
             Technique::XYWing | Technique::XYZWing => {
@@ -108,10 +111,12 @@ impl<'a> PatternSearch<'a> {
             | Technique::UniqueRectangle5
             | Technique::UniqueRectangle6
             | Technique::HiddenRectangle => uniqueness::visit_rectangles(self, technique, visit),
+            Technique::UniqueLoop => uniqueness::unique_loop::visit(self, visit),
             Technique::BugPlusOne => uniqueness::visit_bug(self, visit),
             Technique::ForcingChain
             | Technique::ForcingNet
             | Technique::DynamicForcingNet
+            | Technique::AdvancedForcingNet
             | Technique::NestedForcingNet => self
                 .forcing
                 .get_or_init(|| forcing::ForcingGraph::new(self.masks, self.positions_by_digit()))
@@ -119,16 +124,27 @@ impl<'a> PatternSearch<'a> {
             Technique::AlsXz
             | Technique::AlsXyWing
             | Technique::AlsChain
-            | Technique::DeathBlossom => self
-                .als
-                .get_or_init(|| als::AlsSearch::new(self.masks, self.positions_by_digit()))
-                .visit(self.masks, self.positions_by_digit(), technique, visit),
+            | Technique::DeathBlossom => {
+                self.als()
+                    .visit(self.masks, self.positions_by_digit(), technique, visit)
+            }
             Technique::SueDeCoq => sue_de_coq::visit(self, visit),
             Technique::Exocet => exocet::visit(self, visit),
             Technique::SkLoop => sk_loop::visit(self, visit),
             Technique::MultiSectorLockedSets => multi_sector::visit(self, visit),
-            Technique::FrankenFish | Technique::MutantFish => {
-                complex_fish::visit(self.positions_by_digit(), technique, visit)
+            Technique::FrankenFish | Technique::MutantFish => complex_fish::visit(
+                self.positions_by_digit(),
+                self.complex_fish_targets(),
+                technique,
+                visit,
+            ),
+            Technique::KrakenFish1 | Technique::KrakenFish2 => {
+                if self.masks.iter().all(|&mask| mask == crate::DIGITS) {
+                    return ControlFlow::Continue(());
+                }
+                self.kraken
+                    .get_or_init(|| Box::new(kraken::Search::new(self)))
+                    .visit(technique, self, visit)
             }
             _ => unreachable!(),
         }
@@ -144,6 +160,17 @@ impl<'a> PatternSearch<'a> {
             positions,
             conjugates,
         }
+    }
+
+    fn inference_graph(&self) -> &inference_graph::InferenceGraph {
+        self.inference.get_or_init(|| {
+            inference_graph::InferenceGraph::new(self.masks, *self.positions_by_digit())
+        })
+    }
+
+    fn als(&self) -> &als::AlsSearch {
+        self.als
+            .get_or_init(|| als::AlsSearch::new(self.masks, self.positions_by_digit()))
     }
 
     fn positions_by_digit(&self) -> &[u128; 9] {
@@ -165,6 +192,22 @@ impl<'a> PatternSearch<'a> {
                 .enumerate()
                 .filter(|&(_, mask)| mask.count_ones() == 2)
                 .fold(0, |set, (cell, _)| set | cell_bit(cell))
+        })
+    }
+
+    fn complex_fish_targets(&self) -> &[u128; 9] {
+        self.complex_fish_targets.get_or_init(|| {
+            let positions = self.positions_by_digit();
+            std::array::from_fn(|index| {
+                let sites = positions[index];
+                if sites == 0 {
+                    return 0;
+                }
+                // A single-digit fish can only remove a candidate absent from
+                // every layout. Keep the original masks for finding the proof.
+                let allowed = templates::with_placed(sites, self.board, index as u8 + 1);
+                sites & !templates::possible(allowed)
+            })
         })
     }
 }

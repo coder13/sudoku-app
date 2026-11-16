@@ -2,8 +2,8 @@ use std::{collections::BTreeSet, hint::black_box, time::Instant};
 
 use serde_json::{Value, json};
 use sudoku_app_engine::{
-    Board, HintAction, SCORING_VERSION, SolveStatus, Technique, VerifiedTemplate, parse_givens,
-    rate_puzzle, solve_logically, solve_position,
+    Board, ForcingBranch, HintAction, HintEvidence, SCORING_VERSION, SolveStatus, Technique,
+    VerifiedTemplate, parse_givens, rate_puzzle, solve_logically, solve_position,
 };
 
 const RUNS: usize = 25;
@@ -203,10 +203,13 @@ const ALIGNMENT_EXAMPLES: &[(&str, &[(&str, &str)])] = &[
 fn main() {
     let args: Vec<_> = std::env::args().collect();
     let nested = args.iter().any(|arg| arg == "--nested-forcing");
-    let dynamic = nested || args.iter().any(|arg| arg == "--dynamic-forcing");
+    let advanced = args.iter().any(|arg| arg == "--advanced-forcing");
+    let dynamic = nested || advanced || args.iter().any(|arg| arg == "--dynamic-forcing");
     let forcing_examples = args.iter().any(|arg| arg == "--forcing-examples");
     let aligned_examples = args.iter().any(|arg| arg == "--aligned-examples");
     let aligned = args.iter().any(|arg| arg == "--aligned-exclusion");
+    let complex_fish = args.iter().any(|arg| arg == "--complex-fish");
+    let kraken = args.iter().any(|arg| arg == "--kraken");
     let depth_three = args.iter().any(|arg| arg == "--depth-three");
     let tridagon = args.iter().any(|arg| arg == "--tridagon");
     let depth_puzzles: Vec<_> = if depth_three {
@@ -241,11 +244,17 @@ fn main() {
         CORPUS
     };
     let mut order = Technique::DEFAULT_ORDER.to_vec();
+    let before_forcing = order
+        .iter()
+        .position(|&technique| technique == Technique::ForcingChain)
+        .unwrap();
+    if complex_fish {
+        order.splice(
+            before_forcing..before_forcing,
+            [Technique::FrankenFish, Technique::MutantFish],
+        );
+    }
     if tridagon {
-        let before_forcing = order
-            .iter()
-            .position(|&technique| technique == Technique::ForcingChain)
-            .unwrap();
         order.insert(before_forcing, Technique::Tridagon);
     }
     if aligned {
@@ -261,8 +270,14 @@ fn main() {
             ],
         );
     }
+    if kraken {
+        order.extend([Technique::KrakenFish1, Technique::KrakenFish2]);
+    }
     if dynamic {
         order.push(Technique::DynamicForcingNet);
+    }
+    if advanced {
+        order.push(Technique::AdvancedForcingNet);
     }
     if tridagon {
         order.push(Technique::TridagonForcingNet);
@@ -280,6 +295,15 @@ fn main() {
     eprintln!("{label}, scoring version {SCORING_VERSION}, {RUNS} timed ratings per grid");
     if aligned {
         eprintln!("Aligned Pair and Triplet Exclusion before AIC");
+    }
+    if complex_fish {
+        eprintln!("Franken Fish and Mutant Fish before forcing");
+    }
+    if kraken {
+        eprintln!("Kraken Fish Types 1 and 2 after the default profile");
+    }
+    if advanced {
+        eprintln!("Advanced Forcing Net after Dynamic Forcing Net");
     }
     if tridagon {
         eprintln!("Tridagon before forcing and Tridagon Forcing Net after dynamic propagation");
@@ -318,20 +342,24 @@ fn main() {
                 timings.push(start.elapsed().as_secs_f64() * 1000.0);
             }
             if dynamic && (group == "expert" || forcing_examples) {
-                let dynamic_steps = trace
+                let count = |technique| trace.score.counts.get(&technique).copied().unwrap_or(0);
+                let proof_size: usize = trace
                     .steps
                     .iter()
-                    .filter(|step| step.technique == Technique::DynamicForcingNet)
-                    .count();
-                let nested_steps = trace
-                    .steps
-                    .iter()
-                    .filter(|step| step.technique == Technique::NestedForcingNet)
-                    .count();
+                    .map(|step| match &step.evidence {
+                        HintEvidence::Forcing { branches, .. } => {
+                            branches.iter().map(ForcingBranch::proof_size).sum()
+                        }
+                        _ => 0,
+                    })
+                    .sum();
                 eprintln!(
-                    "{name}: {:?}, {} total steps, {dynamic_steps} dynamic steps, {nested_steps} nested steps",
+                    "{name}: {:?}, {} total steps, {} dynamic, {} advanced, {} nested, {proof_size} forcing proof facts",
                     rating.status,
-                    trace.steps.len()
+                    trace.steps.len(),
+                    count(Technique::DynamicForcingNet),
+                    count(Technique::AdvancedForcingNet),
+                    count(Technique::NestedForcingNet),
                 );
             }
             if aligned_examples {

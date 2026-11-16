@@ -754,3 +754,73 @@ fn a_uniqueness_proof_requires_every_extra_rule_to_preserve_the_swap() {
             .all(|proof| proof.actions != example.expected_actions)
     );
 }
+
+#[test]
+fn a_variant_unique_loop_checks_every_cell_that_can_swap() {
+    use sudoku_app_engine::HintEvidence;
+    let example = Technique::UniqueLoop.practice_examples()[1];
+    let start = example.position().unwrap();
+    let solution = sudoku_app_engine::solve(&start.values().unwrap()).unwrap();
+    let technique = VariantTechnique::Classic(Technique::UniqueLoop);
+    let mut puzzle = VariantPuzzle::classic(start.givens);
+    let proofs = |puzzle: &VariantPuzzle| {
+        puzzle
+            .compile()
+            .unwrap()
+            .deductions(&start.entries, &start.eliminations, technique)
+            .unwrap()
+    };
+    let proof = proofs(&puzzle)
+        .into_iter()
+        .find(|proof| proof.actions == example.expected_actions)
+        .unwrap();
+    let VariantEvidence::Classic {
+        proof: evidence,
+        swap_cells,
+    } = proof.evidence
+    else {
+        panic!("expected a classic swap proof");
+    };
+    let HintEvidence::UniqueLoop { sides, digits, .. } = *evidence else {
+        panic!("expected a Unique Loop");
+    };
+    assert_eq!(digits, [1, 3]);
+    let mut expected: Vec<_> = sides.into_iter().flatten().collect();
+    expected.sort_unstable();
+    assert_eq!(swap_cells, expected);
+    assert_eq!(swap_cells.len(), 12);
+
+    let untouched = (0..81).find(|cell| !swap_cells.contains(cell)).unwrap();
+    puzzle.rules.push(PuzzleRule::Parity {
+        cells: vec![untouched],
+        parity: if solution[untouched].is_multiple_of(2) {
+            Parity::Even
+        } else {
+            Parity::Odd
+        },
+    });
+    assert!(
+        proofs(&puzzle)
+            .iter()
+            .any(|proof| proof.actions == example.expected_actions)
+    );
+
+    // This floor cell keeps both 1 and 3 under the parity rule, so it still
+    // matches the classic detector. The variant swap check must inspect it.
+    puzzle.rules.push(PuzzleRule::Parity {
+        cells: vec![79],
+        parity: Parity::Odd,
+    });
+    assert_eq!(
+        puzzle
+            .compile()
+            .unwrap()
+            .analyze(&start.entries, &start.eliminations, 4096),
+        Ok(Analysis::Unique)
+    );
+    assert!(
+        proofs(&puzzle)
+            .iter()
+            .all(|proof| proof.actions != example.expected_actions)
+    );
+}

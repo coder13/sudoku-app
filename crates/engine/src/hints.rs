@@ -189,6 +189,37 @@ pub struct InferenceLink {
     pub strength: LinkStrength,
 }
 
+/// The premise establishing one link in a Kraken Fish branch.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum KrakenLinkReason {
+    /// The endpoints cannot both be true.
+    Exclusion,
+    /// The two endpoints exhaust the candidates of this cell.
+    Cell(usize),
+    /// The endpoints exhaust a digit's locations in this house.
+    House(House),
+    /// The endpoints represent two digits in this almost locked set. At least one must occur.
+    AlmostLockedSet(AlmostLockedSet),
+}
+
+/// A directed step in a Kraken Fish branch. Exclusion links turn a true
+/// proposition into a false one. Other links turn a false proposition into a true one.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct KrakenLink {
+    /// Proposition before the inference.
+    pub from: InferenceNode,
+    /// Proposition after the inference.
+    pub to: InferenceNode,
+    /// Premise that proves the inference.
+    pub reason: KrakenLinkReason,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
 /// A candidate assumed or inferred to be true or false.
@@ -226,6 +257,33 @@ pub enum ForcingScope {
         target: House,
         /// Digit under consideration.
         digit: u8,
+    },
+    /// Two cells confined to two digits by earlier branch removals.
+    NakedPair {
+        /// House containing the pair.
+        house: House,
+        /// Cells supplying the pair.
+        cells: [usize; 2],
+        /// Digits occupying those cells.
+        digits: [u8; 2],
+    },
+    /// Two house digits confined to two cells by earlier branch removals.
+    HiddenPair {
+        /// House containing the pair.
+        house: House,
+        /// Cells that must hold the pair.
+        cells: [usize; 2],
+        /// Digits confined to those cells.
+        digits: [u8; 2],
+    },
+    /// Two base houses whose digit is confined to the same two cover houses.
+    XWing {
+        /// Digit constrained by the fish.
+        digit: u8,
+        /// Houses supplying the two occurrences.
+        bases: [House; 2],
+        /// Houses that contain both occurrences.
+        covers: [House; 2],
     },
     /// At least one guardian of the enclosing Tridagon must be true.
     Guardians,
@@ -288,7 +346,8 @@ pub struct ForcingBranch {
 }
 
 impl ForcingBranch {
-    fn proof_size(&self) -> usize {
+    /// Number of assumptions and deductions in this branch and its nested branches.
+    pub fn proof_size(&self) -> usize {
         let nested = match &self.conflict {
             Some(ForcingConflict::Cases(cases)) => {
                 cases.iter().map(|case| case.branch.proof_size()).sum()
@@ -328,9 +387,9 @@ pub enum ColoringReason {
     derive(serde::Serialize),
     serde(rename_all = "kebab-case")
 )]
-/// Evidence that supplements the rectangle's two shared digits.
-pub enum RectangleSupport {
-    /// Extra candidates used to avoid the ambiguous rectangle.
+/// Evidence that supplements the shared digits of a uniqueness pattern.
+pub enum UniquenessSupport {
+    /// Extra candidates used to avoid the ambiguous pattern.
     ExtraCandidates(Vec<Candidate>),
     /// A supporting subset using extra digits.
     Subset {
@@ -341,6 +400,15 @@ pub enum RectangleSupport {
         /// Digits in the supporting subset.
         digits: Vec<u8>,
     },
+    /// Required digits that can use at most one of the two cells with extra candidates.
+    HiddenSubset {
+        /// House in which the required digits are restricted.
+        house: House,
+        /// Other cells that must take a digit from the subset.
+        cells: Vec<usize>,
+        /// Required digits, including the loop's two shared digits.
+        digits: Vec<u8>,
+    },
     /// Conjugate links on one of the shared digits.
     StrongLinks {
         /// Houses in which the digit is conjugate.
@@ -349,6 +417,9 @@ pub enum RectangleSupport {
         digit: u8,
     },
 }
+
+/// Evidence that supplements the rectangle's two shared digits.
+pub use UniquenessSupport as RectangleSupport;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
@@ -523,6 +594,24 @@ pub enum HintEvidence {
         /// Candidates that count toward more bases than covers.
         fins: Vec<usize>,
     },
+    /// A fish whose alternatives imply a shared candidate removal.
+    KrakenFish {
+        /// Digit counted by the fish.
+        digit: u8,
+        /// Houses supplying the required occurrences.
+        bases: Vec<House>,
+        /// Houses covering the required occurrences.
+        covers: Vec<House>,
+        /// Candidates that count toward more bases than covers.
+        fins: Vec<usize>,
+        /// The Type 2 cover house. When every fin is false, a candidate in this
+        /// house with equal base and cover counts must be true.
+        cover: Option<House>,
+        /// One chain for each fin and, in Type 2, each balanced candidate in the
+        /// selected cover house. Each starts with its candidate true and ends
+        /// with the removed candidate false.
+        branches: Vec<Vec<KrakenLink>>,
+    },
     /// An XY-Wing or XYZ-Wing.
     Wing {
         /// Cell sharing one of its candidates with each pincer.
@@ -602,6 +691,15 @@ pub enum HintEvidence {
         digits: [u8; 2],
         /// Additional facts used by this rectangle type.
         support: RectangleSupport,
+    },
+    /// A connected, alternating uniqueness pattern of more than four cells.
+    UniqueLoop {
+        /// Opposite sides of the pattern. Each touched house contains one cell from each side.
+        sides: [Vec<usize>; 2],
+        /// The shared pair whose digits could be swapped between the sides.
+        digits: [u8; 2],
+        /// Additional facts that rule out the swap.
+        support: UniquenessSupport,
     },
     /// A mostly bivalue grid with one cell containing three candidates.
     BugPlusOne {
@@ -783,6 +881,15 @@ impl HintEvidence {
                 RectangleSupport::Subset { cells, .. } => 4 + cells.len(),
                 _ => 4,
             },
+            HintEvidence::UniqueLoop { sides, support, .. } => {
+                let loop_cells = sides[0].len() + sides[1].len();
+                loop_cells
+                    + match support {
+                        UniquenessSupport::Subset { cells, .. }
+                        | UniquenessSupport::HiddenSubset { cells, .. } => cells.len(),
+                        _ => 0,
+                    }
+            }
             HintEvidence::BugPlusOne { .. } => 3,
             HintEvidence::AlignedExclusion { cells, cases } => cells.len() + cases.len(),
             HintEvidence::Tridagon {
@@ -832,6 +939,12 @@ impl HintEvidence {
                 fins,
                 ..
             } => bases.len() + covers.len() + fins.len(),
+            HintEvidence::KrakenFish {
+                bases,
+                covers,
+                branches,
+                ..
+            } => bases.len() + covers.len() + branches.iter().map(Vec::len).sum::<usize>(),
             _ => 0,
         }
     }

@@ -9,6 +9,9 @@ use crate::{
 
 type Visitor<'a> = &'a mut dyn FnMut(Deduction) -> ControlFlow<Deduction>;
 
+#[path = "unique_loop.rs"]
+pub(super) mod unique_loop;
+
 #[derive(Clone, Copy)]
 pub(super) struct Rectangle {
     corners: [usize; 4],
@@ -199,54 +202,20 @@ impl Rectangle {
         rectangle: u128,
         visit: Visitor<'_>,
     ) -> ControlFlow<Deduction> {
-        let extra = cells(roofs).fold(0, |mask, cell| mask | masks[cell]) & !self.pair;
-        for house in containing_houses(roofs) {
-            let cells_in_house = house.cells();
-            let groups = cells_in_house.map(|cell| masks[cell]);
-            let eligible = (0..9)
-                .filter(|&i| {
-                    groups[i] != 0
-                        && groups[i] & self.pair == 0
-                        && cell_bit(cells_in_house[i]) & rectangle == 0
-                })
-                .fold(0u16, |mask, i| mask | (1 << i));
-            // One roof must use an extra candidate. Together they supply one cell to the subset.
-            for size in extra.count_ones().max(2)..=eligible.count_ones() + 1 {
-                visit_unions::<true>(
-                    &groups,
-                    eligible,
-                    size,
-                    size - 1,
-                    0,
-                    extra,
-                    &mut |chosen, locked| {
-                        let selected = bit_indices(chosen)
-                            .fold(0, |bits, i| bits | cell_bit(cells_in_house[i]));
-                        let houses: Vec<_> = containing_houses(roofs | selected).collect();
-                        // A locked subset is reported once with the effects in all its shared houses.
-                        if houses.first() != Some(&house) {
-                            return ControlFlow::Continue(());
-                        }
-                        let targets = houses
-                            .iter()
-                            .copied()
-                            .fold(0, |bits, house| bits | house_cells(house))
-                            & !(rectangle | selected);
-                        self.emit(
-                            Technique::UniqueRectangle3,
-                            removals(targets, |cell| masks[cell] & locked),
-                            || RectangleSupport::Subset {
-                                houses,
-                                cells: cells(selected).collect(),
-                                digits: digits(locked).collect(),
-                            },
-                            visit,
-                        )
-                    },
-                )?;
-            }
-        }
-        ControlFlow::Continue(())
+        visit_naked_subset::<true>(
+            masks,
+            self.pair,
+            roofs,
+            rectangle,
+            &mut |targets, locked, support| {
+                self.emit(
+                    Technique::UniqueRectangle3,
+                    removals(targets, |cell| masks[cell] & locked),
+                    || support,
+                    visit,
+                )
+            },
+        )
     }
 
     fn extras(self, masks: &[u16; CELLS]) -> RectangleSupport {
@@ -284,6 +253,65 @@ impl Rectangle {
             actions: DeductionActions::Eliminations(actions),
         })
     }
+}
+
+fn visit_naked_subset<const EXCLUDE_PAIR: bool>(
+    masks: &[u16; CELLS],
+    pair: u16,
+    roofs: u128,
+    pattern: u128,
+    visit: &mut impl FnMut(u128, u16, RectangleSupport) -> ControlFlow<Deduction>,
+) -> ControlFlow<Deduction> {
+    let extra = cells(roofs).fold(0, |mask, cell| mask | masks[cell]) & !pair;
+    for house in containing_houses(roofs) {
+        let cells_in_house = house.cells();
+        let groups = cells_in_house.map(|cell| masks[cell]);
+        let eligible = (0..9)
+            .filter(|&i| {
+                groups[i] != 0
+                    && (!EXCLUDE_PAIR || groups[i] & pair == 0)
+                    && cell_bit(cells_in_house[i]) & pattern == 0
+            })
+            .fold(0u16, |mask, i| mask | (1 << i));
+        // One roof must use an extra candidate. Together they supply one cell to the subset.
+        for size in extra.count_ones().max(2)..=eligible.count_ones() + 1 {
+            visit_unions::<true>(
+                &groups,
+                eligible,
+                size,
+                size - 1,
+                0,
+                extra,
+                &mut |chosen, locked| {
+                    let selected =
+                        bit_indices(chosen).fold(0, |bits, i| bits | cell_bit(cells_in_house[i]));
+                    let houses: Vec<_> = containing_houses(roofs | selected).collect();
+                    // A locked subset is reported once with the effects in all its shared houses.
+                    if houses.first() != Some(&house) {
+                        return ControlFlow::Continue(());
+                    }
+                    let targets = houses
+                        .iter()
+                        .copied()
+                        .fold(0, |bits, house| bits | house_cells(house))
+                        & !(pattern | selected);
+                    if cells(targets).all(|cell| masks[cell] & locked == 0) {
+                        return ControlFlow::Continue(());
+                    }
+                    visit(
+                        targets,
+                        locked,
+                        RectangleSupport::Subset {
+                            houses,
+                            cells: cells(selected).collect(),
+                            digits: digits(locked).collect(),
+                        },
+                    )
+                },
+            )?;
+        }
+    }
+    ControlFlow::Continue(())
 }
 
 fn containing_houses(group: u128) -> impl Iterator<Item = House> {

@@ -53,17 +53,27 @@ Use [`Technique::ALL`] for the detector inventory and [`Technique::DEFAULT_ORDER
 | Family | Detectors |
 | --- | --- |
 | Singles and subsets | Full House, Naked Single, Hidden Single, Pointing, Claiming, Locked Pair and Triple, Naked and Hidden Pairs through Quadruples |
-| Fish | X-Wing, Swordfish, Jellyfish, finned and Sashimi forms, Franken Fish and Mutant Fish with two to four houses per side |
+| Fish | X-Wing, Swordfish, Jellyfish, finned and Sashimi forms, Franken Fish, Mutant Fish, and Kraken Fish Types 1 and 2 |
 | Wings and single-digit patterns | W-Wing, XY-Wing, XYZ-Wing, WXYZ-Wing, Skyscraper, Two-String Kite, Empty Rectangle |
 | Coloring and inference | Simple Coloring, 3D Medusa, X-Chain, XY-Chain, Alternating Inference Chain, continuous and discontinuous Nice Loops, and grouped versions |
-| Uniqueness | Unique Rectangle Types 1–6, Hidden Rectangle, BUG+1 |
-| Advanced deductions | Aligned Pair and Triplet Exclusion, Tridagon and Tridagon Forcing Net, Forcing Chain, Forcing Net, Dynamic Forcing Net, Nested Forcing Net, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Junior Exocet, SK Loop, Multi-Sector Locked Sets |
+| Uniqueness | Unique Rectangle Types 1–6, Hidden Rectangle, Unique Loop Types 1–4, BUG+1 |
+| Advanced deductions | Aligned Pair and Triplet Exclusion, Tridagon and Tridagon Forcing Net, Forcing Chain, Forcing Net, Dynamic Forcing Net, Advanced Forcing Net, Nested Forcing Net, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Junior Exocet, SK Loop, Multi-Sector Locked Sets |
 
-The catalog records the point cost, technique difficulty, and uniqueness assumption for each detector. Complex fish, aligned exclusions, Tridagons, and extended forcing nets are available in hints and selected-technique searches. Add their IDs to a custom profile to use them for solving and rating.
+The catalog records the point cost, technique difficulty, and uniqueness assumption for each detector. Complex fish, Unique Loops, aligned exclusions, Tridagons, and extended forcing nets are available in hints and selected-technique searches. Add their IDs to a custom profile to use them for solving and rating.
+
+Franken Fish and Mutant Fish use a single-digit template check to narrow the search. A template places one copy of the same digit in each row, column, and box. A fish can remove a candidate only when every compatible template leaves that candidate out. The search uses the original candidates to construct each fish proof.
+
+Kraken Fish uses chains to extend a fish with two to four houses on each side. Type 1 removes a candidate that the fish rules out when all fins are false. It supplies a chain from each fin to the same removal. Type 2 supplies a chain from each fin and from each balanced candidate in one cover house. A candidate is balanced when it belongs to the same number of bases and covers. The result can concern a digit other than the fish digit.
+
+Each Kraken branch starts by assuming its candidate is true. It alternates between exclusions and strong links from cells, houses, or almost locked sets. It ends by ruling out the same target candidate. The detector requires at least one branch with more than a direct exclusion. [`KrakenLinkReason`] records why each step holds. Enable `kraken-fish-1` or `kraken-fish-2` in a custom profile at 900 or 950 points per deduction.
+
+A Unique Loop has at least six cells, divided into two sides. Every row, column, or box that touches the loop contains one cell from each side. If every cell used one of the two shared digits, swapping those digits would give a second solution. After the engine verifies uniqueness, it can use the extra candidates, a naked or hidden subset, or a conjugate link to rule out moves. The evidence records the two sides, the shared digits, and the supporting facts. The `unique-loop` profile entry enables all four types and costs 140 points per deduction at the Hard tier.
 
 Aligned Exclusion checks what happens when two or three selected cells take specific digits. Reject an assignment if it repeats a digit in peer cells or empties a common peer. Remove a candidate when every assignment that uses it fails. The proof records the rejected assignments and their reasons. Aligned Pair Exclusion costs 310 points and Aligned Triplet Exclusion costs 370 points.
 
 Dynamic Forcing Net extends a branch by applying Pointing and Claiming after ordinary net propagation. A branch starts by assuming a candidate is true or false. Each locked candidate step records both houses and the earlier removals that confine the digit to their intersection. The detector reports a deduction when that step contributes to a contradiction or a conclusion shared by every alternative. Its initial cost is 800 points at the Extreme tier. Append `dynamic-forcing-net` to your solver order to try it after the other techniques.
+
+Advanced Forcing Net also looks for Naked Pair, Hidden Pair, and X-Wing after dynamic propagation settles. The branch records the pattern and the earlier removals that make it possible. The proof must depend on at least one of those patterns. Enable `advanced-forcing-net` at 900 points per deduction. Use [`ForcingBranch::proof_size`] to count assumptions and deductions, including the facts in nested branches.
 
 Nested Forcing Net tries a second assumption when dynamic propagation runs out of moves. If both truth values of the second candidate lead to contradictions, the first assumption is false. The proof stores both cases and the facts each case imports from the outer branch. [`ForcingCase`] documents how to read the step indices. Append `nested-forcing-net` to opt in at 950 points per deduction.
 
@@ -299,7 +309,7 @@ Singles and Locked Candidates use all active houses. The other variant technique
 
 Cage Combinations checks which digits can occupy each cell while meeting the cage sum. Cage House Sum uses the fact that the digits in a house add to 45. It can derive a sum for cells inside or outside the house. The proof identifies the cages and records the candidate masks before the move.
 
-Classic detectors can run when the puzzle uses standard boxes. X-Wing, Swordfish, and Jellyfish also run with replacement regions because they use rows and columns. For a uniqueness deduction, the engine verifies uniqueness within a fixed node limit. It offers the deduction only when every changed cell is outside the scope of every additional rule. The proof records the cells that can exchange digits.
+Classic detectors can run when the puzzle uses standard boxes. X-Wing, Swordfish, and Jellyfish also run with replacement regions because they use rows and columns. For a uniqueness deduction, the engine verifies uniqueness within a fixed node limit. It offers the deduction when all cells that can exchange digits are outside the scope of every additional rule. The proof records those cells.
 
 For a `variant` request, set `operation` to `trace`, `rate`, or `hints`. Use `techniqueOrder` to choose the enabled techniques. An empty list disables all techniques, while an omitted field uses [`VariantTechnique::DEFAULT_ORDER`]. Exact validation continues to enforce every puzzle rule. Hints rank the available proofs by difficulty and cost, then by the number of cells in the proof. They return a single deduction when it is the only move available.
 
@@ -358,7 +368,7 @@ npm run test:wasm
 node --experimental-strip-types scripts/bench-variants.mjs
 ```
 
-The engine benchmark times exact search, rating, traces, hints, and opening detection, and reports generation match rates and symmetry-adjusted diversity. The coverage benchmark reports logical solve rates and rating times separately for everyday, 17-clue, and expert fixtures. It writes replayable stalled positions to standard output and reports the group statistics on standard error. Pass `-- --dynamic-forcing` to append Dynamic Forcing Net. Pass `-- --nested-forcing` to append both extended forcing techniques. Use `--aligned-exclusion` to run Aligned Exclusion before AIC. Select a published puzzle group with `--forcing-examples` or `--aligned-examples`.
+The engine benchmark times exact search, rating, traces, hints, and opening detection, and reports generation match rates and symmetry-adjusted diversity. The coverage benchmark reports logical solve rates and rating times separately for everyday, 17-clue, and expert fixtures. It writes replayable stalled positions to standard output and reports the group statistics on standard error. Pass `-- --dynamic-forcing` to append Dynamic Forcing Net or `-- --nested-forcing` to append Dynamic and Nested Forcing Nets. Pass `-- --advanced-forcing` to add Dynamic and Advanced Forcing Nets. With both flags, Advanced runs before Nested. Use `--aligned-exclusion` to run Aligned Exclusion before AIC. Select a published puzzle group with `--forcing-examples` or `--aligned-examples`.
 
 Select the twelve depth-three examples with `--depth-three`. Add `--tridagon` to try direct Tridagon deductions before Forcing Chain and guardian nets before Nested Forcing Net.
 

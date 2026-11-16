@@ -184,6 +184,7 @@ type RectangleSupport =
   | { 'extra-candidates': Candidate[] }
   | { subset: { houses: House[]; cells: number[]; digits: number[] } }
   | { 'strong-links': { houses: House[]; digit: number } }
+type UniqueLoopSupport = RectangleSupport | { 'hidden-subset': { house: House; cells: number[]; digits: number[] } }
 type ForcingLiteral = { candidate: Candidate; truth: boolean }
 type ForcingScope =
   | 'guardians'
@@ -191,6 +192,9 @@ type ForcingScope =
   | { cell: number }
   | { house: { house: House; digit: number } }
   | { intersection: { source: House; target: House; digit: number } }
+  | { 'naked-pair': { house: House; cells: [number, number]; digits: [number, number] } }
+  | { 'hidden-pair': { house: House; cells: [number, number]; digits: [number, number] } }
+  | { 'x-wing': { digit: number; bases: [House, House]; covers: [House, House] } }
 type ForcingBranch = {
   assumption: ForcingLiteral
   steps: { effect: ForcingLiteral; scope: ForcingScope; causes: number[] }[]
@@ -202,6 +206,11 @@ type ForcingBranch = {
 }
 type ForcingCase = { premises: number[]; branch: ForcingBranch }
 type AlmostLockedSet = { cells: number[]; digits: number[] }
+type KrakenLink = {
+  from: InferenceNode
+  to: InferenceNode
+  reason: 'exclusion' | { cell: number } | { house: House } | { 'almost-locked-set': AlmostLockedSet }
+}
 type SectorSubset = { house: House; cells: number[]; digits: number[] }
 type SectorLink = { house: House; digits: number[] }
 type Evidence =
@@ -214,6 +223,7 @@ type Evidence =
   | { 'x-wing': { digit: number; bases: [House, House]; covers: [House, House] } }
   | { fish: { digit: number; bases: House[]; covers: House[]; fins: number[] } }
   | { 'complex-fish': { digit: number; bases: House[]; covers: House[]; fins: number[] } }
+  | { 'kraken-fish': { digit: number; bases: House[]; covers: House[]; fins: number[]; cover: House | null; branches: KrakenLink[][] } }
   | { wing: { pivot: number; pincers: [number, number]; digits: [number, number, number] } }
   | { 'wxyz-wing': { cells: [number, number, number, number]; digits: [number, number, number, number]; unrestricted: number | null } }
   | { 'w-wing': { wings: [number, number]; link: ConjugatePair; linkedDigit: number; digit: number } }
@@ -222,6 +232,7 @@ type Evidence =
   | { chain: { links: CandidateLink[] } }
   | { inference: { links: InferenceLink[] } }
   | { 'unique-rectangle': { corners: [number, number, number, number]; digits: [number, number]; support: RectangleSupport } }
+  | { 'unique-loop': { sides: [number[], number[]]; digits: [number, number]; support: UniqueLoopSupport } }
   | { 'bug-plus-one': { cell: number; candidates: [number, number, number]; houses: [House, House, House] } }
   | { 'aligned-exclusion': { cells: number[]; cases: { digits: number[]; reason: { 'repeated-digit': [number, number] } | { 'empty-cell': number } }[] } }
   | { tridagon: { cells: [number, number, number][]; digits: [number, number, number]; guardians: Candidate[]; branches: ForcingBranch[] } }

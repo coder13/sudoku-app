@@ -5,6 +5,105 @@ use super::{PracticeExample, Technique, elimination_masks, place, remove};
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
+        Technique::AdvancedForcingNet => {
+            const {
+                [
+                    PracticeExample {
+                        givens: super::PRACTICE_GRID,
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[place(59, 6)],
+                    },
+                    PracticeExample {
+                        givens: "900000000000000703700096248600020470000000005000040006420008600507100000001000002",
+                        entries: Some(
+                            "000000561006010090010000000000001009000000000000000000000050017000002004000000050",
+                        ),
+                        eliminations: None,
+                        expected_actions: &[place(28, 3)],
+                    },
+                ]
+            }
+        }
+        Technique::KrakenFish1 => {
+            const {
+                [
+                    PracticeExample {
+                        expected_actions: &[remove(2, 9)],
+                        ..Technique::DynamicForcingNet.practice_example()
+                    },
+                    PracticeExample {
+                        expected_actions: &[remove(70, 2)],
+                        ..Technique::FrankenFish.practice_example()
+                    },
+                ]
+            }
+        }
+        Technique::KrakenFish2 => {
+            const {
+                [
+                    PracticeExample {
+                        expected_actions: &[remove(24, 2)],
+                        ..Technique::AlsXyWing.practice_example()
+                    },
+                    PracticeExample {
+                        expected_actions: &[remove(74, 3)],
+                        ..Technique::MutantFish.practice_example()
+                    },
+                ]
+            }
+        }
+        Technique::UniqueLoop => {
+            const {
+                // The second and third long loops from Sudoku Explainer.
+                [
+                    PracticeExample {
+                        givens: "025010700800050006600800001002095008980600000000700904200008409000000050078509600",
+                        entries: Some(
+                            "400906083000000200000000500700000060000000075560080020056070000000260807000040002",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (14, 3),
+                            (23, 3),
+                            (41, 1),
+                            (41, 3),
+                            (64, 1),
+                            (64, 3),
+                            (65, 1),
+                            (65, 3),
+                        ])),
+                        expected_actions: &[remove(28, 4), remove(41, 4)],
+                    },
+                    PracticeExample {
+                        givens: "060000040090204006004009780000000890400308002058000000087100400100906020020000010",
+                        entries: Some(
+                            "000000209000000000230000000302000000009000600600092000900025063043000500506000900",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (4, 5),
+                            (4, 7),
+                            (4, 8),
+                            (13, 1),
+                            (13, 3),
+                            (13, 5),
+                            (19, 1),
+                            (27, 7),
+                            (30, 7),
+                            (31, 1),
+                            (31, 7),
+                            (35, 1),
+                            (35, 7),
+                            (40, 7),
+                            (45, 7),
+                            (53, 7),
+                            (76, 7),
+                            (76, 8),
+                        ])),
+                        expected_actions: &[remove(3, 7), remove(75, 7)],
+                    },
+                ]
+            }
+        }
         Technique::FullHouse => {
             const {
                 [

@@ -6,8 +6,8 @@ use std::{
 use super::{
     AlignedExclusionReason, AlmostLockedSet, Board, CELLS, Candidate, ColoringReason,
     DeductionSearch, ForcingBranch, ForcingConflict, ForcingScope, Hint, HintAction, HintError,
-    HintEvidence, House, InferenceNode, LinkSource, PositionSnapshot, RectangleSupport, Technique,
-    checked_position, coordinates, digit_bit, digits, visit_technique,
+    HintEvidence, House, InferenceNode, KrakenLinkReason, LinkSource, PositionSnapshot,
+    RectangleSupport, Technique, checked_position, coordinates, digit_bit, digits, visit_technique,
 };
 use crate::DIGITS;
 
@@ -244,6 +244,27 @@ impl<'a> Pattern<'a> {
                 covers,
                 ..
             } => self.fish(*digit, bases, covers),
+            HintEvidence::KrakenFish {
+                digit,
+                bases,
+                covers,
+                branches,
+                ..
+            } => {
+                self.fish(*digit, bases, covers);
+                for link in branches.iter().flatten() {
+                    self.proposition(&link.from);
+                    self.proposition(&link.to);
+                    match &link.reason {
+                        KrakenLinkReason::Exclusion => {}
+                        KrakenLinkReason::Cell(cell) => self.source(LinkSource::Cell(*cell)),
+                        KrakenLinkReason::House(house) => self.source(LinkSource::House(*house)),
+                        KrakenLinkReason::AlmostLockedSet(set) => {
+                            self.sets(std::slice::from_ref(set))
+                        }
+                    }
+                }
+            }
             HintEvidence::Wing {
                 pivot,
                 pincers,
@@ -296,14 +317,8 @@ impl<'a> Pattern<'a> {
             HintEvidence::Inference { links } => {
                 for link in links {
                     self.source(link.source);
-                    for endpoint in [&link.from, &link.to] {
-                        match endpoint {
-                            InferenceNode::Candidate(candidate) => self.candidate(*candidate),
-                            InferenceNode::Group { digit, cells } => {
-                                self.mark(cells.iter().copied(), digit_bit(*digit));
-                            }
-                        }
-                    }
+                    self.proposition(&link.from);
+                    self.proposition(&link.to);
                 }
             }
             HintEvidence::Coloring {
@@ -331,24 +346,18 @@ impl<'a> Pattern<'a> {
                 support,
             } => {
                 self.mark(*corners, mask(*digits));
-                match support {
-                    RectangleSupport::ExtraCandidates(candidates) => {
-                        for &candidate in candidates {
-                            self.candidate(candidate);
-                        }
-                    }
-                    RectangleSupport::Subset {
-                        houses,
-                        cells,
-                        digits,
-                    } => {
-                        self.houses.extend(houses.iter().copied());
-                        self.mark(cells.iter().copied(), mask(digits.iter().copied()));
-                    }
-                    RectangleSupport::StrongLinks { houses, .. } => {
-                        self.houses.extend(houses.iter().copied())
-                    }
+                self.uniqueness_support(support);
+            }
+            HintEvidence::UniqueLoop {
+                sides,
+                digits,
+                support,
+            } => {
+                self.mark(sides.iter().flatten().copied(), mask(*digits));
+                for &cell in sides.iter().flatten() {
+                    self.houses.extend(House::at(cell));
                 }
+                self.uniqueness_support(support);
             }
             HintEvidence::BugPlusOne {
                 cell,
@@ -456,6 +465,35 @@ impl<'a> Pattern<'a> {
         }
     }
 
+    fn uniqueness_support(&mut self, support: &RectangleSupport) {
+        match support {
+            RectangleSupport::ExtraCandidates(candidates) => {
+                for &candidate in candidates {
+                    self.candidate(candidate);
+                }
+            }
+            RectangleSupport::Subset {
+                houses,
+                cells,
+                digits,
+            } => {
+                self.houses.extend(houses.iter().copied());
+                self.mark(cells.iter().copied(), mask(digits.iter().copied()));
+            }
+            RectangleSupport::HiddenSubset {
+                house,
+                cells,
+                digits,
+            } => {
+                self.houses.insert(*house);
+                self.mark(cells.iter().copied(), mask(digits.iter().copied()));
+            }
+            RectangleSupport::StrongLinks { houses, .. } => {
+                self.houses.extend(houses.iter().copied());
+            }
+        }
+    }
+
     fn fish(&mut self, digit: u8, bases: &[House], covers: &[House]) {
         self.houses.extend(bases.iter().chain(covers).copied());
         let Some(masks) = self.masks else { return };
@@ -515,6 +553,24 @@ impl<'a> Pattern<'a> {
             ForcingScope::Intersection { source, target, .. } => {
                 self.houses.extend([source, target]);
             }
+            ForcingScope::NakedPair {
+                house,
+                cells,
+                digits,
+            }
+            | ForcingScope::HiddenPair {
+                house,
+                cells,
+                digits,
+            } => {
+                self.houses.insert(house);
+                self.mark(cells, mask(digits));
+            }
+            ForcingScope::XWing {
+                digit,
+                bases,
+                covers,
+            } => self.fish(digit, &bases, &covers),
             ForcingScope::Guardians => {} // The enclosing Tridagon already marks every guardian.
         }
     }
@@ -527,6 +583,15 @@ impl<'a> Pattern<'a> {
 
     fn candidate(&mut self, candidate: Candidate) {
         self.mark([candidate.cell], digit_bit(candidate.digit));
+    }
+
+    fn proposition(&mut self, node: &InferenceNode) {
+        match node {
+            InferenceNode::Candidate(candidate) => self.candidate(*candidate),
+            InferenceNode::Group { digit, cells } => {
+                self.mark(cells.iter().copied(), digit_bit(*digit));
+            }
+        }
     }
 
     fn mark(&mut self, cells: impl IntoIterator<Item = usize>, mask: u16) {

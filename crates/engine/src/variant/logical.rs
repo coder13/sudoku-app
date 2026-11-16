@@ -741,6 +741,11 @@ impl CompiledVariant {
             let swap_cells = if technique.requires_unique_solution() {
                 let cells = match &hint.evidence {
                     HintEvidence::UniqueRectangle { corners, .. } => corners.to_vec(),
+                    HintEvidence::UniqueLoop { sides, .. } => {
+                        let mut cells: Vec<_> = sides.iter().flatten().copied().collect();
+                        cells.sort_unstable();
+                        cells
+                    }
                     HintEvidence::BugPlusOne { .. } => position
                         .board
                         .iter()

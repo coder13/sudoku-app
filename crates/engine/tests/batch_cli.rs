@@ -7,8 +7,8 @@ use std::{
 
 use serde_json::{Value, json};
 use sudoku_app_engine::{
-    Analysis, SCORING_VERSION, Technique, VARIANT_SCORING_VERSION, VariantPuzzle, analyze,
-    opening_techniques, parse_givens, rate_puzzle,
+    Analysis, HintAction, SCORING_VERSION, Technique, VARIANT_SCORING_VERSION, VariantPuzzle,
+    analyze, opening_techniques, parse_givens, rate_puzzle, solve, technique_deductions,
 };
 
 const ONE_BLANK: &str =
@@ -194,8 +194,21 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
     assert_eq!(analyze(&board), Analysis::Unique);
     assert_eq!(
         opening_techniques(&board).unwrap(),
-        [Technique::ForcingNet, Technique::NestedForcingNet]
+        [
+            Technique::ForcingNet,
+            Technique::NestedForcingNet,
+            Technique::KrakenFish2
+        ]
     );
+    let solution = solve(&board).unwrap();
+    let kraken = technique_deductions(&board, None, Technique::KrakenFish2).unwrap();
+    assert!(!kraken.is_empty());
+    for action in kraken.iter().flat_map(|proof| &proof.actions) {
+        let HintAction::Eliminate(candidate) = action else {
+            panic!("expected a Kraken removal")
+        };
+        assert_ne!(solution[candidate.cell], candidate.digit);
+    }
 }
 
 #[test]

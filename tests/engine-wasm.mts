@@ -1124,6 +1124,76 @@ test('Tridagon practice exposes the guardian constraint in a refutation', async 
   }), exercise.deduction)
 })
 
+test('Advanced Forcing Net practice exports the branch premises of an X-Wing', async () => {
+  const { run } = engineRequests()
+  const technique = 'advanced-forcing-net'
+  const [, , exercise] = await run({ type: 'practice-examples', technique })
+  assert.deepEqual(exercise.suggestion, { place: { cell: 28, digit: 3 } })
+  assert.ok('forcing' in exercise.deduction.evidence)
+  let found = false
+  for (const branch of exercise.deduction.evidence.forcing.branches) {
+    for (const [index, step] of branch.steps.entries()) {
+      if (typeof step.scope === 'object' && 'x-wing' in step.scope) {
+        assert.equal(step.effect.truth, false)
+        assert.ok(step.causes.length > 0)
+        assert.ok(step.causes.every(cause => cause <= index))
+        found = true
+      }
+    }
+  }
+  assert.ok(found)
+  assert.deepEqual(await run({
+    type: 'check-practice-move', technique, values: exercise.givens, entries: exercise.entries,
+    eliminations: exercise.eliminations, action: exercise.suggestion,
+  }), exercise.deduction)
+})
+
+test('Kraken Fish practice returns a branch for every alternative', async () => {
+  const { run } = engineRequests()
+  for (const [technique, target] of [
+    ['kraken-fish-1', { cell: 69, digit: 2 }],
+    ['kraken-fish-2', { cell: 44, digit: 7 }],
+  ] as const) {
+    const [exercise] = await run({ type: 'practice-examples', technique })
+    assert.deepEqual(exercise.suggestion, { eliminate: target })
+    assert.ok('kraken-fish' in exercise.deduction.evidence)
+    const { fins, cover, branches } = exercise.deduction.evidence['kraken-fish']
+    assert.equal(cover === null, technique === 'kraken-fish-1')
+    const starts = branches.map(chain => {
+      assert.deepEqual(chain.at(-1)?.to, { candidate: target })
+      assert.equal(chain[0].reason, 'exclusion')
+      assert.ok('candidate' in chain[0].from)
+      return chain[0].from.candidate.cell
+    })
+    assert.ok(fins.every(cell => starts.includes(cell)))
+    assert.ok(branches.flat().some(link => typeof link.reason === 'object' && 'almost-locked-set' in link.reason))
+    assert.deepEqual(await run({
+      type: 'check-practice-move', technique, values: exercise.givens, entries: exercise.entries,
+      eliminations: exercise.eliminations, action: exercise.suggestion,
+    }), exercise.deduction)
+  }
+})
+
+test('Unique Loop practice returns the alternating sides and supporting link', async () => {
+  const { run } = engineRequests()
+  const technique = 'unique-loop'
+  const [single, shared, linked] = await run({ type: 'practice-examples', technique })
+  assert.ok('unique-loop' in single.deduction.evidence)
+  assert.equal(single.deduction.evidence['unique-loop'].sides.flat().length, 10)
+  assert.ok('unique-loop' in shared.deduction.evidence)
+  assert.deepEqual(shared.deduction.evidence['unique-loop'].support, {
+    'extra-candidates': [{ cell: 30, digit: 4 }, { cell: 38, digit: 4 }],
+  })
+  assert.ok('unique-loop' in linked.deduction.evidence)
+  const proof = linked.deduction.evidence['unique-loop']
+  assert.deepEqual(proof.sides, [[0, 13, 71, 75], [3, 9, 67, 80]])
+  assert.deepEqual(proof.support, { 'strong-links': { houses: [{ column: 3 }], digit: 8 } })
+  assert.deepEqual(await run({
+    type: 'check-practice-move', technique, values: linked.givens, entries: linked.entries,
+    eliminations: linked.eliminations, action: linked.suggestion,
+  }), linked.deduction)
+})
+
 test('aligned triplet exclusion can replace a longer chain profile path', async () => {
   const { run } = engineRequests()
   const values = '560040000000130000000000670000200500008001209900000800140060050007010000380000400'
@@ -1398,8 +1468,8 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   const { raw, run } = engineRequests()
   const catalog = await run({ type: 'techniques', variant: true })
   assert.equal(catalog.scoringVersion, 4)
-  assert.equal(catalog.techniques.length, 87)
-  assert.equal(new Set(catalog.techniques.map(technique => technique.id)).size, 87)
+  assert.equal(catalog.techniques.length, 91)
+  assert.equal(new Set(catalog.techniques.map(technique => technique.id)).size, 91)
   const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))
   assert.equal(costs.get('parity'), 6)
   assert.equal(costs.get('cage-house-sum'), 67)

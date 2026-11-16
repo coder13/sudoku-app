@@ -61,6 +61,42 @@ fn transpose_scope(scope: ForcingScope) -> ForcingScope {
             target: transpose_house(target),
             digit,
         },
+        ForcingScope::NakedPair {
+            house,
+            cells,
+            digits,
+        }
+        | ForcingScope::HiddenPair {
+            house,
+            cells,
+            digits,
+        } => {
+            let house = transpose_house(house);
+            let mut cells = cells.map(transpose);
+            cells.sort_unstable();
+            if matches!(scope, ForcingScope::NakedPair { .. }) {
+                ForcingScope::NakedPair {
+                    house,
+                    cells,
+                    digits,
+                }
+            } else {
+                ForcingScope::HiddenPair {
+                    house,
+                    cells,
+                    digits,
+                }
+            }
+        }
+        ForcingScope::XWing {
+            digit,
+            bases,
+            covers,
+        } => ForcingScope::XWing {
+            digit,
+            bases: bases.map(transpose_house),
+            covers: covers.map(transpose_house),
+        },
         ForcingScope::Guardians => ForcingScope::Guardians,
     }
 }
@@ -109,6 +145,52 @@ fn transpose_forcing_branch(branch: &ForcingBranch) -> ForcingBranch {
                 })))
             }
         }),
+    }
+}
+
+fn transpose_uniqueness_support(support: &RectangleSupport) -> RectangleSupport {
+    match support {
+        RectangleSupport::ExtraCandidates(candidates) => {
+            let mut candidates: Vec<_> = candidates
+                .iter()
+                .copied()
+                .map(transpose_candidate)
+                .collect();
+            candidates.sort_unstable();
+            RectangleSupport::ExtraCandidates(candidates)
+        }
+        RectangleSupport::Subset {
+            houses,
+            cells,
+            digits,
+        } => RectangleSupport::Subset {
+            houses: transpose_houses(houses),
+            cells: transpose_cells(cells),
+            digits: digits.clone(),
+        },
+        RectangleSupport::HiddenSubset {
+            house,
+            cells,
+            digits,
+        } => RectangleSupport::HiddenSubset {
+            house: transpose_house(*house),
+            cells: transpose_cells(cells),
+            digits: digits.clone(),
+        },
+        RectangleSupport::StrongLinks { houses, digit } => RectangleSupport::StrongLinks {
+            houses: transpose_houses(houses),
+            digit: *digit,
+        },
+    }
+}
+
+fn transpose_node(node: &InferenceNode) -> InferenceNode {
+    match node {
+        InferenceNode::Candidate(value) => InferenceNode::Candidate(transpose_candidate(*value)),
+        InferenceNode::Group { digit, cells } => InferenceNode::Group {
+            digit: *digit,
+            cells: transpose_cells(cells),
+        },
     }
 }
 
@@ -193,6 +275,55 @@ fn transpose_hint(hint: &Hint) -> Hint {
                 fins,
             }
         }
+        HintEvidence::KrakenFish {
+            digit,
+            bases,
+            covers,
+            fins,
+            cover,
+            branches,
+        } => {
+            let mut branches: Vec<_> = branches
+                .iter()
+                .map(|chain| {
+                    chain
+                        .iter()
+                        .map(|link| crate::KrakenLink {
+                            from: transpose_node(&link.from),
+                            to: transpose_node(&link.to),
+                            reason: match &link.reason {
+                                crate::KrakenLinkReason::Exclusion => {
+                                    crate::KrakenLinkReason::Exclusion
+                                }
+                                crate::KrakenLinkReason::Cell(cell) => {
+                                    crate::KrakenLinkReason::Cell(transpose(*cell))
+                                }
+                                crate::KrakenLinkReason::House(house) => {
+                                    crate::KrakenLinkReason::House(transpose_house(*house))
+                                }
+                                crate::KrakenLinkReason::AlmostLockedSet(set) => {
+                                    crate::KrakenLinkReason::AlmostLockedSet(transpose_als(set))
+                                }
+                            },
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+            branches.sort_by_key(|chain| {
+                let InferenceNode::Candidate(value) = chain[0].from else {
+                    unreachable!()
+                };
+                value.cell
+            });
+            HintEvidence::KrakenFish {
+                digit: *digit,
+                bases: transpose_houses(bases),
+                covers: transpose_houses(covers),
+                fins: transpose_cells(fins),
+                cover: cover.map(transpose_house),
+                branches,
+            }
+        }
         HintEvidence::Wing {
             pivot,
             pincers,
@@ -262,35 +393,20 @@ fn transpose_hint(hint: &Hint) -> Hint {
         HintEvidence::Chain { links } => HintEvidence::Chain {
             links: links.iter().copied().map(transpose_link).collect(),
         },
-        HintEvidence::Inference { links } => {
-            let transpose_node = |node: &InferenceNode| match node {
-                InferenceNode::Candidate(value) => {
-                    InferenceNode::Candidate(transpose_candidate(*value))
-                }
-                InferenceNode::Group { digit, cells } => {
-                    let mut cells: Vec<_> = cells.iter().copied().map(transpose).collect();
-                    cells.sort_unstable();
-                    InferenceNode::Group {
-                        digit: *digit,
-                        cells,
-                    }
-                }
-            };
-            HintEvidence::Inference {
-                links: links
-                    .iter()
-                    .map(|link| InferenceLink {
-                        from: transpose_node(&link.from),
-                        to: transpose_node(&link.to),
-                        source: match link.source {
-                            LinkSource::Cell(cell) => LinkSource::Cell(transpose(cell)),
-                            LinkSource::House(house) => LinkSource::House(transpose_house(house)),
-                        },
-                        strength: link.strength,
-                    })
-                    .collect(),
-            }
-        }
+        HintEvidence::Inference { links } => HintEvidence::Inference {
+            links: links
+                .iter()
+                .map(|link| InferenceLink {
+                    from: transpose_node(&link.from),
+                    to: transpose_node(&link.to),
+                    source: match link.source {
+                        LinkSource::Cell(cell) => LinkSource::Cell(transpose(cell)),
+                        LinkSource::House(house) => LinkSource::House(transpose_house(house)),
+                    },
+                    strength: link.strength,
+                })
+                .collect(),
+        },
         HintEvidence::Coloring {
             colors,
             links,
@@ -329,38 +445,23 @@ fn transpose_hint(hint: &Hint) -> Hint {
         } => {
             let mut corners = corners.map(transpose);
             corners.sort_unstable();
-            let support = match support {
-                RectangleSupport::ExtraCandidates(candidates) => {
-                    let mut candidates: Vec<_> = candidates
-                        .iter()
-                        .copied()
-                        .map(transpose_candidate)
-                        .collect();
-                    candidates.sort_unstable();
-                    RectangleSupport::ExtraCandidates(candidates)
-                }
-                RectangleSupport::Subset {
-                    houses,
-                    cells,
-                    digits,
-                } => {
-                    let mut cells: Vec<_> = cells.iter().copied().map(transpose).collect();
-                    cells.sort_unstable();
-                    RectangleSupport::Subset {
-                        houses: transpose_houses(houses),
-                        cells,
-                        digits: digits.clone(),
-                    }
-                }
-                RectangleSupport::StrongLinks { houses, digit } => RectangleSupport::StrongLinks {
-                    houses: transpose_houses(houses),
-                    digit: *digit,
-                },
-            };
             HintEvidence::UniqueRectangle {
                 corners,
                 digits: *digits,
-                support,
+                support: transpose_uniqueness_support(support),
+            }
+        }
+        HintEvidence::UniqueLoop {
+            sides,
+            digits,
+            support,
+        } => {
+            let mut sides = sides.each_ref().map(|side| transpose_cells(side));
+            sides.sort_unstable();
+            HintEvidence::UniqueLoop {
+                sides,
+                digits: *digits,
+                support: transpose_uniqueness_support(support),
             }
         }
         HintEvidence::BugPlusOne {
@@ -610,6 +711,122 @@ fn assert_proof_with_near_miss(masks: Masks, expected: Hint, near_miss: Masks) {
                 .any(|proof| { proof.actions == expected.actions })
         );
     }
+}
+
+#[test]
+fn a_unique_loop_balances_boxes_as_well_as_rows_and_columns() {
+    let pair = digit_bit(1) | digit_bit(2);
+    let make_masks = |last_row: [usize; 2]| {
+        let mut masks = [0; CELLS];
+        for cell in [0, 3, 12, 15, last_row[0], last_row[1]] {
+            masks[cell] = pair;
+        }
+        masks[0] |= digit_bit(3);
+        masks
+    };
+    assert_rule(
+        EMPTY,
+        make_masks([18, 24]),
+        Hint {
+            technique: Technique::UniqueLoop,
+            evidence: HintEvidence::UniqueLoop {
+                sides: [vec![0, 12, 24], vec![3, 15, 18]],
+                digits: [1, 2],
+                support: RectangleSupport::ExtraCandidates(vec![Candidate { cell: 0, digit: 3 }]),
+            },
+            actions: vec![
+                HintAction::Eliminate(Candidate { cell: 0, digit: 1 }),
+                HintAction::Eliminate(Candidate { cell: 0, digit: 2 }),
+            ],
+        },
+        (EMPTY, make_masks([27, 33])),
+    );
+}
+
+#[test]
+fn a_connected_unique_loop_can_touch_all_twenty_seven_houses() {
+    let sides = [
+        vec![7, 12, 18, 32, 44, 46, 56, 67, 78],
+        vec![8, 11, 23, 34, 37, 49, 60, 63, 75],
+    ];
+    let mut masks = [0; CELLS];
+    for &cell in sides.iter().flatten() {
+        masks[cell] = digit_bit(1) | digit_bit(2);
+    }
+    masks[7] |= digit_bit(3);
+    let mut broken = masks;
+    broken[75] = digit_bit(1) | digit_bit(4);
+    assert_rule(
+        EMPTY,
+        masks,
+        Hint {
+            technique: Technique::UniqueLoop,
+            evidence: HintEvidence::UniqueLoop {
+                sides,
+                digits: [1, 2],
+                support: RectangleSupport::ExtraCandidates(vec![Candidate { cell: 7, digit: 3 }]),
+            },
+            actions: vec![
+                HintAction::Eliminate(Candidate { cell: 7, digit: 1 }),
+                HintAction::Eliminate(Candidate { cell: 7, digit: 2 }),
+            ],
+        },
+        (EMPTY, broken),
+    );
+}
+
+#[test]
+fn unique_loop_support_checks_every_extra_candidate_and_link_position() {
+    let pair = digit_bit(1) | digit_bit(2);
+    let mut masks = [0; CELLS];
+    for cell in [0, 3, 12, 15, 18, 24] {
+        masks[cell] = pair;
+    }
+    masks[0] |= digit_bit(3);
+    let proof = |support, actions| Hint {
+        technique: Technique::UniqueLoop,
+        evidence: HintEvidence::UniqueLoop {
+            sides: [vec![0, 12, 24], vec![3, 15, 18]],
+            digits: [1, 2],
+            support,
+        },
+        actions,
+    };
+
+    let mut shared_extra = masks;
+    shared_extra[12] |= digit_bit(3);
+    shared_extra[9] = digit_bit(3) | digit_bit(4);
+    let mut different_extra = shared_extra;
+    different_extra[12] |= digit_bit(5);
+    assert_proof_with_near_miss(
+        shared_extra,
+        proof(
+            RectangleSupport::ExtraCandidates(vec![
+                Candidate { cell: 0, digit: 3 },
+                Candidate { cell: 12, digit: 3 },
+            ]),
+            vec![HintAction::Eliminate(Candidate { cell: 9, digit: 3 })],
+        ),
+        different_extra,
+    );
+    masks[3] |= digit_bit(3);
+    masks[6] = digit_bit(2) | digit_bit(3) | digit_bit(4);
+    let mut unlocked = masks;
+    unlocked[6] |= digit_bit(1);
+    assert_proof_with_near_miss(
+        masks,
+        proof(
+            RectangleSupport::StrongLinks {
+                houses: vec![House::Row(0)],
+                digit: 1,
+            },
+            vec![
+                HintAction::Eliminate(Candidate { cell: 0, digit: 2 }),
+                HintAction::Eliminate(Candidate { cell: 3, digit: 2 }),
+            ],
+        ),
+        unlocked,
+    );
 }
 
 #[test]

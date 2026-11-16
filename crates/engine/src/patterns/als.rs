@@ -10,13 +10,13 @@ use crate::{AlmostLockedSet, BlossomPetal};
 const MAX_CHAIN_SETS: usize = 7;
 
 pub(super) struct AlsSearch {
-    sets: Vec<Als>,
+    pub(super) sets: Vec<Als>,
     links: OnceCell<Vec<Vec<Link>>>,
 }
 
-struct Als {
-    cells: u128,
-    digits: u16,
+pub(super) struct Als {
+    pub(super) cells: u128,
+    pub(super) digits: u16,
     visible_to: [u128; 9],
 }
 
@@ -35,7 +35,7 @@ impl Als {
         }
     }
 
-    fn evidence(&self) -> AlmostLockedSet {
+    pub(super) fn evidence(&self) -> AlmostLockedSet {
         AlmostLockedSet {
             cells: cells(self.cells).collect(),
             digits: digits(self.digits).collect(),

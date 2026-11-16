@@ -667,6 +667,13 @@ const DYNAMIC_FORCING_NET: PracticeExample = PracticeExample {
     expected_actions: &[remove(62, 7)],
 };
 
+const ADVANCED_FORCING_NET: PracticeExample = PracticeExample {
+    givens: FULL_HOUSE,
+    entries: None,
+    eliminations: None,
+    expected_actions: &[remove(15, 5)],
+};
+
 // The first published nested forcing example in Sudoku Explainer's collection.
 const NESTED_FORCING_NET: PracticeExample = PracticeExample {
     givens: "060900003500004020000080400800000050003000700090000001001050000070300009900002040",
@@ -885,6 +892,64 @@ const MUTANT_FISH: PracticeExample = PracticeExample {
     expected_actions: &[remove(8, 4)],
 };
 
+// The first long Unique Loop from Sudoku Explainer's collection.
+// https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#unique-rectangles-and-loops
+const UNIQUE_LOOP: PracticeExample = PracticeExample {
+    givens: "000400870000003002000068504000000007025040908080000000700080003094016000030900040",
+    entries: Some(
+        "003000009008090000902000030009800000300007000007009000050204090200300785800075200",
+    ),
+    eliminations: Some(&elimination_masks(&[
+        (9, 1),
+        (9, 6),
+        (10, 1),
+        (10, 6),
+        (11, 1),
+        (11, 6),
+        (12, 1),
+        (33, 1),
+        (33, 6),
+        (34, 1),
+        (34, 6),
+        (45, 6),
+        (51, 1),
+        (51, 6),
+        (52, 1),
+        (52, 6),
+    ])),
+    expected_actions: &[remove(48, 1), remove(48, 6)],
+};
+
+// The published HoDoKu Kraken Fish examples share this position.
+const KRAKEN_FISH_1: PracticeExample = PracticeExample {
+    givens: "000000000030070809800003150908142000000000000500600040104200000000700006080005310",
+    entries: Some(
+        "000800000001500000000000000000000000000350000003000000000030000300000000000000000",
+    ),
+    eliminations: Some(&elimination_masks(&[
+        (0, 2),
+        (1, 4),
+        (1, 6),
+        (1, 7),
+        (2, 2),
+        (2, 6),
+        (2, 7),
+        (5, 4),
+        (5, 9),
+        (20, 9),
+        (55, 5),
+        (64, 9),
+        (68, 9),
+        (69, 5),
+        (69, 9),
+    ])),
+    expected_actions: &[remove(69, 2)],
+};
+const KRAKEN_FISH_2: PracticeExample = PracticeExample {
+    expected_actions: &[remove(44, 7)],
+    ..KRAKEN_FISH_1
+};
+
 impl Technique {
     /// Three independently selected practice grids with expected proofs.
     pub const fn practice_examples(self) -> [PracticeExample; 3] {
@@ -949,6 +1014,7 @@ impl Technique {
             Self::UniqueRectangle5 => return UNIQUE_RECTANGLE_5,
             Self::UniqueRectangle6 => return UNIQUE_RECTANGLE_6,
             Self::HiddenRectangle => return HIDDEN_RECTANGLE,
+            Self::UniqueLoop => return UNIQUE_LOOP,
             Self::BugPlusOne => return BUG_PLUS_ONE,
             Self::WxyzWing => return WXYZ_WING,
             Self::AlignedPairExclusion => return ALIGNED_PAIR_EXCLUSION,
@@ -958,6 +1024,7 @@ impl Technique {
             Self::ForcingChain => return FORCING_CHAIN,
             Self::ForcingNet => return FORCING_NET,
             Self::DynamicForcingNet => return DYNAMIC_FORCING_NET,
+            Self::AdvancedForcingNet => return ADVANCED_FORCING_NET,
             Self::NestedForcingNet => return NESTED_FORCING_NET,
             Self::AlsXz => return ALS_XZ,
             Self::AlsXyWing => return ALS_XY_WING,
@@ -969,6 +1036,8 @@ impl Technique {
             Self::MultiSectorLockedSets => return MULTI_SECTOR_LOCKED_SETS,
             Self::FrankenFish => return FRANKEN_FISH,
             Self::MutantFish => return MUTANT_FISH,
+            Self::KrakenFish1 => return KRAKEN_FISH_1,
+            Self::KrakenFish2 => return KRAKEN_FISH_2,
         };
         let givens = match self {
             Self::FullHouse => FULL_HOUSE,
@@ -987,9 +1056,9 @@ impl Technique {
 mod tests {
     use super::*;
     use crate::{
-        ColoringReason, ForcingBranch, ForcingConflict, ForcingLiteral, ForcingScope, HintEvidence,
-        House, InferenceLink, InferenceNode, LinkSource, LinkStrength, candidates,
-        technique_deductions_at,
+        ColoringReason, ForcingBranch, ForcingConflict, ForcingInference, ForcingLiteral,
+        ForcingScope, HintEvidence, House, InferenceLink, InferenceNode, LinkSource, LinkStrength,
+        candidates, technique_deductions_at,
     };
 
     #[test]
@@ -1016,6 +1085,8 @@ mod tests {
             Technique::Exocet,
             Technique::SkLoop,
             Technique::MultiSectorLockedSets,
+            Technique::KrakenFish1,
+            Technique::KrakenFish2,
         ] {
             let example = technique.practice_example();
             let original = example.position().unwrap();
@@ -1381,10 +1452,12 @@ mod tests {
     fn forcing_proofs_replay_each_inference_from_its_premises() {
         let mut saw_contradiction = false;
         let mut saw_verity = false;
+        let mut saw_advanced = [false; 3];
         let examples = [
             Technique::ForcingChain,
             Technique::ForcingNet,
             Technique::DynamicForcingNet,
+            Technique::AdvancedForcingNet,
             Technique::NestedForcingNet,
         ]
         .into_iter()
@@ -1415,11 +1488,28 @@ mod tests {
                     panic!("forcing deduction must record its proof");
                 };
                 let steps = || branches.iter().flat_map(|branch| &branch.steps);
-                if technique != Technique::NestedForcingNet {
+                if !matches!(
+                    technique,
+                    Technique::NestedForcingNet | Technique::AdvancedForcingNet
+                ) {
                     assert_eq!(
                         steps().any(|step| matches!(step.scope, ForcingScope::Intersection { .. })),
                         technique == Technique::DynamicForcingNet
                     );
+                }
+                if technique == Technique::AdvancedForcingNet {
+                    let mut specialized = false;
+                    for step in steps() {
+                        let kind = match step.scope {
+                            ForcingScope::NakedPair { .. } => 0,
+                            ForcingScope::HiddenPair { .. } => 1,
+                            ForcingScope::XWing { .. } => 2,
+                            _ => continue,
+                        };
+                        specialized = true;
+                        saw_advanced[kind] = true;
+                    }
+                    assert!(specialized);
                 }
                 if matches!(technique, Technique::ForcingChain | Technique::ForcingNet) {
                     assert_eq!(
@@ -1462,6 +1552,7 @@ mod tests {
             }
         }
         assert!(saw_contradiction && saw_verity);
+        assert_eq!(saw_advanced, [true; 3]);
     }
 
     fn forcing_members(
@@ -1483,6 +1574,11 @@ mod tests {
             ForcingScope::Candidate(_) => panic!("a candidate alone is not an exact-one unit"),
             ForcingScope::Intersection { .. } => {
                 panic!("an intersection connects two exact-one units")
+            }
+            ForcingScope::NakedPair { .. }
+            | ForcingScope::HiddenPair { .. }
+            | ForcingScope::XWing { .. } => {
+                panic!("an advanced pattern connects several exact-one units")
             }
             ForcingScope::Guardians => {
                 assert!(
@@ -1523,6 +1619,106 @@ mod tests {
         literals
     }
 
+    fn replay_branch_pattern(
+        step: &ForcingInference,
+        masks: &[u16; CELLS],
+        facts: &[ForcingLiteral],
+        causes: &[(Candidate, bool)],
+    ) -> bool {
+        let Candidate { cell, digit } = step.effect.candidate;
+        let possible = |candidate: Candidate| {
+            masks[candidate.cell] & digit_bit(candidate.digit) != 0
+                && !facts.contains(&ForcingLiteral {
+                    candidate,
+                    truth: false,
+                })
+        };
+        let locations =
+            |house, digit| forcing_members(ForcingScope::House { house, digit }, masks, &[]);
+        let mut expected: Vec<_> = match step.scope {
+            ForcingScope::NakedPair {
+                house,
+                cells,
+                digits,
+            }
+            | ForcingScope::HiddenPair {
+                house,
+                cells,
+                digits,
+            } => {
+                assert!(cells[0] < cells[1] && digits[0] < digits[1]);
+                assert!(cells.iter().all(|cell| house.cells().contains(cell)));
+                assert!(cells.into_iter().all(|cell| {
+                    digits
+                        .into_iter()
+                        .all(|digit| possible(Candidate { cell, digit }))
+                }));
+                if matches!(step.scope, ForcingScope::NakedPair { .. }) {
+                    assert!(house.cells().contains(&cell) && !cells.contains(&cell));
+                    assert!(digits.contains(&digit));
+                    cells
+                        .into_iter()
+                        .flat_map(|cell| forcing_members(ForcingScope::Cell(cell), masks, &[]))
+                        .filter(|candidate| !digits.contains(&candidate.digit))
+                        .collect()
+                } else {
+                    assert!(cells.contains(&cell) && !digits.contains(&digit));
+                    digits
+                        .into_iter()
+                        .flat_map(|digit| locations(house, digit))
+                        .filter(|candidate| !cells.contains(&candidate.cell))
+                        .collect()
+                }
+            }
+            ForcingScope::XWing {
+                digit: constrained,
+                bases,
+                covers,
+            } => {
+                assert_eq!(constrained, digit);
+                assert_ne!(bases[0], bases[1]);
+                assert_ne!(covers[0], covers[1]);
+                assert!(matches!(
+                    (bases, covers),
+                    (
+                        [House::Row(_), House::Row(_)],
+                        [House::Column(_), House::Column(_)]
+                    ) | (
+                        [House::Column(_), House::Column(_)],
+                        [House::Row(_), House::Row(_)]
+                    )
+                ));
+                let covered = |cell| covers.iter().any(|house| house.cells().contains(&cell));
+                assert!(covered(cell));
+                assert!(bases.iter().all(|house| !house.cells().contains(&cell)));
+                for base in bases {
+                    for cover in covers {
+                        assert!(locations(base, digit).into_iter().any(|candidate| {
+                            cover.cells().contains(&candidate.cell) && possible(candidate)
+                        }));
+                    }
+                }
+                bases
+                    .into_iter()
+                    .flat_map(|house| locations(house, digit))
+                    .filter(|candidate| !covered(candidate.cell))
+                    .collect()
+            }
+            _ => return false,
+        };
+        expected.sort_unstable();
+        assert!(!step.effect.truth && !expected.is_empty());
+        assert!(possible(step.effect.candidate));
+        assert_eq!(
+            causes,
+            expected
+                .into_iter()
+                .map(|candidate| (candidate, false))
+                .collect::<Vec<_>>()
+        );
+        true
+    }
+
     fn replay_forcing_branch(
         branch: &ForcingBranch,
         masks: &[u16; CELLS],
@@ -1535,6 +1731,10 @@ mod tests {
         facts.extend_from_slice(premises);
         for step in &branch.steps {
             let causes = forcing_literals(&facts, &step.causes);
+            if replay_branch_pattern(step, masks, &facts, &causes) {
+                facts.push(step.effect);
+                continue;
+            }
             if let ForcingScope::Intersection {
                 source,
                 target,

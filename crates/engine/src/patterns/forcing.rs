@@ -9,6 +9,8 @@ use crate::{
 };
 use std::collections::BTreeSet;
 
+mod advanced;
+
 const STATES: usize = CANDIDATE_COUNT * 2;
 const UNSEEN: usize = usize::MAX;
 const WORDS: usize = STATES.div_ceil(64);
@@ -66,10 +68,14 @@ impl ForcingGraph {
         if technique == Technique::NestedForcingNet {
             return self.visit_nested(visit);
         }
+        if technique == Technique::AdvancedForcingNet && self.available.len() == CANDIDATE_COUNT {
+            return ControlFlow::Continue(());
+        }
         let mode = match technique {
             Technique::ForcingChain => Mode::Chain,
             Technique::ForcingNet => Mode::Net,
             Technique::DynamicForcingNet => Mode::Dynamic,
+            Technique::AdvancedForcingNet => Mode::Advanced,
             _ => unreachable!(),
         };
         let mut branch = BranchSearch::new(self, mode);
@@ -285,6 +291,7 @@ enum Cause {
     Exclusion { clause: usize, fact: usize },
     LastCandidate { clause: usize },
     Intersection { index: usize },
+    Advanced { index: usize },
     LastGuardian,
 }
 
@@ -293,6 +300,7 @@ enum Mode {
     Chain,
     Net,
     Dynamic,
+    Advanced,
 }
 
 #[derive(Clone, Copy)]
@@ -456,6 +464,7 @@ struct BranchSearch<'a> {
     graph: &'a ForcingGraph,
     mode: Mode,
     intersections: Vec<Intersection>,
+    advanced: Option<Box<advanced::State>>,
     guardians: Vec<usize>,
     seen: [usize; STATES],
     facts: Vec<Fact>,
@@ -466,11 +475,12 @@ impl<'a> BranchSearch<'a> {
         Self {
             graph,
             mode,
-            intersections: if mode == Mode::Dynamic {
+            intersections: if mode >= Mode::Dynamic {
                 graph.intersections()
             } else {
                 Vec::new()
             },
+            advanced: (mode == Mode::Advanced).then(|| Box::new(advanced::State::new(graph))),
             guardians: Vec::new(),
             seen: [UNSEEN; STATES],
             facts: Vec::new(),
@@ -483,6 +493,9 @@ impl<'a> BranchSearch<'a> {
     }
 
     fn rollback(&mut self, len: usize) {
+        if let Some(advanced) = &mut self.advanced {
+            advanced.rollback(&self.facts, len);
+        }
         for fact in self.facts.drain(len..) {
             self.seen[fact.state] = UNSEEN;
         }
@@ -507,6 +520,11 @@ impl<'a> BranchSearch<'a> {
                 continue;
             }
             if let Some(conflict) = self.apply_guardians() {
+                return Some(conflict);
+            }
+            if next == self.facts.len()
+                && let Some(conflict) = self.apply_advanced()
+            {
                 return Some(conflict);
             }
             if next == self.facts.len() {
@@ -622,7 +640,7 @@ impl<'a> BranchSearch<'a> {
                     let mut mode = fact.mode;
                     if members.len() > 2 {
                         mode = mode.max(Mode::Net);
-                        if self.mode == Mode::Dynamic && mode != Mode::Dynamic {
+                        if self.mode >= Mode::Dynamic && mode != self.mode {
                             mode = self
                                 .causes(clause, Some(last))
                                 .map(|index| self.facts[index].mode)
@@ -657,13 +675,39 @@ impl<'a> BranchSearch<'a> {
             {
                 continue;
             }
+            let mode = if self.mode == Mode::Advanced {
+                self.intersection_causes(index)
+                    .map(|cause| self.facts[cause].mode)
+                    .fold(Mode::Dynamic, Mode::max)
+            } else {
+                Mode::Dynamic
+            };
             for offset in 0..intersection.targets.len() {
                 let target = self.intersections[index].targets[offset];
-                if let Some(conflict) =
-                    self.add(target * 2, Cause::Intersection { index }, Mode::Dynamic)
-                {
+                if let Some(conflict) = self.add(target * 2, Cause::Intersection { index }, mode) {
                     return Some(conflict);
                 }
+            }
+        }
+        None
+    }
+
+    fn apply_advanced(&mut self) -> Option<Conflict> {
+        let advanced = self.advanced.as_mut()?;
+        advanced.sync(&self.facts);
+        let (step, pattern) = advanced.next(self.graph, &self.seen, self.facts.len())?;
+        let pattern_index = advanced.patterns.len();
+        advanced.patterns.push(pattern);
+        for &action in step.actions() {
+            debug_assert!(matches!(action, HintAction::Eliminate(_)));
+            if let Some(conflict) = self.add(
+                index(action.candidate()) * 2,
+                Cause::Advanced {
+                    index: pattern_index,
+                },
+                Mode::Advanced,
+            ) {
+                return Some(conflict);
             }
         }
         None
@@ -777,6 +821,11 @@ impl<'a> BranchSearch<'a> {
                         retained[source] = true;
                     }
                 }
+                Cause::Advanced { index } => {
+                    for &source in &self.advanced.as_ref().unwrap().patterns[index].premises {
+                        retained[source] = true;
+                    }
+                }
                 Cause::LastGuardian => {
                     for source in self.guardian_causes(Some(fact.state / 2)) {
                         retained[source] = true;
@@ -815,6 +864,17 @@ impl<'a> BranchSearch<'a> {
                         .map(|source| indices[source])
                         .collect(),
                 ),
+                Cause::Advanced { index } => {
+                    let pattern = &self.advanced.as_ref().unwrap().patterns[index];
+                    (
+                        pattern.scope,
+                        pattern
+                            .premises
+                            .iter()
+                            .map(|&source| indices[source])
+                            .collect(),
+                    )
+                }
                 Cause::LastGuardian => (
                     ForcingScope::Guardians,
                     self.guardian_causes(Some(fact.state / 2))
@@ -860,6 +920,10 @@ fn clauses_for(id: usize) -> [usize; 4] {
         CELLS + (9 + column) * 9 + digit,
         CELLS + (18 + group) * 9 + digit,
     ]
+}
+
+fn house_clause(house: House, digit: u8) -> usize {
+    CELLS + house.index() * 9 + usize::from(digit - 1)
 }
 
 fn literal(state: usize) -> ForcingLiteral {

@@ -7,11 +7,11 @@ use crate::{
 pub(super) struct Node {
     pub digit: u8,
     pub members: u128,
-    peers: u128,
+    pub(super) peers: u128,
 }
 
 impl Node {
-    fn new(digit: u8, members: u128) -> Self {
+    pub(super) fn new(digit: u8, members: u128) -> Self {
         let peers = cells(members).fold(u128::MAX, |peers, cell| peers & PEERS[cell]);
         Self {
             digit,
@@ -27,7 +27,7 @@ impl Node {
         })
     }
 
-    fn evidence(self) -> InferenceNode {
+    pub(super) fn evidence(self) -> InferenceNode {
         if let Some(candidate) = self.single() {
             InferenceNode::Candidate(candidate)
         } else {

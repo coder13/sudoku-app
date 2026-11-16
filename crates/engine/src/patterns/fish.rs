@@ -58,12 +58,21 @@ impl Rule {
         lines: &[Lines; 2],
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
+        self.visit_digits(lines, DIGITS, visit)
+    }
+
+    pub(super) fn visit_digits(
+        self,
+        lines: &[Lines; 2],
+        selected: u16,
+        visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
+    ) -> ControlFlow<Deduction> {
         for (axis, digits) in [Axis::Row, Axis::Column].into_iter().zip(lines) {
-            for (index, masks) in digits.iter().enumerate() {
+            for index in bit_indices(selected) {
                 let fish = FishSearch {
                     rule: self,
                     axis,
-                    lines: masks,
+                    lines: &digits[index],
                     digit: index as u8 + 1,
                 };
                 match self.kind {

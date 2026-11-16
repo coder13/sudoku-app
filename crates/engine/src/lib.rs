@@ -25,10 +25,11 @@ pub use hints::{
     CandidateLink, ColoringReason, ConjugatePair, DEFAULT_HINT_LIMIT, DeductionMatch,
     DeductionProof, ExocetAssignment, ExocetCover, ForcingBranch, ForcingCase, ForcingConflict,
     ForcingInference, ForcingLiteral, ForcingScope, Hint, HintAction, HintChoices, HintError,
-    HintEvidence, HintStages, House, InferenceLink, InferenceNode, LinkSource, LinkStrength,
-    ProofPattern, RectangleSupport, SectorLink, SectorSubset, SkLoopProof, deductions,
-    deductions_at, hint_choices, hints_at, next_deduction, next_deduction_at,
-    next_enabled_deduction, ranked_hints, technique_deductions, technique_deductions_at,
+    HintEvidence, HintStages, House, InferenceLink, InferenceNode, KrakenLink, KrakenLinkReason,
+    LinkSource, LinkStrength, ProofPattern, RectangleSupport, SectorLink, SectorSubset,
+    SkLoopProof, UniquenessSupport, deductions, deductions_at, hint_choices, hints_at,
+    next_deduction, next_deduction_at, next_enabled_deduction, ranked_hints, technique_deductions,
+    technique_deductions_at,
 };
 pub use logical::{
     AlternatePath, AlternatePathStatus, Difficulty, LogicalSolve, MoveAvailability, PathComparison,

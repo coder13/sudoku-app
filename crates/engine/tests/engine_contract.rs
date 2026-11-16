@@ -3,10 +3,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use sudoku_app_engine::{
     AlternatePathStatus, Analysis, Board, Candidate, Difficulty, GenerationConstraints, HintAction,
     HintChoices, HintError, HintEvidence, House, PositionSnapshot, ProfileError, ProofPattern,
-    SolveStatus, SolverProfile, Technique, VerifiedTemplate, candidates, canonical_puzzle,
-    check_practice_move, compare_paths, deductions_at, generate_constrained, hint_choices,
-    opening_techniques, parse_givens, rate_puzzle, search_alternate_path, solve, solve_logically,
-    solve_position, technique_deductions, technique_deductions_at,
+    SolveStatus, SolverProfile, Technique, UniquenessSupport, VerifiedTemplate, candidates,
+    canonical_puzzle, check_practice_move, compare_paths, deductions_at, generate_constrained,
+    hint_choices, opening_techniques, parse_givens, rate_puzzle, search_alternate_path, solve,
+    solve_logically, solve_position, technique_deductions, technique_deductions_at,
 };
 
 // This Royle 17-clue puzzle exceeds the exact-search budget on its original grid.
@@ -14,6 +14,243 @@ const SPARSE: &str =
     "345000000000200010000000000020100000000004500600000007800750000000060040000000300";
 const TEMPLATE: &str =
     "000500000600000309000008200000000000538000000000007001200090000001000007000300080";
+
+#[test]
+fn advanced_branch_patterns_reduce_nested_search_on_ai_escargot() {
+    let givens = parse_givens(
+        "100007090030020008009600500005300900010080002600004000300000010041000007007000300",
+    )
+    .unwrap();
+    let dynamic = Technique::DynamicForcingNet;
+    let advanced = Technique::AdvancedForcingNet;
+    let nested = Technique::NestedForcingNet;
+    let baseline = [Technique::DEFAULT_ORDER, &[dynamic, nested]].concat();
+    let extended = [Technique::DEFAULT_ORDER, &[dynamic, advanced, nested]].concat();
+    let solution = VerifiedTemplate::verify(givens).unwrap();
+    let solve_and_check = |order| {
+        let trace = solve_logically(&givens, order).unwrap();
+        assert!(matches!(trace.status, SolveStatus::Solved(_)));
+        assert_eq!(&trace.board, solution.solution());
+        for action in trace.steps.iter().flat_map(|step| &step.actions) {
+            let candidate = action.candidate();
+            assert_eq!(
+                solution.solution()[candidate.cell] == candidate.digit,
+                matches!(action, HintAction::Place(_)),
+            );
+        }
+        trace
+    };
+    let baseline = solve_and_check(&baseline);
+    let with_pairs_and_fish = solve_and_check(&extended);
+    assert!(with_pairs_and_fish.score.counts.contains_key(&advanced));
+    assert!(
+        with_pairs_and_fish
+            .score
+            .counts
+            .get(&nested)
+            .copied()
+            .unwrap_or(0)
+            < baseline.score.counts[&nested]
+    );
+    let proof_size = |trace: &sudoku_app_engine::LogicalSolve| -> usize {
+        trace
+            .steps
+            .iter()
+            .filter(|step| [dynamic, advanced, nested].contains(&step.technique))
+            .map(|step| {
+                let HintEvidence::Forcing { branches, .. } = &step.evidence else {
+                    panic!()
+                };
+                branches
+                    .iter()
+                    .map(|branch| branch.proof_size())
+                    .sum::<usize>()
+            })
+            .sum()
+    };
+    assert!(proof_size(&with_pairs_and_fish) < proof_size(&baseline));
+}
+
+#[test]
+fn kraken_fish_completes_a_published_forcing_puzzle() {
+    // The first of Sudoku Explainer's advanced forcing examples.
+    // https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#beyond-forcing-chains
+    let givens = parse_givens(
+        "708000300000201000500000000040000026300080000000100090090600004000070500000000000",
+    )
+    .unwrap();
+    let baseline = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    assert_eq!(baseline.status, SolveStatus::Stalled);
+    let order = [
+        Technique::DEFAULT_ORDER,
+        &[Technique::KrakenFish1, Technique::KrakenFish2],
+    ]
+    .concat();
+    let position = baseline.positions().last().unwrap();
+    let resumed = solve_position(&position, &order).unwrap();
+    assert_eq!(resumed.steps[0].technique, Technique::KrakenFish1);
+    assert_eq!(resumed.score.counts.get(&Technique::KrakenFish1), Some(&1));
+    assert!(matches!(resumed.status, SolveStatus::Solved(_)));
+
+    let solution = VerifiedTemplate::verify(givens).unwrap();
+    assert_eq!(&resumed.board, solution.solution());
+    for action in resumed.steps.iter().flat_map(|step| &step.actions) {
+        let candidate = action.candidate();
+        assert_eq!(
+            solution.solution()[candidate.cell] == candidate.digit,
+            matches!(action, HintAction::Place(_)),
+        );
+    }
+    assert_eq!(
+        rate_puzzle(&givens, &order)
+            .unwrap()
+            .score
+            .counts
+            .get(&Technique::KrakenFish1),
+        Some(&1)
+    );
+}
+
+#[test]
+fn unique_loops_complete_five_published_stalls() {
+    use Technique::*;
+    // Sudoku Explainer's five long-loop grids. A narrow profile exposes the loop
+    // opportunities before modern detectors can choose another route.
+    // https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#unique-rectangles-and-loops
+    let [first, second, third] = UniqueLoop.practice_examples();
+    let examples = [
+        (first.givens, 10),
+        (second.givens, 12),
+        (third.givens, 8),
+        (
+            "007200403500000080009008006050600800003000000700102009100040607200001000074900010",
+            8,
+        ),
+        (
+            "200400030000000560006000100400060001000580200000003805048079000530000000000802000",
+            12,
+        ),
+    ];
+    let profile = [
+        FullHouse,
+        NakedSingle,
+        HiddenSingle,
+        Pointing,
+        Claiming,
+        NakedPair,
+        HiddenPair,
+        NakedTriple,
+        HiddenTriple,
+        XWing,
+        Swordfish,
+        XYWing,
+        XYZWing,
+        NakedQuadruple,
+        Jellyfish,
+        HiddenQuadruple,
+        UniqueRectangle1,
+        UniqueRectangle2,
+        UniqueRectangle3,
+        UniqueRectangle4,
+        UniqueLoop,
+    ];
+    for (grid, loop_size) in examples {
+        let givens = parse_givens(grid).unwrap();
+        let solution = VerifiedTemplate::verify(givens).unwrap();
+        let baseline = solve_logically(&givens, &profile[..profile.len() - 1]).unwrap();
+        assert_eq!(baseline.status, SolveStatus::Stalled, "{grid}");
+        let result = solve_logically(&givens, &profile).unwrap();
+        assert!(matches!(result.status, SolveStatus::Solved(_)), "{grid}");
+        assert_eq!(&result.board, solution.solution());
+        let step = &result.steps[baseline.steps.len()];
+        let HintEvidence::UniqueLoop { sides, .. } = &step.evidence else {
+            panic!("expected the loop to continue the stalled solve");
+        };
+        assert_eq!(sides.each_ref().map(Vec::len), [loop_size / 2; 2]);
+        assert_eq!(step.technique, UniqueLoop);
+        for action in result.steps.iter().flat_map(|step| &step.actions) {
+            let candidate = action.candidate();
+            assert_eq!(
+                solution.solution()[candidate.cell] == candidate.digit,
+                matches!(action, HintAction::Place(_)),
+            );
+        }
+        let rating = rate_puzzle(&givens, &profile).unwrap();
+        assert_eq!(rating.score, result.score);
+        assert_eq!(
+            rating.score.points,
+            result
+                .steps
+                .iter()
+                .map(|step| u32::from(step.technique.cost()))
+                .sum::<u32>()
+        );
+    }
+}
+
+#[test]
+fn unique_loop_subsets_and_conjugate_links_prove_the_published_actions() {
+    let example = Technique::UniqueLoop.practice_examples()[2];
+    let position = example.position().unwrap();
+    let solution = VerifiedTemplate::verify(position.givens).unwrap();
+    let proofs = technique_deductions_at(&position, Technique::UniqueLoop).unwrap();
+    let mut found = [false; 3];
+    for proof in proofs {
+        let HintEvidence::UniqueLoop {
+            sides,
+            digits,
+            support,
+        } = proof.evidence
+        else {
+            panic!("expected the loop's alternating sides");
+        };
+        for action in &proof.actions {
+            let HintAction::Eliminate(candidate) = action else {
+                panic!("expected a removal");
+            };
+            assert_ne!(solution.solution()[candidate.cell], candidate.digit);
+        }
+        if sides != [vec![0, 13, 71, 75], vec![3, 9, 67, 80]] || digits != [7, 8] {
+            continue;
+        }
+        let subset_action = HintAction::Eliminate(Candidate { cell: 48, digit: 4 });
+        match support {
+            UniquenessSupport::Subset {
+                houses,
+                cells,
+                digits,
+            } if houses == [House::Column(3)] && cells == [21, 30] && digits == [4, 5, 6] => {
+                assert_eq!(proof.actions, [subset_action]);
+                found[0] = true;
+            }
+            UniquenessSupport::HiddenSubset {
+                house: House::Column(3),
+                cells,
+                digits,
+            } if cells == [48] && digits == [7, 8] => {
+                assert_eq!(proof.actions, [subset_action]);
+                found[1] = true;
+            }
+            UniquenessSupport::StrongLinks { houses, digit: 8 } if houses == [House::Column(3)] => {
+                assert_eq!(proof.actions, example.expected_actions);
+                found[2] = true;
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(found, [true; 3]);
+
+    let mut restored = position;
+    restored.eliminations[30] &= !(1 << (7 - 1));
+    let proofs = technique_deductions_at(&restored, Technique::UniqueLoop).unwrap();
+    assert!(!proofs.iter().any(|proof| matches!(
+        &proof.evidence,
+        HintEvidence::UniqueLoop {
+            support: UniquenessSupport::HiddenSubset { house: House::Column(3), cells, digits },
+            ..
+        } if cells == &[48] && digits == &[7, 8]
+    )));
+}
 
 #[cfg(feature = "wasm-api")]
 fn recorded_position(line: &str) -> (u64, PositionSnapshot, Vec<Technique>) {
