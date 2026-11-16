@@ -19,3 +19,67 @@ body.sb-show-main:not(:has(.story-app)) { overflow: auto; }
 .story-theme-grid { display: grid; grid-template-columns: minmax(100px, 1fr) 85px 85px; gap: 8px; align-items: center; }
 .story-learn { --learn-gutter: 16px; }
 .story-learn.learn-page { display: block; }
+
+.mobile-action-worktable { width: min(100%, 390px); min-height: 100dvh; margin-inline: auto; background: var(--page-bg); color: var(--ink); }
+.mobile-action-worktable .page { height: 100dvh; }
+.mobile-action-worktable .puzzle { overflow: visible; }
+.mobile-action-worktable .puzzle-actions > .puzzle-menu-wrap { display: none; }
+.story-puzzle-action-set { position: relative; display: flex; align-items: center; gap: 5px; }
+.story-solve-singles { min-height: 40px; gap: 6px; padding-inline: 10px; font-size: 12px; white-space: nowrap; }
+.story-action-rail {
+  position: absolute;
+  z-index: 5;
+  inset: calc(100% + 4px) 0 auto auto;
+  width: min(340px, calc(100vw - 32px));
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-raised, var(--surface));
+  box-shadow: var(--shadow);
+}
+.story-action-rail button {
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+.story-action-rail button:first-child { background: var(--selected-bg); color: var(--accent); }
+.story-action-rail button:hover { background: var(--surface-hover); }
+.story-anchored-menu {
+  position: absolute;
+  z-index: 5;
+  inset: calc(100% + 4px) 0 auto auto;
+  width: min(270px, calc(100vw - 32px));
+  display: grid;
+}
+.story-anchored-menu button, .story-action-sheet > button {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: start;
+}
+.story-anchored-menu button:hover, .story-action-sheet > button:hover { background: var(--surface-hover); }
+.story-anchored-menu .story-priority-action { margin-bottom: 4px; background: var(--selected-bg); color: var(--accent); }
+.story-action-sheet-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; align-items: end; background: #0007; }
+.story-action-sheet { width: min(100%, 480px); margin-inline: auto; display: grid; padding: 8px 10px 14px; border-radius: 18px 18px 0 0; background: var(--surface); box-shadow: 0 -16px 42px #0003; }
+.story-action-sheet header { min-height: 48px; display: flex; align-items: center; justify-content: space-between; padding-inline: 8px 2px; }
+.story-action-sheet header .icon-button { width: 44px; min-height: 44px; }
