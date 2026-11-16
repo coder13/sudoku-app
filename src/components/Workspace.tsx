@@ -3,7 +3,8 @@ import { ArrowDownToLine, Check, Layers2, Menu, Plus, Settings as SettingsIcon, 
 import { parsePuzzle } from '../sudoku/formats'
 import type { ErrorMode } from '../sudoku/game'
 import {
-  DEFAULT_ADVANCED_MODES, DEFAULT_ERROR_MODE, readPreferences, saveAdvancedModes, saveErrorMode,
+  DEFAULT_ADVANCED_MODES, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, readPanelHeight, readPreferences,
+  saveAdvancedModes, saveErrorMode, saveInputSize, savePanelHeight,
   type AdvancedModes,
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
@@ -22,10 +23,14 @@ export function Workspace() {
   const [multi, setMulti] = useState(false)
   const [advancedModes, setAdvancedModesState] = useState<AdvancedModes>(DEFAULT_ADVANCED_MODES)
   const [errorMode, setErrorModeState] = useState<ErrorMode>(DEFAULT_ERROR_MODE)
+  const [inputSize, setInputSizeState] = useState(DEFAULT_INPUT_SIZE)
+  const [panelHeight, setPanelHeight] = useState(280)
+  const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const worktableActions = useRef<WorktableActions | null>(null)
+  const resizeStartHeight = useRef(panelHeight)
   const game = games.find((item) => item.id === active)
   const close = () => setPanel(null)
 
@@ -34,11 +39,36 @@ export function Workspace() {
     const preferences = readPreferences()
     setAdvancedModesState(preferences.advancedModes)
     setErrorModeState(preferences.errorMode)
+    setInputSizeState(preferences.inputSize)
+    const savedPanelHeight = readPanelHeight()
+    if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
   }, [])
   useEffect(() => {
-    if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    if (!('serviceWorker' in navigator)) return
+    const { hostname } = window.location
+    const local = import.meta.env.DEV || hostname === 'localhost' || hostname.endsWith('.localhost') ||
+      hostname === '[::1]' || /^127(?:\.\d+){3}$/.test(hostname)
+    if (local) {
+      void navigator.serviceWorker.getRegistrations().then((registrations) =>
+        Promise.all(registrations.map((registration) => registration.unregister())))
+      if ('caches' in window) {
+        void caches.keys().then((keys) => Promise.all(keys
+          .filter((key) => key.startsWith('sudoku-app-shell-') || key.startsWith('gridroom-shell-'))
+          .map((key) => caches.delete(key))))
+      }
+      return
+    }
+    if (import.meta.env.PROD) {
+      let reloading = false
+      const update = () => {
+        if (reloading) return
+        reloading = true
+        window.location.reload()
+      }
+      navigator.serviceWorker.addEventListener('controllerchange', update)
       navigator.serviceWorker.register('/sw.js')
         .catch(() => { /* Local saves remain available when service workers are blocked. */ })
+      return () => navigator.serviceWorker.removeEventListener('controllerchange', update)
     }
   }, [])
   useEffect(() => {
@@ -97,6 +127,30 @@ export function Workspace() {
     saveErrorMode(next)
   }
 
+  function setInputSize(next: number) {
+    setInputSizeState(next)
+    saveInputSize(next)
+  }
+
+  function beginResize() {
+    setMenuOpen(false)
+    setPanel(null)
+    setResizeMode((current) => {
+      if (!current) resizeStartHeight.current = panelHeight
+      return true
+    })
+  }
+
+  function cancelResize() {
+    setPanelHeight(resizeStartHeight.current)
+    setResizeMode(false)
+  }
+
+  function finishResize() {
+    savePanelHeight(panelHeight)
+    setResizeMode(false)
+  }
+
   function checkPuzzle() {
     setMenuOpen(false)
     worktableActions.current?.check()
@@ -137,13 +191,14 @@ export function Workspace() {
         </div>
       </header>
 
-      <main className="page" aria-label="Sudoku workspace">
+      <main className={`page ${resizeMode ? 'resize-active' : ''}`} aria-label="Sudoku workspace">
         {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}
         {linkError && <p className="workspace-error" role="alert">{linkError}</p>}
         <div className="workspace">
           {game ? (
-            <Worktable key={`${game.id}-${game.source}`} game={game} modalOpen={panel !== null || menuOpen}
+            <Worktable key={`${game.id}-${game.source}`} game={game} modalOpen={panel !== null || menuOpen || resizeMode}
               advancedModes={advancedModes} errorMode={errorMode} multi={multi} actionsRef={worktableActions}
+              inputSize={inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight} beginResize={beginResize}
               onShare={() => setPanel('share')} onPublish={() => setPanel('publish')} />
           ) : (
             <section className="surface empty-board">
@@ -154,11 +209,20 @@ export function Workspace() {
         </div>
       </main>
 
+      {resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
+        <span><strong>Resize input panel</strong><small>Drag the handle to choose a height.</small></span>
+        <span className="resize-session-actions">
+          <button className="button secondary" onClick={cancelResize}>Cancel</button>
+          <button className="button primary" onClick={finishResize}>Save</button>
+        </span>
+      </div>}
+
       {panel === 'new' && <NewPuzzle close={close} />}
       {panel === 'import' && <ImportPuzzle close={close} onImport={(text, cancelled) => openPuzzle(parsePuzzle(text), cancelled)} />}
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
       {panel === 'settings' && <Settings close={close} advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
-        errorMode={errorMode} setErrorMode={setErrorMode} draft={game?.source === 'draft'} />}
+        errorMode={errorMode} setErrorMode={setErrorMode} inputSize={inputSize} setInputSize={setInputSize}
+        onResize={beginResize} draft={game?.source === 'draft'} />}
       {panel === 'manage' && game && <PuzzleOptions game={game} close={close}
         onSwitch={games.length > 1 ? () => setPanel('switch') : undefined} onShortcuts={() => setPanel('shortcuts')} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}

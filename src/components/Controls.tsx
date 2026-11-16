@@ -1,5 +1,6 @@
 import {
-  type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent,
+  type CSSProperties, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent,
+  type SetStateAction,
   useEffect, useRef, useState,
 } from 'react'
 import { Delete, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
@@ -17,6 +18,8 @@ type Props = {
   advancedModes: AdvancedModes
   colorMode: boolean
   toggleColorMode: () => void
+  eraseMode: boolean
+  toggleEraseMode: () => void
   selectedDigit: number | null
   hasCellSelection: boolean
   values: string
@@ -27,12 +30,15 @@ type Props = {
   canRedo: boolean
   disabled: boolean
   draft: boolean
+  inputSize: number
+  panelHeight: number
+  setPanelHeight: Dispatch<SetStateAction<number>>
+  beginResize: () => void
   feedback: Feedback | null
 }
 
 export function Controls(props: Props) {
   const [mobile, setMobile] = useState(false)
-  const [panelHeight, setPanelHeight] = useState(280)
   const [panelBounds, setPanelBounds] = useState({ min: 250, max: 420 })
   const drag = useRef<{ y: number; height: number } | null>(null)
   const choices = props.mode === 'color' ? COLORS.map((_, i) => i + 1) : DIGITS
@@ -43,14 +49,12 @@ export function Controls(props: Props) {
     const query = window.matchMedia('(max-width: 760px)')
     const update = () => {
       setMobile(query.matches)
-      const min = 250
+      const candidateControls = !props.draft && props.pencil && props.advancedModes.candidateLayout === 'center-corner' ? 44 : 0
+      const min = Math.max(210, props.inputSize + candidateControls + 42)
       const max = Math.min(430, Math.max(min, Math.round(window.innerHeight * .56)))
       setPanelBounds({ min, max })
       if (query.matches) {
-        let saved = 0
-        try { saved = Number(localStorage.getItem('sudoku-app:v1:input-panel-height')) }
-        catch { /* Use the viewport-based default when preferences cannot be read. */ }
-        setPanelHeight(Math.min(max, Math.max(min, Number.isFinite(saved) && saved > 0 ? saved : Math.round(window.innerHeight * .32))))
+        props.setPanelHeight((current) => Math.min(max, Math.max(min, current || Math.round(window.innerHeight * .32))))
       }
     }
     update()
@@ -60,21 +64,25 @@ export function Controls(props: Props) {
       query.removeEventListener('change', update)
       window.removeEventListener('resize', update)
     }
-  }, [])
+  }, [props.advancedModes.candidateLayout, props.draft, props.inputSize, props.pencil, props.setPanelHeight])
 
   useEffect(() => {
     if (!mobile) return
-    document.documentElement.style.setProperty('--mobile-controls-height', `${panelHeight}px`)
-    try { localStorage.setItem('sudoku-app:v1:input-panel-height', String(panelHeight)) }
-    catch { /* Resizing still works for this session. */ }
-  }, [mobile, panelHeight])
+    document.documentElement.style.setProperty('--mobile-controls-height', `${props.panelHeight}px`)
+  }, [mobile, props.panelHeight])
+
+  useEffect(() => {
+    const clamped = Math.min(panelBounds.max, Math.max(panelBounds.min, props.panelHeight))
+    if (clamped !== props.panelHeight) props.setPanelHeight(clamped)
+  }, [panelBounds, props.panelHeight, props.setPanelHeight])
 
   function resizePanel(next: number) {
-    setPanelHeight(Math.min(panelBounds.max, Math.max(panelBounds.min, Math.round(next))))
+    props.setPanelHeight(Math.min(panelBounds.max, Math.max(panelBounds.min, Math.round(next))))
   }
 
   function startResize(event: ReactPointerEvent<HTMLButtonElement>) {
-    drag.current = { y: event.clientY, height: panelHeight }
+    props.beginResize()
+    drag.current = { y: event.clientY, height: props.panelHeight }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
@@ -89,25 +97,29 @@ export function Controls(props: Props) {
   }
 
   function resizeWithKeyboard(event: ReactKeyboardEvent<HTMLButtonElement>) {
-    if (event.key === 'ArrowUp') resizePanel(panelHeight + 16)
-    else if (event.key === 'ArrowDown') resizePanel(panelHeight - 16)
+    if (event.key === 'ArrowUp') resizePanel(props.panelHeight + 16)
+    else if (event.key === 'ArrowDown') resizePanel(props.panelHeight - 16)
     else if (event.key === 'Home') resizePanel(panelBounds.min)
     else if (event.key === 'End') resizePanel(panelBounds.max)
     else return
+    props.beginResize()
     event.preventDefault()
   }
 
   return (
     <section className="surface controls" aria-label="Sudoku controls"
-      style={{ '--controls-height': `${panelHeight}px` } as CSSProperties}>
-      {mobile && (
-        <button className="resize-handle" aria-label="Resize input panel" role="separator" aria-orientation="horizontal"
-          aria-valuemin={panelBounds.min} aria-valuemax={panelBounds.max} aria-valuenow={panelHeight}
-          onPointerDown={startResize} onPointerMove={continueResize} onPointerUp={finishResize} onPointerCancel={finishResize}
-          onKeyDown={resizeWithKeyboard}><span /></button>
-      )}
+      style={{ '--controls-height': `${props.panelHeight}px`, '--input-size': `${props.inputSize}px` } as CSSProperties}>
+      <button className="resize-handle" aria-label="Resize input panel" role="separator" aria-orientation="horizontal"
+        aria-valuemin={panelBounds.min} aria-valuemax={panelBounds.max} aria-valuenow={props.panelHeight}
+        onPointerDown={startResize} onPointerMove={continueResize} onPointerUp={finishResize} onPointerCancel={finishResize}
+        onKeyDown={resizeWithKeyboard}><span /></button>
 
       <div className="controls-content">
+          <div className="side-actions left-actions" role="group" aria-label="History actions">
+            <button className="icon-button" onClick={props.undo} disabled={props.disabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
+            <button className="icon-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
+          </div>
+
           <div className="keypad-stack">
             {!props.draft && props.pencil && props.advancedModes.candidateLayout === 'center-corner' && (
               <div className="candidate-kind" role="group" aria-label="Candidate position">
@@ -130,7 +142,7 @@ export function Controls(props: Props) {
             </div>
           </div>
 
-          <div className="side-actions" role="group" aria-label="Input actions">
+          <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
               <button className="icon-button pencil-button" title="Pencil mode" aria-label="Pencil mode"
                 aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts="P" onClick={props.togglePencil} disabled={props.disabled}>
@@ -143,9 +155,8 @@ export function Controls(props: Props) {
                 <Palette size={18} />
               </button>
             )}
-            <button className="icon-button" onClick={props.undo} disabled={props.disabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
-            <button className="icon-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
-            <button className="icon-button" onClick={() => props.input(0)} disabled={props.disabled} aria-label="Erase" title="Erase"><Delete size={18} /></button>
+            <button className="icon-button erase-mode-button" onClick={props.toggleEraseMode} disabled={props.disabled}
+              aria-label="Erase mode" title="Erase mode" aria-pressed={props.eraseMode}><Delete size={18} /></button>
           </div>
       </div>
 

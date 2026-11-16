@@ -1,4 +1,6 @@
-import { type MouseEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useEffect, useMemo, useRef, useState,
+} from 'react'
 import { Check, PencilLine, Share2 } from 'lucide-react'
 import { runEngine, type Analysis } from '../sudoku/engine'
 import {
@@ -33,13 +35,20 @@ function rectangle(start: number, end: number) {
 
 export type WorktableActions = { check: () => void }
 
-export function Worktable({ game, modalOpen, advancedModes, errorMode, multi, actionsRef, onShare, onPublish }: {
+export function Worktable({
+  game, modalOpen, advancedModes, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
+  beginResize, onShare, onPublish,
+}: {
   game: Game
   modalOpen: boolean
   advancedModes: AdvancedModes
   errorMode: ErrorMode
   multi: boolean
   actionsRef: RefObject<WorktableActions | null>
+  inputSize: number
+  panelHeight: number
+  setPanelHeight: Dispatch<SetStateAction<number>>
+  beginResize: () => void
   onShare: () => void
   onPublish: () => void
 }) {
@@ -50,6 +59,7 @@ export function Worktable({ game, modalOpen, advancedModes, errorMode, multi, ac
   const [pencil, setPencil] = useState(false)
   const [candidateKind, setCandidateKind] = useState<'center' | 'corner'>('corner')
   const [colorMode, setColorMode] = useState(false)
+  const [eraseMode, setEraseMode] = useState(false)
   const [solution, setSolution] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [busy, setBusy] = useState(false)
@@ -101,6 +111,7 @@ export function Worktable({ game, modalOpen, advancedModes, errorMode, multi, ac
 
   function input(digit: number, inputMode = mode) {
     if (inputMode === 'color' && digit > COLORS.length) return
+    if (digit > 0) setEraseMode(false)
     if (!selected.length) {
       setSelectedDigit((current) => digit === 0 || current === digit ? null : digit)
       return
@@ -110,6 +121,11 @@ export function Worktable({ game, modalOpen, advancedModes, errorMode, multi, ac
 
   function clickCell(index: number, event: MouseEvent) {
     setActive(index)
+    if (eraseMode && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      edit((current) => enter(current, [index], 'value', 0))
+      setSelected([])
+      return
+    }
     if (!selected.length && selectedDigit !== null && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
       edit((current) => enter(current, [index], mode, selectedDigit))
       return
@@ -156,14 +172,17 @@ export function Worktable({ game, modalOpen, advancedModes, errorMode, multi, ac
         input(0)
       } else if (!draft && !shortcut && key === 'n') {
         event.preventDefault()
+        setEraseMode(false)
         setPencil(false)
         setColorMode(false)
       } else if (!draft && !shortcut && (key === 'c' || key === 'p')) {
         event.preventDefault()
+        setEraseMode(false)
         setColorMode(false)
         setPencil((current) => !current)
       } else if (!draft && !shortcut && key === 'b' && advancedModes.colorsEnabled) {
         event.preventDefault()
+        setEraseMode(false)
         setPencil(false)
         setSelectedDigit(null)
         setColorMode((current) => !current)
@@ -212,13 +231,17 @@ export function Worktable({ game, modalOpen, advancedModes, errorMode, multi, ac
           boardRef={boardRef} onCell={clickCell} />
         {draft && <div className="draft-tip"><PencilLine size={16} /> Enter the starting digits, then save your puzzle.</div>}
       </section>
-      <Controls mode={mode} pencil={pencil} togglePencil={() => { setColorMode(false); setPencil((current) => !current) }}
+      <Controls mode={mode} pencil={pencil} togglePencil={() => { setEraseMode(false); setColorMode(false); setPencil((current) => !current) }}
         candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
-        colorMode={colorMode} toggleColorMode={() => { setPencil(false); setSelectedDigit(null); setColorMode((current) => !current) }}
+        colorMode={colorMode} toggleColorMode={() => { setEraseMode(false); setPencil(false); setSelectedDigit(null); setColorMode((current) => !current) }}
+        eraseMode={eraseMode} toggleEraseMode={() => {
+          setColorMode(false); setPencil(false); setSelectedDigit(null); setSelected([]); setEraseMode((current) => !current)
+        }}
         selectedDigit={selectedDigit} hasCellSelection={selected.length > 0}
         values={values} input={input}
         undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
-        disabled={disabled} draft={draft} feedback={feedback} />
+        disabled={disabled} draft={draft} inputSize={inputSize} panelHeight={panelHeight}
+        setPanelHeight={setPanelHeight} beginResize={beginResize} feedback={feedback} />
     </>
   )
 }

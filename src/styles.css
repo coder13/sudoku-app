@@ -223,11 +223,28 @@ svg { flex-shrink: 0; }
 .draft-tip { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(calc(100% - 20px), 509px); margin: 18px auto 0; translate: 10px 0; color: var(--muted); font-size: 13px; }
 
 .controls { grid-area: controls; container-type: inline-size; position: relative; display: grid; place-items: center; padding: 16px; min-width: 0; }
-.controls-content { width: 100%; display: grid; grid-template-columns: auto 44px; align-items: center; justify-content: center; gap: 10px; }
-.keypad-stack { width: 210px; display: grid; gap: 6px; }
+.controls-content { width: 100%; display: grid; grid-template-columns: 44px auto 44px; align-items: center; justify-content: center; gap: 10px; }
+.keypad-stack { width: min(var(--input-size, 210px), calc(100cqw - 128px)); display: grid; gap: 6px; }
 .side-actions { display: grid; gap: 6px; align-content: center; }
 .side-actions .icon-button { width: 44px; min-height: 44px; }
-.resize-handle { display: none; }
+.resize-handle {
+  position: absolute;
+  z-index: 24;
+  top: 0;
+  left: 50%;
+  width: 72px;
+  height: 25px;
+  display: none;
+  place-items: center;
+  translate: -50% 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.resize-handle span { width: 38px; height: 4px; border-radius: 4px; background: #c9bfd5; }
+.resize-handle:hover span, .resize-handle:focus-visible span { background: #816fa0; }
 .candidate-kind {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -254,7 +271,7 @@ svg { flex-shrink: 0; }
 }
 .candidate-kind button[aria-pressed="true"] { background: #fff; border-color: #e6dfee; box-shadow: 0 1px 2px #3d20500d; color: var(--dark-purple); }
 .candidate-kind button:disabled, .key:disabled { opacity: .55; }
-.keypad { width: min(100%, 210px); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.keypad { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .keypad:not(.palette) { aspect-ratio: 1; grid-template-rows: repeat(3, minmax(0, 1fr)); }
 .key {
   display: grid;
@@ -264,7 +281,7 @@ svg { flex-shrink: 0; }
   background: #faf9fd;
   border: 1px solid #eae4f2;
   border-radius: 10px;
-  font-size: 24px;
+  font-size: clamp(20px, calc(var(--input-size, 210px) * .114), 28px);
   font-variant-numeric: tabular-nums;
   font-weight: 760;
   color: #433061;
@@ -344,11 +361,62 @@ svg { flex-shrink: 0; }
 .settings-placeholder strong, .settings-placeholder small { display: block; }
 .settings-placeholder strong { color: #493e5e; font-size: 14px; }
 .settings-placeholder small { margin-top: 3px; line-height: 1.45; }
+.input-size-setting { display: grid; gap: 12px; padding: 13px; border: 1px solid var(--border); border-radius: 12px; background: #fbfaff; }
+.setting-row-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.setting-row-heading strong, .setting-row-heading small { display: block; }
+.setting-row-heading strong { font-size: 14px; }
+.setting-row-heading small { margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.size-stepper { display: flex; gap: 6px; flex: none; }
+.size-stepper .icon-button { width: 40px; min-height: 40px; }
+.settings-keypad-preview { width: min(100%, var(--preview-input-size, 210px)); margin-inline: auto; --input-size: var(--preview-input-size, 210px); pointer-events: none; }
+.resize-panels-option {
+  width: 100%;
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+}
+.resize-panels-option strong, .resize-panels-option small { display: block; }
+.resize-panels-option strong { font-size: 14px; }
+.resize-panels-option small { margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .settings-select { display: grid; gap: 10px; padding: 13px; border: 1px solid var(--border); border-radius: 11px; background: #fbfaff; }
 .settings-select strong, .settings-select small { display: block; }
 .settings-select strong { font-size: 14px; }
 .settings-select small { margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .settings-mobile { display: none; }
+.resize-session-bar {
+  position: fixed;
+  z-index: 45;
+  top: 82px;
+  left: 50%;
+  translate: -50% 0;
+  width: min(calc(100vw - 28px), 500px);
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 10px 11px 10px 15px;
+  border: 1px solid #d8cbed;
+  border-radius: 14px;
+  background: #fffffff5;
+  box-shadow: 0 13px 35px #2d1d4930;
+  backdrop-filter: blur(10px);
+}
+.resize-session-bar strong, .resize-session-bar small { display: block; }
+.resize-session-bar strong { font-size: 14px; }
+.resize-session-bar small { margin-top: 2px; color: var(--muted); font-size: 12px; }
+.resize-session-actions { display: flex; gap: 7px; }
+.resize-active .puzzle, .resize-active .controls-content { pointer-events: none; }
+.resize-active .controls { height: var(--controls-height, 280px); padding-top: 26px; }
+.resize-active .resize-handle { display: grid; }
+.resize-active .resize-handle span { background: var(--purple); }
 .game-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; max-height: 310px; overflow-y: auto; }
 .game-row {
   display: flex;
@@ -440,7 +508,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .key.tone-key:not(:disabled):hover { background: var(--tone); border-color: #644d78; }
   .soft:not(:disabled):hover, .game-row:hover { background: #eae0f8; }
   .app-menu button:hover { background: #f0eafa; }
-  .settings-tabs button:hover, .settings-mobile-menu button:hover, .settings-back:hover { background: #f0eafa; }
+  .settings-tabs button:hover, .settings-mobile-menu button:hover, .settings-back:hover, .resize-panels-option:hover { background: #f0eafa; }
   .cell:not(:disabled):not(.selected):not(.conflict):hover { box-shadow: inset 0 0 0 2px #c6b1e4; }
 }
 
@@ -473,32 +541,15 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .board-frame { width: min(calc(100vw - 48px), max(130px, calc(100dvh - var(--mobile-controls-height, 280px) - 220px))); }
   .draft-tip { margin-top: 4px; font-size: 11px; }
   .controls { height: var(--controls-height, 280px); padding: 26px 10px 8px; }
-  .controls-content { height: 100%; grid-template-columns: auto 42px; gap: 9px; }
-  .keypad-stack { width: clamp(126px, min(54vw, calc(var(--mobile-controls-height, 280px) - 80px)), 210px); }
+  .controls-content { height: 100%; grid-template-columns: 42px auto 42px; gap: 9px; }
+  .keypad-stack { width: min(var(--input-size, 210px), calc(100cqw - 102px)); }
   .candidate-kind button { min-height: 38px; }
   .keypad { gap: 5px; }
   .key { min-height: 44px; font-size: 21px; }
   .side-actions { gap: 4px; }
   .side-actions .icon-button { width: 42px; min-height: 42px; }
   .mobile-menu-only { display: flex !important; }
-  .resize-handle {
-    position: absolute;
-    z-index: 24;
-    top: 0;
-    left: 50%;
-    width: 72px;
-    height: 25px;
-    display: grid;
-    place-items: center;
-    translate: -50% 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    cursor: ns-resize;
-    touch-action: none;
-  }
-  .resize-handle span { width: 38px; height: 4px; border-radius: 4px; background: #c9bfd5; }
-  .resize-handle:hover span, .resize-handle:focus-visible span { background: #816fa0; }
+  .resize-handle { display: grid; }
   .dialog.settings-dialog {
     width: 100vw;
     max-width: none;
@@ -535,6 +586,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .settings-back { width: max-content; min-height: 38px; display: flex; align-items: center; gap: 5px; margin: -7px 0 0 -7px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--dark-purple); font-size: 14px; font-weight: 730; }
   .mobile-section-label { display: none; }
   .settings-mobile-section .settings-section h3 { font-size: 22px; }
+  .settings-keypad-preview { width: min(100%, var(--preview-input-size, 210px)); }
+  .resize-session-bar { top: 70px; min-height: 58px; padding: 8px 9px 8px 12px; }
+  .resize-session-bar small { display: none; }
+  .resize-session-actions .button { min-height: 40px; padding-inline: 11px; }
 }
 
 @media (max-width: 355px) {
