@@ -25,12 +25,99 @@ export type GenerationRequest =
   | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget }
   | ({ type: 'generate-constrained'; templates?: readonly string[] } & MatchingOptions)
   | ({ type: 'generate-from-pool' } & MatchingOptions)
+  | VariantGenerationRequest
 
 type GenerationCommand =
   | { type: 'generation-start'; job: number; request: GenerationRequest }
   | { type: 'generation-advance' | 'generation-cancel'; job: number }
 
+type MarkedPairs = { pairs?: readonly (readonly [number, number])[]; negative?: boolean }
+type ClueDirection = 'north' | 'east' | 'south' | 'west'
+type DiagonalDirection = 'north-east' | 'south-east' | 'south-west' | 'north-west'
+
+export type VariantRule =
+  | { type: 'diagonal'; diagonal: 'main' | 'anti' }
+  | { type: 'extra-house'; cells: readonly number[] }
+  | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number }[]; coverGrid?: boolean }
+  | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
+  | { type: 'clone'; groups: readonly (readonly number[])[] }
+  | { type: 'anti-knight' | 'anti-king' | 'non-consecutive' }
+  | { type: 'inequality'; less: number; greater: number }
+  | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
+  | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
+  | { type: 'thermometer' | 'palindrome' | 'renban' | 'between'; cells: readonly number[] }
+  | { type: 'whispers'; cells: readonly number[]; minDifference: number }
+  | { type: 'arrow'; circle: number; cells: readonly number[] }
+  | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean }
+  | { type: 'sandwich' | 'x-sum'; direction: ClueDirection; cells: readonly number[]; sum: number }
+  | { type: 'little-killer'; direction: DiagonalDirection; cells: readonly number[]; sum: number }
+  | { type: 'skyscrapers'; direction: ClueDirection; cells: readonly number[]; count: number }
+
+export type VariantPuzzle = {
+  version: 1
+  givens: string
+  regions?: { type: 'boxes' } | { type: 'jigsaw'; regions: readonly (readonly number[])[] }
+  rules?: readonly VariantRule[]
+}
+
+export type VariantClueLayout =
+  | { type: 'killer-cages'; cages: readonly (readonly number[])[]; coverGrid?: boolean }
+  | { type: 'killer-cage-sizes'; sizes: readonly number[]; coverGrid?: boolean }
+  | { type: 'parity'; cells: readonly number[] }
+  | { type: 'inequality'; cells: readonly [number, number] }
+  | { type: 'markers'; family: 'kropki' | 'xv'; negative?: readonly [boolean, boolean]; count?: number }
+  | { type: 'outside'; clue: 'sandwich' | 'x-sum' | 'skyscrapers'; direction: ClueDirection; cells: readonly number[] }
+  | { type: 'outside'; clue: 'little-killer'; direction: DiagonalDirection; cells: readonly number[] }
+
+export type VariantGenerationRequest = {
+  type: 'generate-variant'
+  seed: number
+  maxAttempts: number
+  maxNodes?: number
+  template: VariantPuzzle
+  derivedClues?: readonly VariantClueLayout[]
+  givens: number | readonly [number, number]
+  variantClues?: number | readonly [number, number]
+  requiredRule?: string
+  technique?: TechniqueTarget
+  techniqueOrder?: readonly string[]
+  exclude?: readonly VariantPuzzle[]
+} & RatingTarget
+
+export type VariantPosition = {
+  puzzle: VariantPuzzle
+  entries?: string
+  eliminations?: readonly number[]
+}
+
+export type VariantVisibility = {
+  cells: readonly number[]
+  rules: readonly number[]
+  completeKropki?: boolean
+  completeXv?: boolean
+  knownRemovals?: readonly number[]
+}
+
+type VariantRequest = {
+  type: 'variant'
+  position: VariantPosition
+} & (
+  | { operation: 'candidates' }
+  | { operation: 'analyze'; maxNodes?: number }
+  | { operation: 'solve'; maxNodes?: number; seed?: number }
+  | ({ visibility?: VariantVisibility } & (
+    | { operation?: 'normalize' }
+    | { operation: 'hints'; techniqueOrder?: readonly string[]; limit?: number }
+    | { operation: 'rate'; techniqueOrder?: readonly string[] }
+    | { operation: 'trace'; techniqueOrder?: readonly string[] }
+    | { operation: 'replay-step'; techniqueOrder?: readonly string[]; stepIndex: number }
+    | { operation: 'practice-position'; techniqueOrder?: readonly string[]; technique: string }
+    | { operation: 'check-practice-move'; technique: string; action: DeductionAction }
+  ))
+)
+
 export type EngineRequest =
+  | VariantRequest
   | { type: 'analyze'; values: string }
   | { type: 'notes'; values: string }
   | { type: 'solve'; values: string }
@@ -45,9 +132,10 @@ export type EngineRequest =
   | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
   | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
   | { type: 'opening-techniques'; values: string }
-  | { type: 'techniques' }
+  | { type: 'techniques'; variant?: boolean }
   | { type: 'lesson-examples' }
-  | { type: 'practice-examples'; technique: string }
+  | { type: 'practice-examples'; technique: string; variant?: false }
+  | { type: 'practice-examples'; technique: string; variant: true }
   | GenerationRequest
   | GenerationCommand
 
@@ -58,6 +146,15 @@ export type PuzzleRating = {
   scoringVersion: number
 }
 export type GeneratedPuzzle = { board: string; rating: PuzzleRating }
+export type GeneratedVariant = {
+  seed: number
+  puzzle: VariantPuzzle
+  solution: string
+  givens: number
+  variantClues: number
+  rating: VariantRating
+}
+type Generated = string | GeneratedPuzzle | GeneratedVariant
 type GenerationProgress<T> =
   | { status: 'pending'; attempts: number }
   | { status: 'matched'; attempts: number; puzzle: T }
@@ -182,7 +279,58 @@ export type TechniqueCatalog = {
   techniques: { id: string; aliases: string[]; cost: number; difficulty: Difficulty; requiresUniqueSolution: boolean }[]
 }
 
+type VariantResult<T extends VariantRequest> =
+  T extends { operation: 'analyze' } ? Analysis :
+  T extends { operation: 'solve' } ? string :
+  T extends { operation: 'candidates' } ? number[] :
+  T extends { operation: 'hints' } ? VariantDeduction[] :
+  T extends { operation: 'rate' } ? VariantRating :
+  T extends { operation: 'trace' } ? VariantTrace :
+  T extends { operation: 'replay-step' } ? VariantReplay | null :
+  T extends { operation: 'practice-position' } ? Required<VariantPosition> | null :
+  T extends { operation: 'check-practice-move' } ? VariantDeduction | null :
+  Required<VariantPosition>
+
+type VariantHouse = { row: number } | { column: number } | { region: number }
+  | { diagonal: 'main' | 'anti' } | { extra: number }
+export type VariantDeduction = {
+  technique: string
+  actions: DeductionAction[]
+  evidence:
+    | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
+    | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
+    | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
+    | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }
+    | { type: 'classic'; proof: Evidence; swapCells: number[] }
+}
+export type VariantRating = Pick<PuzzleRating, 'status' | 'techniqueOrder' | 'scoringVersion'> & {
+  regions: NonNullable<VariantPuzzle['regions']>
+  rules: VariantRule[]
+  points: number
+  counts: Record<string, number>
+  hardest: string | null
+}
+export type VariantTrace = {
+  start: Required<VariantPosition>
+  end: Required<VariantPosition>
+  rating: VariantRating
+  steps: VariantDeduction[]
+}
+export type VariantReplay = {
+  before: Required<VariantPosition>
+  after: Required<VariantPosition>
+  deduction: VariantDeduction
+}
+export type VariantPracticeExercise = {
+  position: Required<VariantPosition>
+  candidates: number[]
+  answers: DeductionAction[]
+  suggestion: DeductionAction
+  deduction: VariantDeduction
+}
+
 export type EngineResult<T extends EngineRequest> =
+  T extends VariantRequest ? VariantResult<T> :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
   T extends { type: 'solve' } ? string | null :
@@ -198,8 +346,10 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'opening-techniques' } ? string[] :
   T extends { type: 'techniques' } ? TechniqueCatalog :
   T extends { type: 'generate-from-pool' } ? GeneratedPuzzle :
-  T extends { type: GenerationCommand['type'] } ? GenerationProgress<string | GeneratedPuzzle> :
+  T extends { type: 'generate-variant' } ? GeneratedVariant :
+  T extends { type: GenerationCommand['type'] } ? GenerationProgress<Generated> :
   T extends { type: 'lesson-examples' } ? Record<string, LessonExample> :
+  T extends { type: 'practice-examples'; variant: true } ? VariantPracticeExercise[] :
   T extends { type: 'practice-examples' } ? PracticeExercise[] : string
 
 export type EnginePayload = { value: EngineResult<EngineRequest> } | { error: string; code?: string }
@@ -262,7 +412,7 @@ export async function runGeneration<T extends GenerationRequest>(
 ): Promise<GenerationOutcome<EngineResult<T>>> {
   if (signal?.aborted) return { status: 'cancelled', attempts: 0 }
   const job = ++generationId
-  let current: GenerationProgress<string | GeneratedPuzzle>
+  let current: GenerationProgress<Generated>
   try {
     current = await runEngine({ type: 'generation-start', job, request })
   } catch (error) {

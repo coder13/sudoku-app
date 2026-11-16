@@ -2,7 +2,7 @@
 name = "sudoku-app-engine"
 version = "0.1.0"
 edition = "2024"
-description = "Validate, solve, rate, teach, and generate classic Sudoku puzzles"
+description = "Validate, solve, rate, teach, and generate classic and variant Sudoku puzzles"
 readme = "README.md"
 
 [lib]
@@ -22,6 +22,11 @@ harness = false
 
 [[bench]]
 name = "coverage"
+harness = false
+required-features = ["wasm-api"]
+
+[[bench]]
+name = "variants"
 harness = false
 required-features = ["wasm-api"]
 

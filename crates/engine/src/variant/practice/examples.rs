@@ -1,0 +1,694 @@
+use super::{ExampleSeed, seed};
+use crate::{
+    ClueDirection, Diagonal, KillerCage, MarkedPairs, Parity as CellParity, PuzzleRule,
+    VariantTechnique,
+};
+
+fn cage(sum: u16, cells: &[usize]) -> KillerCage {
+    KillerCage {
+        cells: cells.to_vec(),
+        sum,
+    }
+}
+
+// Fixed outputs from seeded variant generation. Each suggested action
+// is verified against the current detector and the unique completion.
+pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
+    use VariantTechnique::*;
+    match technique {
+        Parity => [
+            seed(
+                "041000700000104200587062100078603000023057609900281004300700025792000000005029060",
+                80,
+                8,
+                [PuzzleRule::Parity {
+                    cells: vec![80],
+                    parity: CellParity::Odd,
+                }],
+            ),
+            seed(
+                "000370000002000005805400639000080026000000007010200080027008001406090003001000860",
+                16,
+                1,
+                [PuzzleRule::Parity {
+                    cells: vec![16],
+                    parity: CellParity::Even,
+                }],
+            ),
+            seed(
+                "890104072020800014000005900100050030080603149000000007210009700057280000340000000",
+                61,
+                5,
+                [PuzzleRule::Parity {
+                    cells: vec![61],
+                    parity: CellParity::Even,
+                }],
+            ),
+        ],
+        AntiKing => [
+            seed(
+                "065000170908710063000269000609502310530001700007040090000300040400186937700050020",
+                3,
+                8,
+                [PuzzleRule::AntiKing {}],
+            ),
+            seed(
+                "401600500800003700359020080210890030043267005580000200605970000700300000000040300",
+                12,
+                1,
+                [PuzzleRule::AntiKing {}],
+            ),
+            seed(
+                "050010900200007630790030000400500000680000750507360004000000510830001009105490002",
+                5,
+                6,
+                [PuzzleRule::AntiKing {}],
+            ),
+        ],
+        AntiKnight => [
+            seed(
+                "400501006638007120012036940020000674096470800700010000100064009060000018007103060",
+                13,
+                9,
+                [PuzzleRule::AntiKnight {}],
+            ),
+            seed(
+                "600104790400090050200070108100000406060000070700068310500080004906000500047020931",
+                10,
+                1,
+                [PuzzleRule::AntiKnight {}],
+            ),
+            seed(
+                "500080960000000005040530020270008090050006840801740000426000510398005000000400600",
+                13,
+                9,
+                [PuzzleRule::AntiKnight {}],
+            ),
+        ],
+        NonConsecutive => [
+            seed(
+                "038520000502000410940137050690002580004000037007000102719080000000701849480200300",
+                12,
+                6,
+                [PuzzleRule::NonConsecutive {}],
+            ),
+            seed(
+                "000000007794800010310000050030040002079280006800010070005360049947020300000974800",
+                0,
+                6,
+                [PuzzleRule::NonConsecutive {}],
+            ),
+            seed(
+                "080000009100685700072900006724106000050470630300000000800501400001004003047000100",
+                10,
+                9,
+                [PuzzleRule::NonConsecutive {}],
+            ),
+        ],
+        Clone => [
+            seed(
+                "802001005000002170500709300901020750000308916630000824140070680090810507008000030",
+                11,
+                3,
+                [PuzzleRule::Clone {
+                    groups: vec![vec![75, 11]],
+                }],
+            ),
+            seed(
+                "648297010000000427520000096006801900030000004014000700000500040280070059065009200",
+                21,
+                1,
+                [PuzzleRule::Clone {
+                    groups: vec![vec![1, 44, 21]],
+                }],
+            ),
+            seed(
+                "000080040500702398000043000903000000182006037070308020308021000056070000000000285",
+                6,
+                1,
+                [PuzzleRule::Clone {
+                    groups: vec![vec![67, 6, 20, 32]],
+                }],
+            ),
+        ],
+        Inequality => [
+            seed(
+                "000000100060400302027081900276003405095000820834502060003070200002136000709045600",
+                53,
+                1,
+                [PuzzleRule::Inequality {
+                    less: 44,
+                    greater: 53,
+                }],
+            ),
+            seed(
+                "000000080680002903250081040805300607000500001700008500006000059008165000021094308",
+                52,
+                9,
+                [PuzzleRule::Inequality {
+                    less: 52,
+                    greater: 61,
+                }],
+            ),
+            seed(
+                "030004001509802400700006052000000000300000100072495603057210000400000019900043005",
+                65,
+                8,
+                [PuzzleRule::Inequality {
+                    less: 65,
+                    greater: 66,
+                }],
+            ),
+        ],
+        Palindrome => [
+            seed(
+                "831900206690000870200068300003295100000084603020100009050001062000009400040003500",
+                60,
+                7,
+                [PuzzleRule::Palindrome {
+                    cells: vec![53, 52, 60],
+                }],
+            ),
+            seed(
+                "900000001060902840005400030031004090678000000500028370300000405002080903850009012",
+                57,
+                1,
+                [PuzzleRule::Palindrome {
+                    cells: vec![49, 48, 58, 57],
+                }],
+            ),
+            seed(
+                "001009023029000007836000100010006000000004060600108705000080006000013078583060204",
+                12,
+                3,
+                [PuzzleRule::Palindrome {
+                    cells: vec![12, 21, 31, 40, 50],
+                }],
+            ),
+        ],
+        Thermometer => [
+            seed(
+                "001502370060003900382690005090300082608900001005078069209460003400000010003700094",
+                23,
+                1,
+                [PuzzleRule::Thermometer {
+                    cells: vec![33, 32, 23],
+                }],
+            ),
+            seed(
+                "002000567048050000007010000801607350004108970600005002006090020300072000000501080",
+                28,
+                2,
+                [PuzzleRule::Thermometer {
+                    cells: vec![31, 30, 20, 28],
+                }],
+            ),
+            seed(
+                "500000910002104350914030000300786000006002500000040806000279100051460000070050000",
+                61,
+                3,
+                [
+                    PuzzleRule::Thermometer {
+                        cells: vec![78, 79, 69, 61, 70],
+                    },
+                    PuzzleRule::Parity {
+                        cells: vec![70],
+                        parity: CellParity::Odd,
+                    },
+                ],
+            ),
+        ],
+        LockedCandidates => [
+            seed(
+                "500960002010387006003012478000000627020000384000008500000890043209740005064200710",
+                9,
+                9,
+                [
+                    PuzzleRule::Diagonal {
+                        diagonal: Diagonal::Main,
+                    },
+                    PuzzleRule::Diagonal {
+                        diagonal: Diagonal::Anti,
+                    },
+                ],
+            ),
+            seed(
+                "000002501004605020725400006600000108951048000000006050017503900462000300500104000",
+                13,
+                1,
+                [
+                    PuzzleRule::Diagonal {
+                        diagonal: Diagonal::Main,
+                    },
+                    PuzzleRule::Diagonal {
+                        diagonal: Diagonal::Anti,
+                    },
+                ],
+            ),
+            seed(
+                "070200698406000000052000400080040700031002000004000000300467820020000145948000076",
+                12,
+                5,
+                [
+                    PuzzleRule::Diagonal {
+                        diagonal: Diagonal::Main,
+                    },
+                    PuzzleRule::Diagonal {
+                        diagonal: Diagonal::Anti,
+                    },
+                ],
+            ),
+        ],
+        Kropki => [
+            seed(
+                "000005706050000200000009835002910407048070003079063100007001028820000564360824070",
+                60,
+                9,
+                [PuzzleRule::Kropki {
+                    consecutive: MarkedPairs {
+                        pairs: vec![[60, 61]],
+                        negative: false,
+                    },
+                    ratio_two: MarkedPairs::default(),
+                }],
+            ),
+            seed(
+                "408100700000050008039000502003005001000000007800307604070509806000600329940032075",
+                9,
+                1,
+                [PuzzleRule::Kropki {
+                    consecutive: MarkedPairs::default(),
+                    ratio_two: MarkedPairs {
+                        pairs: vec![[0, 9]],
+                        negative: false,
+                    },
+                }],
+            ),
+            seed(
+                "200060000400017803009000000023098004700306580000000032950702001080041900100030070",
+                12,
+                5,
+                [PuzzleRule::Kropki {
+                    consecutive: MarkedPairs {
+                        pairs: vec![[21, 22]],
+                        negative: false,
+                    },
+                    ratio_two: MarkedPairs {
+                        pairs: vec![[21, 12]],
+                        negative: false,
+                    },
+                }],
+            ),
+        ],
+        Xv => [
+            seed(
+                "136000280824170600070008001040900872710400000000007410060800093008010524457200000",
+                63,
+                9,
+                [PuzzleRule::Xv {
+                    five: MarkedPairs {
+                        pairs: vec![[54, 63]],
+                        negative: false,
+                    },
+                    ten: MarkedPairs::default(),
+                }],
+            ),
+            seed(
+                "900005600480016395005070000000123809200004050093000420001702908026400000700030000",
+                18,
+                1,
+                [PuzzleRule::Xv {
+                    five: MarkedPairs::default(),
+                    ten: MarkedPairs {
+                        pairs: vec![[18, 9]],
+                        negative: false,
+                    },
+                }],
+            ),
+            seed(
+                "070600020000020409029005603040053100005017300000408507000000006000082750001006208",
+                2,
+                3,
+                [PuzzleRule::Xv {
+                    five: MarkedPairs {
+                        pairs: vec![[48, 57]],
+                        negative: false,
+                    },
+                    ten: MarkedPairs {
+                        pairs: vec![[3, 2]],
+                        negative: false,
+                    },
+                }],
+            ),
+        ],
+        Whispers => [
+            seed(
+                "000004180000000003340980072013070400082451097700063005800040729450090830100730000",
+                10,
+                2,
+                [PuzzleRule::Whispers {
+                    cells: vec![10, 20, 11],
+                    min_difference: 5,
+                }],
+            ),
+            seed(
+                "010005009709600100305092608000000500590080060002500004200010745050004300874050000",
+                4,
+                4,
+                [PuzzleRule::Whispers {
+                    cells: vec![25, 15, 14, 4],
+                    min_difference: 5,
+                }],
+            ),
+            seed(
+                "800000000000070006007005002070208061208004009030007040100000020723091080490082305",
+                2,
+                4,
+                [PuzzleRule::Whispers {
+                    cells: vec![21, 12, 3, 2, 1],
+                    min_difference: 4,
+                }],
+            ),
+        ],
+        CageCombinations => [
+            seed(
+                "000800106001070040000401870098000657140760390005080020060298704410000500027510060",
+                41,
+                2,
+                [PuzzleRule::KillerCages {
+                    cages: vec![cage(8, &[41, 50])],
+                    cover_grid: false,
+                }],
+            ),
+            seed(
+                "270005013516400008000900200800091604100703002000060070900026007600070820000000346",
+                45,
+                4,
+                [PuzzleRule::KillerCages {
+                    cages: vec![cage(12, &[27, 36, 45])],
+                    cover_grid: false,
+                }],
+            ),
+            seed(
+                "700000038306800057000017904080730400040061080005020000000500070028106000560000801",
+                58,
+                4,
+                [PuzzleRule::KillerCages {
+                    cages: vec![cage(25, &[66, 67, 58, 59])],
+                    cover_grid: false,
+                }],
+            ),
+        ],
+        Between => [
+            seed(
+                "700320006950061270060078150010640030003010040400000080004500710035006020097084360",
+                42,
+                9,
+                [PuzzleRule::Between {
+                    cells: vec![52, 42, 43],
+                }],
+            ),
+            seed(
+                "405000003036470802009800005340186000960000001050020476070060000600007208000043060",
+                29,
+                2,
+                [PuzzleRule::Between {
+                    cells: vec![46, 37, 29, 20],
+                }],
+            ),
+            seed(
+                "010030500000400070045820060000970000900203040268105000800512607026007000003080000",
+                29,
+                4,
+                [PuzzleRule::Between {
+                    cells: vec![46, 45, 37, 28, 29],
+                }],
+            ),
+        ],
+        Arrow => [
+            seed(
+                "000600410010300025008000306253846079400592600900030000000403760020960541800057000",
+                5,
+                5,
+                [PuzzleRule::Arrow {
+                    cells: vec![15, 7],
+                    circle: 5,
+                }],
+            ),
+            seed(
+                "000000007200000061010000200100600083408002070006740050672581009540070608083004700",
+                65,
+                9,
+                [PuzzleRule::Arrow {
+                    cells: vec![64, 56, 65],
+                    circle: 55,
+                }],
+            ),
+            seed(
+                "003601809080000001971028046000080070097210000008000000005000004000802300140563080",
+                33,
+                5,
+                [
+                    PuzzleRule::Arrow {
+                        cells: vec![40, 41, 33],
+                        circle: 50,
+                    },
+                    PuzzleRule::Parity {
+                        cells: vec![33],
+                        parity: CellParity::Odd,
+                    },
+                ],
+            ),
+        ],
+        Renban => [
+            seed(
+                "004027860000510070720040910583170609270009038906050100095000700000090406000000300",
+                23,
+                8,
+                [PuzzleRule::Renban {
+                    cells: vec![23, 22, 12],
+                }],
+            ),
+            seed(
+                "761090002025008000008100540000803004500020000010400200090081400052049008806205300",
+                56,
+                3,
+                [PuzzleRule::Renban {
+                    cells: vec![57, 56, 64, 72],
+                }],
+            ),
+            seed(
+                "000501020000002050020746100100093075050400000009005630680000001310000962090000300",
+                13,
+                3,
+                [
+                    PuzzleRule::Renban {
+                        cells: vec![23, 31, 21, 13, 3],
+                    },
+                    PuzzleRule::Parity {
+                        cells: vec![3],
+                        parity: CellParity::Odd,
+                    },
+                ],
+            ),
+        ],
+        LittleKiller => [
+            seed(
+                "900038002052000310038020950305286700700090000000740605003860009074900536069300000",
+                42,
+                1,
+                [PuzzleRule::LittleKiller {
+                    cells: vec![2, 12, 22, 32, 42, 52, 62],
+                    direction: ClueDirection::SouthEast,
+                    sum: 41,
+                }],
+            ),
+            seed(
+                "400600070027108900069700020006903002073020000100080703005869201008200507000000009",
+                43,
+                8,
+                [PuzzleRule::LittleKiller {
+                    cells: vec![75, 67, 59, 51, 43, 35],
+                    direction: ClueDirection::NorthEast,
+                    sum: 28,
+                }],
+            ),
+            seed(
+                "007010300008000009210400657001605903000000006506000070700000201003047065680000034",
+                14,
+                3,
+                [PuzzleRule::LittleKiller {
+                    cells: vec![4, 14, 24, 34, 44],
+                    direction: ClueDirection::SouthEast,
+                    sum: 23,
+                }],
+            ),
+        ],
+        RegionSum => [
+            seed(
+                "913070400002000071700040000605710234070006010100400760056807020890304050237600000",
+                60,
+                3,
+                [PuzzleRule::RegionSum {
+                    cells: vec![60, 69, 59],
+                    group_by_region: false,
+                }],
+            ),
+            seed(
+                "100600900003000006420305870072080000004001067901000348810000600000058094209000780",
+                8,
+                5,
+                [PuzzleRule::RegionSum {
+                    cells: vec![35, 26, 16, 8],
+                    group_by_region: false,
+                }],
+            ),
+            seed(
+                "430796050060003910805001007600204080000009000050000640080000003020948000570302000",
+                54,
+                1,
+                [PuzzleRule::RegionSum {
+                    cells: vec![54, 64, 56, 57, 66],
+                    group_by_region: false,
+                }],
+            ),
+        ],
+        CageHouseSum => [
+            seed(
+                "497800500008920406002007090060050007070006004004730019000600902026310080045209061",
+                27,
+                2,
+                [PuzzleRule::KillerCages {
+                    cages: vec![
+                        cage(12, &[36, 37, 38]),
+                        cage(16, &[39, 40, 41]),
+                        cage(13, &[42, 43]),
+                    ],
+                    cover_grid: false,
+                }],
+            ),
+            seed(
+                "709020500500000600060075038640010080000000100000030400097502010850000720214860095",
+                8,
+                4,
+                [PuzzleRule::KillerCages {
+                    cages: vec![cage(20, &[17, 26, 35, 44]), cage(24, &[53, 62, 71, 80])],
+                    cover_grid: false,
+                }],
+            ),
+            seed(
+                "006089502500000060201000070705200089020090000060870100050000016010537004807001000",
+                17,
+                3,
+                [PuzzleRule::KillerCages {
+                    cages: vec![
+                        cage(13, &[9, 10]),
+                        cage(14, &[11, 12, 13]),
+                        cage(17, &[14, 15, 16]),
+                        cage(9, &[17, 26]),
+                    ],
+                    cover_grid: false,
+                }],
+            ),
+        ],
+        Sandwich => [
+            seed(
+                "602000010008604000040031027190008342020140705054090000080719056001450080900002001",
+                1,
+                7,
+                [PuzzleRule::Sandwich {
+                    cells: vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
+                    direction: ClueDirection::East,
+                    sum: 20,
+                }],
+            ),
+            seed(
+                "009006248104980705000000019290600000500809032043000000000390050930000007408127000",
+                0,
+                7,
+                [PuzzleRule::Sandwich {
+                    cells: vec![72, 63, 54, 45, 36, 27, 18, 9, 0],
+                    direction: ClueDirection::North,
+                    sum: 28,
+                }],
+            ),
+            seed(
+                "250090670000002900903000001002431007170000300500007106010250080000608013000000402",
+                38,
+                4,
+                [PuzzleRule::Sandwich {
+                    cells: vec![44, 43, 42, 41, 40, 39, 38, 37, 36],
+                    direction: ClueDirection::West,
+                    sum: 31,
+                }],
+            ),
+        ],
+        XSum => [
+            seed(
+                "000300005074081000021500000000800564005026703067950000000704829003098601008165047",
+                0,
+                8,
+                [PuzzleRule::XSum {
+                    cells: vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
+                    direction: ClueDirection::East,
+                    sum: 32,
+                }],
+            ),
+            seed(
+                "085420030000057002207006548000200000700000000600105023526000309000093206000602401",
+                16,
+                6,
+                [PuzzleRule::XSum {
+                    cells: vec![79, 70, 61, 52, 43, 34, 25, 16, 7],
+                    direction: ClueDirection::North,
+                    sum: 28,
+                }],
+            ),
+            seed(
+                "400000590000079062009040000007008921003020054258401000000000040900254000300087005",
+                64,
+                8,
+                [PuzzleRule::XSum {
+                    cells: vec![71, 70, 69, 68, 67, 66, 65, 64, 63],
+                    direction: ClueDirection::West,
+                    sum: 36,
+                }],
+            ),
+        ],
+        Skyscrapers => [
+            seed(
+                "006009850018574200290080700600410080070900620900256040020395000009000070001002938",
+                72,
+                7,
+                [PuzzleRule::Skyscrapers {
+                    cells: vec![72, 73, 74, 75, 76, 77, 78, 79, 80],
+                    direction: ClueDirection::East,
+                    count: 4,
+                }],
+            ),
+            seed(
+                "760103000000000800840007630039000418580401002000000096600070100123609005000000263",
+                9,
+                2,
+                [PuzzleRule::Skyscrapers {
+                    cells: vec![72, 63, 54, 45, 36, 27, 18, 9, 0],
+                    direction: ClueDirection::North,
+                    count: 1,
+                }],
+            ),
+            seed(
+                "018904700049000085037000000063000070800702306000630094070000000026000159300160000",
+                24,
+                2,
+                [PuzzleRule::Skyscrapers {
+                    cells: vec![26, 25, 24, 23, 22, 21, 20, 19, 18],
+                    direction: ClueDirection::West,
+                    count: 3,
+                }],
+            ),
+        ],
+        FullHouse | NakedSingle | HiddenSingle | Classic(_) => {
+            unreachable!("these use the classic exercise library")
+        }
+    }
+}

@@ -21,6 +21,7 @@ use super::{
 
 #[cfg(feature = "cli")]
 pub(crate) mod batch;
+mod variant;
 
 #[derive(Deserialize)]
 #[serde(
@@ -29,6 +30,13 @@ pub(crate) mod batch;
     rename_all_fields = "camelCase"
 )]
 enum Request {
+    Variant {
+        #[serde(default)]
+        operation: variant::Operation,
+        position: Value,
+        #[serde(flatten)]
+        options: variant::Options,
+    },
     Rate {
         values: String,
         technique_order: Option<Vec<String>>,
@@ -97,10 +105,15 @@ enum Request {
     OpeningTechniques {
         values: String,
     },
-    Techniques,
+    Techniques {
+        #[serde(default)]
+        variant: bool,
+    },
     LessonExamples,
     PracticeExamples {
         technique: String,
+        #[serde(default)]
+        variant: bool,
     },
     GenerateTargeted {
         seed: u32,
@@ -114,6 +127,7 @@ enum Request {
         templates: Vec<String>,
     },
     GenerateFromPool(MatchingRequest),
+    GenerateVariant(Box<variant::GenerationRequest>),
     GenerationStart {
         job: u32,
         request: Box<Request>,
@@ -160,6 +174,15 @@ enum ClueCount {
     Range([usize; 2]),
 }
 
+impl ClueCount {
+    fn range(self) -> std::ops::RangeInclusive<usize> {
+        match self {
+            Self::Exact(count) => count..=count,
+            Self::Range([min, max]) => min..=max,
+        }
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum TechniqueRequest {
@@ -168,6 +191,15 @@ enum TechniqueRequest {
         id: String,
         mode: TechniqueTargetMode,
     },
+}
+
+impl TechniqueRequest {
+    fn parts(self) -> (String, TechniqueTargetMode) {
+        match self {
+            Self::Id(id) => (id, TechniqueTargetMode::Anywhere),
+            Self::WithMode { id, mode } => (id, mode),
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -443,29 +475,33 @@ fn generation_error(error: GenerationError) -> (&'static str, &'static str) {
     }
 }
 
+fn rating_target(
+    score: Option<[u32; 2]>,
+    difficulty: Option<Difficulty>,
+) -> ResultValue<Option<GenerationRating>> {
+    Ok(match (score, difficulty) {
+        (Some(_), Some(_)) => {
+            return Err((
+                "invalid-rating-target",
+                "Choose either a score range or a difficulty.",
+            ));
+        }
+        (Some([min, max]), None) => Some(GenerationRating::Score(min..=max)),
+        (None, Some(level)) => Some(GenerationRating::Difficulty(level)),
+        (None, None) => None,
+    })
+}
+
 impl MatchingRequest {
     fn start(
         self,
         templates: Option<Vec<String>>,
     ) -> ResultValue<(SolverProfile, ActiveGeneration)> {
-        let rating = match (self.score, self.difficulty) {
-            (Some(_), Some(_)) => {
-                return Err((
-                    "invalid-rating-target",
-                    "Choose either a score range or a difficulty.",
-                ));
-            }
-            (Some([min, max]), None) => Some(GenerationRating::Score(min..=max)),
-            (None, Some(level)) => Some(GenerationRating::Difficulty(level)),
-            (None, None) => None,
-        };
+        let rating = rating_target(self.score, self.difficulty)?;
         let (technique, mode) = match self.technique {
             None => (None, TechniqueTargetMode::Anywhere),
             Some(technique) => {
-                let (id, mode) = match technique {
-                    TechniqueRequest::Id(id) => (id, TechniqueTargetMode::Anywhere),
-                    TechniqueRequest::WithMode { id, mode } => (id, mode),
-                };
+                let (id, mode) = technique.parts();
                 (
                     Some(Technique::from_id(&id).ok_or(INVALID_TECHNIQUE)?),
                     mode,
@@ -474,10 +510,7 @@ impl MatchingRequest {
         };
         let profile = profile(self.technique_order)?;
         let criteria = GenerationCriteria {
-            clues: match self.clues {
-                ClueCount::Exact(count) => count..=count,
-                ClueCount::Range([min, max]) => min..=max,
-            },
+            clues: self.clues.range(),
             rating,
             technique,
             technique_order: profile.technique_order(),
@@ -506,6 +539,7 @@ impl MatchingRequest {
 enum GenerationOutput {
     Board(Board),
     Rated(GeneratedPuzzle),
+    Variant(Box<crate::GeneratedVariant>),
 }
 
 impl GenerationOutput {
@@ -515,6 +549,7 @@ impl GenerationOutput {
             Self::Rated(puzzle) => {
                 json!({ "board": grid_string(puzzle.board), "rating": puzzle.rating })
             }
+            Self::Variant(puzzle) => json!(puzzle),
         }
     }
 }
@@ -525,7 +560,13 @@ thread_local! {
     static GENERATION: RefCell<HashMap<u32, ActiveGeneration>> = RefCell::new(HashMap::new());
 }
 
-fn start_generation(request: Request) -> ResultValue<(SolverProfile, ActiveGeneration)> {
+#[cfg_attr(not(feature = "cli"), allow(dead_code))]
+enum GenerationProfile {
+    Classic(SolverProfile),
+    Variant(Vec<crate::VariantTechnique>),
+}
+
+fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveGeneration)> {
     match request {
         Request::GenerateTargeted {
             seed,
@@ -557,14 +598,19 @@ fn start_generation(request: Request) -> ResultValue<(SolverProfile, ActiveGener
                 }
             };
             Ok((
-                profile,
+                GenerationProfile::Classic(profile),
                 search
                     .map_err(generation_error)?
                     .map(GenerationOutput::Board),
             ))
         }
-        Request::GenerateConstrained { options, templates } => options.start(Some(templates)),
-        Request::GenerateFromPool(options) => options.start(None),
+        Request::GenerateConstrained { options, templates } => options
+            .start(Some(templates))
+            .map(|(profile, search)| (GenerationProfile::Classic(profile), search)),
+        Request::GenerateFromPool(options) => options
+            .start(None)
+            .map(|(profile, search)| (GenerationProfile::Classic(profile), search)),
+        Request::GenerateVariant(options) => options.start(),
         _ => Err(("invalid-request", "Choose a targeted generation request.")),
     }
 }
@@ -605,6 +651,11 @@ fn trace_value(trace: &super::LogicalSolve) -> Value {
 
 fn execute(request: Request) -> ResultValue<ResponseValue> {
     let result = match request {
+        Request::Variant {
+            operation,
+            position,
+            options,
+        } => variant::execute(operation, position, options),
         Request::Rate {
             values,
             technique_order,
@@ -803,7 +854,8 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             let techniques = opening_techniques(&board(&values)?).map_err(puzzle_error)?;
             Ok(json!(techniques))
         }
-        Request::Techniques => Ok(json!({
+        Request::Techniques { variant: true } => Ok(variant::catalog()),
+        Request::Techniques { variant: false } => Ok(json!({
             "defaultOrder": Technique::DEFAULT_ORDER,
             "scoringVersion": SCORING_VERSION,
             "techniques": Technique::ALL.into_iter().map(|technique| json!({
@@ -815,12 +867,18 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             })).collect::<Vec<_>>(),
         })),
         Request::LessonExamples => lesson_examples(),
-        Request::PracticeExamples { technique } => {
-            practice_examples(Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?)
-        }
+        Request::PracticeExamples {
+            technique,
+            variant: true,
+        } => variant::practice_examples(&technique),
+        Request::PracticeExamples {
+            technique,
+            variant: false,
+        } => practice_examples(Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?),
         request @ (Request::GenerateTargeted { .. }
         | Request::GenerateConstrained { .. }
-        | Request::GenerateFromPool(_)) => start_generation(request)?
+        | Request::GenerateFromPool(_)
+        | Request::GenerateVariant(_)) => start_generation(request)?
             .1
             .finish()
             .map(GenerationOutput::into_wire)

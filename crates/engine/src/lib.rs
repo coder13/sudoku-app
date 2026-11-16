@@ -11,6 +11,7 @@ mod practice;
 ))]
 mod protocol;
 mod technique;
+mod variant;
 
 pub use generation::{
     GeneratedPuzzle, GenerationConflict, GenerationConstraints, GenerationCriteria,
@@ -39,6 +40,16 @@ pub use practice::{PracticeExample, check_practice_move};
 #[cfg(feature = "cli")]
 pub use protocol::batch::{BatchCommand, run_batch};
 pub use technique::{ProfileError, SolverProfile, Technique};
+pub use variant::{
+    ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, GeneratedVariant,
+    KillerCage, MarkedPairs, MarkerFamily, OutsideClueKind, Parity, PuzzleRule, RegionLayout,
+    VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION, VariantClueLayout, VariantDeduction,
+    VariantDefinitionError, VariantEvidence, VariantGenerationError, VariantGenerationOptions,
+    VariantHouse, VariantHouseKind, VariantLogicalError, VariantPosition, VariantPositionError,
+    VariantPracticeError, VariantPracticeExercise, VariantPuzzle, VariantRating, VariantReplay,
+    VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError, canonical_variant,
+    start_variant_generation, variant_practice_examples,
+};
 
 const CELLS: usize = 81;
 const DIGITS: u16 = 0x1ff;
@@ -245,11 +256,15 @@ impl Random {
         Self(if seed == 0 { 0x9e3779b9 } else { seed })
     }
 
-    fn index(&mut self, bound: usize) -> usize {
+    fn next(&mut self) -> u32 {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 17;
         self.0 ^= self.0 << 5;
-        self.0 as usize % bound
+        self.0
+    }
+
+    fn index(&mut self, bound: usize) -> usize {
+        self.next() as usize % bound
     }
 
     fn shuffle<T>(&mut self, values: &mut [T]) {

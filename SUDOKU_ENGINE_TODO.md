@@ -124,22 +124,26 @@ Audit complete. The practice catalog has 177 grids across 59 techniques. The reg
 
 ## 9. Model puzzles as sets of rules
 
-Start with single 9×9 grids. A constraint is a rule that limits which digits can appear in specified cells. A house is a set of cells that contains each digit exactly once. Today the exact solver and proof model assume three houses per cell. [Exact solver](crates/engine/src/lib.rs) · [Proof model](crates/engine/src/hints.rs)
+Start with single 9×9 grids. A constraint is a rule that limits which digits can appear in specified cells. A house is a set of cells that contains each digit exactly once. The variant exact solver compiles each puzzle’s houses, peers, and constraints. The classic proof model uses standard rows, columns, and boxes. [Variant rule model](crates/engine/src/variant.rs) · [Exact variant search](crates/engine/src/variant/search.rs)
 
-- [ ] Define a versioned puzzle format for givens, regions, and constraints. Use stable rule IDs and typed parameters. Treat variant names as presets that combine these rules.
-- [ ] Keep the 81-character format for classic puzzles. Round-trip full variant puzzles and positions through Rust, Wasm, and batch commands. Reject unknown or unsupported rules explicitly.
-- [ ] Derive house membership, intersections, and pairs of cells that cannot share a digit from the rules. Allow both replacement regions and extra houses. Keep other relationships, such as sums or ratios, separate from houses.
-- [ ] Validate cell references, region coverage, path lengths, clue parameters, and allowed overlaps before search.
-- [ ] Make candidate calculation, conflict checking, exact solving, and solution counting use the same rules. Distinguish an invalid definition, a direct conflict, no solution, multiple solutions, and a search limit.
-- [ ] Keep puzzle rules separate from the techniques that explain deductions. Enforce all active rules even when the solver profile disables a technique.
+- [x] Define a versioned puzzle format for givens, regions, and constraints. Use stable rule IDs and typed parameters. Treat variant names as presets that combine these rules.
+- [x] Keep the 81-character format for classic puzzles. Round-trip full variant puzzles and positions through Rust, Wasm, and batch commands. Reject unknown or unsupported rules explicitly.
+- [x] Derive house membership, intersections, and pairs of cells that cannot share a digit from the rules. Allow both replacement regions and extra houses. Keep other relationships, such as sums or ratios, separate from houses.
+- [x] Validate cell references, region coverage, path lengths, clue parameters, and allowed overlaps before search.
+- [x] Make candidate calculation, conflict checking, exact solving, and solution counting use the same rules. Distinguish an invalid definition, a direct conflict, no solution, multiple solutions, and a search limit.
+- [x] Keep puzzle rules separate from the techniques that explain deductions. Enforce all active rules even when the solver profile disables a technique.
+
+The structured format uses version 1, stable rule IDs, and 81-cell grid strings. Definition validation covers region connectivity, cell indices, cage overlaps, line lengths, and outside clue direction. Native, Wasm, and batch requests use the same compiled rules for exact analysis. [Format and examples](crates/engine/README.md#rule-based-variant-puzzles)
 
 ## 10. Support X Sudoku, Jigsaw, and Killer
 
-- [ ] Add X Sudoku with both main diagonals as extra houses. Allow either diagonal on its own in mixed puzzles.
-- [ ] Add Jigsaw with nine connected regions of nine cells each. Make sure that each cell belongs to exactly one region. Use these regions in place of the standard boxes.
-- [ ] Add Killer cages with a target sum and no repeated digits. Validate feasible totals. Allow cells outside cages in mixed puzzles and enforce full coverage only when the preset requires it.
-- [ ] Explain Killer deductions from possible cage sums and the digits that can occupy each cage cell. Use the sum of a complete house to explain deductions in cages that cross its boundary.
-- [ ] Test all three variants through validation, candidates, exact solving, ranked hints, trace replay, ratings, practice, and generation. Include a mixed Jigsaw and Killer puzzle.
+- [x] Add X Sudoku with both main diagonals as extra houses. Allow either diagonal on its own in mixed puzzles.
+- [x] Add Jigsaw with nine connected regions of nine cells each. Make sure that each cell belongs to exactly one region. Use these regions in place of the standard boxes.
+- [x] Add Killer cages with a target sum and no repeated digits. Validate feasible totals. Allow cells outside cages in mixed puzzles and enforce full coverage only when the preset requires it.
+- [x] Explain Killer deductions from possible cage sums and the digits that can occupy each cage cell. Use the sum of a complete house to explain deductions in cages that cross its boundary.
+- [x] Test all three variants through validation, candidates, exact solving, ranked hints, trace replay, ratings, practice, and generation. Include a mixed Jigsaw and Killer puzzle.
+
+Exact regression tests cover both diagonal choices, candidates affected by replacement regions, and a mixed Jigsaw and Killer puzzle that becomes unique with the cage. The mixed trace stalls with only Naked Single and finishes when it can explain cage combinations. The 45 rule tests check the cells inside and outside a house. A generation regression runs the playing APIs on X Sudoku, Jigsaw, Killer, and mixed Jigsaw and Killer matches. [Variant contract tests](crates/engine/tests/variant_contract.rs) · [Logical proof tests](crates/engine/tests/variant_logic.rs) · [Generation tests](crates/engine/tests/variant_generation.rs)
 
 [World Sudoku Championship rules and examples](https://wspc2023.com/downloads/16thWorldSudokuChampionship-InstructionBooklet-v1.pdf) · [WPF Diagonal Irregular example](https://gp.worldpuzzle.org/sites/default/files/Puzzles/2023/2023_SudokuRound3_IB.pdf)
 
@@ -147,29 +151,61 @@ Start with single 9×9 grids. A constraint is a rule that limits which digits ca
 
 Build rule families that work on their own and in combinations. Store the rule and its parameters explicitly when a puzzle uses a variation.
 
-- [ ] Add extra houses for Windoku and Disjoint Groups. Add odd and even cell restrictions and groups of cells with matching digits for Clone Sudoku.
-- [ ] Add Anti-Knight, Anti-King, and orthogonal Non-Consecutive rules. Test their combination for Miracle Sudoku.
-- [ ] Add relationships between marked cells. Cover inequalities, consecutive and double-ratio Kropki dots, and XV sums of 5 and 10. An unmarked pair can exclude a relationship only when the puzzle declares that rule. Apply that setting separately for each marker type.
-- [ ] Add Thermo and Arrow. Digits strictly increase from the Thermo bulb to its tip. The digits on an Arrow path sum to the number in its circle.
-- [ ] Add Renban, Whispers, Palindrome, Between, and Region Sum lines. Store the ordered cells, the minimum difference for Whispers, and the regions that divide a Region Sum line.
-- [ ] Add outside clues for Sandwich, Little Killer, X-Sums, and Skyscrapers. Store each clue’s direction and ordered cells. Allow repeats on Little Killer paths where the other rules permit them.
-- [ ] Plan separate support for smaller and larger grids and for overlapping grids such as Samurai. For fog puzzles, track visible constraints separately. Use only visible information to explain player hints.
+- [x] Add extra houses for Windoku and Disjoint Groups. Add odd and even cell restrictions and groups of cells with matching digits for Clone Sudoku.
+- [x] Add Anti-Knight, Anti-King, and orthogonal Non-Consecutive rules. Test their combination for Miracle Sudoku.
+- [x] Add relationships between marked cells. Cover inequalities, consecutive and double-ratio Kropki dots, and XV sums of 5 and 10. An unmarked pair can exclude a relationship only when the puzzle declares that rule. Apply that setting separately for each marker type.
+- [x] Add Thermo and Arrow. Digits strictly increase from the Thermo bulb to its tip. The digits on an Arrow path sum to the number in its circle.
+- [x] Add Renban, Whispers, Palindrome, Between, and Region Sum lines. Store the ordered cells, the minimum difference for Whispers, and the regions that divide a Region Sum line.
+- [x] Add outside clues for Sandwich, Little Killer, X-Sums, and Skyscrapers. Store each clue’s direction and ordered cells. Allow repeats on Little Killer paths where the other rules permit them.
+- [x] Plan separate support for smaller and larger grids and for overlapping grids such as Samurai.
+- [x] For fog puzzles, track visible constraints separately. Use only visible information to explain player hints.
+
+The exact solver reproduces the published solution to Mitchell Lee’s two-given Miracle Sudoku. Contract tests compare directional outside clue candidates with an independent row permutation check. [Variant contract tests](crates/engine/tests/variant_contract.rs) · [Miracle solution](https://www.mathekalender.de/wp/wp-content/uploads/2021/07/MK-2020-Solutions-en.pdf)
+
+### Grid sizes, overlapping grids, and fog
+
+Keep version 1 for a single 9×9 grid. A future format can add a digit count and an explicit layout for each grid. For 4×4, 6×6, and 16×16, derive house length, symbols, and candidate masks from that count. Build and verify the sized single grid before adding composition.
+
+Give each playable coordinate one cell ID across overlapping grids. Build houses from each grid’s local layout and let shared cells belong to houses in both grids. Scope geometry rules and outside clues to the grid that defines them. Verify that conflicting givens in a shared cell fail validation. In Samurai, verify that each overlap can transfer candidates between its two grids.
+
+The engine takes visibility separately from the full puzzle. Visibility lists the revealed givens and rules and the candidate removals a player has established. Hints and replay use the resulting visible puzzle, including any checks that a uniqueness-based proof needs. Exact solution verification uses the full rules. The reveal policy can update visibility after each placement. [Fog projection](crates/engine/src/variant/visibility.rs)
 
 [World Sudoku Championship variants](https://wspc2023.com/downloads/16thWorldSudokuChampionship-InstructionBooklet-v1.pdf) · [Sudoku U constraint reference](https://www.sudoku-u.org/constraints) · [WPF X-Sums examples](https://gp.worldpuzzle.org/sites/default/files/Puzzles/2025/2025_SudokuRound4_IB.pdf)
 
 ## 12. Explain and rate variant deductions
 
-- [ ] Review which classic techniques still apply under each rule set. Enable a technique only when its proof assumptions hold. For deductions that rely on swapping digits in a unique puzzle, prove that the swap respects every active rule.
-- [ ] Add stable IDs and replayable evidence for variant techniques. Name the constraints, cells, and candidates that prove each move. Keep exact-search shortcuts out of logical traces and hint choices.
-- [ ] Use the same ranked hint and practice APIs for variants. Include several distinct practice positions for each new technique. Test that proofs still hold when rules overlap.
-- [ ] Record the rule set, solver order, and scoring version with each rating. Calibrate variant technique costs against sample puzzles. Mark ratings as partial when the selected logical techniques stall.
+- [x] Review which classic techniques still apply under each rule set. Enable a technique only when its proof assumptions hold. For deductions that rely on swapping digits in a unique puzzle, prove that the swap respects every active rule.
+- [x] Add stable IDs and replayable evidence for variant techniques. Name the constraints, cells, and candidates that prove each move. Keep exact-search shortcuts out of logical traces and hint choices.
+- [x] Use the same ranked hint and practice APIs for variants. Include several distinct practice positions for each new technique. Test that proofs still hold when rules overlap.
+- [x] Record the rule set, solver order, and scoring version with each rating. Calibrate variant technique costs against sample puzzles. Mark ratings as partial when the selected logical techniques stall.
+
+The variant catalog includes explanations for the line, outside clue, marker, parity, and chess rules. Each proof records the applicable rule indices, cells, and candidate masks. Hints, traces, replay, and practice checks all use that evidence. Regression tests cover every local rule and the order in which overlapping rules explain their deductions. [Variant logical engine](crates/engine/src/variant/logical.rs) · [Logical proof tests](crates/engine/tests/variant_logic.rs)
+
+Singles and Locked Candidates use all active houses. X-Wing, Swordfish, and Jellyfish use rows and columns, so they also work with replacement regions. The other classic detectors use standard boxes. A uniqueness proof requires bounded verification of a unique solution and a swap that changes no cell covered by an additional rule.
+
+The practice library adds 66 exercises, three per new technique. It also loads the classic exercises as structured positions. Each exercise has a unique solution and an independently checkable suggested action. Thermometer, Arrow, and Renban examples include another rule on the same path. [Practice library](crates/engine/src/variant/practice/examples.rs) · [Practice tests](crates/engine/tests/variant_practice.rs)
+
+Version 3 takes the median of three proof-effort estimates per new technique. The estimates use the cells and candidate choices to inspect and account for extra arithmetic steps. Each of the 66 sample traces starts with its target technique and reaches the verified solution. The scores range from 178 to 886 points, with a median of 271. [Scoring audit](crates/engine/tests/variant_scoring.rs)
 
 ## 13. Generate and verify variant puzzles
 
-- [ ] Generate from solved grids that satisfy the selected rules. Build variant clues from those solutions and verify uniqueness under the final rule set.
-- [ ] Target given counts and variant clue counts separately. Allow targets for cage sizes, score, difficulty, and opening techniques where the rules support them.
-- [ ] Offer a target that requires a selected rule family for uniqueness. Test it by removing that family and counting solutions again.
-- [ ] Make seeded generation repeatable, bounded, and cancellable. Record the seed and rule set with each result.
-- [ ] Deduplicate by transforming givens and constraints together. Use only transformations that preserve the active rules, including sums, ratios, and directions.
-- [ ] Test known solutions, direct conflicts, impossible puzzles, and multiple solutions for every rule family. Use an independent solver or small exhaustive fixtures to test deduction soundness.
-- [ ] Benchmark classic, single-rule, and mixed puzzles in native Rust and Wasm. Measure rating and hint latency, generation match rates, and Wasm size.
+- [x] Generate from solved grids that satisfy the selected rules. Build variant clues from those solutions and verify uniqueness under the final rule set.
+- [x] Target given counts and variant clue counts separately. Allow targets for cage sizes, score, difficulty, and opening techniques where the rules support them.
+- [x] Offer a target that requires a selected rule family for uniqueness. Test it by removing that family and counting solutions again.
+- [x] Make seeded generation repeatable, bounded, and cancellable. Record the seed and rule set with each result.
+- [x] Deduplicate by transforming givens and constraints together. Use only transformations that preserve the active rules, including sums, ratios, and directions.
+- [x] Test known solutions, direct conflicts, impossible puzzles, and multiple solutions for every rule family. Use an independent solver or small exhaustive fixtures to test deduction soundness.
+- [x] Benchmark classic, single-rule, and mixed puzzles in native Rust and Wasm. Measure rating and hint latency, generation match rates, and Wasm size.
+
+The variant generator samples complete grids, builds derived clues, and removes givens only when the final rules still prove uniqueness. The generation tests verify cage and Jigsaw requirements by counting solutions after removing the family. A zero-given Killer case has Cage Combinations as its only opening. Adding Parity introduces a competing opening and rejects the match. [Generator](crates/engine/src/variant/generation.rs) · [Generation tests](crates/engine/tests/variant_generation.rs)
+
+The outcome fixtures use two known completions and one incompatible complete grid for each rule family. The incompatible grid also provides an impossible position when only its digits appear as candidates. An independent row permutation check verifies directional clue support. [Outcome fixtures](crates/engine/tests/variant_outcomes.rs) · [Variant contract tests](crates/engine/tests/variant_contract.rs)
+
+The version 3 release benchmark measured 40 rating and hint calls on each fixed grid and generated with seeds 1–20. Each seed allowed six attempts and 20,000 nodes per exact check. The table gives median/p95 milliseconds on one arm64 Mac. Each row matched 20 of 20 seeds in both builds. The Wasm binary measured 2,234,600 bytes before compression and 556,192 bytes with gzip. [Native benchmark](crates/engine/benches/variants.rs) · [Wasm benchmark](scripts/bench-variants.mjs) · [Fixtures](crates/engine/benches/fixtures/variants.json)
+
+| Case | Generation givens | Native rating | Native hints | Native generation | Wasm rating | Wasm hints | Wasm generation |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Classic | 30 | 0.022/0.022 | 0.032/0.034 | 0.629/0.789 | 0.037/0.047 | 0.040/0.043 | 0.531/0.691 |
+| X Sudoku | 26 | 0.074/0.075 | 0.019/0.021 | 0.569/0.768 | 0.058/0.062 | 0.049/0.055 | 0.555/0.711 |
+| Killer | 15 | 0.235/0.236 | 0.037/0.037 | 1.999/2.300 | 0.241/0.281 | 0.109/0.128 | 2.370/2.726 |
+| Jigsaw and Killer | 15 | 0.137/0.138 | 0.025/0.026 | 1.620/1.721 | 0.210/0.229 | 0.112/0.166 | 2.226/2.379 |
