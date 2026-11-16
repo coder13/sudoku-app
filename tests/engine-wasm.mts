@@ -961,3 +961,279 @@ test('the worker protocol reaches the compiled browser engine', async () => {
   assert.equal(matched.replaceAll('0', '').length, 17)
   assert.equal((await run({ type: 'rate', values: matched })).score.points, 766)
 })
+
+test('variant requests round-trip the rules and solve under those rules', async () => {
+  const { raw, run } = engineRequests()
+  const solution = '658492731974316582132875694461523978387149256295768143849251367726934815513687429'
+  const givens = [...solution].map((digit, cell) => [1, 6, 10, 15].includes(cell) ? '.' : digit).join('')
+  const request = { type: 'variant', position: { puzzle: { version: 1, givens } } } as const
+  assert.equal(await run({ ...request, operation: 'analyze' }), 'multiple')
+
+  const entries = '0'.repeat(81)
+  const eliminations = Array<number>(81).fill(0)
+  eliminations[10] = 1 << 2
+  const position = {
+    puzzle: { version: 1, givens, rules: [
+      { type: 'diagonal', diagonal: 'main' },
+      { type: 'diagonal', diagonal: 'anti' },
+    ] },
+    entries,
+    eliminations,
+  } as const
+  const variant = { ...request, position }
+  const normalized = await run(variant)
+  assert.equal(normalized.entries, entries)
+  assert.deepEqual(normalized.eliminations, eliminations)
+  assert.equal(normalized.puzzle.givens, givens.replaceAll('.', '0'))
+  assert.deepEqual(normalized.puzzle.regions, { type: 'boxes' })
+  assert.deepEqual(normalized.puzzle.rules, position.puzzle.rules)
+  assert.deepEqual(await run({ ...variant, position: normalized }), normalized)
+  const masks = await run({ ...variant, operation: 'candidates' })
+  assert.equal(masks[10], 1 << (Number(solution[10]) - 1))
+  assert.equal(await run({ ...variant, operation: 'analyze' }), 'unique')
+  assert.equal(await run({ ...variant, operation: 'analyze', maxNodes: 0 }), 'search-limit')
+  assert.equal(await run({ ...variant, operation: 'solve' }), solution)
+
+  for (const [puzzle, code] of [
+    [{ version: 2, givens }, 'unsupported-variant-version'],
+    [{ version: 1, givens, rules: [{ type: 'thermo', cells: [0, 1] }] }, 'unsupported-rule'],
+    [{ version: 1, givens, rules: [{ type: 'killer-cages', cages: [{ cells: [0, 1], sum: 2 }] }] }, 'invalid-cage-sum'],
+  ] as const) {
+    const result = await raw({ ...request, position: { puzzle } } as unknown as EngineRequest)
+    assert.ok('error' in result)
+    assert.equal(result.code, code)
+  }
+})
+
+test('variant wire format preserves marker defaults, path order, and clue direction', async () => {
+  const { raw, run } = engineRequests()
+  const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const row = Array.from({ length: 9 }, (_, cell) => cell)
+  const position = {
+    puzzle: {
+      version: 1,
+      givens: `${solution.slice(0, 2)}0${solution.slice(3)}`,
+      rules: [
+        { type: 'arrow', circle: 4, cells: [1, 2] },
+        { type: 'kropki', consecutive: { pairs: [[1, 2]] } },
+        { type: 'parity', cells: [2], parity: 'even' },
+        { type: 'skyscrapers', cells: row, direction: 'east', count: 5 },
+        { type: 'little-killer', cells: [4, 14, 24, 34, 44], direction: 'south-east', sum: 20 },
+      ],
+    },
+  } as const
+  const request = { type: 'variant', position } as const
+  const normalized = await run(request)
+  assert.deepEqual(normalized.puzzle.rules?.[1], {
+    type: 'kropki',
+    consecutive: { pairs: [[1, 2]], negative: false },
+    ratioTwo: { pairs: [], negative: false },
+  })
+  assert.deepEqual(normalized.puzzle.rules?.[4], position.puzzle.rules[4])
+  assert.deepEqual(await run({ ...request, position: normalized }), normalized)
+  assert.equal((await run({ ...request, operation: 'candidates' }))[2], 1 << 3)
+  assert.equal(await run({ ...request, operation: 'solve' }), solution)
+
+  const result = await raw({
+    type: 'variant',
+    position: { puzzle: { ...position.puzzle, rules: [
+      { ...position.puzzle.rules[3], direction: 'west' },
+    ] } },
+  })
+  assert.ok('error' in result)
+  assert.equal(result.code, 'invalid-rule')
+})
+
+test('variant seeded solving reproduces completions that satisfy the selected rules', async () => {
+  const { run } = engineRequests()
+  const position = {
+    puzzle: {
+      version: 1,
+      givens: '2' + '0'.repeat(80),
+      rules: [
+        { type: 'diagonal', diagonal: 'main' },
+        { type: 'diagonal', diagonal: 'anti' },
+      ],
+    },
+  } as const
+  const request = { type: 'variant', position, operation: 'solve', maxNodes: 10_000 } as const
+  const first = await run({ ...request, seed: 41 })
+  assert.equal(await run({ ...request, seed: 41 }), first)
+  const second = await run({ ...request, seed: 42 })
+  assert.notEqual(first, second)
+  for (const entries of [first, second]) {
+    assert.equal(await run({ type: 'variant', operation: 'analyze', position: { ...position, entries } }), 'unique')
+    assert.equal(new Set(Array.from({ length: 9 }, (_, i) => entries[i * 10])).size, 9)
+    assert.equal(new Set(Array.from({ length: 9 }, (_, i) => entries[i * 8 + 8])).size, 9)
+  }
+})
+
+test('variant generation matches targeted givens, cage sizes, and the rated opening', async () => {
+  const { raw, run } = engineRequests()
+  const request = {
+    type: 'generate-variant',
+    seed: 41,
+    maxAttempts: 1,
+    template: { version: 1, givens: '0'.repeat(81) },
+    derivedClues: [{ type: 'killer-cage-sizes', sizes: Array<number>(27).fill(3), coverGrid: true }],
+    givens: 80,
+    variantClues: [27, 27],
+    score: [4, 4],
+    technique: { id: 'naked-single', mode: 'first' },
+    techniqueOrder: ['naked-single'],
+  } as const
+  const generated = await run(request)
+  assert.deepEqual(await run(request), generated)
+  assert.equal(generated.seed, 41)
+  assert.equal(generated.givens, 80)
+  assert.equal(generated.puzzle.givens.replaceAll('0', '').length, 80)
+  assert.equal(generated.variantClues, 27)
+  assert.equal(generated.rating.points, 4)
+  assert.deepEqual(generated.rating.techniqueOrder, request.techniqueOrder)
+  assert.deepEqual(generated.rating.rules, generated.puzzle.rules)
+  const cages = generated.puzzle.rules?.find(rule => rule.type === 'killer-cages')
+  assert.equal(cages?.cages.length, 27)
+  for (const { cells, sum } of cages?.cages ?? []) {
+    assert.equal(cells.length, 3)
+    assert.equal(cells.map(cell => Number(generated.solution[cell])).reduce((a, b) => a + b), sum)
+  }
+
+  const position = { puzzle: generated.puzzle }
+  assert.equal(await run({ type: 'variant', position, operation: 'analyze' }), 'unique')
+  const trace = await run({ type: 'variant', position, operation: 'trace', techniqueOrder: request.techniqueOrder })
+  assert.equal(trace.steps[0].technique, 'naked-single')
+  assert.deepEqual(trace.rating, generated.rating)
+
+  const excluded = await raw({ ...request, exclude: [generated.puzzle] })
+  assert.ok('code' in excluded)
+  assert.equal(excluded.code, 'search-limit')
+  assert.deepEqual(await run({ type: 'generation-start', job: 41, request: { ...request, maxAttempts: 3, maxNodes: 0 } }),
+    { status: 'pending', attempts: 0 })
+  assert.deepEqual(await run({ type: 'generation-advance', job: 41 }), { status: 'pending', attempts: 1 })
+  assert.deepEqual(await run({ type: 'generation-cancel', job: 41 }), { status: 'cancelled', attempts: 1 })
+  const closed = await raw({ type: 'generation-advance', job: 41 })
+  assert.ok('code' in closed)
+  assert.equal(closed.code, 'unknown-generation')
+})
+
+test('variant hints, ratings, replay, and practice use the same cage proofs', async () => {
+  const { raw, run } = engineRequests()
+  const position = {
+    puzzle: {
+      version: 1,
+      givens: '0'.repeat(81),
+      rules: [{
+        type: 'killer-cages',
+        cages: [
+          { cells: Array.from({ length: 8 }, (_, cell) => cell), sum: 43 },
+          { cells: [8, 17], sum: 10 },
+        ],
+        coverGrid: false,
+      }],
+    },
+  } as const
+  const techniqueOrder = ['cage-house-sum', 'naked-single']
+  const request = { type: 'variant', position, techniqueOrder } as const
+  const hints = await run({ ...request, operation: 'hints', limit: 2 })
+  assert.equal(hints.length, 2)
+  const trace = await run({ ...request, operation: 'trace' })
+  assert.deepEqual(trace.rating, await run({ ...request, operation: 'rate' }))
+  assert.equal(trace.rating.status, 'stalled')
+  assert.deepEqual(trace.rating.counts, { 'cage-house-sum': 4, 'naked-single': 2 })
+  assert.equal(trace.rating.points, 276)
+  assert.deepEqual(trace.rating.rules, position.puzzle.rules)
+  const step = await run({ ...request, operation: 'replay-step', stepIndex: 0 })
+  assert.ok(step)
+  assert.deepEqual(step.deduction, hints[0])
+  assert.equal(step.before.eliminations[8], 0)
+  assert.equal(step.after.eliminations[8], 0x1ff & ~(1 << 1))
+
+  const technique = 'naked-single'
+  const practice = await run({ ...request, operation: 'practice-position', technique })
+  assert.ok(practice)
+  const proof = await run({
+    type: 'variant',
+    operation: 'check-practice-move',
+    position: practice,
+    technique,
+    action: { place: { cell: 8, digit: 2 } },
+  })
+  assert.equal(proof?.technique, technique)
+  assert.equal((await run({ ...request, operation: 'rate', techniqueOrder: [] })).points, 0)
+  const invalid = await raw({ ...request, operation: 'rate', techniqueOrder: ['unsupported-technique'] })
+  assert.ok('error' in invalid)
+  assert.equal(invalid.code, 'invalid-technique')
+})
+
+test('fog hints and replay use only the revealed rules and player knowledge', async () => {
+  const { run } = engineRequests()
+  const givens = Array<string>(81).fill('0')
+  givens[12] = '6'
+  givens[40] = '2'
+  const entries = Array<string>(81).fill('0')
+  entries[40] = '8'
+  const eliminations = Array<number>(81).fill(0)
+  eliminations[10] = 1 << 7
+  const position = {
+    puzzle: {
+      version: 1,
+      givens: givens.join(''),
+      rules: [
+        { type: 'parity', cells: [10], parity: 'odd' },
+        { type: 'thermometer', cells: [12, 11, 10] },
+        { type: 'parity', cells: [50], parity: 'even' },
+      ],
+    },
+    entries: entries.join(''),
+    eliminations,
+  } as const
+  const visibility = { cells: [12], rules: [2, 1] }
+  const request = { type: 'variant', position } as const
+  assert.equal(await run({ ...request, operation: 'analyze' }), 'conflict')
+  const revealed = await run({ ...request, visibility })
+  assert.equal(revealed.puzzle.givens[40], '0')
+  assert.equal(revealed.entries[40], '8')
+  assert.equal(revealed.eliminations[10], 0)
+  assert.deepEqual(revealed.puzzle.rules, position.puzzle.rules.slice(1))
+  const hints = await run({ ...request, visibility, operation: 'hints', techniqueOrder: ['thermometer', 'parity'] })
+  assert.deepEqual(hints, await run({ ...request, operation: 'hints', position: revealed, techniqueOrder: ['thermometer', 'parity'] }))
+  assert.equal(hints.length, 2)
+  assert.deepEqual(hints[1].evidence, {
+    type: 'constraint', rules: [0], cells: [12, 11, 10], domains: [1 << 5, 0x1df, 0x1df],
+  })
+  const replay = await run({ ...request, visibility, operation: 'replay-step', stepIndex: 0, techniqueOrder: ['thermometer'] })
+  assert.deepEqual(replay?.before, revealed)
+  assert.deepEqual(replay?.deduction, hints[1])
+})
+
+test('the variant catalog exposes calibrated costs and practice proofs', async () => {
+  const { raw, run } = engineRequests()
+  const catalog = await run({ type: 'techniques', variant: true })
+  assert.equal(catalog.scoringVersion, 3)
+  assert.equal(catalog.techniques.length, 81)
+  assert.equal(new Set(catalog.techniques.map(technique => technique.id)).size, 81)
+  const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))
+  assert.equal(costs.get('parity'), 6)
+  assert.equal(costs.get('cage-house-sum'), 67)
+  assert.equal(costs.get('x-sum'), 80)
+
+  for (const technique of catalog.defaultOrder) {
+    const examples = await run({ type: 'practice-examples', variant: true, technique })
+    assert.equal(examples.length, 3, technique)
+    assert.equal(new Set(examples.map(example => example.position.puzzle.givens)).size, 3, technique)
+    for (const { position, candidates, answers, suggestion, deduction } of examples) {
+      assert.equal(candidates.length, 81)
+      const candidate = 'eliminate' in suggestion ? suggestion.eliminate : suggestion.place
+      assert.ok(candidates[candidate.cell] & (1 << (candidate.digit - 1)))
+      assert.ok(answers.some(answer => JSON.stringify(answer) === JSON.stringify(suggestion)))
+      assert.equal(deduction.technique, technique)
+      assert.deepEqual(await run({
+        type: 'variant', operation: 'check-practice-move', position, technique, action: suggestion,
+      }), deduction)
+    }
+  }
+
+  const malformed = await raw({ type: 'practice-examples', variant: true, technique: 'unknown-technique' })
+  assert.ok('code' in malformed)
+  assert.equal(malformed.code, 'invalid-technique')
+})

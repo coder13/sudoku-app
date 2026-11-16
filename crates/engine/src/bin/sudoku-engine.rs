@@ -1,4 +1,4 @@
-//! Batch rating and generation for classic Sudoku puzzles.
+//! Batch rating, generation, and exact variant analysis.
 
 use std::{
     env,
@@ -9,7 +9,7 @@ use std::{
 
 use sudoku_app_engine::{BatchCommand, run_batch};
 
-const USAGE: &str = "Usage: sudoku-engine <batch-rate|batch-generate> [input-file|-]";
+const USAGE: &str = "Usage: sudoku-engine <batch-rate|batch-generate|batch-variant> [input-file|-]";
 
 fn main() -> ExitCode {
     match run() {
@@ -30,6 +30,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     {
         Some("batch-rate") => BatchCommand::Rate,
         Some("batch-generate") => BatchCommand::Generate,
+        Some("batch-variant") => BatchCommand::Variant,
         Some("--help" | "-h") => {
             println!("{USAGE}");
             return Ok(());

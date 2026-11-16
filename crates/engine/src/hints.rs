@@ -671,7 +671,25 @@ impl Hint {
     }
 
     fn pattern_size(&self) -> usize {
-        match &self.evidence {
+        self.evidence.pattern_size()
+    }
+
+    fn rank_within_tier(&self) -> (usize, Technique, u32, HintAction) {
+        let first = self.actions[0];
+        (
+            self.pattern_size(),
+            // Different techniques record different house evidence. Compare counts
+            // within a technique so that a single-cell proof keeps its catalog rank.
+            self.technique,
+            ProofPattern::house_count(&self.evidence, first.candidate()),
+            first,
+        )
+    }
+}
+
+impl HintEvidence {
+    pub(crate) fn pattern_size(&self) -> usize {
+        match self {
             HintEvidence::Intersection { cells, .. } | HintEvidence::Subset { cells, .. } => {
                 cells.len()
             }
@@ -725,18 +743,6 @@ impl Hint {
             } => bases.len() + covers.len() + fins.len(),
             _ => 0,
         }
-    }
-
-    fn rank_within_tier(&self) -> (usize, Technique, u32, HintAction) {
-        let first = self.actions[0];
-        (
-            self.pattern_size(),
-            // Different techniques record different house evidence. Compare counts
-            // within a technique so that a single-cell proof keeps its catalog rank.
-            self.technique,
-            ProofPattern::house_count(&self.evidence, first.candidate()),
-            first,
-        )
     }
 }
 
@@ -1131,7 +1137,7 @@ fn bit_indices(mut mask: u16) -> impl Iterator<Item = usize> {
     })
 }
 
-fn digits(mask: u16) -> impl Iterator<Item = u8> {
+pub(crate) fn digits(mask: u16) -> impl Iterator<Item = u8> {
     bit_indices(mask).map(|index| index as u8 + 1)
 }
 

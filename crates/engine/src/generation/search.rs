@@ -39,7 +39,7 @@ pub struct GenerationSearch<'a, T> {
 }
 
 impl<'a, T> GenerationSearch<'a, T> {
-    pub(super) fn new(
+    pub(crate) fn new(
         random: Random,
         budget: u32,
         attempt: impl FnMut(&mut Random) -> Option<T> + 'a,

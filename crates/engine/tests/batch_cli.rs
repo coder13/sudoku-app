@@ -7,7 +7,8 @@ use std::{
 
 use serde_json::{Value, json};
 use sudoku_app_engine::{
-    Analysis, SCORING_VERSION, Technique, analyze, opening_techniques, parse_givens, rate_puzzle,
+    Analysis, SCORING_VERSION, Technique, VARIANT_SCORING_VERSION, VariantPuzzle, analyze,
+    opening_techniques, parse_givens, rate_puzzle,
 };
 
 const ONE_BLANK: &str =
@@ -180,4 +181,127 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
     let board = parse_givens(transformed).unwrap();
     assert_eq!(analyze(&board), Analysis::Unique);
     assert_eq!(opening_techniques(&board).unwrap(), [Technique::ForcingNet]);
+}
+
+#[test]
+fn batch_variant_positions_round_trip_and_keep_processing_after_invalid_rules() {
+    let solution =
+        "658492731974316582132875694461523978387149256295768143849251367726934815513687429";
+    let mut givens = solution.to_owned();
+    givens.replace_range(10..11, ".");
+    let position = json!({
+        "puzzle": {
+            "version": 1,
+            "givens": givens,
+            "rules": [{ "type": "diagonal", "diagonal": "main" }],
+        },
+    });
+    let rows = [
+        json!({ "position": position }),
+        json!({ "position": { "puzzle": { "version": 1, "givens": givens, "rules": [{ "type": "thermo", "cells": [0,1] }] } } }),
+        json!({ "position": position, "operation": "solve", "maxNodes": 10 }),
+        json!({ "position": position, "operation": "analyze", "maxNodes": 0 }),
+    ];
+    let input = rows.map(|row| row.to_string()).join("\n");
+    let output = run("batch-variant", input);
+    let serialized = &output[0]["result"]["value"];
+    assert_eq!(serialized["puzzle"]["givens"], givens.replace('.', "0"));
+    assert_eq!(serialized["puzzle"]["rules"], position["puzzle"]["rules"]);
+    assert_eq!(serialized["eliminations"].as_array().unwrap().len(), 81);
+    assert!(output[0]["techniqueOrder"].is_null());
+    assert_eq!(output[1]["result"]["code"], "unsupported-rule");
+    assert_eq!(output[2]["result"]["value"], solution);
+    assert_eq!(output[3]["result"]["value"], "search-limit");
+
+    let replay = run(
+        "batch-variant",
+        json!({ "position": serialized }).to_string(),
+    );
+    assert_eq!(&replay[0]["result"]["value"], serialized);
+}
+
+#[test]
+fn batch_variant_generation_records_seed_and_resolved_rules() {
+    let request = json!({
+        "type": "generate-variant",
+        "seed": 41,
+        "maxAttempts": 1,
+        "template": { "version": 1, "givens": "0".repeat(81) },
+        "derivedClues": [{ "type": "killer-cage-sizes", "sizes": vec![3; 27], "coverGrid": true }],
+        "givens": 80,
+        "variantClues": [27, 27],
+        "score": [4, 4],
+        "technique": { "id": "naked-single", "mode": "first" },
+        "techniqueOrder": ["naked-single"],
+    });
+    let mut exhausted = request.clone();
+    exhausted["maxNodes"] = json!(0);
+    let records = run(
+        "batch-generate",
+        format!("{request}\n{exhausted}\n{request}"),
+    );
+    assert_eq!(records.len(), 3);
+    for (record, line) in records.iter().zip(1..=3) {
+        assert_eq!(record["line"], line);
+        assert_eq!(record["seed"], 41);
+        assert_eq!(record["techniqueOrder"], json!(["naked-single"]));
+        assert_eq!(record["scoringVersion"], VARIANT_SCORING_VERSION);
+    }
+    let result = &records[0]["result"];
+    assert_eq!(result, &records[2]["result"]);
+    assert_eq!(result["status"], "matched");
+    assert_eq!(result["seed"], 41);
+    assert_eq!(result["variantClues"], 27);
+    assert_eq!(result["rating"]["points"], 4);
+    assert_eq!(result["rating"]["rules"], result["puzzle"]["rules"]);
+    let puzzle: VariantPuzzle = serde_json::from_value(result["puzzle"].clone()).unwrap();
+    let compiled = puzzle.compile().unwrap();
+    let expected = parse_givens(result["solution"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        compiled.analyze(&[0; 81], &[0; 81], 100),
+        Ok(Analysis::Unique)
+    );
+    assert_eq!(compiled.solve(&[0; 81], &[0; 81], 100), Ok(expected));
+    assert_eq!(
+        records[1]["result"],
+        json!({ "status": "exhausted", "attempts": 1 })
+    );
+}
+
+#[test]
+fn batch_variant_catalog_and_examples_use_the_variant_score_version() {
+    let catalog = json!({ "type": "techniques", "variant": true });
+    let exercises = json!({ "type": "practice-examples", "variant": true, "technique": "renban" });
+    let rows = run("batch-variant", format!("{catalog}\n{exercises}"));
+    for row in &rows {
+        assert_eq!(row["scoringVersion"], VARIANT_SCORING_VERSION);
+        assert_eq!(row["result"]["status"], "ok");
+    }
+    let catalog = &rows[0]["result"]["value"];
+    assert_eq!(catalog["scoringVersion"], VARIANT_SCORING_VERSION);
+    let examples = rows[1]["result"]["value"].as_array().unwrap();
+    assert_eq!(examples.len(), 3);
+    assert!(examples.iter().any(|exercise| {
+        exercise["position"]["puzzle"]["rules"]
+            .as_array()
+            .unwrap()
+            .len()
+            > 1
+    }));
+    let requests: Vec<_> = examples
+        .iter()
+        .map(|example| {
+            json!({
+                "operation": "check-practice-move",
+                "position": example["position"],
+                "technique": "renban",
+                "action": example["suggestion"],
+            })
+            .to_string()
+        })
+        .collect();
+    let checked = run("batch-variant", requests.join("\n"));
+    for (row, exercise) in checked.iter().zip(examples) {
+        assert_eq!(row["result"]["value"], exercise["deduction"]);
+    }
 }

@@ -1,6 +1,6 @@
 # Sudoku engine
 
-Validate classic 9 × 9 Sudoku puzzles, find and explain deductions, rate ordered solve paths, and generate puzzles that meet clue, score, or technique targets. The engine runs as a Rust library, as a WebAssembly module in the app's browser worker, and as a command-line tool for batch work.
+Validate classic and rule-based 9 × 9 Sudoku puzzles, find and explain deductions, and rate ordered solve paths. Generate puzzles that meet clue, score, or technique targets. The engine runs as a Rust library, as a WebAssembly module in the app's browser worker, and as a command-line tool for batch work.
 
 Run this command from the repository root to build and open the API reference.
 
@@ -207,6 +207,134 @@ Omit the input file or use `-` to read standard input. Each nonblank input line 
 
 Each record includes the one-based source line, seed, resolved technique order when available, scoring version, and result. A rating result includes its status and rating. A generation result includes its status and attempts, plus the puzzle and rating for a match. A match with no rating includes `ratingError`. Invalid records include an error code and leave later records usable. In native integrations with the `cli` feature, `run_batch` accepts any buffered reader and writer.
 
+## Rule-based variant puzzles
+
+A [`VariantPuzzle`] describes a single 9 × 9 grid in a versioned format. Rows and columns are always houses. [`RegionLayout`] selects standard boxes or nine connected Jigsaw regions. Rules can add either long diagonal, add any nine-cell house, or constrain disjoint Killer cages. Each cage requires distinct digits adding to its sum. The Killer preset requires full cage coverage. In a mixed puzzle, set `coverGrid` to false to allow uncaged cells. [World Puzzle Federation Killer rules](https://gp.worldpuzzle.org/sites/default/files/Puzzles/2017/2017_SudokuRound7_IB.pdf)
+
+Use [`VariantPuzzle::compile`] to validate a definition and prepare its constraints. Candidate calculation applies restrictions from placed digits, then narrows the remaining candidates until they stop changing. Each cage checks which digits can go in each cell to form the required sum without repeats. The exact solver uses the same candidate calculation and counts up to two completions within the node limit. Clear the placed digits and removal masks to analyze the original givens.
+
+The native `windoku` and `disjoint_groups` constructors add extra houses through the standard rule format. The `miracle` constructor combines Anti-Knight, Anti-King, and orthogonal Non-Consecutive rules. All constructors return editable puzzle definitions. [Miracle Sudoku rules and solution](https://www.mathekalender.de/wp/wp-content/uploads/2021/07/MK-2020-Solutions-en.pdf)
+
+```rust
+use sudoku_app_engine::{Analysis, DEFAULT_VARIANT_SEARCH_NODES, VariantPuzzle, parse_givens};
+
+let solution = parse_givens(
+    "658492731974316582132875694461523978387149256295768143849251367726934815513687429",
+).unwrap();
+let mut givens = solution;
+for cell in [1, 6, 10, 15] {
+    givens[cell] = 0;
+}
+let puzzle = VariantPuzzle::x_sudoku(givens).compile().unwrap();
+assert_eq!(
+    puzzle.analyze(&[0; 81], &[0; 81], DEFAULT_VARIANT_SEARCH_NODES),
+    Ok(Analysis::Unique),
+);
+assert_eq!(
+    puzzle.solve(&[0; 81], &[0; 81], DEFAULT_VARIANT_SEARCH_NODES),
+    Ok(solution),
+);
+```
+
+With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via Serde. A `variant` worker request takes the position, operation, and optional `maxNodes` for exact search. `normalize` validates the definition and returns a complete position record. `candidates` returns 81 candidate masks. `analyze` distinguishes conflicts, impossible puzzles, uniqueness, multiple solutions, and search limits. `solve` returns one completion or an error. Unsupported rule IDs and format versions have distinct error codes.
+
+```json
+{
+  "type": "variant",
+  "operation": "analyze",
+  "position": {
+    "puzzle": {
+      "version": 1,
+      "givens": "608492031904316082132875694461523978387149256295768143849251367726934815513687429",
+      "regions": { "type": "boxes" },
+      "rules": [{ "type": "diagonal", "diagonal": "main" }]
+    }
+  },
+  "maxNodes": 1000
+}
+```
+
+`entries` and `eliminations` are optional fields of the position and default to empty. All cell indices are zero-based.
+
+| Rule ID | Parameters and effect |
+| --- | --- |
+| `diagonal`, `extra-house` | Use `diagonal` with `main` or `anti`, or supply nine distinct `cells` for an extra house. |
+| `killer-cages` | Each cage specifies `cells` and `sum`. Set `coverGrid` to true if the cages must cover the full grid. |
+| `parity`, `clone` | Set `parity` to `odd` or `even` for the listed `cells`. In Clone Sudoku, each list in `groups` shares one digit. |
+| `anti-knight`, `anti-king`, `non-consecutive` | Each applies to the entire grid. Non-Consecutive applies to orthogonally adjacent cells. |
+| `inequality` | Supply the `less` and `greater` cell indices. |
+| `kropki`, `xv` | Use `consecutive` and `ratioTwo` for Kropki dots, or `five` and `ten` for XV markers. |
+| `thermometer`, `whispers`, `palindrome` | Supply `cells` in line order. Start a Thermometer at the bulb. Set `minDifference` for Whispers. |
+| `arrow`, `renban`, `between` | Supply `cells` in line order. For Arrow, supply its `circle` separately. For Between, include both endpoints in `cells`. |
+| `region-sum` | Supply `cells` in line order. The active regions divide the line into segments. Set `groupByRegion` to true to combine separate visits to the same region. |
+| `sandwich`, `x-sum`, `skyscrapers`, `little-killer` | Supply `cells` from the clue toward the far edge in the declared `direction`. Use `count` for Skyscrapers and `sum` for the other clues. |
+
+Each marker type accepts a list of adjacent `pairs` and an optional `negative` flag. With that flag, an adjacent pair without any marker from the same family cannot use the specified relationship. The default is false. A Kropki pair with digits 1 and 2 can carry either dot. [WPF Kropki rules](https://gp.worldpuzzle.org/sites/default/files/Puzzles/2020/2020_SudokuRound4.pdf)
+
+Outside clues use the compass directions `north`, `east`, `south`, and `west` for rows and columns. Use `north-east`, `south-east`, `south-west`, or `north-west` for Little Killer diagonals. A Little Killer diagonal can repeat digits where its other rules permit them. [Sudoku U constraint reference](https://www.sudoku-u.org/constraints)
+
+```sh
+cargo run --release --locked -p sudoku-app-engine --features cli --bin sudoku-engine -- batch-variant requests.jsonl
+```
+
+Batch rows use the same request format. Omit `type` to select `variant`, or omit `operation` to normalize a position. A successful batch record contains the result under `result.value`.
+
+Use [`CompiledVariant::solve_seeded`] or pass a `seed` with the `solve` operation to sample a completion. The seed controls the order in which the solver tries candidate digits. Use `analyze` to check whether the puzzle has one solution.
+
+### Variant logical solves and ratings
+
+Use [`VariantPosition::solve_logically`] for a trace or [`VariantPosition::rate`] for a score. Both use the supplied order of techniques. The rating records the regions, rules, technique order, and version of the score. A stalled solve reports the points earned before it stalled.
+
+Singles and Locked Candidates use all active houses. The other variant techniques explain deductions from the individual constraints. Proofs record the rule indices, cells, and candidate masks before the move. A rule can produce several proofs, such as separate Clone groups.
+
+Cage Combinations checks which digits can occupy each cell while meeting the cage sum. Cage House Sum uses the fact that the digits in a house add to 45. It can derive a sum for cells inside or outside the house. The proof identifies the cages and records the candidate masks before the move.
+
+Classic detectors can run when the puzzle uses standard boxes. X-Wing, Swordfish, and Jellyfish also run with replacement regions because they use rows and columns. For a uniqueness deduction, the engine verifies uniqueness within a fixed node limit. It offers the deduction only when every changed cell is outside the scope of every additional rule. The proof records the cells that can exchange digits.
+
+For a `variant` request, set `operation` to `trace`, `rate`, or `hints`. Use `techniqueOrder` to choose the enabled techniques. An empty list disables all techniques, while an omitted field uses [`VariantTechnique::DEFAULT_ORDER`]. Exact validation continues to enforce every puzzle rule. Hints rank the available proofs by difficulty and cost, then by the number of cells in the proof.
+
+Use `replay-step` with a zero-based `stepIndex` to get the position before and after a move. Use `practice-position` with `technique` to get the position before its first use. To check a practice move, send `check-practice-move` with that position, the `technique`, and an `action`. The engine searches for a proof of the submitted action with the selected technique.
+
+Use [`variant_practice_examples`] to load three exercises for a technique. In Wasm or `batch-variant`, send `practice-examples` with `variant: true` and the technique ID. Send `techniques` with `variant: true` to read the variant catalog, point costs, and default order. Each exercise includes its rules, the position before the move, the candidate masks, valid actions, and a suggested action with its proof.
+
+The engine uses scoring version 3 for variants. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. House sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
+
+The variant technique tiers use costs through 26 points for Easy and through 68 for Medium. Higher costs start in Hard. The total score still uses the standard score bands. A stalled path reports a partial total and keeps the selected rule set, technique order, and scoring version.
+
+### Fog visibility
+
+Use [`VariantPosition::visible`] with [`VariantVisibility`] to derive the player's position from the full puzzle. For Wasm or batch, pass `visibility` on logical requests, or use `normalize` to return the visible position. The lists `cells` and `rules` name the revealed givens and constraint indices. Use `knownRemovals` for removals established from revealed clues.
+
+The visible position keeps the region layout and placed digits. A rule reveals as one unit. The returned proof indices refer to the visible rule list in its original order. Set `completeKropki` or `completeXv` after revealing all rules for that marker family. Only then can the lack of a marker justify a move.
+
+### Generate variant puzzles
+
+Use [`start_variant_generation`] in Rust or `generate-variant` in Wasm and `batch-generate`. The template supplies the regions, fixed rules, and any givens needed to select a completed grid. The generator can remove those givens from the output. It keeps a removal only after proving the output still has one solution.
+
+`derivedClues` supplies geometry for clues whose values depend on the sampled solution. Use `killer-cages` to provide cage cells or `killer-cage-sizes` to request connected cages of specific sizes. You can also derive parity, inequalities, Kropki and XV markers, and outside clues. A marker request with a count samples that many marks. Negative marker rules require the full set of matching marks.
+
+```json
+{
+  "type": "generate-variant",
+  "seed": 41,
+  "maxAttempts": 10,
+  "maxNodes": 20000,
+  "template": { "version": 1, "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000" },
+  "derivedClues": [{ "type": "killer-cage-sizes", "sizes": [2, 3, 4] }],
+  "givens": [30, 34],
+  "variantClues": 3,
+  "requiredRule": "killer-cages"
+}
+```
+
+`givens` and `variantClues` each accept an exact count or a range. The variant count includes each cage, marked cell or pair, line, extra house, and outside clue. It counts each Clone group once. Global rules and the region layout contribute zero. A required rule must leave multiple solutions when removed. Use `jigsaw` to compare with only rows and columns enforcing distinct digits, while retaining other rules and region boundaries.
+
+Use `score` or `difficulty` to require a complete rated solution. Pass `techniqueOrder` to select and order the techniques. A technique target can match anywhere, first in the selected order, or as the only available opening. The exclusive mode checks every compatible detector. The result includes the seed, solution, final rules, counts, and rating.
+
+The attempt limit counts sampled grids. The node limit applies to each exact search. Rust callers can advance or cancel the search at attempt boundaries. In the browser, use `runGeneration` with an abort signal to cancel between attempts and receive progress.
+
+Pass previous puzzles in `exclude` to skip their equivalents. [`canonical_variant`] transforms the givens, region layout, and rules together. It accounts for rotations and reflections, including changes to outside-clue directions. It also normalizes digit names when all rules allow arbitrary renaming.
+
 ## Implementation and verification
 
 `lib.rs` handles grid parsing, exact search, simple generation, and the WebAssembly exports. `position.rs` maintains the active masks and applies deductions. `logical.rs` shares ordered deduction and scoring logic across rating, trace, and generation targets. `technique.rs` is the catalog. `hints.rs` dispatches the detectors in `patterns/` and ranks their proofs, while `proofs.rs` derives the coordinates needed to render them. Detectors share lazy per-position indexes for candidate positions, links, and other patterns. The rating path collects counts without building a trace. `generation/` manages attempt cursors, verified templates, and symmetry keys. `protocol.rs` translates Rust types to the browser wire format.
@@ -215,9 +343,13 @@ Each record includes the one-based source line, seed, resolved technique order w
 cargo test --locked -p sudoku-app-engine --all-features
 cargo bench --locked -p sudoku-app-engine --bench engine
 cargo bench --locked -p sudoku-app-engine --features wasm-api --bench coverage > stalls.jsonl
+cargo bench --locked -p sudoku-app-engine --features wasm-api --bench variants
 npm run test:wasm
+node --experimental-strip-types scripts/bench-variants.mjs
 ```
 
 The engine benchmark times exact search, rating, traces, hints, and opening detection, and reports generation match rates and symmetry-adjusted diversity. The coverage benchmark reports logical solve rates and rating times separately for everyday, 17-clue, and expert fixtures. It writes replayable stalled positions to standard output and reports the group statistics on standard error.
+
+The variant benchmarks share fixtures for classic, X Sudoku, Killer, and mixed Jigsaw and Killer puzzles. They measure rating, ranked hints, and seeded generation. The Wasm run includes request encoding and response decoding. Run the Wasm build before the JavaScript benchmark. The benchmark reports raw and gzip binary sizes.
 
 The 17-clue template collection is attributed to Gordon Royle and The University of Western Australia under Creative Commons Attribution 2.5. The practice data includes selected HoDoKu regression examples. The source for each supplemental fixture appears with its definition.

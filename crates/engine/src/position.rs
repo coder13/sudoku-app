@@ -49,12 +49,20 @@ impl PositionSnapshot {
     }
 
     pub(crate) fn record_actions(&mut self, actions: &[HintAction]) {
-        for &action in actions {
-            match action {
-                HintAction::Place(candidate) => self.entries[candidate.cell] = candidate.digit,
-                HintAction::Eliminate(candidate) => {
-                    self.eliminations[candidate.cell] |= digit_bit(candidate.digit);
-                }
+        record_actions(&mut self.entries, &mut self.eliminations, actions);
+    }
+}
+
+pub(crate) fn record_actions(
+    entries: &mut Board,
+    eliminations: &mut [u16; CELLS],
+    actions: &[HintAction],
+) {
+    for &action in actions {
+        match action {
+            HintAction::Place(candidate) => entries[candidate.cell] = candidate.digit,
+            HintAction::Eliminate(candidate) => {
+                eliminations[candidate.cell] |= digit_bit(candidate.digit);
             }
         }
     }
