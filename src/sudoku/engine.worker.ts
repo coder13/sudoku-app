@@ -9,6 +9,7 @@ type Exports = {
   notes_buffer(): number
   analyze_board(): number
   fill_notes(): number
+  solve_board(): number
   generate_board(seed: number): void
 }
 
@@ -35,7 +36,8 @@ scope.onmessage = async ({ data }: MessageEvent<{ id: number; request: EngineReq
     } else {
       board().set(Array.from(request.values, Number))
       if (request.type === 'analyze') value = statuses[wasm.analyze_board()]
-      else value = wasm.fill_notes() ? [...new Uint16Array(wasm.memory.buffer, wasm.notes_buffer(), 81)] : null
+      else if (request.type === 'notes') value = wasm.fill_notes() ? [...new Uint16Array(wasm.memory.buffer, wasm.notes_buffer(), 81)] : null
+      else value = wasm.solve_board() ? board().join('') : null
     }
     scope.postMessage({ id, value } satisfies EngineResponse)
   } catch {

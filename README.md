@@ -15,13 +15,15 @@ npm start
 
 Open [Sudoku on localhost](http://127.0.0.1:8765). Set `SUDOKU_APP_ADDRESS` to use a different address or port.
 
-Use `npm run dev` for frontend development. It prints the development URL. To test offline use, serve the production build and wait for the app to show Offline ready. The browser needs localhost or HTTPS to install the service worker that serves the app offline.
+Use `npm run dev` for frontend development. It prints the development URL. For offline play, open the production build online first. The browser needs localhost or HTTPS to install the service worker that serves the app offline.
 
 Run `npm run check` for TypeScript, `npm test` for game and sharing tests, and `cargo test --locked` for Rust.
 
 ## Play, create, and share
 
 The board accepts keyboard or touch input. It supports two types of pencil marks, cell colors, multi-select, and undo and redo. Use New puzzle to generate a puzzle or enter givens by hand. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
+
+If you have more than one saved puzzle, open Puzzle options and choose Switch puzzle.
 
 The share menu copies a link to this app, an 81-character string, a nine-line grid, a HoDoKu library line, or a link for Sudoku Exchange or sudoku.coach. Import accepts the same formats and reads single-puzzle text files. On localhost, sharing defaults to a Sudoku Exchange link so anyone with the link can open the puzzle.
 

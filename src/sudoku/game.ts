@@ -1,6 +1,8 @@
 import { STARTER } from './formats.ts'
 
-export type Mode = 'value' | 'center' | 'corner' | 'color'
+export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
+export type CandidateLayout = 'grid' | 'center-corner'
+export type ErrorMode = 'all' | 'incorrect' | 'none'
 export type Source = 'starter' | 'generated' | 'imported' | 'custom' | 'draft'
 
 export type Position = {
@@ -122,13 +124,17 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
       for (const i of editable) {
         entries = entries.slice(0, i) + digit + entries.slice(i + 1)
       }
-      if (digit === 0) {
+      if (digit) {
+        const bit = 1 << (digit - 1)
+        center = center.map((mask, i) => editable.includes(i) || editable.some((cell) => peer(cell, i)) ? mask & ~bit : mask)
+        corner = corner.map((mask, i) => editable.includes(i) || editable.some((cell) => peer(cell, i)) ? mask & ~bit : mask)
+      } else {
         center = center.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
         corner = corner.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
       }
     } else {
       const empty = editable.filter((i) => entries[i] === '0')
-      const marks = game.position[mode]
+      const marks = mode === 'candidate' ? center.map((mask, i) => mask | corner[i]) : mode === 'center' ? center : corner
       const bit = digit ? 1 << (digit - 1) : 0
       const add = empty.some((i) => (marks[i] & bit) === 0)
       const next = marks.map((mask, i) => {
@@ -136,7 +142,10 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
         if (!digit) return 0
         return add ? mask | bit : mask & ~bit
       })
-      if (mode === 'center') center = next
+      if (mode === 'candidate') {
+        center = Array(81).fill(0)
+        corner = next
+      } else if (mode === 'center') center = next
       else corner = next
     }
   }

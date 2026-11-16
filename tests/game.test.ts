@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
-import { conflictsOf, enter, redo, STARTER_GAME, undo, valuesOf } from '../src/sudoku/game.ts'
+import { conflictsOf, enter, marksOf, redo, STARTER_GAME, undo, valuesOf } from '../src/sudoku/game.ts'
 
 test('all share formats round-trip to the original givens', () => {
   const formats: ShareFormat[] = ['link', 'givens', 'grid', 'hodoku', 'exchange', 'coach']
@@ -33,11 +33,42 @@ test('pasted text grids may have separators and comments', () => {
 
 test('moves preserve givens and undo multiple notes as a single action', () => {
   assert.equal(enter(STARTER_GAME, [0], 'value', 8), STARTER_GAME)
-  const marked = enter(STARTER_GAME, [2, 3], 'center', 4)
-  assert.equal(marked.position.center[2], 8)
-  assert.equal(marked.position.center[3], 8)
+  const marked = enter(STARTER_GAME, [2, 3], 'candidate', 4)
+  assert.equal(marked.position.corner[2], 8)
+  assert.equal(marked.position.corner[3], 8)
   assert.equal(undo(marked).position, STARTER_GAME.position)
   assert.equal(redo(undo(marked)).position, marked.position)
   const conflict = enter(marked, [2], 'value', 3)
   assert.deepEqual([...conflictsOf(valuesOf(conflict))], [1, 2])
+})
+
+test('entering a digit removes peer candidates and undo restores them', () => {
+  const bit = 1 << (4 - 1)
+  const marked = enter(STARTER_GAME, [2, 3, 18, 40], 'candidate', 4)
+  const filled = enter(marked, [2], 'value', 4)
+
+  assert.equal(filled.position.corner[2] & bit, 0, 'filled cell')
+  assert.equal(filled.position.corner[3] & bit, 0, 'row peer')
+  assert.equal(filled.position.corner[18] & bit, 0, 'box peer')
+  assert.equal(filled.position.corner[40] & bit, bit, 'non-peer')
+  assert.deepEqual(undo(filled).position, marked.position)
+})
+
+test('candidate input consolidates legacy center notes into the 3x3 note grid', () => {
+  const center = [...STARTER_GAME.position.center]
+  center[2] = 1 << (4 - 1)
+  const legacy = { ...STARTER_GAME, position: { ...STARTER_GAME.position, center } }
+  const updated = enter(legacy, [2], 'candidate', 7)
+
+  assert.equal(updated.position.center[2], 0)
+  assert.deepEqual(marksOf(updated.position.corner[2]), [4, 7])
+})
+
+test('advanced candidate input keeps center and corner notes separate', () => {
+  const centered = enter(STARTER_GAME, [2], 'center', 4)
+  const marked = enter(centered, [2], 'corner', 7)
+
+  assert.deepEqual(marksOf(marked.position.center[2]), [4])
+  assert.deepEqual(marksOf(marked.position.corner[2]), [7])
+  assert.deepEqual(undo(marked).position, centered.position)
 })

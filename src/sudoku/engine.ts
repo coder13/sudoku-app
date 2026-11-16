@@ -2,10 +2,13 @@ export type Analysis = 'conflict' | 'unsolvable' | 'unique' | 'multiple' | 'sear
 export type EngineRequest =
   | { type: 'analyze'; values: string }
   | { type: 'notes'; values: string }
+  | { type: 'solve'; values: string }
   | { type: 'generate'; seed: number }
 
 export type EngineResult<T extends EngineRequest> =
-  T['type'] extends 'analyze' ? Analysis : T['type'] extends 'notes' ? number[] | null : string
+  T['type'] extends 'analyze' ? Analysis :
+  T['type'] extends 'notes' ? number[] | null :
+  T['type'] extends 'solve' ? string | null : string
 
 export type EngineResponse =
   | { id: number; value: Analysis | number[] | null | string }

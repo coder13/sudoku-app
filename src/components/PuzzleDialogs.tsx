@@ -209,7 +209,12 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
   )
 }
 
-export function PuzzleOptions({ game, close }: { game: Game; close: () => void }) {
+export function PuzzleOptions({ game, close, onSwitch, onShortcuts }: {
+  game: Game
+  close: () => void
+  onSwitch?: () => void
+  onShortcuts: () => void
+}) {
   const [title, setTitle] = useState(game.title)
   const [confirm, setConfirm] = useState<'remove' | 'restart' | null>(null)
   const draft = game.source === 'draft'
@@ -242,6 +247,8 @@ export function PuzzleOptions({ game, close }: { game: Game; close: () => void }
             <div className="dialog-actions"><button type="submit" className="button primary" disabled={!title.trim() || title.trim() === game.title}>Save name</button></div>
           </form>
           <div className="manage-actions">
+            {onSwitch && <button className="button secondary" onClick={onSwitch}>Switch puzzle</button>}
+            <button className="button secondary" onClick={onShortcuts}>Keyboard shortcuts</button>
             {!draft && <button className="button secondary" onClick={() => setConfirm('restart')}>Restart puzzle</button>}
             <button className="button quiet remove-action" onClick={() => setConfirm('remove')}>Remove puzzle</button>
           </div>
@@ -253,9 +260,12 @@ export function PuzzleOptions({ game, close }: { game: Game; close: () => void }
 
 const keys = [
   ['Move through the grid', '←', '↑', '↓', '→'],
-  ['Select a rectangle', 'Shift', 'Arrow'],
+  ['Select a rectangle', 'Shift', 'Click/Arrow'],
+  ['Toggle individual cells', 'Ctrl/⌘', 'Click'],
   ['Enter a digit or note', '1–9'],
-  ['Digit, center, corner, color', 'N', 'C', 'X', 'B'],
+  ['Filled number mode', 'N'],
+  ['Toggle pencil mode', 'P', 'or', 'C'],
+  ['Toggle Color tab (when enabled)', 'B'],
   ['Erase', 'Backspace'],
   ['Undo', 'Ctrl/⌘', 'Z'],
   ['Redo', 'Ctrl/⌘', 'Shift', 'Z'],

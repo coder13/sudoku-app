@@ -1,11 +1,12 @@
 import type { MouseEvent, RefObject } from 'react'
 import { Play } from 'lucide-react'
-import { COLORS, DIGITS, marksOf, peer, type Game } from '../sudoku/game'
+import { COLORS, DIGITS, marksOf, peer, type CandidateLayout, type Game } from '../sudoku/game'
 
 type Props = {
   game: Game
   values: string
-  conflicts: Set<number>
+  errors: Set<number>
+  candidateLayout: CandidateLayout
   selected: number[]
   active: number
   boardRef: RefObject<HTMLDivElement | null>
@@ -13,9 +14,7 @@ type Props = {
   onResume: () => void
 }
 
-const cornerPositions = [0, 2, 6, 8, 1, 7, 3, 5, 4]
-
-export function Board({ game, values, conflicts, selected, active, boardRef, onCell, onResume }: Props) {
+export function Board({ game, values, errors, candidateLayout, selected, active, boardRef, onCell, onResume }: Props) {
   const focusValue = selected.includes(active) ? values[active] : ''
   const paused = game.source !== 'draft' && game.paused
   return (
@@ -30,18 +29,20 @@ export function Board({ game, values, conflicts, selected, active, boardRef, onC
                 const index = (row - 1) * 9 + col - 1
                 const value = Number(values[index])
                 const fixed = game.givens[index] !== '0'
-                const center = marksOf(game.position.center[index])
-                const corner = marksOf(game.position.corner[index])
+                const centerCandidates = marksOf(game.position.center[index])
+                const cornerCandidates = marksOf(game.position.corner[index])
+                const gridCandidates = marksOf(game.position.center[index] | game.position.corner[index])
                 const color = game.position.colors[index]
                 const inSelection = selected.includes(index)
-                const conflict = conflicts.has(index)
+                const error = errors.has(index)
                 const label = [
                   `Row ${row}, column ${col}`,
                   value ? (fixed ? `given ${value}` : String(value)) : 'empty',
-                  !value && center.length ? `center notes ${center.join(' ')}` : '',
-                  !value && corner.length ? `corner notes ${corner.join(' ')}` : '',
+                  !value && candidateLayout === 'grid' && gridCandidates.length ? `candidates ${gridCandidates.join(' ')}` : '',
+                  !value && candidateLayout === 'center-corner' && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
+                  !value && candidateLayout === 'center-corner' && cornerCandidates.length ? `corner candidates ${cornerCandidates.join(' ')}` : '',
                   color ? COLORS[color - 1] : '',
-                  conflict ? 'conflict' : '',
+                  error ? 'incorrect' : '',
                 ].filter(Boolean).join(', ')
                 const classes = [
                   'cell',
@@ -49,7 +50,7 @@ export function Board({ game, values, conflicts, selected, active, boardRef, onC
                   selected.some((cell) => peer(index, cell)) ? 'peer' : '',
                   value && String(value) === focusValue ? 'matching' : '',
                   color ? `colored color-${color}` : '',
-                  conflict ? 'conflict' : '',
+                  error ? 'conflict' : '',
                   inSelection ? 'selected' : '',
                 ].join(' ')
                 return (
@@ -57,18 +58,22 @@ export function Board({ game, values, conflicts, selected, active, boardRef, onC
                     aria-label={label} aria-selected={inSelection} onClick={(event) => onCell(index, event)} disabled={paused}>
                     {value ? <span aria-hidden="true">{value}</span> : (
                       <>
-                        {corner.length > 0 && (
-                          <span className="corner-marks" aria-hidden="true">
-                            {corner.map((digit, i) => {
-                              const position = cornerPositions[i]
-                              return <span key={digit} style={{ gridArea: `${Math.floor(position / 3) + 1} / ${position % 3 + 1}` }}>{digit}</span>
-                            })}
+                        {candidateLayout === 'grid' && gridCandidates.length > 0 && (
+                          <span className="candidate-marks" aria-hidden="true">
+                            {gridCandidates.map((digit) => (
+                              <span key={digit} style={{ gridArea: `${Math.floor((digit - 1) / 3) + 1} / ${(digit - 1) % 3 + 1}` }}>{digit}</span>
+                            ))}
                           </span>
                         )}
-                        {center.length > 0 && (
-                          <span className="center-marks" aria-hidden="true">
-                            {center.slice(0, 5).join('')}{center.length > 5 && <><br />{center.slice(5).join('')}</>}
+                        {candidateLayout === 'center-corner' && cornerCandidates.length > 0 && (
+                          <span className="candidate-marks" aria-hidden="true">
+                            {cornerCandidates.map((digit) => (
+                              <span key={digit} style={{ gridArea: `${Math.floor((digit - 1) / 3) + 1} / ${(digit - 1) % 3 + 1}` }}>{digit}</span>
+                            ))}
                           </span>
+                        )}
+                        {candidateLayout === 'center-corner' && centerCandidates.length > 0 && (
+                          <span className="center-marks" aria-hidden="true">{centerCandidates.join('')}</span>
                         )}
                       </>
                     )}

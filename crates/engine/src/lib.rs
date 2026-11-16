@@ -132,6 +132,36 @@ fn count_solutions(
     Some(count)
 }
 
+pub fn solve(board: &Board) -> Option<Board> {
+    let mut units = Units::from_board(board)?;
+    let mut work = *board;
+    let mut budget = SEARCH_LIMIT;
+    solve_one(&mut work, &mut units, &mut budget).then_some(work)
+}
+
+fn solve_one(board: &mut Board, units: &mut Units, budget: &mut u32) -> bool {
+    let Some(remaining) = budget.checked_sub(1) else {
+        return false;
+    };
+    *budget = remaining;
+    let Some((index, mut choices)) = units.next_cell(board) else {
+        return true;
+    };
+    while choices != 0 {
+        let offset = choices.trailing_zeros();
+        let bit = 1 << offset;
+        choices ^= bit;
+        board[index] = offset as u8 + 1;
+        units.toggle(index, bit);
+        if solve_one(board, units, budget) {
+            return true;
+        }
+        units.toggle(index, bit);
+    }
+    board[index] = 0;
+    false
+}
+
 pub fn candidates(board: &Board) -> Option<[u16; CELLS]> {
     let units = Units::from_board(board)?;
     Some(std::array::from_fn(|index| {
@@ -240,6 +270,15 @@ mod wasm {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn solve_board() -> u32 {
+        let Some(solution) = BOARD.with(|board| solve(&board.get())) else {
+            return 0;
+        };
+        BOARD.with(|board| board.set(solution));
+        1
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn generate_board(seed: u32) {
         BOARD.with(|board| board.set(generate(seed)));
     }
@@ -270,6 +309,20 @@ mod tests {
         assert_eq!(masks[0], 0);
         assert_eq!(masks[2], 0b1011);
         assert_eq!(masks[40], 1 << 4);
+    }
+
+    #[test]
+    fn solves_a_valid_puzzle() {
+        let board = parse_givens(WARMUP).unwrap();
+        let solution = solve(&board).unwrap();
+        assert_eq!(analyze(&solution), Analysis::Unique);
+        assert!(!solution.contains(&0));
+        assert!(
+            board
+                .iter()
+                .zip(solution)
+                .all(|(&given, solved)| given == 0 || given == solved)
+        );
     }
 
     #[test]
