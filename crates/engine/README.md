@@ -1,0 +1,223 @@
+# Sudoku engine
+
+Validate classic 9 × 9 Sudoku puzzles, find and explain deductions, rate ordered solve paths, and generate puzzles that meet clue, score, or technique targets. The engine runs as a Rust library, as a WebAssembly module in the app's browser worker, and as a command-line tool for batch work.
+
+Run this command from the repository root to build and open the API reference.
+
+```sh
+cargo doc --locked -p sudoku-app-engine --all-features --no-deps --open
+```
+
+## Start with one puzzle
+
+Add the engine as a path dependency in another Cargo package. Set the path relative to that package's manifest.
+
+```toml
+[dependencies]
+sudoku-app-engine = { path = "../sudoku-app/crates/engine" }
+```
+
+Check the grid, follow the default logical path, and read its rating. This example finishes at 204 points.
+
+```rust
+use sudoku_app_engine::{Analysis, Difficulty, SolveStatus, Technique, analyze, parse_givens, solve_logically};
+
+let givens = parse_givens(
+    "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+).unwrap();
+assert_eq!(analyze(&givens), Analysis::Unique);
+
+let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+assert_eq!(trace.status, SolveStatus::Solved(Difficulty::Easy));
+assert_eq!(trace.score.points, 204);
+assert_eq!(trace.positions().count(), trace.steps.len() + 1);
+assert_eq!(trace.replay_step(0).unwrap().before.givens, givens);
+```
+
+## Grids, candidates, and validation
+
+A [`Board`] stores 81 digits in row-major order. Cell indices start at 0, so row 3, column 5 is cell 22. A [`House`] is a row, column, or box, each numbered from 0 in the API. Grid strings accept digits and use `0` or `.` for empty cells. [`parse_givens`] checks the format.
+
+Use [`candidates`] to compute the candidates allowed by the placed digits in each cell. Each of the 81 masks uses bits 0 through 8 for digits 1 through 9. A filled cell has mask 0. Use [`PositionSnapshot`] to keep the givens, player placements, and established candidate removals together. Supply proven removals as masks. A candidate the player omitted from their notes may still be available to the engine. If a player clears or replaces a placed digit, discard removals that depended on the old position.
+
+[`analyze`] distinguishes a conflict, no solution, a unique solution, multiple solutions, and a search limit. It stops counting at two solutions. [`solve`] finds one completion within its budget. A completion can exist for a puzzle with multiple solutions, so check uniqueness with `analyze` when importing or publishing puzzles.
+
+The exact search tracks used digits in rows, columns, and boxes with bit masks. At each search node it branches on an empty cell with the fewest candidates, making cells with no candidates immediate dead ends. Logical APIs can first apply deductions that establish facts without assuming uniqueness. This can make the exact check cheaper on sparse grids. If a uniqueness technique reaches the exact-search limit, the logical solver can try other techniques and retry uniqueness after a subsequent placement.
+
+## Logical paths, profiles, and scoring
+
+[`solve_logically`] starts from the givens. [`solve_position`] continues from a snapshot with placements and removals. At each position the solver takes the first productive deduction in the supplied technique order, applies all its actions, and starts again at the top of the order. A valid puzzle can return [`SolveStatus::Stalled`] when the selected techniques run out of moves. That trace still contains the positions it reached and a partial point total.
+
+Use [`Technique::ALL`] for the detector inventory and [`Technique::DEFAULT_ORDER`] for the default profile. [`SolverProfile::from_ids`] accepts stable IDs in priority order, validates unknown and duplicate IDs, and allows an empty list. Omit a technique to disable it. [`Technique::aliases`] supplies alternate names for display. Use the stable ID when saving a profile.
+
+| Family | Detectors |
+| --- | --- |
+| Singles and subsets | Full House, Naked Single, Hidden Single, Pointing, Claiming, Locked Pair and Triple, Naked and Hidden Pairs through Quadruples |
+| Fish | X-Wing, Swordfish, Jellyfish, finned and Sashimi forms, Franken Fish and Mutant Fish with two to four houses per side |
+| Wings and single-digit patterns | W-Wing, XY-Wing, XYZ-Wing, WXYZ-Wing, Skyscraper, Two-String Kite, Empty Rectangle |
+| Coloring and inference | Simple Coloring, 3D Medusa, X-Chain, XY-Chain, Alternating Inference Chain, continuous and discontinuous Nice Loops, and grouped versions |
+| Uniqueness | Unique Rectangle Types 1–6, Hidden Rectangle, BUG+1 |
+| Advanced deductions | Forcing Chain and Forcing Net, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Junior Exocet, SK Loop, Multi-Sector Locked Sets |
+
+The catalog records the point cost, technique difficulty, and uniqueness assumption for each detector. Franken Fish and Mutant Fish are available in hints and selected-technique searches. Add their IDs to a custom profile to use them for solving and rating.
+
+Use [`rate_puzzle`] for a rating without the trace. [`PuzzleRating`] carries the total points, technique counts, hardest technique, solve status, technique order, and [`SCORING_VERSION`]. Each deduction adds its technique's cost once, regardless of how many candidates it removes. The point bands have inclusive ceilings of 800, 1,000, 1,600, and 1,800 for Easy, Medium, Hard, and Unfair. Higher scores are Extreme. A complete path's difficulty is the higher of its point band and the hardest technique's tier. Save the order and scoring version with the rating so you can reproduce it.
+
+Use [`LogicalSolve::replay_step`] to examine a deduction between its before and after positions. [`LogicalSolve::move_availability`] counts distinct moves from enabled Easy techniques at each position. It flags an unfinished grid with zero or one such move.
+
+[`compare_paths`] returns two ordered traces from the same position, one with the selected technique and one with it removed. The enabled profile appends the technique if it was absent. [`search_alternate_path`] tries other valid deductions while excluding the selected technique. Its budget counts expansions of distinct unfinished positions. It can find a path, finish exploring the supported moves, or return an inconclusive result at the budget. A found path contains the actual steps and their rating.
+
+```rust
+use sudoku_app_engine::{
+    AlternatePathStatus, PositionSnapshot, SolverProfile, Technique, compare_paths,
+    parse_givens, search_alternate_path, solve,
+};
+
+let givens = parse_givens(
+    "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+).unwrap();
+let complete = solve(&givens).unwrap();
+let mut one_blank = complete;
+one_blank[0] = 0;
+let start = PositionSnapshot::new(one_blank);
+let profile = SolverProfile::from_ids(["hidden-single", "naked-single"]).unwrap();
+let compared = compare_paths(&start, profile.technique_order(), Technique::HiddenSingle).unwrap();
+assert_eq!(compared.with_technique.score.points, 14);
+assert_eq!(compared.without_technique.score.points, 4);
+
+let alternate = search_alternate_path(
+    &start, profile.technique_order(), Technique::HiddenSingle, 1,
+).unwrap();
+assert_eq!(alternate.status, AlternatePathStatus::Found);
+assert_eq!(alternate.path.unwrap().board, complete);
+```
+
+## Ranked hints, proofs, and practice
+
+[`ranked_hints`] searches the current position and returns up to the requested number of distinct moves, including a single move when that is all it finds. Pass an explicit list of disabled techniques for hints. The search prioritizes difficulty, point cost, and proof size. It compares house counts within a technique and uses the first action's location to break remaining ties. It keeps one proof per complete set of actions and stops after reaching the limit. [`hint_choices`] and [`hints_at`] retain the native API that asks whether there are at least two moves.
+
+Use [`next_deduction`] or [`next_enabled_deduction`] to reveal a technique, the [`ProofPattern`] to inspect, and finally the deduction. A [`Hint`] carries the technique, its [`HintEvidence`], and the placements or removals it proves. Use [`deductions`] or [`deductions_at`] to inspect all the proofs found by specific techniques. These functions group proofs by their complete action set and identify the affected cells and candidates for each move. Use [`technique_deductions_at`] for the ungrouped results of one detector.
+
+Practice can start from a curated fixture via [`Technique::practice_examples`] or from the position before the first use of a technique in a custom trace via [`LogicalSolve::practice_position`]. [`check_practice_move`] accepts one proposed placement or removal and looks for a proof of that action from the target technique, including actions within a larger deduction.
+
+```rust
+use sudoku_app_engine::{Technique, check_practice_move, deductions_at};
+
+let technique = Technique::XWing;
+let [example, _, _] = technique.practice_examples();
+let position = example.position().unwrap();
+let proposed = example.expected_actions[0];
+let proof = check_practice_move(&position, technique, proposed).unwrap().unwrap();
+assert_eq!(proof.technique, technique);
+assert!(proof.actions.contains(&proposed));
+assert!(deductions_at(&position, &[technique]).unwrap().iter()
+    .any(|group| group.actions == example.expected_actions));
+```
+
+## Targeted generation
+
+[`generate`] aims for 34 clues. Use [`generate_matching_with_mode`] to set a clue count or range, a difficulty or point range, and a technique target. With an empty template slice the search fills a grid using the seed, then attempts to remove clues while preserving uniqueness. With supplied grids it searches verified templates. Use [`generate_constrained`] as a convenience for an exact clue count and optional point range.
+
+- [`TechniqueTargetMode::Anywhere`] looks for the technique in the configured solve path.
+- [`TechniqueTargetMode::First`] requires it on the first step of that path.
+- [`TechniqueTargetMode::ExclusiveOpening`] requires it to be the only technique in the full catalog that can produce a deduction from the givens. This includes techniques absent from the profile and alternative proofs of the same move.
+
+A difficulty or point target requires a complete logical solve with the supplied profile. A technique-only target can match a puzzle that stalls later. Invalid or incompatible criteria return an error before attempting generation. Exhaustion means the search found no match in its attempt budget.
+
+Use [`builtin_templates`] and [`generate_from_pool`] for low clue counts or difficult score targets. A pool attempt adds solution digits when needed, reorders rows and columns within the allowed Sudoku groups, may transpose the grid, and renames digits. It rates the final grid under the requested order because equivalent grids can take different logical paths. Use [`VerifiedTemplate::verify`] once for each custom template. [`canonical_puzzle`] identifies equivalent grids across these transformations for deduplication and benchmarks.
+
+```rust
+use sudoku_app_engine::{
+    GenerationCriteria, GenerationRating, SolveStatus, Technique, TechniqueTargetMode,
+    builtin_templates, generate_from_pool,
+};
+
+let criteria = GenerationCriteria {
+    clues: 17..=17,
+    rating: Some(GenerationRating::Score(1_001..=1_600)),
+    technique: None,
+    technique_order: Technique::DEFAULT_ORDER,
+};
+let puzzle = generate_from_pool(
+    42, &criteria, TechniqueTargetMode::Anywhere, builtin_templates(), 208,
+).unwrap();
+assert_eq!(puzzle.board.iter().filter(|&&digit| digit != 0).count(), 17);
+assert!(matches!(puzzle.rating.status, SolveStatus::Solved(_)));
+assert!((1_001..=1_600).contains(&puzzle.rating.score.points));
+```
+
+For progress and cancellation, use [`start_matching`], [`start_from_pool`], or [`start_targeted`]. Call [`GenerationSearch::advance`] for at most one attempt and [`GenerationSearch::cancel`] at the next boundary. A terminal [`GenerationStep`] ends the search. The same seed, options, and template order reproduce the search for a given engine revision.
+
+## Browser and WebAssembly
+
+The default Rust library has no external dependencies. The `wasm-api` feature enables serialization and the structured JSON interface on `wasm32`. The `cli` feature reuses the structured protocol for the native batch interface.
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo build --release --locked -p sudoku-app-engine --target wasm32-unknown-unknown --features wasm-api
+```
+
+The module is `target/wasm32-unknown-unknown/release/sudoku_app_engine.wasm` with the default target directory. In this app, `npm run build:wasm` also writes the module and the generated lesson data under `src/sudoku/generated/`. The app's `runEngine(request)` function runs this module in a worker, resolves with the result, and rejects with an error code when available. `runGeneration(request, { signal, onProgress })` drives a cancellable search and reports completed attempts.
+
+To embed the module in a different host, instantiate it, then call each request synchronously within one worker or other serialized caller. The request and reply buffers belong to the module. Write every request byte after calling `request_buffer(length)`. Read exactly the number of response bytes returned by `run_request()` from `response_buffer()` before issuing the next request. Create memory views after the allocating calls.
+
+```js
+function request(exports, message) {
+  const input = new TextEncoder().encode(JSON.stringify(message))
+  const offset = exports.request_buffer(input.length)
+  new Uint8Array(exports.memory.buffer, offset, input.length).set(input)
+  const length = exports.run_request()
+  const reply = new Uint8Array(exports.memory.buffer, exports.response_buffer(), length)
+  return JSON.parse(new TextDecoder().decode(reply))
+}
+
+const catalog = request(instance.exports, { type: 'techniques' }).value
+```
+
+A structured reply has either `value` or `code` and `error`. Request tags are kebab-case and fields are camelCase. Technique IDs come from `techniques`. An omitted `techniqueOrder` uses the engine default at the wire level. The app's client can supply a saved profile before sending the request. An explicit empty order enables no techniques. For hints, omitted `disabledTechniques` means the full hint catalog at the wire level.
+
+| Structured request | Inputs and result |
+| --- | --- |
+| `techniques` | Technique IDs, aliases, costs, difficulty, uniqueness flags, default order, and scoring version |
+| `rate` | `values` and optional `techniqueOrder`. Returns a versioned rating. |
+| `logical-solve` | Start from `values` and optional `entries` and `eliminations`. `includePositions` adds snapshots. `includeStepDetails` adds masks and proof patterns. `includeMoveAvailability` adds Easy move counts and bottleneck flags. |
+| `compare-solve-paths`, `alternate-solve-path` | Same starting position and order plus `technique`. Alternate search also takes `maxPositions` and reports `found`, `no-path`, or `inconclusive`. |
+| `hints`, `next-deduction` | Current merged `values`, optional `eliminations` and `disabledTechniques`. For hints, `limit` defaults to 10 and can be `"all"`. `includePatterns` adds masks and proof patterns to the hint result. |
+| `deductions`, `opening-techniques` | Deductions takes merged `values`, optional `eliminations`, and `techniqueOrder`. Opening techniques takes the untouched grid and reports all techniques that can act. |
+| `lesson-examples`, `practice-examples` | Lesson examples include a worked example and a transformed exercise per technique. Practice examples takes `technique` and returns three verified exercises. |
+| `practice-position`, `check-practice-move` | Take a starting position and technique. The former optionally takes a solver order. The latter takes an `action` such as `{"eliminate":{"cell":24,"digit":2}}`. Both can return `null` when no matching position or proof is found. |
+| `generate-targeted` | `seed`, `maxAttempts`, and `target` with `type` of `difficulty` or `opening`. Returns a grid string. |
+| `generate-constrained`, `generate-from-pool` | `seed`, `maxAttempts`, `clues` as a number or inclusive range, optional `score` or `difficulty`, optional `technique`, and optional `techniqueOrder`. The constrained search accepts `templates` and returns a grid string. The built-in pool returns a grid and rating. |
+| `generation-start`, `generation-advance`, `generation-cancel` | Use a distinct numeric `job` for each active search and pass a generation `request` at start. Advance returns `pending`, `matched`, or `exhausted`. Cancel returns `cancelled`. A terminal result releases the job ID. |
+
+The fixed-buffer exports handle the app's `analyze`, `notes`, `solve`, and `generate` operations. Write 81 numeric bytes at `board_buffer()` before calling `analyze_board()`, `fill_notes()`, or `solve_board()`. `analyze_board()` returns the [`Analysis`] discriminant. `fill_notes()` and `solve_board()` return 1 on success. Read candidate masks as 81 little-endian 16-bit values at `notes_buffer()` after a successful fill. `solve_board()` on success and `generate_board(seed)` write their resulting grids to the board buffer.
+
+## Batch rating and generation
+
+```sh
+cargo run --release --locked -p sudoku-app-engine --features cli --bin sudoku-engine -- batch-rate puzzles.txt
+cargo run --release --locked -p sudoku-app-engine --features cli --bin sudoku-engine -- batch-generate requests.jsonl
+```
+
+Omit the input file or use `-` to read standard input. Each nonblank input line produces one JSON record on standard output. A rating line can be an 81-character grid or an object with `values`, optional `techniqueOrder`, and an optional `seed` to carry forward. A generation line is a generation request. Omit `type` to use `generate-constrained`.
+
+```json
+{"type":"generate-from-pool","seed":42,"maxAttempts":208,"clues":17,"score":[1001,1600]}
+```
+
+Each record includes the one-based source line, seed, resolved technique order when available, scoring version, and result. A rating result includes its status and rating. A generation result includes its status and attempts, plus the puzzle and rating for a match. A match with no rating includes `ratingError`. Invalid records include an error code and leave later records usable. In native integrations with the `cli` feature, `run_batch` accepts any buffered reader and writer.
+
+## Implementation and verification
+
+`lib.rs` handles grid parsing, exact search, simple generation, and the WebAssembly exports. `position.rs` maintains the active masks and applies deductions. `logical.rs` shares ordered deduction and scoring logic across rating, trace, and generation targets. `technique.rs` is the catalog. `hints.rs` dispatches the detectors in `patterns/` and ranks their proofs, while `proofs.rs` derives the coordinates needed to render them. Detectors share lazy per-position indexes for candidate positions, links, and other patterns. The rating path collects counts without building a trace. `generation/` manages attempt cursors, verified templates, and symmetry keys. `protocol.rs` translates Rust types to the browser wire format.
+
+```sh
+cargo test --locked -p sudoku-app-engine --all-features
+cargo bench --locked -p sudoku-app-engine --bench engine
+cargo bench --locked -p sudoku-app-engine --features wasm-api --bench coverage > stalls.jsonl
+npm run test:wasm
+```
+
+The engine benchmark times exact search, rating, traces, hints, and opening detection, and reports generation match rates and symmetry-adjusted diversity. The coverage benchmark reports logical solve rates and rating times separately for everyday, 17-clue, and expert fixtures. It writes replayable stalled positions to standard output and reports the group statistics on standard error.
+
+The 17-clue template collection is attributed to Gordon Royle and The University of Western Australia under Creative Commons Attribution 2.5. The practice data includes selected HoDoKu regression examples. The source for each supplemental fixture appears with its definition.

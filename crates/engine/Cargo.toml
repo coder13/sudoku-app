@@ -2,6 +2,30 @@
 name = "sudoku-app-engine"
 version = "0.1.0"
 edition = "2024"
+description = "Validate, solve, rate, teach, and generate classic Sudoku puzzles"
+readme = "README.md"
 
 [lib]
 crate-type = ["rlib", "cdylib"]
+
+[features]
+wasm-api = ["dep:serde", "dep:serde_json"]
+cli = ["wasm-api"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+
+[[bench]]
+name = "engine"
+harness = false
+
+[[bench]]
+name = "coverage"
+harness = false
+required-features = ["wasm-api"]
+
+[[bin]]
+name = "sudoku-engine"
+path = "src/bin/sudoku-engine.rs"
+required-features = ["cli"]

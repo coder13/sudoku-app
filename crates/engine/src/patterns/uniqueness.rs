@@ -1,0 +1,380 @@
+use super::{
+    CELLS, Candidate, ControlFlow, Deduction, DeductionActions, HintAction, HintEvidence, House,
+    PEERS, PatternSearch, Technique, bit_indices, cell_bit, cells, coordinates, house_cells,
+};
+use crate::{
+    RectangleSupport,
+    hints::{digit_bit, digits, placement, visit_unions},
+};
+
+type Visitor<'a> = &'a mut dyn FnMut(Deduction) -> ControlFlow<Deduction>;
+
+#[derive(Clone, Copy)]
+pub(super) struct Rectangle {
+    corners: [usize; 4],
+    pair: u16,
+    roofs: u16,
+}
+
+pub(super) fn rectangles(masks: &[u16; CELLS], bivalue: u128) -> Vec<Rectangle> {
+    if bivalue == 0 {
+        return Vec::new();
+    }
+    RECTANGLES
+        .iter()
+        .filter_map(|&corners| {
+            if corners.iter().all(|&cell| bivalue & cell_bit(cell) == 0) {
+                return None;
+            }
+            let candidates = corners.map(|cell| masks[cell]);
+            let pair = candidates.into_iter().reduce(|left, right| left & right)?;
+            if pair.count_ones() != 2 {
+                return None;
+            }
+            let roofs = candidates
+                .into_iter()
+                .enumerate()
+                .fold(0, |roofs, (i, mask)| {
+                    if mask == pair {
+                        roofs
+                    } else {
+                        roofs | (1 << i)
+                    }
+                });
+            (roofs != 0).then_some(Rectangle {
+                corners,
+                pair,
+                roofs,
+            })
+        })
+        .collect()
+}
+
+pub(super) fn visit_rectangles(
+    search: &PatternSearch<'_>,
+    technique: Technique,
+    visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
+) -> ControlFlow<Deduction> {
+    let patterns = search
+        .rectangles
+        .get_or_init(|| rectangles(search.masks, search.bivalue_cells()));
+    for &rectangle in patterns {
+        rectangle.visit(search, technique, visit)?;
+    }
+    ControlFlow::Continue(())
+}
+
+impl Rectangle {
+    fn visit(
+        self,
+        search: &PatternSearch<'_>,
+        technique: Technique,
+        visit: Visitor<'_>,
+    ) -> ControlFlow<Deduction> {
+        let roof_count = self.roofs.count_ones();
+        let roofs = bit_indices(self.roofs).map(|i| self.corners[i]);
+        let roof_set = roofs.fold(0, |set, cell| set | cell_bit(cell));
+        let corner_set = self
+            .corners
+            .into_iter()
+            .fold(0, |set, cell| set | cell_bit(cell));
+        let adjacent = roof_count == 2 && self.roofs != 0b1001 && self.roofs != 0b0110;
+        match technique {
+            Technique::UniqueRectangle1 if roof_count == 1 => self.emit(
+                technique,
+                removals(roof_set, |_| self.pair),
+                || self.extras(search.masks),
+                visit,
+            ),
+            Technique::UniqueRectangle2 if adjacent => {
+                self.shared_extra(search, technique, roof_set, visit)
+            }
+            Technique::UniqueRectangle3 if adjacent => {
+                self.subsets(search.masks, roof_set, corner_set, visit)
+            }
+            Technique::UniqueRectangle4 if adjacent => {
+                for digit in digits(self.pair) {
+                    let positions = search.positions_by_digit()[usize::from(digit - 1)];
+                    let houses: Vec<_> = containing_houses(roof_set)
+                        .filter(|&house| positions & house_cells(house) == roof_set)
+                        .collect();
+                    if !houses.is_empty() {
+                        let removed = self.pair & !digit_bit(digit);
+                        self.emit(
+                            technique,
+                            removals(roof_set, |_| removed),
+                            || RectangleSupport::StrongLinks { houses, digit },
+                            visit,
+                        )?;
+                    }
+                }
+                ControlFlow::Continue(())
+            }
+            Technique::UniqueRectangle5 if (roof_count == 2 && !adjacent) || roof_count == 3 => {
+                self.shared_extra(search, technique, roof_set, visit)
+            }
+            Technique::UniqueRectangle6 if roof_count == 2 && !adjacent => {
+                let (row1, col1, _) = coordinates(self.corners[0]);
+                let (row2, col2, _) = coordinates(self.corners[3]);
+                let houses = [
+                    House::Row(row1),
+                    House::Row(row2),
+                    House::Column(col1),
+                    House::Column(col2),
+                ];
+                for digit in digits(self.pair) {
+                    let positions = search.positions_by_digit()[usize::from(digit - 1)];
+                    if houses
+                        .into_iter()
+                        .all(|house| positions & house_cells(house) & !corner_set == 0)
+                    {
+                        self.emit(
+                            technique,
+                            removals(roof_set, |_| digit_bit(digit)),
+                            || RectangleSupport::StrongLinks {
+                                houses: houses.to_vec(),
+                                digit,
+                            },
+                            visit,
+                        )?;
+                    }
+                }
+                ControlFlow::Continue(())
+            }
+            Technique::HiddenRectangle if roof_count >= 2 => {
+                for floor in bit_indices(!self.roofs & 0b1111) {
+                    let target = self.corners[3 ^ floor];
+                    let [row, column, _] = House::at(target);
+                    for digit in digits(self.pair) {
+                        let positions = search.positions_by_digit()[usize::from(digit - 1)];
+                        let houses = [row, column];
+                        if houses
+                            .into_iter()
+                            .all(|house| positions & house_cells(house) & !corner_set == 0)
+                        {
+                            let removed = self.pair & !digit_bit(digit);
+                            self.emit(
+                                technique,
+                                removals(cell_bit(target), |_| removed),
+                                || RectangleSupport::StrongLinks {
+                                    houses: houses.to_vec(),
+                                    digit,
+                                },
+                                visit,
+                            )?;
+                        }
+                    }
+                }
+                ControlFlow::Continue(())
+            }
+            _ => ControlFlow::Continue(()),
+        }
+    }
+
+    fn shared_extra(
+        self,
+        search: &PatternSearch<'_>,
+        technique: Technique,
+        roofs: u128,
+        visit: Visitor<'_>,
+    ) -> ControlFlow<Deduction> {
+        let extra = cells(roofs).fold(0, |mask, cell| mask | search.masks[cell]) & !self.pair;
+        if !extra.is_power_of_two() {
+            return ControlFlow::Continue(());
+        }
+        let positions = search.positions_by_digit()[extra.trailing_zeros() as usize];
+        let targets = cells(roofs).fold(positions, |positions, cell| positions & PEERS[cell]);
+        self.emit(
+            technique,
+            removals(targets, |_| extra),
+            || self.extras(search.masks),
+            visit,
+        )
+    }
+
+    fn subsets(
+        self,
+        masks: &[u16; CELLS],
+        roofs: u128,
+        rectangle: u128,
+        visit: Visitor<'_>,
+    ) -> ControlFlow<Deduction> {
+        let extra = cells(roofs).fold(0, |mask, cell| mask | masks[cell]) & !self.pair;
+        for house in containing_houses(roofs) {
+            let cells_in_house = house.cells();
+            let groups = cells_in_house.map(|cell| masks[cell]);
+            let eligible = (0..9)
+                .filter(|&i| {
+                    groups[i] != 0
+                        && groups[i] & self.pair == 0
+                        && cell_bit(cells_in_house[i]) & rectangle == 0
+                })
+                .fold(0u16, |mask, i| mask | (1 << i));
+            // One roof must use an extra candidate. Together they supply one cell to the subset.
+            for size in extra.count_ones().max(2)..=eligible.count_ones() + 1 {
+                visit_unions::<true>(
+                    &groups,
+                    eligible,
+                    size,
+                    size - 1,
+                    0,
+                    extra,
+                    &mut |chosen, locked| {
+                        let selected = bit_indices(chosen)
+                            .fold(0, |bits, i| bits | cell_bit(cells_in_house[i]));
+                        let houses: Vec<_> = containing_houses(roofs | selected).collect();
+                        // A locked subset is reported once with the effects in all its shared houses.
+                        if houses.first() != Some(&house) {
+                            return ControlFlow::Continue(());
+                        }
+                        let targets = houses
+                            .iter()
+                            .copied()
+                            .fold(0, |bits, house| bits | house_cells(house))
+                            & !(rectangle | selected);
+                        self.emit(
+                            Technique::UniqueRectangle3,
+                            removals(targets, |cell| masks[cell] & locked),
+                            || RectangleSupport::Subset {
+                                houses,
+                                cells: cells(selected).collect(),
+                                digits: digits(locked).collect(),
+                            },
+                            visit,
+                        )
+                    },
+                )?;
+            }
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn extras(self, masks: &[u16; CELLS]) -> RectangleSupport {
+        let values = self
+            .corners
+            .into_iter()
+            .flat_map(|cell| {
+                digits(masks[cell] & !self.pair).map(move |digit| Candidate { cell, digit })
+            })
+            .collect();
+        RectangleSupport::ExtraCandidates(values)
+    }
+
+    fn emit(
+        self,
+        technique: Technique,
+        actions: impl Iterator<Item = HintAction>,
+        support: impl FnOnce() -> RectangleSupport,
+        visit: Visitor<'_>,
+    ) -> ControlFlow<Deduction> {
+        let actions: Vec<_> = actions.collect();
+        if actions.is_empty() {
+            return ControlFlow::Continue(());
+        }
+        visit(Deduction {
+            technique,
+            evidence: HintEvidence::UniqueRectangle {
+                corners: self.corners,
+                digits: [
+                    self.pair.trailing_zeros() as u8 + 1,
+                    self.pair.ilog2() as u8 + 1,
+                ],
+                support: support(),
+            },
+            actions: DeductionActions::Eliminations(actions),
+        })
+    }
+}
+
+fn containing_houses(group: u128) -> impl Iterator<Item = House> {
+    House::at(group.trailing_zeros() as usize)
+        .into_iter()
+        .filter(move |&house| group & !house_cells(house) == 0)
+}
+
+fn removals(set: u128, mask_for: impl Fn(usize) -> u16) -> impl Iterator<Item = HintAction> {
+    cells(set).flat_map(move |cell| {
+        digits(mask_for(cell)).map(move |digit| HintAction::Eliminate(Candidate { cell, digit }))
+    })
+}
+
+pub(super) fn visit_bug(
+    search: &PatternSearch<'_>,
+    visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
+) -> ControlFlow<Deduction> {
+    let mut pivot = None;
+    for (cell, mask) in search.masks.iter().enumerate() {
+        match mask.count_ones() {
+            0 | 2 => {}
+            3 if pivot.is_none() => pivot = Some(cell),
+            _ => return ControlFlow::Continue(()),
+        }
+    }
+    let Some(cell) = pivot else {
+        return ControlFlow::Continue(());
+    };
+    let pivot_houses = House::at(cell);
+    let mut extra = None;
+    let mut triples = 0;
+    for house in House::all() {
+        let house_mask = house_cells(house);
+        for (index, &positions) in search.positions_by_digit().iter().enumerate() {
+            match (positions & house_mask).count_ones() {
+                0 | 2 => {}
+                3 if pivot_houses.contains(&house)
+                    && positions & cell_bit(cell) != 0
+                    && extra.is_none_or(|digit| digit == index as u8 + 1) =>
+                {
+                    extra = Some(index as u8 + 1);
+                    triples += 1;
+                }
+                _ => return ControlFlow::Continue(()),
+            }
+        }
+    }
+    if let Some(digit) = extra.filter(|_| triples == 3) {
+        let mut options = digits(search.masks[cell]);
+        visit(placement(
+            Technique::BugPlusOne,
+            HintEvidence::BugPlusOne {
+                cell,
+                candidates: std::array::from_fn(|_| options.next().unwrap()),
+                houses: pivot_houses,
+            },
+            cell,
+            digit,
+        ))?;
+    }
+    ControlFlow::Continue(())
+}
+
+const RECTANGLES: [[usize; 4]; 486] = {
+    let mut shapes = [[0; 4]; 486];
+    let mut count = 0;
+    let mut row = 0;
+    while row < 8 {
+        let mut bottom = row + 1;
+        while bottom < 9 {
+            let mut column = 0;
+            while column < 8 {
+                let mut right = column + 1;
+                while right < 9 {
+                    if (row / 3 == bottom / 3) != (column / 3 == right / 3) {
+                        shapes[count] = [
+                            row * 9 + column,
+                            row * 9 + right,
+                            bottom * 9 + column,
+                            bottom * 9 + right,
+                        ];
+                        count += 1;
+                    }
+                    right += 1;
+                }
+                column += 1;
+            }
+            bottom += 1;
+        }
+        row += 1;
+    }
+    shapes
+};

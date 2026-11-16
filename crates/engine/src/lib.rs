@@ -1,16 +1,66 @@
+#![doc = include_str!("../README.md")]
+
+mod generation;
+mod hints;
+mod logical;
+mod position;
+mod practice;
+#[cfg(all(
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+mod protocol;
+mod technique;
+
+pub use generation::{
+    GeneratedPuzzle, GenerationConflict, GenerationConstraints, GenerationCriteria,
+    GenerationRating, GenerationSearch, GenerationStep, TechniqueTargetMode, VerifiedTemplate,
+    builtin_templates, canonical_puzzle, generate_constrained, generate_from_pool,
+    generate_matching, generate_matching_with_mode, start_from_pool, start_matching,
+    start_targeted,
+};
+pub use hints::{
+    AlmostLockedSet, BlossomPetal, Candidate, CandidateLink, ColoringReason, ConjugatePair,
+    DEFAULT_HINT_LIMIT, DeductionMatch, DeductionProof, ExocetAssignment, ExocetCover,
+    ForcingBranch, ForcingConflict, ForcingInference, ForcingLiteral, ForcingScope, Hint,
+    HintAction, HintChoices, HintError, HintEvidence, HintStages, House, InferenceLink,
+    InferenceNode, LinkSource, LinkStrength, ProofPattern, RectangleSupport, SectorLink,
+    SectorSubset, SkLoopProof, deductions, deductions_at, hint_choices, hints_at, next_deduction,
+    next_deduction_at, next_enabled_deduction, ranked_hints, technique_deductions,
+    technique_deductions_at,
+};
+pub use logical::{
+    AlternatePath, AlternatePathStatus, Difficulty, LogicalSolve, MoveAvailability, PathComparison,
+    PuzzleRating, ReplayedStep, SCORING_VERSION, SolveScore, SolveStatus, compare_paths,
+    opening_techniques, rate_puzzle, search_alternate_path, solve_logically, solve_position,
+};
+pub use position::PositionSnapshot;
+pub use practice::{PracticeExample, check_practice_move};
+#[cfg(feature = "cli")]
+pub use protocol::batch::{BatchCommand, run_batch};
+pub use technique::{ProfileError, SolverProfile, Technique};
+
 const CELLS: usize = 81;
 const DIGITS: u16 = 0x1ff;
 const SEARCH_LIMIT: u32 = 1_000_000;
+const DEFAULT_CLUES: usize = 34;
 
+/// A classic 9 × 9 grid in row-major order. Digits are 1–9 and 0 marks an empty cell.
 pub type Board = [u8; CELLS];
 
+/// The outcome of checking a grid for conflicts and counting up to two solutions.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Analysis {
+    /// A digit is out of range or appears twice in a row, column, or box.
     Conflict,
+    /// The grid has no completion.
     Unsolvable,
+    /// The grid has exactly one completion.
     Unique,
+    /// The grid has at least two completions.
     Multiple,
+    /// The exact-search budget ran out before the engine could classify the grid.
     SearchLimit,
 }
 
@@ -21,7 +71,7 @@ struct Units {
     boxes: [u16; 9],
 }
 
-fn coordinates(index: usize) -> (usize, usize, usize) {
+const fn coordinates(index: usize) -> (usize, usize, usize) {
     let (row, column) = (index / 9, index % 9);
     (row, column, (row / 3) * 3 + column / 3)
 }
@@ -78,6 +128,9 @@ impl Units {
     }
 }
 
+/// Parse 81 ASCII cells in row order. Both `0` and `.` represent empty cells.
+///
+/// Use [`analyze`] to check whether the parsed grid has a unique solution.
 pub fn parse_givens(text: &str) -> Option<Board> {
     if text.len() != CELLS {
         return None;
@@ -93,11 +146,15 @@ pub fn parse_givens(text: &str) -> Option<Board> {
     Some(board)
 }
 
+/// Validate a grid and classify its number of solutions using bounded exact search.
 pub fn analyze(board: &Board) -> Analysis {
+    analyze_with_budget(board, SEARCH_LIMIT)
+}
+
+fn analyze_with_budget(board: &Board, mut budget: u32) -> Analysis {
     let Some(mut units) = Units::from_board(board) else {
         return Analysis::Conflict;
     };
-    let mut budget = SEARCH_LIMIT;
     let mut work = *board;
     match count_solutions(&mut work, &mut units, &mut budget, 2) {
         None => Analysis::SearchLimit,
@@ -132,6 +189,10 @@ fn count_solutions(
     Some(count)
 }
 
+/// Find one completion by exact search.
+///
+/// Returns `None` on conflict, impossibility, or budget exhaustion. Use [`analyze`]
+/// for uniqueness and [`solve_logically`] for a human-style deduction trace.
 pub fn solve(board: &Board) -> Option<Board> {
     let mut units = Units::from_board(board)?;
     let mut work = *board;
@@ -162,6 +223,10 @@ fn solve_one(board: &mut Board, units: &mut Units, budget: &mut u32) -> bool {
     false
 }
 
+/// Compute candidate masks from the placed digits in a conflict-free grid.
+///
+/// Bit 0 represents digit 1, bit 8 represents digit 9, and filled cells have mask 0.
+/// A zero mask in an empty cell indicates that its peers rule out every digit.
 pub fn candidates(board: &Board) -> Option<[u16; CELLS]> {
     let units = Units::from_board(board)?;
     Some(std::array::from_fn(|index| {
@@ -176,6 +241,10 @@ pub fn candidates(board: &Board) -> Option<[u16; CELLS]> {
 struct Random(u32);
 
 impl Random {
+    fn from_seed(seed: u32) -> Self {
+        Self(if seed == 0 { 0x9e3779b9 } else { seed })
+    }
+
     fn index(&mut self, bound: usize) -> usize {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 17;
@@ -212,25 +281,94 @@ fn fill(board: &mut Board, units: &mut Units, random: &mut Random) -> bool {
     false
 }
 
+/// Generate a uniquely solvable puzzle from a seed, aiming for 34 clues.
 pub fn generate(seed: u32) -> Board {
-    let mut random = Random(if seed == 0 { 0x9e3779b9 } else { seed });
+    let mut random = Random::from_seed(seed);
+    let mut board = filled_board(&mut random);
+    carve(&mut board, &mut random, |_, clues| clues == DEFAULT_CLUES);
+    board
+}
+
+/// A difficulty or exclusive-opening target for [`generate_targeted`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GenerationTarget<'a> {
+    /// A complete solve at the specified difficulty using the supplied order.
+    Difficulty {
+        /// Required difficulty of the full solve.
+        level: Difficulty,
+        /// Ordered set of techniques available to the solver.
+        technique_order: &'a [Technique],
+    },
+    /// The only technique that can produce a deduction from the givens.
+    Opening(Technique),
+}
+
+impl GenerationTarget<'_> {
+    fn matches(self, board: &Board) -> bool {
+        match self {
+            Self::Difficulty {
+                level,
+                technique_order,
+            } => logical::matches_generation_path(
+                board,
+                technique_order,
+                Some(&GenerationRating::Difficulty(level)),
+                None,
+            ),
+            Self::Opening(technique) => logical::has_exclusive_opener(board, technique),
+        }
+    }
+}
+
+/// Why a generation request was rejected or failed to produce a match.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GenerationError {
+    /// A clue count lies outside 17–81 or the clue range is reversed.
+    InvalidClueCount,
+    /// The score range is reversed.
+    InvalidScoreRange,
+    /// The engine identified a conflict between the requested targets.
+    IncompatibleTargets(GenerationConflict),
+    /// The search ended before it found a match.
+    SearchLimit,
+}
+
+/// Generate a uniquely solvable puzzle matching the target.
+/// Each attempt starts with a new completed grid and checks its successive clue removals.
+pub fn generate_targeted(
+    seed: u32,
+    target: GenerationTarget<'_>,
+    max_attempts: u32,
+) -> Result<Board, GenerationError> {
+    start_targeted(seed, target, max_attempts)?.finish()
+}
+
+fn filled_board(random: &mut Random) -> Board {
     let mut board = [0; CELLS];
-    assert!(fill(&mut board, &mut Units::default(), &mut random));
+    assert!(fill(&mut board, &mut Units::default(), random));
+    board
+}
+
+fn carve(
+    board: &mut Board,
+    random: &mut Random,
+    mut matches: impl FnMut(&Board, usize) -> bool,
+) -> bool {
     let mut order = std::array::from_fn::<_, CELLS, _>(|index| index);
     random.shuffle(&mut order);
     let mut clues = CELLS;
     for index in order {
         let previous = std::mem::take(&mut board[index]);
-        if analyze(&board) == Analysis::Unique {
+        if analyze(board) == Analysis::Unique {
             clues -= 1;
-            if clues == 34 {
-                break;
+            if matches(board, clues) {
+                return true;
             }
         } else {
             board[index] = previous;
         }
     }
-    board
+    false
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -284,6 +422,39 @@ mod wasm {
     }
 }
 
+#[cfg(all(target_arch = "wasm32", feature = "wasm-api"))]
+mod wasm_protocol {
+    use std::cell::RefCell;
+
+    thread_local! {
+        static REQUEST: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+        static RESPONSE: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+    }
+
+    // The worker writes the request buffer before the call and reads the response after it.
+    #[unsafe(no_mangle)]
+    pub extern "C" fn request_buffer(length: usize) -> *mut u8 {
+        REQUEST.with(|request| {
+            let mut request = request.borrow_mut();
+            request.resize(length, 0);
+            request.as_mut_ptr()
+        })
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn run_request() -> usize {
+        let response = REQUEST.with(|request| super::protocol::process(&request.borrow()));
+        let length = response.len();
+        RESPONSE.with(|buffer| buffer.replace(response));
+        length
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn response_buffer() -> *const u8 {
+        RESPONSE.with(|response| response.borrow().as_ptr())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,6 +471,14 @@ mod tests {
         board[2] = 3;
         assert_eq!(analyze(&board), Analysis::Conflict);
         assert_eq!(analyze(&[0; CELLS]), Analysis::Multiple);
+    }
+
+    #[test]
+    fn exact_search_requires_enough_budget_to_prove_uniqueness() {
+        let mut board = solve(&parse_givens(WARMUP).unwrap()).unwrap();
+        board[0] = 0;
+        assert_eq!(analyze_with_budget(&board, 1), Analysis::SearchLimit);
+        assert_eq!(analyze_with_budget(&board, 2), Analysis::Unique);
     }
 
     #[test]
@@ -333,5 +512,57 @@ mod tests {
             assert!((34..=40).contains(&board.iter().filter(|&&digit| digit != 0).count()));
         }
         assert_ne!(generate(1), generate(42));
+    }
+
+    #[test]
+    fn targeted_generation_checks_the_rating_under_the_requested_order() {
+        for (level, order) in [
+            (Difficulty::Medium, Technique::ALL.as_slice()),
+            (Difficulty::Easy, [Technique::FullHouse].as_slice()),
+        ] {
+            let target = GenerationTarget::Difficulty {
+                level,
+                technique_order: order,
+            };
+            let board = generate_targeted(42, target, 1).unwrap();
+            assert_eq!(analyze(&board), Analysis::Unique);
+            assert_eq!(
+                solve_logically(&board, order).unwrap().status,
+                SolveStatus::Solved(level)
+            );
+        }
+        let stalled = GenerationTarget::Difficulty {
+            level: Difficulty::Easy,
+            technique_order: &[],
+        };
+        assert_eq!(
+            generate_targeted(42, stalled, 1),
+            Err(GenerationError::IncompatibleTargets(
+                GenerationConflict::EmptySolverProfile
+            ))
+        );
+    }
+
+    #[test]
+    fn targeted_generation_rejects_a_competing_opening_proof() {
+        let target = GenerationTarget::Opening(Technique::HiddenSingle);
+        // The previously exclusive board now also has forcing proofs.
+        let board = parse_givens(
+            "020900000490000830008000005000003070080020400370410009006085000050000100000360000",
+        )
+        .unwrap();
+        let openers = opening_techniques(&board).unwrap();
+        for technique in [
+            Technique::HiddenSingle,
+            Technique::ForcingChain,
+            Technique::ForcingNet,
+        ] {
+            assert!(openers.contains(&technique));
+        }
+        assert!(!target.matches(&board));
+        assert_eq!(
+            generate_targeted(795_642_738, target, 1),
+            Err(GenerationError::SearchLimit)
+        );
     }
 }

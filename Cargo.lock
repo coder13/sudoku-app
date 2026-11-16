@@ -112,21 +112,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sudoku-app-engine"
-version = "0.1.0"
-
-[[package]]
-name = "sudoku-app-server"
-version = "0.1.0"
-dependencies = [
- "axum",
- "sudoku-app-engine",
- "serde",
- "tokio",
- "tower-http",
-]
-
-[[package]]
 name = "http"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -396,6 +381,25 @@ checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
  "windows-sys",
+]
+
+[[package]]
+name = "sudoku-app-engine"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "sudoku-app-server"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "sudoku-app-engine",
+ "tokio",
+ "tower-http",
 ]
 
 [[package]]

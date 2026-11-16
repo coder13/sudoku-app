@@ -19,6 +19,16 @@ Use `npm run dev` for frontend development. It prints the development URL. For o
 
 Run `npm run check` for TypeScript, `npm test` for game and sharing tests, and `cargo test --locked` for Rust.
 
+Run `npm run test:wasm` to build and test the browser engine. Run `cargo bench --locked -p sudoku-app-engine --bench engine` to measure ratings, exact search, and generation.
+
+The coverage benchmark reports logical solve rates and rating times for fixed everyday, 17-clue, and expert grids. To save replayable stalled positions, redirect standard output to a JSON Lines file. The group totals and timings appear on standard error.
+
+```sh
+cargo bench --locked -p sudoku-app-engine --features wasm-api --bench coverage > stalls.jsonl
+```
+
+Each stall record contains the givens, entries, and 81 candidate-removal masks in row order. Bit zero represents digit 1. It also records the solver order and scoring version. See the [baseline results](SUDOKU_ENGINE_TODO.md#6-measure-coverage-on-expert-puzzles).
+
 ## Play, create, and share
 
 The board accepts keyboard or touch input. It supports two types of pencil marks, cell colors, multi-select, and undo and redo. Use New puzzle to generate a puzzle or enter givens by hand. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
@@ -34,6 +44,109 @@ Share formats carry the givens. When the app imports a HoDoKu library line, it s
 TanStack Start renders React to a static page during the build. The Rust server in `crates/server` serves that page and assets from `dist/client`. It also serves `GET /api/health` and `POST /api/v1/puzzles/analyze`. The analysis endpoint accepts JSON with a `puzzle` field containing 81 digits or dots.
 
 The same Rust engine in `crates/engine` runs in the browser as WebAssembly. A browser worker runs it off the UI thread. The engine generates puzzles, counts solutions up to two, and lists legal candidates. The build caches the page, assets, and engine so that play, generation, authoring, and import work offline after the first load.
+
+See the [engine guide](crates/engine/README.md) for Rust, WebAssembly, and batch usage. Run `cargo doc --locked -p sudoku-app-engine --all-features --no-deps --open` to browse the API reference.
+
+Client code calls `runEngine()` in `src/sudoku/engine.ts` for ratings, solve traces, hints, deduction searches, and targeted generation. Requests can supply a technique order by ID. If a request omits the order, the client uses the saved solver profile or the engine default.
+
+## Engine requirements
+
+A candidate is a possible digit for a cell. A deduction places a digit or removes one or more candidates. A technique is the rule that proves a deduction. These requirements apply to classic 9 × 9 Sudoku.
+
+### Configurable logical solver
+
+The user must be able to enable or disable each supported technique and change the order of enabled techniques. The solver must accept any combination, including an empty set. It must keep candidate removals as it applies each deduction.
+
+For each move, the solver must try enabled techniques in the chosen order. It must apply a deduction from the first technique that can change the board or its candidates. Then it must start again at the top of the order. If that technique finds several deductions, the solver must choose consistently for the same position and configuration.
+
+If the solver finishes, it must return the completed grid and the ordered list of deductions. Each deduction must include the technique, the evidence, and the placements or removals. If the solver runs out of allowed deductions, it must report that it stalled and return the partial list. The engine must report conflicts, no solution, multiple solutions, and search limits as separate outcomes. It can use exact search to check whether the puzzle has one solution. Every deduction in the logical solve must come from an enabled technique.
+
+The `logical-solve` request takes givens in `values`, optional placed digits in `entries`, and established candidate removals in `eliminations`. Pass `includePositions: true` to include the starting position and the position after each deduction, even in a stalled trace. The client helper `replayStep(trace, index)` returns the position before a zero-based step, the deduction with its evidence, and the position after it.
+
+On desktop, open **Puzzle actions → Show solution** to review a solve from the givens. Choose a step to see its grid and highlights. The solution uses the saved solver profile and can show a partial solve if that profile runs out of moves. Select **Return to puzzle** to resume play. The replay requests `includeStepDetails: true` for each position’s candidates and the next move’s proof pattern.
+
+### Puzzle scoring
+
+Each technique must have a point cost and a difficulty tier. A puzzle rating must start from the givens and use the chosen solver configuration. The score must add the cost of each deduction once, even when that deduction changes several candidates. The difficulty must be the higher of the hardest technique tier and the tier reached by the total score.
+
+By default, the score ceilings are 800 for Easy, 1,000 for Medium, 1,600 for Hard, and 1,800 for Unfair. Extreme has no ceiling. The default costs follow HoDoKu where it defines a cost for the technique. For example, a Naked Single costs 4 points, a Hidden Single costs 14, and an X-Wing costs 140. [Default costs and ceilings](https://github.com/PseudoFish/Hodoku/blob/master/src/sudoku/Options.java#L56-L117)
+
+A complete rating must include the score, difficulty, hardest technique, and a count of deductions by technique. It must identify the solver configuration and version of the scoring rules so the rating can be reproduced. If the solve stalls or reaches a limit, any subtotal must be marked as partial.
+
+### Ranked hints
+
+The `hints` request returns up to `limit` distinct moves from the current grid. The default is ten, and a single available move is included. Hints rank by technique difficulty, then point cost. Smaller patterns, including shorter chains, break ties. Among equally sized proofs of one technique, fewer distinct houses come first. When several enabled techniques prove the same move, the engine keeps the first proof in that ranking.
+
+During play, **View hint** shows up to ten ranked moves. **Analyze all moves** lists every ranked move from the enabled hint techniques.
+
+Both `hints` and `next-deduction` accept established candidate removals and `disabledTechniques`. The app stores these hint preferences separately from the solver profile. To hide singles, disable `full-house`, `naked-single`, and `hidden-single`. To hide Locked Candidates, disable `pointing` and `claiming`.
+
+The `deductions` request searches the selected techniques on the current grid and respects established candidate removals. Proofs with the same complete set of actions share one move. Each proof identifies the houses, cells, and candidates in its pattern. The move lists the cells and candidates named by its actions. An empty technique selection returns no moves.
+
+### Trainer design
+
+Hints start with one suggested move on the current board. The player opens the hint and controls each reveal. Keep the board visible beside the hint on wide screens and above it on narrow screens.
+
+1. **Technique.** Name the technique and give one search instruction. Link to its lesson for a separate worked example.
+2. **Where to look.** Highlight the rows, columns, boxes, cells, or candidates that form the pattern. Give the player time to find the result.
+3. **Deduction.** Explain why the pattern forces the result. Mark a placement with a ring and a removal with a strike. Offer **Apply move** as a separate action.
+
+The `next-deduction` request returns the easiest move from the same ranking as `hints`, even when it is the only choice. It accepts the current grid and any established candidate removals. It returns `null` when no move is available. Each response carries one proof through all three reveals. The `technique` field identifies the rule, `pattern` gives the locations and candidates to inspect, and `deduction` gives the evidence and all placements or removals. For targeted practice, use `deductions` to look up all proofs for the requested technique.
+
+Ask the engine about the current entries and previously applied candidate removals. Pencil marks describe what the player chose to write, so a missing pencil mark supplies no evidence. When the proof needs it, preview the engine's candidates on the board. Dismissing the hint restores the view of the player's notes. The same board can render lesson diagrams from the evidence in a verified example.
+
+Store applied removals with each undo position and read older saves as having no removals. If a player clears or replaces an entry, clear the applied removals because a proof can depend on that entry. Adding a digit keeps prior removals. Candidate generation uses the remaining masks. Applying a hint changes the entries or removals and updates the notes in one undoable move.
+
+A request belongs to its puzzle and position, including applied removals. An edit that changes either invalidates its proof and any pending response. If the engine finds a conflict or an impossible position, explain what the player can review. If it finds no supported move, say so. Give a separate retry state for a search limit or engine error.
+
+The lesson library uses ordered blocks in `src/sudoku/lessons.ts`. An article can place paragraphs, headings, lists, board diagrams, and practice puzzles in any order. A diagram can specify a region with a starting row, starting column, height, and width. The diagram keeps the original board coordinates.
+
+Practice starts from a verified version of the example with rows and columns swapped and digits renamed. The engine checks that version at build time and exports the moves proved by the requested technique. Each practice puzzle accepts any one of those moves. Later exercises can use new positions to test recognition.
+
+For practice on a specific puzzle, send `practice-position` with the same starting position and technique order as `logical-solve`, plus the target technique ID in `technique`. It returns the position just before the first use of that technique, including placed digits, all established candidate removals, and the remaining candidates. It returns `null` when the solve path has no such step, including when the technique is disabled.
+
+Send the practice position, target technique ID, and a proposed placement or removal in `action` to `check-practice-move`. The engine returns a proof from the target technique if any of its deductions supports the submitted action. It returns `null` for a move that has no proof from that technique.
+
+Sudoku Coach informed the lesson and practice flow. HoDoKu shows how a solver can reveal a move in stages. SudokuWiki and Sudopedia give alternate names and rule definitions. Hodoku Revisited shows how a walkthrough can keep the reason and the answer on the same board. [Sudoku Coach techniques](https://sudoku.coach/en/learn/technique-overview) · [HoDoKu hints and practice](https://hodoku.dev/docs_play) · [SudokuWiki strategy families](https://www.sudokuwiki.org/Strategy_Families) · [Sudopedia technique index](https://sudopedia.sudocue.net/index.php?title=Solving_technique) · [Hodoku Revisited hints](https://hodokurevisited.com/manual/hints.html)
+
+### Generation and training
+
+The generator must accept a requested difficulty or opening technique. A puzzle that targets a difficulty must receive a complete rating at that difficulty under the chosen solver configuration. In either case, the generator must make sure that the puzzle has exactly one solution.
+
+The `generate-constrained` request accepts an exact clue count or an inclusive `[min, max]` range in `clues`. It can combine those bounds with a `difficulty` or an inclusive `score` range and a technique target. Pass a technique ID in `technique` to find it anywhere in the configured solve path, or pass an object with `id` and `mode`. The modes are `anywhere`, `first` for the first step of the configured path, and `exclusive-opening` for the only technique that can act on the givens. A difficulty or score target requires the configured solver to finish the puzzle.
+
+For a requested opening, the engine must find at least one deduction of that technique from the untouched givens. It must reject the puzzle if any other supported technique can make a first move, including techniques disabled in the solver configuration. This rule still applies when a second technique proves the same deduction. Different names for the same technique count as one technique. The requested technique can have several valid opening deductions. If the generator reaches its search limit before it can verify a match, it must report the limit.
+
+Generation returns `incompatible-targets` before searching when it can prove the constraints conflict. For example, every Full House placement is also a Naked Single, so an exclusive Full House request is incompatible. A technique in the configured solve path must be enabled and fit within the requested score ceiling or difficulty. A valid request that exhausts its attempt budget returns `search-limit`.
+
+`generate-from-pool` takes the same targets and draws from a built-in pool of 17-clue and expert puzzles. The engine verifies each source puzzle once. It adds clues when needed, applies Sudoku symmetries, and returns the new grid with a rating computed under the requested solver profile. Rust callers can also pass their own `VerifiedTemplate` values to `generate_from_pool` and reuse them across searches.
+
+Use `runGeneration(request, { signal, onProgress })` for a browser search that reports completed attempts and accepts an `AbortSignal`. It returns `matched`, `exhausted`, `cancelled`, or `invalid` with the number of attempts made. A cancellation stops the search at the next attempt boundary. Rust callers can use `start_matching`, `start_from_pool`, or `start_targeted` to advance or cancel a search explicitly.
+
+The 17-clue templates come from Gordon Royle and The University of Western Australia's collection, licensed under Creative Commons Attribution 2.5. The native engine exposes `canonical_puzzle` to count distinct grids across Sudoku symmetries and digit renaming. The release benchmark reports those counts for generation targets from 17 through 20 clues. [Royle collection](https://web.archive.org/web/20131019184812if_/http://school.maths.uwa.edu.au/~gordon/sudokumin.php) · [Benchmark results](SUDOKU_ENGINE_TODO.md#8-add-variety-to-generation-and-practice)
+
+### Batch rating and generation
+
+```sh
+cargo run --release --locked -p sudoku-app-engine --features cli --bin sudoku-engine -- batch-rate puzzles.txt
+cargo run --release --locked -p sudoku-app-engine --features cli --bin sudoku-engine -- batch-generate requests.jsonl
+```
+
+Pass `-` or omit the file to read standard input. Both commands write one JSON record per nonblank input line. `batch-rate` accepts an 81-character puzzle or a JSON object with `values`, optional `techniqueOrder`, and an optional `seed` to carry forward. `batch-generate` accepts one JSON generation request per line and defaults to `generate-constrained` when `type` is omitted. Each output records the source line, seed, technique order, scoring version, and result. Invalid records carry an error and the batch continues. Generation results include the attempt count and, for a match, the grid and its rating or `ratingError` when the rating reaches its search limit.
+
+### Solve-path analysis
+
+Set `includeMoveAvailability` on a `logical-solve` request to count distinct moves from enabled Easy techniques at each position, including the starting and ending grids. An unfinished position with zero or one Easy move is marked as a bottleneck.
+
+Use `compare-solve-paths` with a technique ID to compare two traces from the same position. The enabled trace keeps the technique's place in the configured order or appends it if absent. The other trace omits it. Each trace reports its scoring version, and a stalled trace reports a partial score.
+
+Use `alternate-solve-path` with a technique ID and `maxPositions` to search alternative deductions under the remaining profile. The result is `found` with a replayable scored path, `no-path` when the search finishes, or `inconclusive` when the budget runs out. The budget counts distinct unfinished positions expanded during the search.
+
+### Technique practice
+
+Each catalog entry has a stable identifier, any alternate names, scoring rules, and three distinct verified practice grids. Use `Technique::practice_examples()` in Rust or request `practice-examples` with a technique ID through the worker. The worker returns the grid, its active candidates, accepted moves, and a suggested deduction with its proof. The practice collection includes examples drawn from the HoDoKu regression library and the app's existing lesson grids. [HoDoKu regression library](https://hodoku.sourceforge.net/libraries/reglib-1.3.txt)
+
+Franken Fish and Mutant Fish are available for hints, targeted practice, and custom solver profiles under `franken-fish` and `mutant-fish`. Both detectors search two to four base houses and the same number of cover houses, including finned cases. Their costs are 420 and 460 points. Use an explicit technique order to include them when rating a puzzle.
 
 ## Research
 
