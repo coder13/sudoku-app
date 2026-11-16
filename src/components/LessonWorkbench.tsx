@@ -198,7 +198,8 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
           setSelected(current.additive ? [...new Set([...current.base, ...rectangle])] : rectangle)
         } : undefined}
         highlightedDigit={selectedDigit} highlighting={preferences.highlighting} candidateLayout={preferences.advancedModes.candidateLayout}
-        onCellDoubleClick={ready && preferences.advancedModes.doubleClickSingles && !colorMode && !eraseMode ? (cell) => {
+        onCellDoubleClick={ready && preferences.advancedModes.doubleClickSingles && !pencil && !highlightMode &&
+          !colorMode && !eraseMode && selectedDigit === null ? (cell) => {
           const digit = onlyCandidate(game.position.center[cell] | game.position.corner[cell])
           if (digit !== null) input(digit, 'value', [cell])
         } : undefined}

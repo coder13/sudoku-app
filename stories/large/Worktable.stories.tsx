@@ -2,7 +2,7 @@ import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'rea
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor } from 'storybook/test'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
-import { EMPTY, makeGame } from '../../src/sudoku/game'
+import { EMPTY, makeGame, replaceCandidates } from '../../src/sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
 import {
   DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_INPUT_SIZE,
@@ -34,6 +34,32 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Starter: Story = {}
+const rapidTapMasks = Array<number>(81).fill(0)
+rapidTapMasks[2] = (1 << 3) | (1 << 4)
+rapidTapMasks[40] = 1 << 4
+export const RapidPencilTaps: Story = {
+  args: { game: replaceCandidates(starter, rapidTapMasks, { recordHistory: false }) },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Pencil mode' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Select 4' }))
+    const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })
+    fireEvent.click(cell, { detail: 1 })
+    await expect(cell).toHaveAccessibleName(/empty, candidates 5/)
+    fireEvent.click(cell, { detail: 2 })
+    fireEvent.doubleClick(cell, { detail: 2 })
+    await expect(cell).toHaveAccessibleName(/empty, candidates 4 5/)
+    fireEvent.click(cell, { detail: 3 })
+    await expect(cell).toHaveAccessibleName(/empty, candidates 5/)
+  },
+}
+export const DoubleClickSingle: Story = {
+  args: { game: replaceCandidates(starter, rapidTapMasks, { recordHistory: false }) },
+  play: async ({ canvas, userEvent }) => {
+    const cell = canvas.getByRole('gridcell', { name: /^Row 5, column 5, empty/ })
+    await userEvent.dblClick(cell)
+    await expect(cell).toHaveAccessibleName(/digit 5/)
+  },
+}
 export const Generating: Story = {
   args: {
     game: { ...makeGame('generating', 'New puzzle', EMPTY, 'draft', 0), paused: true, difficulty: 'easy', score: 0 },
