@@ -520,6 +520,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .soft:not(:disabled):hover, .game-row:hover { background: #eae0f8; }
   .app-menu button:hover { background: #f0eafa; }
   .settings-tabs button:hover, .settings-mobile-menu button:hover, .settings-back:hover, .resize-panels-option:hover { background: #f0eafa; }
+  .settings-mobile-menu button:hover .settings-menu-icon,
+  .resize-panels-option:hover .settings-menu-icon { background: #ddd0f5; }
   .cell:not(:disabled):not(.selected):not(.conflict):hover { box-shadow: inset 0 0 0 2px #c6b1e4; }
 }
 
