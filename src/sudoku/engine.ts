@@ -523,7 +523,7 @@ function connect(connection: EngineConnection) {
 export function runEngine<T extends EngineRequest>(request: T): Promise<EngineResult<T>> {
   return new Promise((resolve, reject) => {
     // A scan for an unfamiliar move must not hold up hints or candidate updates.
-    const connection = request.type === 'classify-actions' ? techniqueEngine
+    const connection = request.type === 'classify-actions' || request.type === 'deductions' ? techniqueEngine
       : request.type === 'generate-variant' ? generationEngine : playEngine
     connection.worker ??= connect(connection)
     const id = ++requestId
