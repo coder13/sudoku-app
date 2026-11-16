@@ -15,7 +15,7 @@ import { cellReference, describeHint, describeHintDigits, describeHintRemovals, 
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
 import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
-import { addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
+import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
@@ -504,13 +504,12 @@ export function Worktable({
           difficulty: latest.difficulty === undefined ? ratedDifficulty : latest.difficulty,
           score: latest.score === undefined ? ratedDifficulty === null ? null : points : latest.score,
           ratingAttempt: latest.ratingAttempt ?? (ratedDifficulty && !isSolved(latest)
-            ? (latest.analysisUsed
-              ? addAnalysisAssistance(ratingAttemptFor({
+            ? (() => {
+              const attempt = ratingAttemptFor({
                 difficulty: ratedDifficulty, points, scoringVersion: rating.scoringVersion, techniqueOrder: rating.techniqueOrder,
-              }, latest.generatedWithAuto ? undefined : 'fixed'))
-              : ratingAttemptFor({
-                difficulty: ratedDifficulty, points, scoringVersion: rating.scoringVersion, techniqueOrder: rating.techniqueOrder,
-              }, latest.generatedWithAuto ? undefined : 'fixed'))
+              }, latest.generatedWithAuto ? undefined : 'fixed')
+              return latest.analysisUsed ? addAnalysisAssistance(attempt) : attempt
+            })()
             : undefined),
         }
       })
