@@ -260,11 +260,28 @@ svg { flex-shrink: 0; }
   background: var(--surface);
   box-shadow: 0 2px 4px #32224505, 0 12px 26px -18px #32224524;
 }
-.puzzle { position: relative; grid-area: puzzle; padding: 22px 27px; min-width: 0; }
+.puzzle {
+  --board-frame-width: min(100%, 529px, max(240px, calc(100dvh - 240px)));
+  --board-guide-width: 20px;
+  --board-guide-offset: 10px;
+  position: relative;
+  grid-area: puzzle;
+  padding: 22px 27px;
+  min-width: 0;
+}
+.puzzle:has(.board-frame.guides-hidden) { --board-guide-width: 0px; --board-guide-offset: 0px; }
 .puzzle-actions { justify-content: flex-end; margin-bottom: 14px; }
 .puzzle-menu-wrap { position: relative; }
 .puzzle-menu { width: 235px; }
-.puzzle-footer { min-height: 13px; display: flex; justify-content: flex-end; align-items: center; margin-top: 12px; }
+.puzzle-footer {
+  width: calc(var(--board-frame-width) - var(--board-guide-width));
+  min-height: 13px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 12px auto 0;
+  translate: var(--board-guide-offset) 0;
+}
 .duration-counter {
   color: var(--muted);
   font-size: 13px;
@@ -278,7 +295,7 @@ svg { flex-shrink: 0; }
   grid-template-columns: 20px minmax(0, 1fr);
   grid-template-rows: 19px auto;
   grid-template-areas: ". columns" "rows board";
-  width: min(100%, 529px, max(240px, calc(100dvh - 240px)));
+  width: var(--board-frame-width);
   margin: 0 auto;
 }
 .board-frame.guides-hidden { grid-template-columns: 0 minmax(0, 1fr); grid-template-rows: 0 auto; }
@@ -364,7 +381,7 @@ svg { flex-shrink: 0; }
   overflow-wrap: anywhere;
 }
 .candidate-match { color: var(--dark-purple) !important; font-weight: 900; text-decoration: underline 2px; text-underline-offset: 1px; }
-.draft-tip { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(calc(100% - 20px), 509px); margin: 18px auto 0; translate: 10px 0; color: var(--muted); font-size: 13px; }
+.draft-tip { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(var(--board-frame-width) - var(--board-guide-width)); margin: 18px auto 0; translate: var(--board-guide-offset) 0; color: var(--muted); font-size: 13px; }
 
 .controls { grid-area: controls; container-type: inline-size; position: relative; display: grid; place-items: center; padding: 16px; min-width: 0; }
 .controls-content { width: 100%; display: grid; grid-template-columns: 44px auto 44px; align-items: center; justify-content: center; gap: 10px; }
@@ -778,7 +795,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzle-footer { margin-top: 7px; }
   .puzzle-actions .button { padding-inline: 8px; font-size: 12px; min-height: 38px; }
   .puzzle-actions .icon-button { width: 35px; min-height: 38px; }
-  .board-frame { width: min(calc(100vw - 48px), max(130px, calc(100dvh - var(--mobile-controls-height, 280px) - 220px))); }
+  .puzzle { --board-frame-width: min(calc(100vw - 48px), max(130px, calc(100dvh - var(--mobile-controls-height, 280px) - 220px))); }
   .draft-tip { margin-top: 4px; font-size: 11px; }
   .controls, .resize-active .controls { height: var(--controls-height, 280px); padding: 12px; }
   .controls-content { height: 100%; grid-template-columns: 42px auto 42px; gap: 9px; }
@@ -845,8 +862,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .wordmark { font-size: 19px; }
   .puzzle-actions { gap: 3px; }
   .puzzle-actions .icon-button { width: 31px; }
+  .puzzle { --board-guide-width: 14px; --board-guide-offset: 7px; }
+  .puzzle:has(.board-frame.guides-hidden) { --board-guide-width: 0px; --board-guide-offset: 0px; }
   .board-frame { grid-template-columns: 14px minmax(0, 1fr); }
-  .draft-tip { width: calc(100% - 14px); translate: 7px 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
