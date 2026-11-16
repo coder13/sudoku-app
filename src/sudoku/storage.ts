@@ -351,9 +351,10 @@ export const roomStore = {
     if (game.ratingAttempt && seenPuzzle(game)) game = { ...game, ratingAttempt: undefined }
     const seenSaved = rememberPuzzle(game)
     const saved = persist(() => localStorage.setItem(GAME_PREFIX + game.id, JSON.stringify(game)))
-    const remembered = remember(game.id)
+    const selection = game.savedForLater ? {} : { active: game.id, stoppedPlaying: false }
+    const remembered = game.savedForLater || remember(game.id)
     const games = orderGames([game, ...room.games])
-    publish({ ...room, games, active: game.id, stoppedPlaying: false, playerRating: playerRatingFor(games),
+    publish({ ...room, ...selection, games, playerRating: playerRatingFor(games),
       storageAvailable: room.storageAvailable && saved && remembered && seenSaved })
   },
   update(id: string, update: (game: Game) => Game) {

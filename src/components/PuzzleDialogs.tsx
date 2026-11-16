@@ -1,11 +1,11 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
-import { Bookmark, Clipboard, Dices, FileUp, PencilLine, Trash2 } from 'lucide-react'
+import { Bookmark, Clipboard, Dices, PencilLine, Trash2 } from 'lucide-react'
 import { isDifficultyPreference, type DifficultyPreference } from '../sudoku/difficulty'
 import { runEngine } from '../sudoku/engine'
-import { exportPuzzle, parsePuzzle, type ShareFormat } from '../sudoku/formats'
-import { createGameId, isSolved, makeGame, restartGame, valuesOf, type Game } from '../sudoku/game'
+import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
+import { isSolved, makeGame, restartGame, valuesOf, type Game } from '../sudoku/game'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
-import { isPlayablePuzzle, VARIANTS, variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantGame, type VariantId } from '../sudoku/variants'
+import { variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { VariantSelector } from './VariantSelector'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
@@ -13,53 +13,6 @@ import { SelectControl } from './SelectControl'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { validation } from './PuzzleCheckResult'
 
-export async function openPuzzle(input: string, cancelled: () => boolean) {
-  const url = URL.canParse(input.trim()) ? new URL(input.trim()) : undefined
-  if (url?.hash.startsWith('#variant=')) {
-    let shared: Pick<VariantGame, 'id' | 'puzzle'>
-    try {
-      if (url.hash.length > 20_000) throw new Error()
-      shared = JSON.parse(new URLSearchParams(url.hash.slice(1)).get('variant') ?? '')
-      if (!isPlayablePuzzle(shared?.id, shared?.puzzle)) throw new Error()
-    } catch {
-      throw new Error('This link is missing a valid Sudoku variant.')
-    }
-    const { id, puzzle } = shared
-    const existing = () => roomStore.getSnapshot().games.find((game) =>
-      game.variant?.id === id && JSON.stringify(game.variant.puzzle) === JSON.stringify(puzzle))
-    const game = existing()
-    if (!game) {
-      const position = { puzzle }
-      const status = await runEngine({ type: 'variant', operation: 'analyze', position })
-      if (status !== 'unique') throw new Error(validation[status].text)
-      const solution = await runEngine({ type: 'variant', operation: 'solve', position })
-      if (cancelled()) return
-      const added = existing()
-      if (added) roomStore.select(added.id)
-      else roomStore.add({
-        ...makeGame(createGameId(), `Imported ${VARIANTS[id].name} puzzle`, puzzle.givens, 'imported'),
-        variant: { id, puzzle, solution },
-      })
-      return
-    }
-    if (!cancelled()) roomStore.select(game.id)
-    return
-  }
-
-  const givens = parsePuzzle(input)
-
-  const existing = roomStore.getSnapshot().games.find((game) => !game.variant && game.givens === givens && game.source !== 'draft')
-  if (existing) {
-    if (!cancelled()) roomStore.select(existing.id)
-    return
-  }
-  const status = await runEngine({ type: 'analyze', values: givens })
-  if (status !== 'unique') throw new Error(validation[status].text)
-  if (cancelled()) return
-  const current = roomStore.getSnapshot().games.find((game) => !game.variant && game.givens === givens && game.source !== 'draft')
-  if (current) roomStore.select(current.id)
-  else roomStore.add(makeGame(createGameId(), 'Imported puzzle', givens, 'imported'))
-}
 function useMounted() {
   const mounted = useRef(true)
   useEffect(() => {
@@ -164,52 +117,6 @@ export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDif
     </Modal>
   )
 }
-export function ImportPuzzle({ close, onImport }: { close: () => void; onImport: (input: string, cancelled: () => boolean) => Promise<void> }) {
-  const [input, setInput] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const mounted = useMounted()
-
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    if (busy) return
-    setError('')
-    setBusy(true)
-    try {
-      await onImport(input, () => !mounted.current)
-      if (mounted.current) close()
-    } catch (reason) {
-      setError((reason as Error).message)
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Modal title="Import puzzle" onClose={close}>
-      <form className="dialog-form" onSubmit={submit}>
-        <p>Paste an 81-character puzzle, a HoDoKu library line, or a classic Sudoku Exchange or sudoku.coach link.</p>
-        <label htmlFor="import-text">Puzzle text or link</label>
-        <textarea id="import-text" value={input} onChange={(event) => setInput(event.target.value)} rows={4}
-          placeholder="Use . or 0 for empty cells" maxLength={10_000} spellCheck={false} autoCapitalize="off" autoFocus required />
-        {error && <p className="form-error" role="alert">{error}</p>}
-        <div className="dialog-actions spread">
-          <label className="button secondary file-picker"><FileUp size={17} /> Open text file
-            <input type="file" accept=".txt,.sdk,.sdm,.hkl,text/plain" disabled={busy} onChange={async (event) => {
-              const file = event.target.files?.[0]
-              event.target.value = ''
-              if (!file) return
-              if (file.size > 10_000) { setError('Choose a text file containing one puzzle.'); return }
-              try { setInput(await file.text()); setError('') }
-              catch { setError('This file couldn’t be read.') }
-            }} />
-          </label>
-          <button type="submit" className="button primary" disabled={busy || !input.trim()}>{busy ? 'Checking…' : 'Import puzzle'}</button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
 const formats: [ShareFormat, string][] = [
   ['link', 'Puzzle link'],
   ['givens', '81-character givens'],

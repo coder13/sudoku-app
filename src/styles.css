@@ -1715,6 +1715,21 @@ svg { flex-shrink: 0; }
 .dialog-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 6px; }
 .dialog-actions.spread { justify-content: space-between; }
 .dialog-status { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.puzzles-page.import-page { max-width: 580px; overflow-y: auto; padding-bottom: 24px; }
+.import-page > :is(.import-form, .import-preview) { flex: none; }
+.import-preview { --board-frame-width: min(100%, 430px); display: grid; gap: 16px; }
+.import-preview-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.import-preview-meta span { color: var(--muted); font-size: 14px; }
+.import-preview-actions { flex-wrap: wrap; }
+.import-preview-actions .import-edit { margin-inline-end: auto; }
+.import-page .import-edit { display: none; }
+
+@media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
+  .import-page .import-form textarea { font-size: 16px; }
+  .import-page .import-preview-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .import-page .import-preview-actions .primary { order: -1; }
+  .import-page .button { min-height: 44px; }
+}
 .form-error, .dialog-form .form-error { color: #9c2f42; font-size: 13px; line-height: 1.4; }
 .file-picker { position: relative; cursor: pointer; }
 .file-picker input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }

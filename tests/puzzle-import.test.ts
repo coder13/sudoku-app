@@ -1,0 +1,123 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { deflateSync } from 'node:zlib'
+import lzString from 'lz-string'
+import { exportPuzzle, STARTER } from '../src/sudoku/formats.ts'
+import { EMPTY } from '../src/sudoku/game.ts'
+import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
+
+const killerCode = 'SCv7_32_f2ear5619r1j0424vv2ueeb4dmnhrtoafv013t8gml8m9a8dak99187anvhi042qle5n5g57oht8itr6ctujbgskht7vj8pnnc237p5nfpucogqucqpj7jeneb6rubfjfn1c7ipo5t9pfhvlj3jqnia7mehgcpjpnua3lj513ft85jnte3n7v423fstaqjodq8fedkidrmslvul9dhesrv3qbqvrvnfgpcosgap014oa5fef8m0h3a6po9cjgk41tlutgui1fe8dm917g1s5769ddje089io8k85jac8c0ajab210ulnibi91ao8l714o441no0kiolen2rm4keaq02t0ejqbi29maqd7g99lamep49bil33g9ae2gi4ps0d7gkr0b6obeo44ilvng1infda8230vs0hboktfih9u44qph55vaogeashio3b0hugm8nt7ggc1pdstpg8qre9f6f6gigch48112ikkbbtqm20c135u9i36gsbl205bug245l36amr2cma45l5tat2n923rhs3ecl2s9uaqfh1dbb5fvqcd3vh1davtvumbif3m3n9ftur4t4r05u3'
+const jigsawCode = 'SCv7_32_f2e6rjmd1b130360u5rsjec7tihmncvjrpg4fsb656skp67287crmbq9lc7b8vp8pm7l5uk2njp6bpj7ga8hpb19udqrjgbod9eajd9ql7vinvhjfl2mrc2k6hnha2uirfk20kaik4lb2him72ccjma1sp3lk9mefibhu0uqt8u65l23bdj15gg6e4k67lcv8mtfbejp19p5qni1r1r21nhsn4'
+const shortGrid = STARTER.replace(/\d0{0,5}/g, (run) =>
+  '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx'[Number(run[0]) + 10 * (run.length - 1)])
+
+function coach(data: Record<string, unknown>) {
+  const alphabet = '0123456789abcdefghijklmnopqrstuv'
+  const bytes = deflateSync(JSON.stringify({ gridSize: 9, ...data }))
+  const bits = Array.from(bytes, (byte) => byte.toString(2).padStart(8, '0')).join('')
+  return 'SCv7_32_' + bits.match(/.{1,5}/g)!.map((chunk) => alphabet[Number.parseInt(chunk.padEnd(5, '0'), 2)]).join('')
+}
+
+test('detects existing formats and compact Classic links', async () => {
+  const inputs = [
+    [STARTER, 'Text grid'],
+    ['```text\n' + exportPuzzle(STARTER, 'grid') + '\n```', 'Text grid'],
+    [exportPuzzle(STARTER, 'hodoku'), 'HoDoKu'],
+    [exportPuzzle(STARTER, 'link', 'https://example.org'), 'Puzzle link'],
+    [exportPuzzle(STARTER, 'coach'), 'Sudoku Coach'],
+    [exportPuzzle(STARTER, 'exchange'), 'Sudoku Exchange'],
+    [`https://sudokuexchange.com/play/?s=${shortGrid}&d=1`, 'Sudoku Exchange'],
+    [`https://sudokupad.app/scf${shortGrid}`, 'SudokuPad'],
+  ]
+  for (const [input, format] of inputs) assert.deepEqual(await detectPuzzle(input), { givens: STARTER, format }, input)
+})
+
+test('imports the supplied Killer grid from a Sudoku Coach code or link', async () => {
+  const puzzle = await detectPuzzle(killerCode)
+  assert.equal(puzzle.format, 'Sudoku Coach')
+  assert.equal(puzzle.givens, '000000300' + '0'.repeat(72))
+  assert.equal(puzzle.variant?.id, 'killer-cages')
+  const rule = puzzle.variant.puzzle.rules?.[0]
+  assert.equal(rule?.type, 'killer-cages')
+  assert.equal(rule.cages.length, 36)
+  assert.deepEqual(rule.cages[0], { cells: [0, 9], sum: 10 })
+  assert.deepEqual(rule.cages.at(-1), { cells: [79, 80], sum: 11 })
+  assert.equal(new Set(rule.cages.flatMap(({ cells }) => cells)).size, 81)
+  assert.equal(rule.cages.reduce((sum, cage) => sum + cage.sum, 0), 405)
+  assert.deepEqual(await detectPuzzle(`sudoku.coach/en/play/${killerCode}`), puzzle)
+  assert.deepEqual(await detectPuzzle(`https://sudoku.coach/en/solver/${killerCode}`), puzzle)
+  const shared = `https://example.org/#variant=${encodeURIComponent(JSON.stringify(puzzle.variant))}`
+  assert.deepEqual(await detectPuzzle(shared), { ...puzzle, format: 'Puzzle link' })
+})
+
+test('keeps the givens and irregular regions of a Jigsaw grid', async () => {
+  const puzzle = await detectPuzzle(jigsawCode)
+  assert.equal(puzzle.givens, '000000350080000200000090030100600000020000000000000000000000090000400005971005000')
+  assert.equal(puzzle.variant?.id, 'jigsaw')
+  const regions = puzzle.variant.puzzle.regions
+  assert.equal(regions?.type, 'jigsaw')
+  assert.equal(regions.regions.length, 9)
+  assert.deepEqual(regions.regions[0], [0, 1, 2, 3, 10, 11, 12, 19, 28])
+  assert.equal(new Set(regions.regions.flat()).size, 81)
+})
+
+test('keeps givens only from Current State and maps Coach rule direction', async () => {
+  const state = await detectPuzzle(coach({
+    givenDigits: STARTER,
+    userDigits: '100' + EMPTY.slice(3),
+    userCellCandidates: '0-0-230',
+    givenConstraints: [
+      { type: 'diagonalNegative', segments: [], settings: {} },
+      { type: 'diagonalPositive', segments: [], settings: {} },
+    ],
+  }))
+  assert.equal(state.givens, STARTER)
+  assert.deepEqual(state.variant?.puzzle.rules, [
+    { type: 'diagonal', diagonal: 'main' },
+    { type: 'diagonal', diagonal: 'anti' },
+  ])
+  assert.equal((await detectPuzzle(coach({}))).givens, EMPTY)
+  assert.deepEqual(await detectPuzzle(coach({ givenDigits: STARTER, meta: { puzzleName: 'Classic puzzle' } })),
+    { givens: STARTER, format: 'Sudoku Coach' })
+  for (const [type, cells, rule] of [
+    ['antiKnight', [], { type: 'anti-knight' }],
+    ['thermometer', [0, 10, 11], { type: 'thermometer', cells: [0, 10, 11] }],
+    ['arrow', [0, 10, 11], { type: 'arrow', circle: 0, cells: [10, 11] }],
+  ] as const) {
+    const puzzle = await detectPuzzle(coach({ givenDigits: STARTER,
+      givenConstraints: [{ type, segments: cells.length ? [{ cells, parameters: {} }] : [], settings: {} }] }))
+    assert.deepEqual(puzzle.variant?.puzzle.rules, [rule])
+  }
+})
+
+test('opens f-puzzles links, raw exports, and SudokuPad f-puzzles links', async () => {
+  const grid = Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, column) => {
+    const value = Number(STARTER[row * 9 + column])
+    return value ? { value, given: true } : { value: 8, centerPencilMarks: [1, 2] }
+  }))
+  const json = JSON.stringify({ size: 9, grid, ruleset: 'Normal sudoku rules apply.' })
+  const code = lzString.compressToBase64(json)
+  const parsed = { givens: STARTER, format: 'f-puzzles' }
+  assert.deepEqual(await detectPuzzle(json), parsed)
+  assert.deepEqual(await detectPuzzle(code), parsed)
+  assert.deepEqual(await detectPuzzle(`https://f-puzzles.com/?load=${encodeURIComponent(code)}`), parsed)
+  assert.deepEqual(await detectPuzzle(`https://sudokupad.app/fpuzzles${encodeURIComponent(code)}`), { ...parsed, format: 'SudokuPad' })
+  const result = await detectPuzzle(JSON.stringify({ size: 9, grid, killercage: [{ cells: ['R1C1', 'R1C2'], value: '8' }] }))
+  assert.deepEqual(result.variant?.puzzle.rules, [{ type: 'killer-cages', cages: [{ cells: [0, 1], sum: 8 }] }])
+  await assert.rejects(detectPuzzle(JSON.stringify({ size: 9, grid, fogofwar: ['R1C1'] })), /not supported yet.*fogofwar/)
+})
+
+test('reports unsupported or damaged codes without treating them as Classic', async () => {
+  await assert.rejects(detectPuzzle('SCv6_32_0000'), /unsupported format/)
+  await assert.rejects(detectPuzzle('SCv7_32_zzzz'), /invalid character/)
+  await assert.rejects(detectPuzzle('SCv7_32_0000'), /could not be opened/)
+  await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/DMnw'), /Copy → Puzzle/)
+  await assert.rejects(detectPuzzle('https://sudokupad.app/example-share-id'), /does not contain the puzzle data/)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalEntropy', segments: [] }] })), /not supported yet.*globalEntropy/)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'cage', segments: [] }] })), /no Killer cages/)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [
+    { type: 'antiKnight', segments: [] },
+    { type: 'diagonalNegative', segments: [] },
+  ] })), /combination/)
+  await assert.rejects(detectPuzzle('x'.repeat(MAX_IMPORT_LENGTH + 1)), /one puzzle at a time/)
+})

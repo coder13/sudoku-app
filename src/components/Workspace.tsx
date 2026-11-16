@@ -15,7 +15,8 @@ import {
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { ImportPuzzle, NewPuzzle, openPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
+import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
+import { NewPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
 import { Presence } from './Presence'
 import type { PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { useMobileLayout } from './mobile-layout'
@@ -220,10 +221,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     }
   }, [menuOpen])
 
-  function openPanel(nextPanel: Exclude<Panel, null>) {
+  function openImport() {
     setMenuOpen(false)
-    setPanel(nextPanel)
-    if (!playing) void navigate({ to: '/' })
+    if (mobile) {
+      setPanel(null)
+      void navigate({ to: '/import' })
+      return
+    }
+    setPanel('import')
   }
 
   function openNewPuzzle(step?: 'difficulty') {
@@ -427,7 +432,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
               <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
               <div className="app-menu-separator" />
-              <button onClick={() => openPanel('import')}><ArrowDownToLine size={17} /> Import</button>
+              <button onClick={openImport}><ArrowDownToLine size={17} /> Import</button>
             </div>}</Presence>
           </div>
         </div>
@@ -483,7 +488,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
       {panel === 'new' && !mobile && <NewPuzzle close={close} difficulty={newPuzzlePreference?.difficulty ?? difficulty} initialVariant={newPuzzlePreference?.variant}
         onDifficultyChange={setDifficulty} onPuzzleStart={rememberNewPuzzle} onCreate={createPuzzle} />}
-      {panel === 'import' && <ImportPuzzle close={close} onImport={openPuzzle} />}
+      {panel === 'import' && <ImportPuzzle close={close} onPlay={() => { close(); void navigate({ to: '/' }) }} />}
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
       {panel === 'stop' && game && <StopPlaying game={game} fromPlay close={close}
         onDone={() => { void navigate({ to: '/puzzles/browse' }) }} />}
