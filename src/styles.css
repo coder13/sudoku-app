@@ -590,6 +590,13 @@ svg { flex-shrink: 0; }
 }
 .hint-card-navigation span { min-width: 5ch; text-align: center; }
 .hint-card p { margin-top: 12px; color: var(--ink); font-size: 14px; line-height: 1.5; }
+.hint-card-reason, .hint-card-removals { margin-top: 14px; }
+.hint-card :is(.hint-card-reason, .hint-card-removals) h3 { margin: 0; font-size: 13px; font-weight: 780; }
+.hint-card .hint-card-reason p { margin-top: 6px; line-height: 1.6; }
+.hint-card-removals ul { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.hint-card-removals li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.6; }
+.hint-card-removals li strong { color: var(--dark-purple); }
+.hint-card-removals li span { overflow-wrap: anywhere; }
 .hint-card-explanation { margin-top: 8px; font-size: 13px; }
 .hint-card-explanation summary { width: fit-content; padding-block: 4px; cursor: pointer; }
 .hint-card-explanation p { margin-top: 4px; }

@@ -1,6 +1,7 @@
 import type { Deduction, Difficulty, HintChoice } from './engine'
 
 export type PuzzleHint = { title: string; text: string }
+export type HintRemoval = { digit: number; cells: string[] }
 
 export function moveHintIndex(index: number, count: number, offset: -1 | 1): number {
   if (count < 1) return 0
@@ -73,6 +74,20 @@ export function describeHintDigits({ pattern, actions }: HintChoice): string {
   return `Look for ${digits.length === 1 ? 'digit ' : 'digits '}${locationList.format(digits.map(String))}.`
 }
 
+export function describeHintRemovals(deduction: Deduction, {
+  difficulty, cellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE,
+}: { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle } = {}): HintRemoval[] {
+  const removals = new Map<number, Set<string>>()
+  for (const action of deduction.actions) {
+    if (!('eliminate' in action)) continue
+    const { cell, digit } = action.eliminate
+    const cells = removals.get(digit) ?? new Set<string>()
+    cells.add(cellReference(cell, cellReferenceStyle, difficulty))
+    removals.set(digit, cells)
+  }
+  return [...removals].map(([digit, cells]) => ({ digit, cells: [...cells] }))
+}
+
 export function describeHint(deduction: Deduction, {
   difficulty, cellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE,
 }: { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle } = {}): PuzzleHint {
@@ -86,15 +101,7 @@ export function describeHint(deduction: Deduction, {
     return { title, text: `Place digit ${digit} in ${location(cell)}.` }
   }
 
-  const removals = new Map<number, string[]>()
-  for (const result of deduction.actions) {
-    if (!('eliminate' in result)) continue
-    const { cell, digit } = result.eliminate
-    const cells = removals.get(digit) ?? []
-    cells.push(location(cell))
-    removals.set(digit, cells)
-  }
-  const text = [...removals].map(([digit, cells]) =>
+  const text = describeHintRemovals(deduction, { difficulty, cellReferenceStyle }).map(({ digit, cells }) =>
     `Remove digit ${digit} from the candidates in ${locationList.format(cells)}.`).join(' ')
   return { title, text }
 }

@@ -11,7 +11,7 @@ import {
   formatTime, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
-import { cellReference, describeHint, describeHintDigits, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
+import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
 import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
@@ -1190,6 +1190,7 @@ export function Worktable({
     : deduction && hintCandidates ? reveal ? { label: reveal.label, onClick: revealHint } : { label: 'Apply hint', onClick: applyHint }
     : undefined
   const explanation = solutionHintPanel ? stepDiagram : hintDiagram
+  const revealedDeduction = solutionHintPanel ? replayedSolutionStep?.deduction : fullHint && !recovery ? deduction : undefined
   const recoveryExplanation = !solutionHintPanel && recovery && fullHint
     ? explainCandidateRecovery(game, recovery, cellReferenceStyle) : undefined
   const hintPanel = (solutionHintPanel || visibleHint || hintLoading || mobileHintOpen) && (
@@ -1198,6 +1199,9 @@ export function Worktable({
       <HintCard hint={solutionHintPanel ? solutionHintCopy
         : hintLoading ? { title: 'Finding a hint…', text: '' } : hintCopy}
         lesson={hintLesson}
+        removals={revealedDeduction ? describeHintRemovals(revealedDeduction, {
+          difficulty: techniqueDifficulties[revealedDeduction.technique], cellReferenceStyle,
+        }) : undefined}
         onClose={() => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)}
         onShown={!solutionHintPanel && deduction ? markHintVisible : undefined}
         action={hintAction}
@@ -1205,7 +1209,7 @@ export function Worktable({
           ? { label: 'Review move', expanded: visibleHint?.reviewingRemoval ?? false,
             onClick: () => setHint((current) => current?.recovery ? { ...current, reviewingRemoval: !current.reviewingRemoval } : current) }
           : undefined}
-        explanation={recoveryExplanation ?? (explanation?.description ? [explanation.description, explanation.reason].filter(Boolean).join(' ') : undefined)}
+        explanation={recoveryExplanation ?? (explanation?.description ? [explanation.description, explanation.reason].filter(Boolean) : undefined)}
         collapseExplanation={Boolean(solutionHintPanel)}
         trace={solutionHintPanel ? undefined : hintDiagram?.trace}
         navigation={!solutionHintPanel && visibleHint && visibleHint.choices.length > 0
