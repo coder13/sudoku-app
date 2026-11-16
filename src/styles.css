@@ -593,6 +593,8 @@ svg { flex-shrink: 0; }
 .hint-card-reason, .hint-card-removals { margin-top: 14px; }
 .hint-card :is(.hint-card-reason, .hint-card-removals) h3 { margin: 0; font-size: 13px; font-weight: 780; }
 .hint-card .hint-card-reason p { margin-top: 6px; line-height: 1.6; }
+.hint-reason-steps { display: grid; gap: 10px; margin: 10px 0 0; padding-inline-start: 22px; font-size: 14px; line-height: 1.6; }
+.hint-reason-steps li { padding-inline-start: 3px; }
 .hint-card-removals ul { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
 .hint-card-removals li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.6; }
 .hint-card-removals li strong { color: var(--dark-purple); }

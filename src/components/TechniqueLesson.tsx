@@ -18,7 +18,7 @@ export function Diagram({ example, crop, copy }: {
   crop?: BoardRegion
   copy?: Extract<LessonBlock, { type: 'diagram' }>['copy']
 }) {
-  const { annotations, region, description, reason, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
+  const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
   const view = crop ?? region
   const results = copy?.results ?? defaultResults
   const trace = copy?.trace ?? defaultTrace
@@ -33,7 +33,8 @@ export function Diagram({ example, crop, copy }: {
       </div>
       <figcaption>
         <p>{copy?.description ?? description}</p>
-        <p>{copy?.reason ?? reason}</p>
+        {reasonSteps && !copy?.reason ? <ol className="lesson-reason-steps">{reasonSteps.map((step, index) => <li key={index}>{step}</li>)}</ol>
+          : <p>{copy?.reason ?? reason}</p>}
         {results.length === 1 ? <p className="lesson-outcomes">{results[0]}</p>
           : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}>{result}</li>)}</ul>}
         {(accentLabel || strong || weak) && <div className="lesson-legend" aria-label="Diagram key">

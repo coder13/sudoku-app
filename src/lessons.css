@@ -305,3 +305,4 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
   .app-shell.advanced-mode.advanced-left-collapsed .learn-page { grid-template-columns: minmax(0, 1fr); }
   .app-shell.advanced-mode.advanced-left-collapsed .learn-navigation { display: none; }
 }
+.lesson-reason-steps { display: grid; gap: 10px; padding-inline-start: 22px; }

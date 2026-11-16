@@ -6,7 +6,7 @@ import type { lessonDiagram } from '../sudoku/lesson-diagram'
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
 type HintAction = { label: string; onClick: () => void }
 
-export function HintCard({ hint, onClose, onShown, navigation, action, secondaryAction, explanation, collapseExplanation, trace, lesson, removals }: {
+export function HintCard({ hint, onClose, onShown, navigation, action, secondaryAction, explanation, explanationSteps, collapseExplanation, trace, lesson, removals }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
@@ -14,6 +14,7 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
   action?: HintAction
   secondaryAction?: HintAction & { expanded?: boolean }
   explanation?: string | readonly string[]
+  explanationSteps?: readonly string[]
   collapseExplanation?: boolean
   trace?: ReturnType<typeof lessonDiagram>['trace']
   lesson?: { id: string; title: string }
@@ -56,12 +57,14 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
           {action && <button type="button" className="button primary" onClick={action.onClick}>{action.label}</button>}
         </div>}
       </div>
-      {paragraphs.length > 0 && (collapseExplanation ? <details className="hint-card-explanation">
+      {(paragraphs.length > 0 || Boolean(explanationSteps?.length)) && (collapseExplanation ? <details className="hint-card-explanation">
         <summary>Why this works</summary>
         {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+        {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}>{step}</li>)}</ol> : null}
       </details> : <section className="hint-card-reason" aria-label="Why this works">
         <h3>Why this works</h3>
         {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+        {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}>{step}</li>)}</ol> : null}
       </section>)}
       {trace && <details className="hint-card-explanation">
         <summary>Read the proof step by step</summary>

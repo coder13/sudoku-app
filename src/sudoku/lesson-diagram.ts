@@ -1,7 +1,7 @@
 import type { BoardAnnotations, BoardLink, BoardRegion, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
 import type { Candidate, Deduction, DeductionAction, Difficulty, HintChoice, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
-import { DIGITS, peer } from './game'
-import { cellReference, type CellReferenceStyle } from './hints'
+import { DIGITS, peer } from './game.ts'
+import { cellReference, type CellReferenceStyle } from './hints.ts'
 
 type Pattern = {
   houses?: House[]
@@ -13,6 +13,7 @@ type Pattern = {
   links?: BoardLink[]
   description: string
   reason: string
+  reasonSteps?: string[]
   trace?: { assumption: string; steps: string[]; conclusion: string }[]
 }
 
@@ -209,13 +210,36 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
   }
   if ('wxyz-wing' in evidence) {
     const { cells, digits, unrestricted } = evidence['wxyz-wing']
+    const places = (digit: number) => cells.filter((cell) => candidates[cell] & (1 << (digit - 1)))
+    const sharedHouse = (locations: number[]): House | undefined => {
+      const firstCell = locations[0]
+      return [{ row: Math.floor(firstCell / 9) }, { column: firstCell % 9 },
+        { box: Math.floor(firstCell / 27) * 3 + Math.floor(firstCell % 9 / 3) }]
+        .find((house) => locations.every((cell) => houseCells(house).includes(cell)))
+    }
+    const restricted = digits.filter((digit) => digit !== unrestricted)
+    const reasonSteps = restricted.map((digit) => {
+      const locations = places(digit)
+      if (locations.length === 1) return `${digit} can fill only one highlighted cell: ${cellName(locations[0])}.`
+      const house = sharedHouse(locations)
+      const connection = house ? `share ${houseName(house)}` : 'all see each other'
+      return `The ${digit} candidates at ${list.format(locations.map(cellName))} ${connection}. So ${digit} can fill at most one highlighted cell.`
+    })
+    reasonSteps.push(unrestricted === null
+      ? 'All four digits can fill at most one cell each. The four cells must therefore contain each digit exactly once.'
+      : `The other three digits can fill at most three cells. There are four cells to fill, so at least one must contain ${unrestricted}.`)
+    const possible = places(first.digit)
+    reasonSteps.push(`${first.digit} must therefore appear in ${either.format(possible.map(cellName))}.`)
+    const targetConnections = possible.map((cell) => {
+      const house = sharedHouse([first.cell, cell])
+      return `${cellName(cell)}${house ? ` through ${houseName(house)}` : ''}`
+    })
+    reasonSteps.push(`${cellName(first.cell)} sees ${list.format(targetConnections)}. It therefore cannot contain ${first.digit}.`)
     return {
       cells, candidates: marks(cells, digits.filter((digit) => digit !== unrestricted)),
       accent: unrestricted === null ? undefined : { candidates: marks(cells, [unrestricted]), label: 'Unrestricted digit' },
-      description: `${list.format(cells.map(cellName))} have only ${list.format(digits.map(String))} between them.`,
-      reason: unrestricted === null
-        ? 'Each digit can appear only once within the four cells. The cells must use every digit.'
-        : `Each of the other three digits can fill just one cell. The fourth cell needs ${unrestricted}. ${cellName(first.cell)} sees every place ${unrestricted} can go in the wing.`,
+      description: `The four highlighted cells are ${list.format(cells.map(cellName))}. Their candidates are ${list.format(digits.map(String))}.`,
+      reason: reasonSteps.join(' '), reasonSteps,
     }
   }
   if ('chain' in evidence) {
@@ -505,9 +529,9 @@ export function lessonDiagram({ deduction, candidates }: Pick<LessonExample, 'de
   }
   const results = deductionResults(deduction.actions)
   const annotations: BoardAnnotations = { cells, candidates: candidateMarks, links: pattern.links }
-  const { description, reason, mainLabel = 'Pattern candidate', accent, trace } = pattern
+  const { description, reason, reasonSteps, mainLabel = 'Pattern candidate', accent, trace } = pattern
   const focus = [...candidateMarks.keys(), ...('house' in deduction.evidence ? houseCells(deduction.evidence.house) : [])]
-  return { annotations, region: enclosingRegion(focus), description, reason, mainLabel, accentLabel: accent?.label, results, trace }
+  return { annotations, region: enclosingRegion(focus), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
 }
 
 function enclosingRegion(cells: number[]): BoardRegion {

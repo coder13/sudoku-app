@@ -1209,7 +1209,9 @@ export function Worktable({
           ? { label: 'Review move', expanded: visibleHint?.reviewingRemoval ?? false,
             onClick: () => setHint((current) => current?.recovery ? { ...current, reviewingRemoval: !current.reviewingRemoval } : current) }
           : undefined}
-        explanation={recoveryExplanation ?? (explanation?.description ? [explanation.description, explanation.reason].filter(Boolean) : undefined)}
+        explanation={recoveryExplanation ?? (explanation?.description
+          ? [explanation.description, ...(explanation.reasonSteps ? [] : [explanation.reason])].filter(Boolean) : undefined)}
+        explanationSteps={recoveryExplanation ? undefined : explanation?.reasonSteps}
         collapseExplanation={Boolean(solutionHintPanel)}
         trace={solutionHintPanel ? undefined : hintDiagram?.trace}
         navigation={!solutionHintPanel && visibleHint && visibleHint.choices.length > 0
