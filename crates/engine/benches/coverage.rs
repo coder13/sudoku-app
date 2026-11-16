@@ -6,6 +6,11 @@ use sudoku_app_engine::{
     VerifiedTemplate, parse_givens, rate_puzzle, solve_logically, solve_position,
 };
 
+#[path = "coverage/rank.rs"]
+mod rank;
+#[path = "coverage/rank_effort.rs"]
+mod rank_effort;
+
 const RUNS: usize = 25;
 const STARTER: &str =
     "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
@@ -200,8 +205,38 @@ const ALIGNMENT_EXAMPLES: &[(&str, &[(&str, &str)])] = &[
     ),
 ];
 
+const SENIOR_EXOCET_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
+    "senior-exocet",
+    &[
+        (
+            "senior-exocet-1",
+            Technique::SeniorExocet.practice_examples()[0].givens,
+        ),
+        (
+            "senior-exocet-2",
+            Technique::SeniorExocet.practice_examples()[1].givens,
+        ),
+        (
+            "senior-exocet-3",
+            Technique::SeniorExocet.practice_examples()[2].givens,
+        ),
+    ],
+)];
+
 fn main() {
     let args: Vec<_> = std::env::args().collect();
+    if args.iter().any(|arg| arg == "--rank-discovery") {
+        rank::run();
+        return;
+    }
+    if args.iter().any(|arg| arg == "--rank-effort") {
+        rank_effort::run();
+        return;
+    }
+    if args.iter().any(|arg| arg == "--rank-frontier") {
+        rank_effort::frontier();
+        return;
+    }
     let nested = args.iter().any(|arg| arg == "--nested-forcing");
     let advanced = args.iter().any(|arg| arg == "--advanced-forcing");
     let dynamic = nested || advanced || args.iter().any(|arg| arg == "--dynamic-forcing");
@@ -210,6 +245,8 @@ fn main() {
     let aligned = args.iter().any(|arg| arg == "--aligned-exclusion");
     let complex_fish = args.iter().any(|arg| arg == "--complex-fish");
     let kraken = args.iter().any(|arg| arg == "--kraken");
+    let senior_exocet = args.iter().any(|arg| arg == "--senior-exocet");
+    let senior_examples = args.iter().any(|arg| arg == "--senior-exocet-examples");
     let depth_three = args.iter().any(|arg| arg == "--depth-three");
     let tridagon = args.iter().any(|arg| arg == "--tridagon");
     let depth_puzzles: Vec<_> = if depth_three {
@@ -240,6 +277,8 @@ fn main() {
         ALIGNMENT_EXAMPLES
     } else if forcing_examples {
         FORCING_EXAMPLES
+    } else if senior_examples {
+        SENIOR_EXOCET_EXAMPLES
     } else {
         CORPUS
     };
@@ -248,6 +287,9 @@ fn main() {
         .iter()
         .position(|&technique| technique == Technique::ForcingChain)
         .unwrap();
+    if senior_exocet {
+        order.insert(before_forcing, Technique::SeniorExocet);
+    }
     if complex_fish {
         order.splice(
             before_forcing..before_forcing,
@@ -301,6 +343,9 @@ fn main() {
     }
     if kraken {
         eprintln!("Kraken Fish Types 1 and 2 after the default profile");
+    }
+    if senior_exocet {
+        eprintln!("Senior Exocet before forcing");
     }
     if advanced {
         eprintln!("Advanced Forcing Net after Dynamic Forcing Net");

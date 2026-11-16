@@ -10,6 +10,7 @@ mod practice;
     any(target_arch = "wasm32", test, feature = "cli")
 ))]
 mod protocol;
+mod rank;
 mod technique;
 mod variant;
 
@@ -33,13 +34,21 @@ pub use hints::{
 };
 pub use logical::{
     AlternatePath, AlternatePathStatus, Difficulty, LogicalSolve, MoveAvailability, PathComparison,
-    PuzzleRating, ReplayedStep, SCORING_VERSION, SolveScore, SolveStatus, compare_paths,
-    opening_techniques, rate_puzzle, search_alternate_path, solve_logically, solve_position,
+    PuzzleRating, RankFallbackOptions, RankSolve, RankSolveReplay, RankSolveSearch,
+    RankSolveStatus, RankSolveStep, ReplayedStep, SCORING_VERSION, SolveScore, SolveStatus,
+    compare_paths, opening_techniques, rate_puzzle, search_alternate_path, solve_logically,
+    solve_position, solve_position_with_rank,
 };
 pub use position::PositionSnapshot;
 pub use practice::{PracticeExample, check_practice_move};
 #[cfg(feature = "cli")]
 pub use protocol::batch::{BatchCommand, run_batch};
+pub use rank::{
+    RANK_PROOF_EFFORT_VERSION, RankConstraint, RankDiscovery, RankDiscoveryScan, RankError,
+    RankOutcome, RankPattern, RankProof, RankProofEffort, RankProofNode, RankScan,
+    discover_rank_at, discover_rank_deductions_at, prove_rank_at, rank_deductions_at,
+    rank_proof_effort_at, replay_rank_proof_at,
+};
 pub use technique::{ProfileError, SolverProfile, Technique};
 pub use variant::{
     ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, GeneratedVariant,

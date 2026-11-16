@@ -784,6 +784,15 @@ const EXOCET: PracticeExample = PracticeExample {
     expected_actions: &[remove(12, 4), remove(24, 2), remove(24, 7)],
 };
 
+// Standard Senior Exocet from the Sudoku Studio tutorial, figure 0810.
+// https://github.com/kyoyama-kazusa/Sudoku/blob/main/docs/tutorial/exocet/07-senior-exocet.md
+const SENIOR_EXOCET: PracticeExample = PracticeExample {
+    givens: "007000098600900700500000600000030040020001009006500000000004010000020003008700900",
+    entries: None,
+    eliminations: Some(&elimination_masks(&[(28, 8), (46, 8)])),
+    expected_actions: &[remove(21, 8), remove(51, 8)],
+};
+
 // Steve Kurzhal's loop in Easter Monster, as documented by Allan Barker.
 const SK_LOOP: PracticeExample = PracticeExample {
     givens: "100000002090400050006000700050903000000070000000850040700000600030009080002000001",
@@ -1032,6 +1041,7 @@ impl Technique {
             Self::DeathBlossom => return DEATH_BLOSSOM,
             Self::SueDeCoq => return SUE_DE_COQ,
             Self::Exocet => return EXOCET,
+            Self::SeniorExocet => return SENIOR_EXOCET,
             Self::SkLoop => return SK_LOOP,
             Self::MultiSectorLockedSets => return MULTI_SECTOR_LOCKED_SETS,
             Self::FrankenFish => return FRANKEN_FISH,
@@ -1083,6 +1093,7 @@ mod tests {
         let transpose = |cell: usize| cell % 9 * 9 + cell / 9;
         for technique in [
             Technique::Exocet,
+            Technique::SeniorExocet,
             Technique::SkLoop,
             Technique::MultiSectorLockedSets,
             Technique::KrakenFish1,

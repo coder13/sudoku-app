@@ -10,13 +10,16 @@ use serde_json::{Value, json};
 use super::generation::start_builtin_pool;
 use super::hints::{checked_position, rank_position};
 use super::{
-    Analysis, Board, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, GeneratedPuzzle,
+    Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, GeneratedPuzzle,
     GenerationConflict, GenerationCriteria, GenerationError, GenerationRating, GenerationSearch,
     GenerationStep, GenerationTarget, Hint, HintAction, HintError, HintStages, PositionSnapshot,
-    ProofPattern, SCORING_VERSION, SolverProfile, Technique, TechniqueTargetMode, candidates,
-    check_practice_move, compare_paths, deductions, next_enabled_deduction, opening_techniques,
-    parse_givens, rate_puzzle, search_alternate_path, solve_position, start_matching,
-    start_targeted, technique_deductions_at,
+    ProofPattern, RankDiscovery, RankDiscoveryScan, RankError, RankFallbackOptions, RankOutcome,
+    RankPattern, RankProof, RankScan, SCORING_VERSION, SolverProfile, Technique,
+    TechniqueTargetMode, candidates, check_practice_move, compare_paths, deductions,
+    discover_rank_at, discover_rank_deductions_at, next_enabled_deduction, opening_techniques,
+    parse_givens, prove_rank_at, rank_deductions_at, rank_proof_effort_at, rate_puzzle,
+    replay_rank_proof_at, search_alternate_path, solve_position, solve_position_with_rank,
+    start_matching, start_targeted, technique_deductions_at,
 };
 
 #[cfg(feature = "cli")]
@@ -52,6 +55,16 @@ enum Request {
         include_step_details: bool,
         #[serde(default)]
         include_move_availability: bool,
+    },
+    LogicalSolveWithRank {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        technique_order: Option<Vec<String>>,
+        #[serde(default)]
+        rank_options: RankFallbackOptions,
+        #[serde(default)]
+        include_positions: bool,
     },
     CompareSolvePaths {
         values: String,
@@ -101,6 +114,48 @@ enum Request {
         values: String,
         eliminations: Option<Vec<u16>>,
         technique_order: Option<Vec<String>>,
+    },
+    ProveRank {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        pattern: RankPattern,
+        target: Candidate,
+        node_budget: u32,
+    },
+    DiscoverRank {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        target: Candidate,
+        node_budget: u32,
+    },
+    DiscoverRankDeductions {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        limit: Option<usize>,
+        node_budget: u32,
+        max_nodes_per_candidate: u32,
+    },
+    RankDeductions {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        pattern: RankPattern,
+        node_budget: u32,
+    },
+    ReplayRankProof {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        proof: RankProof,
+    },
+    RankProofEffort {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        proof: RankProof,
     },
     OpeningTechniques {
         values: String,
@@ -226,6 +281,10 @@ enum ResponseValue {
     Json(Value),
     Deductions(Vec<DeductionMatch>),
     HintStages(Option<Box<HintStages>>),
+    RankOutcome(RankOutcome),
+    RankDiscovery(RankDiscovery),
+    RankDiscoveryScan(RankDiscoveryScan),
+    RankScan(RankScan),
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
@@ -316,6 +375,33 @@ fn hint_error(error: HintError) -> (&'static str, &'static str) {
     match error {
         HintError::Puzzle(analysis) => puzzle_error(analysis),
         HintError::InvalidEliminations => INVALID_ELIMINATIONS,
+    }
+}
+
+fn rank_error(error: RankError) -> (&'static str, &'static str) {
+    match error {
+        RankError::Position(error) => hint_error(error),
+        RankError::NoBases => (
+            "invalid-rank-pattern",
+            "Select at least one base constraint.",
+        ),
+        RankError::InvalidConstraint(_) => (
+            "invalid-rank-pattern",
+            "Use valid cell indices, house indices, and digits in the rank pattern.",
+        ),
+        RankError::DuplicateConstraint(_) => (
+            "invalid-rank-pattern",
+            "Use each constraint at most once per role in the rank pattern.",
+        ),
+        RankError::SatisfiedConstraint(_) => (
+            "invalid-rank-pattern",
+            "Use constraints that still need a digit.",
+        ),
+        RankError::InactiveTarget(_) => ("invalid-rank-target", "Choose an active candidate."),
+        RankError::UnconstrainedTarget(_) => (
+            "invalid-rank-target",
+            "Choose a candidate in at least one base or cover.",
+        ),
     }
 }
 
@@ -711,6 +797,41 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             }
             Ok(response)
         }
+        Request::LogicalSolveWithRank {
+            values,
+            entries,
+            eliminations,
+            technique_order,
+            rank_options,
+            include_positions,
+        } => {
+            let start = starting_position(&values, entries.as_deref(), eliminations)?;
+            let trace = solve_position_with_rank(
+                &start,
+                profile(technique_order)?.technique_order(),
+                rank_options,
+            )
+            .map_err(hint_error)?;
+            let mut response = json!({
+                "board": grid_string(trace.board),
+                "steps": trace.steps,
+                "status": trace.status,
+                "techniqueOrder": trace.technique_order,
+                "namedScore": trace.named_score,
+                "namedScoringVersion": trace.named_scoring_version,
+                "rankOptions": trace.rank_options,
+                "rankNodesVisited": trace.rank_nodes_visited,
+                "terminalRankSearch": trace.terminal_rank_search,
+            });
+            if include_positions {
+                let positions = trace
+                    .positions()
+                    .map(|snapshot| snapshot_value(&snapshot))
+                    .collect();
+                response["positions"] = Value::Array(positions);
+            }
+            Ok(response)
+        }
         Request::CompareSolvePaths {
             values,
             entries,
@@ -849,6 +970,79 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             )
             .map_err(hint_error)?;
             return Ok(ResponseValue::Deductions(results));
+        }
+        Request::ProveRank {
+            values,
+            entries,
+            eliminations,
+            pattern,
+            target,
+            node_budget,
+        } => {
+            let snapshot = starting_position(&values, entries.as_deref(), eliminations)?;
+            let outcome =
+                prove_rank_at(&snapshot, &pattern, target, node_budget).map_err(rank_error)?;
+            return Ok(ResponseValue::RankOutcome(outcome));
+        }
+        Request::DiscoverRank {
+            values,
+            entries,
+            eliminations,
+            target,
+            node_budget,
+        } => {
+            let snapshot = starting_position(&values, entries.as_deref(), eliminations)?;
+            let result = discover_rank_at(&snapshot, target, node_budget).map_err(rank_error)?;
+            return Ok(ResponseValue::RankDiscovery(result));
+        }
+        Request::DiscoverRankDeductions {
+            values,
+            entries,
+            eliminations,
+            limit,
+            node_budget,
+            max_nodes_per_candidate,
+        } => {
+            let snapshot = starting_position(&values, entries.as_deref(), eliminations)?;
+            let result = discover_rank_deductions_at(
+                &snapshot,
+                limit.unwrap_or(DEFAULT_HINT_LIMIT),
+                node_budget,
+                max_nodes_per_candidate,
+            )
+            .map_err(rank_error)?;
+            return Ok(ResponseValue::RankDiscoveryScan(result));
+        }
+        Request::RankDeductions {
+            values,
+            entries,
+            eliminations,
+            pattern,
+            node_budget,
+        } => {
+            let snapshot = starting_position(&values, entries.as_deref(), eliminations)?;
+            let scan = rank_deductions_at(&snapshot, &pattern, node_budget).map_err(rank_error)?;
+            return Ok(ResponseValue::RankScan(scan));
+        }
+        Request::ReplayRankProof {
+            values,
+            entries,
+            eliminations,
+            proof,
+        } => {
+            let snapshot = starting_position(&values, entries.as_deref(), eliminations)?;
+            let valid = replay_rank_proof_at(&snapshot, &proof).map_err(rank_error)?;
+            Ok(json!(valid))
+        }
+        Request::RankProofEffort {
+            values,
+            entries,
+            eliminations,
+            proof,
+        } => {
+            let snapshot = starting_position(&values, entries.as_deref(), eliminations)?;
+            let effort = rank_proof_effort_at(&snapshot, &proof).map_err(rank_error)?;
+            Ok(json!(effort))
         }
         Request::OpeningTechniques { values } => {
             let techniques = opening_techniques(&board(&values)?).map_err(puzzle_error)?;

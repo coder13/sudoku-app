@@ -5,6 +5,43 @@ use super::{PracticeExample, Technique, elimination_masks, place, remove};
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
+        Technique::SeniorExocet => {
+            const {
+                // Figures 0812 and 0817 in the Sudoku Studio Senior Exocet tutorial.
+                [
+                    PracticeExample {
+                        givens: "007005008900000300630700000000040000800001002003500700009600500040002001000000020",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[
+                            remove(12, 8),
+                            remove(75, 3),
+                            remove(75, 8),
+                            remove(75, 9),
+                        ],
+                    },
+                    PracticeExample {
+                        givens: "001000070390000800800100900009300700000042060200000004003700600000010050050006007",
+                        entries: None,
+                        eliminations: Some(&elimination_masks(&[(46, 7), (47, 7)])),
+                        // The allowed assignments also force 6 at r6c4.
+                        expected_actions: &[
+                            remove(3, 6),
+                            remove(4, 6),
+                            remove(8, 6),
+                            remove(11, 6),
+                            remove(12, 6),
+                            remove(19, 6),
+                            remove(20, 6),
+                            remove(47, 6),
+                            remove(48, 5),
+                            remove(48, 8),
+                            remove(48, 9),
+                        ],
+                    },
+                ]
+            }
+        }
         Technique::AdvancedForcingNet => {
             const {
                 [

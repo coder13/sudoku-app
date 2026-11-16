@@ -163,6 +163,7 @@ catalog! {
     SueDeCoq: "sue-de-coq", 250, Unfair, false, ["Two-Sector Disjoint Subsets"];
     DeathBlossom: "death-blossom", 360, Unfair, false, [];
     Exocet: "exocet", 450, Extreme, false, ["Junior Exocet", "JExocet"];
+    SeniorExocet: "senior-exocet", 550, Extreme, false, ["SExocet"];
     SkLoop: "sk-loop", 400, Extreme, false, ["Domino Loop"];
     MultiSectorLockedSets: "multi-sector-locked-sets", 480, Extreme, false, ["MSLS"];
     FrankenFish: "franken-fish", 420, Extreme, false, [];

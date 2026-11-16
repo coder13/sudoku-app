@@ -24,7 +24,7 @@ pub const DEFAULT_HINT_LIMIT: usize = 10;
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(
     feature = "wasm-api",
-    derive(serde::Serialize),
+    derive(serde::Serialize, serde::Deserialize),
     serde(rename_all = "kebab-case")
 )]
 pub enum House {
@@ -465,7 +465,7 @@ pub struct SectorLink {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
-/// Cross-line coverage for one base digit in a Junior Exocet proof.
+/// Cross-line coverage for one base digit in an Exocet proof.
 pub struct ExocetCover {
     /// Digit whose occurrences are constrained.
     pub digit: u8,
@@ -477,7 +477,7 @@ pub struct ExocetCover {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
-/// One compatible assignment of digits to Junior Exocet bases and targets.
+/// One compatible assignment of digits to Exocet bases and targets.
 pub struct ExocetAssignment {
     /// Digits assigned to the two base cells in evidence order.
     pub bases: [u8; 2],
@@ -768,11 +768,12 @@ pub enum HintEvidence {
         /// Supporting subset in the box.
         block: SectorSubset,
     },
-    /// A Junior Exocet with linked base and target digits.
+    /// An Exocet with linked base and target digits.
     Exocet {
         /// The two base cell indices.
         bases: [usize; 2],
-        /// The two target cell indices.
+        /// The two target cell indices. In Senior Exocet the second is
+        /// outside the base band or stack, inside the cross-line region.
         targets: [usize; 2],
         #[cfg_attr(feature = "wasm-api", serde(rename = "crossLines"))]
         /// Houses crossed by the pattern.

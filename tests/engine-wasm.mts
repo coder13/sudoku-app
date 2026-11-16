@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
-import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult } from '../src/sudoku/engine.ts'
+import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type RankPattern } from '../src/sudoku/engine.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
@@ -31,6 +31,116 @@ function engineRequests() {
   }
   return { raw, run }
 }
+
+test('rank requests find and replay a pointing removal with a shared budget', async () => {
+  const { run } = engineRequests()
+  const values = LOCKED_PAIR
+  const [pointing] = await run({ type: 'deductions', values, techniqueOrder: ['pointing'] })
+  const { evidence } = pointing.proofs[0]
+  const [action] = pointing.actions
+  assert.ok('intersection' in evidence)
+  assert.ok('eliminate' in action)
+  const target = action.eliminate
+  const { source, target: cover } = evidence.intersection
+  const pattern: RankPattern = {
+    bases: [{ 'house-digit': { house: source, digit: target.digit } }],
+    covers: [{ 'house-digit': { house: cover, digit: target.digit } }],
+  }
+  const request = { type: 'prove-rank', values, pattern, target } as const
+  assert.deepEqual(await run({ ...request, nodeBudget: 0 }), { status: 'search-limit' })
+  const result = await run({ ...request, nodeBudget: 1 })
+  assert.equal(result.status, 'proven')
+  const scan = await run({ type: 'rank-deductions', values, pattern, nodeBudget: 100 })
+  assert.ok(scan.complete)
+  assert.deepEqual(scan.proofs.find(proof =>
+    proof.target.cell === target.cell && proof.target.digit === target.digit
+  ), result.proof)
+  assert.equal(await run({ type: 'replay-rank-proof', values, proof: result.proof }), true)
+  assert.equal(await run({ type: 'replay-rank-proof', values, proof: { ...result.proof, nodes: [] } }), false)
+  const effort = await run({ type: 'rank-proof-effort', values, proof: result.proof })
+  assert.ok(effort)
+  assert.equal(effort.version, 1)
+  assert.equal(effort.constraints, 2)
+  assert.equal(effort.nodes, 1)
+  assert.equal(effort.score, 5 + effort.cells + effort.candidates)
+  assert.equal(await run({
+    type: 'rank-proof-effort', values, proof: { ...result.proof, nodes: [] },
+  }), null)
+  const discovery = await run({ type: 'discover-rank', values, target, nodeBudget: 250 })
+  assert.equal(discovery.outcome.status, 'proven')
+  assert.ok(discovery.nodesVisited <= 250)
+  assert.deepEqual(discovery.effort, await run({ type: 'rank-proof-effort', values, proof: discovery.outcome.proof }))
+  assert.equal(await run({ type: 'replay-rank-proof', values, proof: discovery.outcome.proof }), true)
+  const discovered = await run({
+    type: 'discover-rank-deductions', values, nodeBudget: 5_000, maxNodesPerCandidate: 250,
+  })
+  assert.equal(discovered.proofs.length, 10)
+  assert.equal(discovered.efforts.length, 10)
+  assert.ok(discovered.nodesVisited <= 5_000)
+  assert.equal(new Set(discovered.proofs.map(({ target }) => target.cell * 9 + target.digit)).size, 10)
+  for (const proof of discovered.proofs) {
+    assert.equal(await run({ type: 'replay-rank-proof', values, proof }), true)
+  }
+})
+
+test('Senior Exocet practice proves targets in different bands, including on a shared cross-line', async () => {
+  const { run } = engineRequests()
+  const technique = 'senior-exocet'
+  const catalog = await run({ type: 'techniques' })
+  assert.equal(catalog.techniques.find(item => item.id === technique)?.cost, 550)
+  const exercises = await run({ type: 'practice-examples', technique })
+  assert.equal(exercises.length, 3)
+  const expected = [[21, 51], [12, 75], [12, 48]]
+  for (const [index, example] of exercises.entries()) {
+    const { evidence } = example.deduction
+    assert.ok('exocet' in evidence)
+    const { bases, targets, crossLines, assignments } = evidence.exocet
+    assert.deepEqual(bases, [0, 1])
+    assert.deepEqual(targets, expected[index])
+    assert.deepEqual(crossLines, [{ column: 2 }, { column: 3 }, { column: 6 }])
+    assert.ok(assignments.every(({ bases, targets }) =>
+      bases[0] !== bases[1] && bases.every(digit => targets.includes(digit))))
+    const { givens, entries, eliminations } = example
+    const proof = await run({
+      type: 'check-practice-move', values: givens, entries, eliminations,
+      technique, action: example.suggestion,
+    })
+    assert.equal(proof?.technique, technique)
+  }
+})
+
+test('opt-in rank solve records the rank removal, score, and replay positions', async () => {
+  const { run } = engineRequests()
+  const named = await run({ type: 'logical-solve', values: LOCKED_PAIR, techniqueOrder: ['pointing'], includePositions: true })
+  assert.equal(named.rating.status, 'stalled')
+  const trace = await run({
+    type: 'logical-solve-with-rank', values: LOCKED_PAIR, techniqueOrder: ['pointing'],
+    rankOptions: { maxSteps: 1, nodeBudget: 5_000 }, includePositions: true,
+  })
+  assert.equal(trace.status, 'rank-step-limit')
+  assert.deepEqual(trace.techniqueOrder, ['pointing'])
+  assert.equal(trace.rankOptions.maxNodesPerScan, 40_000)
+  const index = named.steps.length
+  assert.deepEqual(trace.steps.slice(0, index), named.steps.map(step => ({ ...step, type: 'technique' })))
+  const step = trace.steps[index]
+  assert.equal(step.type, 'rank')
+  assert.ok(trace.positions)
+  assert.equal(trace.positions.length, trace.steps.length + 1)
+  const replay = replayStep(trace, index)
+  assert.ok(replay)
+  assert.deepEqual(replay.deduction, step)
+  assert.equal(replayStep(trace, trace.steps.length), null)
+  const { before, after } = replay
+  assert.deepEqual(before, named.positions?.at(-1))
+  const { cell, digit } = step.proof.target
+  assert.deepEqual(step.actions, [{ eliminate: { cell, digit } }])
+  assert.equal(after.eliminations[cell], before.eliminations[cell] | (1 << (digit - 1)))
+  assert.equal(trace.rankNodesVisited, step.search.nodesVisited)
+  assert.ok(step.search.nodesVisited <= step.search.nodeBudget)
+  const start = { values: before.givens, entries: before.entries, eliminations: before.eliminations }
+  assert.deepEqual(await run({ type: 'rank-proof-effort', ...start, proof: step.proof }), step.effort)
+  assert.ok(trace.steps.every(item => item.type === 'rank' || item.technique === 'pointing'))
+})
 
 test('ranked hints count distinct moves and prefer the easier proof at a tied cost', async () => {
   const { run } = engineRequests()
@@ -1466,10 +1576,11 @@ test('fog hints and replay use only the revealed rules and player knowledge', as
 
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
   const { raw, run } = engineRequests()
-  const catalog = await run({ type: 'techniques', variant: true })
+  const [catalog, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
   assert.equal(catalog.scoringVersion, 4)
-  assert.equal(catalog.techniques.length, 91)
-  assert.equal(new Set(catalog.techniques.map(technique => technique.id)).size, 91)
+  const expectedIds = new Set([...catalog.defaultOrder, ...classic.techniques.map(technique => technique.id)])
+  assert.equal(catalog.techniques.length, expectedIds.size)
+  assert.deepEqual(new Set(catalog.techniques.map(technique => technique.id)), expectedIds)
   const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))
   assert.equal(costs.get('parity'), 6)
   assert.equal(costs.get('cage-house-sum'), 67)

@@ -57,7 +57,7 @@ Use [`Technique::ALL`] for the detector inventory and [`Technique::DEFAULT_ORDER
 | Wings and single-digit patterns | W-Wing, XY-Wing, XYZ-Wing, WXYZ-Wing, Skyscraper, Two-String Kite, Empty Rectangle |
 | Coloring and inference | Simple Coloring, 3D Medusa, X-Chain, XY-Chain, Alternating Inference Chain, continuous and discontinuous Nice Loops, and grouped versions |
 | Uniqueness | Unique Rectangle Types 1–6, Hidden Rectangle, Unique Loop Types 1–4, BUG+1 |
-| Advanced deductions | Aligned Pair and Triplet Exclusion, Tridagon and Tridagon Forcing Net, Forcing Chain, Forcing Net, Dynamic Forcing Net, Advanced Forcing Net, Nested Forcing Net, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Junior Exocet, SK Loop, Multi-Sector Locked Sets |
+| Advanced deductions | Aligned Pair and Triplet Exclusion, Tridagon and Tridagon Forcing Net, Forcing Chain, Forcing Net, Dynamic Forcing Net, Advanced Forcing Net, Nested Forcing Net, ALS-XZ, ALS-XY-Wing, ALS Chain, Sue de Coq, Death Blossom, Junior and Senior Exocet, SK Loop, Multi-Sector Locked Sets |
 
 The catalog records the point cost, technique difficulty, and uniqueness assumption for each detector. Complex fish, Unique Loops, aligned exclusions, Tridagons, and extended forcing nets are available in hints and selected-technique searches. Add their IDs to a custom profile to use them for solving and rating.
 
@@ -66,6 +66,8 @@ Franken Fish and Mutant Fish use a single-digit template check to narrow the sea
 Kraken Fish uses chains to extend a fish with two to four houses on each side. Type 1 removes a candidate that the fish rules out when all fins are false. It supplies a chain from each fin to the same removal. Type 2 supplies a chain from each fin and from each balanced candidate in one cover house. A candidate is balanced when it belongs to the same number of bases and covers. The result can concern a digit other than the fish digit.
 
 Each Kraken branch starts by assuming its candidate is true. It alternates between exclusions and strong links from cells, houses, or almost locked sets. It ends by ruling out the same target candidate. The detector requires at least one branch with more than a direct exclusion. [`KrakenLinkReason`] records why each step holds. Enable `kraken-fish-1` or `kraken-fish-2` in a custom profile at 900 or 950 points per deduction.
+
+Senior Exocet starts with two base cells in a row or column of one box. It uses one single-cell target in the same band or stack and one outside it. The targets can share a cross-line. The evidence records both targets in that order, the covering houses for the base digits, and the allowed digit assignments. Add `senior-exocet` to a custom profile to use it for solving and rating. Its initial cost is 550 points at the Extreme tier. [Sudoku Studio examples](https://github.com/kyoyama-kazusa/Sudoku/blob/main/docs/tutorial/exocet/07-senior-exocet.md)
 
 A Unique Loop has at least six cells, divided into two sides. Every row, column, or box that touches the loop contains one cell from each side. If every cell used one of the two shared digits, swapping those digits would give a second solution. After the engine verifies uniqueness, it can use the extra candidates, a naked or hidden subset, or a conjugate link to rule out moves. The evidence records the two sides, the shared digits, and the supporting facts. The `unique-loop` profile entry enables all four types and costs 140 points per deduction at the Hard tier.
 
@@ -132,6 +134,72 @@ assert_eq!(proof.technique, technique);
 assert!(proof.actions.contains(&proposed));
 assert!(deductions_at(&position, &[technique]).unwrap().iter()
     .any(|group| group.actions == example.expected_actions));
+```
+
+### Mixed rank proofs
+
+A [`RankPattern`] selects cell constraints and digit constraints in rows, columns, or boxes. A base requires exactly one of its candidates. A cover allows at most one. A candidate can fill several bases and use several covers at the same time. [`RankPattern::rank`] gives the number of covers minus the number of bases. The proof checks the actual candidate overlaps.
+
+Use [`prove_rank_at`] to test one removal or [`rank_deductions_at`] to scan every active candidate in the supplied pattern. Each search assumes the candidate is true. It splits on a base and checks every compatible choice until it finds an assignment that fits or proves a contradiction in every branch. The node budget limits the search. A scan that runs out of nodes returns the proofs found so far with [`RankScan::complete`] set to false.
+
+[`discover_rank_at`] starts with the active classic constraints, then extracts the bases and covers that justify a removal. It keeps the proof with the lowest estimated effort found within the node budget. [`discover_rank_deductions_at`] searches for multiple removals with one shared budget and a per-candidate ceiling. The position-wide search returns proofs in effort order and reports how many candidate searches ran out of nodes.
+
+[`RankProofEffort`] accounts for both finding and following the proof. Version 1 assigns two units per distinct constraint, one per cell, one per active candidate mark, one per proof node, and four per alternative beyond the first choice at a split. A candidate shared by several constraints counts once. The effort model has its own version and units. Use [`rank_proof_effort_at`] to verify and measure a saved proof against a snapshot.
+
+[`replay_rank_proof_at`] verifies the saved case splits against a snapshot. Each proof node gives the index of a base and the complete list of its remaining choices. An empty list proves that the base cannot be satisfied. The checker uses the same starting-position validation as classic hints. Each proof uses only the selected constraints and active candidates. Rank discovery is available directly through these APIs.
+
+```rust
+use sudoku_app_engine::{
+    HintEvidence, PositionSnapshot, RankConstraint, RankOutcome, RankPattern, Technique,
+    parse_givens, prove_rank_at, replay_rank_proof_at, technique_deductions_at,
+};
+
+let givens = parse_givens(
+    "970500060000007103800040000000080900685000000100003002000000000000600057008090200",
+).unwrap();
+let position = PositionSnapshot::new(givens);
+let hint = &technique_deductions_at(&position, Technique::Pointing).unwrap()[0];
+let target = hint.actions[0].candidate();
+let HintEvidence::Intersection { source, target: cover, .. } = hint.evidence else {
+    panic!("expected a pointing intersection");
+};
+let pattern = RankPattern {
+    bases: vec![RankConstraint::HouseDigit { house: source, digit: target.digit }],
+    covers: vec![RankConstraint::HouseDigit { house: cover, digit: target.digit }],
+};
+let RankOutcome::Proven(proof) = prove_rank_at(&position, &pattern, target, 1).unwrap() else {
+    panic!("expected a pointing proof");
+};
+assert_eq!(replay_rank_proof_at(&position, &proof), Ok(true));
+```
+
+### Logical solves with rank fallback
+
+Use [`solve_position_with_rank`] to try a rank removal when the selected named techniques stall. After each rank removal, the solver starts again at the top of the named order and keeps all placements and candidate removals. An empty named order permits rank removals alone. [`RankFallbackOptions`] sets the removal limit and the search budgets. The defaults allow eight rank removals, 320,000 nodes across the solve, 40,000 per scan, and 200 per candidate.
+
+The trace records named point costs as a subtotal. Each rank step carries its proof, effort, and scan usage. [`RankSolve::positions`] and [`RankSolve::replay_step`] let you verify the proof on the position before the removal. The status distinguishes a solved grid, a complete scan with no removal, a rank step limit, and a rank search limit.
+
+```rust
+use sudoku_app_engine::{
+    PositionSnapshot, RankFallbackOptions, RankSolveStep, Technique, parse_givens,
+    replay_rank_proof_at, solve_position_with_rank,
+};
+
+let givens = parse_givens(
+    "970500060000007103800040000000080900685000000100003002000000000000600057008090200",
+).unwrap();
+let options = RankFallbackOptions { max_steps: 1, node_budget: 5_000, ..Default::default() };
+let trace = solve_position_with_rank(
+    &PositionSnapshot::new(givens),
+    &[Technique::Pointing],
+    options,
+).unwrap();
+let index = trace.steps.iter()
+    .position(|step| matches!(step, RankSolveStep::Rank { .. })).unwrap();
+let replay = trace.replay_step(index).unwrap();
+if let RankSolveStep::Rank { proof, .. } = replay.deduction {
+    assert_eq!(replay_rank_proof_at(&replay.before, proof), Ok(true));
+}
 ```
 
 ## Targeted generation
@@ -201,14 +269,22 @@ A structured reply has either `value` or `code` and `error`. Request tags are ke
 | `techniques` | Technique IDs, aliases, costs, difficulty, uniqueness flags, default order, and scoring version |
 | `rate` | `values` and optional `techniqueOrder`. Returns a versioned rating. |
 | `logical-solve` | Start from `values` and optional `entries` and `eliminations`. `includePositions` adds snapshots. `includeStepDetails` adds masks and proof patterns. `includeMoveAvailability` adds Easy move counts and bottleneck flags. |
+| `logical-solve-with-rank` | Takes the same starting position and `techniqueOrder`, with optional `rankOptions` and `includePositions`. Returns `technique` and `rank` steps, the named score subtotal, rank node usage, and the reason the solve ended. |
 | `compare-solve-paths`, `alternate-solve-path` | Same starting position and order plus `technique`. Alternate search also takes `maxPositions` and reports `found`, `no-path`, or `inconclusive`. |
 | `hints`, `next-deduction` | Current merged `values`, optional `eliminations` and `disabledTechniques`. For hints, `limit` defaults to 10 and can be `"all"`. `includePatterns` adds masks and proof patterns to the hint result. |
 | `deductions`, `opening-techniques` | Deductions takes merged `values`, optional `eliminations`, and `techniqueOrder`. Opening techniques takes the untouched grid and reports all techniques that can act. |
+| `prove-rank`, `rank-deductions` | Take a starting position, `pattern`, and `nodeBudget`. `prove-rank` also takes a `target` and returns `proven` with a proof, `compatible`, or `search-limit`. `rank-deductions` returns `proofs`, `nodesVisited`, and `complete`. |
+| `discover-rank` | Takes a starting position, `target`, and `nodeBudget`. Returns the rank `outcome`, `nodesVisited`, and `effort` when it proves a removal. |
+| `discover-rank-deductions` | Takes a starting position, `nodeBudget`, `maxNodesPerCandidate`, and an optional `limit` that defaults to 10. Returns ranked `proofs` and their `efforts` in the same order. Reports `nodesVisited`, `candidatesExamined`, `candidatesLimited`, and `complete`. |
+| `replay-rank-proof` | Takes a starting position and a `proof` from either rank request. Returns whether the proof holds. |
+| `rank-proof-effort` | Takes a starting position and `proof`. Returns the versioned effort breakdown, or `null` when the proof fails to replay. |
 | `lesson-examples`, `practice-examples` | Lesson examples include a worked example and a transformed exercise per technique. Practice examples takes `technique` and returns three verified exercises. |
 | `practice-position`, `check-practice-move` | Take a starting position and technique. The former optionally takes a solver order. The latter takes an `action` such as `{"eliminate":{"cell":24,"digit":2}}`. Both can return `null` when no matching position or proof is found. |
 | `generate-targeted` | `seed`, `maxAttempts`, and `target` with `type` of `difficulty` or `opening`. Returns a grid string. |
 | `generate-constrained`, `generate-from-pool` | `seed`, `maxAttempts`, `clues` as a number or inclusive range, optional `score` or `difficulty`, optional `technique`, and optional `techniqueOrder`. The constrained search accepts `templates` and returns a grid string. The built-in pool returns a grid and rating. |
 | `generation-start`, `generation-advance`, `generation-cancel` | Use a distinct numeric `job` for each active search and pass a generation `request` at start. Advance returns `pending`, `matched`, or `exhausted`. Cancel returns `cancelled`. A terminal result releases the job ID. |
+
+Rank patterns contain `bases` and `covers` arrays. Each constraint is a cell such as `{"cell":13}` or a digit in a house such as `{"house-digit":{"house":{"row":1},"digit":2}}`. Cell and house indices start at zero.
 
 The fixed-buffer exports handle the app's `analyze`, `notes`, `solve`, and `generate` operations. Write 81 numeric bytes at `board_buffer()` before calling `analyze_board()`, `fill_notes()`, or `solve_board()`. `analyze_board()` returns the [`Analysis`] discriminant. `fill_notes()` and `solve_board()` return 1 on success. Read candidate masks as 81 little-endian 16-bit values at `notes_buffer()` after a successful fill. `solve_board()` on success and `generate_board(seed)` write their resulting grids to the board buffer.
 

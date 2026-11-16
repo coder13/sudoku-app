@@ -124,6 +124,7 @@ export type EngineRequest =
   | { type: 'generate'; seed: number }
   | ({ type: 'rate'; values: string } & SolverOptions)
   | ({ type: 'logical-solve'; includePositions?: boolean; includeStepDetails?: boolean; includeMoveAvailability?: boolean } & StartingPosition & SolverOptions)
+  | ({ type: 'logical-solve-with-rank'; includePositions?: boolean; rankOptions?: Partial<RankFallbackOptions> } & StartingPosition & SolverOptions)
   | ({ type: 'compare-solve-paths'; technique: string } & StartingPosition & SolverOptions)
   | ({ type: 'alternate-solve-path'; technique: string; maxPositions: number } & StartingPosition & SolverOptions)
   | ({ type: 'practice-position'; technique: string } & StartingPosition & SolverOptions)
@@ -131,6 +132,12 @@ export type EngineRequest =
   | ({ type: 'hints'; limit?: number | 'all'; includePatterns?: boolean } & CandidatePosition & HintOptions)
   | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
   | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
+  | ({ type: 'prove-rank'; pattern: RankPattern; target: Candidate; nodeBudget: number } & StartingPosition)
+  | ({ type: 'discover-rank'; target: Candidate; nodeBudget: number } & StartingPosition)
+  | ({ type: 'discover-rank-deductions'; limit?: number; nodeBudget: number; maxNodesPerCandidate: number } & StartingPosition)
+  | ({ type: 'rank-deductions'; pattern: RankPattern; nodeBudget: number } & StartingPosition)
+  | ({ type: 'replay-rank-proof'; proof: RankProof } & StartingPosition)
+  | ({ type: 'rank-proof-effort'; proof: RankProof } & StartingPosition)
   | { type: 'opening-techniques'; values: string }
   | { type: 'techniques'; variant?: boolean }
   | { type: 'lesson-examples' }
@@ -166,6 +173,58 @@ export type GenerationOutcome<T> =
 
 export type House = { row: number } | { column: number } | { box: number }
 export type Candidate = { cell: number; digit: number }
+export type RankConstraint = { cell: number } | { 'house-digit': { house: House; digit: number } }
+export type RankPattern = { bases: readonly RankConstraint[]; covers: readonly RankConstraint[] }
+export type RankProof = {
+  target: Candidate
+  pattern: RankPattern
+  nodes: readonly { base: number; cases: readonly Candidate[] }[]
+}
+export type RankProofEffort = {
+  version: number
+  constraints: number
+  cells: number
+  candidates: number
+  nodes: number
+  extraCases: number
+  score: number
+}
+export type RankFallbackOptions = {
+  maxSteps: number
+  nodeBudget: number
+  maxNodesPerScan: number
+  maxNodesPerCandidate: number
+}
+export type RankSolveSearch = {
+  nodeBudget: number
+  nodesVisited: number
+  candidatesExamined: number
+  candidatesLimited: number
+  complete: boolean
+}
+export type RankSolveStep =
+  | ({ type: 'technique' } & Deduction)
+  | { type: 'rank'; proof: RankProof; effort: RankProofEffort; search: RankSolveSearch; actions: [{ eliminate: Candidate }] }
+export type RankSolution = {
+  board: string
+  steps: RankSolveStep[]
+  status: 'solved' | 'stalled' | 'rank-step-limit' | 'rank-search-limit'
+  techniqueOrder: string[]
+  namedScore: PuzzleRating['score']
+  namedScoringVersion: number
+  rankOptions: RankFallbackOptions
+  rankNodesVisited: number
+  terminalRankSearch: RankSolveSearch | null
+  positions?: PositionSnapshot[]
+}
+export type RankOutcome = { status: 'proven'; proof: RankProof } | { status: 'compatible' | 'search-limit' }
+export type RankDiscovery = { outcome: RankOutcome; effort: RankProofEffort | null; nodesVisited: number }
+export type RankDiscoveryScan = RankScan & {
+  efforts: RankProofEffort[]
+  candidatesExamined: number
+  candidatesLimited: number
+}
+export type RankScan = { proofs: RankProof[]; nodesVisited: number; complete: boolean }
 type ConjugatePair = { house: House; cells: [number, number] }
 type CandidateLink = {
   from: Candidate
@@ -360,6 +419,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'solve' } ? string | null :
   T extends { type: 'rate' } ? PuzzleRating :
   T extends { type: 'logical-solve' } ? LogicalSolution :
+  T extends { type: 'logical-solve-with-rank' } ? RankSolution :
   T extends { type: 'compare-solve-paths' } ? PathComparison :
   T extends { type: 'alternate-solve-path' } ? AlternatePath :
   T extends { type: 'practice-position' } ? LessonPosition | null :
@@ -367,6 +427,12 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'hints' } ? HintChoices :
   T extends { type: 'next-deduction' } ? HintStages | null :
   T extends { type: 'deductions' } ? DeductionMatch[] :
+  T extends { type: 'prove-rank' } ? RankOutcome :
+  T extends { type: 'discover-rank' } ? RankDiscovery :
+  T extends { type: 'discover-rank-deductions' } ? RankDiscoveryScan :
+  T extends { type: 'rank-deductions' } ? RankScan :
+  T extends { type: 'replay-rank-proof' } ? boolean :
+  T extends { type: 'rank-proof-effort' } ? RankProofEffort | null :
   T extends { type: 'opening-techniques' } ? string[] :
   T extends { type: 'techniques' } ? TechniqueCatalog :
   T extends { type: 'generate-from-pool' } ? GeneratedPuzzle :
@@ -379,7 +445,10 @@ export type EngineResult<T extends EngineRequest> =
 export type EnginePayload = { value: EngineResult<EngineRequest> } | { error: string; code?: string }
 export type EngineResponse = { id: number } & EnginePayload
 
-export function replayStep(trace: LogicalSolution, index: number): ReplayedStep | null {
+export function replayStep<Step, Position extends PositionSnapshot>(
+  trace: { steps: readonly Step[]; positions?: readonly Position[] },
+  index: number,
+): { before: Position; deduction: Step; after: Position } | null {
   if (!Number.isInteger(index) || index < 0) return null
   const before = trace.positions?.[index]
   const after = trace.positions?.[index + 1]

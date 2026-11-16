@@ -31,6 +31,7 @@ export function withSolverProfile<T extends EngineRequest>(request: T): T {
   switch (request.type) {
     case 'rate':
     case 'logical-solve':
+    case 'logical-solve-with-rank':
     case 'compare-solve-paths':
     case 'alternate-solve-path':
     case 'practice-position':

@@ -13,6 +13,11 @@ pub use paths::{
     AlternatePath, AlternatePathStatus, MoveAvailability, PathComparison, compare_paths,
     search_alternate_path,
 };
+mod rank_fallback;
+pub use rank_fallback::{
+    RankFallbackOptions, RankSolve, RankSolveReplay, RankSolveSearch, RankSolveStatus,
+    RankSolveStep, solve_position_with_rank,
+};
 
 /// Version of the scoring rules recorded in ratings and exported traces.
 pub const SCORING_VERSION: u32 = 10;
