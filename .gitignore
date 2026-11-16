@@ -1,0 +1,7 @@
+node_modules/
+dist/
+target/
+src/sudoku/generated/
+.env.local
+.DS_Store
+.tanstack/

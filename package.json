@@ -1,0 +1,32 @@
+{
+  "name": "sudoku-app",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "npm run build:wasm && vite",
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "build": "npm run build:wasm && vite build && node scripts/build-offline.mjs",
+    "check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "start": "cargo run --locked -p sudoku-app-server"
+  },
+  "dependencies": {
+    "@fontsource-variable/dm-sans": "^5.2.0",
+    "@tanstack/react-router": "^1.169.5",
+    "@tanstack/react-start": "^1.169.5",
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^8.0.0"
+  }
+}
