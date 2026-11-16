@@ -25,6 +25,14 @@ fn transpose_pair(pair: ConjugatePair) -> ConjugatePair {
     }
 }
 
+fn transpose_exocet_cover(cover: &crate::ExocetCover) -> crate::ExocetCover {
+    crate::ExocetCover {
+        digit: cover.digit,
+        cells: transpose_cells(&cover.cells),
+        houses: cover.houses.iter().copied().map(transpose_house).collect(),
+    }
+}
+
 fn transpose_houses(houses: &[House]) -> Vec<House> {
     let mut transposed: Vec<_> = houses.iter().copied().map(transpose_house).collect();
     transposed.sort_by_key(|house| match house {
@@ -598,16 +606,46 @@ fn transpose_hint(hint: &Hint) -> Hint {
             bases: bases.map(transpose),
             targets: targets.map(transpose),
             cross_lines: cross_lines.map(transpose_house),
-            covers: covers
-                .iter()
-                .map(|cover| crate::ExocetCover {
-                    digit: cover.digit,
-                    cells: transpose_cells(&cover.cells),
-                    houses: cover.houses.iter().copied().map(transpose_house).collect(),
-                })
-                .collect(),
+            covers: covers.iter().map(transpose_exocet_cover).collect(),
             assignments: assignments.clone(),
         },
+        HintEvidence::GroupedExocet {
+            bases,
+            targets,
+            cross_lines,
+            covers,
+        } => HintEvidence::GroupedExocet {
+            bases: bases.map(transpose),
+            targets: targets.map(|target| match target {
+                crate::ExocetTarget::Cell(cell) => crate::ExocetTarget::Cell(transpose(cell)),
+                crate::ExocetTarget::ConjugatePair { digit, link } => {
+                    crate::ExocetTarget::ConjugatePair {
+                        digit,
+                        link: transpose_pair(link),
+                    }
+                }
+            }),
+            cross_lines: cross_lines.map(transpose_house),
+            covers: covers.iter().map(transpose_exocet_cover).collect(),
+        },
+        HintEvidence::DoubleExocet(proof) => {
+            HintEvidence::DoubleExocet(Box::new(crate::DoubleExocetProof {
+                components: proof
+                    .components
+                    .each_ref()
+                    .map(|component| crate::ExocetComponent {
+                        bases: component.bases.map(transpose),
+                        targets: component.targets.map(transpose),
+                        covers: component
+                            .covers
+                            .iter()
+                            .map(transpose_exocet_cover)
+                            .collect(),
+                    }),
+                cross_lines: proof.cross_lines.map(transpose_house),
+                assignments: proof.assignments.clone(),
+            }))
+        }
         HintEvidence::SkLoop(proof) => HintEvidence::SkLoop(Box::new(crate::SkLoopProof {
             anchors: [0, 3, 2, 1].map(|i| transpose(proof.anchors[i])),
             arms: std::array::from_fn(|i| transpose_cells(&proof.arms[7 - i])),

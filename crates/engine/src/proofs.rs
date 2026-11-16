@@ -5,8 +5,8 @@ use std::{
 
 use super::{
     AlignedExclusionReason, AlmostLockedSet, Board, CELLS, Candidate, ColoringReason,
-    DeductionSearch, ForcingBranch, ForcingConflict, ForcingScope, Hint, HintAction, HintError,
-    HintEvidence, House, InferenceNode, KrakenLinkReason, LinkSource, PositionSnapshot,
+    DeductionSearch, ExocetCover, ForcingBranch, ForcingConflict, ForcingScope, Hint, HintAction,
+    HintError, HintEvidence, House, InferenceNode, KrakenLinkReason, LinkSource, PositionSnapshot,
     RectangleSupport, Technique, checked_position, coordinates, digit_bit, digits, visit_technique,
 };
 use crate::DIGITS;
@@ -438,14 +438,26 @@ impl<'a> Pattern<'a> {
                 covers,
                 ..
             } => {
-                self.houses.extend(*cross_lines);
-                self.mark(
-                    bases.iter().chain(targets).copied(),
-                    mask(covers.iter().map(|cover| cover.digit)),
-                );
-                for cover in covers {
-                    self.houses.extend(cover.houses.iter().copied());
-                    self.mark(cover.cells.iter().copied(), digit_bit(cover.digit));
+                let digits = self.exocet_covers(*cross_lines, covers);
+                self.mark(bases.iter().chain(targets).copied(), digits);
+            }
+            HintEvidence::GroupedExocet {
+                bases,
+                targets,
+                cross_lines,
+                covers,
+            } => {
+                let digits = self.exocet_covers(*cross_lines, covers);
+                self.mark(*bases, digits);
+                for target in targets {
+                    let reserved = target.reserved_digit().map_or(0, digit_bit);
+                    self.mark(target.cells(), digits | reserved);
+                }
+            }
+            HintEvidence::DoubleExocet(proof) => {
+                for component in &proof.components {
+                    let digits = self.exocet_covers(proof.cross_lines, &component.covers);
+                    self.mark(component.bases.into_iter().chain(component.targets), digits);
                 }
             }
             HintEvidence::SkLoop(proof) => {
@@ -463,6 +475,15 @@ impl<'a> Pattern<'a> {
                 self.mark(core.iter().chain(attachments).copied(), DIGITS);
             }
         }
+    }
+
+    fn exocet_covers(&mut self, cross_lines: [House; 3], covers: &[ExocetCover]) -> u16 {
+        self.houses.extend(cross_lines);
+        for cover in covers {
+            self.houses.extend(cover.houses.iter().copied());
+            self.mark(cover.cells.iter().copied(), digit_bit(cover.digit));
+        }
+        mask(covers.iter().map(|cover| cover.digit))
     }
 
     fn uniqueness_support(&mut self, support: &RectangleSupport) {

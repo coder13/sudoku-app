@@ -164,6 +164,7 @@ catalog! {
     DeathBlossom: "death-blossom", 360, Unfair, false, [];
     Exocet: "exocet", 450, Extreme, false, ["Junior Exocet", "JExocet"];
     SeniorExocet: "senior-exocet", 550, Extreme, false, ["SExocet"];
+    DoubleExocet: "double-exocet", 600, Extreme, false, ["Double Junior Exocet", "Double JExocet"];
     SkLoop: "sk-loop", 400, Extreme, false, ["Domino Loop"];
     MultiSectorLockedSets: "multi-sector-locked-sets", 480, Extreme, false, ["MSLS"];
     FrankenFish: "franken-fish", 420, Extreme, false, [];

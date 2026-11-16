@@ -20,6 +20,29 @@ fn house_digit(house: House, digit: u8) -> RankConstraint {
 }
 
 #[test]
+fn double_exocet_and_singles_solve_a_grid_the_reference_expert_profile_stalls_on() {
+    use Technique::{DoubleExocet, FullHouse, HiddenSingle, NakedSingle};
+
+    let example = DoubleExocet.practice_examples()[2];
+    let givens = parse_givens(example.givens).unwrap();
+    let baseline = solve_logically(&givens, &monhard::profile()).unwrap();
+    assert_eq!(baseline.status, SolveStatus::Stalled);
+    let order = [FullHouse, NakedSingle, HiddenSingle, DoubleExocet];
+    let trace = solve_logically(&givens, &order).unwrap();
+    assert!(matches!(trace.status, SolveStatus::Solved(_)));
+    assert_eq!(trace.board, solve(&givens).unwrap());
+    assert_eq!(trace.score.counts.get(&DoubleExocet), Some(&1));
+    let index = trace
+        .steps
+        .iter()
+        .position(|step| step.technique == DoubleExocet)
+        .unwrap();
+    let replay = trace.replay_step(index).unwrap();
+    assert_eq!(replay.before, example.position().unwrap());
+    assert_eq!(replay.deduction.actions, example.expected_actions);
+}
+
+#[test]
 fn a_rank_removal_unlocks_a_grid_that_stalls_with_the_reference_expert_profile() {
     let givens = parse_givens(monhard::STALLS[0].1).unwrap();
     let order = monhard::profile();

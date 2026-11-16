@@ -793,6 +793,95 @@ const SENIOR_EXOCET: PracticeExample = PracticeExample {
     expected_actions: &[remove(21, 8), remove(51, 8)],
 };
 
+// The SudokuWiki Double Exocet example, Unsolvable #165.
+// https://www.sudokuwiki.org/Double_Exocet
+const DOUBLE_EXOCET: PracticeExample = PracticeExample {
+    givens: "090000030200000000003010907006000000000060370000108006008030001007080003000400050",
+    entries: None,
+    eliminations: None,
+    expected_actions: &[
+        remove(0, 4),
+        remove(0, 5),
+        remove(3, 2),
+        remove(3, 5),
+        remove(5, 2),
+        remove(5, 4),
+        remove(5, 5),
+        remove(6, 2),
+        remove(6, 4),
+        remove(6, 5),
+        remove(10, 4),
+        remove(10, 5),
+        remove(12, 5),
+        remove(12, 9),
+        remove(14, 4),
+        remove(14, 5),
+        remove(14, 9),
+        remove(15, 4),
+        remove(15, 5),
+        remove(16, 4),
+        remove(27, 4),
+        remove(27, 5),
+        remove(27, 9),
+        remove(28, 2),
+        remove(28, 4),
+        remove(28, 5),
+        remove(36, 9),
+        remove(44, 2),
+        remove(44, 4),
+        remove(44, 5),
+        remove(44, 9),
+        remove(49, 2),
+        remove(49, 4),
+        remove(49, 5),
+        remove(49, 9),
+        remove(72, 9),
+        remove(73, 2),
+        remove(76, 9),
+        remove(77, 2),
+        remove(77, 9),
+        remove(78, 2),
+    ],
+};
+
+// Sudoku Studio figure 0821. The blue digits are placements.
+pub(crate) const GROUPED_SENIOR_EXOCET: PracticeExample = PracticeExample {
+    givens: "980700600500040000003009000400030090070000200009005000100070900000600002000000068",
+    entries: Some(
+        "000000000000000009000000000000007000000000000000000000000000000000000000000000000",
+    ),
+    eliminations: None,
+    expected_actions: &[
+        remove(39, 1),
+        remove(39, 8),
+        remove(73, 2),
+        remove(75, 1),
+        remove(75, 2),
+    ],
+};
+
+// Figure 0817 includes a placed digit in the cover.
+#[cfg(test)]
+pub(crate) const SENIOR_EXOCET_PLACED_DIGIT: PracticeExample = PracticeExample {
+    givens: "001000070390000800800100900009300700000042060200000004003700600000010050050006007",
+    entries: None,
+    eliminations: Some(&elimination_masks(&[(46, 7), (47, 7)])),
+    // The allowed assignments also force 6 at r6c4.
+    expected_actions: &[
+        remove(3, 6),
+        remove(4, 6),
+        remove(8, 6),
+        remove(11, 6),
+        remove(12, 6),
+        remove(19, 6),
+        remove(20, 6),
+        remove(47, 6),
+        remove(48, 5),
+        remove(48, 8),
+        remove(48, 9),
+    ],
+};
+
 // Steve Kurzhal's loop in Easter Monster, as documented by Allan Barker.
 const SK_LOOP: PracticeExample = PracticeExample {
     givens: "100000002090400050006000700050903000000070000000850040700000600030009080002000001",
@@ -1042,6 +1131,7 @@ impl Technique {
             Self::SueDeCoq => return SUE_DE_COQ,
             Self::Exocet => return EXOCET,
             Self::SeniorExocet => return SENIOR_EXOCET,
+            Self::DoubleExocet => return DOUBLE_EXOCET,
             Self::SkLoop => return SK_LOOP,
             Self::MultiSectorLockedSets => return MULTI_SECTOR_LOCKED_SETS,
             Self::FrankenFish => return FRANKEN_FISH,
@@ -1091,15 +1181,18 @@ mod tests {
     #[test]
     fn expert_patterns_also_find_their_published_moves_on_transposed_positions() {
         let transpose = |cell: usize| cell % 9 * 9 + cell / 9;
-        for technique in [
+        let primary = [
             Technique::Exocet,
             Technique::SeniorExocet,
+            Technique::DoubleExocet,
             Technique::SkLoop,
             Technique::MultiSectorLockedSets,
             Technique::KrakenFish1,
             Technique::KrakenFish2,
-        ] {
-            let example = technique.practice_example();
+        ]
+        .map(|technique| (technique, technique.practice_example()));
+        let grouped = (Technique::SeniorExocet, GROUPED_SENIOR_EXOCET);
+        for (technique, example) in primary.into_iter().chain([grouped]) {
             let original = example.position().unwrap();
             let position = PositionSnapshot {
                 givens: std::array::from_fn(|cell| original.givens[transpose(cell)]),

@@ -130,6 +130,7 @@ impl<'a> PatternSearch<'a> {
             }
             Technique::SueDeCoq => sue_de_coq::visit(self, visit),
             Technique::Exocet | Technique::SeniorExocet => exocet::visit(self, technique, visit),
+            Technique::DoubleExocet => exocet::visit_double(self, visit),
             Technique::SkLoop => sk_loop::visit(self, visit),
             Technique::MultiSectorLockedSets => multi_sector::visit(self, visit),
             Technique::FrankenFish | Technique::MutantFish => complex_fish::visit(

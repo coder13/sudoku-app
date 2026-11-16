@@ -1,19 +1,103 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use sudoku_app_engine::{
-    AlternatePathStatus, Analysis, Board, Candidate, Difficulty, GenerationConstraints, HintAction,
-    HintChoices, HintError, HintEvidence, House, PositionSnapshot, ProfileError, ProofPattern,
-    SolveStatus, SolverProfile, Technique, UniquenessSupport, VerifiedTemplate, candidates,
-    canonical_puzzle, check_practice_move, compare_paths, deductions_at, generate_constrained,
-    hint_choices, opening_techniques, parse_givens, rate_puzzle, search_alternate_path, solve,
-    solve_logically, solve_position, technique_deductions, technique_deductions_at,
+    AlternatePathStatus, Analysis, Board, Candidate, ConjugatePair, Difficulty, ExocetTarget,
+    GenerationConstraints, HintAction, HintChoices, HintError, HintEvidence, House,
+    PositionSnapshot, ProfileError, ProofPattern, SolveStatus, SolverProfile, Technique,
+    UniquenessSupport, VerifiedTemplate, candidates, canonical_puzzle, check_practice_move,
+    compare_paths, deductions_at, generate_constrained, hint_choices, opening_techniques,
+    parse_givens, rate_puzzle, search_alternate_path, solve, solve_logically, solve_position,
+    technique_deductions, technique_deductions_at,
 };
+
+#[path = "../benches/fixtures/senior_exocet.rs"]
+mod senior_exocet;
 
 // This Royle 17-clue puzzle exceeds the exact-search budget on its original grid.
 const SPARSE: &str =
     "345000000000200010000000000020100000000004500600000007800750000000060040000000300";
 const TEMPLATE: &str =
     "000500000600000309000008200000000000538000000000007001200090000001000007000300080";
+
+#[test]
+fn mixed_senior_exocet_is_a_replayable_opening_from_the_givens() {
+    let givens = parse_givens(senior_exocet::MONHARD_MIXED_EXOCET).unwrap();
+    let position = PositionSnapshot::new(givens);
+    let technique = Technique::SeniorExocet;
+    assert!(opening_techniques(&givens).unwrap().contains(&technique));
+    let trace = solve_logically(&givens, &[technique]).unwrap();
+    let [step] = trace.steps.as_slice() else {
+        panic!("expected one Senior Exocet deduction");
+    };
+    assert_eq!(step.technique, technique);
+    assert!(matches!(
+        step.evidence,
+        HintEvidence::GroupedExocet {
+            bases: [18, 19],
+            targets: [
+                ExocetTarget::Cell(15),
+                ExocetTarget::ConjugatePair {
+                    digit: 4,
+                    link: ConjugatePair {
+                        house: House::Column(2),
+                        cells: [38, 74]
+                    },
+                }
+            ],
+            cross_lines: [House::Column(2), House::Column(3), House::Column(6)],
+            ..
+        }
+    ));
+    assert_eq!(
+        step.actions,
+        [2, 7].map(|digit| HintAction::Eliminate(Candidate { cell: 15, digit }))
+    );
+    let verified = VerifiedTemplate::verify(givens).unwrap();
+    assert!(![2, 7].contains(&verified.solution()[15]));
+    assert_eq!(trace.score.points, u32::from(technique.cost()));
+    assert_eq!(
+        rate_puzzle(&givens, &[technique]).unwrap().score,
+        trace.score
+    );
+    let replay = trace.replay_step(0).unwrap();
+    assert_eq!(replay.before, position);
+    assert_eq!(replay.after.eliminations[15], (1 << 1) | (1 << 6));
+}
+
+#[test]
+fn double_exocet_can_resume_a_grid_after_ordinary_junior_deductions_stall() {
+    let givens = parse_givens(Technique::DoubleExocet.practice_example().givens).unwrap();
+    let baseline = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    assert_eq!(baseline.status, SolveStatus::Stalled);
+    assert!(
+        baseline
+            .steps
+            .iter()
+            .any(|step| step.technique == Technique::Exocet)
+    );
+    let stalled = baseline.positions().last().unwrap();
+    assert!(
+        technique_deductions_at(&stalled, Technique::Exocet)
+            .unwrap()
+            .is_empty()
+    );
+    let resume_order = [Technique::DEFAULT_ORDER, &[Technique::DoubleExocet]].concat();
+    let resumed = solve_position(&stalled, &resume_order).unwrap();
+    assert_eq!(resumed.steps[0].technique, Technique::DoubleExocet);
+    assert!(matches!(
+        resumed.status,
+        SolveStatus::Solved(Difficulty::Extreme)
+    ));
+    let verified = VerifiedTemplate::verify(givens).unwrap();
+    assert_eq!(&resumed.board, verified.solution());
+    for action in resumed.steps.iter().flat_map(|step| &step.actions) {
+        let target = action.candidate();
+        assert_eq!(
+            verified.solution()[target.cell] == target.digit,
+            matches!(action, HintAction::Place(_))
+        );
+    }
+}
 
 #[test]
 fn advanced_branch_patterns_reduce_nested_search_on_ai_escargot() {
