@@ -4,6 +4,9 @@ use super::{
 };
 use crate::{ExocetAssignment, ExocetCover};
 
+mod double;
+mod grouped;
+
 const OTHER_TWO: [[usize; 2]; 3] = [[1, 2], [0, 2], [0, 1]];
 
 pub(super) fn visit(
@@ -11,49 +14,54 @@ pub(super) fn visit(
     technique: Technique,
     visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
 ) -> ControlFlow<Deduction> {
-    let mut possible = *search.positions_by_digit();
-    for (cell, &value) in search.board.iter().enumerate() {
-        if value != 0 {
-            possible[usize::from(value - 1)] |= cell_bit(cell);
-        }
-    }
+    debug_assert!(matches!(
+        technique,
+        Technique::Exocet | Technique::SeniorExocet
+    ));
+    let possible = positions_with_values(search);
     for axis in [Axis::Horizontal, Axis::Vertical] {
+        let senior = (technique == Technique::SeniorExocet).then(|| {
+            let pairs = grouped::target_pairs(search, axis);
+            let bands = [0, 3, 6].map(|start| {
+                let cells = axis.band_cells(start);
+                (cells, grouped::pair_lines(&pairs, cells))
+            });
+            (pairs, bands)
+        });
         for along in 0..9 {
-            let band = if technique == Technique::SeniorExocet {
-                axis.band_cells(along)
-            } else {
-                0
-            };
-            for (group, other_groups) in OTHER_TWO.into_iter().enumerate() {
-                for (gap, offsets) in OTHER_TWO.into_iter().enumerate() {
-                    let bases = offsets.map(|offset| axis.cell(along, group * 3 + offset));
-                    let base_masks = bases.map(|cell| search.masks[cell]);
-                    let digits = base_masks[0] | base_masks[1];
-                    if base_masks.iter().any(|mask| mask.count_ones() < 2)
-                        || !(3..=4).contains(&digits.count_ones())
-                    {
+            for group in 0..3 {
+                for gap in 0..3 {
+                    let Some(base) = BasePair::new(search, axis, along, group, gap) else {
                         continue;
-                    }
-                    let base = BasePair {
-                        cells: bases,
-                        digits,
-                        axis,
-                        along,
-                        base_line: axis.cross(group * 3 + gap),
-                        other_groups,
                     };
-                    match technique {
-                        Technique::Exocet => base.visit_junior(search, &possible, visit)?,
-                        Technique::SeniorExocet => {
-                            base.visit_senior(search, &possible, band, visit)?
-                        }
-                        _ => unreachable!("only Exocet techniques use this detector"),
+                    if let Some((pairs, bands)) = &senior {
+                        let (band, pair_lines) = bands[along / 3];
+                        base.visit_senior(search, &possible, band, pairs, pair_lines, visit)?;
+                    } else {
+                        base.visit_junior(search, &possible, visit)?;
                     }
                 }
             }
         }
     }
     ControlFlow::Continue(())
+}
+
+pub(super) fn visit_double(
+    search: &PatternSearch<'_>,
+    visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
+) -> ControlFlow<Deduction> {
+    double::visit(search, &positions_with_values(search), visit)
+}
+
+fn positions_with_values(search: &PatternSearch<'_>) -> [u128; 9] {
+    let mut positions = *search.positions_by_digit();
+    for (cell, &value) in search.board.iter().enumerate() {
+        if value != 0 {
+            positions[usize::from(value - 1)] |= cell_bit(cell);
+        }
+    }
+    positions
 }
 
 #[derive(Clone, Copy)]
@@ -90,24 +98,46 @@ struct BasePair {
     digits: u16,
     axis: Axis,
     along: usize,
-    base_line: House,
+    gap_line: usize,
     other_groups: [usize; 2],
 }
 
 impl BasePair {
+    fn new(
+        search: &PatternSearch<'_>,
+        axis: Axis,
+        along: usize,
+        group: usize,
+        gap: usize,
+    ) -> Option<Self> {
+        let cells = OTHER_TWO[gap].map(|offset| axis.cell(along, group * 3 + offset));
+        let masks = cells.map(|cell| search.masks[cell]);
+        let digits = masks[0] | masks[1];
+        (masks.iter().all(|mask| mask.count_ones() >= 2) && (3..=4).contains(&digits.count_ones()))
+            .then_some(Self {
+                cells,
+                digits,
+                axis,
+                along,
+                gap_line: group * 3 + gap,
+                other_groups: OTHER_TWO[group],
+            })
+    }
+
     fn visit_junior(
         &self,
         search: &PatternSearch<'_>,
         possible: &[u128; 9],
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
+        let gap_line = self.axis.cross(self.gap_line);
         for first in target_cells(self.axis, self.along, self.other_groups[0], search) {
             for second in target_cells(self.axis, self.along, self.other_groups[1], search) {
                 let pattern = Pattern {
                     technique: Technique::Exocet,
                     bases: self.cells,
                     targets: [first.cell, second.cell],
-                    lines: [self.base_line, first.line, second.line],
+                    lines: [gap_line, first.line, second.line],
                 };
                 pattern.visit(search, possible, visit)?;
             }
@@ -120,6 +150,8 @@ impl BasePair {
         search: &PatternSearch<'_>,
         possible: &[u128; 9],
         band: u128,
+        pairs: &grouped::PairsByLine,
+        [exo_lines, endo_lines]: [u16; 2],
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         let target_candidates = bit_indices(self.digits)
@@ -128,18 +160,15 @@ impl BasePair {
         let [left, right] = self.other_groups.map(|group| group * 3);
         for first in left..left + 3 {
             for second in right..right + 3 {
-                let lines = [
-                    self.base_line,
-                    self.axis.cross(first),
-                    self.axis.cross(second),
-                ];
+                let line_indices = [self.gap_line, first, second];
+                let lines = line_indices.map(|line| self.axis.cross(line));
                 let [base, first_cells, second_cells] = lines.map(house_cells);
                 let crosses = (base | first_cells | second_cells) & !base_peers;
-                let outside = (first_cells | second_cells) & crosses & band & target_candidates;
-                let inside = crosses & !band & target_candidates;
-                for exo in cells(outside) {
+                let exo_cells = (first_cells | second_cells) & crosses & band & target_candidates;
+                let endo_cells = crosses & !band & target_candidates;
+                for exo in cells(exo_cells) {
                     let cross_region = crosses & !cell_bit(exo);
-                    let endos = self.endo_targets(possible, cross_region, inside);
+                    let endos = self.covered_targets(possible, cross_region, endo_cells);
                     for endo in cells(endos) {
                         let pattern = Pattern {
                             technique: Technique::SeniorExocet,
@@ -150,12 +179,36 @@ impl BasePair {
                         pattern.visit(search, possible, visit)?;
                     }
                 }
+                let other_lines = (1 << first) | (1 << second);
+                let paired_exo = exo_lines & other_lines != 0;
+                let paired_endo = endo_lines & (other_lines | (1 << self.gap_line)) != 0;
+                if (paired_exo && endo_cells != 0)
+                    || (paired_endo && (paired_exo || exo_cells != 0))
+                {
+                    grouped::Region {
+                        lines,
+                        cells: crosses,
+                        singles: [exo_cells, endo_cells],
+                        pairs: line_indices.map(|line| pairs[line].as_slice()),
+                    }
+                    .visit(
+                        search,
+                        possible,
+                        self,
+                        band,
+                        target_candidates,
+                        visit,
+                    )?;
+                }
             }
         }
         ControlFlow::Continue(())
     }
 
-    fn endo_targets(&self, possible: &[u128; 9], crosses: u128, mut targets: u128) -> u128 {
+    fn covered_targets(&self, possible: &[u128; 9], crosses: u128, mut targets: u128) -> u128 {
+        if targets == 0 {
+            return 0;
+        }
         for digit in bit_indices(self.digits) {
             let candidates = possible[digit] & crosses;
             if cover_with_two_houses(candidates).is_some() {
@@ -205,6 +258,25 @@ struct Pattern {
     lines: [House; 3],
 }
 
+struct PatternAnalysis {
+    assignments: Vec<ExocetAssignment>,
+    removals: [u128; 9],
+    covers: [[Option<House>; 2]; 9],
+    outside_targets: u128,
+}
+
+impl PatternAnalysis {
+    fn evidence_covers(&self, digits: u16, possible: &[u128; 9]) -> Vec<ExocetCover> {
+        bit_indices(digits)
+            .map(|digit| ExocetCover {
+                digit: digit as u8 + 1,
+                cells: cells(possible[digit] & self.outside_targets).collect(),
+                houses: self.covers[digit].into_iter().flatten().collect(),
+            })
+            .collect()
+    }
+}
+
 impl Pattern {
     fn visit(
         &self,
@@ -212,11 +284,28 @@ impl Pattern {
         possible: &[u128; 9],
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
+        let Some(analysis) = self.analyze(search, possible) else {
+            return ControlFlow::Continue(());
+        };
+        let digits = search.masks[self.bases[0]] | search.masks[self.bases[1]];
+        report_eliminations(visit, self.technique, analysis.removals, || {
+            HintEvidence::Exocet {
+                bases: self.bases,
+                targets: self.targets,
+                cross_lines: self.lines,
+                covers: analysis.evidence_covers(digits, possible),
+                assignments: analysis.assignments,
+            }
+        })
+    }
+
+    // Keep valid components even when they have no standalone removals.
+    fn analyze(&self, search: &PatternSearch<'_>, possible: &[u128; 9]) -> Option<PatternAnalysis> {
         let base_masks = self.bases.map(|cell| search.masks[cell]);
         let base_digits = base_masks[0] | base_masks[1];
         let target_masks = self.targets.map(|cell| search.masks[cell]);
         if target_masks.iter().any(|&mask| mask & base_digits == 0) {
-            return ControlFlow::Continue(());
+            return None;
         }
         let line_cells = self.lines.map(house_cells);
         let other_lines = self.targets.map(|target| {
@@ -237,10 +326,7 @@ impl Pattern {
         let mut options = [[0; 2]; 9];
         for digit in bit_indices(base_digits) {
             let others = possible[digit] & outside_targets;
-            let Some(cover) = cover_with_two_houses(others) else {
-                return ControlFlow::Continue(());
-            };
-            covers[digit] = cover;
+            covers[digit] = cover_with_two_houses(others)?;
             for (i, &target) in self.targets.iter().enumerate() {
                 if target_masks[i] & (1 << digit) == 0 {
                     continue;
@@ -282,7 +368,7 @@ impl Pattern {
             }
         }
         if assignments.is_empty() {
-            return ControlFlow::Continue(());
+            return None;
         }
 
         let mut targets = [0; 9];
@@ -297,18 +383,11 @@ impl Pattern {
                 & (base_peers | target_peers | (outside_targets & !used_cross_cells[digit]));
         }
 
-        report_eliminations(visit, self.technique, targets, || HintEvidence::Exocet {
-            bases: self.bases,
-            targets: self.targets,
-            cross_lines: self.lines,
-            covers: bit_indices(base_digits)
-                .map(|digit| ExocetCover {
-                    digit: digit as u8 + 1,
-                    cells: cells(possible[digit] & outside_targets).collect(),
-                    houses: covers[digit].into_iter().flatten().collect(),
-                })
-                .collect(),
+        Some(PatternAnalysis {
             assignments,
+            removals: targets,
+            covers,
+            outside_targets,
         })
     }
 }
@@ -338,15 +417,15 @@ fn cover_with_two_houses(positions: u128) -> Option<[Option<House>; 2]> {
 mod tests {
     use super::*;
     use crate::{
-        HintAction, RankConstraint, RankOutcome, RankPattern, candidates, prove_rank_at, solve,
-        technique_deductions_at,
+        HintAction, RankConstraint, RankOutcome, RankPattern, candidates,
+        practice::SENIOR_EXOCET_PLACED_DIGIT, prove_rank_at, solve, technique_deductions_at,
     };
 
     #[test]
     fn published_senior_exocets_replay_as_local_rank_proofs() {
         let expected_targets = [[21, 51], [12, 75], [12, 48]];
-        for (example, expected_targets) in Technique::SeniorExocet
-            .practice_examples()
+        let [first, shared_line, _grouped] = Technique::SeniorExocet.practice_examples();
+        for (example, expected_targets) in [first, shared_line, SENIOR_EXOCET_PLACED_DIGIT]
             .into_iter()
             .zip(expected_targets)
         {

@@ -485,6 +485,70 @@ pub struct ExocetAssignment {
     pub targets: [u8; 2],
 }
 
+/// One of the two Junior Exocets that participate in a Double Exocet.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct ExocetComponent {
+    /// The two base cell indices.
+    pub bases: [usize; 2],
+    /// The two target cells, in assignment order.
+    pub targets: [usize; 2],
+    /// The cover for each base digit on the common cross-lines.
+    pub covers: Vec<ExocetCover>,
+}
+
+/// The components and surviving assignments of a Double Exocet.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct DoubleExocetProof {
+    /// Both base pairs, targets, and covers.
+    pub components: [ExocetComponent; 2],
+    /// The three cross-lines used by both components.
+    pub cross_lines: [House; 3],
+    /// Paired assignments that pass the peer and cross-line checks.
+    pub assignments: Vec<[ExocetAssignment; 2]>,
+}
+
+/// A target in a grouped Senior Exocet proof.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum ExocetTarget {
+    /// A single cell that must hold one of the digits placed in the base cells.
+    Cell(usize),
+    /// A pair with one cell reserved for a digit outside the base candidates.
+    ConjugatePair {
+        /// Digit that must occupy one of the two cells.
+        digit: u8,
+        /// Cross-line in which those cells are the digit's only two positions.
+        link: ConjugatePair,
+    },
+}
+
+impl ExocetTarget {
+    pub(crate) fn cells(self) -> impl Iterator<Item = usize> {
+        let (cells, count) = match self {
+            Self::Cell(cell) => ([cell, 0], 1),
+            Self::ConjugatePair { link, .. } => (link.cells, 2),
+        };
+        cells.into_iter().take(count)
+    }
+
+    pub(crate) const fn reserved_digit(self) -> Option<u8> {
+        match self {
+            Self::Cell(_) => None,
+            Self::ConjugatePair { digit, .. } => Some(digit),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
 /// Anchor cells, arms, and links of an SK Loop.
@@ -783,6 +847,20 @@ pub enum HintEvidence {
         /// Assignments consistent with the pattern.
         assignments: Vec<ExocetAssignment>,
     },
+    /// A Senior Exocet with at least one conjugate-pair target.
+    GroupedExocet {
+        /// The two base cell indices.
+        bases: [usize; 2],
+        /// The target in the base band or stack, then the target reaching outside it.
+        targets: [ExocetTarget; 2],
+        /// Houses crossed by the pattern.
+        #[cfg_attr(feature = "wasm-api", serde(rename = "crossLines"))]
+        cross_lines: [House; 3],
+        /// Covering facts for each base digit outside the targets.
+        covers: Vec<ExocetCover>,
+    },
+    /// Two Junior Exocet proofs evaluated together.
+    DoubleExocet(Box<DoubleExocetProof>),
     /// An SK Loop with eight connected arms.
     SkLoop(Box<SkLoopProof>),
     /// A multi-sector pattern that accounts for digits across several houses.
@@ -923,6 +1001,21 @@ impl HintEvidence {
             } => intersection.len() + line.cells.len() + block.cells.len(),
             HintEvidence::Exocet { covers, .. } => {
                 4 + covers.iter().map(|cover| cover.cells.len()).sum::<usize>()
+            }
+            HintEvidence::GroupedExocet {
+                targets, covers, ..
+            } => {
+                2 + targets.iter().flat_map(|target| target.cells()).count()
+                    + covers.iter().map(|cover| cover.cells.len()).sum::<usize>()
+            }
+            HintEvidence::DoubleExocet(proof) => {
+                8 + proof
+                    .components
+                    .iter()
+                    .flat_map(|component| &component.covers)
+                    .map(|cover| cover.cells.len())
+                    .sum::<usize>()
+                    + proof.assignments.len()
             }
             HintEvidence::SkLoop(proof) => proof.arms.iter().map(Vec::len).sum(),
             HintEvidence::MultiSectorLockedSets {

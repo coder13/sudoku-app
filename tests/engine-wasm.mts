@@ -83,15 +83,15 @@ test('rank requests find and replay a pointing removal with a shared budget', as
   }
 })
 
-test('Senior Exocet practice proves targets in different bands, including on a shared cross-line', async () => {
+test('Senior Exocet exports single and paired targets through practice and deduction search', async () => {
   const { run } = engineRequests()
   const technique = 'senior-exocet'
   const catalog = await run({ type: 'techniques' })
   assert.equal(catalog.techniques.find(item => item.id === technique)?.cost, 550)
   const exercises = await run({ type: 'practice-examples', technique })
   assert.equal(exercises.length, 3)
-  const expected = [[21, 51], [12, 75], [12, 48]]
-  for (const [index, example] of exercises.entries()) {
+  const expected = [[21, 51], [12, 75]]
+  for (const [index, example] of exercises.slice(0, 2).entries()) {
     const { evidence } = example.deduction
     assert.ok('exocet' in evidence)
     const { bases, targets, crossLines, assignments } = evidence.exocet
@@ -100,6 +100,20 @@ test('Senior Exocet practice proves targets in different bands, including on a s
     assert.deepEqual(crossLines, [{ column: 2 }, { column: 3 }, { column: 6 }])
     assert.ok(assignments.every(({ bases, targets }) =>
       bases[0] !== bases[1] && bases.every(digit => targets.includes(digit))))
+  }
+  const grouped = exercises[2]
+  const evidence = grouped.deduction.evidence
+  assert.ok('grouped-exocet' in evidence)
+  const { bases, targets, crossLines, covers } = evidence['grouped-exocet']
+  assert.deepEqual(bases, [61, 62])
+  const exoPair = { 'conjugate-pair': { digit: 9, link: { house: { column: 1 }, cells: [64, 73] } } }
+  const endoPair = { 'conjugate-pair': { digit: 9, link: { house: { column: 3 }, cells: [39, 75] } } }
+  assert.deepEqual(targets, [exoPair, endoPair])
+  assert.deepEqual(crossLines, [{ column: 6 }, { column: 1 }, { column: 3 }])
+  assert.deepEqual(covers.map(cover => cover.digit), [3, 4, 5])
+  assert.deepEqual(grouped.deduction.actions, [[39, 1], [39, 8], [73, 2], [75, 1], [75, 2]]
+    .map(([cell, digit]) => ({ eliminate: { cell, digit } })))
+  for (const example of exercises) {
     const { givens, entries, eliminations } = example
     const proof = await run({
       type: 'check-practice-move', values: givens, entries, eliminations,
@@ -107,6 +121,53 @@ test('Senior Exocet practice proves targets in different bands, including on a s
     })
     assert.equal(proof?.technique, technique)
   }
+  const values = [...grouped.givens].map((digit, cell) => digit === '0' ? grouped.entries[cell] : digit).join('')
+  const cases = [
+    { targets: [exoPair, { cell: 24 }], removed: [[75, 3], [51, 4]], actions: [[24, 1], [24, 7], [24, 8], [73, 2]] },
+    { targets: [{ cell: 64 }, endoPair], removed: [[73, 3], [73, 4], [73, 5]], actions: [[39, 1], [39, 8], [64, 9], [75, 1], [75, 2]] },
+  ]
+  for (const fixture of cases) {
+    const eliminations = [...grouped.eliminations]
+    for (const [cell, digit] of fixture.removed) eliminations[cell] |= 1 << (digit - 1)
+    const moves = await run({ type: 'deductions', values, eliminations, techniqueOrder: [technique] })
+    const actions = fixture.actions.map(([cell, digit]) => ({ eliminate: { cell, digit } }))
+    const deduction = moves.find(move => JSON.stringify(move.actions) === JSON.stringify(actions))
+    assert.ok(deduction?.proofs.some(({ evidence }) => 'grouped-exocet' in evidence &&
+      JSON.stringify(evidence['grouped-exocet'].targets) === JSON.stringify(fixture.targets)))
+    const proof = await run({ type: 'check-practice-move', values, eliminations, technique, action: actions[0] })
+    assert.equal(proof?.technique, technique)
+  }
+})
+
+test('Double Exocet exposes its two components and a replayable solve', async () => {
+  const { run } = engineRequests()
+  const technique = 'double-exocet'
+  const [catalog, exercises] = await Promise.all([
+    run({ type: 'techniques' }), run({ type: 'practice-examples', technique }),
+  ])
+  assert.equal(catalog.techniques.find(item => item.id === technique)?.cost, 600)
+  assert.equal(exercises.length, 3)
+  const first = exercises[0]
+  const evidence = first.deduction.evidence
+  assert.ok('double-exocet' in evidence)
+  const { components, crossLines, assignments } = evidence['double-exocet']
+  assert.deepEqual(components.map(({ bases, targets }) => ({ bases, targets })), [
+    { bases: [39, 41], targets: [47, 35] },
+    { bases: [51, 52], targets: [38, 31] },
+  ])
+  assert.deepEqual(crossLines, [{ column: 2 }, { column: 4 }, { column: 8 }])
+  assert.equal(assignments.length, 36)
+  assert.equal(first.deduction.actions.length, 41)
+  assert.ok(first.deduction.actions.some(action => 'eliminate' in action && action.eliminate.cell === 27 && action.eliminate.digit === 4))
+  const { givens, entries, eliminations } = first
+  const proof = await run({ type: 'check-practice-move', values: givens, entries, eliminations, technique, action: first.suggestion })
+  assert.deepEqual(proof, first.deduction)
+  const trace = await run({ type: 'logical-solve', values: givens, techniqueOrder: [technique, ...catalog.defaultOrder], includePositions: true })
+  assert.deepEqual(trace.steps[0], first.deduction)
+  assert.deepEqual(trace.rating.status, { solved: 'extreme' })
+  const step = replayStep(trace, 0)
+  assert.ok(step)
+  assert.equal(step.after.eliminations[27] & (1 << 3), 1 << 3)
 })
 
 test('opt-in rank solve records the rank removal, score, and replay positions', async () => {

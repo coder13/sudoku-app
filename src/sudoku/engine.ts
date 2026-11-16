@@ -272,6 +272,10 @@ type KrakenLink = {
 }
 type SectorSubset = { house: House; cells: number[]; digits: number[] }
 type SectorLink = { house: House; digits: number[] }
+type ExocetCover = { digit: number; cells: number[]; houses: House[] }
+type ExocetAssignment = { bases: [number, number]; targets: [number, number] }
+type ExocetComponent = { bases: [number, number]; targets: [number, number]; covers: ExocetCover[] }
+type ExocetTarget = { cell: number } | { 'conjugate-pair': { digit: number; link: ConjugatePair } }
 type Evidence =
   | { variant: { description: string; reason: string } }
   | { cell: number }
@@ -304,8 +308,19 @@ type Evidence =
       bases: [number, number]
       targets: [number, number]
       crossLines: [House, House, House]
-      covers: { digit: number; cells: number[]; houses: House[] }[]
-      assignments: { bases: [number, number]; targets: [number, number] }[]
+      covers: ExocetCover[]
+      assignments: ExocetAssignment[]
+    } }
+  | { 'grouped-exocet': {
+      bases: [number, number]
+      targets: [ExocetTarget, ExocetTarget]
+      crossLines: [House, House, House]
+      covers: ExocetCover[]
+    } }
+  | { 'double-exocet': {
+      components: [ExocetComponent, ExocetComponent]
+      crossLines: [House, House, House]
+      assignments: [ExocetAssignment, ExocetAssignment][]
     } }
   | { 'sk-loop': { anchors: [number, number, number, number]; arms: number[][]; links: SectorLink[] } }
   | { 'multi-sector-locked-sets': { core: number[]; attachments: number[]; links: SectorLink[] } }

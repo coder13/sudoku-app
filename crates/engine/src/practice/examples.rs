@@ -5,9 +5,105 @@ use super::{PracticeExample, Technique, elimination_masks, place, remove};
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
+        Technique::DoubleExocet => {
+            const {
+                [
+                    // Jonathan Handojo's example in the SudokuWiki Double Exocet discussion.
+                    // https://www.sudokuwiki.org/Double_Exocet
+                    PracticeExample {
+                        givens: "002030000000000300730009005000005600590800003061090000000008040000007800870050006",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[
+                            remove(6, 1),
+                            remove(6, 4),
+                            remove(7, 1),
+                            remove(11, 4),
+                            remove(13, 1),
+                            remove(13, 2),
+                            remove(13, 4),
+                            remove(13, 6),
+                            remove(16, 1),
+                            remove(16, 2),
+                            remove(22, 1),
+                            remove(22, 2),
+                            remove(22, 4),
+                            remove(22, 6),
+                            remove(29, 4),
+                            remove(30, 1),
+                            remove(30, 2),
+                            remove(30, 4),
+                            remove(34, 1),
+                            remove(34, 2),
+                            remove(48, 2),
+                            remove(48, 4),
+                            remove(51, 2),
+                            remove(51, 4),
+                            remove(52, 2),
+                            remove(60, 1),
+                            remove(60, 2),
+                            remove(65, 4),
+                            remove(70, 1),
+                            remove(70, 2),
+                            remove(77, 1),
+                            remove(77, 2),
+                            remove(77, 4),
+                        ],
+                    },
+                    // Monhard, line 11, after two hidden singles.
+                    // https://github.com/denis-berthier/Sudoku-classif/blob/main/Monhard-until-2023-08-15-TE23/puzzles.txt#L11
+                    PracticeExample {
+                        givens: "980700600007050098000000000760900005004000000000037000500600080002000706000071500",
+                        entries: Some(
+                            "000000000000000000000000000000000000000000000000000060070000000000000000000000000",
+                        ),
+                        eliminations: None,
+                        expected_actions: &[
+                            remove(7, 1),
+                            remove(7, 2),
+                            remove(7, 3),
+                            remove(7, 4),
+                            remove(14, 2),
+                            remove(14, 3),
+                            remove(14, 4),
+                            remove(20, 1),
+                            remove(20, 3),
+                            remove(22, 1),
+                            remove(22, 2),
+                            remove(22, 4),
+                            remove(23, 2),
+                            remove(23, 3),
+                            remove(23, 4),
+                            remove(25, 1),
+                            remove(25, 2),
+                            remove(25, 3),
+                            remove(25, 4),
+                            remove(40, 1),
+                            remove(40, 2),
+                            remove(41, 2),
+                            remove(44, 1),
+                            remove(44, 2),
+                            remove(44, 3),
+                            remove(47, 1),
+                            remove(53, 1),
+                            remove(53, 2),
+                            remove(53, 4),
+                            remove(60, 1),
+                            remove(60, 2),
+                            remove(60, 3),
+                            remove(60, 4),
+                            remove(67, 4),
+                            remove(68, 3),
+                            remove(68, 4),
+                            remove(74, 3),
+                        ],
+                    },
+                ]
+            }
+        }
         Technique::SeniorExocet => {
             const {
-                // Figures 0812 and 0817 in the Sudoku Studio Senior Exocet tutorial.
+                // Figures 0812 and 0821 in the Sudoku Studio Senior Exocet tutorial.
                 [
                     PracticeExample {
                         givens: "007005008900000300630700000000040000800001002003500700009600500040002001000000020",
@@ -20,25 +116,7 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                             remove(75, 9),
                         ],
                     },
-                    PracticeExample {
-                        givens: "001000070390000800800100900009300700000042060200000004003700600000010050050006007",
-                        entries: None,
-                        eliminations: Some(&elimination_masks(&[(46, 7), (47, 7)])),
-                        // The allowed assignments also force 6 at r6c4.
-                        expected_actions: &[
-                            remove(3, 6),
-                            remove(4, 6),
-                            remove(8, 6),
-                            remove(11, 6),
-                            remove(12, 6),
-                            remove(19, 6),
-                            remove(20, 6),
-                            remove(47, 6),
-                            remove(48, 5),
-                            remove(48, 8),
-                            remove(48, 9),
-                        ],
-                    },
+                    super::GROUPED_SENIOR_EXOCET,
                 ]
             }
         }
