@@ -503,9 +503,15 @@ export function Worktable({
           ...latest,
           difficulty: latest.difficulty === undefined ? ratedDifficulty : latest.difficulty,
           score: latest.score === undefined ? ratedDifficulty === null ? null : points : latest.score,
-          ratingAttempt: latest.ratingAttempt ?? (ratedDifficulty && !isSolved(latest) ? ratingAttemptFor({
-            difficulty: ratedDifficulty, points, scoringVersion: rating.scoringVersion, techniqueOrder: rating.techniqueOrder,
-          }, latest.generatedWithAuto ? undefined : 'fixed') : undefined),
+          ratingAttempt: latest.ratingAttempt ?? (ratedDifficulty && !isSolved(latest)
+            ? (latest.analysisUsed
+              ? addAnalysisAssistance(ratingAttemptFor({
+                difficulty: ratedDifficulty, points, scoringVersion: rating.scoringVersion, techniqueOrder: rating.techniqueOrder,
+              }, latest.generatedWithAuto ? undefined : 'fixed'))
+              : ratingAttemptFor({
+                difficulty: ratedDifficulty, points, scoringVersion: rating.scoringVersion, techniqueOrder: rating.techniqueOrder,
+              }, latest.generatedWithAuto ? undefined : 'fixed'))
+            : undefined),
         }
       })
     }).catch(() => {
