@@ -5,7 +5,7 @@ import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import {
   applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, onlyCandidate, paintCandidate, redo,
-  needsInitialCandidates, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, undo, valuesOf,
+  needsInitialCandidates, paintCandidateStroke, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, undo, valuesOf,
 } from '../src/sudoku/game.ts'
 
 test('Jigsaw uses irregular regions for candidate removal and conflicts', () => {
@@ -123,6 +123,35 @@ test('highlight candidate input toggles a digit across the selected cells', () =
 
   const cleared = enter(marked, selection, 'candidate', 7)
   for (const cell of selection) assert.equal(cleared.position.corner[cell], 0)
+})
+
+test('dragged candidate edits apply the same action to every cell and undo together', () => {
+  const initial = enter(STARTER_GAME, [3], 'candidate', 4)
+  const first = paintCandidateStroke(initial, initial, [2, 3], 'candidate', 4, 'add')
+  assert.equal(hasCandidate(first.position.corner[2], 4), true)
+  assert.equal(hasCandidate(first.position.corner[3], 4), true)
+
+  const extended = paintCandidateStroke(first, initial, [2, 3, 18, 0], 'candidate', 4, 'add')
+  assert.equal(hasCandidate(extended.position.corner[18], 4), true)
+  assert.equal(extended.position.corner[0], 0, 'givens are not editable')
+  assert.equal(extended.past.length, initial.past.length + 1)
+  assert.deepEqual(undo(extended).position, initial.position)
+  assert.deepEqual(redo(undo(extended)).position, extended.position)
+
+  const removed = paintCandidateStroke(extended, extended, [2, 3], 'candidate', 4, 'remove')
+  assert.equal(hasCandidate(removed.position.corner[2], 4), false)
+  assert.equal(hasCandidate(removed.position.corner[3], 4), false)
+  assert.equal(hasCandidate(removed.position.corner[18], 4), true)
+  assert.deepEqual(undo(removed).position, extended.position)
+})
+
+test('dragged candidate edits respect separate center and corner layouts', () => {
+  const initial = enter(STARTER_GAME, [2], 'center', 5)
+  const next = paintCandidateStroke(initial, initial, [2, 3], 'corner', 7, 'add')
+  assert.equal(hasCandidate(next.position.center[2], 5), true)
+  assert.equal(hasCandidate(next.position.corner[2], 7), true)
+  assert.equal(hasCandidate(next.position.corner[3], 7), true)
+  assert.equal(next.past.length, initial.past.length + 1)
 })
 
 test('entering a digit removes peer candidates and undo restores them', () => {

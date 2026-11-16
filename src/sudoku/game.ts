@@ -8,7 +8,7 @@ export type CandidateLayout = 'grid' | 'center-corner'
 export type ColorTarget = 'cell' | 'candidate'
 export type ErrorMode = 'all' | 'incorrect' | 'none'
 export type Source = 'starter' | 'generated' | 'imported' | 'custom' | 'draft'
-export type EnterOptions = { allowMultipleValues?: boolean }
+export type EnterOptions = { allowMultipleValues?: boolean; candidateAction?: 'add' | 'remove' }
 
 export type Position = {
   entries: string
@@ -276,7 +276,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
       const empty = editable.filter((i) => entries[i] === '0')
       const marks = mode === 'candidate' ? center.map((mask, i) => mask | corner[i]) : mode === 'center' ? center : corner
       const bit = digit ? 1 << (digit - 1) : 0
-      const add = empty.some((i) => (marks[i] & bit) === 0)
+      const add = options.candidateAction ? options.candidateAction === 'add' : empty.some((i) => (marks[i] & bit) === 0)
       const next = marks.map((mask, i) => {
         if (!empty.includes(i)) return mask
         if (!digit) return 0
@@ -298,6 +298,24 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
   const position = { ...game.position, entries, center, corner, colors }
   if (replacedEntry) delete position.eliminations
   return move(game, position)
+}
+
+/** Rebuild a live Pencil drag from its starting position so the whole stroke is one undo step. */
+export function paintCandidateStroke(
+  current: Game, start: Game, cells: readonly number[], mode: 'candidate' | 'center' | 'corner',
+  digit: number, action: 'add' | 'remove',
+): Game {
+  if (current.id !== start.id || current.givens !== start.givens ||
+    current.position.entries !== start.position.entries || current.paused) return current
+  const origin = {
+    ...current,
+    position: start.position,
+    past: start.past,
+    future: start.future,
+    candidatesInitialized: start.candidatesInitialized,
+    started: start.started,
+  }
+  return enter(origin, [...cells], mode, digit, { candidateAction: action })
 }
 
 export function replaceCandidates(game: Game, masks: readonly number[], options: { recordHistory?: boolean } = {}): Game {
