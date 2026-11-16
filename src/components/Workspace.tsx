@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowDownToLine, Check, Layers2, Menu, Plus, Settings as SettingsIcon, SlidersHorizontal } from 'lucide-react'
+import { ArrowDownToLine, Check, Layers2, Menu, Minus, Plus, Settings as SettingsIcon, SlidersHorizontal } from 'lucide-react'
 import { parsePuzzle } from '../sudoku/formats'
 import type { ErrorMode } from '../sudoku/game'
 import {
-  DEFAULT_ADVANCED_MODES, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, readPanelHeight, readPreferences,
-  saveAdvancedModes, saveErrorMode, saveInputSize, savePanelHeight,
+  DEFAULT_ADVANCED_MODES, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, INPUT_SIZE_STEP, MAX_INPUT_SIZE,
+  MIN_INPUT_SIZE, readPanelHeight, readPreferences, saveAdvancedModes, saveErrorMode, saveInputSize, savePanelHeight,
   type AdvancedModes,
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
@@ -31,6 +31,7 @@ export function Workspace() {
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const worktableActions = useRef<WorktableActions | null>(null)
   const resizeStartHeight = useRef(panelHeight)
+  const resizeStartInputSize = useRef(inputSize)
   const game = games.find((item) => item.id === active)
   const close = () => setPanel(null)
 
@@ -136,18 +137,23 @@ export function Workspace() {
     setMenuOpen(false)
     setPanel(null)
     setResizeMode((current) => {
-      if (!current) resizeStartHeight.current = panelHeight
+      if (!current) {
+        resizeStartHeight.current = panelHeight
+        resizeStartInputSize.current = inputSize
+      }
       return true
     })
   }
 
   function cancelResize() {
     setPanelHeight(resizeStartHeight.current)
+    setInputSizeState(resizeStartInputSize.current)
     setResizeMode(false)
   }
 
   function finishResize() {
     savePanelHeight(panelHeight)
+    saveInputSize(inputSize)
     setResizeMode(false)
   }
 
@@ -210,7 +216,13 @@ export function Workspace() {
       </main>
 
       {resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
-        <span><strong>Resize input panel</strong><small>Drag the handle to choose a height.</small></span>
+        <span className="resize-session-copy"><strong>Resize input panel</strong><small>Drag the handle or adjust digit size.</small></span>
+        <span className="resize-size-controls" role="group" aria-label="Digit size">
+          <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
+            onClick={() => setInputSizeState(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></button>
+          <button className="icon-button" aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
+            onClick={() => setInputSizeState(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></button>
+        </span>
         <span className="resize-session-actions">
           <button className="button secondary" onClick={cancelResize}>Cancel</button>
           <button className="button primary" onClick={finishResize}>Save</button>

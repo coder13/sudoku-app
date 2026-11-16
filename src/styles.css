@@ -392,7 +392,7 @@ svg { flex-shrink: 0; }
   top: 82px;
   left: 50%;
   translate: -50% 0;
-  width: min(calc(100vw - 28px), 500px);
+  width: min(calc(100vw - 28px), 620px);
   min-height: 64px;
   display: flex;
   align-items: center;
@@ -408,6 +408,8 @@ svg { flex-shrink: 0; }
 .resize-session-bar strong, .resize-session-bar small { display: block; }
 .resize-session-bar strong { font-size: 14px; }
 .resize-session-bar small { margin-top: 2px; color: var(--muted); font-size: 12px; }
+.resize-size-controls { display: flex; gap: 6px; }
+.resize-size-controls .icon-button { width: 42px; min-height: 42px; }
 .resize-session-actions { display: flex; gap: 7px; }
 .resize-active .puzzle, .resize-active .controls-content { pointer-events: none; }
 .resize-active .controls { height: var(--controls-height, 280px); padding: 16px; }
@@ -551,7 +553,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .side-actions { gap: 4px; }
   .side-actions .icon-button { width: 42px; min-height: 42px; }
   .mobile-menu-only { display: flex !important; }
-  .resize-handle { display: grid; }
   .dialog.settings-dialog {
     width: 100vw;
     max-width: none;
@@ -589,8 +590,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-section-label { display: none; }
   .settings-mobile-section .settings-section h3 { font-size: 22px; }
   .settings-keypad-preview { width: min(100%, var(--preview-input-size, 210px)); }
-  .resize-session-bar { top: 70px; min-height: 58px; padding: 8px 9px 8px 12px; }
+  .resize-session-bar { top: 70px; min-height: 58px; gap: 8px; padding: 8px 9px 8px 12px; }
   .resize-session-bar small { display: none; }
+  .resize-size-controls { gap: 4px; }
+  .resize-size-controls .icon-button { width: 38px; min-height: 38px; }
   .resize-session-actions .button { min-height: 40px; padding-inline: 11px; }
 }
 
