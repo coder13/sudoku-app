@@ -1,10 +1,10 @@
 import {
   type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useEffect, useMemo, useRef, useState,
 } from 'react'
-import { Check, CircleCheck, CircleX, Info, PencilLine } from 'lucide-react'
+import { Check, CheckCheck, CircleCheck, CircleX, Info, MoreHorizontal, PencilLine } from 'lucide-react'
 import { runEngine, type Analysis } from '../sudoku/engine'
 import {
-  COLORS, conflictsOf, enter, formatTime, isSolved, redo, undo, valuesOf,
+  COLORS, conflictsOf, enter, fillEntries, formatTime, isSolved, redo, replaceCandidates, singleFromCandidates, undo, valuesOf,
   type ErrorMode, type Game, type Mode,
 } from '../sudoku/game'
 import type { AdvancedModes, AppearancePreferences } from '../sudoku/preferences'
@@ -17,6 +17,7 @@ const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
 }
 export type CheckResult = { text: string; tone: 'error' | 'success' | 'neutral' }
+type DialogResult = CheckResult & { title: 'Puzzle check' | 'Puzzle action' }
 
 export const validation: Record<Analysis, CheckResult> = {
   conflict: { text: 'Resolve the highlighted conflicts first.', tone: 'error' },
@@ -34,6 +35,19 @@ function rectangle(start: number, end: number) {
     for (let col = left; col <= right; col++) result.push(row * 9 + col)
   }
   return result
+}
+
+async function solveSingleValues(values: string) {
+  let board = values
+  for (let step = 0; step < 81; step++) {
+    const masks = await runEngine({ type: 'notes', values: board })
+    if (!masks) throw new Error('Singles cannot be solved until the grid conflicts are resolved.')
+    const single = singleFromCandidates(board, masks)
+    if (!single) return board
+    const [index, digit] = single
+    board = board.slice(0, index) + digit + board.slice(index + 1)
+  }
+  return board
 }
 
 function useTimer(id: string, running: boolean) {
@@ -98,10 +112,13 @@ export function Worktable({
   const [colorMode, setColorMode] = useState(false)
   const [eraseMode, setEraseMode] = useState(false)
   const [solution, setSolution] = useState<string | null>(null)
-  const [checkResult, setCheckResult] = useState<CheckResult | null>(null)
+  const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
+  const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const anchor = useRef(start)
   const boardRef = useRef<HTMLDivElement>(null)
+  const puzzleMenuRef = useRef<HTMLDivElement>(null)
+  const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
   const values = useMemo(() => valuesOf(game), [game.givens, game.position.entries])
   const conflicts = useMemo(() => conflictsOf(values), [values])
   const draft = game.source === 'draft'
@@ -111,7 +128,28 @@ export function Worktable({
   const solved = isSolved(game)
   const disabled = false
 
-  useTimer(game.id, !draft && game.started && !solved && !modalOpen && checkResult === null)
+  useTimer(game.id, !draft && game.started && !solved && !modalOpen && !puzzleMenuOpen && dialogResult === null)
+
+  useEffect(() => {
+    if (!puzzleMenuOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!puzzleMenuRef.current?.contains(event.target as Node)) setPuzzleMenuOpen(false)
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      setPuzzleMenuOpen(false)
+      puzzleMenuButtonRef.current?.focus()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [puzzleMenuOpen])
 
   useEffect(() => {
     if (advancedModes.colorsEnabled) return
@@ -181,7 +219,7 @@ export function Worktable({
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       const target = event.target
-      if (modalOpen || checkResult !== null || event.altKey ||
+      if (modalOpen || puzzleMenuOpen || dialogResult !== null || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
@@ -232,21 +270,62 @@ export function Worktable({
 
   async function runCheck() {
     if (busy) return
+    setPuzzleMenuOpen(false)
     setBusy(true)
-    setCheckResult(null)
+    setDialogResult(null)
     try {
       const status = await runEngine({ type: 'analyze', values })
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
       if (!current || valuesOf(current) !== values) return
       if (!draft) {
-        setCheckResult(status === 'unique'
-          ? { text: solved ? 'This puzzle is correct.' : 'Everything entered so far is correct.', tone: 'success' }
-          : { text: 'This puzzle is not correct yet.', tone: 'error' })
+        setDialogResult(status === 'unique'
+          ? { title: 'Puzzle check', text: solved ? 'This puzzle is correct.' : 'Everything entered so far is correct.', tone: 'success' }
+          : { title: 'Puzzle check', text: 'This puzzle is not correct yet.', tone: 'error' })
       } else {
-        setCheckResult(validation[status])
+        setDialogResult({ title: 'Puzzle check', ...validation[status] })
       }
     } catch (error) {
-      setCheckResult({ text: (error as Error).message, tone: 'neutral' })
+      setDialogResult({ title: 'Puzzle check', text: (error as Error).message, tone: 'neutral' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function generateCandidates() {
+    if (busy) return
+    setPuzzleMenuOpen(false)
+    setBusy(true)
+    try {
+      const masks = await runEngine({ type: 'notes', values })
+      const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
+      if (!current || valuesOf(current) !== values) return
+      if (!masks) {
+        setDialogResult({ title: 'Puzzle action', text: 'Candidates cannot be generated until the grid conflicts are resolved.', tone: 'error' })
+        return
+      }
+      roomStore.update(game.id, (latest) => valuesOf(latest) === values ? replaceCandidates(latest, masks) : latest)
+    } catch (error) {
+      setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function solveAllSingles() {
+    if (busy) return
+    setPuzzleMenuOpen(false)
+    setBusy(true)
+    try {
+      const result = await solveSingleValues(values)
+      const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
+      if (!current || valuesOf(current) !== values) return
+      if (result === values) {
+        setDialogResult({ title: 'Puzzle action', text: 'There are no singles to solve right now.', tone: 'neutral' })
+        return
+      }
+      roomStore.update(game.id, (latest) => valuesOf(latest) === values ? fillEntries(latest, result) : latest)
+    } catch (error) {
+      setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
     } finally {
       setBusy(false)
     }
@@ -264,9 +343,25 @@ export function Worktable({
           {draft ? (
             <button className="button primary publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</button>
           ) : (
-            <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}`}>
-              {formatTime(game.elapsed)}
-            </span>
+            <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
+              <button ref={puzzleMenuButtonRef} className="icon-button puzzle-menu-trigger" aria-label="Open puzzle actions"
+                title="Puzzle actions" aria-expanded={puzzleMenuOpen} aria-controls="puzzle-menu"
+                onClick={() => setPuzzleMenuOpen((open) => !open)}>
+                <MoreHorizontal size={20} />
+              </button>
+              {puzzleMenuOpen && <div className="app-menu puzzle-menu" id="puzzle-menu">
+                <button onClick={() => { void generateCandidates() }} disabled={busy}>
+                  <PencilLine size={17} /> Generate all candidates
+                </button>
+                <button onClick={() => { void solveAllSingles() }} disabled={busy}>
+                  <CheckCheck size={17} /> Solve all singles
+                </button>
+                <div className="app-menu-separator" />
+                <button onClick={() => { void runCheck() }} disabled={busy}>
+                  <Check size={17} /> Check puzzle
+                </button>
+              </div>}
+            </div>
           )}
         </div>
         <Board game={game} values={values} errors={errors} candidateLayout={advancedModes.candidateLayout}
@@ -274,6 +369,11 @@ export function Worktable({
           highlightedDigit={mode === 'color' ? null : selectedDigit} selected={selected} active={active}
           boardRef={boardRef} onCell={clickCell} />
         {draft && <div className="draft-tip"><PencilLine size={16} /> Enter the starting digits, then save your puzzle.</div>}
+        {!draft && <div className="puzzle-footer">
+          <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}`}>
+            {formatTime(game.elapsed)}
+          </span>
+        </div>}
       </section>
       <Controls mode={mode} pencil={pencil} togglePencil={() => { setEraseMode(false); setColorMode(false); setPencil((current) => !current) }}
         candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
@@ -286,13 +386,13 @@ export function Worktable({
         undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
         disabled={disabled} draft={draft} inputSize={inputSize} panelHeight={panelHeight}
         setPanelHeight={setPanelHeight} beginResize={beginResize} />
-      {checkResult && <Modal title="Puzzle check" onClose={() => setCheckResult(null)} className="check-dialog">
-        <div className={`check-result ${checkResult.tone}`}>
+      {dialogResult && <Modal title={dialogResult.title} onClose={() => setDialogResult(null)} className="check-dialog">
+        <div className={`check-result ${dialogResult.tone}`}>
           <span className="check-result-icon" aria-hidden="true">
-            {checkResult.tone === 'success' ? <CircleCheck size={30} />
-              : checkResult.tone === 'error' ? <CircleX size={30} /> : <Info size={30} />}
+            {dialogResult.tone === 'success' ? <CircleCheck size={30} />
+              : dialogResult.tone === 'error' ? <CircleX size={30} /> : <Info size={30} />}
           </span>
-          <p>{checkResult.text}</p>
+          <p>{dialogResult.text}</p>
         </div>
       </Modal>}
     </>

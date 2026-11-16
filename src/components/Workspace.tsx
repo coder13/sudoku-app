@@ -210,7 +210,7 @@ export function Workspace() {
             </button>
             {menuOpen && <div className="app-menu" id="app-menu">
               <button onClick={() => openPanel('settings')}><SlidersHorizontal size={17} /> Settings</button>
-              {game && <button onClick={checkPuzzle}><Check size={17} /> {game.source === 'draft' ? 'Validate puzzle' : 'Check puzzle'}</button>}
+              {game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
               {game && <button className={advancedModes.multiSelectButton ? '' : 'mobile-menu-only'} onClick={toggleMulti} aria-pressed={multi}>
                 <Layers2 size={17} /> Multi-select {multi ? 'on' : 'off'}
               </button>}

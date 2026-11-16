@@ -30,6 +30,12 @@ export const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 export const EMPTY = '0'.repeat(81)
 export const COLORS = ['Rose', 'Peach', 'Yellow', 'Mint', 'Blue', 'Lavender']
 const HISTORY_SIZE = 64
+const HOUSES = [
+  ...Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, column) => row * 9 + column)),
+  ...Array.from({ length: 9 }, (_, column) => Array.from({ length: 9 }, (_, row) => row * 9 + column)),
+  ...Array.from({ length: 9 }, (_, box) => Array.from({ length: 9 }, (_, offset) =>
+    Math.floor(box / 3) * 27 + (box % 3) * 3 + Math.floor(offset / 3) * 9 + offset % 3)),
+]
 
 export function makeGame(id: string, title: string, givens: string, source: Source, created = Date.now()): Game {
   return {
@@ -156,6 +162,62 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
     colors.every((color, i) => color === game.position.colors[i])
   ) return game
   return move(game, { entries, center, corner, colors })
+}
+
+export function replaceCandidates(game: Game, masks: readonly number[]): Game {
+  if (masks.length !== 81) return game
+  const center = Array(81).fill(0)
+  const corner = masks.map((mask, index) =>
+    game.givens[index] === '0' && game.position.entries[index] === '0' ? mask & 0x1ff : 0)
+  if (
+    center.every((mask, index) => mask === game.position.center[index]) &&
+    corner.every((mask, index) => mask === game.position.corner[index])
+  ) return game
+  return move(game, { ...game.position, center, corner })
+}
+
+export function fillEntries(game: Game, nextValues: string): Game {
+  if (!/^[0-9]{81}$/.test(nextValues)) return game
+  const entries = [...game.position.entries]
+  const center = [...game.position.center]
+  const corner = [...game.position.corner]
+  let changed = false
+
+  for (let index = 0; index < 81; index++) {
+    const digit = Number(nextValues[index])
+    if (game.givens[index] !== '0' || entries[index] !== '0' || digit === 0) continue
+    entries[index] = String(digit)
+    center[index] = 0
+    corner[index] = 0
+    const bit = 1 << (digit - 1)
+    for (let peerIndex = 0; peerIndex < 81; peerIndex++) {
+      if (!peer(index, peerIndex)) continue
+      center[peerIndex] &= ~bit
+      corner[peerIndex] &= ~bit
+    }
+    changed = true
+  }
+
+  return changed ? move(game, { ...game.position, entries: entries.join(''), center, corner }) : game
+}
+
+export function singleFromCandidates(values: string, masks: readonly number[]): [number, number] | null {
+  if (values.length !== 81 || masks.length !== 81) return null
+  for (let index = 0; index < 81; index++) {
+    const mask = masks[index]
+    if (values[index] === '0' && mask && (mask & (mask - 1)) === 0) {
+      return [index, Math.log2(mask) + 1]
+    }
+  }
+  for (const house of HOUSES) {
+    for (let digit = 1; digit <= 9; digit++) {
+      if (house.some((index) => values[index] === String(digit))) continue
+      const bit = 1 << (digit - 1)
+      const cells = house.filter((index) => values[index] === '0' && (masks[index] & bit) !== 0)
+      if (cells.length === 1) return [cells[0], digit]
+    }
+  }
+  return null
 }
 
 export function marksOf(mask: number): number[] {

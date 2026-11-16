@@ -257,8 +257,11 @@ svg { flex-shrink: 0; }
   background: var(--surface);
   box-shadow: 0 2px 4px #32224505, 0 12px 26px -18px #32224524;
 }
-.puzzle { grid-area: puzzle; padding: 22px 27px; min-width: 0; }
+.puzzle { position: relative; grid-area: puzzle; padding: 22px 27px; min-width: 0; }
 .puzzle-actions { justify-content: flex-end; margin-bottom: 14px; }
+.puzzle-menu-wrap { position: relative; }
+.puzzle-menu { width: 235px; }
+.puzzle-footer { min-height: 13px; display: flex; justify-content: flex-end; align-items: center; margin-top: 12px; }
 .duration-counter {
   color: var(--muted);
   font-size: 13px;
@@ -747,6 +750,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .surface { --radius: 14px; }
   .puzzle { align-self: center; min-height: 0; padding: 10px 11px; overflow: hidden; }
   .puzzle-actions { margin-bottom: 8px; }
+  .puzzle-footer { margin-top: 7px; }
   .puzzle-actions .button { padding-inline: 8px; font-size: 12px; min-height: 38px; }
   .puzzle-actions .icon-button { width: 35px; min-height: 38px; }
   .board-frame { width: min(calc(100vw - 48px), max(130px, calc(100dvh - var(--mobile-controls-height, 280px) - 220px))); }
