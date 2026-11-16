@@ -1,10 +1,11 @@
-import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type MouseEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, PencilLine, Share2 } from 'lucide-react'
 import { runEngine, type Analysis } from '../sudoku/engine'
 import {
   COLORS, conflictsOf, enter, isSolved, redo, undo, valuesOf,
-  type CandidateLayout, type ErrorMode, type Game, type Mode,
+  type ErrorMode, type Game, type Mode,
 } from '../sudoku/game'
+import type { AdvancedModes } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { Board } from './Board'
 import { Controls, type Feedback } from './Controls'
@@ -12,12 +13,6 @@ import { Controls, type Feedback } from './Controls'
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
 }
-const ERROR_MODE_KEY = 'sudoku-app:v1:error-mode'
-const ADVANCED_MODE_KEY = 'sudoku-app:v1:advanced-modes'
-const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'none'])
-type AdvancedModes = { candidateLayout: CandidateLayout; colorsEnabled: boolean; multiSelectButton: boolean }
-const DEFAULT_ADVANCED_MODES: AdvancedModes = { candidateLayout: 'grid', colorsEnabled: false, multiSelectButton: false }
-
 export const validation: Record<Analysis, Feedback> = {
   conflict: { text: 'Resolve the highlighted conflicts first.', tone: 'error' },
   unsolvable: { text: 'The current grid has no solution.', tone: 'error' },
@@ -36,10 +31,16 @@ function rectangle(start: number, end: number) {
   return result
 }
 
-export function Worktable({ game, onShare, onManage, onPublish }: {
+export type WorktableActions = { check: () => void }
+
+export function Worktable({ game, modalOpen, advancedModes, errorMode, multi, actionsRef, onShare, onPublish }: {
   game: Game
+  modalOpen: boolean
+  advancedModes: AdvancedModes
+  errorMode: ErrorMode
+  multi: boolean
+  actionsRef: RefObject<WorktableActions | null>
   onShare: () => void
-  onManage: () => void
   onPublish: () => void
 }) {
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
@@ -49,11 +50,7 @@ export function Worktable({ game, onShare, onManage, onPublish }: {
   const [pencil, setPencil] = useState(false)
   const [candidateKind, setCandidateKind] = useState<'center' | 'corner'>('corner')
   const [colorMode, setColorMode] = useState(false)
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [advancedModes, setAdvancedModesState] = useState<AdvancedModes>(DEFAULT_ADVANCED_MODES)
-  const [errorMode, setErrorModeState] = useState<ErrorMode>('all')
   const [solution, setSolution] = useState<string | null>(null)
-  const [multi, setMulti] = useState(false)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [busy, setBusy] = useState(false)
   const anchor = useRef(start)
@@ -68,19 +65,10 @@ export function Worktable({ game, onShare, onManage, onPublish }: {
   const disabled = false
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(ERROR_MODE_KEY) as ErrorMode | null
-      if (saved && ERROR_MODES.has(saved)) setErrorModeState(saved)
-      const advanced = JSON.parse(localStorage.getItem(ADVANCED_MODE_KEY) ?? 'null') as Partial<AdvancedModes> | null
-      if (advanced && (advanced.candidateLayout === 'grid' || advanced.candidateLayout === 'center-corner')) {
-        setAdvancedModesState({
-          candidateLayout: advanced.candidateLayout,
-          colorsEnabled: advanced.colorsEnabled === true,
-          multiSelectButton: advanced.multiSelectButton === true,
-        })
-      }
-    } catch { /* Keep the default when preferences cannot be read. */ }
-  }, [])
+    if (advancedModes.colorsEnabled) return
+    setColorMode(false)
+    setSelectedDigit(null)
+  }, [advancedModes.colorsEnabled])
 
   useEffect(() => {
     let current = true
@@ -104,22 +92,6 @@ export function Worktable({ game, onShare, onManage, onPublish }: {
     }
     return result
   }, [conflicts, draft, errorMode, game.position.entries, solution])
-
-  function setErrorMode(next: ErrorMode) {
-    setErrorModeState(next)
-    try { localStorage.setItem(ERROR_MODE_KEY, next) }
-    catch { /* The setting remains active for this session. */ }
-  }
-
-  function setAdvancedModes(next: AdvancedModes) {
-    setAdvancedModesState(next)
-    if (!next.colorsEnabled) {
-      setColorMode(false)
-      setSelectedDigit(null)
-    }
-    try { localStorage.setItem(ADVANCED_MODE_KEY, JSON.stringify(next)) }
-    catch { /* The settings remain active for this session. */ }
-  }
 
   function edit(transform: (current: Game) => Game) {
     if (disabled) return
@@ -155,7 +127,7 @@ export function Worktable({ game, onShare, onManage, onPublish }: {
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       const target = event.target
-      if (advancedOpen || event.altKey ||
+      if (modalOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
@@ -220,6 +192,11 @@ export function Worktable({ game, onShare, onManage, onPublish }: {
     }
   }
 
+  useEffect(() => {
+    actionsRef.current = { check: () => { void runCheck() } }
+    return () => { actionsRef.current = null }
+  })
+
   return (
     <>
       <section className="surface puzzle" aria-label={game.title}>
@@ -236,14 +213,12 @@ export function Worktable({ game, onShare, onManage, onPublish }: {
         {draft && <div className="draft-tip"><PencilLine size={16} /> Enter the starting digits, then save your puzzle.</div>}
       </section>
       <Controls mode={mode} pencil={pencil} togglePencil={() => { setColorMode(false); setPencil((current) => !current) }}
-        candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
-        advancedOpen={advancedOpen} setAdvancedOpen={setAdvancedOpen}
+        candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
         colorMode={colorMode} toggleColorMode={() => { setPencil(false); setSelectedDigit(null); setColorMode((current) => !current) }}
         selectedDigit={selectedDigit} hasCellSelection={selected.length > 0}
-        errorMode={errorMode} setErrorMode={setErrorMode} values={values} multi={multi} toggleMulti={() => setMulti(!multi)} input={input}
-        manage={onManage}
+        values={values} input={input}
         undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
-        check={runCheck} disabled={disabled} busy={busy} draft={draft} feedback={feedback} />
+        disabled={disabled} draft={draft} feedback={feedback} />
     </>
   )
 }

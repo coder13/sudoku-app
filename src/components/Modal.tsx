@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef } from 'react'
 import { X } from 'lucide-react'
 
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, onClose, className = '', children }: { title: string; onClose: () => void; className?: string; children: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const id = useId()
   useEffect(() => {
@@ -15,7 +15,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   }, [])
 
   return (
-    <dialog ref={dialog} className="dialog" aria-labelledby={id}
+    <dialog ref={dialog} className={`dialog ${className}`} aria-labelledby={id}
       onCancel={(event) => { event.preventDefault(); onClose() }}
       onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <div className="dialog-inner">
