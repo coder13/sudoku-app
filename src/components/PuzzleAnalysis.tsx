@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { runEngine, type Candidate } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
+import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
 import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, summarizeDeductions, summarizeGroup, type TechniqueSummary } from '../sudoku/puzzle-analysis'
 import { Modal } from './Modal'
@@ -53,8 +54,9 @@ export function PuzzleAnalysis({ game, close }: { game: Game; close: () => void 
         const latestMasks = hintEliminations(values, completeCandidateMasks(current), current.position.eliminations)
         if ((latestMasks?.join(',') ?? '') !== eliminationKey) return current
         const attempt = current.ratingAttempt
-        if (!attempt || attempt.outcome || attempt.analysisUsed) return current
-        return { ...current, ratingAttempt: { ...attempt, analysisUsed: true } }
+        if (!attempt) return current
+        const ratingAttempt = addAnalysisAssistance(attempt)
+        return ratingAttempt === attempt ? current : { ...current, ratingAttempt }
       })
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : 'The scan could not finish.')
