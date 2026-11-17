@@ -1,0 +1,467 @@
+{
+  "retrieved": "2026-11-17",
+  "provenance": "Unmodified SCv7 codes and static JSON payloads from the public Coach pages; decoded independently with Base32hex and zlib. The 6x6 source remains a rejection fixture.",
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/7RCb",
+      "title": "Consecutive sudoku (consecudoku)",
+      "solution": "123456798647289513958731462439625871285147639761893254392574186514368927876912345",
+      "code": "SCv7_32_f2ear5drdq230524vv2va57odlk96fq8358i1lkb5jmnklv08h511voumf5bn2a618ao4su7avru2me56ijs6grqhmh6m8d6ugef6vcqa9ck89r4uevou5ff4ve5rsiisogubvcootaq90v8ki22gbunja3jh973677333th0om72em71to8p9ujvrb41tggqtghtjlhoisnsmlv8tqn5mvg8l5ih0mm2hmq0aeq2aq8a8r8hv0d9h2367lckg9jn75tl8kmq6njpkqjamdtks7qhb4kelsup93k2krsg3p4otol7gpminm33e17e3kej96gfgv4dslcvq4r031v9io672l9s3kus81sfeomhrckfnu26du6ho4pvas3kfucfjd1d5mp5vbs0knq4hni833j5tdgbivchfbd1j5ud01kbnc73a9d2lo6u97vqvlnot9557nmnurvh6sl6qfld6hff6m6c6u7kt98rtt7jnv8trln6svg99im",
+      "decoded": {
+        "gridSize": 9,
+        "givenDigits": "100000000000000000000000000000000000000000000000000000000000000000000000000000005",
+        "givenConstraints": [
+          {
+            "id": 11,
+            "type": "difference",
+            "segments": [
+              {
+                "cells": [
+                  0,
+                  1
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  1,
+                  2
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  3,
+                  2
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  4,
+                  3
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  4,
+                  5
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  5,
+                  6
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  7,
+                  8
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  17,
+                  26
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  26,
+                  35
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  10,
+                  19
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  20,
+                  11
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  21,
+                  20
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  20,
+                  29
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  30,
+                  21
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  22,
+                  31
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  28,
+                  27
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  72,
+                  73
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  73,
+                  74
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  66,
+                  65
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  56,
+                  47
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  46,
+                  45
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  48,
+                  49
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  58,
+                  67
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  76,
+                  77
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  78,
+                  77
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  69,
+                  68
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  79,
+                  78
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  80,
+                  79
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  62,
+                  71
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  59,
+                  50
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  60,
+                  51
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  50,
+                  51
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  41,
+                  42
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  52,
+                  53
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  33,
+                  34
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  34,
+                  25
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  13,
+                  14
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              },
+              {
+                "cells": [
+                  24,
+                  15
+                ],
+                "parameters": {
+                  "difference": 1
+                }
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "id": 10,
+            "type": "nonconsecutive",
+            "segments": [],
+            "settings": {}
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Cby7",
+      "title": "Non-consecutive Flockers",
+      "solution": "642513315246531462264135426351153624",
+      "code": "SCv7_32_f2e8b41hhv130345vu5lifcg0aauhijqre6og8aa9mo59kma14gahumve41o58mjh6ueafe5vpf987lse3usmds2l9211smsgo4dbln0l0h6nqgnb75qpaavcmali4tv8fo7p9lga5l15ip1hno1te46pb613kllqdj0grbg790ut53k38825u937m37eoqah61tfl0f0cvbfjbbvdpe1m4hfinfbo58d53behijc9gp9kqpm53kk90fq8jhiqmutt4ige355o85pmtk4t8vpj760fnuloiltm2qpsju533fvqnlvvv5dov4fq2sbsmrscq0utsqui2va",
+      "decoded": {
+        "gridSize": 6,
+        "regions": [
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6
+        ],
+        "givenConstraints": [
+          {
+            "id": 10,
+            "type": "nonconsecutive",
+            "segments": [],
+            "settings": {}
+          },
+          {
+            "id": 11,
+            "type": "whisper",
+            "segments": [
+              {
+                "cells": [
+                  9,
+                  16,
+                  21
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {
+              "difference": 3,
+              "colour": "#aaaaaa"
+            }
+          },
+          {
+            "id": 12,
+            "type": "greaterLess",
+            "segments": [
+              {
+                "cells": [
+                  2,
+                  1
+                ],
+                "parameters": {}
+              },
+              {
+                "cells": [
+                  25,
+                  24
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          }
+        ]
+      }
+    }
+  ]
+}

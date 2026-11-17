@@ -410,7 +410,7 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `diagonal`, `extra-house` | Use `diagonal` with `main` or `anti`, or supply nine distinct `cells` for an extra house. |
 | `killer-cages` | Each cage specifies `cells` and `sum`. Set `coverGrid` to true if the cages must cover the full grid. |
 | `parity`, `clone` | Set `parity` to `odd` or `even` for the listed `cells`. In Clone Sudoku, each list in `groups` shares one digit. |
-| `anti-knight`, `anti-king`, `non-consecutive` | Each applies to the entire grid. Non-Consecutive applies to orthogonally adjacent cells. |
+| `anti-knight`, `anti-king`, `non-consecutive` | Each applies to the entire grid. Non-Consecutive applies to orthogonally adjacent cells; its optional `except` list exempts specified edge-sharing pairs. |
 | `inequality` | Supply the `less` and `greater` cell indices. |
 | `kropki`, `xv` | Use `consecutive` and `ratioTwo` for Kropki dots, or `five` and `ten` for XV markers. |
 | `thermometer`, `whispers`, `palindrome` | Supply `cells` in line order. Start a Thermometer at the bulb. Set `minDifference` for Whispers. |

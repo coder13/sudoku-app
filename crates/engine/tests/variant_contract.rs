@@ -403,7 +403,7 @@ fn chess_and_non_consecutive_rules_use_their_own_geometry() {
     }
 
     let mut puzzle = VariantPuzzle::classic(EMPTY);
-    puzzle.rules.push(PuzzleRule::NonConsecutive {});
+    puzzle.rules.push(PuzzleRule::NonConsecutive { except: vec![] });
     let compiled = puzzle.compile().unwrap();
     let mut entries = EMPTY;
     entries[30] = 4;

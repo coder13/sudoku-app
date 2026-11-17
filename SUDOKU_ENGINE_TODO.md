@@ -35,6 +35,19 @@ The Wasm audit now measures candidates, uniqueness verification, exact solving, 
 
 The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
+### Non-Consecutive integration in progress
+
+This stage is isolated on `codex/sudoku-nonconsecutive-integration` from main at `3e0bfec`. [Non-Consecutive issue](https://github.com/coder13/sudoku-app/issues/44)
+
+- [x] Verify Philip Newman's published Literally No One puzzle and completion against the rendered PDFs. Independently prove its 21-given puzzle is unique with the rule and has multiple completions without it.
+- [x] Add explicit exempt edges to the native Non-Consecutive rule. Preserve omitted-field JSON, the eight-point technique and ordinary rule behavior. Check candidates, positive dots, malformed geometry, all grid symmetries and wire roundtrips with five public-API tests.
+- [x] Preserve real Coach exports for a 9 × 9 Nonconsecutive/white-dot puzzle and an unsupported 6 × 6 puzzle. Inspect the source compiler's difference-marker exceptions.
+- [ ] Add complete app import, rule descriptions, candidate cleanup, conflict feedback and specific explanations, including mixed white-dot exceptions.
+- [ ] Verify shared/save data, help, Finder, proof paging, solution replay, practice, mobile/desktop components and mixed rules.
+- [ ] Measure candidates, validation, solving, rating, hints and generation; check the feature matrix, Wasm profiles, strict Cargo docs and full native/app/Wasm/build gates.
+- [ ] Pass CI and merge the app-ready variant in its own focused PR.
+- [ ] Review live viewport behavior and calibrate generation recipes before offering Non-Consecutive in New puzzle.
+
 ### Quadruple integration merged
 
 This stage reached main at `fc4142f` through [PR 104](https://github.com/coder13/sudoku-app/pull/104). The reviewed worktree remains available on `codex/sudoku-quadruple-integration`. [Quadruple issue](https://github.com/coder13/sudoku-app/issues/37)

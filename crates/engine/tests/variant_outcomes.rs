@@ -125,7 +125,7 @@ fn extra_houses_jigsaw_and_global_rules_distinguish_the_exact_outcomes() {
     );
     case(
         "non-consecutive",
-        with_rule(PuzzleRule::NonConsecutive {}),
+        with_rule(PuzzleRule::NonConsecutive { except: vec![] }),
         miracle,
         miracle.map(|digit| 10 - digit),
         classic,
