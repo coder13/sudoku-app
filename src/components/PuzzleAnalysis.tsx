@@ -28,6 +28,22 @@ function countLabel(count: number, word: string) {
   return `${count} ${word}${count === 1 ? '' : 's'}`
 }
 
+function TechniqueTile({ finding, kind }: { finding: TechniqueSummary; kind: 'placements' | 'removals' }) {
+  const count = finding[kind].length
+  const isPlacement = kind === 'placements'
+  return (
+    <details className="analysis-technique">
+      <summary>
+        <span className="analysis-technique-name">{techniqueLabel(finding.technique)}</span>
+        <strong className="analysis-technique-count" aria-label={countLabel(count, isPlacement ? 'placement' : 'removal')}>{count}</strong>
+      </summary>
+      <div className="analysis-technique-details">
+        <Targets label={isPlacement ? 'Place digits' : 'Remove candidates'} targets={finding[kind]} placement={isPlacement} />
+      </div>
+    </details>
+  )
+}
+
 export function PuzzleAnalysis({ game, close }: { game: Game; close: () => void }) {
   const values = valuesOf(game)
   const eliminationMasks = useMemo(() => hintEliminations(values, completeCandidateMasks(game), game.position.eliminations),
@@ -67,8 +83,6 @@ export function PuzzleAnalysis({ game, close }: { game: Game; close: () => void 
   return (
     <Modal title="Available techniques" onClose={close} className="puzzle-analysis-dialog">
       <div className="puzzle-analysis-content">
-        <p className="analysis-intro">These are the placements and candidate removals available in the current grid, without making any moves.</p>
-        <p className="analysis-rating-notice">Using this scan counts as assisted play. This puzzle has one-quarter the normal weight in your player rating and cannot increase your rating or advance Auto difficulty.</p>
         {findings === null && !error && <p className="dialog-status" role="status">Checking {ANALYSIS_TECHNIQUES.length} techniques…</p>}
         {error && <div role="alert" className="analysis-error">
           <p>{error}</p>
@@ -76,33 +90,25 @@ export function PuzzleAnalysis({ game, close }: { game: Game; close: () => void 
         </div>}
         {findings !== null && <>
           {ANALYSIS_GROUPS.map((group) => {
+            const kind = group.title === 'Singles' ? 'placements' : 'removals'
             const rows = group.techniques.flatMap((technique) => {
               const row = findings.find((finding) => finding.technique === technique)
-              return row ? [row] : []
+              return row && row[kind].length ? [row] : []
             })
-            const totals = summarizeGroup(rows)
+            const total = summarizeGroup(rows)[kind]
             return <section key={group.title} className="analysis-group">
               <div className="analysis-group-heading">
                 <h3>{group.title}</h3>
-                <span>{countLabel(totals.placements, 'placement')} · {countLabel(totals.removals, 'removal')}</span>
+                <span>{countLabel(total, kind === 'placements' ? 'placement' : 'removal')}</span>
               </div>
               {rows.length === 0
-                ? <p className="analysis-empty">No moves found.</p>
+                ? <p className="analysis-empty">None available</p>
                 : <div className="analysis-techniques">{rows.map((row) => (
-                  <details key={row.technique} className="analysis-technique">
-                    <summary>
-                      <strong>{techniqueLabel(row.technique)}</strong>
-                      <span>{countLabel(row.placements.length, 'placement')} · {countLabel(row.removals.length, 'removal')}</span>
-                    </summary>
-                    <div className="analysis-technique-details">
-                      <Targets label="Place digits" targets={row.placements} placement />
-                      <Targets label="Remove candidates" targets={row.removals} placement={false} />
-                    </div>
-                  </details>
+                  <TechniqueTile key={row.technique} finding={row} kind={kind} />
                 ))}</div>}
             </section>
           })}
-          <p className="analysis-footnote">Counts are distinct targets within each technique or group. The same target can appear in more than one group. This quick scan does not include deep chains or forcing nets.</p>
+          <p className="analysis-footnote">Counts may overlap between techniques. Deep chains are excluded. Scan-assisted puzzles count 25% toward your player rating and cannot raise Auto difficulty.</p>
         </>}
       </div>
     </Modal>
