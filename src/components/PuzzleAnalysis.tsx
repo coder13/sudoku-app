@@ -1,35 +1,53 @@
 import { useEffect, useMemo, useState } from 'react'
-import { X } from 'lucide-react'
-import { runEngine } from '../sudoku/engine'
+import { LoaderCircle, X } from 'lucide-react'
+import { runEngine, type TechniqueCatalog } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
-import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, summarizeDeductions, type TechniqueSummary } from '../sudoku/puzzle-analysis'
+import { analysisGroupsForCatalog, techniqueTargetCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
 import { Modal } from './Modal'
 
 const SCAN_DELAY_MS = 180
 
-function AnalysisTable({ findings }: { findings: readonly TechniqueSummary[] }) {
-  const counts = new Map(findings.map((finding) => [finding.technique, finding]))
+type ScanResult = { count: number } | { error: string }
+type ScanProgress = { key: string; results: Record<string, ScanResult> }
+
+let catalogRequest: Promise<TechniqueCatalog> | undefined
+function loadCatalog() {
+  return catalogRequest ??= runEngine({ type: 'techniques' }).catch((error: unknown) => {
+    catalogRequest = undefined
+    throw error
+  })
+}
+
+function AnalysisTable({
+  groups, results, solved,
+}: { groups: readonly AnalysisGroup[]; results: Readonly<Record<string, ScanResult>>; solved: boolean }) {
   return (
     <table className="analysis-table" aria-label="Available candidates by technique">
       <thead>
         <tr><th scope="col">Technique</th><th scope="col">Candidates</th></tr>
       </thead>
-      {ANALYSIS_GROUPS.map((group) => (
+      {groups.map((group) => (
         <tbody key={group.title}>
           <tr className="analysis-section-row">
-            <th scope="rowgroup" colSpan={2}>
-              {group.title}<span className="analysis-section-kind"> · {group.kind === 'placements' ? 'placements' : 'removals'}</span>
-            </th>
+            <th scope="rowgroup" colSpan={2}>{group.title}</th>
           </tr>
           {group.techniques.map((technique) => {
-            const count = counts.get(technique)?.[group.kind].length ?? 0
+            const result = results[technique]
+            const count = solved ? 0 : result && 'count' in result ? result.count : null
             return (
               <tr key={technique} className="analysis-data-row">
                 <th scope="row">{techniqueLabel(technique)}</th>
-                <td className={count === 0 ? 'analysis-zero' : undefined}>{count}</td>
+                <td className={count === 0 ? 'analysis-zero' : undefined}>
+                  {count !== null ? count
+                    : result && 'error' in result
+                      ? <span className="analysis-failed" title={result.error} aria-label={`${techniqueLabel(technique)} scan failed`}>Unavailable</span>
+                      : <span className="analysis-pending" aria-label={`Scanning ${techniqueLabel(technique)}`}>
+                          <LoaderCircle size={15} className="analysis-spinner" aria-hidden="true" />
+                        </span>}
+                </td>
               </tr>
             )
           })}
@@ -39,8 +57,10 @@ function AnalysisTable({ findings }: { findings: readonly TechniqueSummary[] }) 
   )
 }
 
-/** Scans are only requested while the view is visible. Older results cannot
- * overwrite a newer position, and rapid edits are combined into one scan. */
+/** Scan one technique at a time on the dedicated technique worker. Each
+ * result appears immediately, and obsolete positions never queue 72 jobs.
+ * The game worker stays free for input, hints, and candidate updates.
+ */
 export function PuzzleAnalysisContents({ game, active = true }: { game: Game; active?: boolean }) {
   const values = valuesOf(game)
   const solved = isSolved(game)
@@ -48,57 +68,89 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
     [values, game.position.center, game.position.corner, game.position.eliminations])
   const eliminationKey = eliminationMasks?.join(',') ?? ''
   const snapshotKey = `${game.id}:${values}:${eliminationKey}`
-  const [scan, setScan] = useState<{ key: string; findings: TechniqueSummary[] } | null>(null)
-  const [error, setError] = useState<{ key: string; message: string } | null>(null)
+  const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [scan, setScan] = useState<ScanProgress | null>(null)
   const [retry, setRetry] = useState(0)
 
   useEffect(() => {
-    if (!active || solved) return
+    if (!active) return
     let current = true
-    setError(null)
+    setCatalogError(null)
+    void loadCatalog().then((found) => {
+      if (current) setCatalog(found)
+    }).catch((reason: unknown) => {
+      if (current) setCatalogError(reason instanceof Error ? reason.message : 'Could not load techniques.')
+    })
+    return () => { current = false }
+  }, [active, retry])
+
+  const groups = useMemo(() => analysisGroupsForCatalog(catalog?.techniques ?? []), [catalog])
+
+  useEffect(() => {
+    if (!active || solved || !catalog) return
+    let current = true
     const timer = window.setTimeout(() => {
-      void runEngine({
-        type: 'deductions', values, eliminations: eliminationMasks,
-        techniqueOrder: ANALYSIS_TECHNIQUES,
-      }).then((matches) => {
-        if (!current) return
-        setScan({ key: snapshotKey, findings: summarizeDeductions(matches) })
-        // Viewing the counts is assistance. Record once, even when the
-        // puzzle's difficulty rating has not finished loading.
-        roomStore.update(game.id, (latest) => {
-          if (latest.source === 'draft' || latest.variant || isSolved(latest) || valuesOf(latest) !== values) return latest
-          const masks = hintEliminations(values, completeCandidateMasks(latest), latest.position.eliminations)
-          if ((masks?.join(',') ?? '') !== eliminationKey) return latest
-          const attempt = latest.ratingAttempt
-          const ratingAttempt = attempt && addAnalysisAssistance(attempt)
-          return latest.analysisUsed && ratingAttempt === attempt ? latest
-            : { ...latest, analysisUsed: true, ratingAttempt }
-        })
-      }).catch((reason: unknown) => {
-        if (current) setError({ key: snapshotKey, message: reason instanceof Error ? reason.message : 'The scan could not finish.' })
-      })
+      const techniques = groups.flatMap(({ techniques }) => techniques)
+      setScan({ key: snapshotKey, results: {} })
+      let recorded = false
+      void (async () => {
+        for (const technique of techniques) {
+          if (!current) return
+          try {
+            const matches = await runEngine({
+              type: 'deductions', values, eliminations: eliminationMasks, techniqueOrder: [technique],
+            })
+            if (!current) return
+            setScan((previous) => previous?.key === snapshotKey
+              ? { key: snapshotKey, results: { ...previous.results, [technique]: { count: techniqueTargetCount(matches, technique) } } }
+              : previous)
+            if (!recorded) {
+              recorded = true
+              // Reading any scan result makes this an assisted puzzle. Do not
+              // mark a different position if the user moved while scanning.
+              roomStore.update(game.id, (latest) => {
+                if (latest.source === 'draft' || latest.variant || isSolved(latest) || valuesOf(latest) !== values) return latest
+                const masks = hintEliminations(values, completeCandidateMasks(latest), latest.position.eliminations)
+                if ((masks?.join(',') ?? '') !== eliminationKey) return latest
+                const attempt = latest.ratingAttempt
+                const ratingAttempt = attempt && addAnalysisAssistance(attempt)
+                return latest.analysisUsed && ratingAttempt === attempt ? latest
+                  : { ...latest, analysisUsed: true, ratingAttempt }
+              })
+            }
+          } catch (reason) {
+            if (!current) return
+            const error = reason instanceof Error ? reason.message : 'This technique could not be scanned.'
+            setScan((previous) => previous?.key === snapshotKey
+              ? { key: snapshotKey, results: { ...previous.results, [technique]: { error } } }
+              : previous)
+          }
+        }
+      })()
     }, SCAN_DELAY_MS)
     return () => { current = false; window.clearTimeout(timer) }
-  }, [active, solved, game.id, values, eliminationKey, snapshotKey, retry])
+  }, [active, solved, catalog, groups, snapshotKey, values, eliminationKey, retry])
 
-  const currentFindings = active && scan?.key === snapshotKey ? scan.findings : null
-  // Keep the existing table visible while a new position is scanned. Never show
-  // a previous puzzle's counts or present old counts as current.
-  const pendingFindings = active && scan?.key.startsWith(`${game.id}:`) ? scan.findings : null
-  const findings = solved ? [] : currentFindings ?? pendingFindings
-  const updating = !solved && !currentFindings
-  const failure = active && error?.key === snapshotKey ? error.message : null
+  const results = scan?.key === snapshotKey ? scan.results : {}
+  const completed = Object.keys(results).length
+  const total = groups.reduce((count, group) => count + group.techniques.length, 0)
 
   return (
-    <div className="puzzle-analysis-content" aria-busy={updating && !failure}>
-      {updating && !failure && <p className="dialog-status analysis-update-status" role="status">
-        {findings ? 'Updating counts…' : 'Checking available techniques…'}
-      </p>}
-      {failure && <div role="alert" className="analysis-error">
-        <p>{failure}</p>
+    <div className="puzzle-analysis-content">
+      {!catalog && !catalogError && <p className="dialog-status" role="status">Loading techniques…</p>}
+      {catalogError && <div role="alert" className="analysis-error">
+        <p>{catalogError}</p>
         <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Try again</button>
       </div>}
-      {findings && <AnalysisTable findings={findings} />}
+      {catalog && <>
+        {!solved && completed < total && <p className="dialog-status analysis-update-status" role="status">
+          Scanned {completed} of {total} techniques…
+        </p>}
+        <AnalysisTable groups={groups} results={results} solved={solved} />
+        {!solved && completed === total && Object.values(results).some((result) => 'error' in result) &&
+          <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Retry failed scans</button>}
+      </>}
     </div>
   )
 }
