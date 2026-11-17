@@ -1769,6 +1769,25 @@ svg { flex-shrink: 0; }
   border-bottom: 1px solid var(--border);
 }
 .analysis-table .analysis-data-row th { font-weight: 500; overflow-wrap: anywhere; }
+
+.analysis-technique-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dark-purple);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+.analysis-technique-link:hover { text-decoration-color: currentColor; }
+.analysis-technique-link:focus-visible { outline: 2px solid var(--selected-border); outline-offset: 3px; border-radius: 2px; }
+.analysis-technique-link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+
 .analysis-table .analysis-data-row td { font-weight: 680; font-variant-numeric: tabular-nums; }
 .analysis-table .analysis-data-row .analysis-zero { color: var(--muted); font-weight: 450; }
 
