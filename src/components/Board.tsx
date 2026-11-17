@@ -19,6 +19,7 @@ type Props = {
   candidates?: readonly number[]
   candidatePreview?: Candidate & { mode: 'candidate' | 'center' | 'corner' }
   annotations?: BoardAnnotations
+  showAnnotatedCandidates?: boolean
   region?: BoardRegion
   label?: string
   showGuides: boolean
@@ -53,7 +54,7 @@ export function Board({
   variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides,
   highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, modeBadge,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, modeBadge, showAnnotatedCandidates,
 }: Props) {
   const variantRules = variantPuzzle?.rules
   const regions = variantPuzzle?.regions
@@ -66,14 +67,16 @@ export function Board({
   const candidateAction = onPaintCandidate ?? onCandidate
   const Cell = onCell && !candidateAction ? 'button' : 'div'
   const layout = candidates ? 'grid' : candidateLayout
+  const annotationSlots = showAnnotatedCandidates ? annotations?.candidates : undefined
+  const usesDigitSlots = (cell: number) => layout === 'grid' || annotationSlots?.has(cell)
   const rows = region ? DIGITS.slice(region.row, region.row + region.rows) : DIGITS
   const columns = region ? DIGITS.slice(region.column, region.column + region.columns) : DIGITS
   const size = region && { '--board-rows': rows.length, '--board-columns': columns.length } as CSSProperties
   const playableCell = (cell: number) => values[cell] === '0' &&
     rows.includes(Math.floor(cell / 9) + 1) && columns.includes(cell % 9 + 1)
   const gridMask = (cell: number) => candidates?.[cell] ??
-    ((position?.corner[cell] ?? 0) | (layout === 'grid' ? position?.center[cell] ?? 0 : 0))
-  const centerMask = (cell: number) => layout === 'center-corner' ? position?.center[cell] ?? 0 : 0
+    ((position?.corner[cell] ?? 0) | (usesDigitSlots(cell) ? position?.center[cell] ?? 0 : 0))
+  const centerMask = (cell: number) => usesDigitSlots(cell) ? 0 : position?.center[cell] ?? 0
   let tabCandidate: CandidateSlot | undefined
   if (onPaintCandidate) {
     if (candidateFocus && playableCell(candidateFocus.cell) &&
@@ -140,14 +143,19 @@ export function Board({
                 const corner = position?.corner[index] ?? 0
                 const centerMarks = centerMask(index)
                 const gridMarks = gridMask(index)
+                const linkedDigits = annotationSlots?.get(index)
+                let displayedGridMarks = gridMarks
+                for (const digit of linkedDigits?.keys() ?? []) displayedGridMarks |= 1 << (digit - 1)
                 const centerCandidates = marksOf(centerMarks)
-                const gridCandidates = marksOf(gridMarks)
+                const gridCandidates = marksOf(displayedGridMarks)
                 const candidateMask = candidates?.[index] ?? (center | corner)
                 const preview = !value && candidatePreview?.cell === index ? candidatePreview : undefined
-                const previewSlotted = preview?.mode !== 'center'
-                const previewMask = previewSlotted ? gridMarks : centerMarks
+                const previewSlotted = preview?.mode !== 'center' || Boolean(linkedDigits)
+                const previewMask = preview?.mode === 'center' && linkedDigits ? center
+                  : preview?.mode === 'corner' && linkedDigits ? corner : previewSlotted ? gridMarks : centerMarks
                 const previewAction = preview && (hasCandidate(previewMask, preview.digit) ? 'remove' : 'add')
-                const withPreview = preview && previewAction === 'add' ? marksOf(previewMask | (1 << (preview.digit - 1))) : undefined
+                const withPreview = preview && previewAction === 'add'
+                  ? marksOf((previewSlotted ? displayedGridMarks : centerMarks) | (1 << (preview.digit - 1))) : undefined
                 const visibleGridCandidates = (previewSlotted && withPreview) || gridCandidates
                 const visibleCenterCandidates = (!previewSlotted && withPreview) || centerCandidates
                 const candidateColors = candidates ? undefined : position?.candidateColors?.[index]
@@ -173,7 +181,7 @@ export function Board({
                 const label = [
                   `Row ${row}, column ${col}`,
                   value ? (fixed ? `given ${value}` : `digit ${value}`) : 'empty',
-                  !value && gridCandidates.length ? `${layout === 'grid' ? '' : 'corner '}candidates ${gridCandidates.join(' ')}` : '',
+                  !value && gridCandidates.length ? `${usesDigitSlots(index) ? '' : 'corner '}candidates ${gridCandidates.join(' ')}` : '',
                   !value && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
                   color ? COLORS[color - 1] : '',
                   regionAtCell !== undefined && `region ${regionAtCell + 1}`,

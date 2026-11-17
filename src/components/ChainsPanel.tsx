@@ -1,4 +1,4 @@
-import { Eraser, Eye, EyeOff, Link2, Plus, Trash2, Undo2 } from 'lucide-react'
+import { Eraser, Eye, EyeOff, Link2, Plus, RotateCw, Trash2, Undo2 } from 'lucide-react'
 import type { Deduction, DeductionAction } from '../sudoku/engine'
 import { chainCandidate, type LinkStrength } from '../sudoku/chains'
 import { DIGITS } from '../sudoku/game'
@@ -62,6 +62,9 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
   const drawKey = shortcutLabel(shortcuts.chainDrawing)
   const newKey = shortcutLabel(shortcuts.newChain)
   const status = sketch.status || (sketch.drawing && active.hidden ? 'Show this chain to draw links.' : '')
+  const singlePath = sketch.chains.length === 1 ? sketch.chains[0] : undefined
+  const openPath = singlePath && singlePath.nodes[0] !== singlePath.nodes.at(-1) ? singlePath : undefined
+  const canFinishOpenPath = openPath ? sketch.canFinishLoop(openPath) : false
   const editor = <>
     <div className="chain-settings">
       <label>
@@ -114,7 +117,7 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
     {status && <p role="status">{status}</p>}
     {sketch.chains.map((chain) => {
       const results = deductionResults(chain.actions)
-      const canFinishLoop = sketch.canFinishLoop(chain)
+      const canFinishLoop = sketch.chains.length > 1 && sketch.canFinishLoop(chain)
       const branched = chain.strengths.length === 0
       if (!results.length && !canFinishLoop && !branched) return null
       return <article className="chain-analysis" key={chain.nodes[0]}>
@@ -178,6 +181,11 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
                 </span>
                 {name}
               </button>
+              {selected && openPath && <button type="button" className="icon-button borderless" aria-label="Complete loop"
+                title={canFinishOpenPath ? 'Complete loop' : 'No loop completion found'}
+                disabled={!canFinishOpenPath} onClick={() => sketch.finishLoop(openPath)}>
+                <RotateCw size={16} aria-hidden="true" />
+              </button>}
               <button type="button" className="icon-button borderless" aria-label={visibilityLabel} title={visibilityLabel}
                 onClick={() => sketch.toggleVisibility(id)}>
                 <VisibilityIcon size={16} aria-hidden="true" />
