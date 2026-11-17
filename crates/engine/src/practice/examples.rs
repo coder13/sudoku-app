@@ -1,10 +1,200 @@
 use super::{PracticeExample, Technique, elimination_masks, place, remove};
 
+// HoDoKu worked example gaic1als01.
+pub(super) const ALS_AIC: PracticeExample = PracticeExample {
+    givens: "507000010000560087004270000000000060000000805000050042032090400100300000000002650",
+    entries: Some(
+        "060000204000004300380001596000000009000000030000000000000005071000040928000000003",
+    ),
+    eliminations: None,
+    expected_actions: &[remove(36, 6), remove(45, 6), remove(65, 6)],
+};
+
+// HoDoKu worked example gdnlals01.
+pub(super) const ALS_DISCONTINUOUS_NICE_LOOP: PracticeExample = PracticeExample {
+    givens: "000030000000200057700000810109005000060004030000082000008700004400000080037001500",
+    entries: Some(
+        "001007000000018000000000000000360000000070000000000000000000000000000700000840000",
+    ),
+    eliminations: Some(&elimination_masks(&[
+        (0, 6),
+        (3, 9),
+        (19, 9),
+        (21, 9),
+        (26, 9),
+        (60, 2),
+        (60, 6),
+        (60, 9),
+        (66, 9),
+        (71, 2),
+        (71, 6),
+        (71, 9),
+    ])),
+    expected_actions: &[remove(64, 5)],
+};
+
+// HoDoKu worked example gcnlals01.
+pub(super) const ALS_CONTINUOUS_NICE_LOOP: PracticeExample = PracticeExample {
+    givens: "002430900030700015190000020200000006940000000000000740309000000600010000080500690",
+    entries: Some(
+        "050001060006000000000000000000000000000000000560000009000000000005000000000000000",
+    ),
+    eliminations: Some(&elimination_masks(&[
+        (13, 8),
+        (14, 8),
+        (20, 8),
+        (24, 8),
+        (26, 8),
+        (39, 2),
+        (40, 2),
+        (41, 2),
+        (62, 7),
+        (71, 7),
+        (76, 4),
+        (77, 4),
+        (80, 4),
+        (80, 7),
+    ])),
+    expected_actions: &[
+        remove(30, 8),
+        remove(31, 8),
+        remove(32, 3),
+        remove(32, 8),
+        remove(39, 8),
+        remove(40, 8),
+        remove(41, 3),
+        remove(41, 8),
+        remove(47, 8),
+        remove(48, 8),
+        remove(58, 2),
+        remove(59, 2),
+        remove(68, 2),
+        remove(68, 3),
+        remove(80, 1),
+    ],
+};
+
+// HoDoKu regression library line 1253. Also removes 3 from r1c1 through the loop.
+pub(super) const ALS_CELL_CONTINUOUS_NICE_LOOP: PracticeExample = PracticeExample {
+    givens: "040089200065200000009000004400905000950000017000108005600000900000001740007890030",
+    entries: Some(
+        "000000000000040009000010000000000000000400000000000490004000000090000000000004000",
+    ),
+    eliminations: Some(&elimination_masks(&[
+        (18, 3),
+        (28, 2),
+        (28, 3),
+        (29, 2),
+        (31, 2),
+        (31, 3),
+        (57, 5),
+        (58, 7),
+        (66, 5),
+        (71, 6),
+    ])),
+    expected_actions: &[remove(0, 3), remove(3, 3), remove(35, 6), remove(72, 2)],
+};
+
 // Additional independently verified positions.
 // Numbered examples come from the HoDoKu regression library, version 1.3.
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
+        Technique::AlsAic => {
+            const {
+                [
+                    // HoDoKu regression library line 1335.
+                    PracticeExample {
+                        givens: "120086000000000300450000000000060000005700000600024783231000006000050917000000000",
+                        entries: Some(
+                            "003000070970005000000037000702003000300090000019500000000079000864302000597600030",
+                        ),
+                        eliminations: None,
+                        expected_actions: &[remove(30, 1), remove(42, 1), remove(44, 1)],
+                    },
+                    // HoDoKu regression library line 1343.
+                    PracticeExample {
+                        givens: "860900000000000000001478000708000006542003010000000030083065070004002000000004603",
+                        entries: Some(
+                            "000001300409306000300000060030019000000680000196047000900100000600030090210090000",
+                        ),
+                        eliminations: None,
+                        expected_actions: &[remove(42, 9), remove(44, 7)],
+                    },
+                ]
+            }
+        }
+        Technique::AlsDiscontinuousNiceLoop => {
+            const {
+                [
+                    // HoDoKu regression library line 1287.
+                    PracticeExample {
+                        givens: "810000700004150030070800000489010200000000009000003000005000000097538040000200010",
+                        entries: Some(
+                            "006300000920007806503000000000000003000000000000000000200001000100000602008000000",
+                        ),
+                        eliminations: None,
+                        expected_actions: &[place(7, 5)],
+                    },
+                    // HoDoKu regression library line 1298.
+                    PracticeExample {
+                        givens: "000000000040900050006401073070080900003104500001090020430605800020007040000000000",
+                        entries: Some(
+                            "015000000002000000000050200004000000000000000000000000007000000009800000008049000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (0, 8),
+                            (0, 9),
+                            (5, 3),
+                            (9, 8),
+                            (36, 8),
+                            (37, 8),
+                            (45, 6),
+                            (53, 6),
+                            (53, 8),
+                            (62, 1),
+                            (78, 1),
+                        ])),
+                        expected_actions: &[remove(30, 3)],
+                    },
+                ]
+            }
+        }
+        Technique::AlsContinuousNiceLoop => {
+            const {
+                [
+                    // HoDoKu regression library line 1254.
+                    PracticeExample {
+                        givens: "000000000000305046600208510200900003009000700700006004045801002980703000000000000",
+                        entries: Some(
+                            "000000000800000000000000000000000000000000000000000000300000070000000401100000000",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (1, 3),
+                            (2, 3),
+                            (6, 9),
+                            (7, 9),
+                            (37, 5),
+                            (40, 2),
+                            (40, 4),
+                            (40, 5),
+                            (52, 5),
+                        ])),
+                        expected_actions: &[
+                            remove(33, 8),
+                            remove(39, 4),
+                            remove(39, 5),
+                            remove(43, 5),
+                            remove(51, 8),
+                            remove(52, 8),
+                            remove(79, 5),
+                            remove(79, 6),
+                        ],
+                    },
+                    ALS_CELL_CONTINUOUS_NICE_LOOP,
+                ]
+            }
+        }
         Technique::TridagonAic => {
             const {
                 [
@@ -110,13 +300,13 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
         Technique::FireworkAic => {
             const {
                 [
-                    // A linear deduction on Neler12345's published Fireworks Ring grid.
+                    // A chain using an almost locked set on Neler12345's published grid.
                     // https://www.reddit.com/r/sudoku/comments/1lyix43/sudoku_puzzle_challenges_thread/
                     PracticeExample {
                         givens: "008000200000407000900050001070305060003000100060701050200030008000504000001000900",
                         entries: None,
                         eliminations: None,
-                        expected_actions: &[remove(40, 2)],
+                        expected_actions: &[remove(24, 8)],
                     },
                     // Monhard line 2201 after singles, locked candidates, and subsets.
                     // https://github.com/denis-berthier/Sudoku-classif/blob/main/Monhard-until-2023-08-15-TE23/puzzles.txt#L2201

@@ -20,7 +20,8 @@ function match(actions: DeductionAction[], techniques: string[]): DeductionMatch
 
 test('available techniques include every detector in the Rust engine catalog', () => {
   const source = readFileSync(new URL('../crates/engine/src/technique.rs', import.meta.url), 'utf8')
-  const rustCatalog = source.slice(source.indexOf('catalog! {'), source.indexOf('impl Technique {'))
+  const start = source.indexOf('catalog! {')
+  const rustCatalog = source.slice(start, source.indexOf('\n}', start))
   const ids = [...rustCatalog.matchAll(/^\s*\w+:\s*"([^"]+)"/gm)].map((match) => match[1])
   assert.ok(ids.length >= 72)
   assert.equal(new Set(ANALYSIS_TECHNIQUES).size, ANALYSIS_TECHNIQUES.length)

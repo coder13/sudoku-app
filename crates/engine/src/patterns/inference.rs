@@ -15,6 +15,8 @@ enum Shape {
 enum Scope {
     Plain,
     Grouped,
+    Als,
+    AlsCell,
     Firework,
     Tridagon,
 }
@@ -35,6 +37,9 @@ impl Rule {
             Technique::GroupedAic => (Shape::Open, Scope::Grouped),
             Technique::GroupedDiscontinuousNiceLoop => (Shape::Discontinuous, Scope::Grouped),
             Technique::GroupedContinuousNiceLoop => (Shape::Continuous, Scope::Grouped),
+            Technique::AlsAic => (Shape::Open, Scope::Als),
+            Technique::AlsDiscontinuousNiceLoop => (Shape::Discontinuous, Scope::Als),
+            Technique::AlsContinuousNiceLoop => (Shape::Continuous, Scope::Als),
             Technique::FireworkAic => (Shape::Open, Scope::Firework),
             Technique::TridagonAic => (Shape::Open, Scope::Tridagon),
             _ => return None,
@@ -46,17 +51,21 @@ impl Rule {
         })
     }
 
+    pub(super) fn with_als_cells(self) -> Self {
+        Self {
+            scope: Scope::AlsCell,
+            ..self
+        }
+    }
+
     pub fn visit(
         self,
         graph: &InferenceGraph,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
-        if self.scope == Scope::Firework && !graph.has_strong_link(Edge::is_firework) {
-            return ControlFlow::Continue(());
-        }
         let mut paths = Paths::new(graph, self);
         let start_count = if self.scope != Scope::Plain && self.shape != Shape::Discontinuous {
-            graph.nodes.len()
+            graph.node_count()
         } else {
             graph.singles
         };
@@ -69,6 +78,23 @@ impl Rule {
             }
         }
         ControlFlow::Continue(())
+    }
+
+    fn uses_special_link(self) -> bool {
+        matches!(
+            self.scope,
+            Scope::Als | Scope::AlsCell | Scope::Firework | Scope::Tridagon
+        )
+    }
+
+    fn qualifies_link(self, edge: Edge) -> bool {
+        match self.scope {
+            Scope::Als => edge.is_als(),
+            Scope::AlsCell => edge.is_als_cell(),
+            Scope::Firework => edge.is_firework(),
+            Scope::Tridagon => edge.is_tridagon(),
+            _ => false,
+        }
     }
 }
 
@@ -118,7 +144,7 @@ struct Paths<'a> {
     rule: Rule,
     parents: Vec<Option<PathEdge>>,
     queue: Vec<State>,
-    before_guardian: Option<Vec<bool>>,
+    before_special_link: Option<Vec<bool>>,
 }
 
 impl<'a> Paths<'a> {
@@ -126,9 +152,11 @@ impl<'a> Paths<'a> {
         Self {
             graph,
             rule,
-            parents: vec![None; graph.nodes.len() * 4],
+            parents: vec![None; graph.node_count() * 4],
             queue: Vec::new(),
-            before_guardian: (rule.scope == Scope::Tridagon).then(|| before_guardian(graph)),
+            before_special_link: rule
+                .uses_special_link()
+                .then(|| paths_to_special_link(graph, rule)),
         }
     }
 
@@ -163,8 +191,7 @@ impl<'a> Paths<'a> {
                     || match self.rule.scope {
                         Scope::Plain => false,
                         Scope::Grouped => next_is_group,
-                        Scope::Firework => edge.is_firework(),
-                        Scope::Tridagon => edge.is_tridagon(),
+                        _ => self.rule.qualifies_link(edge),
                     };
                 let target = State::new(edge.to, !current.truth(), qualifies);
                 if target != start
@@ -175,7 +202,7 @@ impl<'a> Paths<'a> {
                             && target.node() == start.node())
                         || self.has_strong_neighbor(target.node()))
                     && !(qualifies
-                        && matches!(self.rule.scope, Scope::Firework | Scope::Tridagon)
+                        && self.rule.uses_special_link()
                         && self.repeats_literal(start, current, target))
                 {
                     self.parents[target.0] = Some(PathEdge {
@@ -192,7 +219,7 @@ impl<'a> Paths<'a> {
     fn can_qualify(&self, state: State) -> bool {
         state.qualifies()
             || self
-                .before_guardian
+                .before_special_link
                 .as_ref()
                 .is_none_or(|reaches| reaches[state.0 / 2])
     }
@@ -264,14 +291,15 @@ impl<'a> Paths<'a> {
             });
             // In a continuous loop, at least one endpoint of every weak link is true.
             let mut targets = Vec::new();
-            for edge in path
-                .iter()
-                .filter(|edge| edge.strength() == LinkStrength::Weak)
-            {
-                targets.extend(
-                    self.graph
-                        .excluded_by_either(edge.from.node(), edge.edge.to),
-                );
+            for edge in &path {
+                if edge.strength() == LinkStrength::Weak {
+                    targets.extend(
+                        self.graph
+                            .excluded_by_either(edge.from.node(), edge.edge.to),
+                    );
+                } else if edge.edge.is_als() {
+                    targets.extend(self.graph.locked_als_targets(edge.from.node(), edge.edge));
+                }
             }
             return self.eliminate(path, targets, visit);
         }
@@ -279,9 +307,15 @@ impl<'a> Paths<'a> {
         if start.node() > end.node() {
             return ControlFlow::Continue(());
         }
-        let (left, right) = (self.graph.nodes[start.node()], self.graph.nodes[end.node()]);
-        // Type 2 uses two different digits in cells that see each other.
-        if left.digit != right.digit {
+        // Type 2 between single-digit endpoints uses two cells that see each other.
+        if !matches!(self.rule.scope, Scope::Als | Scope::AlsCell)
+            && let Some((left, right)) = self
+                .graph
+                .nodes
+                .get(start.node())
+                .zip(self.graph.nodes.get(end.node()))
+            && left.digit != right.digit
+        {
             let Some((a, b)) = left.single().zip(right.single()) else {
                 return ControlFlow::Continue(());
             };
@@ -347,14 +381,14 @@ impl<'a> Paths<'a> {
     }
 }
 
-fn before_guardian(graph: &InferenceGraph) -> Vec<bool> {
-    let mut reaches = vec![false; graph.nodes.len() * 2];
+fn paths_to_special_link(graph: &InferenceGraph, rule: Rule) -> Vec<bool> {
+    let mut reaches = vec![false; graph.node_count() * 2];
     let mut queue = Vec::new();
-    for node in 0..graph.nodes.len() {
+    for node in 0..graph.node_count() {
         if graph
             .neighbors(node, LinkStrength::Strong)
             .iter()
-            .any(|edge| edge.is_tridagon())
+            .any(|&edge| rule.qualifies_link(edge))
         {
             reaches[node * 2] = true;
             queue.push(node * 2);
@@ -365,7 +399,7 @@ fn before_guardian(graph: &InferenceGraph) -> Vec<bool> {
         next += 1;
         let node = state / 2;
         let truth = state & 1;
-        // Reverse the implications to find starts that can reach a guardian.
+        // Reverse the implications to find starts that can reach the required link.
         let strength = if truth == 1 {
             LinkStrength::Strong
         } else {

@@ -9,7 +9,10 @@ export const ANALYSIS_GROUPS = [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',
     'hidden-triple', 'naked-quadruple', 'hidden-quadruple',
   ] },
-  { title: 'Wings', techniques: ['w-wing', 'xy-wing', 'xyz-wing', 'wxyz-wing'] },
+  { title: 'Wings', techniques: [
+    'w-wing', 'xy-wing', 'xyz-wing', 'wxyz-wing',
+    'firework-w-wing', 'firework-l-wing', 'firework-als-wing',
+  ] },
   { title: 'Fish', techniques: [
     'x-wing', 'swordfish', 'jellyfish', 'finned-x-wing', 'sashimi-x-wing',
     'finned-swordfish', 'sashimi-swordfish', 'finned-jellyfish', 'sashimi-jellyfish',
@@ -26,10 +29,11 @@ export const ANALYSIS_GROUPS = [
   { title: 'Chains and coloring', techniques: [
     '3d-medusa', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
     'continuous-nice-loop', 'grouped-aic', 'grouped-discontinuous-nice-loop',
-    'grouped-continuous-nice-loop',
+    'grouped-continuous-nice-loop', 'firework-aic', 'tridagon-aic',
   ] },
   { title: 'Almost locked sets', techniques: [
-    'als-xz', 'als-xy-wing', 'als-chain', 'sue-de-coq',
+    'als-xz', 'als-xy-wing', 'als-chain', 'als-aic',
+    'als-discontinuous-nice-loop', 'als-continuous-nice-loop', 'sue-de-coq',
     'death-blossom', 'multi-sector-locked-sets',
   ] },
   { title: 'Advanced patterns', techniques: [

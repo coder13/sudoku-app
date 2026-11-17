@@ -274,7 +274,11 @@ svg { flex-shrink: 0; }
 .startup-puzzle .puzzle-actions { visibility: hidden; }
 .workspace > .startup-controls { display: none; }
 .startup-controls:not([data-colors]) .startup-color-control,
-.startup-controls[data-draft] :is(.startup-play-control, .startup-color-control) { display: none; }
+.startup-controls[data-draft] :is(.startup-play-control, .startup-color-control),
+.startup-controls:not([data-input-switch]) .input-switch,
+.startup-controls:not([data-color-mode]) .palette,
+.startup-controls[data-color-mode] .keypad:not(.palette),
+.startup-controls:not([data-candidate-colors]) .candidate-color-eraser { display: none; }
 .puzzle-stage:has(> .startup-grid:not(:empty)) > .startup-grid-template { display: none; }
 .advanced-workspace-page .workspace { position: relative; }
 .advanced-workspace-page .startup-puzzle { position: absolute; inset: 0 0 auto; max-width: 700px; margin-inline: auto; }

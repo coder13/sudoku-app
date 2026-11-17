@@ -18,13 +18,13 @@ import { shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
 import { NewPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
 import { Presence } from './Presence'
-import type { PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
 import { isSettingsSection, Settings } from './Settings'
 import { StartupPuzzle } from './StartupPuzzle'
 import { usePageAppearance } from './usePageAppearance'
 import { usePuzzleGeneration } from './usePuzzleGeneration'
+import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
 
 type Panel = 'new' | 'import' | 'share' | 'publish' | 'stop' | null
@@ -92,7 +92,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [panel, setPanel] = useState<Panel>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [multi, setMulti] = useState(false)
+  const [multi, setMulti] = usePlayPreference('multi')
   const [advancedModes, setAdvancedModesState] = useState<AdvancedModes>(DEFAULT_ADVANCED_MODES)
   const [appearance, setAppearanceState] = useState<AppearancePreferences>(DEFAULT_APPEARANCE)
   const [highlighting, setHighlightingState] = useState<HighlightPreferences>(DEFAULT_HIGHLIGHT_PREFERENCES)
@@ -103,7 +103,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [newPuzzlePreference, setNewPuzzlePreference] = useState<NewPuzzlePreference | null>(null)
   const [preferredWorkspaceMode, setPreferredWorkspaceMode] = useState<WorkspaceMode>(DEFAULT_WORKSPACE_MODE)
   const [advancedPanels, setAdvancedPanels] = useState<AdvancedPanelVisibility>(DEFAULT_ADVANCED_PANEL_VISIBILITY)
-  const [puzzleBrowserView, setPuzzleBrowserView] = useState<PuzzleBrowserView>('active')
+  const [puzzleBrowserView, setPuzzleBrowserView] = usePlayPreference('puzzleBrowserView')
   const [panelHeight, setPanelHeight] = useState(280)
   const [workspaceReady, setWorkspaceReady] = useState(false)
   const [resizeMode, setResizeMode] = useState(false)

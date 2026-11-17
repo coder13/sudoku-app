@@ -37,7 +37,9 @@ pub(super) struct PatternSearch<'a> {
     fish_lines: OnceCell<[fish::Lines; 2]>,
     conjugates: OnceCell<[u32; 9]>,
     inference: OnceCell<inference_graph::InferenceGraph>,
-    firework_inference: OnceCell<Box<inference_graph::InferenceGraph>>,
+    als_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
+    als_cell_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
+    firework_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
     tridagon_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
     rectangles: OnceCell<Vec<uniqueness::Rectangle>>,
     complex_fish_targets: OnceCell<[u128; 9]>,
@@ -56,6 +58,8 @@ impl<'a> PatternSearch<'a> {
             fish_lines: OnceCell::new(),
             conjugates: OnceCell::new(),
             inference: OnceCell::new(),
+            als_inference: OnceCell::new(),
+            als_cell_inference: OnceCell::new(),
             firework_inference: OnceCell::new(),
             tridagon_inference: OnceCell::new(),
             rectangles: OnceCell::new(),
@@ -79,20 +83,47 @@ impl<'a> PatternSearch<'a> {
         }
         if let Some(rule) = inference::Rule::for_technique(technique) {
             let graph = match technique {
+                Technique::AlsAic
+                | Technique::AlsDiscontinuousNiceLoop
+                | Technique::AlsContinuousNiceLoop => {
+                    let ordinary = self
+                        .als_inference
+                        .get_or_init(|| {
+                            inference_graph::InferenceGraph::for_almost_locked_sets(self)
+                                .map(Box::new)
+                        })
+                        .as_deref();
+                    // A shorter outside-cell link can change which loop a walk finds.
+                    // Report the existing ALS proofs before searching the extended graph.
+                    if let Some(graph) = ordinary {
+                        rule.visit(graph, visit)?;
+                    }
+                    let external = self
+                        .als_cell_inference
+                        .get_or_init(|| {
+                            inference_graph::InferenceGraph::with_als_cell_links(self, ordinary)
+                                .map(Box::new)
+                        })
+                        .as_deref();
+                    return external.map_or(ControlFlow::Continue(()), |graph| {
+                        rule.with_als_cells().visit(graph, visit)
+                    });
+                }
                 Technique::FireworkAic => self
                     .firework_inference
-                    .get_or_init(|| Box::new(self.inference_graph().with_fireworks())),
-                Technique::TridagonAic => {
-                    let Some(graph) = self.tridagon_inference.get_or_init(|| {
+                    .get_or_init(|| {
+                        inference_graph::InferenceGraph::for_fireworks(self).map(Box::new)
+                    })
+                    .as_deref(),
+                Technique::TridagonAic => self
+                    .tridagon_inference
+                    .get_or_init(|| {
                         inference_graph::InferenceGraph::for_tridagons(self).map(Box::new)
-                    }) else {
-                        return ControlFlow::Continue(());
-                    };
-                    graph
-                }
-                _ => self.inference_graph(),
+                    })
+                    .as_deref(),
+                _ => Some(self.inference_graph()),
             };
-            return rule.visit(graph, visit);
+            return graph.map_or(ControlFlow::Continue(()), |graph| rule.visit(graph, visit));
         }
         match technique {
             Technique::XYWing | Technique::XYZWing => {

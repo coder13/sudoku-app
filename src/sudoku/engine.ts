@@ -239,12 +239,14 @@ type ColoringReason =
   | { 'emptied-cell': number }
   | { 'emptied-house': { house: House; digit: number } }
 export type InferenceNode = { candidate: Candidate } | { group: { digit: number; cells: number[] } }
+  | { 'mixed-group': Candidate[] }
 type InferenceLink = {
   from: InferenceNode
   to: InferenceNode
   source: CandidateLink['source'] | { firework: number } | { peers: Record<string, never> }
     | { tridagon: { cells: [number, number, number][]; digits: [number, number, number] } }
     | { 'almost-locked-set': AlmostLockedSet }
+    | { 'almost-locked-set-cell': { set: AlmostLockedSet; cell: number; blocked: number } }
   strength: CandidateLink['strength']
 }
 type RectangleSupport =

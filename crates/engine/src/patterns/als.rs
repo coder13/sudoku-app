@@ -21,6 +21,10 @@ pub(super) struct Als {
 }
 
 impl Als {
+    pub(super) fn common_peers(&self, digit_index: usize) -> u128 {
+        self.visible_to[digit_index]
+    }
+
     fn new(cells_in_set: u128, digit_mask: u16, positions: &[u128; 9]) -> Self {
         let mut visible_to = [0; 9];
         for digit in bit_indices(digit_mask) {

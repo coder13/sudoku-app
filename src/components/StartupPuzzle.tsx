@@ -1,4 +1,5 @@
 import { COLORS, EMPTY, type Game } from '../sudoku/game'
+import { PLAY_PREFERENCES_KEY, type PlayPreferences } from '../sudoku/play-preferences'
 import {
   ADVANCED_MODE_KEY, APPEARANCE_KEY, INPUT_SIZE_KEY, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
   type AdvancedModes, type AppearancePreferences,
@@ -11,6 +12,7 @@ const startupOptions = {
   gamePrefixes: [GAME_PREFIX, legacyKey(GAME_PREFIX)],
   appearanceKey: APPEARANCE_KEY,
   modesKey: ADVANCED_MODE_KEY,
+  playKey: PLAY_PREFERENCES_KEY,
   inputSizeKey: INPUT_SIZE_KEY,
   minInputSize: MIN_INPUT_SIZE,
   maxInputSize: MAX_INPUT_SIZE,
@@ -62,7 +64,8 @@ function restoreStartupPuzzle(options: typeof startupOptions) {
     }
     const modes = JSON.parse(localStorage.getItem(options.modesKey) ?? 'null') as Partial<AdvancedModes> | null
     const centerCorner = modes?.candidateLayout === 'center-corner'
-    controls.toggleAttribute('data-colors', modes?.colorsEnabled === true && (centerCorner || modes.candidateLayout === 'grid'))
+    const colorsEnabled = modes?.colorsEnabled === true && (centerCorner || modes.candidateLayout === 'grid')
+    controls.toggleAttribute('data-colors', colorsEnabled)
 
     // A shared link will load a different game. The preview stays empty.
     if (/^#(?:puzzle|variant)=/.test(location.hash)) {
@@ -83,6 +86,14 @@ function restoreStartupPuzzle(options: typeof startupOptions) {
 
     const draft = game.source === 'draft'
     controls.toggleAttribute('data-draft', draft)
+    let play: Partial<PlayPreferences> | null = null
+    try { play = JSON.parse(localStorage.getItem(options.playKey) ?? 'null') } catch { /* Use the default keypad. */ }
+    const colorMode = !draft && colorsEnabled && play?.colorMode === true && play.eraseMode !== true
+    const splitPencil = !draft && centerCorner && play?.pencil === true &&
+      play.eraseMode !== true && play.highlightMode !== true && play.colorMode !== true
+    controls.toggleAttribute('data-color-mode', colorMode)
+    controls.toggleAttribute('data-input-switch', colorMode || splitPencil)
+    controls.toggleAttribute('data-candidate-colors', colorMode && play?.colorTarget === 'candidate')
     if (game.paused && !draft) {
       const panel = document.createElement('div')
       panel.className = 'puzzle-paused'
@@ -178,7 +189,12 @@ export function StartupPuzzle() {
               <span className="icon-button history-button" /><span className="icon-button history-button" />
               <span className="icon-button startup-play-control" />
             </div>
-            <div className="keypad-stack"><div className="keypad" /></div>
+            <div className="keypad-stack">
+              <div className="input-switch"><button type="button" /></div>
+              <div className="keypad" />
+              <div className="keypad palette">{COLORS.map((color) => <span className="key" key={color} />)}</div>
+              <span className="button candidate-color-eraser" />
+            </div>
             <div className="side-actions">
               <span className="icon-button startup-play-control" /><span className="icon-button startup-play-control" />
               <span className="icon-button startup-play-control" /><span className="icon-button startup-color-control" />
