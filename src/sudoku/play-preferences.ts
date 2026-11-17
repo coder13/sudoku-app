@@ -1,5 +1,8 @@
 import { COLORS, type ColorTarget } from './game.ts'
 
+export const GRID_MODE_BADGE_EDGES = ['top', 'right', 'bottom', 'left'] as const
+export type GridModeBadgePosition = { edge: typeof GRID_MODE_BADGE_EDGES[number]; offset: number }
+
 export type PlayPreferences = {
   pencil: boolean
   candidateKind: 'center' | 'corner'
@@ -13,6 +16,7 @@ export type PlayPreferences = {
   highlightCandidatePairs: boolean
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
+  modeBadgePosition: GridModeBadgePosition
 }
 
 // Keep this key independent of the app build and service-worker cache version.
@@ -30,11 +34,21 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   highlightCandidatePairs: false,
   multi: false,
   puzzleBrowserView: 'active',
+  modeBadgePosition: { edge: 'bottom', offset: 0.05 },
 }
 const INPUT_MODE_KEYS = ['eraseMode', 'colorMode', 'highlightMode', 'pencil'] as const
 
 function inRange(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max
+}
+
+function parseModeBadgePosition(value: unknown): GridModeBadgePosition {
+  if (value && typeof value === 'object' && 'edge' in value && 'offset' in value) {
+    const edge = GRID_MODE_BADGE_EDGES.find((edge) => edge === value.edge)
+    const offset = value.offset
+    if (edge && typeof offset === 'number' && Number.isFinite(offset) && offset >= 0 && offset <= 1) return { edge, offset }
+  }
+  return DEFAULT_PLAY_PREFERENCES.modeBadgePosition
 }
 
 export function parsePlayPreferences(value: unknown): PlayPreferences {
@@ -56,6 +70,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',
+    modeBadgePosition: parseModeBadgePosition(saved.modeBadgePosition),
   }
 }
 

@@ -797,6 +797,21 @@ svg { flex-shrink: 0; }
 .puzzle[data-input-mode] .sudoku-grid {
   border: var(--board-mode-border-width) var(--board-mode-border, solid) var(--board-mode-accent);
 }
+.puzzle[data-input-mode="pencil"] .sudoku-grid {
+  --pencil-dash-length: 5.5px;
+  --pencil-dash-period: 9px;
+  --pencil-dashes: var(--board-mode-accent) 0 var(--pencil-dash-length), transparent var(--pencil-dash-length) var(--pencil-dash-period);
+  border-color: transparent;
+  background:
+    repeating-linear-gradient(to right, var(--pencil-dashes)) top / 100% var(--board-mode-border-width) no-repeat border-box,
+    repeating-linear-gradient(to right, var(--pencil-dashes)) bottom / 100% var(--board-mode-border-width) no-repeat border-box,
+    repeating-linear-gradient(to bottom, var(--pencil-dashes)) left / var(--board-mode-border-width) 100% no-repeat border-box,
+    repeating-linear-gradient(to bottom, var(--pencil-dashes)) right / var(--board-mode-border-width) 100% no-repeat border-box,
+    var(--board-bg);
+}
+@media (forced-colors: active) {
+  .puzzle[data-input-mode="pencil"] .sudoku-grid { border-color: CanvasText; }
+}
 .board-mode-tab {
   position: absolute;
   display: grid;

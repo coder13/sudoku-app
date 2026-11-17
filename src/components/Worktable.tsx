@@ -34,7 +34,7 @@ import { ChainsPanel } from './ChainsPanel'
 import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
-import { DEFAULT_GRID_MODE_BADGE_POSITION, GridModeBadge } from './GridModeBadge'
+import { GridModeBadge } from './GridModeBadge'
 import { HintCard } from './HintCard'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
@@ -221,7 +221,7 @@ export function Worktable({
 }) {
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
   const gridModeId = useId()
-  const [modeBadgePosition, setModeBadgePosition] = useState(DEFAULT_GRID_MODE_BADGE_POSITION)
+  const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('modeBadgePosition')
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')

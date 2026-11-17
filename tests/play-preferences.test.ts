@@ -74,6 +74,30 @@ test('older partial settings gain new defaults without losing saved choices', ()
   })
 })
 
+test('the mode badge position survives reloads and other play setting changes', () => {
+  const storage = memoryStorage(JSON.stringify({ pencil: true }))
+  const store = createPlayPreferenceStore(storage)
+  const otherTab = createPlayPreferenceStore(storage)
+  const position = { edge: 'right', offset: 0.37 } as const
+  store.set('modeBadgePosition', position)
+  otherTab.set('multi', true)
+  const reloaded = createPlayPreferenceStore(storage)
+  assert.deepEqual(reloaded.getSnapshot().modeBadgePosition, position)
+  assert.equal(reloaded.getSnapshot().pencil, true)
+  assert.equal(reloaded.getSnapshot().multi, true)
+})
+
+test('invalid badge positions fall back to the default edge and offset', () => {
+  for (const modeBadgePosition of [
+    null, { edge: 'middle', offset: 0.5 }, { edge: 'left' }, { edge: 'right', offset: '0.5' },
+    { edge: 'top', offset: -0.1 }, { edge: 'bottom', offset: 1.1 }, { edge: 'right', offset: Infinity },
+  ]) {
+    assert.deepEqual(parsePlayPreferences({ modeBadgePosition, pencil: true }), {
+      ...DEFAULT_PLAY_PREFERENCES, pencil: true,
+    })
+  }
+})
+
 test('malformed values cannot arm invalid digits, colors, or conflicting modes', () => {
   for (const value of [-1, 0, 10, 2.5, '7', true, [], {}, Infinity, NaN]) {
     assert.equal(parsePlayPreferences({ selectedDigit: value }).selectedDigit, null)
