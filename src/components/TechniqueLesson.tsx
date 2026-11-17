@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react'
-import { Fragment, useEffect, useId, useState } from 'react'
-import type { LessonExample } from '../sudoku/engine'
+import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { runEngine, type LessonExample, type PracticeExercise } from '../sudoku/engine'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
-import { lessonDiagram } from '../sudoku/lesson-diagram'
-import { articles, type Drill, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
+import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
+import { articles, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardRegion } from './BoardAnnotations'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
@@ -57,22 +57,56 @@ export function Diagram({ example, crop, copy }: {
 export function Practice({ block, variant }: { block: Extract<LessonBlock, { type: 'practice' }>; variant: string }) {
   const { drills, title, selectLabel } = block
   const [chosen, setChosen] = useState(() => drills.find(({ example }) => example === variant) ?? drills[0])
+  const [generated, setGenerated] = useState<PracticeExercise | null>(null)
+  const [generation, setGeneration] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const generationId = useRef(0)
+  const puzzle = generated ?? lessonExamples[chosen.example].practice
+  const grid = lessonValues(puzzle)
   const heading = useId()
+
+  async function newExample() {
+    const id = ++generationId.current
+    setGeneration('loading')
+    try {
+      const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+      const example = await runEngine({ type: 'generate-practice-example', technique: chosen.example, seed, exclude: grid })
+      if (id !== generationId.current) return
+      setGenerated(example)
+      setGeneration('ready')
+    } catch {
+      if (id === generationId.current) setGeneration('error')
+    }
+  }
+
   return (
     <section className="surface lesson-practice" aria-labelledby={heading}>
       <header className="lesson-practice-heading">
         <h2 id={heading}>{title ?? 'Try a move'}</h2>
-        {drills.length > 1 && <label className="lesson-drill">
-          <span>{selectLabel ?? 'Technique'}</span>
-          <SelectControl value={chosen.example} onChange={(event) => {
-            const next = drills.find(({ example }) => example === event.target.value)
-            if (next) setChosen(next)
-          }}>
-            {drills.map(({ example, title }) => <option key={example} value={example}>{title}</option>)}
-          </SelectControl>
-        </label>}
+        <div className="lesson-practice-heading-actions">
+          {drills.length > 1 && <label className="lesson-drill">
+            <span>{selectLabel ?? 'Technique'}</span>
+            <SelectControl value={chosen.example} onChange={(event) => {
+              const next = drills.find(({ example }) => example === event.target.value)
+              if (!next || next === chosen) return
+              generationId.current++
+              setChosen(next)
+              setGenerated(null)
+              setGeneration('idle')
+            }}>
+              {drills.map(({ example, title }) => <option key={example} value={example}>{title}</option>)}
+            </SelectControl>
+          </label>}
+          <button type="button" className="button secondary lesson-new-example" disabled={generation === 'loading'}
+            aria-busy={generation === 'loading'} onClick={newExample}>
+            <RefreshCw size={16} aria-hidden="true" /> New example
+          </button>
+        </div>
       </header>
-    <PracticePuzzle key={chosen.example} puzzle={lessonExamples[chosen.example].practice} technique={chosen.title} instruction={block.instruction} />
+      <p role="status" className={generation === 'error' ? 'lesson-new-example-error' : 'sr-only'}>
+        {generation === 'loading' ? 'Generating example…' : generation === 'ready' ? 'New example ready.'
+          : generation === 'error' ? 'Could not generate an example. Try again.' : ''}
+      </p>
+      <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction} />
     </section>
   )
 }

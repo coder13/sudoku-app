@@ -1128,6 +1128,33 @@ test('every Learn article gives a starting scan and every drill can preview its 
   }
 })
 
+test('each Learn drill generates a different grid with a verified walkthrough for its technique', async () => {
+  const { run } = engineRequests()
+  const examples = await run({ type: 'lesson-examples' })
+  const drills = new Set(articles.flatMap(article => article.blocks.flatMap(block =>
+    block.type === 'practice' ? block.drills.map(({ example }) => example) : [])))
+  for (const technique of drills) {
+    let exclude = lessonValues(examples[technique].practice)
+    for (let repeat = 0; repeat < 2; repeat++) {
+      const generated = await run({ type: 'generate-practice-example', technique, seed: 27, exclude })
+      const values = lessonValues(generated)
+      assert.notEqual(values, exclude, technique)
+      assert.equal(generated.deduction.technique, technique)
+      assert.deepEqual(generated.deduction.actions[0], generated.suggestion)
+      assert.ok(generated.answers.some(action => JSON.stringify(action) === JSON.stringify(generated.suggestion)), technique)
+      const legal = await run({ type: 'notes', values })
+      assert.deepEqual(generated.candidates, legal?.map((mask, cell) => mask & ~generated.eliminations[cell]), technique)
+      const proof = await run({ type: 'check-practice-move', technique, values: generated.givens,
+        entries: generated.entries, eliminations: generated.eliminations, action: generated.suggestion })
+      assert.equal(proof?.technique, technique)
+      const { start, check } = practiceSearch(generated)
+      assert.ok(start.text && check.text, technique)
+      assert.ok(lessonDiagram(generated).results.length, technique)
+      exclude = values
+    }
+  }
+})
+
 test('practice exercises expose three independent grids and a checkable suggestion for a technique', async () => {
   const { raw, run } = engineRequests()
   for (const technique of ['naked-single', 'locked-pair', 'sk-loop', 'mutant-fish']) {

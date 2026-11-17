@@ -157,7 +157,10 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 }
 .lesson-practice-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-8) var(--space-16); }
 .lesson-practice-heading h2 { font-size: 21px; line-height: 1.3; }
-.lesson-drill { display: grid; gap: 3px; min-width: 0; font-size: 13px; font-weight: 680; }
+.lesson-practice-heading-actions { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); min-width: 0; }
+.lesson-new-example { min-height: 44px; }
+.lesson-new-example-error { font-size: 14px; color: var(--muted); }
+.lesson-drill { display: grid; gap: 3px; min-width: 0; max-width: 100%; font-size: 13px; font-weight: 680; }
 .lesson-drill .select-control { max-width: 100%; }
 .lesson-drill select {
   max-width: 100%;

@@ -490,20 +490,25 @@ impl<'a> TemplateAttempts<'a> {
 }
 
 fn permute(board: &Board, random: &mut Random) -> Board {
+    let (cells, digits) = puzzle_permutation(random);
+    cells.map(|cell| digits[usize::from(board[cell])])
+}
+
+pub(super) fn puzzle_permutation(random: &mut Random) -> ([usize; CELLS], [u8; 10]) {
     let rows = axis_order(random);
     let columns = axis_order(random);
     let transposed = random.index(2) == 1;
     let mut digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     random.shuffle(&mut digits[1..]);
-    std::array::from_fn(|cell| {
+    let cells = std::array::from_fn(|cell| {
         let (row, col) = (rows[cell / 9], columns[cell % 9]);
-        let old_cell = if transposed {
+        if transposed {
             col * 9 + row
         } else {
             row * 9 + col
-        };
-        digits[usize::from(board[old_cell])]
-    })
+        }
+    });
+    (cells, digits)
 }
 
 fn axis_order(random: &mut Random) -> [usize; 9] {

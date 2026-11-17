@@ -144,6 +144,7 @@ export type EngineRequest =
   | { type: 'lesson-examples' }
   | { type: 'practice-examples'; technique: string; variant?: false }
   | { type: 'practice-examples'; technique: string; variant: true }
+  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string }
   | GenerationRequest
   | GenerationCommand
 
@@ -477,6 +478,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: GenerationCommand['type'] } ? GenerationProgress<Generated> :
   T extends { type: 'lesson-examples' } ? Record<string, LessonExample> :
   T extends { type: 'practice-examples'; variant: true } ? VariantPracticeExercise[] :
+  T extends { type: 'generate-practice-example' } ? PracticeExercise :
   T extends { type: 'practice-examples' } ? PracticeExercise[] : string
 
 export type EnginePayload = { value: EngineResult<EngineRequest> } | { error: string; code?: string }
@@ -538,7 +540,7 @@ export function runEngine<T extends EngineRequest>(request: T, options: { intera
     // A scan for an unfamiliar move must not hold up hints or candidate updates.
     const connection = options.interactive && request.type === 'deductions' ? techniqueDetailEngine
       : options.background || request.type === 'classify-actions' || request.type === 'deductions' ? techniqueEngine
-      : request.type === 'generate-variant' ? generationEngine : playEngine
+      : request.type === 'generate-variant' || request.type === 'generate-practice-example' ? generationEngine : playEngine
     connection.worker ??= connect(connection)
     const id = ++requestId
     connection.pending.set(id, { resolve: (value) => resolve(value as EngineResult<T>), reject })
