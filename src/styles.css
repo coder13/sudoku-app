@@ -1663,6 +1663,18 @@ svg { flex-shrink: 0; }
 .dialog-heading h2 { font-size: 23px; letter-spacing: -.037em; }
 
 .dialog.puzzle-analysis-dialog { width: min(540px, calc(100vw - 28px)); }
+/* Full-width summary dialogs on the mobile workspace. Desktop stays compact. */
+@media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
+  .dialog.puzzle-analysis-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  .dialog.puzzle-analysis-dialog .dialog-inner {
+    padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  }
+}
 .puzzle-analysis-content { display: grid; gap: 10px; }
 .analysis-table {
   width: 100%;
