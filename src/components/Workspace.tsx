@@ -420,9 +420,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 aria-label={`Color mode: ${COLOR_MODE_LABELS[appearance.colorMode]}. Switch to ${COLOR_MODE_LABELS[nextColorMode]} mode.`}>
                 <ColorModeIcon size={17} /> Color mode: {COLOR_MODE_LABELS[appearance.colorMode]}
               </button>
-              {workspaceMode === 'advanced' && <Link to="/puzzles/statistics" onClick={() => setMenuOpen(false)}>
+              <Link to="/puzzles/statistics" onClick={() => setMenuOpen(false)}>
                 <BarChart3 size={17} /> Statistics
-              </Link>}
+              </Link>
               <button onClick={openSettings}><SlidersHorizontal size={17} /> Settings</button>
               <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
