@@ -119,6 +119,8 @@ The `hints` request returns up to `limit` distinct moves from the current grid. 
 
 During play, **View hint** shows up to ten ranked moves. **Analyze all moves** lists every ranked move from the enabled hint techniques.
 
+The **Cell references** preference applies to hint actions, explanations, proof steps and solution lists for Classic and variants. Concise uses `r1c6`; Verbose uses `row 1, column 6`. Automatic uses concise references for techniques rated Tricky or higher and verbose references for easier techniques. The app formats the existing typed proof locally when this preference changes. Lesson diagrams keep their established notation when no preference is supplied.
+
 Both `hints` and `next-deduction` accept established candidate removals and `disabledTechniques`. The app stores these hint preferences separately from the solver profile. To hide singles, disable `full-house`, `naked-single`, and `hidden-single`. To hide Locked Candidates, disable `pointing` and `claiming`.
 
 The `deductions` request searches the selected techniques on the current grid and respects established candidate removals. Proofs with the same complete set of actions share one move. Each proof identifies the houses, cells, and candidates in its pattern. The move lists the cells and candidates named by its actions. An empty technique selection returns no moves.

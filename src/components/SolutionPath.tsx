@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import type { LogicalSolution, MoveAvailability } from '../sudoku/engine'
-import { techniqueLabel } from '../sudoku/hints'
+import type { Difficulty, LogicalSolution, MoveAvailability } from '../sudoku/engine'
+import { techniqueLabel, type CellReferenceStyle } from '../sudoku/hints'
 import { deductionResults } from '../sudoku/lesson-diagram'
 import { Modal } from './Modal'
 
@@ -18,6 +18,8 @@ type Props = {
   onClose: () => void
   onReveal?: () => void
   embedded?: boolean
+  cellReferenceStyle?: CellReferenceStyle
+  techniqueDifficulties?: Readonly<Partial<Record<string, Difficulty>>>
 }
 
 /** Keep the read-only preview and walkthrough together on a small screen. */
@@ -38,7 +40,8 @@ function bottleneckLabel(availability?: MoveAvailability) {
   return availability.easyMoves === 0 ? 'No easy moves' : 'Only one easy move'
 }
 
-export function SolutionPath({ state, index, onSelect, onRetry, onClose, onReveal, embedded = false }: Props) {
+export function SolutionPath({ state, index, onSelect, onRetry, onClose, onReveal, embedded = false,
+  cellReferenceStyle, techniqueDifficulties }: Props) {
   const list = useRef<HTMLOListElement>(null)
   const close = useRef<HTMLButtonElement>(null)
   const steps = state.status === 'ready' ? state.trace.steps : undefined
@@ -108,7 +111,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
                 <span className="solution-step-number">{stepIndex + 1}</span>
                 <span>
                   <strong>{techniqueLabel(step.technique)}</strong>
-                  <small>{deductionResults(step.actions).join(' ')}</small>
+                  <small>{deductionResults(step.actions, { cellReferenceStyle, difficulty: techniqueDifficulties?.[step.technique] }).join(' ')}</small>
                   {bottleneck && <small className="solution-step-bottleneck">{bottleneck}</small>}
                 </span>
               </button>

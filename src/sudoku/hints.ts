@@ -24,6 +24,7 @@ export const CELL_REFERENCE_LABELS = {
   verbose: 'Verbose',
 }
 export type CellReferenceStyle = keyof typeof CELL_REFERENCE_LABELS
+export type CellReferenceOptions = { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle }
 export const DEFAULT_CELL_REFERENCE_STYLE: CellReferenceStyle = 'automatic'
 
 export function isCellReferenceStyle(value: unknown): value is CellReferenceStyle {
