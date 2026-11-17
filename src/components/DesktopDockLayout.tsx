@@ -38,14 +38,16 @@ type DockContent = {
   showBottom: boolean
   focusHintRequest: number
   focusAnalysisRequest: number
+  focusSolutionRequest: number
   focusChainsRequest?: number
   onChainsVisibleChange?: (visible: boolean) => void
+  onSolutionVisibleChange?: (visible: boolean) => void
 }
 type PanelVisibility = Pick<DockContent, 'showLeft' | 'showRight' | 'showBottom'> & { showChains: boolean }
 const DockContentContext = createContext<DockContent>({
   puzzle: null, input: null, chains: null, cellColors: null, hint: null, solutionPath: null, techniques: null, details: null, browser: null,
-  showLeft: true, showRight: true, showBottom: true, focusHintRequest: 0, focusAnalysisRequest: 0, focusChainsRequest: 0,
-  onChainsVisibleChange: () => {},
+  showLeft: true, showRight: true, showBottom: true, focusHintRequest: 0, focusAnalysisRequest: 0, focusSolutionRequest: 0,
+  focusChainsRequest: 0, onChainsVisibleChange: () => {}, onSolutionVisibleChange: () => {},
 })
 
 function PuzzlePanel() {
@@ -78,8 +80,22 @@ function HintPanel() {
   return <div className="dock-panel-content dock-hint-panel">{useContext(DockContentContext).hint}</div>
 }
 
-function SolutionPathPanel() {
-  return <div className="dock-panel-content dock-solution-panel">{useContext(DockContentContext).solutionPath}</div>
+function SolutionPathPanel({ api }: IDockviewPanelProps) {
+  const { solutionPath, onSolutionVisibleChange } = useContext(DockContentContext)
+  const [visible, setVisible] = useState(api.isVisible)
+  useEffect(() => {
+    const update = (next: boolean) => {
+      setVisible(next)
+      onSolutionVisibleChange?.(next)
+    }
+    update(api.isVisible)
+    const subscription = api.onDidVisibilityChange(({ isVisible }) => update(isVisible))
+    return () => {
+      subscription.dispose()
+      onSolutionVisibleChange?.(false)
+    }
+  }, [api, onSolutionVisibleChange])
+  return <div className="dock-panel-content dock-solution-panel">{visible ? solutionPath : null}</div>
 }
 
 function TechniquesDockPanel({ api }: IDockviewPanelProps) {
@@ -260,7 +276,8 @@ export function resetDesktopPanelLayout() {
 
 export function DesktopDockLayout({
   puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
-  focusHintRequest, focusAnalysisRequest, focusChainsRequest, onChainsVisibleChange,
+  focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest,
+  onChainsVisibleChange, onSolutionVisibleChange,
 }: DockContent) {
   const [layoutReady, setLayoutReady] = useState(false)
   const apiRef = useRef<DockviewApi | null>(null)
@@ -329,6 +346,10 @@ export function DesktopDockLayout({
   }, [focusAnalysisRequest, showRight])
 
   useEffect(() => {
+    if (focusSolutionRequest && showRight) apiRef.current?.getPanel('solution-path')?.api.setActive()
+  }, [focusSolutionRequest, showRight])
+
+  useEffect(() => {
     if (focusChainsRequest && showRight) apiRef.current?.getPanel('chains')?.api.setActive()
   }, [focusChainsRequest, showRight])
 
@@ -352,7 +373,8 @@ export function DesktopDockLayout({
   return (
     <DockContentContext.Provider value={{
       puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
-      focusHintRequest, focusAnalysisRequest, focusChainsRequest, onChainsVisibleChange,
+      focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest,
+      onChainsVisibleChange, onSolutionVisibleChange,
     }}>
       <section ref={rootRef} className={`desktop-dock ${layoutReady ? 'dock-ready' : ''}`} aria-label="Advanced workspace panels">
         <DockviewReact className="desktop-dockview" theme={sudokuDockTheme} components={components}
