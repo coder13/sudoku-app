@@ -188,6 +188,8 @@ enum Request {
         technique: String,
         seed: u32,
         exclude: String,
+        #[serde(default)]
+        variant: bool,
     },
     GenerateTargeted {
         seed: u32,
@@ -1160,6 +1162,13 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             technique,
             seed,
             exclude,
+            variant: true,
+        } => variant::generate_practice_example(&technique, seed, board(&exclude)?),
+        Request::GeneratePracticeExample {
+            technique,
+            seed,
+            exclude,
+            variant: false,
         } => generate_practice_example(
             Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?,
             seed,

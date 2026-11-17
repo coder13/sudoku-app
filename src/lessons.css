@@ -46,7 +46,15 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   overscroll-behavior-y: contain;
   padding: var(--space-8) var(--space-8) var(--space-10);
 }
-.learn-nav-group h2 { margin: 0 9px 3px; font-size: 13px; font-weight: 740; color: var(--muted); }
+.learn-nav-variant > summary {
+  padding: var(--space-6) 9px;
+  font-size: 14px;
+  font-weight: 740;
+  cursor: pointer;
+}
+.learn-nav-group { margin-block-start: var(--space-6); }
+.learn-nav-group > :is(h2, summary) { margin: 0 9px 3px; font-size: 13px; font-weight: 740; color: var(--muted); }
+.learn-nav-group > summary { min-height: 28px; align-content: center; cursor: pointer; }
 .learn-nav-group ul { margin: 0; padding: 0; list-style: none; }
 .learn-nav-link {
   display: flex;
@@ -90,6 +98,9 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-overview .lesson-heading p { max-width: 64ch; }
 .lesson-overview-section { display: grid; gap: var(--space-10); font-size: 16px; line-height: 1.65; }
 .lesson-overview-section > .article-subheading { margin-top: 0; }
+.lesson-overview-level > :is(h3, summary) { font-size: 16px; font-weight: 730; }
+.lesson-overview-level > summary { cursor: pointer; }
+.lesson-overview-family > h4 { margin-block-start: var(--space-8); font-size: 14px; color: var(--muted); }
 .lesson-heading .lesson-overview-basics { font-size: 14px; }
 .lesson-overview-links {
   display: grid;
@@ -171,9 +182,13 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-practice-heading h2 { font-size: 21px; line-height: 1.3; }
 .lesson-trainer-title { color: var(--muted); font-size: 14px; }
 .lesson-practice-heading-actions { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); min-width: 0; }
-.lesson-example-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
-.lesson-example-controls .button { min-height: 44px; padding-inline: var(--space-8); font-size: 13px; }
-.lesson-example-controls span { font-size: 13px; font-variant-numeric: tabular-nums; }
+.lesson-example-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.lesson-example-controls > div { display: flex; gap: var(--space-6); margin-inline-start: auto; }
+.lesson-example-controls .button { min-height: 38px; padding: 4px var(--space-10); font-size: 13px; }
+.lesson-example-controls > span { font-size: 14px; font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) {
+  .lesson-example-controls .button { min-height: 44px; }
+}
 .lesson-new-example { min-height: 44px; }
 .lesson-new-example-error { font-size: 14px; color: var(--muted); }
 .lesson-drill { display: grid; gap: 3px; min-width: 0; max-width: 100%; font-size: 13px; font-weight: 680; }

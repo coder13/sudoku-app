@@ -6,7 +6,7 @@
     "difficultyTitle": "Difficulty ratings",
     "difficultyParagraphs": [
       "Easy moves look for a single choice, such as the last place a digit can go in a house. Medium moves use small sets of candidates or the overlap between a line and a box. Hard patterns can span several houses. Unfair moves often need longer chains or more cases to check. For an Extreme move, you may have to follow several possible placements and see where each one leads.",
-      "The menu puts each lesson under its easiest variant. The labels below show the range for that lesson. A puzzle’s rating counts the whole solve, including the number of steps."
+      "Each variant lists its lessons by difficulty. When a lesson covers several forms of a technique, it appears at the easiest level. A puzzle’s rating counts the whole solve, including the number of steps."
     ],
     "fundamentalsNote": "For the rules, cell addresses, and candidates, start with"
   },
@@ -401,6 +401,10 @@
             {
               "label": "Sudoku Snake",
               "href": "https://www.sudokusnake.com/claiming.php"
+            },
+            {
+              "label": "Diagonal Locked Candidates in X Sudoku",
+              "href": "/learn/diagonal-locked-candidates"
             }
           ]
         }
@@ -4175,13 +4179,14 @@
       ]
     },
     {
-      "title": "Variant rules for cells and pairs",
-      "overview": "Use marks and neighbor rules to narrow the candidates in affected cells.",
+      "title": "X Sudoku",
+      "overview": "Both long diagonals follow the same rule as rows, columns, and boxes.",
+      "variant": true,
       "lessons": [
         {
-          "id": "parity",
-          "title": "Odd and even cells",
-          "summary": "Remove candidates of the wrong parity from a marked cell.",
+          "id": "diagonal-locked-candidates",
+          "title": "Diagonal Locked Candidates",
+          "summary": "Use the overlap between a long diagonal and a box to remove candidates.",
           "blocks": [
             {
               "type": "heading",
@@ -4191,30 +4196,189 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
-                "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8."
+                "In X Sudoku, each long diagonal must contain the digits 1 through 9 once. Each diagonal crosses three boxes.",
+                "Pick a digit that still needs a place on a diagonal. Check whether all its candidates on that diagonal are in the same box.",
+                "The diagonal must place the digit in that box. Remove the digit from the other cells in the box that are off the diagonal."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "start-in-a-box",
+              "title": "Start in a box"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "You can also start with a box that crosses a diagonal. If all its places for a digit are on that diagonal, the box must place it there.",
+                "Remove the digit from the cells on that diagonal outside the box."
               ]
             },
             {
               "type": "diagram",
-              "example": "parity",
+              "example": "locked-candidates"
+            },
+            {
+              "type": "practice",
+              "instruction": "Remove a candidate using the overlap of a diagonal and a box.",
+              "guide": {
+                "start": "Look at the diagonals and the boxes they cross. Pick a digit and find its possible cells.",
+                "check": "Check whether all the places for the digit in one house also belong to the other house."
+              },
+              "drills": [
+                {
+                  "example": "locked-candidates",
+                  "title": "Diagonal Locked Candidates"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Locked Candidates in Classic Sudoku",
+              "href": "/learn/locked-candidates"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Killer Sudoku",
+      "overview": "Use the sum of a cage or compare several cage totals with the total of a house.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "cage-combinations",
+          "title": "Killer cage combinations",
+          "summary": "Keep assignments that reach a cage total with distinct digits.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
+                "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "cage-combinations",
               "copy": {
-                "description": "Read the parity clue under the grid. Compare it with the marked cell’s candidates.",
-                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+                "description": "Read the small total in the cage corner. Check the highlighted cells against complete cage assignments.",
+                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
               }
             },
             {
               "type": "practice",
               "drills": [
                 {
-                  "example": "parity",
-                  "title": "Odd and even cells"
+                  "example": "cage-combinations",
+                  "title": "Killer cage combinations"
                 }
               ],
               "guide": {
-                "start": "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
-                "check": "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8.",
-                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+                "start": "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
+                "check": "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot.",
+                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "cage-house-sum",
+          "title": "Killer cage and house sums",
+          "summary": "Subtract cage totals from a house total of 45 to find the sum of shared or leftover cells.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
+                "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "cage-house-sum",
+              "copy": {
+                "description": "Follow the highlighted boundary. Use the cage totals to find the sum that the highlighted cells must reach.",
+                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "cage-house-sum",
+                  "title": "Killer cage and house sums"
+                }
+              ],
+              "guide": {
+                "start": "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
+                "check": "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total.",
+                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Killer cage combinations",
+              "href": "/learn/cage-combinations"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Chess variants",
+      "overview": "A chess move tells you which pairs of cells must have different digits.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "anti-knight",
+          "title": "Anti-Knight",
+          "summary": "Rule out repeated digits in cells a chess knight’s move apart.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a placed digit. Move two cells up, down, left, or right, then one cell across at a right angle.",
+                "Check whether any reachable cell still shows that digit. Try the same move from other placed digits."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "anti-knight",
+              "copy": {
+                "description": "Use a two-by-one move to find which placed digit rules out the crossed-out candidate.",
+                "reason": "A pair of cells a knight’s move apart must contain different digits. Remove the placed digit from the candidates in the other cell."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "anti-knight",
+                  "title": "Anti-Knight"
+                }
+              ],
+              "guide": {
+                "start": "Pick a placed digit. Move two cells up, down, left, or right, then one cell across at a right angle.",
+                "check": "Check whether any reachable cell still shows that digit. Try the same move from other placed digits.",
+                "reason": "A pair of cells a knight’s move apart must contain different digits. Remove the placed digit from the candidates in the other cell."
               }
             }
           ],
@@ -4261,11 +4425,18 @@
             }
           ],
           "references": []
-        },
+        }
+      ]
+    },
+    {
+      "title": "Thermometer",
+      "overview": "Follow the order of digits from the bulb to the tip.",
+      "variant": true,
+      "lessons": [
         {
-          "id": "anti-knight",
-          "title": "Anti-Knight",
-          "summary": "Rule out repeated digits in cells a chess knight’s move apart.",
+          "id": "thermometer",
+          "title": "Thermometers",
+          "summary": "Use strictly increasing digits from the bulb to the tip.",
           "blocks": [
             {
               "type": "heading",
@@ -4275,30 +4446,177 @@
             {
               "type": "text",
               "paragraphs": [
-                "Pick a placed digit. Move two cells up, down, left, or right, then one cell across at a right angle.",
-                "Check whether any reachable cell still shows that digit. Try the same move from other placed digits."
+                "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
+                "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells."
               ]
             },
             {
               "type": "diagram",
-              "example": "anti-knight",
+              "example": "thermometer",
               "copy": {
-                "description": "Use a two-by-one move to find which placed digit rules out the crossed-out candidate.",
-                "reason": "A pair of cells a knight’s move apart must contain different digits. Remove the placed digit from the candidates in the other cell."
+                "description": "Read the thermometer from the round bulb to the tip. Check how many increasing steps a crossed-out candidate leaves room for.",
+                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
               }
             },
             {
               "type": "practice",
               "drills": [
                 {
-                  "example": "anti-knight",
-                  "title": "Anti-Knight"
+                  "example": "thermometer",
+                  "title": "Thermometers"
                 }
               ],
               "guide": {
-                "start": "Pick a placed digit. Move two cells up, down, left, or right, then one cell across at a right angle.",
-                "check": "Check whether any reachable cell still shows that digit. Try the same move from other placed digits.",
-                "reason": "A pair of cells a knight’s move apart must contain different digits. Remove the placed digit from the candidates in the other cell."
+                "start": "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
+                "check": "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells.",
+                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
+              }
+            }
+          ],
+          "references": []
+        }
+      ]
+    },
+    {
+      "title": "Arrow",
+      "overview": "Use the sum of the digits along an arrow.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "arrow",
+          "title": "Arrows",
+          "summary": "Match the sum of the arrow’s path to the digit in its circle.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
+                "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "arrow",
+              "copy": {
+                "description": "The circle gives the total. Follow the arrow and check which path digits can add to that total.",
+                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "arrow",
+                  "title": "Arrows"
+                }
+              ],
+              "guide": {
+                "start": "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
+                "check": "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other.",
+                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
+              }
+            }
+          ],
+          "references": []
+        }
+      ]
+    },
+    {
+      "title": "Kropki",
+      "overview": "Use the difference or ratio marked by a dot.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "kropki",
+          "title": "Kropki dots",
+          "summary": "Check which candidate pairs fit a white or black dot.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
+                "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "kropki",
+              "copy": {
+                "description": "Read the dot between the marked cells. Keep only candidates that belong to a pair that fits the dot.",
+                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "kropki",
+                  "title": "Kropki dots"
+                }
+              ],
+              "guide": {
+                "start": "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
+                "check": "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2.",
+                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
+              }
+            }
+          ],
+          "references": []
+        }
+      ]
+    },
+    {
+      "title": "Other cell and pair rules",
+      "overview": "Use rules that restrict one cell, a pair, or a group of matching cells.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "parity",
+          "title": "Odd and even cells",
+          "summary": "Remove candidates of the wrong parity from a marked cell.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
+                "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "parity",
+              "copy": {
+                "description": "Read the parity clue under the grid. Compare it with the marked cell’s candidates.",
+                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "parity",
+                  "title": "Odd and even cells"
+                }
+              ],
+              "guide": {
+                "start": "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
+                "check": "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8.",
+                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
               }
             }
           ],
@@ -4431,48 +4749,6 @@
           "references": []
         },
         {
-          "id": "kropki",
-          "title": "Kropki dots",
-          "summary": "Check which candidate pairs fit a white or black dot.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
-                "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2."
-              ]
-            },
-            {
-              "type": "diagram",
-              "example": "kropki",
-              "copy": {
-                "description": "Read the dot between the marked cells. Keep only candidates that belong to a pair that fits the dot.",
-                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "kropki",
-                  "title": "Kropki dots"
-                }
-              ],
-              "guide": {
-                "start": "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
-                "check": "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2.",
-                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
-              }
-            }
-          ],
-          "references": []
-        },
-        {
           "id": "xv",
           "title": "XV sums",
           "summary": "Keep the candidate pairs that sum to 5 at a V or 10 at an X.",
@@ -4517,8 +4793,9 @@
       ]
     },
     {
-      "title": "Variant lines and sums",
-      "overview": "Check candidate combinations along a line or inside a cage.",
+      "title": "Other line rules",
+      "overview": "Use the order, range, or sum of digits along a marked line.",
+      "variant": true,
       "lessons": [
         {
           "id": "palindrome",
@@ -4610,48 +4887,6 @@
           "references": []
         },
         {
-          "id": "thermometer",
-          "title": "Thermometers",
-          "summary": "Use strictly increasing digits from the bulb to the tip.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
-                "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells."
-              ]
-            },
-            {
-              "type": "diagram",
-              "example": "thermometer",
-              "copy": {
-                "description": "Read the thermometer from the round bulb to the tip. Check how many increasing steps a crossed-out candidate leaves room for.",
-                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "thermometer",
-                  "title": "Thermometers"
-                }
-              ],
-              "guide": {
-                "start": "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
-                "check": "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells.",
-                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
-              }
-            }
-          ],
-          "references": []
-        },
-        {
           "id": "whispers",
           "title": "Whispers lines",
           "summary": "Check the minimum difference required between neighbors on a line.",
@@ -4688,90 +4923,6 @@
                 "start": "Read the minimum difference from the clue. German Whispers usually use 5. Start at a placed digit or a cell with few options.",
                 "check": "For each candidate, find a neighbor’s candidate that differs by at least the required amount. Check both neighbors for an interior cell.",
                 "reason": "A candidate needs a valid partner on every Whispers edge it touches. If one edge cannot reach the minimum difference, remove the candidate."
-              }
-            }
-          ],
-          "references": []
-        },
-        {
-          "id": "cage-combinations",
-          "title": "Killer cage combinations",
-          "summary": "Keep assignments that reach a cage total with distinct digits.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
-                "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot."
-              ]
-            },
-            {
-              "type": "diagram",
-              "example": "cage-combinations",
-              "copy": {
-                "description": "Read the small total in the cage corner. Check the highlighted cells against complete cage assignments.",
-                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "cage-combinations",
-                  "title": "Killer cage combinations"
-                }
-              ],
-              "guide": {
-                "start": "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
-                "check": "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot.",
-                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
-              }
-            }
-          ],
-          "references": []
-        },
-        {
-          "id": "arrow",
-          "title": "Arrows",
-          "summary": "Match the sum of the arrow’s path to the digit in its circle.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
-                "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other."
-              ]
-            },
-            {
-              "type": "diagram",
-              "example": "arrow",
-              "copy": {
-                "description": "The circle gives the total. Follow the arrow and check which path digits can add to that total.",
-                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "arrow",
-                  "title": "Arrows"
-                }
-              ],
-              "guide": {
-                "start": "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
-                "check": "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other.",
-                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
               }
             }
           ],
@@ -4865,59 +5016,13 @@
               "href": "/learn/arrow"
             }
           ]
-        },
-        {
-          "id": "cage-house-sum",
-          "title": "Killer cage and house sums",
-          "summary": "Subtract cage totals from a house total of 45 to find the sum of shared or leftover cells.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
-                "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total."
-              ]
-            },
-            {
-              "type": "diagram",
-              "example": "cage-house-sum",
-              "copy": {
-                "description": "Follow the highlighted boundary. Use the cage totals to find the sum that the highlighted cells must reach.",
-                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "cage-house-sum",
-                  "title": "Killer cage and house sums"
-                }
-              ],
-              "guide": {
-                "start": "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
-                "check": "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total.",
-                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
-              }
-            }
-          ],
-          "references": [
-            {
-              "label": "Killer cage combinations",
-              "href": "/learn/cage-combinations"
-            }
-          ]
         }
       ]
     },
     {
-      "title": "Variant clues outside the grid",
-      "overview": "Read each clue in its marked direction and check which assignments can give that total or count.",
+      "title": "Outside clues",
+      "overview": "Read the clue outside the grid before checking the cells it points to.",
+      "variant": true,
       "lessons": [
         {
           "id": "little-killer",

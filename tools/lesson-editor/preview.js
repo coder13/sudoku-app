@@ -152,14 +152,14 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
     const { overview, groups } = content
     property(header.querySelector('p'), 'Introduction', overview, 'intro')
     property(header.querySelector('.lesson-overview-basics > span'), 'Fundamentals link introduction', overview, 'fundamentalsNote')
-    const [difficulty, ...families] = Array.from(article.querySelectorAll(':scope > section'))
+    const difficulty = article.querySelector('[data-lesson-difficulty]')
     property(difficulty.querySelector('h2'), 'Difficulty heading', overview, 'difficultyTitle')
     difficulty.querySelectorAll('p').forEach((element, index) =>
       property(element, 'Difficulty paragraph', overview.difficultyParagraphs, index))
-    families.forEach((family, index) => {
-      property(family.querySelector('h2'), 'Technique family heading', groups[index], 'title')
-      property(family.querySelector('p'), 'Technique family description', groups[index], 'overview')
-    })
+    article.querySelectorAll('[data-lesson-group-title]').forEach(element =>
+      property(element, 'Technique group heading', groups[element.dataset.lessonGroupTitle], 'title'))
+    article.querySelectorAll('[data-lesson-group-overview]').forEach(element =>
+      property(element, 'Technique group description', groups[element.dataset.lessonGroupOverview], 'overview'))
   }
 
   doc.addEventListener('click', (event) => {

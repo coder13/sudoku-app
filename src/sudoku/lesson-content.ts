@@ -44,23 +44,22 @@ export type LearnContent = {
     fundamentalsNote: string
   }
   fundamentals: LessonArticle
-  groups: { title: string; overview: string; lessons: LessonArticle[] }[]
+  groups: { title: string; overview: string; variant?: true; lessons: LessonArticle[] }[]
 }
 
 export function lessonCatalog({ fundamentals, groups }: Pick<LearnContent, 'fundamentals' | 'groups'>) {
   const lessons = groups.flatMap((group) => group.lessons)
   const articles = [fundamentals, ...lessons]
-  const lessonRoutes = new Map<string, LessonArticle>()
+  const lessonRoutes = new Map(articles.map((lesson) => [lesson.id, lesson]))
   const lessonExampleIds = new Set<string>()
 
   for (const lesson of articles) {
-    lessonRoutes.set(lesson.id, lesson)
     for (const block of lesson.blocks) {
       if (block.type === 'diagram') lessonExampleIds.add(block.example)
       if (block.type === 'practice') {
         for (const { example } of block.drills) {
           lessonExampleIds.add(example)
-          if (lesson !== fundamentals) lessonRoutes.set(example, lesson)
+          if (lesson !== fundamentals && !lessonRoutes.has(example)) lessonRoutes.set(example, lesson)
         }
       }
     }

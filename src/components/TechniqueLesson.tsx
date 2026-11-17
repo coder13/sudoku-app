@@ -1,13 +1,13 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { runEngine } from '../sudoku/engine'
 import aliasesJson from '../sudoku/generated/lesson-aliases.json'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
-import { lessonExample, variantLessonExercise, type EngineLessonExample, type LessonExercise } from '../sudoku/lesson-examples'
-import { articles, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
-import { loadWorkedExample, readWorkedExampleNumber, saveWorkedExampleNumber, type WorkedExample } from '../sudoku/worked-examples'
+import { lessonExample, type EngineLessonExample, type LessonExercise } from '../sudoku/lesson-examples'
+import { lessonReadingOrder } from '../sudoku/lesson-difficulties'
+import type { LessonArticle, LessonBlock } from '../sudoku/lessons'
+import { generateLessonExercise, loadWorkedExample, readWorkedExampleNumber, saveWorkedExampleNumber, type WorkedExample } from '../sudoku/worked-examples'
 import { LessonWorkbench } from './LessonWorkbench'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
 import { PracticePuzzle } from './LessonPractice'
@@ -77,7 +77,7 @@ function WorkedExampleViewer({ article, technique, diagrams, fallbackReason }: {
   const initial = useMemo(() => lessonExample(lessonExamples[technique]), [technique])
   const authoredCount = Math.max(1, diagrams.length)
   const latestRequest = useRef(0)
-  const [current, setCurrent] = useState<{ number: number; example?: WorkedExample; last?: number }>({ number: 0 })
+  const [current, setCurrent] = useState<{ number: number; example?: WorkedExample }>({ number: 0 })
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const hash = useLocation({ select: location => location.hash })
 
@@ -91,9 +91,9 @@ function WorkedExampleViewer({ article, technique, diagrams, fallbackReason }: {
     }
     setStatus('loading')
     try {
-      const { example, last } = await loadWorkedExample(technique, number - authoredCount + 1, initial)
+      const { example } = await loadWorkedExample(technique, number - authoredCount + 1, initial)
       if (request !== latestRequest.current) return
-      setCurrent({ number, example, last: last === undefined ? undefined : authoredCount + last - 1 })
+      setCurrent({ number, example })
       setStatus('idle')
       if (save) void saveWorkedExampleNumber(article, technique, number)
     } catch {
@@ -122,11 +122,13 @@ function WorkedExampleViewer({ article, technique, diagrams, fallbackReason }: {
   const loading = status === 'loading'
   return <>
     <div className="lesson-example-controls" role="group" aria-label="Example navigation">
-      <button type="button" className="button secondary" disabled={loading || current.number === 0}
-        onClick={() => void showExample(current.number - 1)}>Previous example</button>
       <span>Example {current.number + 1}</span>
-      <button type="button" className="button secondary" disabled={loading || current.number === current.last}
-        onClick={() => void showExample(current.number + 1)}>Next example</button>
+      <div>
+        <button type="button" className="button secondary" aria-label="Previous example" disabled={loading || current.number === 0}
+          onClick={() => void showExample(current.number - 1)}>Previous</button>
+        <button type="button" className="button secondary" aria-label="Next example" disabled={loading}
+          onClick={() => void showExample(current.number + 1)}>Next</button>
+      </div>
     </div>
     <p role="status" className={status === 'error' ? 'lesson-new-example-error' : 'sr-only'}>
       {loading ? 'Loading example…' : status === 'error' ? 'Could not load the example. Try again.' : `Example ${current.number + 1} ready.`}
@@ -180,15 +182,8 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
     const id = ++generationId.current
     setGeneration('loading')
     try {
-      let example: LessonExercise
-      if (initial.variantPuzzle) {
-        const exercises = await runEngine({ type: 'practice-examples', technique: chosen.example, variant: true }, { background: true })
-        const current = exercises.findIndex(({ position }) => lessonValues({ givens: position.puzzle.givens, entries: position.entries }) === grid)
-        example = variantLessonExercise(exercises[(current + 1) % exercises.length])
-      } else {
-        const seed = crypto.getRandomValues(new Uint32Array(1))[0]
-        example = await runEngine({ type: 'generate-practice-example', technique: chosen.example, seed, exclude: grid })
-      }
+      const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+      const example = await generateLessonExercise(chosen.example, seed, grid, Boolean(initial.variantPuzzle))
       if (id !== generationId.current) return
       setGenerated(example)
       setGeneration('ready')
@@ -267,9 +262,9 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
   const showEditableExamples = useLocation({
     select: ({ searchStr }) => editorPreview && new URLSearchParams(searchStr).has('preview'),
   })
-  const index = articles.indexOf(lesson)
-  const previous = articles[index - 1]
-  const next = articles[index + 1]
+  const index = lessonReadingOrder.indexOf(lesson)
+  const previous = lessonReadingOrder[index - 1]
+  const next = lessonReadingOrder[index + 1]
   const practice = lesson.blocks.find(block => block.type === 'practice')
   const drills = practice?.drills ?? []
   const diagrams = useMemo(() => lesson.blocks.flatMap((block, index) =>

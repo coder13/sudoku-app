@@ -1291,7 +1291,7 @@ test('variant Learn drills offer distinct boards with checkable moves and rule c
   const { run } = engineRequests()
   const classic = await run({ type: 'lesson-examples' })
   const { techniques } = await run({ type: 'techniques', variant: true })
-  for (const { id } of techniques.filter(({ id }) => !classic[id] && id !== 'locked-candidates')) {
+  for (const { id } of techniques.filter(({ id }) => !classic[id])) {
     const exercises = await run({ type: 'practice-examples', variant: true, technique: id })
     const drills = exercises.map(variantLessonExercise)
     assert.equal(new Set(drills.map(lessonValues)).size, 3, id)
@@ -1302,6 +1302,37 @@ test('variant Learn drills offer distinct boards with checkable moves and rule c
       const proof = await run({ type: 'variant', operation: 'check-practice-move', position: exercises[index].position,
         technique: id, action: drill.suggestion })
       assert.equal(proof?.technique, id)
+    }
+  }
+})
+
+test('variant Learn examples continue beyond the first three with seeded, checkable boards', async () => {
+  const { run } = engineRequests()
+  const classic = await run({ type: 'lesson-examples' })
+  const { techniques } = await run({ type: 'techniques', variant: true })
+  for (const { id } of techniques.filter(({ id }) => !classic[id])) {
+    const fixed = await run({ type: 'practice-examples', technique: id, variant: true })
+    const seen = new Set(fixed.map(({ position }) => position.puzzle.givens))
+    let exclude = fixed[1].position.puzzle.givens
+
+    for (let number = 3; number <= (id === 'between' ? 14 : 3); number++) {
+      const request = { type: 'generate-practice-example', variant: true, technique: id,
+        seed: workedExampleSeed(id, number), exclude } as const
+      const example = await run(request)
+      const { position, deduction, suggestion } = example
+      assert.equal(deduction.technique, id)
+      assert.ok(deduction.actions.some(action => JSON.stringify(action) === JSON.stringify(suggestion)), id)
+      assert.ok(!seen.has(position.puzzle.givens), id)
+      assert.equal(await run({ type: 'variant', operation: 'analyze', position }), 'unique', id)
+      const proof = await run({ type: 'variant', operation: 'check-practice-move', position, technique: id, action: suggestion })
+      assert.equal(proof?.technique, id)
+      if (id === 'locked-candidates') {
+        assert.equal(deduction.evidence.type, 'intersection')
+        assert.ok('diagonal' in deduction.evidence.source || 'diagonal' in deduction.evidence.target)
+      }
+      if (id === 'between') assert.deepEqual(await run(request), example)
+      seen.add(position.puzzle.givens)
+      exclude = position.puzzle.givens
     }
   }
 })

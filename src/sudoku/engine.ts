@@ -145,7 +145,7 @@ export type EngineRequest =
   | { type: 'lesson-examples' }
   | { type: 'practice-examples'; technique: string; variant?: false }
   | { type: 'practice-examples'; technique: string; variant: true }
-  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string }
+  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string; variant?: boolean }
   | GenerationRequest
   | GenerationCommand
 
@@ -486,6 +486,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: GenerationCommand['type'] } ? GenerationProgress<Generated> :
   T extends { type: 'lesson-examples' } ? Record<string, LessonExample> :
   T extends { type: 'practice-examples'; variant: true } ? VariantPracticeExercise[] :
+  T extends { type: 'generate-practice-example'; variant: true } ? VariantPracticeExercise :
   T extends { type: 'generate-practice-example' } ? PracticeExercise :
   T extends { type: 'practice-examples' } ? PracticeExercise[] : string
 

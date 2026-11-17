@@ -42,6 +42,13 @@ pub(super) fn practice_examples(id: &str) -> ResultValue {
     ))
 }
 
+pub(super) fn generate_practice_example(id: &str, seed: u32, exclude: crate::Board) -> ResultValue {
+    let technique = VariantTechnique::from_id(id).ok_or(INVALID_TECHNIQUE)?;
+    Ok(json!(
+        crate::variant::generate_practice_example(technique, seed, exclude).ok_or(INVALID_LESSON)?
+    ))
+}
+
 #[derive(Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(super) enum Operation {

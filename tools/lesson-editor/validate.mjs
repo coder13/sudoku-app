@@ -107,7 +107,7 @@ export function validateContent(content, original, examples) {
   requireValue(Array.isArray(content.groups) && content.groups.length === original.groups.length, 'Keep the existing technique families.')
   for (const [index, group] of content.groups.entries()) {
     const current = original.groups[index]
-    requireValue(isText(group?.title) && isText(group.overview) &&
+    requireValue(isText(group?.title) && isText(group.overview) && group.variant === current.variant &&
       Array.isArray(group.lessons) && group.lessons.length === current.lessons.length, 'Each technique family needs a title and description.')
     checkWording([group.title, group.overview], group.title)
     for (const [lessonIndex, lesson] of group.lessons.entries()) checkLesson(lesson, current.lessons[lessonIndex], examples)
