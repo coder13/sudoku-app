@@ -197,8 +197,38 @@ svg { flex-shrink: 0; }
 .advanced-workspace-page { width: 100%; max-width: none; height: calc(100dvh - var(--topbar-height)); padding: 0; }
 .advanced-workspace-page .workspace { gap: 0; }
 .standard-puzzle-stack { grid-area: puzzle; min-width: 0; min-height: 0; display: grid; align-content: start; gap: 12px; overflow: auto; }
-.standard-input-stack { grid-area: controls; min-width: 0; min-height: 0; display: grid; align-content: start; gap: 12px; overflow: auto; }
+.standard-input-stack {
+  grid-area: controls;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
 .standard-input-stack > .workspace-controls { grid-area: auto; }
+.standard-input-stack > .workspace-controls,
+.standard-input-stack > .desktop-solution-actions,
+.standard-input-stack > .hint-dock { flex: none; }
+.desktop-solution-actions, .advanced-solution-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.desktop-solution-actions > .button { flex: 1 1 auto; justify-content: center; }
+.advanced-solution-actions { grid-column: 2; }
+.advanced-solution-actions > .button { white-space: normal; }
+.standard-input-stack > :is(.puzzle-analysis-card, .solution-path) {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+.standard-input-stack > .puzzle-analysis-card .puzzle-analysis-card-body { flex: 1; }
+
 .standard-input-stack > .solution-path { min-height: 260px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024; }
 .standard-input-stack:has(.hint-dock) { align-self: stretch; }
 .standard-input-stack .hint-dock { margin-top: 0; }
@@ -1672,7 +1702,7 @@ svg { flex-shrink: 0; }
   flex-direction: column;
   width: 100%;
   min-width: 0;
-  max-height: min(60dvh, 550px);
+  max-height: none;
   padding: 0;
   overflow: hidden;
 }
