@@ -214,17 +214,7 @@ svg { flex-shrink: 0; }
 }
 .standard-input-stack > .workspace-controls { grid-area: auto; }
 .standard-input-stack > .workspace-controls,
-.standard-input-stack > .desktop-solution-actions,
 .standard-input-stack > .hint-dock { flex: none; }
-.desktop-solution-actions, .advanced-solution-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.desktop-solution-actions > .button { flex: 1 1 auto; justify-content: center; }
-.advanced-solution-actions { grid-column: 2; }
-.advanced-solution-actions > .button { white-space: normal; }
 .standard-input-stack > :is(.puzzle-analysis-card, .solution-path) {
   flex: 1 1 0;
   min-height: 0;
