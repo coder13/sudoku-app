@@ -1,17 +1,26 @@
 import { findCollectionGame, getCollectionPuzzle, getGameCollection, nextCollectionPuzzle } from './collections.ts'
 import { createGameId, makeGame } from './game.ts'
 import { roomStore } from './storage.ts'
-import { collectionDownloads } from './collection-downloads.ts'
+import { collectionDownloads, fetchCollectionGrid, validCollectionGrid } from './collection-downloads.ts'
+
+type CollectionPlayOptions = { online: boolean; signal?: AbortSignal }
 
 // Reuse an existing game, including a prior import, without replacing its progress.
-export function openCollectionPuzzle(collectionId: string, puzzleId: string, play = true) {
+export async function openCollectionPuzzle(collectionId: string, puzzleId: string,
+  { online, signal, play = true, preview }: CollectionPlayOptions & { play?: boolean; preview?: string }) {
   const entry = getCollectionPuzzle(collectionId, puzzleId)
   if (!entry) throw new Error('This puzzle is not in the collection.')
   const { puzzle } = entry
-  const givens = collectionDownloads.grids(entry.collection, roomStore.getSnapshot().games)[puzzle.id]
-  if (!givens) throw new Error('Download this puzzle before you play it.')
+  const findExisting = () => findCollectionGame(puzzle, roomStore.getSnapshot().games)
+  let existing = findExisting()
+  let givens = existing?.givens ?? collectionDownloads.getSnapshot()[collectionId]?.[puzzleId]
+  if (!givens) {
+    if (!online) throw new Error('This puzzle is not available offline.')
+    givens = validCollectionGrid(puzzle, preview) ? preview : await fetchCollectionGrid(entry.collection, puzzle, signal)
+    existing = findExisting()
+  }
+  signal?.throwIfAborted()
   const collection = { collectionId, puzzleId }
-  const existing = findCollectionGame(puzzle, roomStore.getSnapshot().games)
   if (existing) {
     roomStore.update(existing.id, game => ({ ...game, collection }))
     if (play) roomStore.select(existing.id)
@@ -23,13 +32,13 @@ export function openCollectionPuzzle(collectionId: string, puzzleId: string, pla
   return { id: game.id, added: true }
 }
 
-export function openNextCollectionPuzzle(gameId: string) {
+export async function openNextCollectionPuzzle(gameId: string, options: CollectionPlayOptions) {
   const { games } = roomStore.getSnapshot()
   const game = games.find(game => game.id === gameId)
   const entry = game && getGameCollection(game)
   if (!entry) throw new Error('This puzzle is not in the collection.')
   if (!entry.puzzle.difficulty) return undefined
-  const downloaded = new Set(Object.keys(collectionDownloads.grids(entry.collection, games)))
-  const next = nextCollectionPuzzle(entry.collection, games, entry.puzzle.difficulty, entry.puzzle.id, downloaded)
-  return next ? openCollectionPuzzle(entry.collection.id, next.id) : undefined
+  const available = options.online ? undefined : new Set(Object.keys(collectionDownloads.grids(entry.collection, games)))
+  const next = nextCollectionPuzzle(entry.collection, games, entry.puzzle.difficulty, entry.puzzle.id, available)
+  return next ? openCollectionPuzzle(entry.collection.id, next.id, options) : undefined
 }

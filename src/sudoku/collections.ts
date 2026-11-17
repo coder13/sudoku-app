@@ -34,7 +34,7 @@ export type PuzzleCollection = {
 export const COLLECTIONS: readonly PuzzleCollection[] = [
   {
     id: 'nikoli-classics', title: 'Nikoli Classics', creator: 'Nikoli',
-    description: 'Handmade classics by Nikoli. Choose how many to keep for offline play.',
+    description: 'Handmade classics by Nikoli.',
     sourceUrl: 'https://huggingface.co/datasets/SakanaAI/sudoku-bench-nikoli',
     sourceRevision: '9034906b4ec06ab1e08daf110c6b562ef72859fd',
     license: 'CC BY 4.0', licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
@@ -99,8 +99,8 @@ export function discoverCollections(games: readonly Game[], all = false, downloa
     games.some(game => getGameCollection(game)?.collection.id === collection.id))
 }
 
-export function collectionPuzzles(collection: PuzzleCollection, difficulty: Difficulty) {
-  return collection.puzzles.filter(puzzle => puzzle.difficulty === difficulty)
+export function collectionPuzzles(collection: PuzzleCollection, difficulty: Difficulty, available?: ReadonlySet<string>) {
+  return collection.puzzles.filter(puzzle => puzzle.difficulty === difficulty && (!available || available.has(puzzle.id)))
 }
 
 export function collectionProgress(collection: PuzzleCollection, games: readonly Game[], difficulty?: Difficulty) {
@@ -111,11 +111,9 @@ export function collectionProgress(collection: PuzzleCollection, games: readonly
   }, { unplayed: 0, 'in-progress': 0, solved: 0 })
 }
 
-// Play downloaded or previously saved puzzles in source order.
 // Wrap to earlier unfinished puzzles without switching difficulty or replaying a solve.
-export function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string, downloaded: ReadonlySet<string> = new Set()) {
-  const puzzles = collectionPuzzles(collection, difficulty)
-    .filter(puzzle => downloaded.has(puzzle.id) || findCollectionGame(puzzle, games))
+export function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string, available?: ReadonlySet<string>) {
+  const puzzles = collectionPuzzles(collection, difficulty, available)
   if (!afterId) {
     return puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'in-progress')
       ?? puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'unplayed')

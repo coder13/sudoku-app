@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib'
 import {
   COLLECTIONS as CATALOG, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus,
   discoverCollections, findCollectionGame, getGameCollection,
-  nextCollectionPuzzle as nextAvailablePuzzle, type CollectionPuzzleInfo, type PuzzleCollection,
+  nextCollectionPuzzle, type CollectionPuzzleInfo,
 } from '../src/sudoku/collections.ts'
 import { isCollectionReference } from '../src/sudoku/collection-reference.ts'
 import { EMPTY, enter, makeGame, restartGame } from '../src/sudoku/game.ts'
@@ -13,12 +13,6 @@ import { roomStore } from '../src/sudoku/storage.ts'
 import { collectionDownloads } from '../src/sudoku/collection-downloads.ts'
 import { collectionGridHash } from '../src/sudoku/collection-integrity.ts'
 import { fullCollections as COLLECTIONS, puzzleResponse } from './collection-fixtures.ts'
-import type { Difficulty } from '../src/sudoku/engine.ts'
-import type { Game } from '../src/sudoku/game.ts'
-
-function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string) {
-  return nextAvailablePuzzle(collection, games, difficulty, afterId, new Set(collection.puzzles.map(puzzle => puzzle.id)))
-}
 
 const collection = COLLECTIONS[0]
 const puzzle = collection.puzzles[0]
@@ -94,7 +88,7 @@ test('the client catalog contains metadata and zero bundled puzzle grids', () =>
       assert.ok(!JSON.stringify(CATALOG).includes(puzzle.givens))
     }
   }
-  assert.equal(nextAvailablePuzzle(collection, [], 'easy'), undefined)
+  assert.equal(nextCollectionPuzzle(collection, [], 'easy', undefined, new Set()), undefined)
 })
 
 test('discovery starts with handmade puzzles and retains previously opened collections', () => {
@@ -136,11 +130,11 @@ test('next puzzle skips solved grids, stays in one difficulty, and stops when co
   assert.equal(nextCollectionPuzzle(set, finished.slice(0, 3), 'easy', puzzles[2].id), undefined)
   assert.equal(nextCollectionPuzzle(set, finished.slice(0, 3), 'hard')?.id, puzzles[3].id)
 
-  assert.equal(nextAvailablePuzzle(set, [], 'easy'), undefined)
-  assert.equal(nextAvailablePuzzle(set, [], 'easy', undefined, new Set([puzzles[2].id]))?.id, puzzles[2].id)
-  assert.equal(nextAvailablePuzzle(set, [finished[2]], 'easy', puzzles[2].id, new Set([puzzles[2].id])), undefined)
-  assert.equal(nextAvailablePuzzle(set, [unfinished], 'easy')?.id, puzzles[2].id)
-
+  const savedIds = new Set([puzzles[2].id])
+  assert.deepEqual(collectionPuzzles(set, 'easy'), puzzles.slice(0, 3))
+  assert.deepEqual(collectionPuzzles(set, 'easy', savedIds), [puzzles[2]])
+  assert.equal(nextCollectionPuzzle(set, [], 'easy', undefined, savedIds)?.id, puzzles[2].id)
+  assert.equal(nextCollectionPuzzle(set, [finished[2]], 'easy', puzzles[2].id, savedIds), undefined)
 })
 
 class MemoryStorage {
@@ -163,13 +157,14 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
   const disconnect = roomStore.connect()
   const disconnectDownloads = collectionDownloads.connect()
   try {
-    assert.throws(() => openCollectionPuzzle(collection.id, puzzle.id), /Download/ )
+    const offline = { online: false }
+    await assert.rejects(openCollectionPuzzle(collection.id, puzzle.id, offline), /not available offline/)
     await collectionDownloads.download(collection, [puzzle])
-    const saved = openCollectionPuzzle(collection.id, puzzle.id, false)
+    const saved = await openCollectionPuzzle(collection.id, puzzle.id, { ...offline, play: false })
     assert.equal(saved.added, true)
     assert.equal(roomStore.getSnapshot().active, null)
     assert.equal(roomStore.getSnapshot().games[0].savedForLater, true)
-    const started = openCollectionPuzzle(collection.id, puzzle.id)
+    const started = await openCollectionPuzzle(collection.id, puzzle.id, offline)
     assert.equal(started.id, saved.id)
     assert.equal(started.added, false)
     assert.equal(roomStore.getSnapshot().games.length, 1)
@@ -178,14 +173,14 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     const before = roomStore.getSnapshot().games[0]
     roomStore.connect()()
     assert.deepEqual(roomStore.getSnapshot().games[0], JSON.parse(JSON.stringify(before)))
-    openCollectionPuzzle(collection.id, puzzle.id)
+    await openCollectionPuzzle(collection.id, puzzle.id, offline)
     const after = roomStore.getSnapshot().games[0]
     assert.deepEqual(after.position, before.position)
     assert.deepEqual(after.past, before.past)
     assert.equal(after.elapsed, 93)
     assert.equal(after.source, 'collection')
     assert.deepEqual(after.collection, reference)
-    assert.throws(() => openCollectionPuzzle('missing', puzzle.id))
+    await assert.rejects(openCollectionPuzzle('missing', puzzle.id, offline))
     assert.equal(roomStore.getSnapshot().games.length, 1)
 
     // A malformed optional reference must not discard an otherwise valid game.
@@ -197,7 +192,7 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     roomStore.remove(after.id)
     const imported = { ...makeGame('older-import', 'My custom title', puzzle.givens, 'imported'), started: true, elapsed: 21 }
     roomStore.add(imported)
-    assert.equal(openCollectionPuzzle(collection.id, puzzle.id).id, imported.id)
+    assert.equal((await openCollectionPuzzle(collection.id, puzzle.id, offline)).id, imported.id)
     assert.equal(roomStore.getSnapshot().games.length, 1)
     assert.equal(roomStore.getSnapshot().games[0].title, imported.title)
     assert.equal(roomStore.getSnapshot().games[0].elapsed, 21)
@@ -208,7 +203,7 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     roomStore.add(savedNext)
     roomStore.update(imported.id, game => ({ ...game, difficulty: 'extreme', position: { ...game.position, entries: solution } }))
     // Use the catalog difficulty even if the player's rating labels differ.
-    assert.equal(openNextCollectionPuzzle(imported.id)?.id, savedNext.id)
+    assert.equal((await openNextCollectionPuzzle(imported.id, offline))?.id, savedNext.id)
     const resumed = roomStore.getSnapshot().games.find(game => game.id === savedNext.id)!
     assert.equal(roomStore.getSnapshot().active, savedNext.id)
     assert.deepEqual(resumed.position, savedNext.position)
@@ -216,9 +211,19 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     assert.equal(resumed.elapsed, 42)
     assert.equal(resumed.savedForLater, undefined)
     assert.deepEqual(resumed.collection, { collectionId: collection.id, puzzleId: next.id })
-    openNextCollectionPuzzle(imported.id)
+    await openNextCollectionPuzzle(imported.id, offline)
     assert.equal(roomStore.getSnapshot().games.length, 2)
-    assert.throws(() => openNextCollectionPuzzle('missing'))
+    await assert.rejects(openNextCollectionPuzzle('missing', offline))
+
+    roomStore.remove(savedNext.id)
+    assert.equal(await openNextCollectionPuzzle(imported.id, offline), undefined)
+    const online = await openNextCollectionPuzzle(imported.id, { online: true })
+    assert.equal(roomStore.getSnapshot().active, online?.id)
+    const fetched = roomStore.getSnapshot().games.find(game => game.id === online?.id)
+    assert.equal(fetched?.givens, next.givens)
+    assert.equal(fetched?.collection?.puzzleId, next.id)
+    assert.deepEqual(Object.keys(collectionDownloads.getSnapshot()[collection.id]), [puzzle.id])
+    assert.equal((await openNextCollectionPuzzle(imported.id, offline))?.id, fetched?.id)
   } finally {
     disconnect()
     disconnectDownloads()

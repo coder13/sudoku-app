@@ -1,8 +1,7 @@
 # Downloadable puzzle collections
 
-The app bundles collection metadata and **zero collection grids**. Players choose
-a difficulty and a quantity before a download. Each grid is an optional 81-byte
-text file. All 160 hosted grids have exactly one solution and a complete logical
+The app bundles collection metadata and **zero collection grids**. Each grid is
+an optional 81-byte text file. All 160 hosted grids have exactly one solution and a complete logical
 solve in the current engine. Each record retains its source ID and original givens.
 Downloaded grids are separate from player progress, which uses the existing game store.
 
@@ -22,15 +21,16 @@ The collection page, each preview, and the play view retain creator credit and a
 license link. Collection pages also link to the source and state the changes.
 These puzzle permissions are separate from the app's code.
 
-### Download flow
+### Online and offline play
 
-A fresh install has zero downloaded collection puzzles. The collection card and
-its difficulty choices show the available counts and puzzle data sizes. The
-Download button opens a dialog. Players can enter any whole number from one to
-the remaining count at their difficulty, or choose all remaining puzzles. The
-dialog shows the size for the selected count. The page lists downloaded puzzles
-in one column.
-Transfer sizes can vary because of compression and connection overhead.
+While online, players see all puzzles at the selected difficulty in one list.
+Opening a puzzle or choosing the next puzzle loads its grid on demand. The app
+stores a game when the player starts it or saves it for later.
+
+The optional Download dialog shows the data size for the selected quantity.
+Players can choose any number of remaining puzzles at their difficulty or across
+the whole collection. They can also save the entire collection in one action
+from the difficulty picker. Transfer sizes can vary with connection overhead.
 
 The app fetches only the selected missing grids, with at most four requests at
 once. It checks every grid against the catalog checksum before one storage write
@@ -41,9 +41,8 @@ No download creates game history or replaces a game in progress.
 Downloaded grids persist in local storage under a separate collection key. App
 updates preserve these keys. Existing collection games and matching imports also
 count as available offline, so updates do not require another download for them.
-The next-puzzle action uses downloaded or previously saved puzzles at the same
-difficulty. When those run out, the completion screen links to more downloads.
-It never downloads another puzzle automatically.
+While offline, the list and next-puzzle action use only grids available on the
+device. The next-puzzle action stays at the same difficulty in either mode.
 
 ## Sudoku Exchange Selection
 
@@ -84,8 +83,8 @@ uncompressed and 12 KiB gzip. Puzzle data has no default offline allocation.
 `src/sudoku/generated/collection-index.json` and optional text files in
 `public/collections/`. Client code never imports the source grid JSON files.
 The offline build excludes `/collections/` from the service worker cache.
-Explicit downloads use `cache: 'no-store'` and save to the collection store,
-so grids do not also accumulate in the HTTP or app shell cache.
+Grid requests use `cache: 'no-store'`. Explicit downloads save grids to the
+collection store. Preview requests keep the grid in memory for the preview.
 
 Measure the initial offline assets separately from optional hosted downloads.
 After a production build, check that no collection text files appear in the

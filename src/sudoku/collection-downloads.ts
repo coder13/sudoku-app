@@ -19,8 +19,25 @@ export function collectionDownloadBytes(puzzles: readonly CollectionPuzzleInfo[]
   return puzzles.reduce((sum, puzzle) => sum + puzzle.bytes, 0)
 }
 
-function validGrid(puzzle: CollectionPuzzleInfo, value: unknown): value is string {
+export function validCollectionGrid(puzzle: CollectionPuzzleInfo, value: unknown): value is string {
   return typeof value === 'string' && /^[0-9]{81}$/.test(value) && collectionGridHash(value) === puzzle.givensHash
+}
+
+export async function fetchCollectionGrid(collection: PuzzleCollection, puzzle: CollectionPuzzleInfo,
+  signal?: AbortSignal, request = fetch) {
+  const unavailable = 'This puzzle could not load. Connect to the internet and try again.'
+  let givens: string
+  try {
+    const response = await request(collectionDownloadUrl(collection, puzzle), { signal, cache: 'no-store' })
+    if (!response.ok) throw new Error(unavailable)
+    givens = await response.text()
+  } catch (error) {
+    if (error instanceof TypeError) throw new Error(unavailable)
+    throw error
+  }
+  signal?.throwIfAborted()
+  if (!validCollectionGrid(puzzle, givens)) throw new Error('The puzzle data is invalid. Try again after updating the app.')
+  return givens
 }
 
 // Store only downloaded grids. Playing a puzzle still uses the existing game store.
@@ -37,7 +54,7 @@ export function createCollectionDownloadStore(storage: () => Pick<Storage, 'getI
       if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
       return Object.fromEntries(collection.puzzles.flatMap(puzzle => {
         const givens = (value as Record<string, unknown>)[puzzle.id]
-        return validGrid(puzzle, givens) ? [[puzzle.id, givens]] : []
+        return validCollectionGrid(puzzle, givens) ? [[puzzle.id, givens]] : []
       }))
     } catch { return {} }
   }
@@ -93,12 +110,7 @@ export function createCollectionDownloadStore(storage: () => Pick<Storage, 'getI
           while (cursor < selection.length) {
             controller.signal.throwIfAborted()
             const puzzle = selection[cursor++]
-            const response = await request(collectionDownloadUrl(collection, puzzle), { signal: controller.signal, cache: 'no-store' })
-            if (!response.ok) throw new Error('The download failed. Connect to the internet and try again.')
-            const givens = await response.text()
-            controller.signal.throwIfAborted()
-            if (!validGrid(puzzle, givens)) throw new Error('The downloaded puzzle data is invalid. Try again after updating the app.')
-            received[puzzle.id] = givens
+            received[puzzle.id] = await fetchCollectionGrid(collection, puzzle, controller.signal, request)
             options.onProgress?.(++done, selection.length)
           }
         }))
@@ -110,7 +122,6 @@ export function createCollectionDownloadStore(storage: () => Pick<Storage, 'getI
         return selection.length
       } catch (error) {
         controller.abort()
-        if (error instanceof TypeError) throw new Error('The download failed. Connect to the internet and try again.')
         throw error
       } finally {
         pending.delete(collection.id)
