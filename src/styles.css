@@ -1039,13 +1039,15 @@ svg { flex-shrink: 0; }
   paint-order: stroke fill;
 }
 .board-body:has(> .board-links) :is(.candidate-marks, .center-marks) > [data-mark="strike"] {
-  padding-inline: .18em;
+  padding-inline: .07em;
+  line-height: .9;
   border-radius: 2px;
   background: var(--board-bg);
   text-decoration: none;
 }
 .board-body:has(> .board-links) :is(.candidate-marks, .center-marks) > [data-mark="strike"]:not(:focus-visible) {
   outline: 1px solid currentColor;
+  outline-offset: -.5px;
 }
 .board-links {
   position: absolute;
