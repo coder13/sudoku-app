@@ -16,4 +16,3 @@ export class MemoryStorage {
 
   clear() { Object.keys(this).forEach((key) => this.removeItem(key)) }
 }
-
