@@ -19,7 +19,7 @@ use crate::{HintAction, variant_practice_examples};
 #[cfg(feature = "generation")]
 use crate::{
     VariantClueLayout, VariantGenerationError, VariantGenerationOptions, VariantPuzzle,
-    start_variant_generation,
+    start_variant_generation_with_symmetry,
 };
 
 pub(super) fn catalog() -> Value {
@@ -112,6 +112,8 @@ pub(super) struct GenerationRequest {
     #[serde(default)]
     derived_clues: Vec<VariantClueLayout>,
     givens: ClueCount,
+    #[serde(default)]
+    half_turn_givens: bool,
     variant_clues: Option<ClueCount>,
     required_rule: Option<String>,
     score: Option<[u32; 2]>,
@@ -149,7 +151,7 @@ impl GenerationRequest {
             technique_order: order.clone(),
             exclude: self.exclude,
         };
-        let search = start_variant_generation(options)
+        let search = start_variant_generation_with_symmetry(options, self.half_turn_givens)
             .map_err(generation_error)?
             .map(|result| GenerationOutput::Variant(Box::new(result)));
         Ok((GenerationProfile::Variant(order), search))

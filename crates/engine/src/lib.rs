@@ -72,7 +72,7 @@ pub use variant::{
 #[cfg(all(feature = "variants", any(feature = "generation", test)))]
 pub use variant::{
     GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
-    VariantGenerationOptions, start_variant_generation,
+    VariantGenerationOptions, start_variant_generation, start_variant_generation_with_symmetry,
 };
 #[cfg(all(feature = "variants", any(feature = "teaching", test)))]
 pub use variant::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};

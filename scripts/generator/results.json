@@ -1,0 +1,831 @@
+{
+  "holdout": {
+    "classic": {
+      "train": 79,
+      "holdout": 21,
+      "trainLayouts": 79,
+      "holdoutLayouts": 21,
+      "maskBits": {
+        "density": 72.821,
+        "symmetryOnly": 36.966,
+        "learned": 30.162
+      },
+      "holdoutClues": 25.524,
+      "holdoutSymmetric": 21,
+      "tiers": {
+        "beginner": {
+          "train": 11,
+          "holdout": 3,
+          "clues": [
+            29,
+            35,
+            28
+          ],
+          "singles": [
+            9,
+            22,
+            11
+          ]
+        },
+        "easy": {
+          "train": 28,
+          "holdout": 7,
+          "clues": [
+            24,
+            26,
+            24,
+            23,
+            24,
+            24,
+            26
+          ],
+          "singles": [
+            5,
+            3,
+            1,
+            4,
+            3,
+            3,
+            2
+          ]
+        },
+        "medium": {
+          "train": 35,
+          "holdout": 9,
+          "clues": [
+            26,
+            26,
+            24,
+            23,
+            25,
+            24,
+            25,
+            25,
+            25
+          ],
+          "singles": [
+            0,
+            2,
+            0,
+            1,
+            2,
+            0,
+            6,
+            0,
+            4
+          ]
+        },
+        "tricky": {
+          "train": 5,
+          "holdout": 2,
+          "clues": [
+            25,
+            25
+          ],
+          "singles": [
+            2,
+            1
+          ]
+        }
+      }
+    },
+    "jigsaw": {
+      "train": 109,
+      "holdout": 23,
+      "trainLayouts": 109,
+      "holdoutLayouts": 23,
+      "maskBits": {
+        "density": 73.484,
+        "symmetryOnly": 47.858,
+        "learned": 48.149
+      },
+      "holdoutClues": 26.13,
+      "holdoutSymmetric": 17,
+      "holdoutMeanPerimeter": 16.686,
+      "rejected": {}
+    },
+    "killer": {
+      "train": 415,
+      "holdout": 71,
+      "trainLayouts": 415,
+      "holdoutLayouts": 71,
+      "shapeBits": {
+        "uniform": 4.459,
+        "learned": 1.684,
+        "sizeOnly": 1.688
+      },
+      "holdoutMeanCages": 33.859,
+      "holdoutBentFraction": 0.2005,
+      "largeTrainingCages": 44,
+      "rejected": {}
+    }
+  },
+  "externalSetters": {
+    "thomas snyder": 3,
+    "wei-hwa huang": 4,
+    "philip newman": 29,
+    "bill murphy": 24,
+    "clover": 3,
+    "sam cappleman-lynes": 19
+  },
+  "compression": {
+    "nikoli": {
+      "n": 21,
+      "meanBits": {
+        "density": 72.82,
+        "symmetry": 36.97,
+        "countAndSymmetry": 36.1,
+        "context": 30.16
+      },
+      "bitsSavedVsSymmetryCI": [
+        4.32,
+        9.1
+      ]
+    },
+    "independentSetters": {
+      "n": 82,
+      "meanBits": {
+        "density": 72.82,
+        "symmetry": 46.66,
+        "countAndSymmetry": 47.53,
+        "context": 53.93
+      },
+      "bitsSavedVsSymmetryCI": [
+        -10.69,
+        -4.19
+      ]
+    },
+    "exchangeControl": {
+      "n": 60,
+      "meanBits": {
+        "density": 75.98,
+        "symmetry": 55.72,
+        "countAndSymmetry": 56.88,
+        "context": 62.99
+      },
+      "bitsSavedVsSymmetryCI": [
+        -9.54,
+        -5.05
+      ]
+    }
+  },
+  "crossSetter": {
+    "order": [
+      "pooledSymmetry",
+      "pooledContext",
+      "mixture"
+    ],
+    "perSetter": {
+      "bill murphy": [
+        41.86,
+        43.12,
+        40.69
+      ],
+      "clover": [
+        35.65,
+        37.45,
+        34.27
+      ],
+      "philip newman": [
+        49.34,
+        47.48,
+        46.15
+      ],
+      "sam cappleman-lynes": [
+        45.77,
+        50.98,
+        43.75
+      ],
+      "thomas snyder": [
+        36.39,
+        36.06,
+        34.68
+      ],
+      "wei-hwa huang": [
+        64.48,
+        68.86,
+        63.97
+      ]
+    },
+    "mean": [
+      46.09,
+      47.27,
+      44.01
+    ]
+  },
+  "sourceProfiles": {
+    "easy": {
+      "clues": 24.429,
+      "symmetric": 1,
+      "opening": 3,
+      "singlesRemaining": 0
+    },
+    "medium": {
+      "clues": 24.778,
+      "symmetric": 1,
+      "opening": 1.667,
+      "singlesRemaining": 54
+    },
+    "beginner": {
+      "clues": 30.667,
+      "symmetric": 1,
+      "opening": 14,
+      "singlesRemaining": 0
+    },
+    "tricky": {
+      "clues": 25,
+      "symmetric": 1,
+      "opening": 1.5,
+      "singlesRemaining": 54.5
+    }
+  },
+  "generation": [
+    {
+      "family": "classic",
+      "level": "beginner",
+      "method": "current",
+      "n": 64,
+      "hits": 64,
+      "medianMs": 4.8,
+      "p95Ms": 14.5,
+      "clues": 34.781,
+      "symmetric": 0,
+      "opening": 14.766,
+      "singlesRemaining": 0
+    },
+    {
+      "family": "classic",
+      "level": "beginner",
+      "method": "learned",
+      "n": 64,
+      "hits": 64,
+      "medianMs": 6.2,
+      "p95Ms": 24.1,
+      "clues": 32.422,
+      "symmetric": 0.969,
+      "opening": 12.422,
+      "singlesRemaining": 0
+    },
+    {
+      "family": "classic",
+      "level": "beginner",
+      "method": "symmetry",
+      "n": 64,
+      "hits": 64,
+      "medianMs": 6.0,
+      "p95Ms": 24.1,
+      "clues": 32.781,
+      "symmetric": 1,
+      "opening": 12.859,
+      "singlesRemaining": 0
+    },
+    {
+      "family": "classic",
+      "level": "easy",
+      "method": "current",
+      "n": 64,
+      "hits": 64,
+      "medianMs": 5.1,
+      "p95Ms": 32.0,
+      "clues": 30.969,
+      "symmetric": 0,
+      "opening": 10.109,
+      "singlesRemaining": 0
+    },
+    {
+      "family": "classic",
+      "level": "easy",
+      "method": "learned",
+      "n": 64,
+      "hits": 64,
+      "medianMs": 7.7,
+      "p95Ms": 33.7,
+      "clues": 28.25,
+      "symmetric": 0.969,
+      "opening": 7.156,
+      "singlesRemaining": 0
+    },
+    {
+      "family": "classic",
+      "level": "easy",
+      "method": "symmetry",
+      "n": 64,
+      "hits": 64,
+      "medianMs": 7.1,
+      "p95Ms": 30.2,
+      "clues": 28.578,
+      "symmetric": 1,
+      "opening": 8.422,
+      "singlesRemaining": 0
+    },
+    {
+      "family": "classic",
+      "level": "medium",
+      "method": "current",
+      "n": 64,
+      "hits": 15,
+      "medianMs": 54.5,
+      "p95Ms": 135.5,
+      "clues": 26.533,
+      "symmetric": 0,
+      "opening": 5.2,
+      "singlesRemaining": 44.4
+    },
+    {
+      "family": "classic",
+      "level": "medium",
+      "method": "learned",
+      "n": 64,
+      "hits": 9,
+      "medianMs": 43.8,
+      "p95Ms": 102.7,
+      "clues": 27.222,
+      "symmetric": 1,
+      "opening": 5.556,
+      "singlesRemaining": 42.111
+    },
+    {
+      "family": "classic",
+      "level": "medium",
+      "method": "symmetry",
+      "n": 64,
+      "hits": 3,
+      "medianMs": 38.1,
+      "p95Ms": 97.3,
+      "clues": 26.667,
+      "symmetric": 1,
+      "opening": 6,
+      "singlesRemaining": 40.333
+    },
+    {
+      "family": "classic",
+      "level": "medium",
+      "method": "trades",
+      "n": 64,
+      "hits": 15,
+      "medianMs": 67.2,
+      "p95Ms": 143.2,
+      "clues": 27.533,
+      "symmetric": 1,
+      "opening": 4.933,
+      "singlesRemaining": 43.467
+    },
+    {
+      "family": "classic",
+      "level": "tricky",
+      "method": "current",
+      "n": 64,
+      "hits": 30,
+      "medianMs": 48.3,
+      "p95Ms": 98.5,
+      "clues": 27.233,
+      "symmetric": 0,
+      "opening": 6.767,
+      "singlesRemaining": 37
+    },
+    {
+      "family": "classic",
+      "level": "tricky",
+      "method": "learned",
+      "n": 64,
+      "hits": 16,
+      "medianMs": 41.1,
+      "p95Ms": 74.8,
+      "clues": 28.375,
+      "symmetric": 1,
+      "opening": 6.438,
+      "singlesRemaining": 36.875
+    },
+    {
+      "family": "classic",
+      "level": "tricky",
+      "method": "symmetry",
+      "n": 64,
+      "hits": 14,
+      "medianMs": 35.5,
+      "p95Ms": 86.2,
+      "clues": 27.571,
+      "symmetric": 1,
+      "opening": 6.571,
+      "singlesRemaining": 35.429
+    },
+    {
+      "family": "classic",
+      "level": "tricky",
+      "method": "trades",
+      "n": 64,
+      "hits": 39,
+      "medianMs": 53.1,
+      "p95Ms": 123.6,
+      "clues": 28.282,
+      "symmetric": 1,
+      "opening": 6.744,
+      "singlesRemaining": 36.359
+    },
+    {
+      "family": "jigsaw",
+      "level": "easy",
+      "method": "current",
+      "n": 64,
+      "hits": 63,
+      "medianMs": 14.1,
+      "p95Ms": 100.5,
+      "clues": 33.238,
+      "symmetric": 0,
+      "perimeter": 13.94
+    },
+    {
+      "family": "jigsaw",
+      "level": "easy",
+      "method": "learned",
+      "n": 64,
+      "hits": 52,
+      "medianMs": 47.0,
+      "p95Ms": 142.2,
+      "clues": 30.423,
+      "symmetric": 0,
+      "perimeter": 16.697
+    },
+    {
+      "family": "jigsaw",
+      "level": "easy",
+      "method": "paired",
+      "n": 64,
+      "hits": 50,
+      "medianMs": 50.0,
+      "p95Ms": 110.9,
+      "clues": 31.36,
+      "symmetric": 0.9,
+      "perimeter": 16.702
+    },
+    {
+      "family": "jigsaw",
+      "level": "medium",
+      "method": "current",
+      "n": 64,
+      "hits": 59,
+      "medianMs": 25.9,
+      "p95Ms": 201.4,
+      "clues": 26.475,
+      "symmetric": 0,
+      "perimeter": 14.388
+    },
+    {
+      "family": "jigsaw",
+      "level": "medium",
+      "method": "learned",
+      "n": 64,
+      "hits": 32,
+      "medianMs": 53.5,
+      "p95Ms": 195.5,
+      "clues": 24.75,
+      "symmetric": 0,
+      "perimeter": 16.66
+    },
+    {
+      "family": "jigsaw",
+      "level": "medium",
+      "method": "paired",
+      "n": 64,
+      "hits": 32,
+      "medianMs": 51.8,
+      "p95Ms": 122.2,
+      "clues": 24.375,
+      "symmetric": 0.875,
+      "perimeter": 16.91
+    },
+    {
+      "family": "jigsaw",
+      "level": "tricky",
+      "method": "current",
+      "n": 64,
+      "hits": 5,
+      "medianMs": 179.9,
+      "p95Ms": 334.7,
+      "clues": 24.2,
+      "symmetric": 0,
+      "perimeter": 14.844
+    },
+    {
+      "family": "jigsaw",
+      "level": "tricky",
+      "method": "learned",
+      "n": 64,
+      "hits": 1,
+      "medianMs": 87.2,
+      "p95Ms": 259.7,
+      "clues": 27,
+      "symmetric": 0,
+      "perimeter": 15.556
+    },
+    {
+      "family": "jigsaw",
+      "level": "tricky",
+      "method": "paired",
+      "n": 64,
+      "hits": 0,
+      "medianMs": 66.5,
+      "p95Ms": 188.7
+    },
+    {
+      "family": "killer",
+      "level": "easy",
+      "method": "current",
+      "n": 64,
+      "hits": 64,
+      "medianMs": 9.8,
+      "p95Ms": 26.5,
+      "clues": 22.172,
+      "symmetric": 0,
+      "cages": 29.656,
+      "bent": 0.0
+    },
+    {
+      "family": "killer",
+      "level": "easy",
+      "method": "learned",
+      "n": 64,
+      "hits": 20,
+      "medianMs": 208.1,
+      "p95Ms": 393.3,
+      "clues": 0,
+      "symmetric": 1,
+      "cages": 37.3,
+      "bent": 0.103
+    },
+    {
+      "family": "killer",
+      "level": "hard",
+      "method": "current",
+      "n": 64,
+      "hits": 2,
+      "medianMs": 80.1,
+      "p95Ms": 129.2,
+      "clues": 14,
+      "symmetric": 0,
+      "cages": 27,
+      "bent": 0.0
+    },
+    {
+      "family": "killer",
+      "level": "hard",
+      "method": "learned",
+      "n": 64,
+      "hits": 0,
+      "medianMs": 233.2,
+      "p95Ms": 502.3
+    },
+    {
+      "family": "killer",
+      "level": "medium",
+      "method": "current",
+      "n": 64,
+      "hits": 23,
+      "medianMs": 61.4,
+      "p95Ms": 159.0,
+      "clues": 10.261,
+      "symmetric": 0,
+      "cages": 29.391,
+      "bent": 0.0
+    },
+    {
+      "family": "killer",
+      "level": "medium",
+      "method": "current-zero",
+      "n": 64,
+      "hits": 0,
+      "medianMs": 45.8,
+      "p95Ms": 84.9
+    },
+    {
+      "family": "killer",
+      "level": "medium",
+      "method": "learned",
+      "n": 64,
+      "hits": 52,
+      "medianMs": 135.0,
+      "p95Ms": 345.0,
+      "clues": 0,
+      "symmetric": 1,
+      "cages": 34.942,
+      "bent": 0.156
+    },
+    {
+      "family": "killer",
+      "level": "medium",
+      "method": "size-only",
+      "n": 64,
+      "hits": 54,
+      "medianMs": 78.2,
+      "p95Ms": 192.1,
+      "clues": 0,
+      "symmetric": 1,
+      "cages": 34.944,
+      "bent": 0.15
+    }
+  ],
+  "pairedVsCurrent": [
+    {
+      "family": "classic",
+      "level": "beginner",
+      "method": "learned",
+      "wins": 0,
+      "losses": 0,
+      "ties": 64,
+      "exactTwoSidedP": 1
+    },
+    {
+      "family": "classic",
+      "level": "beginner",
+      "method": "symmetry",
+      "wins": 0,
+      "losses": 0,
+      "ties": 64,
+      "exactTwoSidedP": 1
+    },
+    {
+      "family": "classic",
+      "level": "easy",
+      "method": "learned",
+      "wins": 0,
+      "losses": 0,
+      "ties": 64,
+      "exactTwoSidedP": 1
+    },
+    {
+      "family": "classic",
+      "level": "easy",
+      "method": "symmetry",
+      "wins": 0,
+      "losses": 0,
+      "ties": 64,
+      "exactTwoSidedP": 1
+    },
+    {
+      "family": "classic",
+      "level": "medium",
+      "method": "learned",
+      "wins": 8,
+      "losses": 14,
+      "ties": 42,
+      "exactTwoSidedP": 0.28627872467041016
+    },
+    {
+      "family": "classic",
+      "level": "medium",
+      "method": "symmetry",
+      "wins": 3,
+      "losses": 15,
+      "ties": 46,
+      "exactTwoSidedP": 0.007537841796875
+    },
+    {
+      "family": "classic",
+      "level": "medium",
+      "method": "trades",
+      "wins": 12,
+      "losses": 12,
+      "ties": 40,
+      "exactTwoSidedP": 1
+    },
+    {
+      "family": "classic",
+      "level": "tricky",
+      "method": "learned",
+      "wins": 10,
+      "losses": 24,
+      "ties": 30,
+      "exactTwoSidedP": 0.024306510109454393
+    },
+    {
+      "family": "classic",
+      "level": "tricky",
+      "method": "symmetry",
+      "wins": 8,
+      "losses": 24,
+      "ties": 32,
+      "exactTwoSidedP": 0.0070003666914999485
+    },
+    {
+      "family": "classic",
+      "level": "tricky",
+      "method": "trades",
+      "wins": 22,
+      "losses": 13,
+      "ties": 29,
+      "exactTwoSidedP": 0.17546524899080396
+    },
+    {
+      "family": "jigsaw",
+      "level": "easy",
+      "method": "learned",
+      "wins": 1,
+      "losses": 12,
+      "ties": 51,
+      "exactTwoSidedP": 0.00341796875
+    },
+    {
+      "family": "jigsaw",
+      "level": "easy",
+      "method": "paired",
+      "wins": 1,
+      "losses": 14,
+      "ties": 49,
+      "exactTwoSidedP": 0.0009765625
+    },
+    {
+      "family": "jigsaw",
+      "level": "medium",
+      "method": "learned",
+      "wins": 3,
+      "losses": 30,
+      "ties": 31,
+      "exactTwoSidedP": 1.4011748135089874e-06
+    },
+    {
+      "family": "jigsaw",
+      "level": "medium",
+      "method": "paired",
+      "wins": 3,
+      "losses": 30,
+      "ties": 31,
+      "exactTwoSidedP": 1.4011748135089874e-06
+    },
+    {
+      "family": "jigsaw",
+      "level": "tricky",
+      "method": "learned",
+      "wins": 1,
+      "losses": 5,
+      "ties": 58,
+      "exactTwoSidedP": 0.21875
+    },
+    {
+      "family": "jigsaw",
+      "level": "tricky",
+      "method": "paired",
+      "wins": 0,
+      "losses": 5,
+      "ties": 59,
+      "exactTwoSidedP": 0.0625
+    },
+    {
+      "family": "killer",
+      "level": "easy",
+      "method": "learned",
+      "wins": 0,
+      "losses": 44,
+      "ties": 20,
+      "exactTwoSidedP": 1.1368683772161603e-13
+    },
+    {
+      "family": "killer",
+      "level": "hard",
+      "method": "learned",
+      "wins": 0,
+      "losses": 2,
+      "ties": 62,
+      "exactTwoSidedP": 0.5
+    },
+    {
+      "family": "killer",
+      "level": "medium",
+      "method": "current-zero",
+      "wins": 0,
+      "losses": 23,
+      "ties": 41,
+      "exactTwoSidedP": 2.384185791015625e-07
+    },
+    {
+      "family": "killer",
+      "level": "medium",
+      "method": "learned",
+      "wins": 31,
+      "losses": 2,
+      "ties": 31,
+      "exactTwoSidedP": 1.3085082173347473e-07
+    },
+    {
+      "family": "killer",
+      "level": "medium",
+      "method": "size-only",
+      "wins": 34,
+      "losses": 3,
+      "ties": 27,
+      "exactTwoSidedP": 1.233129296451807e-07
+    }
+  ],
+  "novelty": {
+    "classicSamples": 207,
+    "distinctClassic": 185,
+    "classicSourceMatches": 0,
+    "distinctClassicMasksD4": 185,
+    "jigsawUniqueChecks": 167,
+    "jigsawDistinctLayouts": 79,
+    "jigsawSourceLayouts": 0,
+    "killerUniqueChecks": 72,
+    "killerDistinctLayouts": 72,
+    "killerSourceLayouts": 0,
+    "killerControlUniqueChecks": 54
+  }
+}
