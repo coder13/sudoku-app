@@ -9,6 +9,7 @@ const mixed = JSON.parse(await readFile(new URL('../tests/fixtures/mixed-puzzles
 const combined = JSON.parse(await readFile(new URL('../tests/fixtures/combined-families.json', import.meta.url), 'utf8'))
 const quadruple = JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-clover.json', import.meta.url), 'utf8'))
 const parity = JSON.parse(await readFile(new URL('../tests/fixtures/parity-big-eight.json', import.meta.url), 'utf8'))
+const antiKing = JSON.parse(await readFile(new URL('../tests/fixtures/anti-king-newman.json', import.meta.url), 'utf8'))
 fixtures.push({
   name: 'x-killer', position: mixed['x-killer'].puzzle,
   template: { version: 1, givens: '0'.repeat(81), rules: [
@@ -24,6 +25,10 @@ fixtures.push({
   name: 'parity', position: parity.puzzle,
   template: { version: 1, givens: '0'.repeat(81) },
   derivedClues: [{ type: 'parity', cells: Array.from({ length: 81 }, (_, cell) => cell) }],
+  givens: 30,
+}, {
+  name: 'anti-king', position: antiKing.puzzle,
+  template: { version: 1, givens: '0'.repeat(81), rules: [{ type: 'anti-king' }] },
   givens: 30,
 })
 const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
@@ -84,7 +89,8 @@ for (const { name, position: puzzle, template, derivedClues, givens } of fixture
     const response = await handle({
       id: ++id,
       request: { type: 'generate-variant', seed, maxAttempts, maxNodes, template, derivedClues, givens,
-        ...(name === 'quadruple' && { requiredRule: 'quadruple', variantClues: 64 }) },
+        ...((name === 'quadruple' || name === 'anti-king') && { requiredRule: name }),
+        ...(name === 'quadruple' && { variantClues: 64 }) },
     })
     measurements.push(performance.now() - start)
     if ('value' in response) {
@@ -103,7 +109,7 @@ const classicCatalog = await request({ type: 'techniques' })
 const variantCatalog = await request({ type: 'techniques', variant: true })
 const appOrder = variantTechniqueOrder(variantCatalog.defaultOrder, classicCatalog.difficultyOrder,
   Object.fromEntries([...classicCatalog.techniques, ...variantCatalog.techniques].map(technique => [technique.id, technique.difficulty])))
-for (const [name, fixture] of [['quadruple', quadruple], ['parity', parity]]) {
+for (const [name, fixture] of [['quadruple', quadruple], ['parity', parity], ['anti-king', antiKing]]) {
   const appHints = { type: 'variant', operation: 'hints', position: { puzzle: fixture.puzzle },
     techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium' }
   const appRate = await sample({ type: 'variant', operation: 'rate', position: appHints.position, techniqueOrder: appOrder })

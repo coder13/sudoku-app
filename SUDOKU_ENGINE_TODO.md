@@ -77,7 +77,23 @@ This performance pass is isolated on `codex/sudoku-nested-witness-pruning` from 
 - [x] Compare complete per-technique proofs on Quadruple and Odd/Even, all twelve AI Escargot nested proofs, and retained API results plus complete nested proofs on nine fixtures. Record paired exhaustive scans with unchanged scoring version and technique order.
 - [x] Pass 253 Rust tests, 352 app tests, 214 Wasm tests, all 16 feature combinations, four Wasm profiles, strict Cargo docs, TypeScript and the production/offline build. Compile the extra probe implementation only with `variants`.
 - [x] Reduce paired exhaustive median scans from 1,596.603 to 857.367 ms for Quadruple and 330.498 to 66.237 ms for Odd/Even. Preserve all 107 app-order per-technique outputs on both fixtures; add 1,543 app gzip bytes. [Method and limits](tests/fixtures/README.md#additional-completion-witnesses)
-- [ ] Pass CI and merge the measured improvement as a focused change.
+- [x] Pass CI and merge the measured improvement in [PR 107](https://github.com/coder13/sudoku-app/pull/107), main at `4811a05`.
+
+### Anti-King integration in progress
+
+This stage is isolated on `codex/sudoku-anti-king-integration` from main at `4811a05`. [Anti-King issue](https://github.com/coder13/sudoku-app/issues/43)
+
+- [x] Reuse the existing native corner restrictions, eight-point deduction, practice positions and generation API without changing engine rules or scoring.
+- [x] Verify Philip Newman's published King of Diamonds puzzle and completion against the PDFs. Confirm uniqueness and rule dependency with a separate counter.
+- [x] Decode Coach's global `antiKing` rule, reject unsupported scopes/settings and retain it through native sharing and saved games.
+- [x] Apply corner peers to conflict highlighting, related cells, both kinds of candidate mark, and undo/redo. Check every pair of grid coordinates, including row boundaries and corners across boxes.
+- [x] Explain Anti-King hints with actual neighbor addresses and ruled-out digits. Check practice moves, multiple hints, proof paging, Finder counts, complete logical Play and solution walkthroughs.
+- [x] Check all 1,024 selections of the ten previous rendered families. Preserve all source rules; 768 compatible fixed-clue samples import and solve, while 256 samples with conflicting knight givens reject correctly. Keep the fixtures and direct completion checks independent of engine search.
+- [x] Pass 361 app tests, 220 Wasm tests, TypeScript and the production/offline build against merged main. Verify the rebuilt Wasm is byte-for-byte identical to main's engine.
+- [x] Measure candidate updates, validation, exact solving, rating, ordinary/exhaustive hints and generation. Match 20/20 seeds with 30 givens and required Anti-King. [Evidence and timing limits](tests/fixtures/README.md#anti-king-sources-and-app-coverage)
+- [ ] Pass CI and merge the complete app flow as a focused change.
+- [ ] Review the live desktop/mobile player flow when browser tooling is available. Rendered components cover grid labels, corner feedback, sharing, completion and accessible help controls.
+- [ ] Calibrate difficulty recipes before offering Anti-King in New puzzle. Native generation is available; app presets remain unavailable.
 
 ## 1. Share a reliable engine contract
 

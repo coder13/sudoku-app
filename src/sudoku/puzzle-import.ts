@@ -175,9 +175,10 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
       })
       if (!cages.length) throw new Error('This Sudoku Coach puzzle has no Killer cages.')
       rules.push({ type: 'killer-cages', cages })
-    } else if (constraint.type === 'diagonalPositive' || constraint.type === 'diagonalNegative' || constraint.type === 'antiKnight') {
+    } else if (constraint.type === 'diagonalPositive' || constraint.type === 'diagonalNegative' || constraint.type === 'antiKnight' || constraint.type === 'antiKing') {
       if (constraint.segments.length) throw new Error(`This Sudoku Coach puzzle uses unsupported cells for ${constraint.type}.`)
       if (constraint.type === 'antiKnight') rules.push({ type: 'anti-knight' })
+      else if (constraint.type === 'antiKing') rules.push({ type: 'anti-king' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })
     } else if (constraint.type === 'difference' || constraint.type === 'ratio') {
       const kind = constraint.type

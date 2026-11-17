@@ -49,7 +49,33 @@ The engine source and rebuilt app Wasm are unchanged from main at `44e734f` (3,2
 
 Exhaustive collection scans all enabled techniques before transferring eight of 23 choices. Generation matched 20/20 seeds with 30 givens, markers on all 81 cells, six attempts and 20,000 nodes per attempt. These calls exclude browser startup, worker transfer and UI rendering; the timings do not establish human difficulty or calibrated app presets. Repeat with `node --experimental-strip-types scripts/bench-variants.mjs` after building the app Wasm.
 
-## Repeating the checks
+## Anti-King sources and app coverage
+
+`anti-king-newman.json` records Philip Newman's [King of Diamonds](https://www.gmpuzzles.com/blog/2025/07/anti-king-sudoku-by-philip-newman/), published on 2025-07-03. Its 24 givens and completion were checked visually against the linked puzzle and solution PDFs. The independent counter proves one completion with Anti-King and multiple completions without it. The Coach input is authored from the public serializer's `antiKing` mapping: a global rule with empty segments and settings. It is not a constructor roundtrip.
+
+`anti-king-combined.json` contains two authored completion witnesses, one with Diagonal and one with Anti-Knight, each also satisfying connected Jigsaw regions and the local rendered clue families. A direct completed-grid checker evaluates every active rule without engine candidates or search. Tests cover all 1,024 selections of the ten previously rendered families: 768 compatible fixed-clue samples import, offer multiple hints and rate successfully. The remaining 256 samples preserve an added knight rule that conflicts with their fixed clues and reject correctly. Those outcomes describe these fixed clues; feasibility also depends on the active regions and clue parameters.
+
+`../helpers/cell-rule-oracle.ts` shares a separate row/column/box backtracker between the parity and Anti-King tests. `../helpers/parity-oracle.ts` retains the existing parity test entry point. Neither uses engine propagation, peer tables or codec code. Further tests check all corner-neighbor coordinates, concrete conflicts across boxes, row-boundary near misses, both kinds of candidate removal, move history, enabled/disabled deductions, rule-cache separation, practice, paged proofs, Finder counts, complete logical Play, solution replay, actual storage reload, sharing and completion. Three generated puzzles independently meet 30-given and required-rule targets.
+
+Rendered desktop/mobile grids check the Anti-King label, related-cell highlighting, conflict classes and accessible feedback. Workspace controls keep the named rules, hints, solutions and Finder accessible. The generated production lesson contains its rule explanation and checked practice positions. Live desktop/mobile viewport and interaction review remains open while browser tooling is unavailable. New puzzle presets remain unavailable until difficulty recipes are calibrated.
+
+The Rust source and rebuilt app Wasm are unchanged from main at `4811a05`; the Wasm is byte-for-byte identical (3,291,239 raw / 857,637 gzip bytes). On macOS arm64 / Node 26.13.0 on 2026-11-17, the benchmark measured milliseconds, median/p95:
+
+| King of Diamonds operation | Median/p95 |
+| --- | ---: |
+| Candidates | 0.006/0.007 |
+| Verify uniqueness | 0.026/0.027 |
+| Exact solve | 0.014/0.015 |
+| Native default rating | 0.112/0.117 |
+| Native default ten hints | 0.030/0.032 |
+| App-order rating | 0.143/0.149 |
+| App-order ten hints | 0.106/0.111 |
+| Exhaustive first page | 95.539/95.698 |
+| Generation with required Anti-King | 0.520/0.667; 20/20 matches |
+
+Fixed operations use five warmups and 40 samples; exhaustive collection uses five warmups and ten samples, ranking 438 choices before transferring eight. Generation uses 20 seeds, 30 givens, the Anti-King rule required, six attempts and 20,000 nodes per attempt. Repeat with `node --experimental-strip-types scripts/bench-variants.mjs`. Direct Node/Wasm timings exclude browser startup, worker transfer and rendering. Local combined-tree checks pass 361 app tests, 220 Wasm tests, TypeScript and the production/offline build.
+
+## Repeating the mixed-rule checks
 
 Run `npm test` for decoder, independent-counter, and storage contracts. Run `npm run test:wasm` for the compiled browser engine, imported-game flow, and family-subset matrix. The original mixed-rule suite is `../variant-import-wasm.mts`; Quadruple and Odd/Even have separate suites. Browser verification of the original eight-family stage on 2026-11-17 covered desktop Play and preview, 390-by-844 preview and rule dialogs, overlapping dot visibility, move/undo/redo, reload, multiple hints, the full share payload, and completion returning to the puzzle chooser.
 
