@@ -83,6 +83,14 @@ export function highlightedDigitShortcut(event: Pick<KeyboardEvent, 'altKey' | '
   return Number(/^Digit([1-9])$/.exec(event.code)?.[1]) || null
 }
 
+export function appTextZoomShortcut(event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'isComposing' | 'key' | 'metaKey'>) {
+  if (event.altKey || event.isComposing || !(event.ctrlKey || event.metaKey)) return null
+  if (event.key === '+' || event.key === '=') return 1
+  if (event.key === '-') return -1
+  if (event.key === '0') return 0
+  return null
+}
+
 export function shortcutConflict(shortcuts: ShortcutPreferences, id: EditableShortcutId, key: string) {
   return ids.find((candidate) => candidate !== id && shortcuts[candidate] === key) ?? null
 }

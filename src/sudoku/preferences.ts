@@ -1,3 +1,4 @@
+import { clampAppTextZoom, DEFAULT_APP_TEXT_ZOOM } from './app-text-zoom'
 import { DEFAULT_DIFFICULTY, currentDifficulty, isDifficultyPreference, type DifficultyPreference } from './difficulty'
 import type { CandidateLayout, ErrorMode } from './game'
 import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale'
@@ -27,6 +28,7 @@ export type AppearancePreferences = {
   darkTheme: ThemeId
   showGuides: boolean
   gridTextScale: number
+  appTextZoom: number
 }
 
 export type CandidateHighlightStyle = 'text' | 'spotlight' | 'cell' | 'outline'
@@ -52,6 +54,7 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   darkTheme: DEFAULT_DARK_THEME,
   showGuides: false,
   gridTextScale: DEFAULT_GRID_TEXT_SCALE,
+  appTextZoom: DEFAULT_APP_TEXT_ZOOM,
 }
 export const DEFAULT_HIGHLIGHT_PREFERENCES: HighlightPreferences = {
   relatedCells: true,
@@ -125,6 +128,8 @@ export function readPreferences() {
         darkTheme: darkTheme && THEME_IDS_SET.has(darkTheme) ? darkTheme : DEFAULT_APPEARANCE.darkTheme,
         showGuides: savedAppearance.showGuides === true,
         gridTextScale: clampGridTextScale(savedAppearance.gridTextScale),
+        appTextZoom: typeof savedAppearance.appTextZoom === 'number' && Number.isFinite(savedAppearance.appTextZoom)
+          ? clampAppTextZoom(Math.round(savedAppearance.appTextZoom)) : DEFAULT_APP_TEXT_ZOOM,
       }
     }
     const savedHighlighting = JSON.parse(localStorage.getItem(HIGHLIGHT_KEY) ?? 'null') as

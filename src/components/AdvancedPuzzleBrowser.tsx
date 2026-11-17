@@ -16,8 +16,8 @@ function MiniGrid({ game }: { game: Game }) {
 function puzzleStatus(game: Game) {
   if (game.source === 'draft') return game.editingId ? 'Editing saved puzzle' : 'Draft puzzle'
   const rating = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : 'Unrated'
-  if (isSolved(game)) return `${rating} · Solved in ${formatTime(game.elapsed)}`
-  if (game.started) return `${rating} · ${formatTime(game.elapsed)}`
+  if (isSolved(game)) return game.timeUntracked ? `${rating} · Solved` : `${rating} · Solved in ${formatTime(game.elapsed)}`
+  if (game.started) return `${rating} · ${game.timeUntracked ? 'In progress' : formatTime(game.elapsed)}`
   return `${rating} · Not started`
 }
 

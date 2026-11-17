@@ -38,6 +38,7 @@ export type Game = {
   future: Position[]
   actionHistory?: ActionHistoryEntry[]
   elapsed: number
+  timeUntracked?: true
   started: boolean
   candidatesInitialized?: true
   paused: boolean
@@ -88,6 +89,7 @@ export function restartGame(game: Game): Game {
     analysisUsed: game.analysisUsed,
     ratingAttempt: game.ratingAttempt && {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
+      timeUntracked: game.timeUntracked || game.ratingAttempt.timeUntracked,
     },
     saved: game.saved,
     savedForLater: game.savedForLater,
@@ -155,6 +157,10 @@ export function isSolved(game: Game): boolean {
 export function setGamePaused(game: Game, paused: boolean): Game {
   if (game.paused === paused || game.source === 'draft' || !game.started || isSolved(game)) return game
   return { ...game, paused }
+}
+
+export function markSolveUntimed(game: Game): Game {
+  return game.timeUntracked ? game : { ...game, elapsed: 0, timeUntracked: true }
 }
 
 export function progressOf(game: Game) {

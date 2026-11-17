@@ -1,11 +1,13 @@
-import { useId } from 'react'
+import { useId, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Lightbulb, Minus, PanelsTopLeft, PenTool, Plus,
   SlidersHorizontal,
 } from 'lucide-react'
+import { MAX_APP_TEXT_ZOOM, MIN_APP_TEXT_ZOOM, stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { type ErrorMode } from '../sudoku/game'
 import { CELL_REFERENCE_LABELS, type CellReferenceStyle } from '../sudoku/hints'
+import { puzzleTiming } from '../sudoku/puzzle-timing'
 import {
   gridTextScalePercentage, INPUT_SIZE_STEP, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
   stepGridTextScale,
@@ -139,9 +141,26 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
   return (
     <div className="settings-section size-settings">
       <h3>Size & layout</h3>
-      <p className="settings-intro">Adjust grid labels, puzzle text, digit buttons, and the input panel.</p>
+      <div className="setting-row-heading text-size-setting">
+        <span><strong>App text size</strong><small>Scale all text, including grid and keypad digits.</small></span>
+        <div className="size-stepper" role="group" aria-label="App text size">
+          <button className="icon-button" aria-label="Decrease app text size"
+            disabled={appearance.appTextZoom <= MIN_APP_TEXT_ZOOM}
+            onClick={() => setAppearance({
+              ...appearance,
+              appTextZoom: stepAppTextZoom(appearance.appTextZoom, -1),
+            })}><Minus size={18} /></button>
+          <output aria-label="App text size percentage">{appearance.appTextZoom}%</output>
+          <button className="icon-button" aria-label="Increase app text size"
+            disabled={appearance.appTextZoom >= MAX_APP_TEXT_ZOOM}
+            onClick={() => setAppearance({
+              ...appearance,
+              appTextZoom: stepAppTextZoom(appearance.appTextZoom, 1),
+            })}><Plus size={18} /></button>
+        </div>
+      </div>
       <GuideSetting appearance={appearance} setAppearance={setAppearance} heading={false} />
-      <div className="setting-row-heading grid-text-size-setting">
+      <div className="setting-row-heading text-size-setting">
         <span><strong>Puzzle text size</strong><small>Adjust digits and candidates in the Sudoku grid.</small></span>
         <div className="size-stepper" role="group" aria-label="Puzzle text size">
           <button className="icon-button" aria-label="Decrease puzzle text size"
@@ -238,6 +257,28 @@ const cellReferenceDescriptions: Record<CellReferenceStyle, string> = {
 }
 const cellReferenceStyles = Object.keys(CELL_REFERENCE_LABELS) as CellReferenceStyle[]
 
+function PuzzleTimingSettings() {
+  const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
+  return <fieldset>
+    <legend>Timer and pause</legend>
+    <label className="advanced-toggle">
+      <input type="checkbox" checked={timing.showTimer}
+        onChange={(event) => puzzleTiming.set('showTimer', event.target.checked)} />
+      <span><strong>Show timer</strong><small>Display elapsed time during timed solves.</small></span>
+    </label>
+    <label className="advanced-toggle">
+      <input type="checkbox" checked={timing.showPause}
+        onChange={(event) => puzzleTiming.set('showPause', event.target.checked)} />
+      <span><strong>Show pause button</strong><small>Keep a pause control next to the grid.</small></span>
+    </label>
+    <label className="advanced-toggle">
+      <input type="checkbox" checked={timing.trackTime}
+        onChange={(event) => puzzleTiming.set('trackTime', event.target.checked)} />
+      <span><strong>Track solve time</strong><small>Turning this off makes the current solve untimed.</small></span>
+    </label>
+  </fieldset>
+}
+
 export function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, setErrorMode, draft,
   cellReferenceStyle, setCellReferenceStyle,
 }: {
@@ -295,6 +336,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
         <h3>Solving style</h3>
         <p className="settings-intro">Choose how the app responds while you solve.</p>
         <div className="advanced-options">
+          <PuzzleTimingSettings />
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.autoGenerateCandidates}
               onChange={(event) => setAdvancedModes({ ...advancedModes, autoGenerateCandidates: event.target.checked })} />

@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EMPTY, enter, makeGame, paintCandidate, restartGame, STARTER_GAME, undo } from '../src/sudoku/game.ts'
-import { addRatingHints, placementHintKey, PLAYER_RATING_VERSION, type RatingAttempt, type RatingEvent } from '../src/sudoku/player-rating.ts'
+import { addRatingHints, placementHintKey, PLAYER_RATING_VERSION, ratingAttemptFor, type RatingAttempt, type RatingEvent } from '../src/sudoku/player-rating.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
 import { createPuzzleSelectionStore, puzzleSelectionKey } from '../src/sudoku/selection-preferences.ts'
+import { puzzleTiming } from '../src/sudoku/puzzle-timing.ts'
 
 class MemoryStorage {
   get length() { return Object.keys(this).length }
@@ -238,6 +239,38 @@ test('saving an imported puzzle for later preserves the selected puzzle', async 
     assert.equal(reloaded.getSnapshot().active, imported.id)
     assert.equal(reloaded.getSnapshot().games.find(({ id }) => id === imported.id)?.savedForLater, undefined)
   } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('an untimed solve stays untimed in the library and counts toward player rating', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?untimed-test')
+    const givens = '034678912672195348198342567859761423426853791713924856961537284287419635345286179'
+    const game = makeGame('untimed', 'Untimed puzzle', givens, 'generated')
+    const attempt = ratingAttemptFor({ difficulty: 'easy', points: 4, scoringVersion: 10, techniqueOrder: ['full-house'] })
+    roomStore.add({ ...game, difficulty: 'easy', elapsed: 24, started: true, ratingAttempt: attempt })
+    puzzleTiming.set('trackTime', false)
+    roomStore.update(game.id, (current) => enter(current, [0], 'value', 5))
+    const result = roomStore.getSnapshot().playerRating.results.get(game.id)
+    assert.equal(result?.event.finish, 'solved')
+    assert.equal(result?.event.elapsed, 0)
+    assert.equal(result?.speedBonus, 0)
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?untimed-reload')
+    assert.equal(reloaded.getSnapshot().games[0].timeUntracked, true)
+    assert.equal(reloaded.getSnapshot().games[0].elapsed, 0)
+    assert.deepEqual(reloaded.getSnapshot().playerRating.results.get(game.id), result)
+  } finally {
+    puzzleTiming.set('trackTime', true)
     delete (globalThis as { window?: unknown }).window
     delete (globalThis as { localStorage?: unknown }).localStorage
     delete (globalThis as { sessionStorage?: unknown }).sessionStorage

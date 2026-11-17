@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AppearancePreferences } from '../sudoku/preferences'
 import { applyTheme } from '../sudoku/themes'
 
-export function usePageAppearance(appearance: AppearancePreferences) {
+export function usePageAppearance(appearance: AppearancePreferences, preferencesReady: boolean) {
   const [systemDark, setSystemDark] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   const colorMode = appearance.colorMode === 'system' ? (systemDark ? 'dark' : 'light') : appearance.colorMode
   const activeTheme = colorMode === 'dark' ? appearance.darkTheme : appearance.lightTheme
@@ -14,6 +14,9 @@ export function usePageAppearance(appearance: AppearancePreferences) {
     query.addEventListener('change', update)
     return () => query.removeEventListener('change', update)
   }, [])
+  useEffect(() => {
+    if (preferencesReady) document.documentElement.style.setProperty('--app-text-scale', String(appearance.appTextZoom / 100))
+  }, [appearance.appTextZoom, preferencesReady])
   useEffect(() => {
     const root = document.documentElement
     root.dataset.colorMode = colorMode

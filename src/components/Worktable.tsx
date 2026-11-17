@@ -9,7 +9,7 @@ import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
+  formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
@@ -20,6 +20,7 @@ import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, r
 import { TECHNIQUE_FINDER_TITLE, techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
 import type { DesktopPuzzleView } from '../sudoku/play-preferences'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
+import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
@@ -93,7 +94,8 @@ function useTimer(id: string, running: boolean) {
       const seconds = Math.floor((performance.now() - started) / 1000)
       if (seconds < 1) return
       started += seconds * 1000
-      roomStore.update(id, (current) => ({ ...current, elapsed: current.elapsed + seconds }))
+      if (!puzzleTiming.getSnapshot().trackTime) return
+      roomStore.update(id, (current) => current.timeUntracked ? current : { ...current, elapsed: current.elapsed + seconds })
     }
 
     function handleVisibility() {
@@ -421,8 +423,16 @@ export function Worktable({
       ? { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
       : null
 
-  useTimer(game.id, !rearranging && !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
+  const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
+  const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || solved)
+  useTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
     !resetOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen && !analysisOpen)
+
+  useEffect(() => {
+    if (!timing.trackTime && !draft && !solved && game.started && !game.timeUntracked) {
+      roomStore.update(id, (current) => isSolved(current) ? current : markSolveUntimed(current))
+    }
+  }, [draft, game.started, game.timeUntracked, id, solved, timing.trackTime])
 
   const markHintVisible = useCallback(() => {
     if (!deduction || previewing || solved) return
@@ -1752,7 +1762,7 @@ export function Worktable({
       <div className="puzzle-paused" role="status" aria-label="Puzzle paused">
         <span className="puzzle-paused-icon" aria-hidden="true"><Pause size={25} /></span>
         <h2>Puzzle paused</h2>
-        <p>Your elapsed time is stopped.</p>
+        {showElapsedTime && <p>Your elapsed time is stopped.</p>}
         <button type="button" className="button primary" onClick={() => {
           roomStore.update(game.id, (current) => setGamePaused(current, false))
         }}><Play size={17} aria-hidden="true" /> Resume puzzle</button>
@@ -1770,9 +1780,9 @@ export function Worktable({
             <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
           </span>}
           {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
-          <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
+          {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
             {formatTime(game.elapsed)}
-          </span>
+          </span>}
         </div>}
         <PuzzleCollectionCredit game={game} />
         <div className="puzzle-actions">
@@ -1790,7 +1800,7 @@ export function Worktable({
               {solved && !previewing && <button className="button soft puzzle-view-toggle" aria-pressed={showSolvedGrid} onClick={() => {
                 setSolvedView(showSolvedGrid ? 'results' : 'grid')
               }}>{showSolvedGrid ? 'View results' : 'View grid'}</button>}
-              {!solved && game.started && !previewing && <button type="button" className="icon-button borderless puzzle-pause-trigger"
+              {timing.showPause && !solved && game.started && !previewing && <button type="button" className="icon-button borderless puzzle-pause-trigger"
                 aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'} title={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
                 aria-pressed={game.paused} onClick={() => {
                   setActionsOpen(false)
@@ -1917,7 +1927,7 @@ export function Worktable({
         <div><dt>Puzzle</dt><dd>{game.title}</dd></div>
         <div><dt>Status</dt><dd>{placeholder ? 'Waiting for puzzle' : solved ? 'Solved' : game.paused ? 'Paused' : game.started ? 'In progress' : 'Not started'}</dd></div>
         <div><dt>Difficulty</dt><dd>{difficulty ? formatPuzzleRating(difficulty, score) : 'Unrated'}</dd></div>
-        <div><dt>Elapsed time</dt><dd>{formatTime(game.elapsed)}</dd></div>
+        {showElapsedTime && <div><dt>Elapsed time</dt><dd>{formatTime(game.elapsed)}</dd></div>}
         <div><dt>Givens</dt><dd>{clueCount}</dd></div>
         <div><dt>Placed digits</dt><dd>{placedDigitCount}</dd></div>
         <div><dt>Candidates</dt><dd>{candidateTotal}</dd></div>
@@ -2036,7 +2046,8 @@ export function Worktable({
         </div>
       </Modal>}
       <Modal title="Reset puzzle" open={resetOpen} onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
-        <p>Remove all placed digits, candidates, colors, and elapsed time from this puzzle?</p>
+        <p>{game.timeUntracked ? 'Remove all placed digits, candidates, and colors from this puzzle?'
+          : 'Remove all placed digits, candidates, colors, and elapsed time from this puzzle?'}</p>
         <div className="dialog-actions">
           <button className="button secondary" onClick={() => setResetOpen(false)}>Cancel</button>
           <button className="button danger" onClick={() => {
