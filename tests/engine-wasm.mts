@@ -14,6 +14,7 @@ import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hi
 import { generatePlayableVariant, playCandidates } from '../src/sudoku/variant-play.ts'
 import { validVariantSave } from '../src/sudoku/variants.ts'
 import { saveSolverProfile } from '../src/sudoku/solver-profile.ts'
+import { workedExampleSeed } from '../src/sudoku/worked-examples.ts'
 
 const SPARSE = '345000000000200010000000000020100000000004500600000007800750000000060040000000300'
 const TEMPLATE = '000500000600000309000008200000000000538000000000007001200090000001000007000300080'
@@ -1245,7 +1246,7 @@ test('each Classic Learn drill generates a different grid with a verified walkth
     if (!examples[technique]) continue
     let exclude = lessonValues(examples[technique].practice)
     for (let repeat = 0; repeat < 2; repeat++) {
-      const generated = await run({ type: 'generate-practice-example', technique, seed: 27, exclude })
+      const generated = await run({ type: 'generate-practice-example', technique, seed: workedExampleSeed(technique, repeat + 1), exclude })
       const values = lessonValues(generated)
       assert.notEqual(values, exclude, technique)
       assert.equal(generated.deduction.technique, technique)
@@ -1262,6 +1263,28 @@ test('each Classic Learn drill generates a different grid with a verified walkth
       exclude = values
     }
   }
+})
+
+test('a fixed worked-example sequence gives the same verified boards to each player', async () => {
+  const { run } = engineRequests()
+  const technique = 'wxyz-wing'
+  const [initial] = await run({ type: 'practice-examples', technique })
+  const sequence = async () => {
+    const examples: string[] = []
+    let exclude = lessonValues(initial)
+    for (const number of [1, 2, 3]) {
+      const exercise = await run({ type: 'generate-practice-example', technique, seed: workedExampleSeed(technique, number), exclude })
+      assert.equal(exercise.deduction.technique, technique)
+      const grid = lessonValues(exercise)
+      assert.notEqual(grid, exclude)
+      examples.push(grid)
+      exclude = grid
+    }
+    return examples
+  }
+  const firstPlayer = await sequence()
+  assert.equal(new Set(firstPlayer).size, 3)
+  assert.deepEqual(await sequence(), firstPlayer)
 })
 
 test('variant Learn drills offer distinct boards with checkable moves and rule clues', async () => {

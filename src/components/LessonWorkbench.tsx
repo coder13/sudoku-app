@@ -185,7 +185,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     }
   }
 
-  return <div className="lesson-workbench" data-ready={ready} role="group" aria-label={`${label} and input tools`} onKeyDown={keyDown} style={{ '--board-font-scale': preferences.appearance.gridTextScale } as CSSProperties}>
+  return <div className="lesson-workbench" data-ready={ready} data-preview={preview || undefined} role="group" aria-label={preview ? label : `${label} and input tools`} onKeyDown={keyDown} style={{ '--board-font-scale': preferences.appearance.gridTextScale } as CSSProperties}>
     <div className="lesson-board" style={region ? { '--diagram-columns': region.columns } as CSSProperties : undefined}>
       <Board givens={puzzle.givens} values={values} position={shownGame.position} region={region} errors={errors} variantPuzzle={puzzle.variantPuzzle}
         annotations={showAnnotations ? annotations : undefined} showGuides={Boolean(region) || preferences.appearance.showGuides}
@@ -217,7 +217,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
       </ul>}
     </div>
     {guide && <div className="lesson-workbench-guide" ref={guidePanel}>{guide(ready)}</div>}
-    <div className="lesson-workbench-tools" ref={tools}>
+    {!preview && <div className="lesson-workbench-tools" ref={tools}>
       <Controls mode={mode} pencil={pencil} togglePencil={togglePencil} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
         advancedModes={preferences.advancedModes} colorMode={colorMode} colorTarget={colorTarget}
         setColorTarget={(target) => { setColorTarget(target); setSelectedColor(null) }} toggleColorMode={toggleColor}
@@ -230,6 +230,6 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
         disabled={!annotations} onClick={() => setShowAnnotations(!showAnnotations)}>{guide ? 'Grid highlights' : 'Explanation highlights'}</button>}
       {children ? children({ actions, reset, reveal })
         : <button type="button" className="button secondary" onClick={reset}>Reset grid</button>}
-    </div>
+    </div>}
   </div>
 }

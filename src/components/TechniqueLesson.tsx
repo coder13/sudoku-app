@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
-import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { runEngine, type LessonExample } from '../sudoku/engine'
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { runEngine } from '../sudoku/engine'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonExample, variantLessonExercise, type EngineLessonExample, type LessonExercise } from '../sudoku/lesson-examples'
 import { articles, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
+import { loadWorkedExample, readWorkedExampleNumber, saveWorkedExampleNumber, type WorkedExample } from '../sudoku/worked-examples'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardRegion } from './BoardAnnotations'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
@@ -14,24 +15,28 @@ import { SelectControl } from './SelectControl'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
 
-export function Diagram({ example, crop, copy }: {
-  example: LessonExample & Pick<LessonExercise, 'variantPuzzle'>
+export function Diagram({ example, crop, copy, preview = false, fallbackReason }: {
+  example: WorkedExample
   crop?: BoardRegion
   copy?: Extract<LessonBlock, { type: 'diagram' }>['copy']
+  preview?: boolean
+  fallbackReason?: string
 }) {
   const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
-  const view = crop ?? (example.variantPuzzle ? undefined : region)
+  const view = crop ?? (example.variantPuzzle || preview ? undefined : region)
   const results = copy?.results ?? defaultResults
   const trace = copy?.trace ?? defaultTrace
   const strong = annotations.links?.some((link) => !link.dashed)
   const weak = annotations.links?.some((link) => link.dashed && !link.arrow)
+  const summary = copy?.description ?? description
+  const explanation = copy?.reason ?? (reason || fallbackReason)
   return (
     <figure className="lesson-diagram">
-      <LessonWorkbench puzzle={example} region={view} annotations={annotations} label="Sudoku diagram" />
+      <LessonWorkbench puzzle={example} region={view} annotations={annotations} label="Sudoku diagram" preview={preview} />
       <figcaption>
-        <p>{copy?.description ?? description}</p>
+        {summary && <p>{summary}</p>}
         {reasonSteps && !copy?.reason ? <ol className="lesson-reason-steps">{reasonSteps.map((step, index) => <li key={index}>{step}</li>)}</ol>
-          : <p>{copy?.reason ?? reason}</p>}
+          : explanation && <p>{explanation}</p>}
         {results.length === 1 ? <p className="lesson-outcomes">{results[0]}</p>
           : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}>{result}</li>)}</ul>}
         {(accentLabel || strong || weak) && <div className="lesson-legend" aria-label="Diagram key">
@@ -53,6 +58,74 @@ export function Diagram({ example, crop, copy }: {
       </figcaption>
     </figure>
   )
+}
+
+function WorkedExampleViewer({ technique, fallbackReason }: { technique: string; fallbackReason?: string }) {
+  const initial = useMemo(() => lessonExample(lessonExamples[technique]), [technique])
+  const latestRequest = useRef(0)
+  const [current, setCurrent] = useState<{ number: number; example: WorkedExample; last?: number }>()
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+
+  const showExample = useCallback(async (number: number) => {
+    const request = ++latestRequest.current
+    setStatus('loading')
+    try {
+      const entry = await loadWorkedExample(technique, number, initial)
+      if (request !== latestRequest.current) return
+      await saveWorkedExampleNumber(technique, number)
+      if (request !== latestRequest.current) return
+      setCurrent({ ...entry, number })
+      setStatus('idle')
+    } catch {
+      if (request === latestRequest.current) setStatus('error')
+    }
+  }, [technique, initial])
+
+  useEffect(() => {
+    const request = latestRequest.current
+    void readWorkedExampleNumber(technique).then(number => {
+      if (request === latestRequest.current && typeof number === 'number' && Number.isSafeInteger(number) && number > 0) {
+        void showExample(number)
+      }
+    })
+    return () => { latestRequest.current++ }
+  }, [showExample, technique])
+
+  const loading = status === 'loading'
+  return <>
+    <div className="lesson-example-controls" role="group" aria-label="Example navigation">
+      {current ? <>
+        <button type="button" className="button secondary" disabled={loading || current.number === 1}
+          onClick={() => void showExample(current.number - 1)}>Previous example</button>
+        <span>{loading ? 'Loading…' : `Example ${current.number}`}</span>
+        <button type="button" className="button secondary" disabled={loading || current.number === current.last}
+          onClick={() => void showExample(current.number + 1)}>Next example</button>
+      </> : <button type="button" className="button secondary" disabled={loading}
+        onClick={() => void showExample(1)}>{loading ? 'Loading example…' : 'Show example'}</button>}
+    </div>
+    <p role="status" className={status === 'error' ? 'lesson-new-example-error' : 'sr-only'}>
+      {loading ? 'Loading example…' : status === 'error' ? 'Could not load the example. Try again.' : current ? `Example ${current.number} ready.` : ''}
+    </p>
+    {current && <Diagram key={current.number} example={current.example} fallbackReason={fallbackReason} preview />}
+  </>
+}
+
+function WorkedExamples({ block, variant }: { block: Extract<LessonBlock, { type: 'practice' }>; variant: string }) {
+  const { drills, selectLabel } = block
+  const [technique, setTechnique] = useState(() => drills.find(({ example }) => example === variant)?.example ?? drills[0].example)
+  const heading = useId()
+  return <section className="surface lesson-worked-examples" aria-labelledby={heading}>
+    <header className="lesson-practice-heading">
+      <h2 id={heading}>Worked examples</h2>
+      {drills.length > 1 && <label className="lesson-drill">
+        <span>{selectLabel ?? 'Technique'}</span>
+        <SelectControl value={technique} onChange={event => setTechnique(event.target.value)}>
+          {drills.map(({ example, title }) => <option key={example} value={example}>{title}</option>)}
+        </SelectControl>
+      </label>}
+    </header>
+    <WorkedExampleViewer key={technique} technique={technique} fallbackReason={block.guide?.reason} />
+  </section>
 }
 
 export function Practice({ block, variant }: { block: Extract<LessonBlock, { type: 'practice' }>; variant: string }) {
@@ -126,7 +199,10 @@ export function Block({ block, variant }: { block: LessonBlock; variant: string 
     case 'text': return <>{block.paragraphs.map((paragraph, index) => <p className="article-paragraph" key={index}>{paragraph}</p>)}</>
     case 'list': return <ul className="article-list">{block.items.map((item, index) => <li key={index}>{item}</li>)}</ul>
     case 'diagram': return <Diagram example={lessonExample(lessonExamples[block.example])} crop={block.region} copy={block.copy} />
-    case 'practice': return <Practice block={block} variant={variant} />
+    case 'practice': return <>
+      <WorkedExamples block={block} variant={variant} />
+      <Practice block={block} variant={variant} />
+    </>
   }
 }
 

@@ -150,7 +150,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-proof summary { color: var(--dark-purple); font-weight: 700; cursor: pointer; }
 .lesson-proof > div { margin-top: var(--space-8); }
 .lesson-proof ol { margin: 7px 0; padding-inline-start: 1.5em; }
-.lesson-practice {
+.lesson-practice, .lesson-worked-examples {
   display: grid;
   gap: 15px;
   margin-block: var(--space-8);
@@ -159,6 +159,9 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-practice-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-8) var(--space-16); }
 .lesson-practice-heading h2 { font-size: 21px; line-height: 1.3; }
 .lesson-practice-heading-actions { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); min-width: 0; }
+.lesson-example-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.lesson-example-controls .button { min-height: 44px; padding-inline: var(--space-8); font-size: 13px; }
+.lesson-example-controls span { font-size: 13px; font-variant-numeric: tabular-nums; }
 .lesson-new-example { min-height: 44px; }
 .lesson-new-example-error { font-size: 14px; color: var(--muted); }
 .lesson-drill { display: grid; gap: 3px; min-width: 0; max-width: 100%; font-size: 13px; font-weight: 680; }
@@ -171,6 +174,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   background: var(--surface-raised);
 }
 .lesson-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: var(--space-16); align-items: start; min-width: 0; font-size: 14px; line-height: 1.5; }
+.lesson-workbench[data-preview] { grid-template-columns: minmax(0, 1fr); }
 .lesson-workbench .board-frame { max-width: min(470px, calc(var(--diagram-columns, 9) * 46px + 20px)); margin-inline: auto; }
 .lesson-workbench-tools { display: grid; align-content: start; gap: var(--space-12); min-width: 0; }
 .lesson-workbench .controls { width: 100%; height: auto; padding: var(--space-8); }
