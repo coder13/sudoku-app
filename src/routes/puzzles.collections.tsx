@@ -8,6 +8,7 @@ export type CollectionSearch = {
   puzzle?: string
   difficulty?: Difficulty
   status?: CollectionPuzzleStatus
+  view?: 'all'
 }
 
 export const Route = createFileRoute('/puzzles/collections')({
@@ -16,6 +17,7 @@ export const Route = createFileRoute('/puzzles/collections')({
     puzzle: typeof search.puzzle === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(search.puzzle) ? search.puzzle : undefined,
     difficulty: isDifficulty(search.difficulty) ? search.difficulty : undefined,
     status: search.status === 'unplayed' || search.status === 'in-progress' || search.status === 'solved' ? search.status : undefined,
+    view: search.view === 'all' ? 'all' : undefined,
   }),
   component: () => null,
 })

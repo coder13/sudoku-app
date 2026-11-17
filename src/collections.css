@@ -1,6 +1,7 @@
 .collection-section > header { display: grid; }
 .collection-back { display: inline-flex; align-items: center; gap: 4px; justify-self: start; min-height: 44px; color: var(--muted); font-size: 13px; text-decoration: none; }
 .collection-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.collection-card:only-child { grid-column: 1 / -1; }
 .collection-card {
   display: grid; align-content: start; grid-template-rows: auto auto auto 1fr auto auto; gap: 12px;
   padding: 24px; border: 1px solid var(--border); border-radius: 16px;

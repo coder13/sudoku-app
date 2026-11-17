@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { gzipSync } from 'node:zlib'
 import {
-  COLLECTIONS, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus, findCollectionGame, getGameCollection,
+  COLLECTIONS, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus, collectionSelection,
+  discoverCollections, findCollectionGame, getGameCollection,
   nextCollectionPuzzle, type CollectionPuzzle,
 } from '../src/sudoku/collections.ts'
 import { isCollectionReference } from '../src/sudoku/collection-reference.ts'
@@ -74,6 +76,42 @@ test('difficulty groups cover each catalog without mixing levels', () => {
   }
 })
 
+test('the handmade starter selection has six puzzles per difficulty without copying or losing catalog entries', () => {
+  const starter = collectionSelection(collection, 'starter')
+  assert.equal(collection.kind, 'handmade')
+  assert.equal(starter.length, 18)
+  assert.equal(new Set(collection.starterPuzzleIds).size, 18)
+  assert.deepEqual(starter.map(puzzle => puzzle.id), collection.starterPuzzleIds)
+  assert.ok(starter.every(puzzle => collection.puzzles.includes(puzzle)))
+  const full = collectionSelection(collection)
+  assert.equal(full.length, collection.puzzles.length)
+  assert.equal(new Set(full.map(puzzle => puzzle.id)).size, full.length)
+  for (const difficulty of collectionDifficulties(collection)) {
+    const first = collectionPuzzles(collection, difficulty, 'starter')
+    assert.equal(first.length, 6)
+    assert.deepEqual(collectionPuzzles(collection, difficulty).slice(0, 6), first)
+    assert.equal(collectionProgress(collection, [], difficulty, 'starter').unplayed, 6)
+  }
+})
+
+test('discovery starts with handmade puzzles and retains previously opened collections', () => {
+  assert.ok(discoverCollections([]).every(collection => collection.kind === 'handmade'))
+  assert.deepEqual(discoverCollections([], true), COLLECTIONS)
+  const legacy = COLLECTIONS.find(collection => collection.kind === 'generated')!
+  const puzzle = legacy.puzzles[0]
+  const saved = { ...makeGame('legacy', puzzle.title, puzzle.givens, 'collection'),
+    collection: { collectionId: legacy.id, puzzleId: puzzle.id } }
+  assert.ok(discoverCollections([saved]).includes(legacy))
+  assert.ok(!discoverCollections([{ ...saved, givens: EMPTY }]).includes(legacy))
+})
+
+test('the offline catalog stays within 12 KiB compressed and 64 KiB uncompressed', () => {
+  const data = Buffer.from(JSON.stringify(COLLECTIONS))
+  assert.ok(data.byteLength <= 64 * 1024, `Catalog is ${data.byteLength} bytes`)
+  const compressed = gzipSync(data).byteLength
+  assert.ok(compressed <= 12 * 1024, `Compressed catalog is ${compressed} bytes`)
+})
+
 test('next puzzle skips solved grids, stays in one difficulty, and stops when complete', () => {
   // Permute a published grid and its known solution to make distinct valid fixtures.
   const swap = (digits: string, digit: string) => [...digits].map(value => value === '1' ? digit : value === digit ? '1' : value).join('')
@@ -94,6 +132,14 @@ test('next puzzle skips solved grids, stays in one difficulty, and stops when co
   assert.deepEqual(collectionProgress(set, finished.slice(0, 3), 'easy'), { unplayed: 0, 'in-progress': 0, solved: 3 })
   assert.equal(nextCollectionPuzzle(set, finished.slice(0, 3), 'easy', puzzles[2].id), undefined)
   assert.equal(nextCollectionPuzzle(set, finished.slice(0, 3), 'hard')?.id, puzzles[3].id)
+
+  const curated = { ...set, starterPuzzleIds: [puzzles[2].id, puzzles[0].id] }
+  assert.equal(nextCollectionPuzzle(curated, [], 'easy')?.id, puzzles[2].id)
+  assert.equal(nextCollectionPuzzle(curated, [finished[2]], 'easy', puzzles[2].id)?.id, puzzles[0].id)
+  // Completing the small starter set continues into the rest of the same difficulty.
+  assert.equal(nextCollectionPuzzle(curated, [finished[2], finished[0]], 'easy', puzzles[0].id)?.id, puzzles[1].id)
+  assert.equal(nextCollectionPuzzle(curated, finished.slice(0, 3), 'easy', puzzles[1].id), undefined)
+  assert.equal(collectionProgress(curated, [finished[2], finished[0]], 'easy', 'starter').solved, 2)
 })
 
 class MemoryStorage {

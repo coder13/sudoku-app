@@ -103,7 +103,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         <div className="completion-footer">
           {collectionEntry && progress && collectionDifficulty && <p className="completion-collection-progress">
             {collectionEntry.collection.title} · {DIFFICULTY_LABELS[collectionDifficulty]}<br />
-            {progress.solved} of {progress.solved + progress.unplayed + progress['in-progress']} solved
+            {progress.solved} {progress.solved === 1 ? 'puzzle' : 'puzzles'} solved
           </p>}
           {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
           <div className="completion-actions">

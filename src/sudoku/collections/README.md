@@ -21,6 +21,25 @@ The collection page, each preview, and the play view retain creator credit and a
 license link. Collection pages also link to the source and state the changes.
 These puzzle permissions are separate from the app's code.
 
+### Starter selection
+
+New players see Nikoli first, with six puzzles at each available difficulty.
+The 18 starter IDs in `../collections.ts` refer to the existing catalog records.
+No puzzle grids are copied or added for this view. The original titles, credits,
+IDs, and saved progress remain intact.
+
+The Easy selection spans naked and hidden singles. Medium introduces locked
+pairs, claiming, pointing, hidden pairs, naked triples, and hidden triples.
+Hard includes X-Wings and Swordfish. Each selection progresses by app score.
+These are app selections of puzzles authored by Nikoli, not a new endorsement
+or selection by Nikoli. The solver checks correctness and technique coverage;
+it does not replace a person's authorship or establish enjoyment.
+
+Players can browse the full collection at any time. The next-puzzle action
+plays the starter puzzles first, then continues through the remaining puzzles
+at the same difficulty. It skips solved grids and preserves any existing game.
+The completion screen shows the solved count without a large target total.
+
 ## Sudoku Exchange Selection
 
 - Creator: **Grant McLean / Sudoku Exchange**.
@@ -36,6 +55,28 @@ These puzzle permissions are separate from the app's code.
 - The source ID and Sukaku Explainer rating remain in each record.
   The app displays its own difficulty, not the source's category.
 - This is an automated selection of generated puzzles, not a handmade set.
+
+This older collection remains accessible through **Browse all collections** and
+saved puzzle links. It also remains visible for players who already opened one
+of its puzzles. New players start with the handmade selection.
+
+## Authorship and size
+
+New collections need evidence of a person's authorship or editorial selection,
+as well as explicit reuse terms. A bulk generator output or an automated
+difficulty filter alone is not sufficient. Record that evidence alongside the
+source and license. Label generated collections honestly.
+
+The Sudoku Garden and Park datasets are not bundled. The LiveSudoku booklets
+are not bundled because their license alone does not establish human authorship.
+No new outside puzzle set was imported for the starter selection.
+
+Store grids and source metadata as text. Do not bundle source PDFs, images,
+solutions, or solve traces. The full serialized catalog has a test budget of
+64 KiB uncompressed and 12 KiB gzip. The existing catalogs stay available
+offline after the first app download, without per-puzzle network requests.
+Measure the production client before and after any catalog expansion; a data
+budget alone does not account for UI code or other cached assets.
 
 ## Update ratings
 
@@ -68,6 +109,7 @@ the source reference. The play view uses the current engine for player ratings.
 Each collection opens with a required difficulty choice. Counts and progress in
 the puzzle list apply to that difficulty. The completion screen and the next
 puzzle shortcut continue in source order within the same collection difficulty.
+The starter selection comes first, followed by the remaining source order.
 They skip solved puzzles and wrap to earlier unfinished puzzles at the end.
 They stop when the difficulty is complete. The catalog difficulty controls this
 sequence, even if the player's current technique order produces a different rating.
