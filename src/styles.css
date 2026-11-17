@@ -1896,6 +1896,21 @@ svg { flex-shrink: 0; }
 .empty-board { grid-area: puzzle; display: grid; justify-items: center; align-content: center; gap: var(--space-14); min-height: 300px; }
 
 .completion-frame { container-type: inline-size; }
+/* Results use the available workspace height, including resized desktop panels. */
+.standard-puzzle-stack:has([data-completion]) { display: block; height: 100%; overflow: hidden; }
+.dock-puzzle-panel:has([data-completion]) { overflow: hidden; }
+.puzzle-column:has([data-completion]) { height: 100%; min-height: 0; container-type: inline-size; }
+.puzzle[data-completion] { height: 100%; max-height: calc(100cqw + 96px); min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+.puzzle[data-completion] .puzzle-stage { min-height: 0; }
+.puzzle[data-completion] .completion-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  container: completion / size;
+}
+.puzzle[data-completion] .completion { height: 100%; aspect-ratio: auto; }
+.puzzle[data-completion] .puzzle-collection-credit { margin-top: var(--space-6); }
 .completion {
   grid-area: board;
   width: 100%;
@@ -1911,6 +1926,20 @@ svg { flex-shrink: 0; }
   background: var(--surface-soft);
   overflow: hidden;
 }
+.completion-results { display: flex; flex-direction: column; }
+.completion-summary {
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: max-content;
+  flex: 1 1 auto;
+  align-content: safe center;
+  gap: inherit;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.completion-summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.completion-footer { flex: none; display: grid; gap: inherit; }
 .completion-heading { display: grid; justify-items: center; gap: 5px; text-align: center; }
 .completion-heading h1 {
   color: var(--muted);
@@ -1987,8 +2016,8 @@ svg { flex-shrink: 0; }
 .completion-techniques-panel li + li { border-top: 1px solid var(--border); }
 .completion-techniques-panel li strong { font-size: 12px; }
 .completion-techniques-panel li small { color: var(--muted); font-size: 10px; line-height: 1.35; }
-.completion:has(.action-history[open]) { aspect-ratio: auto; }
 .action-history .completion-techniques-panel { max-height: min(240px, 50cqw); overscroll-behavior: contain; }
+.completion-summary .action-history .completion-techniques-panel { max-height: none; overflow: visible; }
 .action-history li small { font-size: 12px; }
 .action-history-heading { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
 .action-history-number, .action-history-time { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -1998,7 +2027,7 @@ svg { flex-shrink: 0; }
 .completion-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
 .completion-actions .button { white-space: normal; }
 .completion-next { grid-column: 1 / -1; }
-.difficulty-choice { align-content: safe center; }
+.difficulty-choice { align-content: safe center; overflow-y: auto; }
 .difficulty-heading {
   position: relative;
   min-height: 45px;
@@ -2032,7 +2061,7 @@ svg { flex-shrink: 0; }
 .difficulty-options button:disabled { opacity: .55; }
 
 @container (max-width: 360px) {
-  .completion { padding: var(--space-12); gap: var(--space-10); overflow: auto; }
+  .completion { padding: var(--space-12); gap: var(--space-10); }
   .completion-icon { width: 30px; height: 30px; margin-bottom: 0; }
   .completion-heading p, .completion-stats { display: none; }
   .completion-result > div { padding: var(--space-8) 5px; }
@@ -2835,6 +2864,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .mobile-hint-panel .hint-card p { margin-top: 7px; }
 
+  .standard-workspace-page:has(.mobile-completion-layout) { overflow: hidden; }
+  .mobile-completion-layout { grid-area: 1 / 1 / -1 / -1; height: 100%; min-height: 0; }
+  .mobile-completion .puzzle { max-height: none; }
   .mobile-completion .completion-frame { display: block; width: 100%; }
   .mobile-completion .completion {
     aspect-ratio: auto;
@@ -2843,7 +2875,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     border: 1px solid var(--border);
     border-radius: 14px;
     background: var(--surface);
-    overflow: visible;
+    overflow: hidden;
   }
   .mobile-completion .completion-heading {
     grid-template-columns: 32px minmax(0, 1fr);
@@ -2900,6 +2932,25 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     grid-template-columns: 18px minmax(0, 1fr) auto 18px;
     gap: var(--space-6);
   }
+}
+
+@container completion (height < 440px) {
+  .completion-frame .completion-results { padding: var(--space-12); gap: var(--space-8); }
+  .completion-summary { gap: var(--space-6); }
+  .completion-results .completion-heading { display: block; text-align: center; }
+  .completion-results .completion-heading :is(.completion-icon, p) { display: none; }
+}
+
+@container completion (height < 360px) and (width > 520px) {
+  .completion-frame .completion-results {
+    display: grid;
+    grid-template: minmax(0, 1fr) / repeat(2, minmax(0, 1fr));
+    align-content: stretch;
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-8);
+  }
+  .completion-summary { max-height: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

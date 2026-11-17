@@ -72,53 +72,57 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   return (
     <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
       aria-labelledby="completion-title">
-      <div className="completion">
-        <header className="completion-heading">
-          <span className="completion-icon" aria-hidden="true"><CircleCheck size={29} /></span>
-          <h1 id="completion-title" ref={heading} tabIndex={-1}>Puzzle solved</h1>
-          <p>{game.title}</p>
-        </header>
-        <dl className="completion-result">
-          <div><dt>Solve time</dt><dd>{formatTime(game.elapsed)}</dd></div>
-          <div>
-            <dt>Difficulty</dt>
-            <dd>
-              {ratingPending ? <span role="status">Rating…</span> : ratingLabel}
-              {game.generatedWithAuto && <small className="completion-mode">Auto</small>}
-            </dd>
+      <div className="completion completion-results">
+        <div className="completion-summary" role="region" aria-label="Solve details" tabIndex={0}>
+          <header className="completion-heading">
+            <span className="completion-icon" aria-hidden="true"><CircleCheck size={29} /></span>
+            <h1 id="completion-title" ref={heading} tabIndex={-1}>Puzzle solved</h1>
+            <p>{game.title}</p>
+          </header>
+          <dl className="completion-result">
+            <div><dt>Solve time</dt><dd>{formatTime(game.elapsed)}</dd></div>
+            <div>
+              <dt>Difficulty</dt>
+              <dd>
+                {ratingPending ? <span role="status">Rating…</span> : ratingLabel}
+                {game.generatedWithAuto && <small className="completion-mode">Auto</small>}
+              </dd>
+            </div>
+          </dl>
+          {result?.event.finish === 'solved' && ratingChange !== undefined ? <div className="completion-player-rating">
+            <strong>Player rating {Math.round(result.after)} ({ratingChange >= 0 ? '+' : '−'}{Math.abs(ratingChange)})</strong>
+            {result.speedBonus >= 0.05 && <small>Speed bonus +{Number(result.speedBonus.toFixed(1))}</small>}
+            {result.fixedCalibration && <small>Auto will use {DIFFICULTY_LABELS[result.recommended]} when you choose it.</small>}
+          </div> : null}
+          <dl className="completion-stats">
+            <div><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
+            {game.difficulty && <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
+          </dl>
+          <ActionHistoryPanel entries={game.actionHistory} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
+        </div>
+        <div className="completion-footer">
+          {collectionEntry && progress && collectionDifficulty && <p className="completion-collection-progress">
+            {collectionEntry.collection.title} · {DIFFICULTY_LABELS[collectionDifficulty]}<br />
+            {progress.solved} of {progress.solved + progress.unplayed + progress['in-progress']} solved
+          </p>}
+          {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
+          <div className="completion-actions">
+            {collectionEntry && !collectionNext ? <p className="completion-collection-complete" role="status">
+              {progress && progress.unplayed === 0 && progress['in-progress'] === 0
+                ? 'You solved all the puzzles at this difficulty.' : 'No next puzzle is available at this difficulty.'}
+            </p> : <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
+              onClick={playNext}>
+              {collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
+              {!busy && <ArrowRight size={18} aria-hidden="true" />}
+            </button>}
+            {collectionEntry ? <>
+              <Link className="button secondary" to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
+              <Link className="button secondary" to="/puzzles">Choose a different puzzle</Link>
+            </> : <>
+              <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
+              <button className="button secondary" aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</button>
+            </>}
           </div>
-        </dl>
-        {result?.event.finish === 'solved' && ratingChange !== undefined ? <div className="completion-player-rating">
-          <strong>Player rating {Math.round(result.after)} ({ratingChange >= 0 ? '+' : '−'}{Math.abs(ratingChange)})</strong>
-          {result.speedBonus >= 0.05 && <small>Speed bonus +{Number(result.speedBonus.toFixed(1))}</small>}
-          {result.fixedCalibration && <small>Auto will use {DIFFICULTY_LABELS[result.recommended]} when you choose it.</small>}
-        </div> : null}
-        <dl className="completion-stats">
-          <div><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
-          {game.difficulty && <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
-        </dl>
-        <ActionHistoryPanel entries={game.actionHistory} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
-        {collectionEntry && progress && collectionDifficulty && <p className="completion-collection-progress">
-          {collectionEntry.collection.title} · {DIFFICULTY_LABELS[collectionDifficulty]}<br />
-          {progress.solved} of {progress.solved + progress.unplayed + progress['in-progress']} solved
-        </p>}
-        {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
-        <div className="completion-actions">
-          {collectionEntry && !collectionNext ? <p className="completion-collection-complete" role="status">
-            {progress && progress.unplayed === 0 && progress['in-progress'] === 0
-              ? 'You solved all the puzzles at this difficulty.' : 'No next puzzle is available at this difficulty.'}
-          </p> : <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
-            onClick={playNext}>
-            {collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
-            {!busy && <ArrowRight size={18} aria-hidden="true" />}
-          </button>}
-          {collectionEntry ? <>
-            <Link className="button secondary" to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
-            <Link className="button secondary" to="/puzzles">Choose a different puzzle</Link>
-          </> : <>
-            <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
-            <button className="button secondary" aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</button>
-          </>}
         </div>
       </div>
     </section>
