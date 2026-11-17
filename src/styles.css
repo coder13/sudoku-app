@@ -249,8 +249,10 @@ svg { flex-shrink: 0; }
 .advanced-workspace-page .workspace { gap: 0; }
 .desktop-play-resizable { position: relative; }
 .desktop-play-resizable .standard-workspace-page {
-  width: var(--desktop-layout-base-width);
-  padding-inline: 1em;
+  width: fit-content;
+  max-width: var(--desktop-layout-base-width);
+  /* The puzzle column adds 8px on the left; match that beside the input panel. */
+  padding-inline: 1em calc(1em + var(--space-8));
   zoom: var(--desktop-layout-scale);
 }
 .desktop-play-resizable .workspace:has(> .desktop-layout-divider) {
@@ -265,7 +267,7 @@ svg { flex-shrink: 0; }
   position: absolute;
   z-index: 8;
   inset: calc(var(--topbar-height) + env(safe-area-inset-top, 0px)) 0 env(safe-area-inset-bottom, 0px);
-  width: var(--desktop-layout-width);
+  width: calc(var(--desktop-layout-content-width, var(--desktop-layout-base-width)) * var(--desktop-layout-scale));
   margin-inline: auto;
   pointer-events: none;
 }
