@@ -44,6 +44,10 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
+  'anti-king': {
+    name: 'Anti-King',
+    rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
+  },
   parity: {
     name: 'Odd/Even',
     rule: 'Cells with a circle contain an odd digit (1, 3, 5, 7, or 9). Cells with a square contain an even digit (2, 4, 6, or 8). Unmarked cells allow either.',
@@ -165,6 +169,9 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       const columns = Math.abs(a % 9 - b % 9)
       return rows * columns === 2
     }
+    if (rule.type === 'anti-king') {
+      return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) === 1 && Math.abs(a % 9 - b % 9) === 1
+    }
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
     if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
     if (rule.type === 'thermometer') return rule.cells.includes(a) && rule.cells.includes(b)
@@ -203,7 +210,7 @@ function isPlayableRule(rule: VariantRule): boolean {
     case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
-    case 'anti-knight': return true
+    case 'anti-knight': case 'anti-king': return true
     case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
     case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
     case 'thermometer': return validCells(rule.cells, 2)
@@ -256,6 +263,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   kropki: VARIANTS.kropki.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
   parity: PUZZLE_VARIANTS.parity.name,
+  'anti-king': PUZZLE_VARIANTS['anti-king'].name,
 }
 
 /** Describe the active puzzle independently of its generation recipe. */
@@ -275,6 +283,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'anti-king':
+        descriptions.push(PUZZLE_VARIANTS['anti-king'].rule)
+        break
       case 'parity':
         descriptions.push(rule.parity === 'odd'
           ? 'Cells with a circle contain an odd digit: 1, 3, 5, 7, or 9.'

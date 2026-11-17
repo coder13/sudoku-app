@@ -101,6 +101,8 @@ for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixe
     playPreferences.DEFAULT_PLAY_PREFERENCES.desktopViews = { open: ['solution', 'techniques'], active: 'techniques' }
     try {
       const standard = worktableTree(id, 'standard')
+      if (id !== 'classic') assert.ok(standard.some(({ type, props }) => type === 'button' &&
+        props['aria-label'] === `${PUZZLE_VARIANTS[id].name} Sudoku rules`), 'Global and local rules must remain discoverable')
       assert.ok(standard.some(({ props }) => props['data-insight-tab'] === 'solution'))
       assert.ok(standard.some(({ props }) => props['data-insight-tab'] === 'techniques'))
       assert.ok(standard.some(({ type }) => typeof type === 'function' && type.name === 'PuzzleAnalysisContents'))

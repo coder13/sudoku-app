@@ -81,6 +81,12 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         case 'anti-knight':
           description = 'The highlighted cells are a chess knight’s move apart, so they must contain different digits.'
           break
+        case 'anti-king': {
+          const name = (cell: number) => cellReference(cell, 'concise')
+          description = `${cells.map(name).join(' and ')} touch at a corner. Anti-King requires different digits in these cells.`
+          reason = focus.map(({ cell, digit }) => `${digit} cannot go in ${name(cell)}; ${name(cells.find(other => other !== cell)!)} is restricted to ${digit}.`).join(' ')
+          break
+        }
         case 'thermometer':
           description = 'Digits along the highlighted thermometer must increase from the bulb toward the tip.'
           break

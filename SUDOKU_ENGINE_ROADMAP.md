@@ -6,17 +6,19 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `e43ae23`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, Odd/Even, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `4811a05`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, Odd/Even, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
 | Classic solving, scoring, proofs, hints, generation, and browser worker | In main | Preserve the public contracts and versioned ratings |
 | Sparse validation, hint paging, worker isolation, and batched singles | In main through [PR 100](https://github.com/coder13/sudoku-app/pull/100) | Preserve the measured improvements while extending the same app flows to every built-in variant |
+| Additional completion witnesses for exhaustive variant hints | In main through [PR 107](https://github.com/coder13/sudoku-app/pull/107) | Preserve complete proofs, bounded probes and smaller profiles while measuring the remaining expert searches |
 | Windoku | In main through [PR 93](https://github.com/coder13/sudoku-app/pull/93) | Maintain its import, play, save, hint, and generation coverage |
 | Mixed rules in the eight currently rendered families | In main through [PR 95](https://github.com/coder13/sudoku-app/pull/95) | Preserve the combined-flow regressions and extend coverage with each new family in [issue 87](https://github.com/coder13/sudoku-app/issues/87) |
 | Built-in variant hint and solution access | In main through [PR 98](https://github.com/coder13/sudoku-app/pull/98) and [PR 102](https://github.com/coder13/sudoku-app/pull/102) | Preserve visible controls, valid candidate assumptions, and independent workers in standard, advanced, and mobile play |
 | Quadruple circles, proofs, imports, and teaching | In main through [PR 104](https://github.com/coder13/sudoku-app/pull/104) | Preserve repeated occurrences and combined clues; finish live mobile viewport review and calibrate generation recipes before offering app presets |
 | Odd/Even markers, imports, proofs, and practice | In main through [PR 106](https://github.com/coder13/sudoku-app/pull/106) | Retain mixed clues and marker-specific help; finish live viewport review and calibrate generation recipes before offering app presets |
+| Anti-King imports, corner peers, proofs, and practice | App integration on `codex/sudoku-anti-king-integration` for [issue 43](https://github.com/coder13/sudoku-app/issues/43) | Finish combined app validation and performance measurements; calibrate generation recipes before offering app presets |
 | Additional rule families and shading | Research on `codex/sudoku-engine-integration` | Port one app-ready family from current main through [issue 35](https://github.com/coder13/sudoku-app/issues/35) |
 | Proof explorer and expert lesson work | Open in [PR 14](https://github.com/coder13/sudoku-app/pull/14) | Reconcile its diff with current main and the research branch before integration |
 | Uncommitted proof, technique, and lesson edits | Preserved in the original R&D worktree | Compare each change with current main and the research branch before porting it |

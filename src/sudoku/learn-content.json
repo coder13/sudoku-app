@@ -7014,7 +7014,7 @@
               "type": "text",
               "paragraphs": [
                 "Start at a placed digit near a box corner. Check the cells one row and one column away.",
-                "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves."
+                "Look for the same digit as a candidate in those cells, especially across a box or region border. Cells in the same row, column, or box already have to differ."
               ]
             },
             {
@@ -7035,12 +7035,17 @@
               ],
               "guide": {
                 "start": "Start at a placed digit near a box corner. Check the cells one row and one column away.",
-                "check": "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves.",
+                "check": "Look for the same digit as a candidate in those cells, especially across a box or region border. Cells in the same row, column, or box already have to differ.",
                 "reason": "The two cells are one king’s move apart, so they must differ. The placed digit rules out its matching candidate."
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "King of Diamonds by Philip Newman",
+              "href": "https://www.gmpuzzles.com/blog/2025/07/anti-king-sudoku-by-philip-newman/"
+            }
+          ],
           "difficulty": "easy"
         }
       ]
