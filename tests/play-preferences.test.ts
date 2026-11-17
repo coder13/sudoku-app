@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  createPlayPreferenceStore, DEFAULT_PLAY_PREFERENCES, parsePlayPreferences, PLAY_PREFERENCES_KEY,
+  createPlayPreferenceStore, DEFAULT_DESKTOP_LAYOUT_WIDTH, DEFAULT_PLAY_PREFERENCES, parsePlayPreferences, PLAY_PREFERENCES_KEY,
 } from '../src/sudoku/play-preferences.ts'
 
 function memoryStorage(initial: string | null = null) {
@@ -95,6 +95,19 @@ test('invalid badge positions fall back to the default edge and offset', () => {
     assert.deepEqual(parsePlayPreferences({ modeBadgePosition, pencil: true }), {
       ...DEFAULT_PLAY_PREFERENCES, pencil: true,
     })
+  }
+})
+
+test('desktop layout width persists and can be reset without clearing other preferences', () => {
+  const storage = memoryStorage(JSON.stringify({ selectedDigit: 6, desktopLayoutWidth: 1520 }))
+  const store = createPlayPreferenceStore(storage)
+  assert.equal(store.getSnapshot().desktopLayoutWidth, 1520)
+  store.set('desktopLayoutWidth', 940)
+  assert.equal(createPlayPreferenceStore(storage).getSnapshot().desktopLayoutWidth, 940)
+  store.set('desktopLayoutWidth', DEFAULT_DESKTOP_LAYOUT_WIDTH)
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), { ...DEFAULT_PLAY_PREFERENCES, selectedDigit: 6 })
+  for (const desktopLayoutWidth of [0, -1, 760.5, '1520', Infinity]) {
+    assert.equal(parsePlayPreferences({ desktopLayoutWidth }).desktopLayoutWidth, DEFAULT_DESKTOP_LAYOUT_WIDTH)
   }
 })
 

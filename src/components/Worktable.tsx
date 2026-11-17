@@ -473,7 +473,7 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor]') || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
+    target.closest('[data-panel-editor], .desktop-layout-edge') || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
 
@@ -494,16 +494,24 @@ export function Worktable({
     menu.showPopover?.()
     const position = () => {
       const anchor = button.getBoundingClientRect()
+      // The anchor is measured in viewport pixels, while fixed offsets inherit the page zoom.
+      const scale = Number(getComputedStyle(menu).getPropertyValue('--desktop-layout-scale')) || 1
+      const width = menu.offsetWidth * scale
+      const height = menu.offsetHeight * scale
       const gap = 8
-      const left = anchor.left - menu.offsetWidth - gap
-      const top = anchor.top + (anchor.height - menu.offsetHeight) / 2
-      menu.style.left = `${Math.max(gap, left)}px`
-      menu.style.top = `${Math.max(gap, Math.min(top, window.innerHeight - menu.offsetHeight - gap))}px`
+      const left = Math.max(gap, anchor.left - width - gap)
+      const top = Math.max(gap, Math.min(anchor.top + (anchor.height - height) / 2, window.innerHeight - height - gap))
+      menu.style.left = `${left / scale}px`
+      menu.style.top = `${top / scale}px`
     }
     position()
+    const workspace = menu.closest('main')
+    const observer = new ResizeObserver(position)
+    if (workspace) observer.observe(workspace)
     window.addEventListener('resize', position)
     window.addEventListener('scroll', position, true)
     return () => {
+      observer.disconnect()
       window.removeEventListener('resize', position)
       window.removeEventListener('scroll', position, true)
     }

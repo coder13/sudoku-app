@@ -2,6 +2,8 @@ import { COLORS, type ColorTarget } from './game.ts'
 
 export const GRID_MODE_BADGE_EDGES = ['top', 'right', 'bottom', 'left'] as const
 export type GridModeBadgePosition = { edge: typeof GRID_MODE_BADGE_EDGES[number]; offset: number }
+export const DEFAULT_DESKTOP_LAYOUT_WIDTH = 1128
+export const MIN_DESKTOP_LAYOUT_WIDTH = 760
 
 export type PlayPreferences = {
   pencil: boolean
@@ -17,6 +19,7 @@ export type PlayPreferences = {
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
   modeBadgePosition: GridModeBadgePosition
+  desktopLayoutWidth: number
 }
 
 // Keep this key independent of the app build and service-worker cache version.
@@ -35,6 +38,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   multi: false,
   puzzleBrowserView: 'active',
   modeBadgePosition: { edge: 'bottom', offset: 0.05 },
+  desktopLayoutWidth: DEFAULT_DESKTOP_LAYOUT_WIDTH,
 }
 const INPUT_MODE_KEYS = ['eraseMode', 'colorMode', 'highlightMode', 'pencil'] as const
 
@@ -71,6 +75,8 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',
     modeBadgePosition: parseModeBadgePosition(saved.modeBadgePosition),
+    desktopLayoutWidth: inRange(saved.desktopLayoutWidth, MIN_DESKTOP_LAYOUT_WIDTH, Number.MAX_SAFE_INTEGER)
+      ? saved.desktopLayoutWidth : DEFAULT_DESKTOP_LAYOUT_WIDTH,
   }
 }
 
