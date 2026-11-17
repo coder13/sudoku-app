@@ -1,10 +1,10 @@
 import type { Difficulty } from './engine.ts'
 import { isSolved, type Game } from './game.ts'
-import type { VariantId } from './variants.ts'
+import type { PuzzleVariantId } from './variants.ts'
 
 export type DifficultyStatistics = { solved: number; averageSeconds: number | null }
 
-export function difficultyStatistics(games: readonly Game[], variant: VariantId = 'classic'): Map<Difficulty, DifficultyStatistics> {
+export function difficultyStatistics(games: readonly Game[], variant: PuzzleVariantId = 'classic'): Map<Difficulty, DifficultyStatistics> {
   const totals = new Map<Difficulty, { solved: number; timed: number; seconds: number }>()
   for (const game of games) {
     // Keep historical grades separate, and do not count an already-filled import as a solve.

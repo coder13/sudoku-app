@@ -46,7 +46,8 @@ export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
 
 export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>
-export type VariantGame = { id: PlayableVariant; puzzle: VariantPuzzle; solution: string }
+export type PuzzleVariantId = VariantId | 'mixed'
+export type VariantGame = { id: PlayableVariant | 'mixed'; puzzle: VariantPuzzle; solution: string }
 
 export function isVariantId(value: unknown): value is VariantId {
   return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
@@ -95,12 +96,17 @@ export function variantHouseCells(house: VariantHouse, puzzle: VariantPuzzle): r
   return cells.map((i) => top + Math.floor(i / 3) * 9 + i % 3)
 }
 
+export function extraRegionName(rules: readonly VariantRule[], index: number): string {
+  if (rules[index]?.type !== 'extra-house') return 'extra region'
+  return `extra region ${rules.slice(0, index + 1).filter(rule => rule.type === 'extra-house').length}`
+}
+
 export function variantHouseName(house: VariantHouse, puzzle: VariantPuzzle) {
   if ('row' in house) return `row ${house.row + 1}`
   if ('column' in house) return `column ${house.column + 1}`
   if ('diagonal' in house) return house.diagonal === 'main' ? 'top-left to bottom-right diagonal' : 'top-right to bottom-left diagonal'
   if ('region' in house) return `${puzzle.regions?.type === 'jigsaw' ? 'region' : 'box'} ${house.region + 1}`
-  return 'extra house'
+  return extraRegionName(puzzle.rules ?? [], house.extra)
 }
 
 export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
@@ -164,32 +170,95 @@ function validJigsawRegions(regions: unknown): boolean {
   })
 }
 
+function isPlayableRule(rule: VariantRule): boolean {
+  if (!rule || typeof rule !== 'object') return false
+  switch (rule.type) {
+    case 'anti-knight': return true
+    case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
+    case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
+    case 'thermometer': return validCells(rule.cells, 2)
+    case 'arrow': return validCells([rule.circle, ...(Array.isArray(rule.cells) ? rule.cells : [])], 2)
+    case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
+      cage && validCells(cage.cells, 1) && Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45)
+    case 'kropki': return [rule.consecutive, rule.ratioTwo].every((marks) => marks === undefined ||
+      marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
+      (marks.pairs === undefined || Array.isArray(marks.pairs) &&
+        marks.pairs.every((pair) => validCells(pair, 2) && pair.length === 2)))
+    default: return false
+  }
+}
+
+/** Identify a named recipe when all rules belong to that variant. */
+export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
+  const rules = puzzle.rules ?? []
+  if (puzzle.regions?.type === 'jigsaw') return rules.length ? 'mixed' : 'jigsaw'
+  if (!rules.length) return 'classic'
+  const first = rules[0].type
+  if (first === 'extra-house') {
+    return rules.length === WINDOKU_REGIONS.length &&
+      rules.every(rule => rule.type === 'extra-house') &&
+      WINDOKU_REGIONS.every(region => rules.some(rule =>
+        rule.type === 'extra-house' && rule.cells.length === 9 && region.every(cell => rule.cells.includes(cell))))
+      ? 'windoku' : 'mixed'
+  }
+  return isVariantId(first) && rules.every(rule => rule.type === first) ? first : 'mixed'
+}
+
 export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is VariantPuzzle {
-  if (typeof id !== 'string' || id === 'classic' || !Object.hasOwn(VARIANTS, id) || !puzzle || typeof puzzle !== 'object') return false
+  if ((id !== 'mixed' && (!isVariantId(id) || id === 'classic')) ||
+    !puzzle || typeof puzzle !== 'object') return false
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
-  if (id === 'jigsaw') return regions?.type === 'jigsaw' && validJigsawRegions(regions.regions) &&
-    (rules === undefined || (Array.isArray(rules) && rules.length === 0))
-  if ((regions !== undefined && regions?.type !== 'boxes') || !Array.isArray(rules) || !rules.length || rules.length > 81) return false
-  if (id === 'windoku') return rules.length === WINDOKU_REGIONS.length &&
-    rules.every((rule) => rule?.type === 'extra-house' && validCells(rule.cells, 9) && rule.cells.length === 9) &&
-    WINDOKU_REGIONS.every((region) => rules.some((rule) =>
-      rule.type === 'extra-house' && region.every((cell) => rule.cells.includes(cell))))
-  return rules.every((rule: VariantRule) => {
-    if (!rule || rule.type !== id) return false
+  if (regions !== undefined && regions?.type !== 'boxes' &&
+    !(regions?.type === 'jigsaw' && validJigsawRegions(regions.regions))) return false
+  if (rules !== undefined && (!Array.isArray(rules) || rules.length > 81 || !rules.every(isPlayableRule))) return false
+  const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
+  return kind !== 'classic' && (id === 'mixed' || kind === id)
+}
+
+const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+  'extra-house': 'Extra regions',
+  diagonal: VARIANTS.diagonal.name,
+  'killer-cages': VARIANTS['killer-cages'].name,
+  'anti-knight': VARIANTS['anti-knight'].name,
+  thermometer: VARIANTS.thermometer.name,
+  arrow: VARIANTS.arrow.name,
+  kropki: VARIANTS.kropki.name,
+}
+
+/** Describe the active puzzle independently of its generation recipe. */
+export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle'>): string {
+  if (!variant) return VARIANTS.classic.name
+  if (variant.id !== 'mixed') return VARIANTS[variant.id].name
+  const { rules, regions } = variant.puzzle
+  const names = [
+    ...(regions?.type === 'jigsaw' ? [VARIANTS.jigsaw.name] : []),
+    ...(rules?.map(rule => RULE_NAMES[rule.type]) ?? []),
+  ]
+  return [...new Set(names)].filter(Boolean).join(' + ')
+}
+
+/** Explain every active rule, including the direction and negative dot clues. */
+export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
+  const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
+  for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
-      case 'anti-knight': return true
-      case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
-      case 'thermometer': return validCells(rule.cells, 2)
-      case 'arrow': return validCells([rule.circle, ...(Array.isArray(rule.cells) ? rule.cells : [])], 2)
-      case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.every((cage) =>
-        cage && validCells(cage.cells, 1) && Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45)
-      case 'kropki': return [rule.consecutive, rule.ratioTwo].every((marks) => marks === undefined ||
-        marks && !marks.negative && (marks.pairs === undefined || Array.isArray(marks.pairs) &&
-          marks.pairs.every((pair) => validCells(pair, 2) && pair.length === 2)))
-      default: return false
+      case 'diagonal':
+        descriptions.push(`The ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal must also contain the digits 1–9 once each.`)
+        break
+      case 'extra-house':
+        descriptions.push('Each shaded extra region must also contain the digits 1–9 once each.')
+        break
+      case 'kropki':
+        descriptions.push('Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other.')
+        if (rule.consecutive?.negative) descriptions.push('Every adjacent pair of consecutive digits has a white dot.')
+        if (rule.ratioTwo?.negative) descriptions.push('Every adjacent pair with one digit double the other has a black dot.')
+        break
+      default:
+        if (isVariantId(rule.type)) descriptions.push(VARIANTS[rule.type].rule)
     }
-  })
+  }
+  return [...new Set(descriptions)]
 }
 
 export function validVariantSave(variant: unknown, givens: string): variant is VariantGame {

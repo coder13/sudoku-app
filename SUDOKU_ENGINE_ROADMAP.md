@@ -6,16 +6,18 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `1c0e2a2`, the Windoku merge. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `07eae53`, the capability-packaging merge, plus the focused mixed-rule integration described below. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
 | Classic solving, scoring, proofs, hints, generation, and browser worker | In main | Preserve the public contracts and versioned ratings |
 | Windoku | In main through [PR 93](https://github.com/coder13/sudoku-app/pull/93) | Maintain its import, play, save, hint, and generation coverage |
-| Mixed rules in existing app-supported families | In progress on `codex/sudoku-combined-rules` | Finish import, display, persistence, and combined-rule regressions in [issue 87](https://github.com/coder13/sudoku-app/issues/87) |
+| Mixed rules in the eight currently rendered families | Complete in this integration on `codex/sudoku-combined-rules` | Preserve the combined-flow regressions and extend coverage with each new family in [issue 87](https://github.com/coder13/sudoku-app/issues/87) |
 | Additional rule families and shading | Research on `codex/sudoku-engine-integration` | Port one app-ready family from current main through [issue 35](https://github.com/coder13/sudoku-app/issues/35) |
 | Proof explorer and expert lesson work | Open in [PR 14](https://github.com/coder13/sudoku-app/pull/14) | Reconcile its diff with current main and the research branch before integration |
 | Uncommitted proof, technique, and lesson edits | Preserved in the original R&D worktree | Compare each change with current main and the research branch before porting it |
+
+The mixed-rule stage covers Jigsaw, Killer, diagonals, exact nine-cell extra regions, Anti-Knight, thermometers, arrows, and Kropki. A representative fixture checks all 256 family subsets through the actual Wasm import and play services. Sparse Diagonal/Killer and Jigsaw/Killer cases establish rule-dependent uniqueness with an independent counter. Browser checks cover preview, accessible rules, multiple hints, moves, undo, reload, sharing, mobile layout, and completion. This does not complete every Coach rule or encoded format. [Fixture provenance and limits](tests/fixtures/README.md)
 
 The research branch contains five commits beyond its common history with this main snapshot. It also predates changes to the ten difficulty levels. Its earlier test results do not establish compatibility with current main. Each port needs current scoring, proof, import, and app tests.
 

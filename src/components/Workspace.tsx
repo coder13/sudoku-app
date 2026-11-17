@@ -260,7 +260,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   function openNewPuzzle(step?: 'difficulty') {
     if (mobile) {
       setPanel(null)
-      void navigate({ to: '/puzzles/new', search: step === 'difficulty'
+      void navigate({ to: '/puzzles/new', search: step === 'difficulty' && game?.variant?.id !== 'mixed'
         ? { step, variant: game?.variant?.id ?? 'classic' } : {} })
     } else setPanel('new')
   }
