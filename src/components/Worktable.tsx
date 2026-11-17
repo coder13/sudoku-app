@@ -8,7 +8,7 @@ import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
+  formatTime, hasCandidate, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
@@ -17,7 +17,7 @@ import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diag
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
-import { rectangleSelection } from '../sudoku/selection'
+import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
@@ -124,6 +124,17 @@ type HintState = {
   error?: PuzzleHint
   recovery?: CandidateRecovery
   reviewingRemoval?: boolean
+}
+
+type CandidateDrag = {
+  pointerId: number
+  previous: number
+  initial: Game
+  cells: Set<number>
+  mode: 'candidate' | 'center' | 'corner'
+  digit: number
+  action: 'add' | 'remove'
+  moved: boolean
 }
 
 function matchesHintPosition(game: Game, position: HintPosition) {
@@ -234,7 +245,8 @@ export function Worktable({
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
   const hintReturnFocus = useRef(false)
-  const dragSelection = useRef<{ start: number; base: number[]; additive: boolean; moved: boolean } | null>(null)
+  const dragSelection = useRef<{ pointerId: number; start: number; base: number[]; additive: boolean; moved: boolean } | null>(null)
+  const candidateDrag = useRef<CandidateDrag | null>(null)
   const suppressCellClick = useRef(false)
   const pendingDoubleClickSingle = useRef<{ index: number; digit: number; game: Game } | null>(null)
   const pathRequest = useRef(0)
@@ -323,6 +335,8 @@ export function Worktable({
   const candidateBrush = colorTarget === 'candidate' && !cellColorsDisabled && !sketch.drawing && !hintAnnotations && !mobileHintOpen
     ? colorMode ? selectedColor : brush : null
   const paintingCandidates = candidateBrush !== null
+  const canDragCandidates = !disabled && !draft && pencil && !highlightMode && !colorMode && !eraseMode &&
+    !paintingCandidates && !sketch.drawing && !hintAnnotations && selectedDigit !== null && selectedDigit > 0
   const trace = solutionPath?.status === 'ready' ? solutionPath.trace : undefined
   const previewPosition = trace?.positions?.[solutionStep]
   const replayedSolutionStep = useMemo(() => trace && replayStep(trace, solutionStep), [trace, solutionStep])
@@ -386,6 +400,7 @@ export function Worktable({
     setSolvedView('results')
     setRatingFailed(false)
     dragSelection.current = null
+    candidateDrag.current = null
     suppressCellClick.current = false
     pathRequest.current++
   }, [game.id, game.source])
@@ -613,11 +628,17 @@ export function Worktable({
   }, [puzzleMenuOpen])
 
   useEffect(() => {
-    function finishDragSelection() {
-      const drag = dragSelection.current
-      if (!drag) return
-      dragSelection.current = null
-      if (!drag.moved) return
+    function finishDragSelection(event: PointerEvent) {
+      let moved = false
+      if (dragSelection.current?.pointerId === event.pointerId) {
+        moved = dragSelection.current.moved
+        dragSelection.current = null
+      }
+      if (candidateDrag.current?.pointerId === event.pointerId) {
+        moved = candidateDrag.current.moved || moved
+        candidateDrag.current = null
+      }
+      if (!moved) return
       suppressCellClick.current = true
       window.setTimeout(() => { suppressCellClick.current = false }, 100)
     }
@@ -765,7 +786,7 @@ export function Worktable({
         ? { index, digit, game } : null
     }
     if (event.detail > 1 && doubleClickEligible && pendingDoubleClickSingle.current) return
-    if (highlightMode && suppressCellClick.current) {
+    if (suppressCellClick.current) {
       suppressCellClick.current = false
       return
     }
@@ -814,18 +835,55 @@ export function Worktable({
   }
 
   function startCellDrag(index: number, event: ReactPointerEvent) {
-    if (!highlightMode || event.button !== 0) return
-    dragSelection.current = {
-      start: index,
-      base: [...selected],
-      additive: multi || event.metaKey || event.ctrlKey,
-      moved: false,
+    if (event.button !== 0 || !event.isPrimary) return
+    if (highlightMode) {
+      dragSelection.current = {
+        pointerId: event.pointerId,
+        start: index,
+        base: [...selected],
+        additive: multi || event.metaKey || event.ctrlKey,
+        moved: false,
+      }
+      return
+    }
+    if (!canDragCandidates || values[index] !== '0') return
+    const initial = roomStore.getSnapshot().games.find((item) => item.id === game.id) ?? game
+    const digit = selectedDigit!
+    const candidateMode = mode as CandidateDrag['mode']
+    const mask = candidateMode === 'candidate'
+      ? initial.position.center[index] | initial.position.corner[index]
+      : initial.position[candidateMode][index]
+    candidateDrag.current = {
+      pointerId: event.pointerId, previous: index, initial, cells: new Set(),
+      mode: candidateMode, digit, action: hasCandidate(mask, digit) ? 'remove' : 'add', moved: false,
     }
   }
 
   function continueCellDrag(index: number, event: ReactPointerEvent) {
+    const pressed = event.pointerType === 'touch' || Boolean(event.buttons & 1)
+    const stroke = candidateDrag.current
+    if (stroke) {
+      if (stroke.pointerId !== event.pointerId || !pressed || stroke.previous === index) return
+      event.preventDefault()
+      if (!stroke.moved) {
+        stroke.moved = true
+        setSelected([])
+        boardRef.current?.setPointerCapture(event.pointerId)
+      }
+      for (const cell of cellsOnDragPath(stroke.previous, index)) {
+        if (stroke.initial.givens[cell] === '0' && stroke.initial.position.entries[cell] === '0') stroke.cells.add(cell)
+      }
+      stroke.previous = index
+      setActive(index)
+      anchor.current = index
+      roomStore.update(game.id, (current) => paintCandidateStroke(
+        current, stroke.initial, [...stroke.cells], stroke.mode, stroke.digit, stroke.action,
+      ))
+      return
+    }
     const drag = dragSelection.current
-    if (!highlightMode || !drag || !(event.buttons & 1) || index === drag.start && !drag.moved) return
+    if (!highlightMode || !drag || drag.pointerId !== event.pointerId || !pressed ||
+      index === drag.start && !drag.moved) return
     event.preventDefault()
     drag.moved = true
     const dragged = rectangleSelection(drag.start, index)
@@ -1331,7 +1389,7 @@ export function Worktable({
       highlightCandidateCount={!hintAnnotations && highlightCandidatePairs ? 2 : null}
       boardRef={boardRef} onCell={canSelectCell && !paintingCandidates ? clickCell : undefined}
       onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations ? doubleClickCell : undefined}
-      onPaintCandidate={paintingCandidates ? colorCandidate : undefined} dragSelect={canSelectCell && highlightMode}
+      onPaintCandidate={paintingCandidates ? colorCandidate : undefined} dragSelect={canSelectCell && (highlightMode || canDragCandidates)}
       onCellPointerDown={canSelectCell && !paintingCandidates ? startCellDrag : undefined}
       onCellPointerMove={canSelectCell && !paintingCandidates ? continueCellDrag : undefined} />
   )
