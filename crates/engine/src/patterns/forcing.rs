@@ -10,6 +10,7 @@ use crate::{
 use std::collections::BTreeSet;
 
 mod advanced;
+mod witnesses;
 
 const STATES: usize = CANDIDATE_COUNT * 2;
 const UNSEEN: usize = usize::MAX;
@@ -63,11 +64,11 @@ impl ForcingGraph {
     pub(super) fn visit(
         &self,
         technique: Technique,
-        verified_solution: Option<&crate::Board>,
+        search: &super::PatternSearch<'_>,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         if technique == Technique::NestedForcingNet {
-            return self.visit_nested(verified_solution, visit);
+            return self.visit_nested(search, visit);
         }
         if technique == Technique::AdvancedForcingNet && self.available.len() == CANDIDATE_COUNT {
             return ControlFlow::Continue(());
@@ -145,19 +146,18 @@ impl ForcingGraph {
 
     fn visit_nested(
         &self,
-        verified_solution: Option<&crate::Board>,
+        search: &super::PatternSearch<'_>,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         let mut branch = BranchSearch::new(self, Mode::Dynamic);
+        let mut witnesses = witnesses::Search::new(
+            search.board, search.masks, search.verified_solution, search.completion_probe_nodes,
+        );
         for &id in &self.available {
             for assumption in [id * 2 + 1, id * 2] {
-                // A known completion witnesses every assumption it satisfies.
-                // Only its opposite can produce a contradiction. That branch
-                // must still prove both sides of an inner split.
-                if verified_solution.is_some_and(|solution| {
-                    let target = candidate(id);
-                    (solution[target.cell] == target.digit) == (assumption % 2 == 1)
-                }) {
+                // Any compatible completion rules out a contradiction for this
+                // assumption. Unwitnessed branches still prove both inner cases.
+                if witnesses.satisfies(candidate(id), assumption % 2 == 1) {
                     continue;
                 }
                 if branch.run(assumption).is_some() {

@@ -1733,6 +1733,14 @@ impl<'a> DeductionSearch<'a> {
         }
     }
 
+    /// Spend at most this many exact-search nodes finding additional witnesses.
+    /// A failed or unfinished probe leaves the logical contradiction search intact.
+    #[cfg(feature = "variants")]
+    pub(crate) fn with_completion_probes(mut self, nodes: u32) -> Self {
+        self.patterns.completion_probe_nodes = nodes;
+        self
+    }
+
     pub(crate) fn first(&self, technique: Technique) -> Option<Deduction> {
         self.find(technique, |_| true)
     }

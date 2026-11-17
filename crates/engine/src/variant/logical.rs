@@ -22,6 +22,7 @@ mod tests;
 pub const VARIANT_SCORING_VERSION: u32 = 6;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
+const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 macro_rules! catalog {
     ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
@@ -974,7 +975,8 @@ impl CompiledVariant {
             .flatten();
         let search = DeductionSearch::with_verified_solution(
             &position.board, &position.masks, solution.as_ref(),
-        );
+        )
+        .with_completion_probes(ALTERNATIVE_WITNESS_NODES);
         for hint in search.hints(technique) {
             let swap_cells = if technique.requires_unique_solution() {
                 let cells = match &hint.evidence {
