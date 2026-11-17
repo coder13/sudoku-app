@@ -185,12 +185,15 @@ function addRightPanels(api: DockviewApi, showChains: boolean) {
     })
   }
   const solution = api.getPanel('solution-path')
-  if (solution && !api.getPanel('techniques')) {
+  const techniques = api.getPanel('techniques')
+  if (solution && !techniques) {
     api.addPanel({
-      id: 'techniques', component: 'techniques', title: 'Techniques', inactive: true,
+      id: 'techniques', component: 'techniques', title: 'Available techniques', inactive: true,
       minimumWidth: 240, minimumHeight: 130,
       position: { referencePanel: solution },
     })
+  } else if (techniques && techniques.title !== 'Available techniques') {
+    techniques.api.setTitle('Available techniques')
   }
 }
 
