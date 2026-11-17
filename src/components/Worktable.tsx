@@ -1311,6 +1311,12 @@ export function Worktable({
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
+    {!draft && !variant && desktop && <>
+      <button onClick={() => { void showSolutionPath() }} disabled={busy} aria-label="Open solution panel">
+        <ListOrdered size={17} /> Solution
+      </button>
+      {analysisAction}
+    </>}
     {mobile && analysisAction}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
@@ -1568,15 +1574,6 @@ export function Worktable({
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">
               {inputPanel}
-              {!draft && !variant && <div className="desktop-solution-actions" role="group" aria-label="Solution tools">
-                <button type="button" className="button secondary" onClick={() => { void showSolutionPath() }}>
-                  <ListOrdered size={17} /> Solution
-                </button>
-                <button type="button" className="button secondary" onClick={showAnalysis}
-                  aria-pressed={analysisCardOpen}>
-                  <ListFilter size={17} /> Available techniques
-                </button>
-              </div>}
               {analysisCardOpen && !draft && !variant && <PuzzleAnalysisCard game={game} close={() => setPinnedAnalysis(false)} />}
               {hintPanel}{solutionPathPanel}
             </div></>
