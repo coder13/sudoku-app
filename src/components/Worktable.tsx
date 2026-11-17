@@ -1306,13 +1306,12 @@ export function Worktable({
     <button onClick={() => { void showHint() }} disabled={busy || solved}>
       <Lightbulb size={17} /> View hint
     </button>
-    {analysisAction}
   </>
   const puzzleOptionItems = <>
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
-    {analysisAction}
+    {mobile && analysisAction}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle
@@ -1511,9 +1510,6 @@ export function Worktable({
       <button className="button secondary" disabled={busy || solved || draft || game.paused} onClick={() => { void showHint('all') }}>
         <ListFilter size={17} /> Analyze all moves
       </button>
-      {!variant && !draft && !solved && <button className="button secondary" onClick={showAnalysis}>
-        <ListFilter size={17} /> Open techniques panel
-      </button>}
     </section>
   )
   const advancedSolutionPathPanel = solutionPathRevealed && solutionPath ? (
@@ -1524,9 +1520,14 @@ export function Worktable({
     <section className="advanced-spoiler-panel" aria-label="Solution">
       <span className="advanced-spoiler-icon" aria-hidden="true"><ListOrdered size={21} /></span>
       <div><h2>Solution</h2><p>The solving steps stay hidden until you choose to reveal them.</p></div>
-      <button className="button primary" disabled={busy || draft || game.paused} onClick={() => { void showSolutionPath() }}>
-        <Eye size={17} /> Reveal solution
-      </button>
+      <div className="advanced-solution-actions">
+        <button className="button primary" disabled={busy || draft || game.paused} onClick={() => { void showSolutionPath() }}>
+          <Eye size={17} /> Reveal solution
+        </button>
+        {!variant && !draft && <button className="button secondary" onClick={showAnalysis}>
+          <ListFilter size={17} /> Available techniques
+        </button>}
+      </div>
     </section>
   )
   const clueCount = [...givens].filter((digit) => digit !== '0').length
@@ -1572,6 +1573,15 @@ export function Worktable({
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">
               {inputPanel}
+              {!draft && !variant && <div className="desktop-solution-actions" role="group" aria-label="Solution tools">
+                <button type="button" className="button secondary" onClick={() => { void showSolutionPath() }}>
+                  <ListOrdered size={17} /> Solution
+                </button>
+                <button type="button" className="button secondary" onClick={showAnalysis}
+                  aria-pressed={analysisCardOpen}>
+                  <ListFilter size={17} /> Available techniques
+                </button>
+              </div>}
               {analysisCardOpen && !draft && !variant && <PuzzleAnalysisCard game={game} close={() => setPinnedAnalysis(false)} />}
               {hintPanel}{solutionPathPanel}
             </div></>
