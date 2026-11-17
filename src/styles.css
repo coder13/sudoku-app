@@ -1662,55 +1662,76 @@ svg { flex-shrink: 0; }
 .dialog-heading { display: flex; align-items: center; gap: 10px; justify-content: space-between; margin-bottom: 16px; }
 .dialog-heading h2 { font-size: 23px; letter-spacing: -.037em; }
 
-.dialog.puzzle-analysis-dialog { width: min(610px, calc(100vw - 28px)); }
-.puzzle-analysis-content { display: grid; gap: 16px; }
-.puzzle-analysis-content :is(.analysis-intro, .analysis-rating-notice, .analysis-footnote) {
-  font-size: 13px;
-  line-height: 1.5;
-}
-.analysis-intro { color: var(--ink); }
-.analysis-rating-notice {
-  padding: 11px 13px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--muted);
-  background: var(--surface-muted);
-}
-.analysis-group { display: grid; gap: 8px; }
+.dialog.puzzle-analysis-dialog { width: min(670px, calc(100vw - 28px)); }
+.puzzle-analysis-content { display: grid; gap: 20px; }
+.analysis-group { display: grid; gap: 9px; }
 .analysis-group-heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  flex-wrap: wrap;
-  column-gap: 16px;
-  row-gap: 4px;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 7px;
 }
-.analysis-group-heading h3 { font-size: 16px; font-weight: 750; }
+.analysis-group-heading h3 { font-size: 15px; font-weight: 760; }
 .analysis-group-heading span, .analysis-empty, .analysis-footnote { color: var(--muted); }
-.analysis-group-heading span { font-size: 12px; font-variant-numeric: tabular-nums; }
-.analysis-empty { font-size: 13px; }
-.analysis-techniques { display: grid; gap: 5px; }
-.analysis-technique { border: 1px solid var(--border); border-radius: 9px; }
-.analysis-technique summary { padding: 10px 12px; cursor: pointer; font-size: 13px; line-height: 1.5; }
-.analysis-technique summary strong { font-weight: 720; }
-.analysis-technique summary span { margin-left: 10px; float: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-.analysis-technique-details { display: grid; gap: 12px; padding: 0 13px 13px; }
-.analysis-targets h4 { font-size: 13px; margin-bottom: 5px; }
+.analysis-group-heading span { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.analysis-empty { font-size: 13px; padding: 4px 0; }
+.analysis-techniques { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.analysis-technique { min-width: 0; border: 1px solid var(--border); border-radius: 9px; }
+.analysis-technique[open] { grid-column: 1 / -1; }
+.analysis-technique summary {
+  display: flex;
+  align-items: center;
+  min-height: 43px;
+  gap: 8px;
+  padding: 9px 11px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.3;
+  list-style: none;
+}
+.analysis-technique summary::-webkit-details-marker { display: none; }
+.analysis-technique summary::before {
+  content: '';
+  flex: 0 0 auto;
+  border: 4px solid transparent;
+  border-left: 5px solid currentColor;
+  transform: translateX(2px);
+  color: var(--muted);
+}
+.analysis-technique[open] summary::before { transform: rotate(90deg) translateX(2px); }
+.analysis-technique-name { min-width: 0; flex: 1; font-weight: 650; overflow-wrap: anywhere; }
+.analysis-technique-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  font-size: 13px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+}
+.analysis-technique-details { border-top: 1px solid var(--border); padding: 11px 13px 14px; }
+.analysis-targets h4 { font-size: 12px; margin-bottom: 7px; }
 .analysis-targets ul {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 4px 10px;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 5px 10px;
   padding: 0;
   margin: 0;
   list-style: none;
 }
 .analysis-targets li, .analysis-targets p { font-size: 12px; color: var(--muted); }
+.analysis-footnote { font-size: 12px; line-height: 1.5; }
 .analysis-error { display: grid; justify-items: start; gap: 10px; font-size: 13px; }
-@media (max-width: 460px) {
-  .analysis-technique summary span { float: none; display: block; margin-left: 19px; }
+@media (max-width: 480px) {
+  .analysis-techniques { grid-template-columns: minmax(0, 1fr); }
+  .analysis-technique[open] { grid-column: auto; }
 }
-
-
+ 
 @keyframes dialog-enter {
   from { opacity: 0; transform: scale(.97); }
 }
