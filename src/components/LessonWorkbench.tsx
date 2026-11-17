@@ -17,16 +17,15 @@ export type LessonTools = {
   reveal: (action: DeductionAction) => void
 }
 
-export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, instruction, onEdit, preview = false, guide, children }: {
+export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, onEdit, preview = false, guide, children }: {
   puzzle: Pick<PositionSnapshot, 'givens' | 'entries'> & { candidates: readonly number[] }
   label: string
   annotations?: BoardAnnotations
   region?: BoardRegion
-  instruction?: string
   initialPencil?: boolean
   onEdit?: () => void
   preview?: boolean
-  guide?: ReactNode
+  guide?: (ready: boolean) => ReactNode
   children?: (tools: LessonTools) => ReactNode
 }) {
   const initial = useMemo(() => makeLessonGame(puzzle), [puzzle])
@@ -52,8 +51,9 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     appearance: DEFAULT_APPEARANCE, errorMode: DEFAULT_ERROR_MODE, highlighting: DEFAULT_HIGHLIGHT_PREFERENCES, inputSize: DEFAULT_INPUT_SIZE })
   const board = useRef<HTMLDivElement>(null)
   const tools = useRef<HTMLDivElement>(null)
+  const guidePanel = useRef<HTMLDivElement>(null)
   useGridClickAway(board, () => setSelected([]), (target) => Boolean(
-    tools.current?.contains(target) && target.closest('button, input, select, textarea, a'),
+    guidePanel.current?.contains(target) || tools.current?.contains(target) && target.closest('button, input, select, textarea, a'),
   ))
   const anchor = useRef(start)
   const drag = useRef<{ start: number; base: number[]; additive: boolean } | null>(null)
@@ -140,7 +140,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   }
 
   function keyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (!interactive || event.defaultPrevented || event.altKey || (event.target instanceof HTMLElement
+    if (!interactive || event.defaultPrevented || event.altKey || guidePanel.current?.contains(event.target as Node) || (event.target instanceof HTMLElement
       && (event.target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(event.target.tagName)))) return
     const shortcut = event.metaKey || event.ctrlKey
     const key = event.key.toLowerCase()
@@ -210,19 +210,18 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
         } : undefined}
         onPaintCandidate={interactive && painting ? (candidate: Candidate) => commit((current) => paintCandidate(current, candidate, selectedColor!)) : undefined} />
     </div>
+    {guide && <div className="lesson-workbench-guide" ref={guidePanel}>{guide(ready)}</div>}
     <div className="lesson-workbench-tools" ref={tools}>
-      {instruction && <p className="lesson-practice-instruction">{instruction}</p>}
-      {guide}
-      {!preview && <Controls mode={mode} pencil={pencil} togglePencil={togglePencil} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
+      <Controls mode={mode} pencil={pencil} togglePencil={togglePencil} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
         advancedModes={preferences.advancedModes} colorMode={colorMode} colorTarget={colorTarget}
         setColorTarget={(target) => { setColorTarget(target); setSelectedColor(null) }} toggleColorMode={toggleColor}
         highlightMode={highlightMode} toggleHighlightMode={toggleHighlight} eraseMode={eraseMode} toggleEraseMode={toggleErase}
-        selectedDigit={colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0} values={values} input={input}
+        selectedDigit={preview ? null : colorMode ? selectedColor : selectedDigit} hasCellSelection={!preview && selected.length > 0} values={values} input={input}
         undo={() => commit(undo)} redo={() => commit(redo)} canUndo={game.past.length > 0} canRedo={game.future.length > 0}
-        compact disabled={!ready} draft={false} inputSize={preferences.inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight}
-        beginResize={() => {}} multi={multi} toggleMulti={() => setMulti(!multi)} />}
-      {annotations && <button type="button" className="button quiet" aria-pressed={showAnnotations}
-        onClick={() => setShowAnnotations(!showAnnotations)}>Explanation highlights</button>}
+        compact disabled={!interactive} draft={false} inputSize={preferences.inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight}
+        beginResize={() => {}} multi={multi} toggleMulti={() => setMulti(!multi)} />
+      {(annotations || guide) && <button type="button" className="button quiet lesson-workbench-highlights" aria-pressed={Boolean(annotations) && showAnnotations}
+        disabled={!annotations} onClick={() => setShowAnnotations(!showAnnotations)}>{guide ? 'Grid highlights' : 'Explanation highlights'}</button>}
       {children ? children({ actions, reset, reveal })
         : <button type="button" className="button secondary" onClick={reset}>Reset grid</button>}
     </div>
