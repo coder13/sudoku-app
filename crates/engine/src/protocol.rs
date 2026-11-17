@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 #[cfg(feature = "generation")]
-use super::generation::start_builtin_pool;
+use super::generation::{MatchedPath, start_builtin_pool, start_matching_path, start_targeted_path};
 use super::hints::technique_counts::TechniqueCountScan;
 use super::hints::{checked_position, classify_actions, rank_position, rank_useful_position};
 use super::{
@@ -26,8 +26,7 @@ use super::{
 #[cfg(feature = "generation")]
 use super::{
     GeneratedPuzzle, GenerationConflict, GenerationCriteria, GenerationError, GenerationRating,
-    GenerationSearch, GenerationStep, GenerationTarget, TechniqueTargetMode, start_matching,
-    start_targeted,
+    GenerationSearch, GenerationStep, GenerationTarget, TechniqueTargetMode,
 };
 #[cfg(feature = "teaching")]
 use super::{Random, technique_deductions_at};
@@ -36,6 +35,7 @@ use crate::{check_practice_move, permutation::puzzle_permutation};
 
 #[cfg(feature = "cli")]
 pub(crate) mod batch;
+mod hint_pages;
 #[cfg(feature = "variants")]
 mod variant;
 
@@ -60,6 +60,11 @@ enum Request {
         position: Value,
         #[serde(flatten)]
         options: variant::Options,
+    },
+    SolveSingles {
+        values: String,
+        eliminations: Option<Vec<u16>>,
+        displayed_candidates: Option<Vec<u16>>,
     },
     Rate {
         values: String,
@@ -118,7 +123,10 @@ enum Request {
         technique: String,
         action: HintAction,
     },
+    HintPage { collection: u32, index: usize },
+    ReleaseHints { collection: u32 },
     Hints {
+        collection: Option<u32>,
         values: String,
         eliminations: Option<Vec<u16>>,
         limit: Option<HintLimit>,
@@ -222,6 +230,8 @@ enum Request {
         max_attempts: u32,
         target: Target,
         #[serde(default)]
+        include_rating: bool,
+        #[serde(default)]
         exclude: Vec<String>,
     },
     #[cfg(feature = "generation")]
@@ -254,6 +264,8 @@ enum Request {
 #[serde(rename_all = "camelCase")]
 #[cfg(feature = "generation")]
 struct MatchingRequest {
+    #[serde(default)]
+    include_rating: bool,
     seed: u32,
     max_attempts: u32,
     clues: ClueCount,
@@ -274,10 +286,17 @@ enum HintLimit {
 }
 
 #[derive(Serialize)]
-struct HintWithPattern<'a> {
+struct HintWithPattern {
     #[serde(flatten)]
-    hint: &'a Hint,
+    hint: Hint,
     pattern: ProofPattern,
+}
+
+impl HintWithPattern {
+    fn new(hint: Hint, masks: &[u16; super::CELLS]) -> Self {
+        let pattern = ProofPattern::from_evidence(&hint.evidence, hint.actions[0].candidate(), masks);
+        Self { hint, pattern }
+    }
 }
 
 #[derive(Deserialize)]
@@ -342,6 +361,13 @@ type ResultValue<T = Value> = Result<T, (&'static str, &'static str)>;
 #[serde(untagged)]
 enum ResponseValue {
     Json(Value),
+    HintPage(hint_pages::HintPage),
+    Hints { choices: Vec<Hint>, available: usize },
+    HintsWithPatterns {
+        choices: Vec<HintWithPattern>,
+        available: usize,
+        candidates: Vec<u16>,
+    },
     Deductions(Vec<DeductionMatch>),
     HintStages(Option<Box<HintStages>>),
     RankOutcome(RankOutcome),
@@ -418,6 +444,18 @@ fn elimination_masks(
 ) -> Result<Option<[u16; super::CELLS]>, (&'static str, &'static str)> {
     data.map(|data| data.try_into().map_err(|_| INVALID_ELIMINATIONS))
         .transpose()
+}
+
+fn play_masks(
+    displayed: Option<Vec<u16>>,
+    removed: Option<Vec<u16>>,
+) -> ResultValue<[u16; super::CELLS]> {
+    let shown = elimination_masks(displayed)?.unwrap_or([super::DIGITS; super::CELLS]);
+    let removed = elimination_masks(removed)?.unwrap_or([0; super::CELLS]);
+    if shown.iter().chain(&removed).any(|mask| mask & !super::DIGITS != 0) {
+        return Err(INVALID_ELIMINATIONS);
+    }
+    Ok(std::array::from_fn(|cell| shown[cell] & !removed[cell]))
 }
 
 fn starting_position(
@@ -717,7 +755,7 @@ impl MatchingRequest {
                 .iter()
                 .map(|text| board(text))
                 .collect::<Result<Vec<_>, _>>()?;
-            let search = start_matching(
+            let search = start_matching_path(
                 self.seed,
                 &criteria,
                 mode,
@@ -725,10 +763,8 @@ impl MatchingRequest {
                 self.max_attempts,
             )
             .map_err(generation_error)?;
-            return Ok((
-                profile,
-                exclude_puzzles(search.map(GenerationOutput::Board), self.exclude)?,
-            ));
+            let search = generation_output(search, self.include_rating, &profile);
+            return Ok((profile, exclude_puzzles(search, self.exclude)?));
         }
         let search = start_builtin_pool(self.seed, &criteria, mode, self.max_attempts)
             .map_err(generation_error)?;
@@ -763,6 +799,19 @@ impl GenerationOutput {
 
 #[cfg(feature = "generation")]
 type ActiveGeneration = GenerationSearch<'static, GenerationOutput>;
+
+#[cfg(feature = "generation")]
+fn generation_output(
+    search: GenerationSearch<'static, (Board, MatchedPath)>,
+    rated: bool,
+    profile: &SolverProfile,
+) -> ActiveGeneration {
+    if !rated {
+        return search.map(|(board, _)| GenerationOutput::Board(board));
+    }
+    let order = profile.technique_order().to_vec();
+    search.filter_map(move |(board, path)| path.rated(board, &order).map(GenerationOutput::Rated))
+}
 
 thread_local! {
     #[cfg(feature = "generation")]
@@ -822,6 +871,7 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
             seed,
             max_attempts,
             target,
+            include_rating,
             exclude,
         } => {
             let (profile, search) = match target {
@@ -830,7 +880,7 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
                     technique_order,
                 } => {
                     let profile = profile(technique_order)?;
-                    let search = start_targeted(
+                    let search = start_targeted_path(
                         seed,
                         GenerationTarget::Difficulty {
                             level,
@@ -844,19 +894,12 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
                     let technique = Technique::from_id(&technique).ok_or(INVALID_PROFILE)?;
                     (
                         SolverProfile::default(),
-                        start_targeted(seed, GenerationTarget::Opening(technique), max_attempts),
+                        start_targeted_path(seed, GenerationTarget::Opening(technique), max_attempts),
                     )
                 }
             };
-            Ok((
-                GenerationProfile::Classic(profile),
-                exclude_puzzles(
-                    search
-                        .map_err(generation_error)?
-                        .map(GenerationOutput::Board),
-                    exclude,
-                )?,
-            ))
+            let search = generation_output(search.map_err(generation_error)?, include_rating, &profile);
+            Ok((GenerationProfile::Classic(profile), exclude_puzzles(search, exclude)?))
         }
         Request::GenerateConstrained { options, templates } => options
             .start(Some(templates))
@@ -926,6 +969,12 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             position,
             options,
         } => variant::execute(operation, position, options),
+        Request::SolveSingles { values, eliminations, displayed_candidates } => {
+            let allowed = play_masks(displayed_candidates, eliminations)?;
+            let filled = super::classic_singles(board(&values)?, &allowed)
+                .ok_or_else(|| puzzle_error(Analysis::Conflict))?;
+            Ok(json!(grid_string(filled)))
+        }
         Request::Rate {
             values,
             technique_order,
@@ -1089,7 +1138,15 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             let proof = check_practice_move(&position, technique, action).map_err(hint_error)?;
             Ok(json!(proof))
         }
+        Request::HintPage { collection, index } => {
+            return hint_pages::read(collection, index).map(ResponseValue::HintPage);
+        }
+        Request::ReleaseHints { collection } => {
+            hint_pages::release(collection);
+            Ok(Value::Null)
+        }
         Request::Hints {
+            collection,
             values,
             eliminations,
             limit,
@@ -1117,25 +1174,21 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             } else {
                 rank_position(&position, limit, &disabled)
             };
-            if include_patterns {
-                let choices: Vec<_> = choices
-                    .iter()
-                    .map(|hint| HintWithPattern {
-                        hint,
-                        pattern: ProofPattern::from_evidence(
-                            &hint.evidence,
-                            hint.actions[0].candidate(),
-                            position.masks(),
-                        ),
-                    })
-                    .collect();
-                return Ok(ResponseValue::Json(json!({
-                    "choices": choices,
-                    "available": choices.len(),
-                    "candidates": position.masks().as_slice(),
-                })));
+            if let Some(collection) = collection {
+                let cached = hint_pages::Choices::Classic(choices, *position.masks());
+                return hint_pages::start(collection, cached).map(ResponseValue::HintPage);
             }
-            Ok(json!({ "choices": choices, "available": choices.len() }))
+            if include_patterns {
+                let choices: Vec<_> = choices.into_iter()
+                    .map(|hint| HintWithPattern::new(hint, position.masks()))
+                    .collect();
+                return Ok(ResponseValue::HintsWithPatterns {
+                    available: choices.len(),
+                    choices,
+                    candidates: position.masks().to_vec(),
+                });
+            }
+            return Ok(ResponseValue::Hints { available: choices.len(), choices });
         }
         Request::NextDeduction {
             values,

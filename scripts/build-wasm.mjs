@@ -8,8 +8,9 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
   const features = featuresForProfile(profile)
   const target = resolve(process.env.CARGO_TARGET_DIR ?? 'target')
   execFileSync('cargo', [
-    'build', '--locked', '--release', '-p', 'sudoku-app-engine', '--no-default-features', '--features', features.join(','),
+    'rustc', '--lib', '--locked', '--release', '-p', 'sudoku-app-engine', '--no-default-features', '--features', features.join(','),
     '--target', 'wasm32-unknown-unknown', '--target-dir', target,
+    '--', '-C', 'link-arg=--strip-all',
   ], { stdio: 'inherit' })
 
   const bytes = readFileSync(resolve(target, 'wasm32-unknown-unknown/release/sudoku_app_engine.wasm'))

@@ -59,7 +59,11 @@ impl TechniqueCountScan {
                 .get_or_insert_with(|| OverlaySearch::classic(position.board(), position.masks()));
             let _ = overlay.visit(technique, &mut collect);
         } else {
-            let search = DeductionSearch::new(position.board(), position.masks());
+            let solution = (technique == Technique::NestedForcingNet)
+                .then(|| position.verified_solution())
+                .flatten();
+            let mut search = DeductionSearch::new(position.board(), position.masks());
+            search.patterns.verified_solution = solution.as_ref();
             let _ = visit_technique(&search, technique, collect);
         }
         Ok(targets.iter().map(|mask| mask.count_ones()).sum())

@@ -64,24 +64,10 @@ const ARROWS: Record<string, [number, number]> = {
 }
 
 async function solveSingleValues(variant: Game['variant'], values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
-  let board = values
-  for (let step = 0; step < 81; step++) {
-    const legalMasks = variant
-      ? await runEngine({ type: 'variant', operation: 'candidates', position: {
-        puzzle: variant.puzzle, eliminations,
-        entries: [...board].map((digit, cell) => variant.puzzle.givens[cell] === '0' ? digit : '0').join(''),
-      } })
-      : await runEngine({ type: 'notes', values: board })
-    if (!legalMasks) throw new Error('Singles cannot be solved until the grid conflicts are resolved.')
-    const masks = displayedCandidates
-      ? legalMasks.map((mask, index) => board[index] === '0' ? mask & displayedCandidates[index] : 0)
-      : legalMasks
-    const single = singleFromCandidates(board, masks, eliminations, variant?.puzzle)
-    if (!single) return board
-    const [index, digit] = single
-    board = board.slice(0, index) + digit + board.slice(index + 1)
-  }
-  return board
+  if (!variant) return runEngine({ type: 'solve-singles', values, eliminations, displayedCandidates })
+  const entries = [...values].map((digit, cell) => variant.puzzle.givens[cell] === '0' ? digit : '0').join('')
+  return runEngine({ type: 'variant', operation: 'solve-singles', displayedCandidates,
+    position: { puzzle: variant.puzzle, entries, eliminations } })
 }
 
 function useTimer(id: string, running: boolean) {
@@ -126,7 +112,10 @@ type HintPosition = Pick<Position, 'center' | 'corner' | 'eliminations'> & {
   values: string
 }
 
+let nextHintCollection = 0
+
 type HintState = {
+  page?: { collection: number; offset: number; available: number }
   position: HintPosition
   choices: HintChoice[]
   candidates?: number[]
@@ -289,11 +278,17 @@ export function Worktable({
   const pendingDoubleClickSingle = useRef<{ index: number; digit: number; game: Game } | null>(null)
   const pathRequest = useRef(0)
   const techniqueHintRequest = useRef(0)
+  const pageRequest = useRef(0)
+  const hintCollection = hintState?.page?.collection
+  useEffect(() => () => {
+    if (hintCollection !== undefined) void runEngine({ type: 'release-hints', collection: hintCollection }).catch(() => {})
+  }, [hintCollection])
   const values = useMemo(() => valuesOf(game), [game.givens, game.position.entries])
   const { center, corner, eliminations } = game.position
   const displayedCandidates = useMemo(() => completeCandidateMasks(game), [values, center, corner])
   const hintPosition = useMemo(() => ({ gameId: game.id, values, center, corner, eliminations }),
     [game.id, values, center, corner, eliminations])
+  useEffect(() => () => { techniqueHintRequest.current++ }, [hintPosition])
   const conflicts = useMemo(() => conflictsOf(values, game.variant?.puzzle), [values, game.variant])
   const draft = game.source === 'draft'
   // A loading draft skips solver effects but reserves the regular play UI.
@@ -306,7 +301,8 @@ export function Worktable({
   const visibleHint = hintRevealed ? hint : null
   const hintLoading = hintRevealed && busy && !visibleHint
   const hintOpen = mobileHintOpen || hintLoading || visibleHint !== null || solutionHintOpen
-  const deduction = visibleHint?.choices[visibleHint.index]
+  const deduction = visibleHint?.choices[visibleHint.index - (visibleHint.page?.offset ?? 0)]
+  const hintCount = visibleHint?.page?.available ?? visibleHint?.choices.length ?? 0
   const hintStage = visibleHint?.stage
   const recovery = visibleHint?.recovery
   const recoveryCell = recovery && cellReference(recovery.cell, cellReferenceStyle, game.difficulty ?? undefined)
@@ -1259,7 +1255,9 @@ export function Worktable({
         : await runEngine({ type: 'analyze', values })
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
       if (!current || valuesOf(current) !== values) return
-      if (!draft) {
+      if (!draft && status === 'multiple') {
+        setDialogResult({ title: 'Puzzle check', text: 'This grid has more than one solution.', tone: 'neutral' })
+      } else if (!draft && status !== 'search-limit') {
         setDialogResult(status === 'unique'
           ? { title: 'Puzzle check', text: solved ? 'This puzzle is correct.' : 'Every placed digit is correct so far.', tone: 'success' }
           : { title: 'Puzzle check', text: 'This puzzle is not correct yet.', tone: 'error' })
@@ -1341,20 +1339,37 @@ export function Worktable({
     setActionsOpen(false)
     setHintRevealed(true)
     setBusy(true)
+    const requestId = ++techniqueHintRequest.current
     let result: HintState
     const removals = hintEliminations(values, displayedCandidates, eliminations)
     try {
-      const { choices, candidates } = variant ? {
-        choices: (await runEngine({
+      const collection = limit === 'all' ? ++nextHintCollection : undefined
+      let choices: HintChoice[]
+      let candidates: number[] | undefined
+      let page: HintState['page']
+      if (variant) {
+        const request = {
           type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations: removals },
           techniqueOrder: await variantHintOrder(), limit: limit === 'all' ? 0xffff_ffff : limit,
           preferProgress: true, difficulty: game.difficulty ?? 'medium',
-        })).map((choice) => variantHintChoice(choice, variant.puzzle)),
-        candidates: variantHouseMasks(variant.puzzle, values, removals),
-      } : await runEngine({ type: 'hints', values, eliminations: removals, limit, includePatterns: true,
-        preferProgress: true, difficulty: game.difficulty ?? 'medium' })
+        } as const
+        if (collection !== undefined) {
+          const first = await runEngine({ ...request, collection })
+          page = { collection, offset: first.offset, available: first.available }
+          choices = first.choices.map(choice => variantHintChoice(choice, variant.puzzle))
+        } else {
+          choices = (await runEngine(request)).map(choice => variantHintChoice(choice, variant.puzzle))
+        }
+        candidates = variantHouseMasks(variant.puzzle, values, removals)
+      } else {
+        const first = await runEngine({ type: 'hints', values, eliminations: removals, limit, collection,
+          includePatterns: true, preferProgress: true, difficulty: game.difficulty ?? 'medium' })
+        choices = first.choices
+        candidates = first.candidates
+        if (collection !== undefined) page = { collection, offset: 0, available: first.available }
+      }
       if (!candidates) throw new Error('Missing hint candidates')
-      result = { position: hintPosition, choices, candidates, index: 0, stage: 'technique' }
+      result = { position: hintPosition, choices, candidates, page, index: 0, stage: 'technique' }
     } catch (error) {
       const incorrectCandidates = error instanceof EngineError && (error.code === 'invalid-eliminations' ||
         (error.code === 'unsolvable' && variant && [...values].every((digit, cell) => digit === '0' || digit === variant.solution[cell])))
@@ -1372,7 +1387,8 @@ export function Worktable({
       setBusy(false)
     }
     const current = roomStore.getSnapshot().games.find((item) => item.id === id)
-    if (current && matchesHintPosition(current, hintPosition)) setHint(result)
+    if (requestId === techniqueHintRequest.current && current && matchesHintPosition(current, hintPosition)) setHint(result)
+    else if (result.page) void runEngine({ type: 'release-hints', collection: result.page.collection }).catch(() => {})
   }
 
   async function showTechniqueHints(technique: string) {
@@ -1421,12 +1437,28 @@ export function Worktable({
     if (request === techniqueHintRequest.current && latest && matchesHintPosition(latest, position)) setHint(result)
   }
 
-  function moveHint(offset: -1 | 1) {
-    setHint((current) => {
-      if (!current || !current.choices.length) return current
-      const index = moveHintIndex(current.index, current.choices.length, offset)
-      return index === current.index ? current : { ...current, index, stage: 'technique' }
-    })
+  async function moveHint(offset: -1 | 1) {
+    if (!visibleHint || !hintCount) return
+    const request = ++pageRequest.current
+    const { page } = visibleHint
+    const index = moveHintIndex(visibleHint.index, hintCount, offset)
+    if (index === visibleHint.index) return
+    if (!page || (index >= page.offset && index < page.offset + visibleHint.choices.length)) {
+      setHint(current => current === visibleHint ? { ...current, index, stage: 'technique' } : current)
+      return
+    }
+    try {
+      const query = { type: 'hint-page', collection: page.collection, index } as const
+      const next = variant ? await runEngine({ ...query, variant: true }).then(batch =>
+        ({ ...batch, choices: batch.choices.map(choice => variantHintChoice(choice, variant.puzzle)) })) : await runEngine(query)
+      if (request !== pageRequest.current) return
+      setHint(current => current?.page?.collection === page.collection
+        ? { ...current, choices: next.choices, page: { ...page, offset: next.offset }, index, stage: 'technique' } : current)
+    } catch (error) {
+      if (request === pageRequest.current) setHint(current => current?.page?.collection === page.collection
+        ? { ...current, choices: [], page: undefined, index: 0, error: { title: 'Could not load hint', text: (error as Error).message } }
+        : current)
+    }
   }
 
   function changeHintDetail(offset: -1 | 1) {
@@ -1560,8 +1592,8 @@ export function Worktable({
         explanationSteps={recoveryExplanation ? undefined : explanation?.reasonSteps}
         collapseExplanation={Boolean(solutionHintPanel)}
         trace={solutionHintPanel ? undefined : hintDiagram?.trace}
-        navigation={!solutionHintPanel && visibleHint && visibleHint.choices.length > 0
-          ? { index: visibleHint.index, count: visibleHint.choices.length, onMove: moveHint }
+        navigation={!solutionHintPanel && visibleHint && hintCount > 0
+          ? { index: visibleHint.index, count: hintCount, onMove: moveHint }
           : undefined} />
     </div>
   )

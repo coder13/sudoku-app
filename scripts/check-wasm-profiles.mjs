@@ -19,7 +19,8 @@ try {
     const output = join(root, profile)
     await buildBrowserEngine(profile, output)
     const bytes = readFileSync(join(output, 'engine.wasm'))
-    const { instance: { exports: engine } } = await WebAssembly.instantiate(bytes)
+    const { instance: { exports: engine }, module } = await WebAssembly.instantiate(bytes)
+    assert.equal(WebAssembly.Module.customSections(module, 'name').length, 0)
     const request = message => {
       const input = Buffer.from(JSON.stringify(message))
       const offset = engine.request_buffer(input.length)
