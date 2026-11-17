@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import type { Candidate, DeductionAction, PositionSnapshot, VariantPuzzle } from '../sudoku/engine'
-import { COLORS, conflictsOf, enter, onlyCandidate, paintCandidate, redo, undo, valuesOf, type ColorTarget, type Mode } from '../sudoku/game'
+import { alternateColorShade, COLORS, conflictsOf, enter, onlyCandidate, paintCandidate, redo, undo, valuesOf, type ColorTarget, type Mode } from '../sudoku/game'
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
 import { latestLessonActions, makeLessonGame, revealLessonAction, sameLessonDigits } from '../sudoku/lesson-workbench'
 import { variantLessonClues } from '../sudoku/lesson-examples'
@@ -87,6 +87,12 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   function toggleColor() { setColorMode(!colorMode); setPencil(false); setHighlightMode(false); setEraseMode(false) }
   function toggleErase() { setEraseMode(!eraseMode); setPencil(false); setColorMode(false); setHighlightMode(false); setSelected([]) }
 
+  function switchColorShade() {
+    if (!interactive || !colorMode || selectedColor === null) return
+    const alternate = alternateColorShade(selectedColor)
+    if (alternate !== null) setSelectedColor(alternate)
+  }
+
   function input(digit: number, inputMode: Mode = mode, cells = selected, toggleValue = false) {
     if (digit > 0) setEraseMode(false)
     if (inputMode === 'color') {
@@ -163,6 +169,11 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     }
     if (shortcut) return
     const shortcuts = shortcutStore.getSnapshot()
+    if (!event.nativeEvent.isComposing && shortcutMatches(event.nativeEvent, shortcuts, 'switchColorShade')) {
+      event.preventDefault()
+      if (!event.repeat) switchColorShade()
+      return
+    }
     const controls: [EditableShortcutId, () => void][] = [['pencilMode', togglePencil], ['highlightMode', toggleHighlight],
       ['colorMode', () => { if (preferences.advancedModes.colorsEnabled) toggleColor() }],
       ['eraseMode', toggleErase], ['digitMode', () => { setPencil(false); setHighlightMode(false); setColorMode(false); setEraseMode(false) }]]
@@ -220,7 +231,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     {!preview && <div className="lesson-workbench-tools" ref={tools}>
       <Controls mode={mode} pencil={pencil} togglePencil={togglePencil} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
         advancedModes={preferences.advancedModes} colorMode={colorMode} colorTarget={colorTarget}
-        setColorTarget={(target) => { setColorTarget(target); setSelectedColor(null) }} toggleColorMode={toggleColor}
+        setColorTarget={(target) => { setColorTarget(target); setSelectedColor(null) }} toggleColorMode={toggleColor} onSwitchShade={switchColorShade}
         highlightMode={highlightMode} toggleHighlightMode={toggleHighlight} eraseMode={eraseMode} toggleEraseMode={toggleErase}
         selectedDigit={preview ? null : colorMode ? selectedColor : selectedDigit} hasCellSelection={!preview && selected.length > 0} values={values} input={input}
         undo={() => commit(undo)} redo={() => commit(redo)} canUndo={game.past.length > 0} canRedo={game.future.length > 0}

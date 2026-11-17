@@ -2,17 +2,24 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
+import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const fixtures = JSON.parse(await readFile(new URL('../crates/engine/benches/fixtures/variants.json', import.meta.url), 'utf8'))
 const mixed = JSON.parse(await readFile(new URL('../tests/fixtures/mixed-puzzles.json', import.meta.url), 'utf8'))
 const combined = JSON.parse(await readFile(new URL('../tests/fixtures/combined-families.json', import.meta.url), 'utf8'))
+const quadruple = JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-clover.json', import.meta.url), 'utf8'))
 fixtures.push({
   name: 'x-killer', position: mixed['x-killer'].puzzle,
   template: { version: 1, givens: '0'.repeat(81), rules: [
     { type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' },
   ] },
   derivedClues: [{ type: 'killer-cage-sizes', sizes: Array(27).fill(3), coverGrid: true }], givens: 8,
-}, { name: 'all-families', position: combined.puzzle })
+}, { name: 'all-families', position: combined.puzzle }, {
+  name: 'quadruple', position: quadruple.puzzle,
+  template: { version: 1, givens: '0'.repeat(81) },
+  derivedClues: Array.from({ length: 64 }, (_, i) => ({ type: 'quadruple', topLeft: Math.floor(i / 8) * 9 + i % 8, clueSize: 4 })),
+  givens: 0,
+})
 const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
 const { instance } = await WebAssembly.instantiate(bytes)
 const handle = createEngineHandler(async () => instance.exports)
@@ -33,10 +40,10 @@ async function request(input) {
   return response.value
 }
 
-async function sample(input) {
+async function sample(input, count = samples) {
   for (let index = 0; index < 5; index++) await request(input)
   const measurements = []
-  for (let index = 0; index < samples; index++) {
+  for (let index = 0; index < count; index++) {
     const start = performance.now()
     await request(input)
     measurements.push(performance.now() - start)
@@ -70,7 +77,8 @@ for (const { name, position: puzzle, template, derivedClues, givens } of fixture
     const start = performance.now()
     const response = await handle({
       id: ++id,
-      request: { type: 'generate-variant', seed, maxAttempts, maxNodes, template, derivedClues, givens },
+      request: { type: 'generate-variant', seed, maxAttempts, maxNodes, template, derivedClues, givens,
+        ...(name === 'quadruple' && { requiredRule: 'quadruple', variantClues: 64 }) },
     })
     measurements.push(performance.now() - start)
     if ('value' in response) {
@@ -82,3 +90,17 @@ for (const { name, position: puzzle, template, derivedClues, givens } of fixture
   }
   console.log(`${name.padEnd(16)} candidates ${candidates}  verify ${validation}  solve ${solve}  rate ${rating}  hints ${hints}  generate ${summary(measurements)}  matches ${matches}/${seeds}`)
 }
+
+// Repeat the actual app's merged technique order and useful-progress policy.
+// The exhaustive request still searches every enabled technique before paging.
+const classicCatalog = await request({ type: 'techniques' })
+const variantCatalog = await request({ type: 'techniques', variant: true })
+const appOrder = variantTechniqueOrder(variantCatalog.defaultOrder, classicCatalog.difficultyOrder,
+  Object.fromEntries([...classicCatalog.techniques, ...variantCatalog.techniques].map(technique => [technique.id, technique.difficulty])))
+const appHints = { type: 'variant', operation: 'hints', position: { puzzle: quadruple.puzzle },
+  techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium' }
+const appRate = await sample({ type: 'variant', operation: 'rate', position: appHints.position, techniqueOrder: appOrder })
+const topTen = await sample({ ...appHints, limit: 10 })
+const exhaustive = await sample({ ...appHints, limit: 0xffff_ffff, collection: 100 }, 10)
+const firstPage = await request({ ...appHints, limit: 0xffff_ffff, collection: 100 })
+console.log(`quadruple app    rate ${appRate}, ten hints ${topTen} (${samples} samples); exhaustive first page ${exhaustive} (10 samples), ${firstPage.available} choices, ${firstPage.choices.length} transferred`)

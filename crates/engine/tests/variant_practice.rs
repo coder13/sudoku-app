@@ -82,6 +82,14 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     );
                     scopes.insert(cells);
                 }
+                VariantEvidence::LockedDigit { clue, .. } => {
+                    assert!(
+                        clue.rules
+                            .iter()
+                            .all(|&rule| position.puzzle.rules.get(rule).is_some())
+                    );
+                    scopes.insert(clue.cells);
+                }
                 VariantEvidence::CageSum { cells, .. }
                 | VariantEvidence::Intersection { cells, .. } => {
                     scopes.insert(cells);

@@ -13,6 +13,9 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle) {
   const [a, b] = cells
   const pair = b === undefined ? at(a) : `${at(a)} and ${at(b)}`
   switch (rule?.type) {
+    case 'quadruple':
+      return { description: `The circle requires ${rule.digits.join(', ')} among its four surrounding cells.`,
+        reason: 'Each printed digit needs a separate cell. No arrangement that uses a crossed-out candidate can fit all the printed digits.' }
     case 'anti-knight':
     case 'anti-king': {
       const step = rule.type === 'anti-knight' ? 'a knight’s move apart' : 'diagonal neighbors'
@@ -152,6 +155,17 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       cells = evidence.cells
       description = `Every possible ${evidence.digit} in ${houseLabel(evidence.source)} lies in ${houseLabel(evidence.target)}.`
       reason = `One shared cell must hold ${evidence.digit}. Remove it from the rest of ${houseLabel(evidence.target)}.`
+      break
+    }
+    case 'locked-digit': {
+      cells = evidence.clue.cells
+      const printed = evidence.clue.rules.flatMap(index => {
+        const rule = puzzle.rules?.[index]
+        return rule?.type === 'quadruple' ? rule.digits : []
+      })
+      const target = houseLabel(evidence.target)
+      description = `The Quadruple circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
+      reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
       break
     }
     case 'cage-sum': {

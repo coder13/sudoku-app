@@ -690,6 +690,10 @@
             {
               "label": "Diagonal Locked Candidates in X Sudoku",
               "href": "/learn/diagonal-locked-candidates"
+            },
+            {
+              "label": "Quadruple circles and house locks",
+              "href": "/learn/quadruple#circle-lock"
             }
           ],
           "difficulty": "medium",
@@ -7685,6 +7689,84 @@
             }
           ],
           "difficulty": "hard"
+        }
+      ]
+    },
+    {
+      "title": "Quadruple Sudoku",
+      "overview": "Use the printed digits in a circle to narrow its four surrounding cells.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "quadruple",
+          "title": "Quadruple",
+          "summary": "A Quadruple circle tells you which digits must appear in the four cells that touch it. Each printed digit needs its own cell. If the circle lists all four digits, it accounts for every cell around it.",
+          "difficulty": "medium",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Match the printed digits to the four cells"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Four printed digits fill the four cells around a circle. Cross out any other candidate in those cells.",
+                "With fewer printed digits, some cells can contain other digits. Match each printed digit to a separate surrounding cell before removing a candidate."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "quadruple",
+              "copy": {
+                "description": "The circle between R6C3, R6C4, R7C3, and R7C4 lists 2, 4, 6, and 8. These four cells need those four digits.",
+                "reason": "The four printed digits fill all four cells. There is no cell left for 5, so remove candidate 5 from R6C3."
+              }
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Count repeated printed digits separately. A circle with 2, 2, and 6 needs two different cells containing 2 and another containing 6.",
+                "The usual house rules still apply. Cells sharing a row, column, or region cannot contain the same digit."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "circle-lock",
+              "title": "Use a circle inside a box"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In Clover’s linked puzzle, the circle at R2C1, R2C2, R3C1, and R3C2 lists 5, 7, and 9. All four cells belong to box 1.",
+                "The circle requires 5, 7, and 9 inside box 1. Remove those digits from the other cells in box 1."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "quadruple",
+                  "title": "Quadruple"
+                }
+              ],
+              "guide": {
+                "start": "Read every printed digit in the circle. Count repeated digits separately.",
+                "check": "Fit each printed digit to a separate surrounding cell. Apply the row, column, and region rules.",
+                "reason": "Remove a candidate only when no complete assignment for the four cells can use it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Clover’s published Quadruples puzzle",
+              "href": "https://www.gmpuzzles.com/blog/2025/07/quadruples-sudoku-by-clover/"
+            },
+            {
+              "label": "Sudoku Coach constructor and rule description",
+              "href": "https://sudoku.coach/en/construct"
+            }
+          ]
         }
       ]
     }

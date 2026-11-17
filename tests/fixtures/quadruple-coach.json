@@ -1,0 +1,397 @@
+{
+  "source": "Sudoku Coach constructor, authored Diagonal/Killer fixture with a repeated-digit Quadruple at R1C3; exported 2026-11-17",
+  "coach": "https://sudoku.coach/en/play/SCv7_32_f2e8r5afhfdj0465nu5strp0hnv5jedmst9dhosigdcgm8q8jja722mri3nttccrbkl6e1vc4482jfrp3a7sebpnqm7qaup9fupdk9d867ruad2sqjn5aooemc22rcb5osne35ng9dmdi2abogipk99mtjma3uni7c7tuiqv4qn5hqfqu9dd7vvbsjbjuvrlj73ke9tdqnho8rusi5kmpipg3vpnkkt5actq78d6uspnejblknmkugrrv28vmtj2jr9ite9vspvvgviu9l9hiuiurnn7ef7ipl9vtjujklmcv9ufvirrcnv5rja5mfgsspnldgp6n2sljprmdi7njin3lihitlp3he24bro3ko33dgg507b1bb4hc0idqm7b4rc0cbju1m9qjo00sd0ks43e5ar83290l7f5llvjj0sk9et92fbc7sbg18odb7fg260ifkobp9ac6f653p8rkfqvoco0s92ka7rjhgg4i1ac7qhp8vc009u1lpn8b0eje1kh7r0tg92q8rbg89k119dhm1qhjr0o0hng9p8l1hv3qi32tf35jdh11cnpan1vnmg124l26jrfbv9p305h512nafntjo6or6rbqukms06bpnhk8e0h038q16n4m9lg5u8s19gacn7mfqsnoqh6d0q1qi415j0f8hp3juv9eavqsr9nbr7gfkfajodtqvfs6dcan7kfr3fvu0jevgdde",
+  "data": {
+    "gridSize": 9,
+    "regions": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      5,
+      5,
+      5,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      5,
+      5,
+      5,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      5,
+      5,
+      5,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      8,
+      8,
+      8,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      8,
+      8,
+      8,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      8,
+      8,
+      8
+    ],
+    "givenDigits": "000000000000000500200000000000095000000000000050000000000000000000000100010000900",
+    "givenConstraints": [
+      {
+        "id": 10,
+        "type": "diagonalNegative",
+        "segments": [],
+        "settings": {}
+      },
+      {
+        "id": 11,
+        "type": "diagonalPositive",
+        "segments": [],
+        "settings": {}
+      },
+      {
+        "id": 12,
+        "type": "cage",
+        "segments": [
+          {
+            "cells": [
+              30,
+              39,
+              48
+            ],
+            "parameters": {
+              "sum": 16
+            }
+          },
+          {
+            "cells": [
+              28,
+              37,
+              46
+            ],
+            "parameters": {
+              "sum": 10
+            }
+          },
+          {
+            "cells": [
+              0,
+              9,
+              18
+            ],
+            "parameters": {
+              "sum": 17
+            }
+          },
+          {
+            "cells": [
+              29,
+              38,
+              47
+            ],
+            "parameters": {
+              "sum": 21
+            }
+          },
+          {
+            "cells": [
+              6,
+              15,
+              24
+            ],
+            "parameters": {
+              "sum": 18
+            }
+          },
+          {
+            "cells": [
+              8,
+              17,
+              26
+            ],
+            "parameters": {
+              "sum": 11
+            }
+          },
+          {
+            "cells": [
+              55,
+              64,
+              73
+            ],
+            "parameters": {
+              "sum": 16
+            }
+          },
+          {
+            "cells": [
+              35,
+              44,
+              53
+            ],
+            "parameters": {
+              "sum": 20
+            }
+          },
+          {
+            "cells": [
+              57,
+              66,
+              75
+            ],
+            "parameters": {
+              "sum": 12
+            }
+          },
+          {
+            "cells": [
+              56,
+              65,
+              74
+            ],
+            "parameters": {
+              "sum": 15
+            }
+          },
+          {
+            "cells": [
+              5,
+              14,
+              23
+            ],
+            "parameters": {
+              "sum": 7
+            }
+          },
+          {
+            "cells": [
+              7,
+              16,
+              25
+            ],
+            "parameters": {
+              "sum": 16
+            }
+          },
+          {
+            "cells": [
+              27,
+              36,
+              45
+            ],
+            "parameters": {
+              "sum": 14
+            }
+          },
+          {
+            "cells": [
+              31,
+              40,
+              49
+            ],
+            "parameters": {
+              "sum": 14
+            }
+          },
+          {
+            "cells": [
+              54,
+              63,
+              72
+            ],
+            "parameters": {
+              "sum": 14
+            }
+          },
+          {
+            "cells": [
+              59,
+              68,
+              77
+            ],
+            "parameters": {
+              "sum": 23
+            }
+          },
+          {
+            "cells": [
+              33,
+              42,
+              51
+            ],
+            "parameters": {
+              "sum": 13
+            }
+          },
+          {
+            "cells": [
+              3,
+              12,
+              21
+            ],
+            "parameters": {
+              "sum": 17
+            }
+          },
+          {
+            "cells": [
+              34,
+              43,
+              52
+            ],
+            "parameters": {
+              "sum": 12
+            }
+          },
+          {
+            "cells": [
+              60,
+              69,
+              78
+            ],
+            "parameters": {
+              "sum": 14
+            }
+          },
+          {
+            "cells": [
+              4,
+              13,
+              22
+            ],
+            "parameters": {
+              "sum": 21
+            }
+          },
+          {
+            "cells": [
+              58,
+              67,
+              76
+            ],
+            "parameters": {
+              "sum": 10
+            }
+          },
+          {
+            "cells": [
+              32,
+              41,
+              50
+            ],
+            "parameters": {
+              "sum": 15
+            }
+          },
+          {
+            "cells": [
+              62,
+              71,
+              80
+            ],
+            "parameters": {
+              "sum": 14
+            }
+          },
+          {
+            "cells": [
+              2,
+              11,
+              20
+            ],
+            "parameters": {
+              "sum": 9
+            }
+          },
+          {
+            "cells": [
+              1,
+              10,
+              19
+            ],
+            "parameters": {
+              "sum": 19
+            }
+          },
+          {
+            "cells": [
+              61,
+              70,
+              79
+            ],
+            "parameters": {
+              "sum": 17
+            }
+          }
+        ],
+        "settings": {}
+      },
+      {
+        "id": 13,
+        "type": "quadruple",
+        "segments": [
+          {
+            "cells": [
+              2
+            ],
+            "parameters": {
+              "digits": "33"
+            }
+          }
+        ],
+        "settings": {}
+      }
+    ]
+  }
+}

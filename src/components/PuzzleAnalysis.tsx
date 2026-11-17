@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
 import type { TechniqueCatalog } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
-import { techniqueLabel } from '../sudoku/hints'
+import { HINT_CANDIDATES_ERROR, HINT_ERROR, techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
 import { analysisGroupsForCatalog, filterAnalysisGroups, TECHNIQUE_FINDER_TITLE, type AnalysisCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
 import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../sudoku/technique-scan'
-import { puzzleTechniqueCatalog } from '../sudoku/puzzle-help'
+import { puzzleTechniqueCatalog, variantHintProblem } from '../sudoku/puzzle-help'
 import { variantPosition } from '../sudoku/variant-play'
 import { Modal } from './Modal'
 
@@ -74,6 +74,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
     [values, game.position.center, game.position.corner, game.position.eliminations])
   const variant = Boolean(game.variant)
   const snapshotKey = techniqueScanKey(values, eliminationMasks, game.variant?.puzzle)
+  const positionProblem = variantHintProblem(game, values, eliminationMasks)
   const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
@@ -109,7 +110,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
     .sort((left, right) => left.cost - right.cost).map(({ id }) => id), [catalog])
 
   useEffect(() => {
-    if (!active || solved || !catalog) return
+    if (!active || solved || !catalog || positionProblem) return
     const cached = cachedTechniqueCounts(snapshotKey)
     const missing = techniques.filter((technique) => !cached[technique])
     setScan({ key: snapshotKey, results: cached })
@@ -162,7 +163,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
       })()
     }, SCAN_DELAY_MS)
     return () => { current = false; window.clearTimeout(timer); scan.close() }
-  }, [active, solved, catalog, techniques, snapshotKey, values, game.id, retry])
+  }, [active, solved, catalog, techniques, snapshotKey, values, game.id, retry, positionProblem])
 
   const results = scan?.key === snapshotKey ? scan.results : cachedTechniqueCounts(snapshotKey)
   const completed = Object.keys(results).length
@@ -171,11 +172,14 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
 
   return (
     <div className="puzzle-analysis-content">
+      {positionProblem && <div role="alert" className="analysis-error">
+        <p>{(positionProblem === 'invalid-eliminations' ? HINT_CANDIDATES_ERROR : HINT_ERROR).text}</p>
+      </div>}
       {catalogError && <div role="alert" className="analysis-error">
         <p>{catalogError}</p>
         <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Try again</button>
       </div>}
-      {catalog && <>
+      {catalog && !positionProblem && <>
         <label className="analysis-zero-filter">
           <input type="checkbox" checked={hideZero} onChange={(event) => changeHideZero(event.target.checked)} />
           Hide techniques with 0 candidates

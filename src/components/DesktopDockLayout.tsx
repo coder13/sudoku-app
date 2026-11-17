@@ -41,7 +41,9 @@ type DockContent = {
   focusAnalysisRequest: number
   focusSolutionRequest: number
   focusChainsRequest?: number
+  focusColorsRequest?: number
   onChainsVisibleChange?: (visible: boolean) => void
+  onColorsVisibleChange?: (visible: boolean) => void
   onSolutionVisibleChange?: (visible: boolean) => void
 }
 type PanelVisibility = Pick<DockContent, 'showLeft' | 'showRight' | 'showBottom'> & { showChains: boolean }
@@ -73,8 +75,17 @@ function ChainsDockPanel({ api }: IDockviewPanelProps) {
   return <div className="dock-panel-content">{chains}</div>
 }
 
-function CellColorsPanel() {
-  return <div className="dock-panel-content">{useContext(DockContentContext).cellColors}</div>
+function CellColorsPanel({ api }: IDockviewPanelProps) {
+  const { cellColors, onColorsVisibleChange } = useContext(DockContentContext)
+  useEffect(() => {
+    onColorsVisibleChange?.(api.isVisible)
+    const subscription = api.onDidVisibilityChange(({ isVisible }) => onColorsVisibleChange?.(isVisible))
+    return () => {
+      subscription.dispose()
+      onColorsVisibleChange?.(false)
+    }
+  }, [api, onColorsVisibleChange])
+  return <div className="dock-panel-content">{cellColors}</div>
 }
 
 function HintPanel() {
@@ -277,8 +288,8 @@ export function resetDesktopPanelLayout() {
 
 export function DesktopDockLayout({
   puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
-  focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest,
-  onChainsVisibleChange, onSolutionVisibleChange,
+  focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusColorsRequest,
+  onChainsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
 }: DockContent) {
   const [layoutReady, setLayoutReady] = useState(false)
   const apiRef = useRef<DockviewApi | null>(null)
@@ -354,6 +365,10 @@ export function DesktopDockLayout({
     if (focusChainsRequest && showRight) apiRef.current?.getPanel('chains')?.api.setActive()
   }, [focusChainsRequest, showRight])
 
+  useEffect(() => {
+    if (focusColorsRequest && showRight) apiRef.current?.getPanel('cell-colors')?.api.setActive()
+  }, [focusColorsRequest, showRight])
+
   function ready({ api }: DockviewReadyEvent) {
     apiRef.current = api
     restoreLayout(api)
@@ -374,8 +389,8 @@ export function DesktopDockLayout({
   return (
     <DockContentContext.Provider value={{
       puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
-      focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest,
-      onChainsVisibleChange, onSolutionVisibleChange,
+      focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusColorsRequest,
+      onChainsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
     }}>
       <section ref={rootRef} className={`desktop-dock ${layoutReady ? 'dock-ready' : ''}`} aria-label="Advanced workspace panels">
         <DockviewReact className="desktop-dockview" theme={sudokuDockTheme} components={components}

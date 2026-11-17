@@ -78,6 +78,13 @@ pub enum VariantClueLayout {
         #[cfg_attr(feature = "wasm-api", serde(default))]
         cover_grid: bool,
     },
+    /// Sample digits from distinct cells touching a circle, retaining repeated digits.
+    Quadruple {
+        /// Top-left cell index of the four-cell area.
+        top_left: usize,
+        /// Number of cells to sample, from one through four.
+        clue_size: usize,
+    },
     /// Mark the parity of these cells.
     Parity {
         /// Cells to mark.
@@ -113,6 +120,7 @@ impl VariantClueLayout {
     pub(super) fn rule_id(&self) -> &'static str {
         match self {
             Self::KillerCages { .. } | Self::KillerCageSizes { .. } => "killer-cages",
+            Self::Quadruple { .. } => "quadruple",
             Self::Parity { .. } => "parity",
             Self::Inequality { .. } => "inequality",
             Self::Markers {
@@ -176,6 +184,16 @@ pub(super) fn validate(
                     return Err(invalid);
                 }
                 allocated += cells;
+            }
+            Quadruple {
+                top_left,
+                clue_size,
+            } => {
+                if crate::variant::quadruple::cells(*top_left).is_none()
+                    || !(1..=4).contains(clue_size)
+                {
+                    return Err(invalid);
+                }
             }
             Parity { cells } => {
                 if cells.is_empty() || cell_mask(cells).is_none() {
@@ -317,6 +335,19 @@ pub(super) fn build(
             }
             VariantClueLayout::KillerCageSizes { .. } => {
                 unreachable!("sizes resolve to cells before solving")
+            }
+            VariantClueLayout::Quadruple {
+                top_left,
+                clue_size,
+            } => {
+                let mut cells = crate::variant::quadruple::cells(top_left)?;
+                random.shuffle(&mut cells);
+                let mut digits = cells[..clue_size]
+                    .iter()
+                    .map(|&cell| solution[cell])
+                    .collect::<Vec<_>>();
+                digits.sort_unstable();
+                PuzzleRule::Quadruple { top_left, digits }
             }
             VariantClueLayout::Parity { cells } => {
                 let (even, odd): (Vec<_>, Vec<_>) = cells

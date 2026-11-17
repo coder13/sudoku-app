@@ -2,7 +2,7 @@ import lzString from 'lz-string'
 import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle } from './formats.ts'
 import { EMPTY } from './game.ts'
-import { isPlayablePuzzle, isVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
+import { isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000
 const MAX_DECODED_LENGTH = 128_000
@@ -140,7 +140,16 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
     if (!['region', 'difference', 'ratio'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
-    if (constraint.type === 'cage') {
+    if (constraint.type === 'quadruple') {
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+          !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'digits') ||
+          typeof segment.parameters.digits !== 'string' || !/^[1-9]{1,4}$/.test(segment.parameters.digits)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Quadruple clue.')
+        }
+        rules.push({ type: 'quadruple', topLeft: segment.cells[0], digits: [...segment.parameters.digits].map(Number) })
+      }
+    } else if (constraint.type === 'cage') {
       const cages = constraint.segments.map((segment: unknown) => {
         if (!record(segment) || !Array.isArray(segment.cells) || !record(segment.parameters) ||
           Object.keys(segment.parameters).length !== 1 || typeof segment.parameters.sum !== 'number') {
@@ -291,7 +300,7 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   if (url) {
     if (url.hash.startsWith('#variant=')) {
       const shared = parseJSON(new URLSearchParams(url.hash.slice(1)).get('variant') ?? '', 'Puzzle link')
-      if (!record(shared) || (shared.id !== 'mixed' && !isVariantId(shared.id)) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle)) {
+      if (!record(shared) || !isPuzzleVariantId(shared.id) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle)) {
         throw new Error('This link is missing a valid Sudoku variant.')
       }
       const variant: NonNullable<ImportedPuzzle['variant']> = { id: shared.id, puzzle: shared.puzzle }

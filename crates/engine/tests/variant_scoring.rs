@@ -32,7 +32,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
     match deduction.technique {
         Parity | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
         Clone | Palindrome => 8 + span + choices,
-        Kropki | Xv | Thermometer | Between | Whispers => 14 + span + choices,
+        Kropki | Xv | Thermometer | Between | Whispers | Quadruple => 14 + span + choices,
         CageCombinations | Arrow | LittleKiller => 24 + span + 2 * choices,
         Renban | RegionSum => 28 + span + 2 * choices,
         CageHouseSum => 34 + 18 + 3 * cages + span + 2 * choices,
@@ -128,13 +128,10 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
             path_scores.push(total);
         }
     }
-    assert_eq!(path_scores.len(), 66);
+    assert_eq!(path_scores.len(), 69);
     path_scores.sort_unstable();
     println!(
-        "66 verified calibration paths, {}–{} points, median {}. Difficulty counts {:?}.",
-        path_scores[0],
-        path_scores[65],
-        (path_scores[32] + path_scores[33]) / 2,
-        tiers,
+        "69 verified calibration paths, {}–{} points, median {}. Difficulty counts {:?}.",
+        path_scores[0], path_scores[68], path_scores[34], tiers,
     );
 }

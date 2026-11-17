@@ -4,7 +4,7 @@ import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type Candi
 import { activeHighlightDigit } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import { regionMembership } from '../sudoku/variants'
-import { VariantClues, variantCellLabels } from './VariantClues'
+import { VariantClues, cageLabelInset, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 
@@ -227,7 +227,7 @@ export function Board({
                     const pending = selectedCandidate?.cell === index && selectedCandidate.digit === digit
                     const linkTarget = isLinkTarget?.(candidate)
                     const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],
-                      onCandidate && candidateHighlightStyle && digit === focusDigit && 'highlighted',
+                      digit === focusDigit && candidateHighlightStyle && 'highlighted',
                       linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
                     const classes = ['board-candidate', 'candidate-button', onPaintCandidate ? 'paint-candidate' : 'chain-candidate', onCandidate && highlightClass]
                       .filter(Boolean).join(' ')
@@ -245,7 +245,7 @@ export function Board({
                         setCandidateFocus({ ...candidate, slotted })
                         candidateAction(candidate)
                       }}>
-                      <span className={`candidate-glyph ${colorClass}`}>{digit}</span>
+                      <span className={['candidate-glyph', colorClass, onPaintCandidate && highlightClass].filter(Boolean).join(' ')}>{digit}</span>
                     </button>
                   }
                   return <span key={digit} className={['board-candidate', colorClass, highlightClass].filter(Boolean).join(' ')}
@@ -275,7 +275,8 @@ export function Board({
                     onDoubleClick={onCellDoubleClick && ((event) => onCellDoubleClick(index, event))}>
                     <BoardMarks items={gridItems} group={<span className="candidate-marks" aria-hidden={candidateAction ? undefined : true} />} />
                     <BoardMarks items={cageTotal === undefined ? cellItems : [
-                      <span className="variant-cage-total" key={`cage-${cageTotal}`} aria-hidden="true">{cageTotal}</span>,
+                      <span className="variant-cage-total" key={`cage-${cageTotal}`} aria-hidden="true"
+                        style={variantRules ? { insetInlineStart: `${cageLabelInset(index, variantRules) * 100}%` } : undefined}>{cageTotal}</span>,
                       ...cellItems,
                     ]} />
                   </Cell>

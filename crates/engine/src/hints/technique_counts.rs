@@ -62,8 +62,9 @@ impl TechniqueCountScan {
             let solution = (technique == Technique::NestedForcingNet)
                 .then(|| position.verified_solution())
                 .flatten();
-            let mut search = DeductionSearch::new(position.board(), position.masks());
-            search.patterns.verified_solution = solution.as_ref();
+            let search = DeductionSearch::with_verified_solution(
+                position.board(), position.masks(), solution.as_ref(),
+            );
             let _ = visit_technique(&search, technique, collect);
         }
         Ok(targets.iter().map(|mask| mask.count_ones()).sum())
