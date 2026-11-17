@@ -1,10 +1,11 @@
+import { DifficultyStepper } from './DifficultyStepper'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
 
@@ -104,20 +105,15 @@ export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack 
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
-  const mounted = useRef(true)
-  const [pendingDifficulty, setPendingDifficulty] = useState<DifficultyPreference | null>(null)
+  const [selection, setSelection] = useState<DifficultyPreference>(value)
 
   useEffect(() => {
-    mounted.current = true
     heading.current?.focus({ preventScroll: true })
-    return () => { mounted.current = false }
   }, [])
 
   async function selectDifficulty(difficulty: DifficultyPreference) {
     if (busy) return
-    setPendingDifficulty(difficulty)
     await generate(difficulty, () => onChange(difficulty), variant)
-    if (mounted.current) setPendingDifficulty(null)
   }
 
   return (
@@ -134,20 +130,10 @@ export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack 
           </div>
         </header>
         {error && <p className="form-error" role="alert">{error}</p>}
-        <div className="difficulty-options" role="radiogroup" aria-label="Next puzzle difficulty" aria-busy={busy}>
-          {variantDifficulties(variant).map((difficulty) => {
-            const label = variantDifficultyLabel(variant, difficulty, recommended)
-            const selected = difficulty === variantDifficulty(variant, value)
-            const generating = pendingDifficulty === difficulty
-            return (
-              <button key={difficulty} role="radio" aria-checked={selected} disabled={busy}
-                onClick={() => { void selectDifficulty(difficulty) }}>
-                <span>{generating ? `Generating ${label.toLowerCase()}…` : label}</span>
-                {selected && !generating && <Check size={19} aria-hidden="true" />}
-              </button>
-            )
-          })}
-        </div>
+        <DifficultyStepper value={selection} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+        <button type="button" className="button primary" disabled={busy} onClick={() => { void selectDifficulty(selection) }}>
+          {busy ? 'Generating…' : 'Start puzzle'} <ArrowRight size={18} aria-hidden="true" />
+        </button>
       </div>
     </section>
   )

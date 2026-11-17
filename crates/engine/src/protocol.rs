@@ -1107,6 +1107,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
         Request::Techniques { variant: true } => Ok(variant::catalog()),
         Request::Techniques { variant: false } => Ok(json!({
             "defaultOrder": Technique::DEFAULT_ORDER,
+            "difficultyOrder": Technique::DIFFICULTY_ORDER,
             "scoringVersion": SCORING_VERSION,
             "techniques": Technique::ALL.into_iter().map(|technique| json!({
                 "id": technique,

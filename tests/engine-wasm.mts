@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
 import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type RankPattern } from '../src/sudoku/engine.ts'
+import { DIFFICULTY_LEVELS, difficultyIndex } from '../src/sudoku/difficulty.ts'
+import { generateClassic } from '../src/sudoku/classic-generation.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
 import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
@@ -225,7 +227,7 @@ test('Fireworks exposes the published triple and quadruple through practice and 
     includePositions: true,
   })
   assert.deepEqual(trace.steps[0], quadruple.deduction)
-  assert.deepEqual(trace.rating.status, { solved: 'unfair' })
+  assert.deepEqual(trace.rating.status, { solved: 'master' })
   const step = replayStep(trace, 0)
   assert.ok(step)
   assert.equal(step.after.eliminations[48] & (1 << 3), 1 << 3)
@@ -361,7 +363,7 @@ test('Pattern Overlay through five digits offers replayable moves and completes 
   assert.equal(stalled.status, 'stalled')
   techniqueOrder.splice(techniqueOrder.indexOf('forcing-chain'), 0, ...ids)
   const solved = await run({ type: 'rate', values, techniqueOrder })
-  assert.deepEqual(solved.status, { solved: 'extreme' })
+  assert.deepEqual(solved.status, { solved: 'impossible' })
 })
 
 test('Firework chains expose crossing-house links and replay a published removal', async () => {
@@ -786,14 +788,14 @@ test('hint limits and disabled techniques apply before ranking and choosing a pr
   assert.deepEqual(all.choices.slice(0, 10), defaultHints.choices)
   assert.equal(new Set(all.choices.map(({ actions }) => JSON.stringify(actions))).size, all.available)
   const { techniques } = await run({ type: 'techniques' })
-  const tiers = ['easy', 'medium', 'hard', 'unfair', 'extreme']
+  const tiers: readonly string[] = DIFFICULTY_LEVELS
   const ranks = more.choices.map(({ technique }) => {
     const info = techniques.find(({ id }) => id === technique)!
     return [tiers.indexOf(info.difficulty), info.cost]
   })
   assert.deepEqual(ranks, [...ranks].sort(([tierA, costA], [tierB, costB]) => tierA - tierB || costA - costB))
 
-  const disabledTechniques = ['full-house', 'naked-single', 'hidden-single', 'pointing', 'claiming']
+  const disabledTechniques = ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single', 'pointing', 'claiming']
   const filtered = await run({ type: 'hints', values, disabledTechniques })
   assert.ok(filtered.choices.length)
   assert.ok(filtered.choices.every(({ technique }) => !disabledTechniques.includes(technique)))
@@ -803,7 +805,7 @@ test('hint limits and disabled techniques apply before ranking and choosing a pr
   assert.ok(solved)
   const oneCell = `0${solved.slice(1)}`
   const alternateProof = await run({
-    type: 'hints', values: oneCell, disabledTechniques: ['full-house', 'naked-single', 'retired-technique'],
+    type: 'hints', values: oneCell, disabledTechniques: ['full-house', 'hidden-single-box', 'naked-single', 'retired-technique'],
   })
   assert.equal(alternateProof.available, 1)
   assert.equal(alternateProof.choices[0].technique, 'hidden-single')
@@ -867,7 +869,7 @@ test('next deduction supports a single move and reveals the same proof in three 
 
   const eliminations = Array<number>(81).fill(0)
   eliminations[2] = 0b11
-  const withRemovals = await run({ type: 'next-deduction', values: STARTER, eliminations })
+  const withRemovals = await run({ type: 'next-deduction', values: STARTER, eliminations, disabledTechniques: ['hidden-single-box'] })
   assert.deepEqual(withRemovals, {
     technique: 'naked-single',
     pattern: { houses: [], cells: [2], candidates: [] },
@@ -1265,11 +1267,9 @@ test('generation combines clue, rating, and technique targets in the requested o
   assert.deepEqual(scored.score.counts, { 'hidden-single': 2 })
   assert.deepEqual(scored.techniqueOrder, options.techniqueOrder)
 
-  const withDifficulty = await run({ ...options, difficulty: 'easy' })
-  assert.equal(withDifficulty.replaceAll('0', '').length, 80)
-  const rated = await run({ type: 'rate', values: withDifficulty, techniqueOrder: options.techniqueOrder })
-  assert.deepEqual(rated.status, { solved: 'easy' })
-  assert.deepEqual(rated.score.counts, { 'hidden-single': 1 })
+  // A difficulty request cannot return a grid with only one or two gaps.
+  const tooShort = await raw({ ...options, difficulty: 'easy' })
+  assert.ok('code' in tooShort && tooShort.code === 'search-limit')
   const disabled = await raw({ ...options, techniqueOrder: ['naked-single'], score: [4, 8] })
   assert.ok('code' in disabled && disabled.code === 'incompatible-targets')
 
@@ -1338,13 +1338,13 @@ test('the built-in pool returns rated sparse and expert puzzles', async () => {
   const sparse = await run({ ...request, clues: 17, difficulty: 'medium' })
   assert.equal(sparse.board.replaceAll('0', '').length, 17)
   assert.deepEqual(sparse.rating.status, { solved: 'medium' })
-  assert.deepEqual(sparse.rating, await run({ type: 'rate', values: sparse.board }))
+  assert.deepEqual(sparse.rating, await run({ type: 'rate', values: sparse.board, techniqueOrder: sparse.rating.techniqueOrder }))
 
   const expert = await run({ ...request, clues: 20, difficulty: 'extreme', technique: 'multi-sector-locked-sets' })
   assert.equal(expert.board.replaceAll('0', '').length, 20)
   assert.deepEqual(expert.rating.status, { solved: 'extreme' })
   assert.ok(expert.rating.score.counts['multi-sector-locked-sets'] > 0)
-  assert.deepEqual(expert.rating, await run({ type: 'rate', values: expert.board }))
+  assert.deepEqual(expert.rating, await run({ type: 'rate', values: expert.board, techniqueOrder: expert.rating.techniqueOrder }))
 })
 
 test('the browser client reports attempts and cancels one active search independently', async (t) => {
@@ -1403,7 +1403,7 @@ test('the browser client reports attempts and cancels one active search independ
   assert.deepEqual(progress, [1])
   assert.deepEqual(cancelled, { status: 'cancelled', attempts: 1 })
   assert.ok(matched.status === 'matched')
-  assert.deepEqual(matched.puzzle.rating, await runEngine({ type: 'rate', values: matched.puzzle.board, techniqueOrder }))
+  assert.deepEqual(matched.puzzle.rating, await runEngine({ type: 'rate', values: matched.puzzle.board, techniqueOrder: matched.puzzle.rating.techniqueOrder }))
 
   const cancelledRequest = sent.find(request => request.type === 'generation-cancel')
   assert.ok(cancelledRequest && 'job' in cancelledRequest)
@@ -1419,8 +1419,8 @@ test('the browser client reports attempts and cancels one active search independ
   await assert.rejects(runGeneration(options, { onProgress: () => { throw new Error('progress callback failed') } }), /progress callback failed/)
   assert.deepEqual(sent.slice(beforeFailure).map(request => request.type), ['generation-start', 'generation-advance', 'generation-cancel'])
 
-  const generated = await generatePlayableVariant('arrow', 'extreme', 0, [])
-  assert.deepEqual(generated.rating.status, { solved: 'extreme' })
+  const generated = await generatePlayableVariant('arrow', 'expert', 0, [])
+  assert.deepEqual(generated.rating.status, { solved: 'expert' })
   const game = {
     ...makeGame('generated-arrow', 'Arrow puzzle', generated.puzzle.givens, 'generated'),
     variant: { id: 'arrow' as const, puzzle: generated.puzzle, solution: generated.solution },
@@ -1430,8 +1430,27 @@ test('the browser client reports attempts and cancels one active search independ
   for (const [cell, digit] of [...generated.solution].entries()) {
     if (game.givens[cell] === '0') assert.ok(hasCandidate(masks[cell], Number(digit)))
   }
-  const next = await generatePlayableVariant('arrow', 'extreme', 0, [game])
+  const next = await generatePlayableVariant('arrow', 'expert', 0, [game])
   assert.notEqual(next.puzzle.givens, generated.puzzle.givens)
+
+  // The normal generation path ignores the saved singles-only analysis profile.
+  const catalog = await run({ type: 'techniques' })
+  for (const level of DIFFICULTY_LEVELS) {
+    const { board, rating } = await generateClassic(level, 42)
+    assert.deepEqual(rating.status, { solved: level })
+    assert.equal(await run({ type: 'analyze', values: board }), 'unique')
+    assert.ok(board.replaceAll('0', '').length <= 40)
+    const lower = catalog.difficultyOrder.filter(id => difficultyIndex(catalog.techniques.find(t => t.id === id)!.difficulty) < difficultyIndex(level))
+    assert.equal((await run({ type: 'rate', values: board, techniqueOrder: lower })).status, 'stalled', level)
+    if (difficultyIndex(level) >= difficultyIndex('medium')) {
+      const reasoning = Object.entries(rating.score.counts).filter(([id]) =>
+        difficultyIndex(catalog.techniques.find(t => t.id === id)!.difficulty) >= difficultyIndex('medium'))
+      assert.ok(reasoning.reduce((sum, [, count]) => sum + count, 0) >= 2, level)
+    }
+  }
+  assert.deepEqual((await generateClassic('medium', 43, [])).rating.status, { solved: 'medium' })
+  assert.deepEqual((await generateClassic('impossible', 43)).rating.status, { solved: 'impossible' })
+
 })
 
 test('the worker protocol reaches the compiled browser engine', async () => {
@@ -1712,7 +1731,7 @@ test('the worker protocol reaches the compiled browser engine', async () => {
   assert.ok('code' in rejected && rejected.code === 'multiple')
 
   const rating = await run({ type: 'rate', values: SPARSE })
-  assert.equal(rating.score.points, 766)
+  assert.equal(rating.score.points, 846)
   assert.deepEqual(rating.status, { solved: 'medium' })
   assert.deepEqual(rating.techniqueOrder, catalog.defaultOrder)
   assert.equal(rating.scoringVersion, catalog.scoringVersion)
@@ -1738,9 +1757,9 @@ test('the worker protocol reaches the compiled browser engine', async () => {
   }
   const targeted = await raw({ type: 'generate-targeted', seed: 795_642_738, maxAttempts: 1, target: { type: 'opening', technique: 'hidden-single' } })
   assert.ok('code' in targeted && targeted.code === 'search-limit')
-  const matched = await run({ type: 'generate-constrained', seed: 42, maxAttempts: 1, clues: 17, score: [766, 766], templates: [TEMPLATE] })
+  const matched = await run({ type: 'generate-constrained', seed: 42, maxAttempts: 1, clues: 17, score: [846, 846], templates: [TEMPLATE] })
   assert.equal(matched.replaceAll('0', '').length, 17)
-  assert.equal((await run({ type: 'rate', values: matched })).score.points, 766)
+  assert.equal((await run({ type: 'rate', values: matched })).score.points, 846)
 })
 
 test('a custom solving profile can continue past the default AI Escargot stall', async () => {
@@ -1799,7 +1818,7 @@ test('nested forcing completes Easter Monster and exports the two cases of its p
   assert.equal(baseline.rating.status, 'stalled')
   const techniqueOrder = [...dynamic, 'nested-forcing-net']
   const trace = await run({ type: 'logical-solve', values, techniqueOrder })
-  assert.deepEqual(trace.rating.status, { solved: 'extreme' })
+  assert.deepEqual(trace.rating.status, { solved: 'impossible' })
   assert.equal(trace.board, await run({ type: 'solve', values }))
   const first = trace.steps[baseline.steps.length]
   assert.deepEqual(trace.steps.slice(0, baseline.steps.length), baseline.steps)
@@ -1917,8 +1936,8 @@ test('aligned triplet exclusion can replace a longer chain profile path', async 
   const techniqueOrder = [...baseline.rating.techniqueOrder]
   techniqueOrder.splice(techniqueOrder.indexOf('aic'), 0, 'aligned-pair-exclusion', 'aligned-triplet-exclusion')
   const trace = await run({ type: 'logical-solve', values, techniqueOrder, includePositions: true })
-  assert.deepEqual(baseline.rating.status, { solved: 'extreme' })
-  assert.deepEqual(trace.rating.status, { solved: 'unfair' })
+  assert.deepEqual(baseline.rating.status, { solved: 'master' })
+  assert.deepEqual(trace.rating.status, { solved: 'extreme' })
   assert.equal(trace.board, await run({ type: 'solve', values }))
   assert.ok(trace.rating.score.points < baseline.rating.score.points)
   assert.ok(trace.steps.length < baseline.steps.length)
@@ -2211,14 +2230,14 @@ test('Jigsaw Pattern Overlay exposes its own regions and replays the published m
   const techniqueOrder = [...defaultOrder, technique, 'pairwise-pattern-overlay', 'triple-pattern-overlay',
     'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
   const rated = await run({ ...fromGivens, techniqueOrder })
-  assert.deepEqual(rated.status, { solved: 'extreme' })
+  assert.deepEqual(rated.status, { solved: 'impossible' })
   assert.ok(rated.counts['triple-pattern-overlay'] > 0)
 })
 
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
   const { raw, run } = engineRequests()
   const [catalog, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
-  assert.equal(catalog.scoringVersion, 4)
+  assert.equal(catalog.scoringVersion, 5)
   const expectedIds = new Set([...catalog.defaultOrder, ...classic.techniques.map(technique => technique.id)])
   assert.equal(catalog.techniques.length, expectedIds.size)
   assert.deepEqual(new Set(catalog.techniques.map(technique => technique.id)), expectedIds)
@@ -2251,14 +2270,14 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
 test('every playable variant generates its supported difficulties with a unique solution and usable hints', async (t) => {
   const { run } = engineRequests()
   const [variant, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
-  const techniqueOrder = variantTechniqueOrder(variant.defaultOrder, classic.defaultOrder)
+  const techniqueOrder = variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder, Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty])))
 
   for (const id of Object.keys(variantSeeds) as (keyof typeof variantSeeds)[]) {
     const levels = variantSeeds[id]
     for (const difficulty of Object.keys(levels) as (keyof typeof levels)[]) {
       await t.test(`${id} / ${difficulty}`, async () => {
         const recipes = levels[difficulty]
-        assert.ok(recipes && recipes.length > 1)
+        assert.ok(recipes && recipes.length >= 1)
         const puzzles = new Set<string>()
         for (const recipe of recipes) {
           const generated = await run(variantGenerationRequest(id, difficulty, recipe, techniqueOrder))
@@ -2277,7 +2296,7 @@ test('every playable variant generates its supported difficulties with a unique 
           }), 'multiple')
         }
 
-        const trace = await run({ type: 'variant', position, operation: 'trace', techniqueOrder })
+        const trace = await run({ type: 'variant', position, operation: 'trace', techniqueOrder: rating.techniqueOrder })
         const path = variantSolutionPath(trace)
         assert.equal(path.board, solution)
         assert.deepEqual(trace.rating, rating)

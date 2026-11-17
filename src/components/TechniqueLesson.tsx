@@ -1,10 +1,13 @@
+import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
+import { techniqueDifficulties } from '../sudoku/technique-difficulties'
+import { lessonDifficultyLabels } from '../sudoku/lesson-difficulties'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { runEngine, type LessonExample, type PracticeExercise } from '../sudoku/engine'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
-import { articles, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
+import { articles, lessonRoutes, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardRegion } from './BoardAnnotations'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
@@ -82,6 +85,7 @@ export function Practice({ block, variant }: { block: Extract<LessonBlock, { typ
     <section className="surface lesson-practice" aria-labelledby={heading}>
       <header className="lesson-practice-heading">
         <h2 id={heading}>{title ?? 'Try a move'}</h2>
+        {techniqueDifficulties[chosen.example] && <small>{DIFFICULTY_LABELS[techniqueDifficulties[chosen.example]!]}</small>}
         <div className="lesson-practice-heading-actions">
           {drills.length > 1 && <label className="lesson-drill">
             <span>{selectLabel ?? 'Technique'}</span>
@@ -137,6 +141,10 @@ export function TechniqueLesson({ lesson, variant }: { lesson: LessonArticle; va
       <header className="lesson-heading">
         <LearnBreadcrumbs current={lesson.title} />
         <p>{lesson.summary}</p>
+        {lesson.difficulty && <p className="lesson-course-level">{lessonDifficultyLabels.get(lesson.id)}</p>}
+        {!!lesson.prerequisites?.length && <p className="lesson-prerequisites">Learn first: {lesson.prerequisites.map((id, index) => <Fragment key={id}>
+          {index > 0 && ', '}<Link to="/learn/$technique" params={{ technique: id }}>{lessonRoutes.get(id)?.title ?? id}</Link>
+        </Fragment>)}</p>}
       </header>
 
       <div className="lesson-article">

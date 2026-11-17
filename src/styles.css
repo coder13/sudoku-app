@@ -2751,3 +2751,16 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-rules-button { margin-right: auto; }
 .variant-rules-copy { display: grid; gap: var(--space-10); line-height: 1.55; }
 .new-puzzle-difficulty-label { margin-bottom: 5px; padding: 0; font-size: 14px; font-weight: 730; }
+
+/* One shared difficulty control for desktop, mobile, and the completion screen. */
+.difficulty-stepper { border: 0; padding: 0; margin: 0; min-width: 0; width: 100%; }
+.difficulty-stepper legend { font-weight: 600; margin-bottom: .65rem; }
+.difficulty-stepper-control { display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: center; gap: .75rem; }
+.difficulty-stepper-control .icon-button { min-width: 48px; min-height: 48px; }
+.difficulty-stepper-value { display: grid; text-align: center; gap: .15rem; }
+.difficulty-stepper-value strong { font-size: 1.15rem; }
+.difficulty-stepper-value small { opacity: .7; font-variant-numeric: tabular-nums; }
+.difficulty-stepper-description { text-align: center; min-height: 4.5em; margin: .8rem 0 .4rem; line-height: 1.5; }
+.difficulty-stepper-auto { display: flex; align-items: center; gap: .6rem; min-height: 44px; font-size: .9rem; }
+.difficulty-stepper-auto input { width: 18px; height: 18px; }
+.difficulty-choice > .button { width: 100%; margin-top: 1rem; }

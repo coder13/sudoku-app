@@ -103,9 +103,9 @@ On desktop, open **Puzzle actions → Show solution** to review a solve from the
 
 ### Puzzle scoring
 
-Each technique must have a point cost and a difficulty tier. A puzzle rating must start from the givens and use the chosen solver configuration. The score must add the cost of each deduction once, even when that deduction changes several candidates. The difficulty must be the higher of the hardest technique tier and the tier reached by the total score.
+Each technique must have a point cost and a difficulty tier. A puzzle rating must start from the givens and use the chosen solver configuration. The score must add the cost of each deduction once, even when that deduction changes several candidates. Difficulty follows the hardest technique tier. Accumulated points never promote a puzzle. See [the ten difficulty levels](docs/difficulty-levels.md) for generation and learning rules.
 
-By default, the score ceilings are 800 for Easy, 1,000 for Medium, 1,600 for Hard, and 1,800 for Unfair. Extreme has no ceiling. The default costs follow HoDoKu where it defines a cost for the technique. For example, a Naked Single costs 4 points, a Hidden Single costs 14, and an X-Wing costs 140. [Default costs and ceilings](https://github.com/PseudoFish/Hodoku/blob/master/src/sudoku/Options.java#L56-L117)
+The ten levels run from Beginner to Impossible, with Medium selected for a new player. The scoring policy is version 11. Existing point costs remain diagnostic values and do not define difficulty bands.
 
 A complete rating must include the score, difficulty, hardest technique, and a count of deductions by technique. It must identify the solver configuration and version of the scoring rules so the rating can be reproduced. If the solve stalls or reaches a limit, any subtotal must be marked as partial.
 

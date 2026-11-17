@@ -3,7 +3,7 @@ import type { Candidate, DeductionAction, DeductionMatch, HintChoice, ProofPatte
 // Keep each technique in one family. New engine techniques automatically appear
 // in "Other techniques" until a more specific category is added.
 export const ANALYSIS_GROUPS = [
-  { title: 'Singles', techniques: ['full-house', 'naked-single', 'hidden-single'] },
+  { title: 'Singles', techniques: ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single'] },
   { title: 'Locked candidates', techniques: ['pointing', 'claiming'] },
   { title: 'Subsets', techniques: [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',

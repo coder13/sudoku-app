@@ -16,8 +16,11 @@ use super::{
 };
 
 pub(super) fn catalog() -> Value {
+    let mut difficulty_order = VariantTechnique::all().collect::<Vec<_>>();
+    difficulty_order.sort_by_key(|technique| technique.difficulty());
     json!({
         "defaultOrder": VariantTechnique::DEFAULT_ORDER,
+        "difficultyOrder": difficulty_order,
         "scoringVersion": VARIANT_SCORING_VERSION,
         "techniques": VariantTechnique::all().map(|technique| {
             let (aliases, unique) = match technique {

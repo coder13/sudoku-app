@@ -1,7 +1,10 @@
+import { useState } from 'react'
+import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
+import { DifficultyStepper } from './DifficultyStepper'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Check, ChevronRight, Dices, Gauge, PencilLine } from 'lucide-react'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
-import { VARIANTS, variantDifficulties, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { VariantPreview } from './VariantSelector'
 
@@ -18,6 +21,8 @@ export function MobileNewPuzzle({ screen, variant, remembered, remember, done, o
   const navigate = useNavigate()
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
+  const [selection, setSelection] = useState<DifficultyPreference | null>(null)
+  const selected = variantDifficulty(variant, selection ?? remembered?.difficulty ?? DEFAULT_DIFFICULTY)
   const createButton = <button type="button" className="button secondary" disabled={busy} onClick={onCreate}>
     <PencilLine size={18} aria-hidden="true" /> Create by hand
   </button>
@@ -37,16 +42,11 @@ export function MobileNewPuzzle({ screen, variant, remembered, remember, done, o
 
   if (screen === 'difficulty') return <section className="mobile-new-puzzle" aria-labelledby="puzzles-page-title">
     <p className="mobile-new-puzzle-variant"><VariantPreview variant={variant} />{VARIANTS[variant].name}</p>
-    <div className="main-menu-mobile-list mobile-difficulty-list">
-      {variantDifficulties(variant).map((difficulty) => <button type="button" key={difficulty}
-        aria-current={remembered?.difficulty === difficulty || undefined} onClick={() => {
-          remember({ variant, difficulty })
-          void navigate({ to: '/puzzles/new', search: {}, replace: true })
-        }}>
-        <strong>{variantDifficultyLabel(variant, difficulty, recommended)}</strong>
-        {remembered?.difficulty === difficulty ? <Check size={18} aria-hidden="true" /> : <ChevronRight size={18} aria-hidden="true" />}
-      </button>)}
-    </div>
+    <DifficultyStepper value={selected} recommended={recommended} variant={variant} onChange={setSelection} />
+    <button type="button" className="button primary" onClick={() => {
+      remember({ variant, difficulty: selected })
+      void navigate({ to: '/puzzles/new', search: {}, replace: true })
+    }}>Continue <ChevronRight size={18} aria-hidden="true" /></button>
   </section>
 
   if (!remembered) return null

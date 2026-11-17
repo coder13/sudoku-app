@@ -1,11 +1,12 @@
+import { DifficultyStepper } from './DifficultyStepper'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Dices, PencilLine, Trash2 } from 'lucide-react'
-import { isDifficultyPreference, type DifficultyPreference } from '../sudoku/difficulty'
+import { type DifficultyPreference } from '../sudoku/difficulty'
 import { runEngine } from '../sudoku/engine'
 import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
 import { isSolved, makeGame, restartGame, valuesOf, type Game } from '../sudoku/game'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
-import { variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { VariantSelector } from './VariantSelector'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
@@ -91,15 +92,7 @@ export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDif
     <Modal title="New puzzle" onClose={close}>
       <form className="dialog-form" onSubmit={submit}>
         <VariantSelector value={variant} onChange={setVariant} busy={busy} />
-        <label htmlFor="puzzle-difficulty">Difficulty</label>
-        <SelectControl id="puzzle-difficulty" value={selected} disabled={busy} onChange={(event) => {
-          const next = event.target.value
-          if (isDifficultyPreference(next)) setSelection(next)
-        }}>
-          {variantDifficulties(variant).map((level) => <option key={level} value={level}>
-            {level === 'auto' ? autoLabel : variantDifficultyLabel(variant, level, recommended)}
-          </option>)}
-        </SelectControl>
+        <DifficultyStepper value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="button primary" disabled={busy}>
           <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}

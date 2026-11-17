@@ -580,7 +580,7 @@ export function Worktable({
     let current = true
     const rate = variant
       ? getVariantPlayOrder().then((techniqueOrder) => runEngine({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder }))
-      : runEngine({ type: 'techniques' }).then(({ defaultOrder }) => runEngine({ type: 'rate', values: givens, techniqueOrder: defaultOrder }))
+      : runEngine({ type: 'techniques' }).then(({ difficultyOrder }) => runEngine({ type: 'rate', values: givens, techniqueOrder: difficultyOrder }))
     void rate.then((rating) => {
       if (!current) return
       const ratedDifficulty = rating.status === 'stalled' ? null : rating.status.solved

@@ -1,6 +1,7 @@
+import { DifficultyStepper } from './DifficultyStepper'
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentType } from 'react'
 import { getRouteApi, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import { BarChart3, Check, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
+import { BarChart3, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
 import {
   DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference,
 } from '../sudoku/difficulty'
@@ -10,7 +11,7 @@ import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { VARIANTS, variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { StopPlaying } from './PuzzleDialogs'
 import { useMobileLayout } from './mobile-layout'
 import { MobileNewPuzzle, type MobileNewPuzzleScreen } from './MobileNewPuzzle'
@@ -125,7 +126,6 @@ function NewPuzzleSection({ difficulty, remembered, save, done }: {
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
   const selected = variantDifficulty(variant, selection ?? remembered?.difficulty ?? difficulty)
   const autoLabel = variantDifficultyLabel(variant, 'auto', recommended)
-  const autoNext = `${DIFFICULTY_LABELS[variantDifficulty(variant, recommended)]} next`
   const group = useId()
 
   function start() {
@@ -139,16 +139,7 @@ function NewPuzzleSection({ difficulty, remembered, save, done }: {
   return <section className="main-menu-section" aria-labelledby={`${group}-title`}>
     <header><h2 id={`${group}-title`}>New puzzle</h2></header>
     <VariantSelector value={variant} onChange={setVariant} busy={busy} />
-    <fieldset className="main-difficulty-options" disabled={busy}>
-      <legend className="new-puzzle-difficulty-label">Difficulty</legend>
-      {variantDifficulties(variant).map((value) => <label key={value}>
-        <input type="radio" name={group} value={value} checked={selected === value}
-          onChange={() => setSelection(value)} />
-        <span>{value === 'auto' ? 'Auto' : DIFFICULTY_LABELS[value]}</span>
-        {value === 'auto' && <small className="main-difficulty-next">{autoNext}</small>}
-        {selected === value && <Check size={18} aria-hidden="true" />}
-      </label>)}
-    </fieldset>
+    <DifficultyStepper value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button primary main-start-puzzle" disabled={busy} onClick={start}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'

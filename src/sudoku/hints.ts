@@ -83,7 +83,7 @@ export function techniqueLabel(technique: string): string {
 export function cellReference(cell: number, style: CellReferenceStyle, difficulty?: Difficulty) {
   const row = Math.floor(cell / 9) + 1
   const column = cell % 9 + 1
-  const advanced = difficulty === 'hard' || difficulty === 'unfair' || difficulty === 'extreme'
+  const advanced = difficulty !== undefined && ['tricky', 'hard', 'very-hard', 'expert', 'master', 'unfair', 'extreme', 'impossible'].includes(difficulty)
   const concise = style === 'concise' || (style === 'automatic' && advanced)
   return concise ? `r${row}c${column}` : `row ${row}, column ${column}`
 }

@@ -1,11 +1,11 @@
-import { isDifficulty } from './difficulty.ts'
+import { isDifficulty, currentDifficulty, DIFFICULTY_LEVELS } from './difficulty.ts'
 import type { DeductionAction, Difficulty } from './engine.ts'
 
 export const STARTING_PLAYER_RATING = 855
 
-const puzzleRatings: Record<Difficulty, number> = { easy: 800, medium: 860, hard: 920, unfair: 980, extreme: 1040 }
-const tiers = Object.keys(puzzleRatings) as Difficulty[]
-const fastSolveSeconds: Record<Difficulty, number> = { easy: 120, medium: 180, hard: 300, unfair: 480, extreme: 720 }
+const puzzleRatings: Record<Difficulty, number> = { beginner: 760, easy: 800, medium: 860, tricky: 890, hard: 920, 'very-hard': 950, expert: 980, master: 1010, extreme: 1040, impossible: 1100, unfair: 980 }
+const tiers: readonly Difficulty[] = DIFFICULTY_LEVELS
+const fastSolveSeconds: Record<Difficulty, number> = { beginner: 90, easy: 120, medium: 180, tricky: 240, hard: 300, 'very-hard': 420, expert: 480, master: 600, extreme: 720, impossible: 1200, unfair: 480 }
 const EARLY_RESULTS = 4
 
 export type RatingFinish = 'solved' | 'hints' | 'too-hard' | 'solution'
@@ -171,7 +171,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRati
     if (seen.has(key)) continue
     seen.add(key)
     const { difficulty, elapsed } = event
-    const playedTier = tiers.indexOf(difficulty)
+    const playedTier = tiers.indexOf(currentDifficulty(difficulty))
     const solved = event.finish === 'solved'
     if (event.estimated) {
       // Older solves demonstrate completion, but their assistance and speed are unknown.
@@ -187,10 +187,10 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRati
     const applied = legacySingles ? 0 : event.applied
     const onlySingles = singlesAssistance === 'all'
     const analysisUsed = event.analysisUsed === true
-    const skipEasy = Boolean(singlesAssistance && event.mode === undefined && difficulty === 'easy')
+    const skipEasy = Boolean(singlesAssistance && event.mode === undefined && (difficulty === 'beginner' || difficulty === 'easy'))
     if (!analysisUsed && solved && viewed === 0 && (onlySingles || skipEasy)) {
       if (skipEasy && tier === playedTier) {
-        tier++
+        tier = tiers.indexOf('medium')
         recent = []
         atTier = []
       }
@@ -233,7 +233,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRati
     if (fixedCalibration) {
       nextTier = early ? demonstratedTier : tier + 1
     } else if (early && (fastSolve || solvedBeyondSingles) && playedTier >= tier - 1) {
-      nextTier = Math.min(tiers.length - 1, tier + 2, Math.max(tier, playedTier + (difficulty === 'easy' ? 2 : 1)))
+      nextTier = Math.min(tiers.length - 1, tier + 2, Math.max(tier, playedTier + ((difficulty === 'beginner' || difficulty === 'easy') ? 2 : 1)))
       for (const challengedTier of struggled) {
         if (challengedTier > playedTier && challengedTier >= tier) nextTier = Math.min(nextTier, challengedTier)
       }

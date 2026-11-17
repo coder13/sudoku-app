@@ -675,6 +675,10 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                 ]
             }
         }
+        Technique::HiddenSingleBox => const { [
+            PracticeExample { givens: "200040007400000000317008506050009020002030700090400080508200471000000002100080005", entries: None, eliminations: None, expected_actions: &[place(73, 2)] },
+            PracticeExample { givens: "502000000019030005006005008000400500001726400008003000900600200200070810000000903", entries: None, eliminations: None, expected_actions: &[place(72, 1)] },
+        ] },
         Technique::HiddenSingle => {
             const {
                 [

@@ -1,3 +1,4 @@
+import type { CurrentDifficulty } from './difficulty.ts'
 import type { BoardRegion } from '../components/BoardAnnotations'
 
 type Reference = { label: string; href: string }
@@ -21,6 +22,8 @@ export type LessonBlock =
   | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string }
 
 export type LessonArticle = {
+  difficulty?: CurrentDifficulty
+  prerequisites?: string[]
   id: string
   title: string
   summary: string
@@ -41,7 +44,7 @@ export type LearnContent = {
     fundamentalsNote: string
   }
   fundamentals: LessonArticle
-  groups: { title: string; overview: string; lessons: LessonArticle[] }[]
+  groups: { title: string; overview: string; difficulty?: CurrentDifficulty; lessons: LessonArticle[] }[]
 }
 
 export function lessonCatalog({ fundamentals, groups }: Pick<LearnContent, 'fundamentals' | 'groups'>) {

@@ -2,7 +2,8 @@ import { withHintPreferences } from './hint-preferences.ts'
 import { withSolverProfile } from './solver-profile.ts'
 
 export type Analysis = 'conflict' | 'unsolvable' | 'unique' | 'multiple' | 'search-limit'
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'unfair' | 'extreme'
+// 'unfair' is accepted only for historical saves and legacy input.
+export type Difficulty = 'beginner' | 'easy' | 'medium' | 'tricky' | 'hard' | 'very-hard' | 'expert' | 'master' | 'extreme' | 'impossible' | 'unfair'
 type SolverOptions = { techniqueOrder?: readonly string[] }
 type HintOptions = { disabledTechniques?: readonly string[] }
 type CandidatePosition = { values: string; eliminations?: readonly number[] }
@@ -401,6 +402,7 @@ export type HintChoices = { choices: HintChoice[]; available: number; candidates
 export type HintStages = { technique: string; pattern: ProofPattern; deduction: Deduction }
 export type TechniqueCatalog = {
   defaultOrder: string[]
+  difficultyOrder: string[]
   scoringVersion: number
   techniques: { id: string; aliases: string[]; cost: number; difficulty: Difficulty; requiresUniqueSolution: boolean }[]
 }

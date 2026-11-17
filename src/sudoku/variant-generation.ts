@@ -1,3 +1,4 @@
+import { difficultyIndex } from './difficulty.ts'
 import type { Difficulty, VariantClueLayout, VariantGenerationRequest, VariantPuzzle, VariantRule } from './engine.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 import type { PlayableVariant } from './variants.ts'
@@ -24,8 +25,9 @@ const omitted = new Set([
   'forcing-net', 'multi-sector-locked-sets', 'sk-loop', 'grouped-discontinuous-nice-loop', 'grouped-continuous-nice-loop',
 ])
 
-export function variantTechniqueOrder(variantOrder: readonly string[], classicOrder: readonly string[]) {
+export function variantTechniqueOrder(variantOrder: readonly string[], classicOrder: readonly string[], difficulties: Partial<Record<string, Difficulty>>) {
   return [...new Set([...variantOrder, ...classicOrder.filter((id) => !omitted.has(id))])]
+    .sort((a, b) => difficultyIndex(difficulties[a] ?? 'impossible') - difficultyIndex(difficulties[b] ?? 'impossible'))
 }
 
 export function variantGenerationRequest(

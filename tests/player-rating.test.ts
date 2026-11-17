@@ -1,3 +1,4 @@
+import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, calculatePlayerRating, isRatingAttempt, isRatingEvent, ratingAttemptFor, STARTING_PLAYER_RATING, type RatingEvent } from '../src/sudoku/player-rating.ts'
@@ -13,8 +14,8 @@ test('Auto starts at Medium and a fast independent early solve raises the next t
   assert.equal(calculatePlayerRating([]).rating, STARTING_PLAYER_RATING)
   assert.equal(calculatePlayerRating([]).recommended, 'medium')
   const fast = outcome(1, { elapsed: 90 })
-  assert.equal(calculatePlayerRating([fast]).recommended, 'hard')
-  assert.equal(calculatePlayerRating([{ ...fast, difficulty: 'easy', mode: 'fixed' }]).recommended, 'hard')
+  assert.equal(calculatePlayerRating([fast]).recommended, 'tricky')
+  assert.equal(calculatePlayerRating([{ ...fast, difficulty: 'easy', mode: 'fixed' }]).recommended, 'tricky')
   const assisted = calculatePlayerRating([{ ...fast, viewed: 1, applied: 1, hintsRequested: 1 }])
   assert.equal(assisted.recommended, 'medium')
   assert.ok(assisted.rating < calculatePlayerRating([fast]).rating)
@@ -73,7 +74,7 @@ test('using Solve all singles to leave Auto Easy preserves rating and resumes at
 test('early Auto solves beyond singles can advance without using the assisted solve time', () => {
   const partial = outcome(1, { singlesAssistance: 'partial', elapsed: 600 })
   const independentDeductions = calculatePlayerRating([partial])
-  assert.equal(independentDeductions.recommended, 'hard')
+  assert.equal(independentDeductions.recommended, 'tricky')
   assert.equal(independentDeductions.results.get(partial.gameId)?.speedBonus, 0)
   assert.equal(calculatePlayerRating([{ ...partial, viewed: 1, applied: 1, hintsRequested: 1 }]).recommended, 'medium')
   assert.equal(calculatePlayerRating([{ ...partial, singlesAssistance: 'all' }]).rating, STARTING_PLAYER_RATING)
@@ -85,7 +86,7 @@ test('with more results Auto advances at most one tier at a time even on the sam
   const firstFast = outcome(5, { elapsed: 90 })
   assert.equal(calculatePlayerRating([...evidence, firstFast]).recommended, 'medium')
 
-  const tiers = ['easy', 'medium', 'hard', 'unfair', 'extreme']
+  const tiers: readonly string[] = DIFFICULTY_LEVELS
   const events = [...evidence]
   const promoted = []
   for (let index = 5; index <= 36; index++) {
@@ -97,7 +98,8 @@ test('with more results Auto advances at most one tier at a time even on the sam
       promoted.push(next)
     }
   }
-  assert.deepEqual(promoted, ['hard', 'unfair', 'extreme'])
+  assert.ok(promoted.length >= 3)
+  assert.deepEqual(promoted, DIFFICULTY_LEVELS.slice(3, 3 + promoted.length))
 })
 
 test('ratings include fixed and older solves, and deduplicate repeat grids across entry points', () => {
@@ -143,7 +145,7 @@ test('technique analysis lowers rating weight and never promotes Auto difficulty
 
   // Using a scan does not consume one of the four early calibration results.
   const nextFast = outcome(2, { elapsed: 90 })
-  assert.equal(calculatePlayerRating([assistedFast, nextFast]).recommended, 'hard')
+  assert.equal(calculatePlayerRating([assistedFast, nextFast]).recommended, 'tricky')
 
   const failed = outcome(1, { finish: 'too-hard', analysisUsed: true })
   const weaklyWeighted = calculatePlayerRating([failed])

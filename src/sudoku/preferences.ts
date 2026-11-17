@@ -1,4 +1,4 @@
-import { DEFAULT_DIFFICULTY, isDifficultyPreference, type DifficultyPreference } from './difficulty'
+import { DEFAULT_DIFFICULTY, currentDifficulty, isDifficultyPreference, type DifficultyPreference } from './difficulty'
 import type { CandidateLayout, ErrorMode } from './game'
 import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale'
 import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints'
@@ -92,7 +92,7 @@ export function readPreferences() {
     const savedWorkspaceMode = localStorage.getItem(WORKSPACE_MODE_KEY)
     if (savedWorkspaceMode === 'standard' || savedWorkspaceMode === 'advanced') workspaceMode = savedWorkspaceMode
     const savedDifficulty = localStorage.getItem(DIFFICULTY_KEY)
-    if (isDifficultyPreference(savedDifficulty)) difficulty = savedDifficulty
+    if (isDifficultyPreference(savedDifficulty)) difficulty = savedDifficulty === 'auto' ? 'auto' : currentDifficulty(savedDifficulty)
     const savedCellReferenceStyle = localStorage.getItem(CELL_REFERENCE_STYLE_KEY)
     if (isCellReferenceStyle(savedCellReferenceStyle)) cellReferenceStyle = savedCellReferenceStyle
     const savedErrorMode = localStorage.getItem(ERROR_MODE_KEY) as ErrorMode | null
