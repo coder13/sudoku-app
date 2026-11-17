@@ -1781,7 +1781,7 @@
     "steps": [
       {
         "title": "Read the whole group",
-        "description": "The solid link starts between the two amber candidates. It joins the whole statement G to the 5 at R3C8. In (5)r3c12, the group contains 5 in row 3, column 1 or 2.",
+        "description": "The solid line connects near the right amber candidate. Both amber candidates form its endpoint. In (5)r3c12, the group means 5 in row 3, column 1 or 2.",
         "marks": [
           {
             "cell": 18,

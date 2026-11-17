@@ -236,7 +236,7 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 .lesson-key-link { border-bottom: 2px solid var(--lesson-pattern); }
 .lesson-key-link.dashed { border-bottom-style: dashed; }
 .foundation-visual-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-8); }
-.foundation-visual-heading h3 { font-size: 18px; line-height: 1.35; }
+.foundation-visual-heading h3 { margin: 0; font-size: 18px; line-height: 1.35; }
 .foundation-step-controls { display: flex; align-items: center; gap: var(--space-8); }
 .foundation-step-controls .button { width: 44px; height: 44px; min-height: 44px; padding: 0; }
 .foundation-step-controls > span { min-width: 3.5em; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -247,7 +247,7 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 .foundation-stage { grid-area: 1 / 1; min-width: 0; visibility: hidden; }
 .foundation-stage[data-active="true"] { visibility: visible; }
 .foundation-step-copy { display: grid; align-content: start; gap: var(--space-8); }
-.foundation-step-copy h4 { font-size: 15px; }
+.foundation-step-copy h4 { margin: 0; font-size: 15px; }
 .foundation-notation { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px; }
 .foundation-notation code { padding: 3px 5px; border-radius: 4px; font-size: 13px; }
 .foundation-notation code[data-active] { background: var(--lesson-pattern-fill); color: var(--lesson-pattern); box-shadow: inset 0 -2px var(--lesson-pattern); }
