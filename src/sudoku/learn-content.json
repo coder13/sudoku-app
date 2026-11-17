@@ -7203,7 +7203,7 @@
         {
           "id": "parity",
           "title": "Odd and even cells",
-          "summary": "Remove candidates of the wrong parity from a marked cell.",
+          "summary": "Use odd circles and even squares to remove candidates from marked cells.",
           "blocks": [
             {
               "type": "heading",
@@ -7213,7 +7213,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
+                "A circle marks an odd cell. A square marks an even cell. Unmarked cells can contain either.",
                 "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8."
               ]
             },
@@ -7221,7 +7221,7 @@
               "type": "diagram",
               "example": "parity",
               "copy": {
-                "description": "Read the parity clue under the grid. Compare it with the marked cell’s candidates.",
+                "description": "Find the marked cell. Its circle or square tells you which digits to keep.",
                 "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
               }
             },
@@ -7234,13 +7234,18 @@
                 }
               ],
               "guide": {
-                "start": "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
+                "start": "Find an odd circle or an even square.",
                 "check": "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8.",
                 "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "Big Eight by Thomas Snyder",
+              "href": "https://www.gmpuzzles.com/blog/2023/03/even-odd-sudoku-by-thomas-snyder-2/"
+            }
+          ],
           "difficulty": "easy"
         },
         {

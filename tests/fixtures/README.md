@@ -23,9 +23,35 @@ The rule list deliberately interleaves families. White and black dots share an e
 
 The near-complete fixture tests interchange and app integration. It does not establish how often every constraint is essential, cover every arrangement of clues, or represent hard mixed-rule solving. Only the sparse Diagonal/Killer code has been round-tripped through the external Coach constructor; the other source codes are authored format fixtures.
 
+## Odd/Even sources and app coverage
+
+`parity-big-eight.json` transcribes Thomas Snyder's [Big Eight](https://www.gmpuzzles.com/blog/2023/03/even-odd-sudoku-by-thomas-snyder-2/), published on 2023-03-28 from the 2022 US Sudoku Grand Prix. Its 16 givens, 13 odd circles, 10 even squares, and completion were checked visually against the linked puzzle and solution PDFs. The separate row/column/box counter in `../helpers/parity-oracle.ts` proves one completion with the markers and multiple completions without them. It shares no search, propagation, or codec implementation with the engine.
+
+`parity-coach.json` preserves the unmodified Odd and Even examples embedded in Coach's public rule serializer, retrieved on 2026-11-17. Both examples are 3 × 3 rule illustrations, which the app correctly rejects. Decoder tests reuse their unchanged constraint payloads in a 9 × 9 envelope. The Big Eight Coach input is an authored format fixture, not a constructor roundtrip. Each source marker is a single-cell segment with empty parameters; one native parity rule groups the cells of each source constraint. Known cosmetic settings do not change the rule. Unknown semantic settings are rejected.
+
+The Wasm tests check the published completion, exact candidates, multiple hints, scoring, full Play and solution replay, paged proofs, Technique Finder counts, checked practice moves, save/reload and undo/redo. Parity remains enforced when its deduction is disabled, and conflicting odd/even markers cannot produce a solution. Three generated puzzles independently satisfy the requested 30 givens, 81 derived markers and required parity dependency. A representative fixture combines parity with all 512 subsets of the nine previously rendered families, including Quadruple. This checks interchange and app services, not every clue arrangement or difficulty.
+
+Rendered desktop/mobile components check all 23 published markers and their accessible cell labels, mixed-clue drawing order, sharing the starting definition after player progress, and the completion chooser. The production build renders the Odd/Even lesson with its markers. Live desktop/mobile viewport and interaction review remains a follow-up because browser tooling is unavailable. App generation presets remain unavailable until their difficulty recipes are calibrated.
+
+The engine source and rebuilt app Wasm are unchanged from main at `44e734f` (3,284,973 raw bytes / 856,094 gzip bytes). On macOS arm64 with Node 26.13.0, five warmups and 40 samples measured the following milliseconds, median/p95, on 2026-11-17:
+
+| Big Eight operation | Median/p95 |
+| --- | --- |
+| Candidates | 0.008/0.008 |
+| Verify uniqueness | 0.171/0.177 |
+| Exact solve | 0.049/0.052 |
+| Native default rating | 0.115/0.121 |
+| Native default ten hints | 0.037/0.040 |
+| App-order rating | 0.163/0.170 |
+| App-order ten hints | 0.074/0.123 |
+| Exhaustive first page, 10 samples | 328.889/331.965 |
+| Derived parity generation, 20 seeds | 0.420/0.439 |
+
+Exhaustive collection scans all enabled techniques before transferring eight of 23 choices. Generation matched 20/20 seeds with 30 givens, markers on all 81 cells, six attempts and 20,000 nodes per attempt. These calls exclude browser startup, worker transfer and UI rendering; the timings do not establish human difficulty or calibrated app presets. Repeat with `node --experimental-strip-types scripts/bench-variants.mjs` after building the app Wasm.
+
 ## Repeating the checks
 
-Run `npm test` for decoder, independent-counter, and storage contracts. Run `npm run test:wasm` for the compiled browser engine, imported-game flow, and family-subset matrix. The new suite is `../variant-import-wasm.mts`. Browser verification on 2026-11-17 covered desktop Play and preview, 390-by-844 preview and rule dialogs, overlapping dot visibility, move/undo/redo, reload, multiple hints, the full share payload, and completion returning to the puzzle chooser.
+Run `npm test` for decoder, independent-counter, and storage contracts. Run `npm run test:wasm` for the compiled browser engine, imported-game flow, and family-subset matrix. The original mixed-rule suite is `../variant-import-wasm.mts`; Quadruple and Odd/Even have separate suites. Browser verification of the original eight-family stage on 2026-11-17 covered desktop Play and preview, 390-by-844 preview and rule dialogs, overlapping dot visibility, move/undo/redo, reload, multiple hints, the full share payload, and completion returning to the puzzle chooser.
 
 After building Wasm, run `node --experimental-strip-types scripts/bench-variants.mjs`. The script uses five warmup calls and 40 samples per fixed operation, plus 20 seeds for configured generation recipes. Generation allows six attempts and 20,000 search nodes per attempt. All-family generation has no configured recipe; imported combinations are not promised as generation presets.
 
