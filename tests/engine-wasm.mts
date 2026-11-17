@@ -7,7 +7,8 @@ import { STARTER } from '../src/sudoku/formats.ts'
 import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
 import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
 import { practiceClueAnnotations, practiceSearch } from '../src/sudoku/lesson-guidance.ts'
-import { articles } from '../src/sudoku/lessons.ts'
+import { lessonExample, variantLessonExercise, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
+import { articles, lessonRoutes } from '../src/sudoku/lessons.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { generatePlayableVariant, playCandidates } from '../src/sudoku/variant-play.ts'
@@ -1199,16 +1200,24 @@ test('lesson examples preserve the candidates and deduction for each technique',
   assert.deepEqual(lessons['hidden-quadruple'].practice.eliminations, transposed)
 })
 
-test('every Learn article gives a starting scan and every drill can preview its own proof', async () => {
+test('every hint technique links to a Learn article with a starting scan and a working drill', async () => {
   const { run } = engineRequests()
-  const examples = await run({ type: 'lesson-examples' })
+  const examples: Record<string, EngineLessonExample> = await run({ type: 'lesson-examples' })
+  const { techniques } = await run({ type: 'techniques', variant: true })
+  for (const { id } of techniques) {
+    assert.ok(lessonRoutes.has(id), id)
+    if (examples[id]) continue
+    const [diagram, practice] = await run({ type: 'practice-examples', variant: true, technique: id })
+    examples[id] = { ...diagram, practice }
+  }
   for (const article of articles) {
     assert.ok(article.blocks.some((block) => block.type === 'heading' && block.id === 'where-to-start'), article.id)
     for (const block of article.blocks) {
+      if (block.type === 'diagram') assert.ok(lessonDiagram(lessonExample(examples[block.example])).results.length, block.example)
       if (block.type !== 'practice') continue
       for (const { example } of block.drills) {
-        const { practice } = examples[example]
-        const { start, check, follow } = practiceSearch(practice)
+        const { practice } = lessonExample(examples[example])
+        const { start, check, follow } = practiceSearch(practice, block.guide)
         for (const clue of [start, check]) {
           assert.ok(clue.text, example)
           const annotations = practiceClueAnnotations(clue)
@@ -1227,12 +1236,13 @@ test('every Learn article gives a starting scan and every drill can preview its 
   }
 })
 
-test('each Learn drill generates a different grid with a verified walkthrough for its technique', async () => {
+test('each Classic Learn drill generates a different grid with a verified walkthrough for its technique', async () => {
   const { run } = engineRequests()
   const examples = await run({ type: 'lesson-examples' })
   const drills = new Set(articles.flatMap(article => article.blocks.flatMap(block =>
     block.type === 'practice' ? block.drills.map(({ example }) => example) : [])))
   for (const technique of drills) {
+    if (!examples[technique]) continue
     let exclude = lessonValues(examples[technique].practice)
     for (let repeat = 0; repeat < 2; repeat++) {
       const generated = await run({ type: 'generate-practice-example', technique, seed: 27, exclude })
@@ -1250,6 +1260,25 @@ test('each Learn drill generates a different grid with a verified walkthrough fo
       assert.ok(start.text && check.text, technique)
       assert.ok(lessonDiagram(generated).results.length, technique)
       exclude = values
+    }
+  }
+})
+
+test('variant Learn drills offer distinct boards with checkable moves and rule clues', async () => {
+  const { run } = engineRequests()
+  const classic = await run({ type: 'lesson-examples' })
+  const { techniques } = await run({ type: 'techniques', variant: true })
+  for (const { id } of techniques.filter(({ id }) => !classic[id] && id !== 'locked-candidates')) {
+    const exercises = await run({ type: 'practice-examples', variant: true, technique: id })
+    const drills = exercises.map(variantLessonExercise)
+    assert.equal(new Set(drills.map(lessonValues)).size, 3, id)
+    for (const [index, drill] of drills.entries()) {
+      assert.ok(drill.variantPuzzle?.rules?.length, id)
+      assert.equal(drill.deduction.technique, id)
+      assert.ok(lessonDiagram(drill).results.length, id)
+      const proof = await run({ type: 'variant', operation: 'check-practice-move', position: exercises[index].position,
+        technique: id, action: drill.suggestion })
+      assert.equal(proof?.technique, id)
     }
   }
 })

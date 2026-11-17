@@ -1273,6 +1273,121 @@
               "href": "https://hodoku.sourceforge.net/en/libs.php"
             }
           ]
+        },
+        {
+          "id": "death-blossom",
+          "title": "Death Blossom",
+          "summary": "Use a stem cell and its almost locked sets to rule out a digit that every stem choice forces.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a cell with few candidates. Call it the stem. For each stem digit, find an almost locked set that contains that digit.",
+                "Check that the stem sees every copy of its linked digit in each set. Then look for a different digit that every set shares."
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Each set is a petal. An almost locked set has one more distinct candidate digit than it has cells, and its cells share a house. If the stem takes a linked digit, its petal loses that digit. The petal must then use every remaining digit.",
+                "A target cell must see every copy of the shared digit in every petal. One unseen copy gives that petal a way to use the digit without ruling out the target."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "death-blossom",
+              "copy": {
+                "description": "The stem R6C9 has 1, 5, and 7. The petal for 1 is R8C1, R8C2, R8C3, and R8C9. The petal for 5 is R4C4 and R6C6. The petal for 7 is R4C4 and R6C4. All three petals contain 3.",
+                "reason": "Whatever goes in R6C9, its petal loses that digit and must use 3. R8C4 sees every possible 3 in all three petals, so you can remove its 3."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "death-blossom",
+                  "title": "Death Blossom"
+                }
+              ],
+              "guide": {
+                "start": "Pick a cell with few candidates. Call it the stem. For each stem digit, find an almost locked set that contains that digit.",
+                "check": "Check that the stem sees every copy of its linked digit in each set. Then look for a different digit that every set shares.",
+                "reason": "One stem digit must be true. That choice forces the shared digit into its petal. A candidate that sees every possible placement across the petals can go."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Almost locked sets",
+              "href": "/learn/almost-locked-sets"
+            },
+            {
+              "label": "HoDoKu on Death Blossom",
+              "href": "https://hodoku.sourceforge.net/en/tech_als.php#db"
+            }
+          ]
+        },
+        {
+          "id": "sue-de-coq",
+          "title": "Sue de Coq",
+          "summary": "Split the candidates in a box and line intersection into two groups that lock digits into their houses.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find two or three empty cells where a box and a line overlap. Look for extra digits beyond the number of cells in that intersection.",
+                "Find a set in the rest of the line and a set in the rest of the box. Check that their digit groups are disjoint."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "sue-de-coq",
+              "copy": {
+                "description": "The diagram highlights the shared cells and both side sets. Read each crossed-out candidate against the set in its own house.",
+                "reason": "The side sets use up the extra choices. The intersection and the line set lock their group into the line. The intersection and the box set do the same in the box."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "sue-de-coq",
+                  "title": "Sue de Coq"
+                }
+              ],
+              "guide": {
+                "start": "Find two or three empty cells where a box and a line overlap. Look for extra digits beyond the number of cells in that intersection.",
+                "check": "Find a set in the rest of the line and a set in the rest of the box. Check that their digit groups are disjoint.",
+                "reason": "The side sets use up the extra choices. The intersection and the line set lock their group into the line. The intersection and the box set do the same in the box."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Almost locked sets",
+              "href": "/learn/almost-locked-sets"
+            }
+          ]
         }
       ]
     },
@@ -2062,6 +2177,162 @@
               "href": "https://www.sudokuwiki.org/AIC_with_Groups"
             }
           ]
+        },
+        {
+          "id": "als-aic",
+          "title": "ALS alternating inference chain",
+          "summary": "Use an almost locked set as a strong link in an alternating inference chain.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find an almost locked set with two useful digit groups. If the set skips the first digit, it must use the second digit.",
+                "Connect the groups to outside candidates that see every copy of the relevant digit in the set. Keep alternating strong and weak links."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "als-aic",
+              "copy": {
+                "description": "Trace the chain through the ALS. Each group in the set stands for all the candidate cells for its digit.",
+                "reason": "The ALS supplies an at-least-one link. After you build a chain with strong end links, at least one end is true. A candidate that conflicts with both ends can go."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "als-aic",
+                  "title": "ALS alternating inference chain"
+                }
+              ],
+              "guide": {
+                "start": "Find an almost locked set with two useful digit groups. If the set skips the first digit, it must use the second digit.",
+                "check": "Connect the groups to outside candidates that see every copy of the relevant digit in the set. Keep alternating strong and weak links.",
+                "reason": "The ALS supplies an at-least-one link. After you build a chain with strong end links, at least one end is true. A candidate that conflicts with both ends can go."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Almost locked sets",
+              "href": "/learn/almost-locked-sets"
+            }
+          ]
+        },
+        {
+          "id": "als-discontinuous-nice-loop",
+          "title": "ALS discontinuous Nice Loop",
+          "summary": "Use an ALS link in a loop that forces one candidate at the break in alternation.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find an ALS that links two groups of candidates. Trace an alternating path that goes through the set and comes back to its starting candidate.",
+                "Compare the strengths of the two links that touch the starting candidate. Two weak links force a removal. Two strong links force a placement."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "als-discontinuous-nice-loop",
+              "copy": {
+                "description": "Follow the proof across the ALS and back to the candidate where the two links have the same strength.",
+                "reason": "If both meeting links are weak, placing the starting candidate eventually rules it out. If both are strong, ruling it out eventually forces it."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "als-discontinuous-nice-loop",
+                  "title": "ALS discontinuous Nice Loop"
+                }
+              ],
+              "guide": {
+                "start": "Find an ALS that links two groups of candidates. Trace an alternating path that goes through the set and comes back to its starting candidate.",
+                "check": "Compare the strengths of the two links that touch the starting candidate. Two weak links force a removal. Two strong links force a placement.",
+                "reason": "If both meeting links are weak, placing the starting candidate eventually rules it out. If both are strong, ruling it out eventually forces it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Nice Loops",
+              "href": "/learn/nice-loops"
+            }
+          ]
+        },
+        {
+          "id": "als-continuous-nice-loop",
+          "title": "ALS continuous Nice Loop",
+          "summary": "Close an alternating loop through an ALS and use the weak links to remove candidates.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a strong link supplied by an almost locked set. Trace alternating weak and strong links until the path returns to its first node.",
+                "Check that the first and last links have different strengths. On a weak link, find outside candidates that conflict with both ends."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "als-continuous-nice-loop",
+              "copy": {
+                "description": "The closed chain alternates at every junction. Match each removal to the weak link whose ends it conflicts with.",
+                "reason": "Every weak link in a continuous loop gains an at-least-one guarantee. An outside candidate that conflicts with both ends would break that guarantee."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "als-continuous-nice-loop",
+                  "title": "ALS continuous Nice Loop"
+                }
+              ],
+              "guide": {
+                "start": "Start with a strong link supplied by an almost locked set. Trace alternating weak and strong links until the path returns to its first node.",
+                "check": "Check that the first and last links have different strengths. On a weak link, find outside candidates that conflict with both ends.",
+                "reason": "Every weak link in a continuous loop gains an at-least-one guarantee. An outside candidate that conflicts with both ends would break that guarantee."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Nice Loops",
+              "href": "/learn/nice-loops"
+            }
+          ]
         }
       ]
     },
@@ -2335,6 +2606,214 @@
               "href": "https://hodoku.sourceforge.net/en/libs.php"
             }
           ]
+        },
+        {
+          "id": "unique-loop",
+          "title": "Unique Loop",
+          "summary": "Extend the two-digit uniqueness argument from a rectangle to a longer ring.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In a puzzle with one solution, follow two shared digits along a ring of cells. Each affected row, column, and box must meet the ring in a pair.",
+                "Follow the alternating placements around the ring. Check that you can swap the two digits and still satisfy the same houses."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "unique-loop",
+              "copy": {
+                "description": "In this example, one loop cell supplies the extra choice. Remove the two shared digits from that cell.",
+                "reason": "If every loop cell used just the two shared digits, a swap would give another solution. An extra candidate must break the swap."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "unique-loop",
+                  "title": "Unique Loop"
+                }
+              ],
+              "guide": {
+                "start": "In a puzzle with one solution, follow two shared digits along a ring of cells. Each affected row, column, and box must meet the ring in a pair.",
+                "check": "Follow the alternating placements around the ring. Check that you can swap the two digits and still satisfy the same houses.",
+                "reason": "If every loop cell used just the two shared digits, a swap would give another solution. An extra candidate must break the swap."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Unique Rectangle",
+              "href": "/learn/unique-rectangle"
+            }
+          ]
+        },
+        {
+          "id": "unique-rectangle-aic",
+          "title": "Unique Rectangle alternating inference chain",
+          "summary": "Use the extra candidates of a Unique Rectangle as a strong link in an open chain.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In a puzzle with one solution, find a rectangle that spans two boxes and shares a pair of digits in all four corners.",
+                "Collect the extra candidates that can break the swap. The two ends of the rectangle link must cover every such choice."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-aic",
+              "copy": {
+                "description": "Find the rectangle link within the chain. The link connects the choices that keep the two digits from swapping.",
+                "reason": "At least one extra candidate must be true, so the rectangle can supply a strong link. Follow the full chain and remove a candidate that conflicts with both ends."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "unique-rectangle-aic",
+                  "title": "Unique Rectangle alternating inference chain"
+                }
+              ],
+              "guide": {
+                "start": "In a puzzle with one solution, find a rectangle that spans two boxes and shares a pair of digits in all four corners.",
+                "check": "Collect the extra candidates that can break the swap. The two ends of the rectangle link must cover every such choice.",
+                "reason": "At least one extra candidate must be true, so the rectangle can supply a strong link. Follow the full chain and remove a candidate that conflicts with both ends."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Unique Rectangle",
+              "href": "/learn/unique-rectangle"
+            }
+          ]
+        },
+        {
+          "id": "unique-rectangle-discontinuous-nice-loop",
+          "title": "Unique Rectangle discontinuous Nice Loop",
+          "summary": "Use a rectangle’s extra candidates to close a loop with a break in alternation.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a Unique Rectangle and group its extras into two choices. Use the at-least-one link between those groups in an alternating path.",
+                "Close the path at a single candidate. Check whether both links there are weak or both are strong."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-discontinuous-nice-loop",
+              "copy": {
+                "description": "Trace the loop to the two strong links at its break. The highlighted placement follows from those links.",
+                "reason": "The two weak links make the candidate false. The two strong links make it true. The rectangle link relies on the puzzle having one solution."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "unique-rectangle-discontinuous-nice-loop",
+                  "title": "Unique Rectangle discontinuous Nice Loop"
+                }
+              ],
+              "guide": {
+                "start": "Start with a Unique Rectangle and group its extras into two choices. Use the at-least-one link between those groups in an alternating path.",
+                "check": "Close the path at a single candidate. Check whether both links there are weak or both are strong.",
+                "reason": "The two weak links make the candidate false. The two strong links make it true. The rectangle link relies on the puzzle having one solution."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Unique Rectangle",
+              "href": "/learn/unique-rectangle"
+            }
+          ]
+        },
+        {
+          "id": "unique-rectangle-continuous-nice-loop",
+          "title": "Unique Rectangle continuous Nice Loop",
+          "summary": "Use a rectangle link in a fully alternating loop to make removals along its weak links.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a rectangle whose extra candidates give an at-least-one link. Close an alternating path that crosses this link.",
+                "Check the strengths where the last link meets the first. If the loop still alternates there, inspect each weak link for a shared conflict."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "unique-rectangle-continuous-nice-loop",
+              "copy": {
+                "description": "Track which weak link supports each removal. The rectangle is one link in the loop.",
+                "reason": "The loop makes each weak link strong as well. At least one end of each weak link must be true, so a candidate that conflicts with both ends can go."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "unique-rectangle-continuous-nice-loop",
+                  "title": "Unique Rectangle continuous Nice Loop"
+                }
+              ],
+              "guide": {
+                "start": "Find a rectangle whose extra candidates give an at-least-one link. Close an alternating path that crosses this link.",
+                "check": "Check the strengths where the last link meets the first. If the loop still alternates there, inspect each weak link for a shared conflict.",
+                "reason": "The loop makes each weak link strong as well. At least one end of each weak link must be true, so a candidate that conflicts with both ends can go."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Unique Rectangle",
+              "href": "/learn/unique-rectangle"
+            }
+          ]
         }
       ]
     },
@@ -2428,6 +2907,2479 @@
             {
               "label": "SudokuWiki",
               "href": "https://www.sudokuwiki.org/Cell_Forcing_Chains"
+            }
+          ]
+        },
+        {
+          "id": "tridagon-forcing-net",
+          "title": "Tridagon forcing net",
+          "summary": "Track the consequences of the guardians that can break a Tridagon.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a Tridagon whose extra candidates do not give a direct move. Mark each extra candidate so you have the full list of guardians.",
+                "Follow the forced changes from each guardian. Look for the same result in every case, or test a candidate that would leave no viable guardian."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "tridagon-forcing-net",
+              "copy": {
+                "description": "Use the guardians as starting points. The nets carry the proof past the highlighted twelve-cell pattern.",
+                "reason": "At least one guardian must be true. If all possible guardian branches rule out the same candidate, you can cross it out."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "tridagon-forcing-net",
+                  "title": "Tridagon forcing net"
+                }
+              ],
+              "guide": {
+                "start": "Find a Tridagon whose extra candidates do not give a direct move. Mark each extra candidate so you have the full list of guardians.",
+                "check": "Follow the forced changes from each guardian. Look for the same result in every case, or test a candidate that would leave no viable guardian.",
+                "reason": "At least one guardian must be true. If all possible guardian branches rule out the same candidate, you can cross it out."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Tridagon",
+              "href": "/learn/tridagon"
+            }
+          ]
+        },
+        {
+          "id": "dynamic-forcing-net",
+          "title": "Dynamic forcing net",
+          "summary": "Find new links as the candidates change inside a forcing branch.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose a candidate whose placement changes several nearby cells. Mark each removal it forces before continuing.",
+                "After each change, count the remaining candidates in the affected cells and houses. A new two-choice link can appear during the branch."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "dynamic-forcing-net",
+              "copy": {
+                "description": "Follow the forced changes in order. A later inference can depend on an earlier removal that created a link.",
+                "reason": "A link created inside a branch applies only in that branch. Use it to reach a contradiction or show a result shared by every starting choice."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "dynamic-forcing-net",
+                  "title": "Dynamic forcing net"
+                }
+              ],
+              "guide": {
+                "start": "Choose a candidate whose placement changes several nearby cells. Mark each removal it forces before continuing.",
+                "check": "After each change, count the remaining candidates in the affected cells and houses. A new two-choice link can appear during the branch.",
+                "reason": "A link created inside a branch applies only in that branch. Use it to reach a contradiction or show a result shared by every starting choice."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Forcing chains and nets",
+              "href": "/learn/forcing-chain"
+            },
+            {
+              "label": "HoDoKu on forcing proofs and Kraken Fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php"
+            }
+          ]
+        },
+        {
+          "id": "advanced-forcing-net",
+          "title": "Advanced forcing net",
+          "summary": "Use patterns such as subsets or fish inside a forcing branch.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a starting choice with several direct consequences. Update the candidates inside that branch as each consequence follows.",
+                "If singles and links stop, look for a supported pattern in the reduced grid. Check every premise of that pattern in the current branch."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "advanced-forcing-net",
+              "copy": {
+                "description": "The diagram marks candidates used in the forcing proof. Check the intermediate pattern before using its consequences.",
+                "reason": "A valid pattern adds another forced step under the starting choice. A contradiction rules out that choice. The same result in every complete branch proves the move."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "advanced-forcing-net",
+                  "title": "Advanced forcing net"
+                }
+              ],
+              "guide": {
+                "start": "Pick a starting choice with several direct consequences. Update the candidates inside that branch as each consequence follows.",
+                "check": "If singles and links stop, look for a supported pattern in the reduced grid. Check every premise of that pattern in the current branch.",
+                "reason": "A valid pattern adds another forced step under the starting choice. A contradiction rules out that choice. The same result in every complete branch proves the move."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Forcing chains and nets",
+              "href": "/learn/forcing-chain"
+            }
+          ]
+        },
+        {
+          "id": "nested-forcing-net",
+          "title": "Nested forcing net",
+          "summary": "Open a second set of cases inside a forcing branch to establish a step.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Trace an outer branch until direct deductions stop. In that branch, find a cell or house with a short list of remaining choices.",
+                "Follow each inner choice separately. Carry a step back to the outer branch only when the inner proof establishes it there."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "nested-forcing-net",
+              "copy": {
+                "description": "Keep the two levels of choices separate. Trace the inner cases before accepting the next step of the outer net.",
+                "reason": "A move proved inside the inner cases belongs to the outer branch. Use it to finish the outer proof before drawing a conclusion about the original grid."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "nested-forcing-net",
+                  "title": "Nested forcing net"
+                }
+              ],
+              "guide": {
+                "start": "Trace an outer branch until direct deductions stop. In that branch, find a cell or house with a short list of remaining choices.",
+                "check": "Follow each inner choice separately. Carry a step back to the outer branch only when the inner proof establishes it there.",
+                "reason": "A move proved inside the inner cases belongs to the outer branch. Use it to finish the outer proof before drawing a conclusion about the original grid."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Forcing chains and nets",
+              "href": "/learn/forcing-chain"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Fireworks",
+      "overview": "Follow digits that share the same options at a row and column crossing.",
+      "lessons": [
+        {
+          "id": "fireworks",
+          "title": "Fireworks",
+          "summary": "Use a box pivot and two outside wings to place three or four digits into a small set of cells.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick an empty intersection of a row and column. Look for a digit with spots on both arms inside the box.",
+                "Follow both arms outside the box. For each chosen digit, check that the pivot and two wing cells cover the remaining options on those arms."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "fireworks",
+              "copy": {
+                "description": "R1C9 is the pivot. The Firework for 1, 2, and 3 uses R1C1 and R9C9 as wings.",
+                "reason": "A Firework digit must occupy the pivot or one of its wings. The highlighted cells supply exactly enough places for these digits, so their extra candidates can go."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "fireworks",
+                  "title": "Fireworks"
+                }
+              ],
+              "guide": {
+                "start": "Pick an empty intersection of a row and column. Look for a digit with spots on both arms inside the box.",
+                "check": "Follow both arms outside the box. For each chosen digit, check that the pivot and two wing cells cover the remaining options on those arms.",
+                "reason": "A Firework digit must occupy the pivot or one of its wings. The highlighted cells supply exactly enough places for these digits, so their extra candidates can go."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Alternating inference chains",
+              "href": "/learn/aic"
+            }
+          ]
+        },
+        {
+          "id": "firework-w-wing",
+          "title": "Firework W-wing",
+          "summary": "Use matching bivalue cells to turn a Firework pair into a removal.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find two digits that share the same Firework pivot. Look for two outside cells that each contain only those two digits.",
+                "Check that each bivalue cell covers one outside arm for the other digit. The same target must also see every wing copy of its own digit."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "firework-w-wing",
+              "copy": {
+                "description": "The crossed-out candidate sees the two possible places forced by the connected bivalue cells.",
+                "reason": "If the target were true, both bivalue cells would take the other digit. Both Firework digits would lose their wing copies and need the same pivot."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "firework-w-wing",
+                  "title": "Firework W-wing"
+                }
+              ],
+              "guide": {
+                "start": "Find two digits that share the same Firework pivot. Look for two outside cells that each contain only those two digits.",
+                "check": "Check that each bivalue cell covers one outside arm for the other digit. The same target must also see every wing copy of its own digit.",
+                "reason": "If the target were true, both bivalue cells would take the other digit. Both Firework digits would lose their wing copies and need the same pivot."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "W-wing",
+              "href": "/learn/w-wing"
+            }
+          ]
+        },
+        {
+          "id": "firework-l-wing",
+          "title": "Firework L-wing",
+          "summary": "Use a two-place link for a third digit to rule it out of the opposite Firework wing.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a Firework pair with one wing cell on each arm. Then look for a strong link for a third digit with one end at a wing.",
+                "Check that the other end of the strong link sees the opposite Firework wing. Test whether that wing could take the third digit."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "firework-l-wing",
+              "copy": {
+                "description": "Follow the third digit between the two-place link and the other Firework wing.",
+                "reason": "The candidate would rule out the far end of the strong link. That forces the same digit into the other wing and leaves both Firework digits needing the pivot."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "firework-l-wing",
+                  "title": "Firework L-wing"
+                }
+              ],
+              "guide": {
+                "start": "Find a Firework pair with one wing cell on each arm. Then look for a strong link for a third digit with one end at a wing.",
+                "check": "Check that the other end of the strong link sees the opposite Firework wing. Test whether that wing could take the third digit.",
+                "reason": "The candidate would rule out the far end of the strong link. That forces the same digit into the other wing and leaves both Firework digits needing the pivot."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Fireworks",
+              "href": "/learn/fireworks"
+            }
+          ]
+        },
+        {
+          "id": "firework-als-wing",
+          "title": "Firework ALS-wing",
+          "summary": "Connect two Firework pairs through a shared bivalue cell.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for two Fireworks with the same digit pair. Find a cell with just those two candidates that sees every outside wing copy for both patterns.",
+                "Each choice in that cell can force the same digit into both pivots. Find where the other digit can still go in each set of wings."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "firework-als-wing",
+              "copy": {
+                "description": "Compare the connected arms and the two pivots. The shared bivalue cell ties both Fireworks to the same choice.",
+                "reason": "The anchor digit must go in both pivots. The other digit must have room in both sets of wings. Check both anchor choices before removing a candidate."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "firework-als-wing",
+                  "title": "Firework ALS-wing"
+                }
+              ],
+              "guide": {
+                "start": "Look for two Fireworks with the same digit pair. Find a cell with just those two candidates that sees every outside wing copy for both patterns.",
+                "check": "Each choice in that cell can force the same digit into both pivots. Find where the other digit can still go in each set of wings.",
+                "reason": "The anchor digit must go in both pivots. The other digit must have room in both sets of wings. Check both anchor choices before removing a candidate."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Fireworks",
+              "href": "/learn/fireworks"
+            }
+          ]
+        },
+        {
+          "id": "firework-aic",
+          "title": "Firework alternating inference chain",
+          "summary": "Use the candidate choices around a Firework as a link in an alternating inference chain.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a Firework pivot and two wings. Find two groups of candidates such that at least one group must provide the required Firework digit.",
+                "Use that at-least-one guarantee as a strong link. Look for ordinary weak links that can connect the groups to the rest of a chain."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "firework-aic",
+              "copy": {
+                "description": "Trace the chain to the Firework link. Follow every candidate in a grouped end before moving to the next link.",
+                "reason": "A valid alternating chain with strong end links forces at least one end true. A candidate that conflicts with both ends is ruled out."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "firework-aic",
+                  "title": "Firework alternating inference chain"
+                }
+              ],
+              "guide": {
+                "start": "Look for a Firework pivot and two wings. Find two groups of candidates such that at least one group must provide the required Firework digit.",
+                "check": "Use that at-least-one guarantee as a strong link. Look for ordinary weak links that can connect the groups to the rest of a chain.",
+                "reason": "A valid alternating chain with strong end links forces at least one end true. A candidate that conflicts with both ends is ruled out."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Fireworks",
+              "href": "/learn/fireworks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Advanced patterns",
+      "overview": "Count candidate slots, test local assignments, and look for cells that break a pattern.",
+      "lessons": [
+        {
+          "id": "aligned-pair-exclusion",
+          "title": "Aligned Pair Exclusion",
+          "summary": "Rule out a candidate when every assignment to a pair of cells that uses it fails.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose two cells that see the same constrained neighbors. Pick a candidate in one of the two cells and list the possible digits in the other.",
+                "For each assignment that uses the chosen candidate, check for a repeated digit or a nearby cell that loses all of its candidates."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "aligned-pair-exclusion",
+              "copy": {
+                "description": "The highlighted cells form the pair. Hold 5 fixed in R1C4 and check the other cell’s possible digits.",
+                "reason": "If every assignment using the chosen candidate fails, that candidate cannot be the solution. A single surviving assignment keeps it in play."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "aligned-pair-exclusion",
+                  "title": "Aligned Pair Exclusion"
+                }
+              ],
+              "guide": {
+                "start": "Choose two cells that see the same constrained neighbors. Pick a candidate in one of the two cells and list the possible digits in the other.",
+                "check": "For each assignment that uses the chosen candidate, check for a repeated digit or a nearby cell that loses all of its candidates.",
+                "reason": "If every assignment using the chosen candidate fails, that candidate cannot be the solution. A single surviving assignment keeps it in play."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Almost locked sets",
+              "href": "/learn/almost-locked-sets"
+            }
+          ]
+        },
+        {
+          "id": "aligned-triplet-exclusion",
+          "title": "Aligned Triplet Exclusion",
+          "summary": "Check three cells together to find combinations that two cells alone cannot rule out.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose three cells whose placements can affect the same constrained neighbors. Fix a candidate in one cell and list the choices in the other two.",
+                "Test each combination for a repeated digit in a house or a nearby cell left with no candidates."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "aligned-triplet-exclusion",
+              "copy": {
+                "description": "Keep 4 in R1C4 while you check the other two highlighted cells. Each assignment fails a local Sudoku rule.",
+                "reason": "If all combinations that contain the candidate fail, remove it. Test assignments for the other candidates separately."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "aligned-triplet-exclusion",
+                  "title": "Aligned Triplet Exclusion"
+                }
+              ],
+              "guide": {
+                "start": "Choose three cells whose placements can affect the same constrained neighbors. Fix a candidate in one cell and list the choices in the other two.",
+                "check": "Test each combination for a repeated digit in a house or a nearby cell left with no candidates.",
+                "reason": "If all combinations that contain the candidate fail, remove it. Test assignments for the other candidates separately."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Aligned Pair Exclusion",
+              "href": "/learn/aligned-pair-exclusion"
+            }
+          ]
+        },
+        {
+          "id": "tridagon",
+          "title": "Tridagon",
+          "summary": "Find an arrangement of three digits that needs a candidate outside the pattern.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick four boxes that form a rectangle across two bands and two stacks. In each box, choose three cells in different rows and columns.",
+                "Find three core digits. Each selected cell must allow at least two of them, and the three cells in each box must cover all three."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "tridagon",
+              "copy": {
+                "description": "The highlighted boxes contain one guardian in this example. The other cells cannot fill the pattern with just the three core digits.",
+                "reason": "The three core digits alone cannot fill this twelve-cell arrangement. At least one extra candidate, called a guardian, must be true."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "tridagon",
+                  "title": "Tridagon"
+                }
+              ],
+              "guide": {
+                "start": "Pick four boxes that form a rectangle across two bands and two stacks. In each box, choose three cells in different rows and columns.",
+                "check": "Find three core digits. Each selected cell must allow at least two of them, and the three cells in each box must cover all three.",
+                "reason": "The three core digits alone cannot fill this twelve-cell arrangement. At least one extra candidate, called a guardian, must be true."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "tridagon-aic",
+          "title": "Tridagon alternating inference chain",
+          "summary": "Turn the guardians that break a Tridagon into a strong link.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a Tridagon with multiple guardian candidates. Try dividing the guardians into two groups that together cover all the extra candidates.",
+                "Find weak links to the groups. To rule out a group, a candidate must conflict with every guardian in it."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "tridagon-aic",
+              "copy": {
+                "description": "Locate the link between the Tridagon guardians and follow the other links to the crossed-out candidate.",
+                "reason": "At least one guardian must be true, so the two groups form a strong link. An alternating chain can carry that guarantee to a candidate outside the pattern."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "tridagon-aic",
+                  "title": "Tridagon alternating inference chain"
+                }
+              ],
+              "guide": {
+                "start": "Find a Tridagon with multiple guardian candidates. Try dividing the guardians into two groups that together cover all the extra candidates.",
+                "check": "Find weak links to the groups. To rule out a group, a candidate must conflict with every guardian in it.",
+                "reason": "At least one guardian must be true, so the two groups form a strong link. An alternating chain can carry that guarantee to a candidate outside the pattern."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Tridagon",
+              "href": "/learn/tridagon"
+            }
+          ]
+        },
+        {
+          "id": "sk-loop",
+          "title": "SK loop",
+          "summary": "Count the digit slots in a ring around four placed digits.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for four givens at rectangle corners. Check the arms beside those corners for pairs of cells with shared small digit groups.",
+                "Follow the ring one house at a time. Count one slot for each linked digit in a house. The number of slots must match the number of cells in the ring."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "sk-loop",
+              "copy": {
+                "description": "Follow the highlighted ring and count the slots along each arm. Use the whole ring before crossing out a candidate.",
+                "reason": "Each cell needs a slot and each slot can hold just one digit. An outside candidate that uses a slot, or an inside candidate that uses two, leaves too few slots."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "sk-loop",
+                  "title": "SK loop"
+                }
+              ],
+              "guide": {
+                "start": "Look for four givens at rectangle corners. Check the arms beside those corners for pairs of cells with shared small digit groups.",
+                "check": "Follow the ring one house at a time. Count one slot for each linked digit in a house. The number of slots must match the number of cells in the ring.",
+                "reason": "Each cell needs a slot and each slot can hold just one digit. An outside candidate that uses a slot, or an inside candidate that uses two, leaves too few slots."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "multi-sector-locked-sets",
+          "title": "Multi-sector locked sets",
+          "summary": "Lock a group of cells into an equal number of digit slots across several houses.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a group of cells whose candidates fit into a small collection of house-and-digit slots. Include nearby cells that use only those same slots.",
+                "Count the cells and the slots. Check every candidate in the set against at least one slot, and make sure each slot can hold only one placement."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "multi-sector-locked-sets",
+              "copy": {
+                "description": "The highlighted cells include the main set and its attached cells. Count the attachments before comparing the totals.",
+                "reason": "If the two counts match, every slot must serve the selected cells. You can remove outside candidates using a slot and inside candidates using more than one slot."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "multi-sector-locked-sets",
+                  "title": "Multi-sector locked sets"
+                }
+              ],
+              "guide": {
+                "start": "Find a group of cells whose candidates fit into a small collection of house-and-digit slots. Include nearby cells that use only those same slots.",
+                "check": "Count the cells and the slots. Check every candidate in the set against at least one slot, and make sure each slot can hold only one placement.",
+                "reason": "If the two counts match, every slot must serve the selected cells. You can remove outside candidates using a slot and inside candidates using more than one slot."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "SK loop",
+              "href": "/learn/sk-loop"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Exocets",
+      "overview": "Track which digits must travel from a pair of base cells to targets in other boxes.",
+      "lessons": [
+        {
+          "id": "exocet",
+          "title": "Junior Exocet",
+          "summary": "Use three cross-lines to force digits from a base pair into target cells.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for two base cells on one line within the same box. Find target cells in the other boxes of that band or stack.",
+                "For every base digit, count the houses that cover its remaining spots on the cross-lines outside the targets. Check whether those spots can satisfy all three lines alone."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "exocet",
+              "copy": {
+                "description": "Compare the highlighted bases with the target cells. Cross out target digits excluded by every compatible cross-line assignment.",
+                "reason": "A digit placed in the base pair needs a place on every cross-line. If the outside spots only cover two copies, a target must take the remaining copy."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "exocet",
+                  "title": "Junior Exocet"
+                }
+              ],
+              "guide": {
+                "start": "Look for two base cells on one line within the same box. Find target cells in the other boxes of that band or stack.",
+                "check": "For every base digit, count the houses that cover its remaining spots on the cross-lines outside the targets. Check whether those spots can satisfy all three lines alone.",
+                "reason": "A digit placed in the base pair needs a place on every cross-line. If the outside spots only cover two copies, a target must take the remaining copy."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "senior-exocet",
+          "title": "Senior Exocet",
+          "summary": "Use cross-line cover counts with a target beyond the Junior Exocet arrangement.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a base pair in one box. Follow its cross-lines to a target beyond the base band or stack.",
+                "Check the covers for each base digit across all three lines. If two cells act as one target, check the strong link that gives the group a single role."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "senior-exocet",
+              "copy": {
+                "description": "Trace the cross-lines from the bases to both target groups before checking the crossed-out candidates.",
+                "reason": "A base digit requires a copy on each cross-line. The cover count forces a copy into a target or a target group. Keep only candidates that fit the surviving assignments."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "senior-exocet",
+                  "title": "Senior Exocet"
+                }
+              ],
+              "guide": {
+                "start": "Start with a base pair in one box. Follow its cross-lines to a target beyond the base band or stack.",
+                "check": "Check the covers for each base digit across all three lines. If two cells act as one target, check the strong link that gives the group a single role.",
+                "reason": "A base digit requires a copy on each cross-line. The cover count forces a copy into a target or a target group. Keep only candidates that fit the surviving assignments."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Junior Exocet",
+              "href": "/learn/exocet"
+            }
+          ]
+        },
+        {
+          "id": "double-exocet",
+          "title": "Double Exocet",
+          "summary": "Compare two Exocets with shared cross-lines to rule out incompatible assignments.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find two Exocet patterns that use the same cross-lines. Write down the possible base and target assignments for each.",
+                "Pair the assignments and check them together. Reject any pairing that repeats a digit in a house or makes the shared cross-lines impossible to fill."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "double-exocet",
+              "copy": {
+                "description": "The grid marks cells from both components. Follow one complete pairing before deciding which candidates it supports.",
+                "reason": "Every solution must satisfy both Exocets at once. A target candidate can go if none of the compatible assignment pairs uses it."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "double-exocet",
+                  "title": "Double Exocet"
+                }
+              ],
+              "guide": {
+                "start": "Find two Exocet patterns that use the same cross-lines. Write down the possible base and target assignments for each.",
+                "check": "Pair the assignments and check them together. Reject any pairing that repeats a digit in a house or makes the shared cross-lines impossible to fill.",
+                "reason": "Every solution must satisfy both Exocets at once. A target candidate can go if none of the compatible assignment pairs uses it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Junior Exocet",
+              "href": "/learn/exocet"
+            },
+            {
+              "label": "SudokuWiki Double Exocet example",
+              "href": "https://www.sudokuwiki.org/Double_Exocet"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Advanced fish",
+      "overview": "Use boxes, overlapping houses, and chains to extend the basic fish rules.",
+      "lessons": [
+        {
+          "id": "franken-fish",
+          "title": "Franken Fish",
+          "summary": "Use at least one box as a base or cover in a single-digit fish.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit and look for base houses whose candidate spots can be covered by the same number of houses. Include a box on one side.",
+                "Account for any candidate shared by two bases or left outside the covers. The proposed removal must account for every fin that could break the count."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "franken-fish",
+              "copy": {
+                "description": "Read the highlighted bases and covers for digit 9. The box participates in the same count as the lines.",
+                "reason": "The base placements use the available cover spaces. A cover candidate can go when placing it would leave too little room for the bases, even after you account for fins."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "franken-fish",
+                  "title": "Franken Fish"
+                }
+              ],
+              "guide": {
+                "start": "Pick one digit and look for base houses whose candidate spots can be covered by the same number of houses. Include a box on one side.",
+                "check": "Account for any candidate shared by two bases or left outside the covers. The proposed removal must account for every fin that could break the count.",
+                "reason": "The base placements use the available cover spaces. A cover candidate can go when placing it would leave too little room for the bases, even after you account for fins."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "X-wing",
+              "href": "/learn/x-wing"
+            },
+            {
+              "label": "HoDoKu on complex fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishc.php"
+            }
+          ]
+        },
+        {
+          "id": "mutant-fish",
+          "title": "Mutant Fish",
+          "summary": "Mix rows and columns on one side of a fish, then count how much room each candidate uses.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose one digit and look for a fish whose bases or covers mix rows and columns. Boxes can also take part.",
+                "Count how many bases and covers each candidate belongs to. Check uncovered and overlapping base spots before accepting a removal."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "mutant-fish",
+              "copy": {
+                "description": "The marked houses include a mixed set of lines. Follow the count for digit 4 through the overlaps.",
+                "reason": "If placing a candidate uses more cover spaces than it supplies base placements, the remaining bases can run out of room. Verify the result for every fin."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "mutant-fish",
+                  "title": "Mutant Fish"
+                }
+              ],
+              "guide": {
+                "start": "Choose one digit and look for a fish whose bases or covers mix rows and columns. Boxes can also take part.",
+                "check": "Count how many bases and covers each candidate belongs to. Check uncovered and overlapping base spots before accepting a removal.",
+                "reason": "If placing a candidate uses more cover spaces than it supplies base placements, the remaining bases can run out of room. Verify the result for every fin."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Franken Fish",
+              "href": "/learn/franken-fish"
+            },
+            {
+              "label": "HoDoKu on complex fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishc.php"
+            }
+          ]
+        },
+        {
+          "id": "kraken-fish-1",
+          "title": "Kraken Fish Type 1",
+          "summary": "Use a fish’s normal removal and show that every possible fin also rules out the same candidate.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a finned fish with a candidate the finless fish would remove. List all the fins that can break that fish.",
+                "For each fin, follow a chain from that fin being true. Every chain must rule out the same fish target."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "kraken-fish-1",
+              "copy": {
+                "description": "The crossed-out 2 is the fish target. Check its finless proof and each separate fin branch.",
+                "reason": "If all fins are false, the fish removes the candidate. If any fin is true, its chain removes the candidate. The removal holds in either case."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "kraken-fish-1",
+                  "title": "Kraken Fish Type 1"
+                }
+              ],
+              "guide": {
+                "start": "Look for a finned fish with a candidate the finless fish would remove. List all the fins that can break that fish.",
+                "check": "For each fin, follow a chain from that fin being true. Every chain must rule out the same fish target.",
+                "reason": "If all fins are false, the fish removes the candidate. If any fin is true, its chain removes the candidate. The removal holds in either case."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Franken Fish",
+              "href": "/learn/franken-fish"
+            },
+            {
+              "label": "HoDoKu on forcing proofs and Kraken Fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php"
+            }
+          ]
+        },
+        {
+          "id": "kraken-fish-2",
+          "title": "Kraken Fish Type 2",
+          "summary": "Start with a fish’s alternatives and follow chains to a shared removal anywhere on the grid.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose a line or cover involved in a finned fish. List the required fish-digit placements that remain possible, along with the fins that can break the fish.",
+                "Follow each listed placement through its chain. Look for a candidate that every branch rules out. It can be a different digit."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "kraken-fish-2",
+              "copy": {
+                "description": "Compare all branches leading to the crossed-out 7. This type can reach a target beyond the ordinary fish removal.",
+                "reason": "At least one fish or fin alternative must occur. If every alternative removes the same candidate, you can remove it from the current grid."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "kraken-fish-2",
+                  "title": "Kraken Fish Type 2"
+                }
+              ],
+              "guide": {
+                "start": "Choose a line or cover involved in a finned fish. List the required fish-digit placements that remain possible, along with the fins that can break the fish.",
+                "check": "Follow each listed placement through its chain. Look for a candidate that every branch rules out. It can be a different digit.",
+                "reason": "At least one fish or fin alternative must occur. If every alternative removes the same candidate, you can remove it from the current grid."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Kraken Fish Type 1",
+              "href": "/learn/kraken-fish-1"
+            },
+            {
+              "label": "HoDoKu on forcing proofs and Kraken Fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Pattern Overlay",
+      "overview": "Check full placements of one digit or several digits at a time.",
+      "lessons": [
+        {
+          "id": "pattern-overlay",
+          "title": "Pattern Overlay",
+          "summary": "Check every complete way to place one digit across the grid.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit. Mark its placed copies and every empty cell where it is still a candidate.",
+                "Trace full layouts using one copy in each row, column, and box. Choose a row with few options to start."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "pattern-overlay",
+              "copy": {
+                "description": "Try to build a complete layout for 4 that includes R2C5. The crossed-out 4 is absent from every valid layout.",
+                "reason": "A candidate can go if it appears in no full layout. If every full layout uses the same cell for the digit, you can place it there."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "pattern-overlay",
+                  "title": "Pattern Overlay"
+                }
+              ],
+              "guide": {
+                "start": "Pick one digit. Mark its placed copies and every empty cell where it is still a candidate.",
+                "check": "Trace full layouts using one copy in each row, column, and box. Choose a row with few options to start.",
+                "reason": "A candidate can go if it appears in no full layout. If every full layout uses the same cell for the digit, you can place it there."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "X-wing",
+              "href": "/learn/x-wing"
+            }
+          ]
+        },
+        {
+          "id": "pairwise-pattern-overlay",
+          "title": "Two-digit Pattern Overlay",
+          "summary": "Keep only full layouts for two digits that can fit together.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick two digits whose candidate layouts often use the same cells. Find the valid full layouts for each digit separately.",
+                "Pair the layouts and reject pairs that share a cell. Check whether each candidate is part of at least one surviving pair."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "pairwise-pattern-overlay",
+              "copy": {
+                "description": "Compare the layouts for 3 and 7. The crossed-out copies of 7 have layouts on their own, but none can share the grid with a 3 layout.",
+                "reason": "The two digits need separate cells. A layout that always collides with the other digit cannot occur, so any candidate supported only by those layouts can go."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "pairwise-pattern-overlay",
+                  "title": "Two-digit Pattern Overlay"
+                }
+              ],
+              "guide": {
+                "start": "Pick two digits whose candidate layouts often use the same cells. Find the valid full layouts for each digit separately.",
+                "check": "Pair the layouts and reject pairs that share a cell. Check whether each candidate is part of at least one surviving pair.",
+                "reason": "The two digits need separate cells. A layout that always collides with the other digit cannot occur, so any candidate supported only by those layouts can go."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Pattern Overlay",
+              "href": "/learn/pattern-overlay"
+            }
+          ]
+        },
+        {
+          "id": "triple-pattern-overlay",
+          "title": "Three-digit Pattern Overlay",
+          "summary": "Find candidates whose layouts can fit in pairs but fail when a third digit joins.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick three digits with few possible layouts. Start with the placements that already pass the two-digit checks.",
+                "Try to place one complete layout for each digit without sharing cells. Keep track of the candidates that appear in at least one valid triple."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "triple-pattern-overlay",
+              "copy": {
+                "description": "Check the highlighted digit layouts as a group. None of their compatible triples includes 4 in R9C2.",
+                "reason": "A layout for one digit can fit each other digit on its own and still fail to fit both at once. Only a three-way fit supports the candidate."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "triple-pattern-overlay",
+                  "title": "Three-digit Pattern Overlay"
+                }
+              ],
+              "guide": {
+                "start": "Pick three digits with few possible layouts. Start with the placements that already pass the two-digit checks.",
+                "check": "Try to place one complete layout for each digit without sharing cells. Keep track of the candidates that appear in at least one valid triple.",
+                "reason": "A layout for one digit can fit each other digit on its own and still fail to fit both at once. Only a three-way fit supports the candidate."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Two-digit Pattern Overlay",
+              "href": "/learn/pairwise-pattern-overlay"
+            }
+          ]
+        },
+        {
+          "id": "quadruple-pattern-overlay",
+          "title": "Four-digit Pattern Overlay",
+          "summary": "Check four digit layouts at once for a placement or removal missed by smaller groups.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for four digits whose few surviving layouts compete for the same cells. Reuse the results from their three-digit groups.",
+                "Try full layouts for all four digits together. Track any cell that the same digit uses in every surviving combination."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "quadruple-pattern-overlay",
+              "copy": {
+                "description": "All surviving combinations in the worked grid put 4 in R2C1. Check the four-layout fit before placing it.",
+                "reason": "Every valid solution contains a compatible set of four layouts. If all such sets put one digit in the same cell, that placement is forced."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "quadruple-pattern-overlay",
+                  "title": "Four-digit Pattern Overlay"
+                }
+              ],
+              "guide": {
+                "start": "Look for four digits whose few surviving layouts compete for the same cells. Reuse the results from their three-digit groups.",
+                "check": "Try full layouts for all four digits together. Track any cell that the same digit uses in every surviving combination.",
+                "reason": "Every valid solution contains a compatible set of four layouts. If all such sets put one digit in the same cell, that placement is forced."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Three-digit Pattern Overlay",
+              "href": "/learn/triple-pattern-overlay"
+            }
+          ]
+        },
+        {
+          "id": "quintuple-pattern-overlay",
+          "title": "Five-digit Pattern Overlay",
+          "summary": "Check a group of five digits for clashes that none of its four-digit groups can prove.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose five digits with tightly constrained layouts. Discard choices ruled out by the smaller groups before joining all five.",
+                "Check that the full layouts use disjoint cells. A candidate needs at least one valid combination that contains it."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "quintuple-pattern-overlay",
+              "copy": {
+                "description": "The five layouts cannot coexist with 9 in R2C5. Test how that choice competes with the other four digits.",
+                "reason": "If no complete combination of five layouts uses a candidate, remove it. A candidate can have support in every smaller group and fail this check."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "quintuple-pattern-overlay",
+                  "title": "Five-digit Pattern Overlay"
+                }
+              ],
+              "guide": {
+                "start": "Choose five digits with tightly constrained layouts. Discard choices ruled out by the smaller groups before joining all five.",
+                "check": "Check that the full layouts use disjoint cells. A candidate needs at least one valid combination that contains it.",
+                "reason": "If no complete combination of five layouts uses a candidate, remove it. A candidate can have support in every smaller group and fail this check."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Four-digit Pattern Overlay",
+              "href": "/learn/quadruple-pattern-overlay"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Variant rules for cells and pairs",
+      "overview": "Use marks and neighbor rules to narrow the candidates in affected cells.",
+      "lessons": [
+        {
+          "id": "parity",
+          "title": "Odd and even cells",
+          "summary": "Remove candidates of the wrong parity from a marked cell.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
+                "Compare the candidates with the allowed digits. Odd cells can take 1, 3, 5, 7, or 9. Even cells can take 2, 4, 6, or 8."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "parity",
+              "copy": {
+                "description": "Read the parity clue under the grid. Compare it with the marked cell’s candidates.",
+                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "parity",
+                  "title": "Odd and even cells"
+                }
+              ],
+              "guide": {
+                "start": "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
+                "check": "Compare the candidates with the allowed digits. Odd cells can take 1, 3, 5, 7, or 9. Even cells can take 2, 4, 6, or 8.",
+                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "anti-king",
+          "title": "Anti-King",
+          "summary": "Use a chess king’s move to rule out repeated digits across touching corners.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a placed digit near a box corner. Check the cells one row and one column away.",
+                "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "anti-king",
+              "copy": {
+                "description": "Find the placed digit beside the highlighted cell on a diagonal.",
+                "reason": "The two cells are one king’s move apart, so they must differ. The placed digit rules out its matching candidate."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "anti-king",
+                  "title": "Anti-King"
+                }
+              ],
+              "guide": {
+                "start": "Start at a placed digit near a box corner. Check the cells one row and one column away.",
+                "check": "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves.",
+                "reason": "The two cells are one king’s move apart, so they must differ. The placed digit rules out its matching candidate."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "anti-knight",
+          "title": "Anti-Knight",
+          "summary": "Rule out repeated digits in cells a chess knight’s move apart.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a placed digit. Move two cells up, down, left, or right, then one cell across at a right angle.",
+                "Check whether any reachable cell still shows that digit. Try the same move from other placed digits."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "anti-knight",
+              "copy": {
+                "description": "Use a two-by-one move to find which placed digit rules out the crossed-out candidate.",
+                "reason": "A pair of cells a knight’s move apart must contain different digits. Remove the placed digit from the candidates in the other cell."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "anti-knight",
+                  "title": "Anti-Knight"
+                }
+              ],
+              "guide": {
+                "start": "Pick a placed digit. Move two cells up, down, left, or right, then one cell across at a right angle.",
+                "check": "Check whether any reachable cell still shows that digit. Try the same move from other placed digits.",
+                "reason": "A pair of cells a knight’s move apart must contain different digits. Remove the placed digit from the candidates in the other cell."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "non-consecutive",
+          "title": "Non-consecutive neighbors",
+          "summary": "Keep digits that differ by one out of cells that share an edge.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a placed digit. Check its neighbors above, below, left, and right.",
+                "Look for candidates one less or one more than that digit. For 1, check only 2. For 9, check only 8."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "non-consecutive",
+              "copy": {
+                "description": "Compare the highlighted neighbors through their shared edge.",
+                "reason": "A shared edge rules out candidates that differ from the placed digit by one. The row or column already rules out a repeat."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "non-consecutive",
+                  "title": "Non-consecutive neighbors"
+                }
+              ],
+              "guide": {
+                "start": "Start with a placed digit. Check its neighbors above, below, left, and right.",
+                "check": "Look for candidates one less or one more than that digit. For 1, check only 2. For 9, check only 8.",
+                "reason": "A shared edge rules out candidates that differ from the placed digit by one. The row or column already rules out a repeat."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "inequality",
+          "title": "Inequality",
+          "summary": "Use a less-than clue to compare the candidate lists in two cells.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Read the two cells in the clue. The cell before the less-than sign needs the smaller digit.",
+                "Compare each candidate in the smaller cell with the largest option in the larger cell. Then compare each larger candidate with the smallest option."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "inequality",
+              "copy": {
+                "description": "Use the less-than clue below the board to check the two highlighted cells.",
+                "reason": "A candidate fails if no value in the other cell can satisfy the inequality with it. Keep the candidates that have at least one partner."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "inequality",
+                  "title": "Inequality"
+                }
+              ],
+              "guide": {
+                "start": "Read the two cells in the clue. The cell before the less-than sign needs the smaller digit.",
+                "check": "Compare each candidate in the smaller cell with the largest option in the larger cell. Then compare each larger candidate with the smallest option.",
+                "reason": "A candidate fails if no value in the other cell can satisfy the inequality with it. Keep the candidates that have at least one partner."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "clone",
+          "title": "Clone cells",
+          "summary": "Keep only the digits that every cell in a clone group can share.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a group of cells marked to have the same digit. Compare the candidates at matching positions.",
+                "If one cell has a placed digit, check that digit in all its copies. Otherwise, find the digits common to every candidate list."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "clone",
+              "copy": {
+                "description": "The clue under the board lists the cells that must take the same digit.",
+                "reason": "All cells in the group must take the same value. A digit missing from any one cell cannot go in the others."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "clone",
+                  "title": "Clone cells"
+                }
+              ],
+              "guide": {
+                "start": "Find a group of cells marked to have the same digit. Compare the candidates at matching positions.",
+                "check": "If one cell has a placed digit, check that digit in all its copies. Otherwise, find the digits common to every candidate list.",
+                "reason": "All cells in the group must take the same value. A digit missing from any one cell cannot go in the others."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "kropki",
+          "title": "Kropki dots",
+          "summary": "Check which candidate pairs fit a white or black dot.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
+                "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "kropki",
+              "copy": {
+                "description": "Read the dot between the marked cells. Keep only candidates that belong to a pair that fits the dot.",
+                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "kropki",
+                  "title": "Kropki dots"
+                }
+              ],
+              "guide": {
+                "start": "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
+                "check": "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2.",
+                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "xv",
+          "title": "XV sums",
+          "summary": "Keep the candidate pairs that sum to 5 at a V or 10 at an X.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find an X or V between two cells. Start with the pair that has a placed digit or the shorter candidate lists.",
+                "Subtract each candidate in the first cell from the marked sum. Check whether the result fits in the second cell."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "xv",
+              "copy": {
+                "description": "Read the X or V clue and its two cell addresses under the grid.",
+                "reason": "If the other cell has no candidate that completes the total, the first candidate cannot satisfy the clue."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "xv",
+                  "title": "XV sums"
+                }
+              ],
+              "guide": {
+                "start": "Find an X or V between two cells. Start with the pair that has a placed digit or the shorter candidate lists.",
+                "check": "Subtract each candidate in the first cell from the marked sum. Check whether the result fits in the second cell.",
+                "reason": "If the other cell has no candidate that completes the total, the first candidate cannot satisfy the clue."
+              }
+            }
+          ],
+          "references": []
+        }
+      ]
+    },
+    {
+      "title": "Variant lines and sums",
+      "overview": "Check candidate combinations along a line or inside a cage.",
+      "lessons": [
+        {
+          "id": "palindrome",
+          "title": "Palindrome lines",
+          "summary": "Match candidates in cells the same distance from opposite ends of a line.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at the first and last cells of the line. Those cells must contain the same digit.",
+                "Move one step inward from each end and repeat. Keep only the digits that both cells of each pair can take."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "palindrome",
+              "copy": {
+                "description": "Use the ordered cell list below the board. Compare positions from opposite ends of that list.",
+                "reason": "The line must read the same in both directions. A candidate whose mirror cannot take the same digit can go."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "palindrome",
+                  "title": "Palindrome lines"
+                }
+              ],
+              "guide": {
+                "start": "Start at the first and last cells of the line. Those cells must contain the same digit.",
+                "check": "Move one step inward from each end and repeat. Keep only the digits that both cells of each pair can take.",
+                "reason": "The line must read the same in both directions. A candidate whose mirror cannot take the same digit can go."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Clone cells",
+              "href": "/learn/clone"
+            }
+          ]
+        },
+        {
+          "id": "between",
+          "title": "Between lines",
+          "summary": "Use the endpoints to bound every digit inside the line.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find the two endpoints and compare their candidates. The line can run from the smaller endpoint to the larger one in either direction.",
+                "For each possible endpoint pair, check which candidates lie strictly between the two values. Every interior cell needs an option within that range."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "between",
+              "copy": {
+                "description": "The first and last cells in the clue are the endpoints. Compare them with the highlighted interior.",
+                "reason": "A candidate can go if no allowed endpoint pair leaves it between the endpoints. An endpoint value can also go if every pairing that uses it fails."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "between",
+                  "title": "Between lines"
+                }
+              ],
+              "guide": {
+                "start": "Find the two endpoints and compare their candidates. The line can run from the smaller endpoint to the larger one in either direction.",
+                "check": "For each possible endpoint pair, check which candidates lie strictly between the two values. Every interior cell needs an option within that range.",
+                "reason": "A candidate can go if no allowed endpoint pair leaves it between the endpoints. An endpoint value can also go if every pairing that uses it fails."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "thermometer",
+          "title": "Thermometers",
+          "summary": "Use strictly increasing digits from the bulb to the tip.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
+                "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "thermometer",
+              "copy": {
+                "description": "Read the thermometer from the round bulb to the tip. Check how many increasing steps a crossed-out candidate leaves room for.",
+                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "thermometer",
+                  "title": "Thermometers"
+                }
+              ],
+              "guide": {
+                "start": "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
+                "check": "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells.",
+                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "whispers",
+          "title": "Whispers lines",
+          "summary": "Check the minimum difference required between neighbors on a line.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Read the minimum difference from the clue. German Whispers usually use 5. Start at a placed digit or a cell with few options.",
+                "For each candidate, find a neighbor’s candidate that differs by at least the required amount. Check both neighbors for an interior cell."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "whispers",
+              "copy": {
+                "description": "Use the clue under the grid to follow the line and read its minimum difference.",
+                "reason": "A candidate needs a valid partner on every Whispers edge it touches. If one edge cannot reach the minimum difference, remove the candidate."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "whispers",
+                  "title": "Whispers lines"
+                }
+              ],
+              "guide": {
+                "start": "Read the minimum difference from the clue. German Whispers usually use 5. Start at a placed digit or a cell with few options.",
+                "check": "For each candidate, find a neighbor’s candidate that differs by at least the required amount. Check both neighbors for an interior cell.",
+                "reason": "A candidate needs a valid partner on every Whispers edge it touches. If one edge cannot reach the minimum difference, remove the candidate."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "cage-combinations",
+          "title": "Killer cage combinations",
+          "summary": "Keep assignments that reach a cage total with distinct digits.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
+                "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "cage-combinations",
+              "copy": {
+                "description": "Read the small total in the cage corner. Check the highlighted cells against complete cage assignments.",
+                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "cage-combinations",
+                  "title": "Killer cage combinations"
+                }
+              ],
+              "guide": {
+                "start": "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
+                "check": "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot.",
+                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "arrow",
+          "title": "Arrows",
+          "summary": "Match the sum of the arrow’s path to the digit in its circle.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
+                "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "arrow",
+              "copy": {
+                "description": "The circle gives the total. Follow the arrow and check which path digits can add to that total.",
+                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "arrow",
+                  "title": "Arrows"
+                }
+              ],
+              "guide": {
+                "start": "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
+                "check": "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other.",
+                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "renban",
+          "title": "Renban lines",
+          "summary": "Fit the line’s cells into a set of consecutive digits in any order.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Count the cells on the line. For a three-cell Renban, try candidate sets such as 1, 2, 3 or 5, 6, 7.",
+                "Check whether each consecutive set can give each cell a different valid digit. Any given digit on the line must belong to the set."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "renban",
+              "copy": {
+                "description": "Use the ordered cells below the board to find the whole Renban. Check all valid consecutive ranges.",
+                "reason": "A candidate must belong to a consecutive set that fits all the line cells. The cells can appear in any order along the line."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban",
+                  "title": "Renban lines"
+                }
+              ],
+              "guide": {
+                "start": "Count the cells on the line. For a three-cell Renban, try candidate sets such as 1, 2, 3 or 5, 6, 7.",
+                "check": "Check whether each consecutive set can give each cell a different valid digit. Any given digit on the line must belong to the set.",
+                "reason": "A candidate must belong to a consecutive set that fits all the line cells. The cells can appear in any order along the line."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "region-sum",
+          "title": "Region Sum lines",
+          "summary": "Match the total in every segment of a line across box boundaries.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Trace the line and split it at each region boundary. If the puzzle groups repeat visits by region, combine those visits.",
+                "Start with a short segment. List its possible totals and keep only totals that every segment can reach."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "region-sum",
+              "copy": {
+                "description": "Read the line’s cell list and group the cells by the boundaries it crosses.",
+                "reason": "A candidate is valid only if its segment can reach a shared total with it. A one-cell segment can fix the sum for the rest of the line."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "region-sum",
+                  "title": "Region Sum lines"
+                }
+              ],
+              "guide": {
+                "start": "Trace the line and split it at each region boundary. If the puzzle groups repeat visits by region, combine those visits.",
+                "check": "Start with a short segment. List its possible totals and keep only totals that every segment can reach.",
+                "reason": "A candidate is valid only if its segment can reach a shared total with it. A one-cell segment can fix the sum for the rest of the line."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Arrows",
+              "href": "/learn/arrow"
+            }
+          ]
+        },
+        {
+          "id": "cage-house-sum",
+          "title": "Killer cage and house sums",
+          "summary": "Subtract cage totals from a house total of 45 to find the sum of shared or leftover cells.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
+                "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "cage-house-sum",
+              "copy": {
+                "description": "Follow the highlighted boundary. Use the cage totals to find the sum that the highlighted cells must reach.",
+                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "cage-house-sum",
+                  "title": "Killer cage and house sums"
+                }
+              ],
+              "guide": {
+                "start": "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
+                "check": "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total.",
+                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Killer cage combinations",
+              "href": "/learn/cage-combinations"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Variant clues outside the grid",
+      "overview": "Read each clue in its marked direction and check which assignments can give that total or count.",
+      "lessons": [
+        {
+          "id": "little-killer",
+          "title": "Little Killer sums",
+          "summary": "Use the sum clue for a diagonal ray.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with the clue’s cells in order. Add the placed digits and subtract them from the clue total.",
+                "Find the smallest and largest totals the empty cells can still reach. Check candidates against the remaining sum and the houses the ray crosses."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "little-killer",
+              "copy": {
+                "description": "The clue lists the diagonal cells in reading order. Only those cells contribute to the sum.",
+                "reason": "Every candidate on the ray needs a way to complete the total. Digits can repeat along the ray if their cells share no house."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "little-killer",
+                  "title": "Little Killer sums"
+                }
+              ],
+              "guide": {
+                "start": "Start with the clue’s cells in order. Add the placed digits and subtract them from the clue total.",
+                "check": "Find the smallest and largest totals the empty cells can still reach. Check candidates against the remaining sum and the houses the ray crosses.",
+                "reason": "Every candidate on the ray needs a way to complete the total. Digits can repeat along the ray if their cells share no house."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "skyscrapers",
+          "title": "Skyscrapers clues",
+          "summary": "Use the number of visible buildings from one end of a row or column.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Read the line from the clue end. Treat each digit as a building height. A building is visible only if it is taller than every earlier building.",
+                "Use the 9 as a cutoff. It blocks the view of every later cell. A clue of 1 puts 9 at the near end."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "skyscrapers",
+              "copy": {
+                "description": "Read the listed cells from left to right in the clue list. Count each height that exceeds every height seen before it.",
+                "reason": "Test candidate orders by counting each new tallest building. A candidate can go if no order that contains it gives the required count."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "skyscrapers",
+                  "title": "Skyscrapers clues"
+                }
+              ],
+              "guide": {
+                "start": "Read the line from the clue end. Treat each digit as a building height. A building is visible only if it is taller than every earlier building.",
+                "check": "Use the 9 as a cutoff. It blocks the view of every later cell. A clue of 1 puts 9 at the near end.",
+                "reason": "Test candidate orders by counting each new tallest building. A candidate can go if no order that contains it gives the required count."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
+          "id": "sandwich",
+          "title": "Sandwich sums",
+          "summary": "Use the sum of the digits strictly between 1 and 9.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find candidate positions for 1 and 9 in the clued line. The clue counts only the digits between those two positions.",
+                "Try a pair of endpoints and add the possible middle digits. A zero clue means the 1 and 9 touch."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "sandwich",
+              "copy": {
+                "description": "Find the possible locations of 1 and 9 in the clue’s cell list. Leave both endpoint digits out of the sum.",
+                "reason": "Reject endpoint pairs whose middle cells cannot reach the total. Then remove any candidate that fits no surviving assignment."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "sandwich",
+                  "title": "Sandwich sums"
+                }
+              ],
+              "guide": {
+                "start": "Find candidate positions for 1 and 9 in the clued line. The clue counts only the digits between those two positions.",
+                "check": "Try a pair of endpoints and add the possible middle digits. A zero clue means the 1 and 9 touch.",
+                "reason": "Reject endpoint pairs whose middle cells cannot reach the total. Then remove any candidate that fits no surviving assignment."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "X-sums",
+              "href": "/learn/x-sum"
+            }
+          ]
+        },
+        {
+          "id": "x-sum",
+          "title": "X-sums",
+          "summary": "Use the first digit from the clue end to decide how many cells to add.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at the edge cell nearest the clue. If that cell takes 3, add the first three cells, including the 3.",
+                "Try each edge candidate. Check whether a prefix of that length can reach the total without repeating a digit."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "worked-example",
+              "title": "Worked example"
+            },
+            {
+              "type": "diagram",
+              "example": "x-sum",
+              "copy": {
+                "description": "The clue lists the line from the near edge. Read the first digit before deciding which cells add to the total.",
+                "reason": "If a prefix length cannot reach the total, remove the edge digit that chose it. A later candidate can go if it fits no surviving prefix assignment."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "x-sum",
+                  "title": "X-sums"
+                }
+              ],
+              "guide": {
+                "start": "Start at the edge cell nearest the clue. If that cell takes 3, add the first three cells, including the 3.",
+                "check": "Try each edge candidate. Check whether a prefix of that length can reach the total without repeating a digit.",
+                "reason": "If a prefix length cannot reach the total, remove the edge digit that chose it. A later candidate can go if it fits no surviving prefix assignment."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Sandwich sums",
+              "href": "/learn/sandwich"
             }
           ]
         }

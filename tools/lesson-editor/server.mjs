@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
@@ -27,11 +27,9 @@ const previewArticles = new Map([
 ])
 
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('LESSON_EDITOR_PORT must be between 1024 and 65535.')
-if (['engine.wasm', 'lesson-examples.json', 'lesson-difficulties.json'].some((file) => !existsSync(join(generated, file)))) {
-  const result = spawnSync(process.execPath, ['scripts/build-wasm.mjs'], { cwd: root, stdio: 'inherit' })
-  if (result.error) throw result.error
-  if (result.status !== 0) process.exit(result.status ?? 1)
-}
+const build = spawnSync(process.execPath, ['scripts/ensure-wasm.mjs'], { cwd: root, stdio: 'inherit' })
+if (build.error) throw build.error
+if (build.status !== 0) process.exit(build.status ?? 1)
 
 const revisionOf = (source) => createHash('sha256').update(source).digest('hex')
 function readContent() {
