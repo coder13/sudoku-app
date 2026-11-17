@@ -109,11 +109,14 @@ impl<'a, T> GenerationSearch<'a, T> {
         self
     }
 
-    #[cfg(all(
-        feature = "generation", feature = "wasm-api",
-        any(target_arch = "wasm32", test, feature = "cli")
-    ))]
     pub(crate) fn map<U>(self, mut convert: impl FnMut(T) -> U + 'a) -> GenerationSearch<'a, U>
+    where
+        T: 'a,
+    {
+        self.filter_map(move |value| Some(convert(value)))
+    }
+
+    pub(crate) fn filter_map<U>(self, mut convert: impl FnMut(T) -> Option<U> + 'a) -> GenerationSearch<'a, U>
     where
         T: 'a,
     {
@@ -126,7 +129,7 @@ impl<'a, T> GenerationSearch<'a, T> {
         } = self;
         GenerationSearch {
             random,
-            attempt: Box::new(move |random| attempt(random).map(&mut convert)),
+            attempt: Box::new(move |random| attempt(random).and_then(&mut convert)),
             attempts,
             budget,
             finished,
