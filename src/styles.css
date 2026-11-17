@@ -193,6 +193,10 @@ svg { flex-shrink: 0; }
   align-items: start;
   gap: 12px;
 }
+.workspace:has(> .standard-input-stack) {
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+}
 .workspace:has(> .desktop-dock) { display: block; }
 .advanced-workspace-page { width: 100%; max-width: none; height: calc(100dvh - var(--topbar-height)); padding: 0; }
 .advanced-workspace-page .workspace { gap: 0; }
@@ -229,7 +233,7 @@ svg { flex-shrink: 0; }
 }
 .standard-input-stack > .puzzle-analysis-card .puzzle-analysis-card-body { flex: 1; }
 
-.standard-input-stack > .solution-path { min-height: 260px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024; }
+.standard-input-stack > .solution-path { min-height: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024; }
 .standard-input-stack:has(.hint-dock) { align-self: stretch; }
 .standard-input-stack .hint-dock { margin-top: 0; }
 .workspace-initializing { visibility: hidden; }
