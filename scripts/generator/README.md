@@ -31,9 +31,10 @@ python3 "$lab/benchmark.py" killer --levels easy medium hard --seeds 64 --offset
 python3 "$lab/benchmark.py" jigsaw --levels easy medium tricky --methods current learned paired --seeds 64 --offset 1000 --attempts 4 --workers 4 > "$run_dir/jigsaw.jsonl"
 python3 "$lab/benchmark.py" killer --levels medium --methods current-zero size-only --seeds 64 --offset 1000 --attempts 4 --workers 3 > "$run_dir/controls.jsonl"
 python3 "$lab/validate.py" --cache "$run_dir" "$run_dir"/*.jsonl > "$run_dir/results.json"
+node --experimental-strip-types "$lab/verify-solutions.mts" "$run_dir"/*.jsonl
 ```
 
-The 1,984 requests include failed searches. Each method starts with the same request seeds. Methods can spend different amounts of time on one attempt. The current classic method uses fresh targeted search. The current variant method uses the app's difficulty recipes with fresh seeds. Full app sessions can also use a practice focus, templates and fallbacks. The study checks each accepted grade, rechecks generated solutions, compares canonical puzzles, scores reference layouts and calculates paired exact tests.
+The 1,984 requests include failed searches. Each method starts with the same request seeds. Methods can spend different amounts of time on one attempt. The current classic method uses fresh targeted search. The current variant method uses the app's difficulty recipes with fresh seeds. Full app sessions can also use a practice focus, templates and fallbacks. The separate TypeScript solution counter requires Node 22.12 or later. It checked all 1,034 accepted results, including 994 distinct boards. The study also checks each accepted grade, rechecks generated solutions, compares canonical puzzles, scores reference layouts and calculates paired exact tests.
 
 ## Training data
 

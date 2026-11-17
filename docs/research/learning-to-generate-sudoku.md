@@ -187,7 +187,7 @@ One request asks for one family and one exact grade. A hit means a qualifying pu
 
 The current classic comparator calls the engine’s fresh targeted search. The current variant comparator starts from the app’s per-grade recipes. Normal app play can also use larger budgets, a technique focus, templates or a fallback. The results here apply to the specified searches. Recorded native times include process startup and concurrent jobs. Compare mobile end-to-end latency separately.
 
-The verification pass rechecks unique solutions. For Killer it also checks coverage, sums and distinct digits within each cage. For classic it independently recomputes opening singles. Layout comparisons use a fixed set of transformations. They cannot identify every possible resemblance or alternate human solving path.
+A separate TypeScript solver verified exactly one solution for all 1,034 accepted outputs, including 994 distinct boards. The audit also checked Killer cage coverage, sums and distinct digits, and independently counted classic opening singles. Novelty checks cover only the listed transformations and reference collections.
 
 ### Data to collect next
 
