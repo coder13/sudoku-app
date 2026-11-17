@@ -5,6 +5,7 @@ import {
   type DockviewApi, type DockviewReadyEvent, type IDockviewPanelHeaderProps, type IDockviewPanelProps,
 } from 'dockview-react'
 import 'dockview-react/dist/styles/dockview.css'
+import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 
 const DESKTOP_LAYOUT_KEY = 'sudoku-app:v1:desktop-panel-layout'
 const DESKTOP_LAYOUT_VERSION_KEY = 'sudoku-app:v1:desktop-panel-layout-version'
@@ -215,12 +216,12 @@ function addRightPanels(api: DockviewApi, showChains: boolean) {
   const techniques = api.getPanel('techniques')
   if (solution && !techniques) {
     api.addPanel({
-      id: 'techniques', component: 'techniques', title: 'Available techniques', inactive: true,
+      id: 'techniques', component: 'techniques', title: TECHNIQUE_FINDER_TITLE, inactive: true,
       minimumWidth: 240, minimumHeight: 130,
       position: { referencePanel: solution },
     })
-  } else if (techniques && techniques.title !== 'Available techniques') {
-    techniques.api.setTitle('Available techniques')
+  } else if (techniques && techniques.title !== TECHNIQUE_FINDER_TITLE) {
+    techniques.api.setTitle(TECHNIQUE_FINDER_TITLE)
   }
 }
 

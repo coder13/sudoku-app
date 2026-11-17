@@ -3,12 +3,13 @@ import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './en
 import { variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
+import type { CollectionReference } from './collection-reference.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
 export type ColorTarget = 'cell' | 'candidate'
 export type ErrorMode = 'all' | 'incorrect' | 'none'
-export type Source = 'starter' | 'generated' | 'imported' | 'custom' | 'draft'
+export type Source = 'starter' | 'generated' | 'imported' | 'collection' | 'custom' | 'draft'
 export type EnterOptions = { allowMultipleValues?: boolean; toggleValue?: boolean; candidateAction?: 'add' | 'remove' }
 
 export type Position = {
@@ -24,6 +25,7 @@ export type Game = {
   id: string
   title: string
   source: Source
+  collection?: CollectionReference
   difficulty?: Difficulty | null
   score?: number | null
   variant?: VariantGame
@@ -36,6 +38,7 @@ export type Game = {
   future: Position[]
   actionHistory?: ActionHistoryEntry[]
   elapsed: number
+  timeUntracked?: true
   started: boolean
   candidatesInitialized?: true
   paused: boolean
@@ -86,12 +89,14 @@ export function restartGame(game: Game): Game {
   return {
     ...makeGame(game.id, game.title, game.givens, game.source, game.created),
     difficulty: game.difficulty,
+    collection: game.collection,
     score: game.score,
     variant: game.variant,
     generatedWithAuto: game.generatedWithAuto,
     analysisUsed: game.analysisUsed,
     ratingAttempt: game.ratingAttempt && {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
+      timeUntracked: game.timeUntracked || game.ratingAttempt.timeUntracked,
     },
     saved: game.saved,
     savedForLater: game.savedForLater,
@@ -159,6 +164,10 @@ export function isSolved(game: Game): boolean {
 export function setGamePaused(game: Game, paused: boolean): Game {
   if (game.paused === paused || game.source === 'draft' || !game.started || isSolved(game)) return game
   return { ...game, paused }
+}
+
+export function markSolveUntimed(game: Game): Game {
+  return game.timeUntracked ? game : { ...game, elapsed: 0, timeUntracked: true }
 }
 
 export function progressOf(game: Game) {
@@ -436,10 +445,9 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
     }
   }
   const houses = variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
-  let extraIndex = 0
-  const extra = variant?.rules?.flatMap((rule) => {
+  const extra = variant?.rules?.flatMap((rule, index) => {
     if (rule.type === 'diagonal') return [variantHouseCells({ diagonal: rule.diagonal }, variant)]
-    if (rule.type === 'extra-house') return [variantHouseCells({ extra: extraIndex++ }, variant)]
+    if (rule.type === 'extra-house') return [variantHouseCells({ extra: index }, variant)]
     return []
   }) ?? []
   for (const house of [...houses, ...extra]) {

@@ -140,6 +140,11 @@ pub fn start_variant_generation(
     options: VariantGenerationOptions,
 ) -> Result<GenerationSearch<'static, GeneratedVariant>, VariantGenerationError> {
     use VariantGenerationError::*;
+    let mut options = options;
+    if let Some(GenerationRating::Difficulty(level)) = options.rating {
+        options.technique_order.retain(|t| t.difficulty() <= level);
+        options.technique_order.sort_by_key(|t| t.difficulty());
+    }
     let base = options.template.compile().map_err(Definition)?;
     layouts::validate(&options.template, &options.derived_clues)?;
     base.prepare(&[0; CELLS], &[0; CELLS])
@@ -323,6 +328,14 @@ fn accept(
             GenerationRating::Difficulty(expected) if *expected != level => return None,
             GenerationRating::Score(range) if !range.contains(&rating.points) => return None,
             _ => {}
+        }
+    }
+    if let Some(GenerationRating::Difficulty(level)) = options.rating {
+        if puzzle.givens.iter().filter(|&&d| d != 0).count() > 40 { return None; }
+        let lower: Vec<_> = VariantTechnique::all().filter(|t| t.difficulty() < level).collect();
+        if !lower.is_empty() {
+            let (_, easier) = position.run_with_compiled(compiled, &lower, |_| {}).ok()?;
+            if matches!(easier.status, SolveStatus::Solved(_)) { return None; }
         }
     }
     Some(rating)

@@ -49,6 +49,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'als-continuous-nice-loop': 'ALS continuous Nice Loop',
   'als-xz': 'ALS-XZ',
   'bug-plus-one': 'BUG+1',
+  'death-blossom': 'Death Blossom',
   'empty-rectangle': 'Empty rectangle',
   'grouped-aic': 'Grouped alternating inference chain',
   'multi-sector-locked-sets': 'Multi-sector locked sets',
@@ -63,7 +64,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'unique-rectangle-discontinuous-nice-loop': 'Unique Rectangle discontinuous Nice Loop',
   'unique-rectangle-continuous-nice-loop': 'Unique Rectangle continuous Nice Loop',
   'w-wing': 'W-wing',
-  'wxyz-wing': 'WXYZ-wing',
+  'wxyz-wing': 'WXYZ-Wing',
   'x-chain': 'X-chain',
   'x-wing': 'X-wing',
   'xy-chain': 'XY-chain',
@@ -83,7 +84,7 @@ export function techniqueLabel(technique: string): string {
 export function cellReference(cell: number, style: CellReferenceStyle, difficulty?: Difficulty) {
   const row = Math.floor(cell / 9) + 1
   const column = cell % 9 + 1
-  const advanced = difficulty === 'hard' || difficulty === 'unfair' || difficulty === 'extreme'
+  const advanced = difficulty !== undefined && ['tricky', 'hard', 'very-hard', 'expert', 'master', 'unfair', 'extreme', 'impossible'].includes(difficulty)
   const concise = style === 'concise' || (style === 'automatic' && advanced)
   return concise ? `r${row}c${column}` : `row ${row}, column ${column}`
 }

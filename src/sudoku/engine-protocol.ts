@@ -7,7 +7,7 @@ export type EngineExports = {
   analyze_board(): number
   fill_notes(): number
   solve_board(): number
-  generate_board(seed: number): void
+  generate_board?(seed: number): void
   request_buffer(length: number): number
   run_request(): number
   response_buffer(): number
@@ -17,6 +17,10 @@ const CELL_COUNT = 81
 const statuses: Analysis[] = ['conflict', 'unsolvable', 'unique', 'multiple', 'search-limit']
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
+
+function validGrid(value: unknown): value is string {
+  return typeof value === 'string' && value.length === CELL_COUNT && !/[^0-9.]/.test(value)
+}
 
 function runStructuredRequest(wasm: EngineExports, request: EngineRequest): EnginePayload {
   const bytes = encoder.encode(JSON.stringify(request))
@@ -31,9 +35,10 @@ export function createEngineHandler(load: () => Promise<EngineExports>) {
   let engine: Promise<EngineExports> | undefined
 
   return async ({ id, request }: { id: number; request: EngineRequest }): Promise<EngineResponse> => {
-    if ('values' in request && (
-      typeof request.values !== 'string' || request.values.length !== CELL_COUNT || /[^0-9.]/.test(request.values)
-    )) {
+    const validValues = !('values' in request) || (request.type === 'canonical-puzzles'
+      ? Array.isArray(request.values) && request.values.every(validGrid)
+      : validGrid(request.values))
+    if (!validValues) {
       return { id, code: 'invalid-grid', error: 'Enter exactly 81 cells. Use a dot or 0 for each empty cell.' }
     }
 
@@ -41,6 +46,7 @@ export function createEngineHandler(load: () => Promise<EngineExports>) {
       const wasm = await (engine ??= load())
       const boardView = () => new Uint8Array(wasm.memory.buffer, wasm.board_buffer(), CELL_COUNT)
       if (request.type === 'generate') {
+        if (!wasm.generate_board) return { id, code: 'unsupported-capability', error: 'This engine build does not include puzzle generation.' }
         wasm.generate_board(request.seed)
         return { id, value: boardView().join('') }
       }

@@ -3,8 +3,7 @@ use std::collections::BTreeMap;
 use super::hints::{Deduction, DeductionSearch, checked_position};
 use super::position::Position;
 use super::{
-    Analysis, Board, GenerationRating, Hint, HintError, PositionSnapshot, Technique,
-    TechniqueTargetMode,
+    Analysis, Board, Hint, HintError, PositionSnapshot, Technique,
 };
 
 #[path = "logical/paths.rs"]
@@ -14,13 +13,17 @@ pub use paths::{
     search_alternate_path,
 };
 mod rank_fallback;
+#[cfg(any(feature = "generation", test))]
+mod quality;
+#[cfg(any(feature = "generation", test))]
+use crate::{GenerationRating, TechniqueTargetMode};
 pub use rank_fallback::{
     RankFallbackOptions, RankSolve, RankSolveReplay, RankSolveSearch, RankSolveStatus,
     RankSolveStep, solve_position_with_rank,
 };
 
 /// Version of the scoring rules recorded in ratings and exported traces.
-pub const SCORING_VERSION: u32 = 10;
+pub const SCORING_VERSION: u32 = 11;
 const QUICK_VERIFICATION_NODES: u32 = 4096;
 
 /// Ordered difficulty tiers for techniques and complete solve paths.
@@ -31,28 +34,43 @@ const QUICK_VERIFICATION_NODES: u32 = 4096;
     serde(rename_all = "kebab-case")
 )]
 pub enum Difficulty {
-    /// Lowest tier. The score band runs through 800 points.
+    /// Full houses and hidden singles in boxes.
+    Beginner,
+    /// All singles, including candidate-based and line singles.
     Easy,
-    /// Score band from 801 to 1,000 points.
+    /// Local candidate eliminations and small subsets.
     Medium,
-    /// Score band from 1,001 to 1,600 points.
+    /// Fixed single-digit patterns across houses.
+    Tricky,
+    /// Wings and advanced fixed patterns.
     Hard,
-    /// Score band from 1,601 to 1,800 points.
-    Unfair,
-    /// Highest tier. The score band starts at 1,801 points.
+    /// Restricted chains and coloring.
+    VeryHard,
+    /// Ordinary alternating inference chains and loops.
+    #[cfg_attr(feature = "wasm-api", serde(alias = "unfair"))]
+    Expert,
+    /// Grouped inference and almost locked sets.
+    Master,
+    /// Multiple forcing proofs and specialist patterns.
     Extreme,
+    /// No promise of a practical human solve path.
+    Impossible,
 }
 
 impl Difficulty {
-    /// Classify the point total before considering the techniques used.
-    pub const fn from_score(score: u32) -> Self {
-        match score {
-            0..=800 => Self::Easy,
-            801..=1000 => Self::Medium,
-            1001..=1600 => Self::Hard,
-            1601..=1800 => Self::Unfair,
-            _ => Self::Extreme,
-        }
+    /// The ten current levels in increasing order. Points never select a level.
+    pub const ALL: [Self; 10] = [
+        Self::Beginner, Self::Easy, Self::Medium, Self::Tricky, Self::Hard,
+        Self::VeryHard, Self::Expert, Self::Master, Self::Extreme, Self::Impossible,
+    ];
+
+    /// Canonical techniques allowed at this level, from easiest to hardest.
+    pub fn technique_order(self) -> Vec<Technique> {
+        Technique::DIFFICULTY_ORDER
+            .iter()
+            .copied()
+            .filter(|t| t.difficulty() <= self)
+            .collect()
     }
 }
 
@@ -87,8 +105,7 @@ impl Tally {
     }
 
     fn difficulty(&self) -> Difficulty {
-        let floor = self.hardest.map_or(Difficulty::Easy, Technique::difficulty);
-        floor.max(Difficulty::from_score(self.points))
+        self.hardest.map_or(Difficulty::Beginner, Technique::difficulty)
     }
 }
 
@@ -100,7 +117,7 @@ impl Tally {
     serde(rename_all = "kebab-case")
 )]
 pub enum SolveStatus {
-    /// Completed grid with a difficulty derived from the score and techniques used.
+    /// Completed grid with a difficulty derived from the techniques used.
     Solved(Difficulty),
     /// The profile ran out of productive deductions on an unfinished grid.
     Stalled,
@@ -340,12 +357,27 @@ impl RatingTally {
     }
 }
 
+#[cfg(any(feature = "generation", test))]
 pub(crate) fn matches_generation_path(
     board: &Board,
     technique_order: &[Technique],
     rating: Option<&GenerationRating>,
     technique: Option<(Technique, TechniqueTargetMode)>,
 ) -> bool {
+    if matches!(rating, Some(GenerationRating::Difficulty(_)))
+        && board.iter().filter(|&&digit| digit != 0).count() > 40
+    {
+        return false;
+    }
+    let ordered;
+    let technique_order = if let Some(GenerationRating::Difficulty(level)) = rating {
+        ordered = level.technique_order().into_iter()
+            .filter(|t| technique_order.contains(t)).collect::<Vec<_>>();
+        ordered.as_slice()
+    } else {
+        technique_order
+    };
+    let mut quality = quality::GenerationQuality::default();
     let mut pending = match technique {
         Some((opening, TechniqueTargetMode::ExclusiveOpening)) => {
             if !has_exclusive_opener(board, opening) {
@@ -373,6 +405,7 @@ pub(crate) fn matches_generation_path(
         }
         if rating.is_some() {
             total.record(step.technique);
+            quality.record(step.technique);
         }
         match rating {
             Some(GenerationRating::Score(range)) => total.points <= *range.end(),
@@ -382,14 +415,36 @@ pub(crate) fn matches_generation_path(
     }) else {
         return false;
     };
-    pending.is_none()
+    let matched = pending.is_none()
         && rating.is_none_or(|target| {
             position.is_solved()
                 && match target {
                     GenerationRating::Score(range) => range.contains(&total.points),
                     GenerationRating::Difficulty(level) => total.difficulty() == *level,
                 }
-        })
+        });
+    if !matched {
+        return false;
+    }
+    if let Some(GenerationRating::Difficulty(level)) = rating {
+        if !quality.accepts(*level) {
+            return false;
+        }
+        // A different deduction order can reveal an easier route. Reject a
+        // candidate if any checked lower-tier profile completes it.
+        for lower in quality::lower_tier_orders(*level) {
+            if lower.is_empty() {
+                continue;
+            }
+            let Ok(result) = follow_path(Position::known_unique(board), &lower, |_| true) else {
+                return false;
+            };
+            if result.is_solved() {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 fn follow_path(
@@ -433,6 +488,7 @@ pub fn opening_techniques(board: &Board) -> Result<Vec<Technique>, Analysis> {
     Ok(available_openers(&position).collect())
 }
 
+#[cfg(any(feature = "generation", test))]
 pub(crate) fn has_exclusive_opener(board: &Board, opening: Technique) -> bool {
     let position = Position::known_unique(board);
     let mut available = available_openers(&position);
@@ -483,8 +539,8 @@ mod tests {
         let normal = solve_logically(&board, &Technique::ALL).unwrap();
         assert_eq!(normal.board, solve(&board).unwrap());
         assert_eq!(normal.steps.len(), 51);
-        assert_eq!(normal.score.points, 204);
-        assert_eq!(normal.status, SolveStatus::Solved(Difficulty::Easy));
+        assert_eq!(normal.score.points, normal.score.counts.iter().map(|(t, count)| u32::from(t.cost()) * count).sum::<u32>());
+        assert_eq!(normal.status, SolveStatus::Solved(Difficulty::Beginner));
         assert_eq!(normal.technique_order, Technique::ALL);
         assert_eq!(normal.scoring_version, SCORING_VERSION);
 
@@ -533,28 +589,26 @@ mod tests {
     }
 
     #[test]
-    fn the_hardest_technique_and_total_both_count_toward_difficulty() {
-        let mut score = Tally::default();
-        score.record(Technique::XWing);
-        assert_eq!(score.points, 140);
-        assert_eq!(score.difficulty(), Difficulty::Hard);
+    fn repetition_never_promotes_the_technique_tier() {
+        for technique in [Technique::HiddenSingleBox, Technique::NakedPair, Technique::XYWing, Technique::Aic] {
+            let mut tally = Tally::default();
+            for _ in 0..100 { tally.record(technique); }
+            assert!(tally.points > 1800 || technique == Technique::HiddenSingleBox);
+            assert_eq!(tally.difficulty(), technique.difficulty());
+        }
+        assert_eq!(Difficulty::ALL.len(), 10);
+        assert!(Technique::DIFFICULTY_ORDER.windows(2).all(|pair| pair[0].difficulty() <= pair[1].difficulty()));
+        assert_eq!(Technique::DIFFICULTY_ORDER.len(), Technique::ALL.len());
+    }
 
-        let mut score = Tally::default();
-        for _ in 0..17 {
-            score.record(Technique::NakedPair);
-        }
-        assert_eq!(score.hardest, Some(Technique::NakedPair));
-        assert_eq!(score.points, 1020);
-        assert_eq!(score.difficulty(), Difficulty::Hard);
-        for (ceiling, level, higher) in [
-            (800, Difficulty::Easy, Difficulty::Medium),
-            (1000, Difficulty::Medium, Difficulty::Hard),
-            (1600, Difficulty::Hard, Difficulty::Unfair),
-            (1800, Difficulty::Unfair, Difficulty::Extreme),
-        ] {
-            assert_eq!(Difficulty::from_score(ceiling), level);
-            assert_eq!(Difficulty::from_score(ceiling + 1), higher);
-        }
+    #[test]
+    fn a_high_point_total_does_not_make_a_wing_puzzle_extreme() {
+        let board = parse_givens("100070890000000010203080000020490000070300050000060000080500900000000103007100060").unwrap();
+        let rating = rate_puzzle(&board, &Difficulty::Hard.technique_order()).unwrap();
+        assert_eq!(rating.status, SolveStatus::Solved(Difficulty::Hard));
+        assert_eq!(rate_puzzle(&board, &Difficulty::Tricky.technique_order()).unwrap().status, SolveStatus::Stalled);
+        assert!(!matches_generation_path(&board, Technique::DEFAULT_ORDER,
+            Some(&GenerationRating::Difficulty(Difficulty::Extreme)), None));
     }
 
     #[test]
@@ -593,6 +647,7 @@ mod tests {
             opening_techniques(&board),
             Ok(vec![
                 Technique::FullHouse,
+                Technique::HiddenSingleBox,
                 Technique::NakedSingle,
                 Technique::HiddenSingle,
                 Technique::PatternOverlay,

@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { deflateSync } from 'node:zlib'
 import lzString from 'lz-string'
 import { exportPuzzle, STARTER } from '../src/sudoku/formats.ts'
+import { WINDOKU_REGIONS } from '../src/sudoku/variants.ts'
 import { EMPTY } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
 
@@ -88,6 +89,23 @@ test('keeps givens only from Current State and maps Coach rule direction', async
       givenConstraints: [{ type, segments: cells.length ? [{ cells, parameters: {} }] : [], settings: {} }] }))
     assert.deepEqual(puzzle.variant?.puzzle.rules, [rule])
   }
+})
+
+test('imports Windoku regions and keeps them through sharing', async () => {
+  const givenConstraints = WINDOKU_REGIONS.map(cells => ({
+    type: 'region', segments: [{ cells, parameters: {} }],
+    settings: { opacity: 255, colour: '#d68a8a', shapeSize: 100, borderColour: '#aaaaaa', borderThickness: 0 },
+  }))
+  const source = coach({ givenDigits: '000000070700000056000590000000000300040001090016000000000000800003254000007100000', givenConstraints })
+  const imported = await detectPuzzle(source)
+  assert.equal(imported.variant?.id, 'windoku')
+  assert.deepEqual(imported.variant.puzzle.rules, WINDOKU_REGIONS.map(cells => ({ type: 'extra-house', cells })))
+  const shared = 'https://example.org/#variant=' + encodeURIComponent(JSON.stringify(imported.variant))
+  assert.deepEqual(await detectPuzzle(shared), { ...imported, format: 'Puzzle link' })
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: givenConstraints.slice(1) })), /unsupported or invalid/)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [
+    ...givenConstraints, { type: 'region', segments: [{ cells: WINDOKU_REGIONS[0], parameters: {} }] },
+  ] })), /unsupported or invalid/)
 })
 
 test('opens f-puzzles links, raw exports, and SudokuPad f-puzzles links', async () => {

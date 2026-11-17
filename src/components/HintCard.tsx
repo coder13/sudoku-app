@@ -34,7 +34,7 @@ export function HintCard({ hint, onClose, onShown, navigation, action, lessDetai
     <aside className="hint-card" aria-label="Puzzle hint" ref={card}>
       <div className="hint-card-heading">
         <span className="hint-card-icon" aria-hidden="true"><Lightbulb size={19} /></span>
-        <div>
+        <div className="hint-card-title">
           <small>Hint</small>
           <h2>{hint.title}</h2>
           {lesson && <a className="hint-card-lesson" href={`/learn/${lesson.id}`} aria-label={`Review ${lesson.title} lesson`}>

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
-import type { DeductionAction, DeductionMatch, HintChoice } from '../src/sudoku/engine.ts'
-import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueHintsFromMatches, techniqueTargetCount } from '../src/sudoku/puzzle-analysis.ts'
+import type { DeductionAction, DeductionMatch, EngineRequest, EngineResponse, HintChoice } from '../src/sudoku/engine.ts'
+import { STARTER } from '../src/sudoku/formats.ts'
+import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueHintsFromMatches } from '../src/sudoku/puzzle-analysis.ts'
+import { cachedTechniqueCounts, scanTechnique, techniqueScanKey } from '../src/sudoku/technique-scan.ts'
 
 function match(actions: DeductionAction[], techniques: string[]): DeductionMatch {
   const affectedCandidates = actions.map((action) => 'place' in action ? action.place : action.eliminate)
@@ -18,7 +20,7 @@ function match(actions: DeductionAction[], techniques: string[]): DeductionMatch
   }
 }
 
-test('available techniques include every detector in the Rust engine catalog', () => {
+test('the technique finder includes every detector in the Rust engine catalog', () => {
   const source = readFileSync(new URL('../crates/engine/src/technique.rs', import.meta.url), 'utf8')
   const start = source.indexOf('catalog! {')
   const rustCatalog = source.slice(start, source.indexOf('\n}', start))
@@ -63,16 +65,43 @@ test('count distinct action targets for each technique even with overlapping pro
   assert.deepEqual(summarizeGroup([]), { placements: 0, removals: 0 })
 })
 
-test('candidate target counts include both placements and removals without double-counting proofs', () => {
-  const moves = [
-    match([{ place: { cell: 14, digit: 8 } }], ['forcing-chain']),
-    match([{ eliminate: { cell: 20, digit: 2 } }, { eliminate: { cell: 21, digit: 2 } }], ['forcing-chain', 'aic']),
-    match([{ eliminate: { cell: 20, digit: 2 } }], ['forcing-chain']),
-    match([{ eliminate: { cell: 30, digit: 7 } }], ['aic']),
-  ]
-  assert.equal(techniqueTargetCount(moves, 'forcing-chain'), 3)
-  assert.equal(techniqueTargetCount(moves, 'aic'), 3)
-  assert.equal(techniqueTargetCount(moves, 'xy-wing'), 0)
+test('the technique finder caches zero counts, separates edits, and retries failures', async (t) => {
+  let requests = 0
+  let failNext = false
+  class TestWorker {
+    onmessage?: (event: { data: EngineResponse }) => void
+
+    postMessage({ id, request }: { id: number; request: EngineRequest }) {
+      assert.equal(request.type, 'technique-count')
+      requests++
+      const data = failNext ? { id, error: 'Scan failed' } : { id, value: request.eliminations?.[2] ?? 0 }
+      failNext = false
+      queueMicrotask(() => this.onmessage?.({ data }))
+    }
+  }
+  const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker')
+  Object.defineProperty(globalThis, 'Worker', { value: TestWorker, configurable: true })
+  t.after(() => {
+    if (originalWorker) Object.defineProperty(globalThis, 'Worker', originalWorker)
+    else Reflect.deleteProperty(globalThis, 'Worker')
+  })
+
+  const original = scanTechnique(STARTER, undefined, 'pointing')
+  assert.equal(scanTechnique(STARTER, undefined, 'pointing'), original)
+  assert.equal(await original, 0)
+  assert.equal(await scanTechnique(STARTER, undefined, 'pointing'), 0)
+  assert.equal(requests, 1)
+
+  const eliminations = Array<number>(81).fill(0)
+  eliminations[2] = 1
+  failNext = true
+  await assert.rejects(scanTechnique(STARTER, eliminations, 'pointing'), /Scan failed/)
+  const editedKey = techniqueScanKey(STARTER, eliminations)
+  assert.equal(cachedTechniqueCounts(editedKey).pointing, undefined)
+  assert.equal(await scanTechnique(STARTER, eliminations, 'pointing'), 1)
+  assert.deepEqual(cachedTechniqueCounts(editedKey).pointing, { count: 1 })
+  assert.equal(await scanTechnique(STARTER, undefined, 'pointing'), 0)
+  assert.equal(requests, 3)
 })
 
 test('hide-zero filter retains pending techniques and scan failures', () => {

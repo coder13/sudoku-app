@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DEFAULT_SHORTCUTS, EDITABLE_SHORTCUTS, editableShortcutKey, highlightedDigitShortcut,
+  appTextZoomShortcut, DEFAULT_SHORTCUTS, EDITABLE_SHORTCUTS, editableShortcutKey, highlightedDigitShortcut,
   parseShortcutPreferences, shortcutConflict, shortcutMatches,
 } from '../src/sudoku/shortcuts.ts'
 
@@ -50,6 +50,20 @@ test('highlighted digit shortcuts use Shift plus the digit row', () => {
   assert.equal(highlightedDigitShortcut({ altKey: false, code: 'Digit7', ctrlKey: false, metaKey: false, shiftKey: true }), 7)
   assert.equal(highlightedDigitShortcut({ altKey: false, code: 'Numpad7', ctrlKey: false, metaKey: false, shiftKey: true }), null)
   assert.equal(highlightedDigitShortcut({ altKey: false, code: 'Digit7', ctrlKey: false, metaKey: false, shiftKey: false }), null)
+})
+
+test('app text zoom uses Ctrl or Command and ignores unmodified puzzle input', () => {
+  const plain = { altKey: false, ctrlKey: false, isComposing: false, metaKey: false }
+  const ctrl = { ...plain, ctrlKey: true }
+  const command = { ...plain, metaKey: true }
+  assert.equal(appTextZoomShortcut({ ...plain, key: '0' }), null)
+  assert.equal(appTextZoomShortcut({ ...ctrl, key: '1' }), null)
+  assert.equal(appTextZoomShortcut({ ...ctrl, key: '-' }), -1)
+  assert.equal(appTextZoomShortcut({ ...command, key: '+' }), 1)
+  assert.equal(appTextZoomShortcut({ ...command, key: '=' }), 1)
+  assert.equal(appTextZoomShortcut({ ...command, key: '0' }), 0)
+  assert.equal(appTextZoomShortcut({ ...ctrl, key: '+', altKey: true }), null)
+  assert.equal(appTextZoomShortcut({ ...ctrl, key: '-', isComposing: true }), null)
 })
 
 test('shortcut conflicts identify the command that already owns a key', () => {

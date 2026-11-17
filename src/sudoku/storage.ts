@@ -1,12 +1,14 @@
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
 import { isDifficulty } from './difficulty.ts'
-import { COLORS, createGameId, isSolved, puzzleIdentity, type Game, type Position } from './game.ts'
+import { isCollectionReference } from './collection-reference.ts'
+import { COLORS, createGameId, isSolved, markSolveUntimed, puzzleIdentity, type Game, type Position } from './game.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
-  calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent,
-  type PlayerRating, type RatingEvent, type RatingFinish,
+  calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
+  type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
 } from './player-rating.ts'
+import { puzzleTiming } from './puzzle-timing.ts'
 
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
@@ -16,7 +18,7 @@ const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
 const ACTIVE = PREFIX + 'active'
 const READY = PREFIX + 'initialized'
 const BUILT_IN_STARTER_ID = 'warmup'
-const sources = ['starter', 'generated', 'imported', 'custom', 'draft']
+const sources = ['starter', 'generated', 'imported', 'collection', 'custom', 'draft']
 
 type Room = { games: Game[]; active: string | null; stoppedPlaying: boolean; storageAvailable: boolean; playerRating: PlayerRating }
 const initial: Room = { games: [], active: null, stoppedPlaying: false, storageAvailable: true, playerRating: initialPlayerRating }
@@ -72,8 +74,10 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
+      if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
       if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory)) delete value.actionHistory
+      if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt
@@ -113,14 +117,19 @@ function rememberOutcome(event: RatingEvent | undefined) {
   return saved
 }
 
+function ratingElapsed(game: Game, attempt: RatingAttempt) {
+  return game.timeUntracked || attempt.timeUntracked ? 0 : attempt.priorElapsed + game.elapsed
+}
+
 function hintEvidence(game: Game): RatingEvent | undefined {
   const attempt = game.ratingAttempt
   if (!attempt || attempt.outcome || attempt.lastHintAt === undefined || (attempt.requested?.length ?? 0) < 2) return
   return {
     id: `hints:${game.id}`, gameId: game.id, givens: game.givens, puzzleKey: puzzleIdentity(game),
+    ratingVersion: attempt.ratingVersion,
     difficulty: attempt.grade.difficulty, at: attempt.lastHintAt, finish: 'hints',
     viewed: attempt.viewed.length, applied: attempt.applied.length, hintsRequested: attempt.requested?.length,
-    analysisUsed: attempt.analysisUsed, elapsed: attempt.priorElapsed + game.elapsed,
+    analysisUsed: attempt.analysisUsed, elapsed: ratingElapsed(game, attempt),
   }
 }
 
@@ -132,9 +141,11 @@ function playerRatingFor(games: readonly Game[]) {
     const puzzleKey = puzzleIdentity(game)
     if (known.has(puzzleKey)) continue
     if (isSolved(game) && game.difficulty && !game.analysisUsed) {
+      const elapsed = game.timeUntracked ? 0 : game.elapsed
       events.push({
         id: `saved:${game.id}`, gameId: game.id, givens: game.givens, puzzleKey, difficulty: game.difficulty,
-        at: game.created + game.elapsed * 1000, finish: 'solved', elapsed: game.elapsed, viewed: 0, applied: 0, estimated: true,
+        ratingVersion: game.ratingAttempt?.ratingVersion,
+        at: game.created + elapsed * 1000, finish: 'solved', elapsed, viewed: 0, applied: 0, estimated: true,
       })
     } else {
       const evidence = hintEvidence(game)
@@ -151,8 +162,9 @@ function finishAttempt(game: Game, finish: RatingFinish): Game {
   for (const event of ratingEvents.values()) at = Math.max(at, event.at + 1)
   const outcome: RatingEvent = {
     id: createGameId(), gameId: game.id, givens: game.givens, puzzleKey: puzzleIdentity(game), difficulty: attempt.grade.difficulty,
+    ratingVersion: PLAYER_RATING_VERSION,
     at,
-    finish, viewed: attempt.viewed.length, applied: attempt.applied.length, elapsed: attempt.priorElapsed + game.elapsed,
+    finish, viewed: attempt.viewed.length, applied: attempt.applied.length, elapsed: ratingElapsed(game, attempt),
   }
   if (attempt.requested || attempt.lastHintAt !== undefined) outcome.hintsRequested = attempt.requested?.length ?? 0
   if (attempt.singlesAssistance) outcome.singlesAssistance = attempt.singlesAssistance
@@ -175,12 +187,15 @@ function mergeRatingAttempt(game: Game): Game {
     const singlesAssistance = saved.singlesAssistance === 'all' ? 'all' : attempt.singlesAssistance ?? saved.singlesAssistance
     const analysisUsed = attempt.analysisUsed || saved.analysisUsed ? true : undefined
     const lastHintAt = Math.max(attempt.lastHintAt ?? 0, saved.lastHintAt ?? 0) || undefined
+    const ratingVersion = attempt.ratingVersion ?? saved.ratingVersion
     const priorElapsed = Math.max(attempt.priorElapsed, saved.priorElapsed)
+    const timeUntracked = attempt.timeUntracked || saved.timeUntracked
     if (outcome !== attempt.outcome || priorElapsed !== attempt.priorElapsed ||
+      timeUntracked !== attempt.timeUntracked ||
       viewed.length !== attempt.viewed.length || applied.length !== attempt.applied.length ||
       requested.length !== (attempt.requested?.length ?? 0) || lastHintAt !== attempt.lastHintAt ||
-      singlesAssistance !== attempt.singlesAssistance || analysisUsed !== attempt.analysisUsed) {
-      return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, singlesAssistance, analysisUsed, outcome, priorElapsed, lastHintAt } }
+      singlesAssistance !== attempt.singlesAssistance || analysisUsed !== attempt.analysisUsed || ratingVersion !== attempt.ratingVersion) {
+      return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, singlesAssistance, analysisUsed, outcome, priorElapsed, timeUntracked, lastHintAt, ratingVersion } }
     }
   } catch { /* The in-memory attempt still has this tab’s assistance. */ }
   return game
@@ -369,6 +384,8 @@ export const roomStore = {
     const merged = mergeRatingAttempt(current)
     let next = update(merged)
     if (current === next) return
+    if (!puzzleTiming.getSnapshot().trackTime && next.source !== 'draft' && next.started &&
+      (next.position !== current.position || !current.started) && !isSolved(current)) next = markSolveUntimed(next)
     if (!current.ratingAttempt && next.ratingAttempt && seenPuzzle(next)) next = { ...next, ratingAttempt: undefined }
     if (next.ratingAttempt && !next.ratingAttempt.outcome && next.position.entries !== current.position.entries && isSolved(next)) {
       next = finishAttempt(next, 'solved')
@@ -381,6 +398,7 @@ export const roomStore = {
     const games = room.games.map((game) => game.id === id ? next : game)
     const evidenceChanged = newOutcome || next.difficulty !== current.difficulty ||
       next.ratingAttempt?.lastHintAt !== current.ratingAttempt?.lastHintAt ||
+      next.ratingAttempt?.ratingVersion !== current.ratingAttempt?.ratingVersion ||
       (!next.ratingAttempt?.outcome && next.position.entries !== current.position.entries && isSolved(next) !== isSolved(current))
     publish({ ...room, games,
       storageAvailable: room.storageAvailable && saved && outcomeSaved && seenSaved,

@@ -1,6 +1,7 @@
+import { difficultyIndex } from './difficulty.ts'
 import type { Difficulty, VariantClueLayout, VariantGenerationRequest, VariantPuzzle, VariantRule } from './engine.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
-import type { PlayableVariant } from './variants.ts'
+import { WINDOKU_REGIONS, type PlayableVariant } from './variants.ts'
 
 export type VariantSeed = {
   seed: number
@@ -24,8 +25,9 @@ const omitted = new Set([
   'forcing-net', 'multi-sector-locked-sets', 'sk-loop', 'grouped-discontinuous-nice-loop', 'grouped-continuous-nice-loop',
 ])
 
-export function variantTechniqueOrder(variantOrder: readonly string[], classicOrder: readonly string[]) {
+export function variantTechniqueOrder(variantOrder: readonly string[], classicOrder: readonly string[], difficulties: Partial<Record<string, Difficulty>>) {
   return [...new Set([...variantOrder, ...classicOrder.filter((id) => !omitted.has(id))])]
+    .sort((a, b) => difficultyIndex(difficulties[a] ?? 'impossible') - difficultyIndex(difficulties[b] ?? 'impossible'))
 }
 
 export function variantGenerationRequest(
@@ -35,6 +37,9 @@ export function variantGenerationRequest(
   const rules: VariantRule[] = []
   const derivedClues: VariantClueLayout[] = []
   switch (id) {
+    case 'windoku':
+      rules.push(...WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })))
+      break
     case 'diagonal':
       rules.push({ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' })
       break
@@ -58,7 +63,7 @@ export function variantGenerationRequest(
     type: 'generate-variant', seed, maxAttempts: 1,
     template: { version: 1, givens: recipe.layout ?? '0'.repeat(81), rules,
       regions: id === 'jigsaw' ? jigsawLayout(recipe.regions!) : undefined },
-    derivedClues, givens: [0, recipe.maxGivens], requiredRule: id, difficulty, techniqueOrder,
+    derivedClues, givens: [0, recipe.maxGivens], requiredRule: id === 'windoku' ? 'extra-house' : id, difficulty, techniqueOrder,
   }
 }
 
@@ -86,6 +91,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         }
         case 'killer-cages':
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
+        case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
         case 'thermometer': return { ...rule, cells: rule.cells.map(cell) }
         case 'arrow': return { ...rule, circle: cell(rule.circle), cells: rule.cells.map(cell) }
         case 'kropki': {

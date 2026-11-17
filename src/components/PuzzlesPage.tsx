@@ -1,6 +1,7 @@
+import { DifficultySelector } from './DifficultySelector'
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentType } from 'react'
 import { getRouteApi, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import { BarChart3, Check, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
+import { BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
 import {
   DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference,
 } from '../sudoku/difficulty'
@@ -10,27 +11,32 @@ import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { VARIANTS, variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { StopPlaying } from './PuzzleDialogs'
 import { useMobileLayout } from './mobile-layout'
 import { MobileNewPuzzle, type MobileNewPuzzleScreen } from './MobileNewPuzzle'
 import { VariantSelector } from './VariantSelector'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
+import { PuzzleCollections } from './PuzzleCollections'
+import { collectionDifficulties, getCollectionPuzzle, getCollection } from '../sudoku/collections'
 
-type Section = 'puzzles' | 'new' | 'statistics'
+type Section = 'puzzles' | 'new' | 'collections' | 'statistics'
 type SectionItem = { id: Section; label: string; description: string; icon: ComponentType<{ size?: number }> }
 
 const sections: SectionItem[] = [
   { id: 'puzzles', label: 'Your puzzles', description: 'Continue or switch puzzles', icon: Grid3X3 },
   { id: 'new', label: 'New puzzle', description: 'Choose a variant and difficulty', icon: Dices },
+  { id: 'collections', label: 'Collections', description: 'Explore selected puzzle sets', icon: BookOpen },
   { id: 'statistics', label: 'Statistics', description: 'Review your solving history', icon: BarChart3 },
 ]
-const sectionRoutes: Record<Section, '/puzzles/browse' | '/puzzles/new' | '/puzzles/statistics'> = {
+const sectionRoutes: Record<Section, '/puzzles/browse' | '/puzzles/new' | '/puzzles/collections' | '/puzzles/statistics'> = {
   puzzles: '/puzzles/browse',
   new: '/puzzles/new',
+  collections: '/puzzles/collections',
   statistics: '/puzzles/statistics',
 }
 const newPuzzleRoute = getRouteApi('/puzzles/new')
+const collectionRoute = getRouteApi('/puzzles/collections')
 const newPuzzleTitle: Record<MobileNewPuzzleScreen, string> = {
   variant: 'Choose a variant', difficulty: 'Choose difficulty', start: 'New puzzle',
 }
@@ -44,8 +50,8 @@ function MiniGrid({ values }: { values: string }) {
 function puzzleStatus(game: Game) {
   if (game.source === 'draft') return 'Draft puzzle'
   const rating = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : 'Unrated'
-  if (isSolved(game)) return `${rating} · Solved in ${formatTime(game.elapsed)}`
-  if (game.started) return `${rating} · ${formatTime(game.elapsed)}`
+  if (isSolved(game)) return game.timeUntracked ? `${rating} · Solved` : `${rating} · Solved in ${formatTime(game.elapsed)}`
+  if (game.started) return `${rating} · ${game.timeUntracked ? 'In progress' : formatTime(game.elapsed)}`
   return `${rating} · Not started`
 }
 
@@ -125,7 +131,6 @@ function NewPuzzleSection({ difficulty, remembered, save, done }: {
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
   const selected = variantDifficulty(variant, selection ?? remembered?.difficulty ?? difficulty)
   const autoLabel = variantDifficultyLabel(variant, 'auto', recommended)
-  const autoNext = `${DIFFICULTY_LABELS[variantDifficulty(variant, recommended)]} next`
   const group = useId()
 
   function start() {
@@ -139,18 +144,9 @@ function NewPuzzleSection({ difficulty, remembered, save, done }: {
   return <section className="main-menu-section" aria-labelledby={`${group}-title`}>
     <header><h2 id={`${group}-title`}>New puzzle</h2></header>
     <VariantSelector value={variant} onChange={setVariant} busy={busy} />
-    <fieldset className="main-difficulty-options" disabled={busy}>
-      <legend className="new-puzzle-difficulty-label">Difficulty</legend>
-      {variantDifficulties(variant).map((value) => <label key={value}>
-        <input type="radio" name={group} value={value} checked={selected === value}
-          onChange={() => setSelection(value)} />
-        <span>{value === 'auto' ? 'Auto' : DIFFICULTY_LABELS[value]}</span>
-        {value === 'auto' && <small className="main-difficulty-next">{autoNext}</small>}
-        {selected === value && <Check size={18} aria-hidden="true" />}
-      </label>)}
-    </fieldset>
+    <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
-    <button className="button primary main-start-puzzle" disabled={busy} onClick={start}>
+    <button className="button primary main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
         ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
     </button>
@@ -161,10 +157,12 @@ function Statistics({ games }: { games: Game[] }) {
   const { rating, recommended, count } = usePlayerRating()
   const solved = games.filter(isSolved)
   const inProgress = games.filter((game) => game.started && !isSolved(game) && game.source !== 'draft')
-  const totalTime = games.reduce((sum, game) => sum + game.elapsed, 0)
+  const timedGames = games.filter((game) => !game.timeUntracked && game.source !== 'draft' && (game.started || game.elapsed > 0))
+  const totalTime = timedGames.reduce((sum, game) => sum + game.elapsed, 0)
   const difficultyRows = Object.entries(DIFFICULTY_LABELS).map(([difficulty, label]) => {
     const matching = solved.filter((game) => game.difficulty === difficulty)
-    return { difficulty, label, solved: matching.length, best: matching.length ? Math.min(...matching.map((game) => game.elapsed)) : null }
+    const best = matching.reduce((time, game) => game.timeUntracked ? time : Math.min(time, game.elapsed), Infinity)
+    return { difficulty, label, solved: matching.length, best }
   })
   return <section className="main-menu-section" aria-labelledby="statistics-title">
     <header><h2 id="statistics-title">Statistics</h2><p>Your solving history on this device.</p></header>
@@ -173,12 +171,12 @@ function Statistics({ games }: { games: Game[] }) {
       <div><Dices size={18} aria-hidden="true" /><dt>Auto difficulty</dt><dd>{DIFFICULTY_LABELS[recommended]}</dd></div>
       <div><Trophy size={18} aria-hidden="true" /><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
       <div><Grid3X3 size={18} aria-hidden="true" /><dt>In progress</dt><dd>{inProgress.length}</dd></div>
-      <div><Clock3 size={18} aria-hidden="true" /><dt>Total solving time</dt><dd>{formatTime(totalTime)}</dd></div>
+      {timedGames.length > 0 && <div><Clock3 size={18} aria-hidden="true" /><dt>Total solving time</dt><dd>{formatTime(totalTime)}</dd></div>}
       <div><BarChart3 size={18} aria-hidden="true" /><dt>Saved puzzles</dt><dd>{games.filter(isPuzzleSaved).length}</dd></div>
     </dl>
     <div className="difficulty-statistics" role="table" aria-label="Statistics by difficulty">
       <div role="row" className="difficulty-statistics-heading"><span role="columnheader">Difficulty</span><span role="columnheader">Solved</span><span role="columnheader">Best time</span></div>
-      {difficultyRows.map((row) => <div role="row" key={row.difficulty}><strong role="cell">{row.label}</strong><span role="cell">{row.solved}</span><span role="cell">{row.best === null ? '—' : formatTime(row.best)}</span></div>)}
+      {difficultyRows.map((row) => <div role="row" key={row.difficulty}><strong role="cell">{row.label}</strong><span role="cell">{row.solved}</span><span role="cell">{Number.isFinite(row.best) ? formatTime(row.best) : '—'}</span></div>)}
     </div>
     <TechniqueStatistics />
   </section>
@@ -222,7 +220,13 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
   const routeId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
   const section: Section | null = routeId === sectionRoutes.puzzles ? 'puzzles'
     : routeId === sectionRoutes.new ? 'new'
-      : routeId === sectionRoutes.statistics ? 'statistics' : null
+      : routeId === sectionRoutes.statistics ? 'statistics'
+        : routeId === sectionRoutes.collections ? 'collections' : null
+  const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
+  const collection = getCollection(collectionSearch?.collection)
+  const collectionPuzzle = getCollectionPuzzle(collectionSearch?.collection, collectionSearch?.puzzle)?.puzzle
+  const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
+    collectionDifficulties(collection).includes(collectionSearch.difficulty) ? collectionSearch.difficulty : undefined)
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
   const mobileNewPuzzle = mobile && section === 'new'
   const screen = mobileNewPuzzle && preferencesReady
@@ -252,6 +256,7 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
 
   function content(current: Section) {
     if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} select={selectPuzzle} manage={setManagingId} />
+    if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`} games={games} onPlay={play} />
     if (current === 'new') return preferencesReady && <NewPuzzleSection difficulty={difficulty}
       remembered={newPuzzlePreference} save={savePuzzlePreference} done={play} />
     return <Statistics games={games} />
@@ -268,23 +273,29 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
 
   return <main className={`puzzles-page ${section ? 'puzzles-subscreen' : ''}`}>
     <header className="puzzles-page-heading">
-      {backToVariant ? <Link to="/puzzles/new" search={{ step: 'variant' }} replace
+      {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"
+        search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
+          : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
+        className="icon-button puzzles-back" aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
+          : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
+        : backToVariant ? <Link to="/puzzles/new" search={{ step: 'variant' }} replace
         className="icon-button puzzles-back" aria-label="Back to variants"><ChevronLeft size={21} /></Link>
         : backToStart ? <Link to="/puzzles/new" search={{}} replace
           className="icon-button puzzles-back" aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
           : section && <Link to="/puzzles" className="icon-button puzzles-back" aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}
-      <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{screen ? newPuzzleTitle[screen] : sectionItem?.label ?? 'Puzzles'}</h1>
+      <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{screen ? newPuzzleTitle[screen]
+        : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? sectionItem?.label ?? 'Puzzles'}</h1>
     </header>
     {!mobileNewPuzzle && <div className="main-menu-desktop">
       <nav className="main-menu-tabs" aria-label="Puzzles sections">
         {sections.map((item) => { const Icon = item.icon; return <Link key={item.id} to={sectionRoutes[item.id]}><Icon size={18} />{item.label}</Link> })}
       </nav>
-      <div className="main-menu-panel motion-screen" key={section ?? 'overview'}>{section ? content(section) : <section className="puzzles-overview"><h2>Puzzles</h2><p>Continue solving, start a new puzzle, or review your statistics.</p>{navigation}</section>}</div>
+      <div className="main-menu-panel motion-screen" key={section ?? 'overview'}>{section ? (!mobile || section !== 'collections') && content(section) : <section className="puzzles-overview"><h2>Puzzles</h2><p>Continue solving, start a new puzzle, explore a collection, or review your statistics.</p>{navigation}</section>}</div>
     </div>}
     {(section !== 'new' || mobileNewPuzzle) && <div className="main-menu-mobile motion-screen" key={`mobile-${screen ?? section ?? 'overview'}`}>
       {mobileNewPuzzle ? screen && <MobileNewPuzzle screen={screen} variant={variant} remembered={newPuzzlePreference}
         remember={rememberNewPuzzle} done={(preference) => { setDifficulty(preference.difficulty); play() }} onCreate={onCreatePuzzle} />
-        : section ? content(section) : navigation}
+        : section ? (mobile || section !== 'collections') && content(section) : navigation}
     </div>}
     <Outlet />
     {section === 'puzzles' && managing && <StopPlaying game={managing} close={() => setManagingId(null)} />}

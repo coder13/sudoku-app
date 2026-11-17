@@ -2,10 +2,12 @@
 
 use crate::{Board, CELLS, DIGITS};
 
+#[cfg(any(feature = "generation", test))]
 mod generation;
 mod lines;
 mod logical;
 mod pairs;
+#[cfg(any(feature = "teaching", test))]
 mod practice;
 mod search;
 mod symmetry;
@@ -13,6 +15,7 @@ mod visibility;
 #[cfg(feature = "wasm-api")]
 mod wire;
 
+#[cfg(any(feature = "generation", test))]
 pub use generation::{
     GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
     VariantGenerationOptions, start_variant_generation,
@@ -23,7 +26,10 @@ pub use logical::{
     VariantReplay, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, PairConstraint, ParityClue};
+#[cfg(any(feature = "teaching", test))]
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+pub(crate) use practice::generate_practice_example;
 pub use search::VariantPositionError;
 pub use symmetry::canonical_variant;
 pub use visibility::{VariantVisibility, VariantVisibilityError};

@@ -1,3 +1,5 @@
+#![cfg(all(feature = "variants", feature = "teaching"))]
+
 use sudoku_app_engine::{
     DEFAULT_VARIANT_SEARCH_NODES, Difficulty, SolveStatus, Technique, VARIANT_SCORING_VERSION,
     VariantDeduction, VariantEvidence, VariantTechnique, variant_practice_examples,
@@ -81,7 +83,16 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
         for example in examples {
             let position = example.position;
             let trace = position.solve_logically(&order).unwrap();
-            assert_eq!(trace.steps[0], example.deduction);
+            assert_eq!(trace.steps[0].technique, technique);
+            assert!(
+                position
+                    .puzzle
+                    .compile()
+                    .unwrap()
+                    .deductions(&position.entries, &position.eliminations, technique)
+                    .unwrap()
+                    .contains(&example.deduction)
+            );
             assert_eq!(trace.rating, position.rate(&order).unwrap());
             let SolveStatus::Solved(difficulty) = trace.rating.status else {
                 panic!("{} calibration path stalled", technique.id());

@@ -9,7 +9,7 @@ import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, COLOR_FAMILIES, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
+  formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
@@ -17,9 +17,10 @@ import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelecte
 import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
-import { techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
+import { TECHNIQUE_FINDER_TITLE, techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
 import type { DesktopPuzzleView } from '../sudoku/play-preferences'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
+import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
@@ -38,12 +39,13 @@ import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
+import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
 import { Modal } from './Modal'
-import { usePresence } from './Presence'
+import { MotionSurface, usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
@@ -54,7 +56,7 @@ import { usePuzzleSelection } from './usePuzzleSelection'
 
 const desktopInsightTabs = [
   { id: 'solution', label: 'Solution' },
-  { id: 'techniques', label: 'Available techniques' },
+  { id: 'techniques', label: TECHNIQUE_FINDER_TITLE },
   { id: 'chains', label: 'Chains' },
   { id: 'colors', label: 'Colors' },
 ] as const
@@ -94,7 +96,8 @@ function useTimer(id: string, running: boolean) {
       const seconds = Math.floor((performance.now() - started) / 1000)
       if (seconds < 1) return
       started += seconds * 1000
-      roomStore.update(id, (current) => ({ ...current, elapsed: current.elapsed + seconds }))
+      if (!puzzleTiming.getSnapshot().trackTime) return
+      roomStore.update(id, (current) => current.timeUntracked ? current : { ...current, elapsed: current.elapsed + seconds })
     }
 
     function handleVisibility() {
@@ -444,8 +447,16 @@ export function Worktable({
       ? { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
       : null
 
-  useTimer(game.id, !rearranging && !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
+  const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
+  const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || solved)
+  useTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
     !resetOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen && !analysisOpen)
+
+  useEffect(() => {
+    if (!timing.trackTime && !draft && !solved && game.started && !game.timeUntracked) {
+      roomStore.update(id, (current) => isSolved(current) ? current : markSolveUntimed(current))
+    }
+  }, [draft, game.started, game.timeUntracked, id, solved, timing.trackTime])
 
   const markHintVisible = useCallback(() => {
     if (!deduction || previewing || solved) return
@@ -602,7 +613,7 @@ export function Worktable({
     let current = true
     const rate = variant
       ? getVariantPlayOrder().then((techniqueOrder) => runEngine({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder }))
-      : runEngine({ type: 'techniques' }).then(({ defaultOrder }) => runEngine({ type: 'rate', values: givens, techniqueOrder: defaultOrder }))
+      : runEngine({ type: 'techniques' }).then(({ difficultyOrder }) => runEngine({ type: 'rate', values: givens, techniqueOrder: difficultyOrder }))
     void rate.then((rating) => {
       if (!current) return
       const ratedDifficulty = rating.status === 'stalled' ? null : rating.status.solved
@@ -1588,7 +1599,7 @@ export function Worktable({
       ref={mobile ? mobileHintPanelRef : undefined} aria-live="polite">
       <HintCard hint={solutionHintPanel ? solutionHintCopy
         : hintLoading ? { title: 'Finding a hint…', text: '' } : hintCopy}
-        lesson={hintLesson}
+        lesson={hintLesson && hintTechnique ? { id: hintTechnique, title: hintLesson.title } : undefined}
         removals={revealedDeduction ? describeHintRemovals(revealedDeduction, {
           difficulty: techniqueDifficulties[revealedDeduction.technique], cellReferenceStyle,
         }) : undefined}
@@ -1714,7 +1725,7 @@ export function Worktable({
   )
   const analysisAction = !draft && !solved && !variant && (
     <button onClick={showAnalysis}>
-      <ListFilter size={17} /> Available techniques
+      <ListFilter size={17} /> {TECHNIQUE_FINDER_TITLE}
     </button>
   )
   const chainsAction = desktop && !draft && !solved && !placeholder && (
@@ -1797,7 +1808,7 @@ export function Worktable({
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} />
-  ) : completionPanel && !mobileResults ? completionPanel
+  ) : completionPanel ? completionPanel
   : sketch.drawing && chainMasks ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
@@ -1833,7 +1844,7 @@ export function Worktable({
       <div className="puzzle-paused" role="status" aria-label="Puzzle paused">
         <span className="puzzle-paused-icon" aria-hidden="true"><Pause size={25} /></span>
         <h2>Puzzle paused</h2>
-        <p>Your elapsed time is stopped.</p>
+        {showElapsedTime && <p>Your elapsed time is stopped.</p>}
         <button type="button" className="button primary" onClick={() => {
           roomStore.update(game.id, (current) => setGamePaused(current, false))
         }}><Play size={17} aria-hidden="true" /> Resume puzzle</button>
@@ -1844,16 +1855,18 @@ export function Worktable({
       <div className="puzzle-column">
         <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
           data-input-mode={gridInputMode}
+          data-completion={Boolean(completionPanel) && !previewing || undefined}
           style={{ '--board-font-scale': appearance.gridTextScale } as CSSProperties}>
         {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
           {difficulty && <span className="puzzle-difficulty">
             <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
           </span>}
           {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
-          <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
+          {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
             {formatTime(game.elapsed)}
-          </span>
+          </span>}
         </div>}
+        <PuzzleCollectionCredit game={game} />
         <div className="puzzle-actions">
           {presentationDraft ? (
             <>
@@ -1869,7 +1882,7 @@ export function Worktable({
               {solved && !previewing && <button className="button soft puzzle-view-toggle" aria-pressed={showSolvedGrid} onClick={() => {
                 setSolvedView(showSolvedGrid ? 'results' : 'grid')
               }}>{showSolvedGrid ? 'View results' : 'View grid'}</button>}
-              {!solved && game.started && !previewing && <button type="button" className="icon-button borderless puzzle-pause-trigger"
+              {timing.showPause && !solved && game.started && !previewing && <button type="button" className="icon-button borderless puzzle-pause-trigger"
                 aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'} title={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
                 aria-pressed={game.paused} onClick={() => {
                   setActionsOpen(false)
@@ -1995,7 +2008,7 @@ export function Worktable({
         <div><dt>Puzzle</dt><dd>{game.title}</dd></div>
         <div><dt>Status</dt><dd>{placeholder ? 'Waiting for puzzle' : solved ? 'Solved' : game.paused ? 'Paused' : game.started ? 'In progress' : 'Not started'}</dd></div>
         <div><dt>Difficulty</dt><dd>{difficulty ? formatPuzzleRating(difficulty, score) : 'Unrated'}</dd></div>
-        <div><dt>Elapsed time</dt><dd>{formatTime(game.elapsed)}</dd></div>
+        {showElapsedTime && <div><dt>Elapsed time</dt><dd>{formatTime(game.elapsed)}</dd></div>}
         <div><dt>Givens</dt><dd>{clueCount}</dd></div>
         <div><dt>Placed digits</dt><dd>{placedDigitCount}</dd></div>
         <div><dt>Candidates</dt><dd>{candidateTotal}</dd></div>
@@ -2030,8 +2043,8 @@ export function Worktable({
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack" id="standard-digit-input">
               {inputPanel}
-              {hintPanel}
-              {activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
+              <MotionSurface>{hintPanel}</MotionSurface>
+              <MotionSurface>{activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
                 <div className="desktop-insight-toolbar">
                   <div ref={insightTabsRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
                     onKeyDown={(event) => {
@@ -2062,8 +2075,9 @@ export function Worktable({
                     ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
                     : activeDesktopTab.id === 'chains' ? chainsPanel : solutionPathPanel}
                 </div>
-              </section>}
+              </section>}</MotionSurface>
             </div></>
+          : mobileResults ? <div className="mobile-completion-layout mobile-completion">{puzzlePanel}</div>
           : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
             blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisOpen ||
               dialogResult !== null || changePuzzleOpen || resetOpen || cancelDraftOpen}
@@ -2083,12 +2097,11 @@ export function Worktable({
                   <HintCard hint={{ title: 'Puzzle hints', text: 'Hints will appear here.' }} onClose={() => {}} />
                 </div>
               ) } : undefined,
-              input: !mobileResults ? { title: 'Keypad', content: inputPanel } : undefined,
-              completion: mobileResults ? { title: 'Results', content: <div className="workspace-controls mobile-completion">{completionPanel}</div> } : undefined,
+              input: { title: 'Keypad', content: inputPanel },
             }} />}
-      <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} exitDuration={240}
+      <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
-      {variant && variantRulesOpen && <Modal title={`${VARIANTS[variant.id].name} rules`} onClose={() => setVariantRulesOpen(false)}>
+      {variant && <Modal title={`${VARIANTS[variant.id].name} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>
         <div className="variant-rules-copy">
           {variant.id !== 'jigsaw' && <p>{VARIANTS.classic.rule}</p>}
           <p>{VARIANTS[variant.id].rule}</p>
@@ -2114,8 +2127,9 @@ export function Worktable({
           </button>}
         </div>
       </Modal>}
-      {resetOpen && <Modal title="Reset puzzle" onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
-        <p>Remove all placed digits, candidates, colors, and elapsed time from this puzzle?</p>
+      <Modal title="Reset puzzle" open={resetOpen} onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
+        <p>{game.timeUntracked ? 'Remove all placed digits, candidates, and colors from this puzzle?'
+          : 'Remove all placed digits, candidates, colors, and elapsed time from this puzzle?'}</p>
         <div className="dialog-actions">
           <button className="button secondary" onClick={() => setResetOpen(false)}>Cancel</button>
           <button className="button danger" onClick={() => {
@@ -2131,8 +2145,8 @@ export function Worktable({
             setResetOpen(false)
           }}>Reset puzzle</button>
         </div>
-      </Modal>}
-      {cancelDraftOpen && <Modal title={game.editingId ? 'Cancel puzzle editing?' : 'Cancel puzzle creation?'}
+      </Modal>
+      <Modal title={game.editingId ? 'Cancel puzzle editing?' : 'Cancel puzzle creation?'} open={cancelDraftOpen}
         onClose={() => setCancelDraftOpen(false)} className="reset-puzzle-dialog">
         <p>{game.editingId
           ? 'Discard your changes and return to the saved puzzle?'
@@ -2141,7 +2155,7 @@ export function Worktable({
           <button className="button secondary" onClick={() => setCancelDraftOpen(false)}>Keep editing</button>
           <button className="button danger" onClick={onCancelDraft}>{game.editingId ? 'Discard changes' : 'Discard draft'}</button>
         </div>
-      </Modal>}
+      </Modal>
     </>
   )
 }

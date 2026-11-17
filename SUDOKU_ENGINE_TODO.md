@@ -2,6 +2,31 @@
 
 The Rust engine supports ordered logical solving, ratings, ranked hints, and targeted generation. It detects singles, pointing, claiming, naked and hidden subsets through size four, locked pairs and triples, basic, finned, and Sashimi fish through Jellyfish, XY-Wing, XYZ-Wing, WXYZ-Wing, W-Wing, Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, 3D Medusa, X-Chains, and XY-Chains. It also detects plain and grouped Alternating Inference Chains and Nice Loops, Unique Rectangles, Hidden Rectangle, BUG+1, forcing chains and nets, ALS-XZ, ALS-XY-Wing, ALS chains, Sue de Coq, Death Blossom, Junior Exocet, Senior Exocet, Double Exocet, SK Loop, and Multi-Sector Locked Sets. The browser worker exposes these engine functions through WebAssembly. [Engine requirements](README.md#engine-requirements) · [Browser worker](src/sudoku/engine.worker.ts)
 
+See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration status, architecture boundaries, and addition criteria.
+
+## Packaging and release discipline
+
+- [x] Compile variant rules, puzzle generation, and teaching fixtures independently while preserving default behavior.
+- [x] Publish named Wasm profiles and report the compiled capabilities through the public request API.
+- [x] Test every capability combination and compare retained behavior and measured Wasm sizes.
+- [x] Record what reached main and identify the remaining research work without changing the original worktrees.
+- [x] Define how and why to add a rule, technique, policy, or optimization, with evidence and release criteria.
+- [x] Add automated native, feature-matrix, Wasm, app, and Cargo documentation checks for engine changes.
+- [ ] Evaluate narrower expert-detector and variant-family boundaries against actual callers and package savings.
+- [ ] Integrate each remaining research contribution through a focused change against current main.
+
+## App integration
+
+Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
+
+- [x] Create an issue for each planned variant and separate combined-rule and performance work.
+- [x] Add Windoku rendering, accessible rule labels, import, save/reload, and generation recipes for all ten difficulty levels using the existing extra-house engine rule. [Windoku](https://github.com/coder13/sudoku-app/issues/36)
+- [ ] Support every Sudoku Coach rule combination through import, preview, Play, sharing, and saved games. Preserve the full rule list and parameters. [Coach import](https://github.com/coder13/sudoku-app/issues/7) · [Combined rules](https://github.com/coder13/sudoku-app/issues/87)
+- [ ] Complete UI support for each remaining engine rule family before integrating that variant. [Variant queue](https://github.com/coder13/sudoku-app/issues/35)
+- [ ] Audit rule checks, candidate updates, technique searches, ratings, exact solving, and generation. Merge measured improvements to main in focused changes. [Performance](https://github.com/coder13/sudoku-app/issues/88)
+
+The Wasm audit now measures candidates, uniqueness verification, exact solving, rating, hints, and generation. On the fixed Windoku fixture, warmed median/p95 times were 0.017/0.019 ms for candidates, 0.024/0.025 ms for verification, 0.024/0.027 ms for solving, 0.064/0.073 ms for rating, and 0.042/0.045 ms for ten hints. Generation matched 20 of 20 seeds at 0.927/2.413 ms. Run `node --experimental-strip-types scripts/bench-variants.mjs` after building Wasm to repeat the audit on one machine. [Fixtures](crates/engine/benches/fixtures/variants.json)
+
 ## 1. Share a reliable engine contract
 
 - [x] Use one puzzle validation path for ratings, solve traces, hints, and opening analysis. Add a sparse regression case where a logical solve succeeds after exact search reaches its limit.

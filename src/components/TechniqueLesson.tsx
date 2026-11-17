@@ -1,36 +1,55 @@
-import { Link } from '@tanstack/react-router'
+import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
+import { techniqueDifficulties } from '../sudoku/technique-difficulties'
+import { lessonDifficultyLabels } from '../sudoku/lesson-difficulties'
+import { Link, useLocation } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
-import { Fragment, useEffect, useId, useRef, useState } from 'react'
-import { runEngine, type LessonExample, type PracticeExercise } from '../sudoku/engine'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import aliasesJson from '../sudoku/generated/lesson-aliases.json'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
-import { articles, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
+import { lessonExample, type EngineLessonExample, type LessonExercise } from '../sudoku/lesson-examples'
+import { lessonReadingOrder } from '../sudoku/lesson-difficulties'
+import { lessonRoutes, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
+import { generateLessonExercise, loadWorkedExample, readWorkedExampleNumber, saveWorkedExampleNumber, type WorkedExample } from '../sudoku/worked-examples'
 import { LessonWorkbench } from './LessonWorkbench'
-import type { BoardRegion } from './BoardAnnotations'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
 import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
+import { ConceptCheck } from './ConceptCheck'
+import { FoundationVisual } from './FoundationVisual'
 
-const lessonExamples = JSON.parse(examplesJson) as Record<string, LessonExample>
+const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
+const techniqueAliases: Readonly<Record<string, readonly string[]>> = aliasesJson
+type DiagramBlock = Extract<LessonBlock, { type: 'diagram' }>
+type PracticeBlock = Extract<LessonBlock, { type: 'practice' }>
 
-export function Diagram({ example, crop, copy }: {
-  example: LessonExample
-  crop?: BoardRegion
-  copy?: Extract<LessonBlock, { type: 'diagram' }>['copy']
+export function Diagram({ example, block, blockIndex, editorPreview, fallbackReason }: {
+  example: WorkedExample
+  block?: DiagramBlock
+  blockIndex?: number
+  editorPreview?: boolean
+  fallbackReason?: string
 }) {
+  const { region: crop, copy, notes } = block ?? {}
   const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
-  const view = crop ?? region
+  const view = crop ?? (block && !example.variantPuzzle ? region : undefined)
   const results = copy?.results ?? defaultResults
   const trace = copy?.trace ?? defaultTrace
   const strong = annotations.links?.some((link) => !link.dashed)
   const weak = annotations.links?.some((link) => link.dashed && !link.arrow)
+  const summary = copy?.description ?? description
+  const explanation = copy?.reason ?? (reasonSteps ? undefined : reason || fallbackReason)
   return (
-    <figure className="lesson-diagram">
-      <LessonWorkbench puzzle={example} region={view} annotations={annotations} label="Sudoku diagram" />
+    <figure className="lesson-diagram" data-lesson-block={blockIndex}>
+      <LessonWorkbench puzzle={example} region={view} annotations={annotations} label="Sudoku diagram" preview />
       <figcaption>
-        <p>{copy?.description ?? description}</p>
-        {reasonSteps && !copy?.reason ? <ol className="lesson-reason-steps">{reasonSteps.map((step, index) => <li key={index}>{step}</li>)}</ol>
-          : <p>{copy?.reason ?? reason}</p>}
+        {(summary || editorPreview) && <p className="lesson-diagram-summary">{summary}</p>}
+        {reasonSteps && !copy?.reason && <ol className="lesson-reason-steps">{reasonSteps.map((step, index) => <li key={index}>{step}</li>)}</ol>}
+        {(explanation || editorPreview) && <p className="lesson-diagram-reason">{explanation}</p>}
+        {notes && <div className="lesson-example-notes" id={notes.id}>
+          {notes.title && <h3>{notes.title}</h3>}
+          {notes.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+        </div>}
         {results.length === 1 ? <p className="lesson-outcomes">{results[0]}</p>
           : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}>{result}</li>)}</ul>}
         {(accentLabel || strong || weak) && <div className="lesson-legend" aria-label="Diagram key">
@@ -54,22 +73,122 @@ export function Diagram({ example, crop, copy }: {
   )
 }
 
-export function Practice({ block, variant }: { block: Extract<LessonBlock, { type: 'practice' }>; variant: string }) {
+function WorkedExampleViewer({ article, technique, diagrams, fallbackReason }: {
+  article: string
+  technique: string
+  diagrams: DiagramBlock[]
+  fallbackReason?: string
+}) {
+  const initial = useMemo(() => lessonExample(lessonExamples[technique]), [technique])
+  const authoredCount = Math.max(1, diagrams.length)
+  const latestRequest = useRef(0)
+  const [current, setCurrent] = useState<{ number: number; example?: WorkedExample }>({ number: 0 })
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const hash = useLocation({ select: location => location.hash })
+
+  const showExample = useCallback(async (number: number, save = true) => {
+    const request = ++latestRequest.current
+    if (number < authoredCount) {
+      setCurrent({ number })
+      setStatus('idle')
+      if (save) void saveWorkedExampleNumber(article, technique, number)
+      return
+    }
+    setStatus('loading')
+    try {
+      const { example } = await loadWorkedExample(technique, number - authoredCount + 1, initial)
+      if (request !== latestRequest.current) return
+      setCurrent({ number, example })
+      setStatus('idle')
+      if (save) void saveWorkedExampleNumber(article, technique, number)
+    } catch {
+      if (request === latestRequest.current) setStatus('error')
+    }
+  }, [article, technique, initial, authoredCount])
+
+  useEffect(() => {
+    const anchoredExample = hash === 'worked-example' ? 0 : diagrams.findIndex(({ notes }) => notes?.id === hash)
+    if (anchoredExample >= 0) {
+      void showExample(anchoredExample, false)
+      const frame = requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView())
+      return () => { cancelAnimationFrame(frame); latestRequest.current++ }
+    }
+    const request = latestRequest.current
+    void readWorkedExampleNumber(article, technique, authoredCount, Boolean(initial.variantPuzzle)).then(number => {
+      if (request === latestRequest.current && Number.isSafeInteger(number) && number > 0) {
+        void showExample(number)
+      }
+    })
+    return () => { latestRequest.current++ }
+  }, [article, authoredCount, diagrams, hash, initial.variantPuzzle, showExample, technique])
+
+  const block = current.example ? undefined : diagrams[current.number]
+  const example = current.example ?? (block && block.example !== technique ? lessonExample(lessonExamples[block.example]) : initial)
+  const loading = status === 'loading'
+  return <>
+    <div className="lesson-example-controls" role="group" aria-label="Example navigation">
+      <span>Example {current.number + 1}</span>
+      <div>
+        <button type="button" className="button secondary" aria-label="Previous example" disabled={loading || current.number === 0}
+          onClick={() => void showExample(current.number - 1)}>Previous</button>
+        <button type="button" className="button secondary" aria-label="Next example" disabled={loading}
+          onClick={() => void showExample(current.number + 1)}>Next</button>
+      </div>
+    </div>
+    <p role="status" className={status === 'error' ? 'lesson-new-example-error' : 'sr-only'}>
+      {loading ? 'Loading example…' : status === 'error' ? 'Could not load the example. Try again.' : `Example ${current.number + 1} ready.`}
+    </p>
+    <Diagram key={current.number} example={example} block={block} fallbackReason={fallbackReason} />
+  </>
+}
+
+function WorkedExamples({ article, block, variant, diagrams, editorPreview }: {
+  article: string
+  block: PracticeBlock
+  variant: string
+  diagrams: { block: DiagramBlock; index: number }[]
+  editorPreview: boolean
+}) {
+  const { drills, selectLabel } = block
+  const [technique, setTechnique] = useState(() => drills.find(({ example }) => example === variant)?.example ?? drills[0].example)
+  const authored = useMemo(() => diagrams.map(({ block }) => block).filter(({ example }) =>
+    example === technique || (technique === drills[0].example && !drills.some(drill => drill.example === example))),
+  [diagrams, drills, technique])
+  return <section className="surface lesson-worked-examples" id="worked-example" aria-labelledby="examples">
+    <header className="lesson-practice-heading">
+      <h2 id="examples">Examples</h2>
+      {!editorPreview && drills.length > 1 && <label className="lesson-drill">
+        <span>{selectLabel ?? 'Technique'}</span>
+        <SelectControl value={technique} onChange={event => setTechnique(event.target.value)}>
+          {drills.map(({ example, title }) => <option key={example} value={example}>{title}</option>)}
+        </SelectControl>
+      </label>}
+    </header>
+    {editorPreview ? diagrams.map(({ block, index }) =>
+      <Diagram key={index} example={lessonExample(lessonExamples[block.example])} block={block} blockIndex={index} editorPreview />)
+      : <WorkedExampleViewer key={technique} article={article} technique={technique}
+          diagrams={authored} fallbackReason={block.guide?.reason} />}
+  </section>
+}
+
+export function Practice({ block, variant, blockIndex, editorPreview }: {
+  block: PracticeBlock; variant: string; blockIndex?: number; editorPreview?: boolean
+}) {
   const { drills, title, selectLabel } = block
   const [chosen, setChosen] = useState(() => drills.find(({ example }) => example === variant) ?? drills[0])
-  const [generated, setGenerated] = useState<PracticeExercise | null>(null)
+  const [generated, setGenerated] = useState<LessonExercise | null>(null)
   const [generation, setGeneration] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const generationId = useRef(0)
-  const puzzle = generated ?? lessonExamples[chosen.example].practice
+  const initial = useMemo(() => lessonExample(lessonExamples[chosen.example]).practice, [chosen.example])
+  const puzzle = generated ?? initial
   const grid = lessonValues(puzzle)
-  const heading = useId()
 
   async function newExample() {
     const id = ++generationId.current
     setGeneration('loading')
     try {
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
-      const example = await runEngine({ type: 'generate-practice-example', technique: chosen.example, seed, exclude: grid })
+      const example = await generateLessonExercise(chosen.example, seed, grid, Boolean(initial.variantPuzzle))
       if (id !== generationId.current) return
       setGenerated(example)
       setGeneration('ready')
@@ -79,9 +198,13 @@ export function Practice({ block, variant }: { block: Extract<LessonBlock, { typ
   }
 
   return (
-    <section className="surface lesson-practice" aria-labelledby={heading}>
+    <section className="surface lesson-practice" aria-labelledby="trainer" data-lesson-block={blockIndex}>
       <header className="lesson-practice-heading">
-        <h2 id={heading}>{title ?? 'Try a move'}</h2>
+        <div>
+          <h2 id="trainer">Trainer</h2>
+          {(title || editorPreview) && <p className="lesson-trainer-title">{title}</p>}
+          {techniqueDifficulties[chosen.example] && <small>{DIFFICULTY_LABELS[techniqueDifficulties[chosen.example]!]}</small>}
+        </div>
         <div className="lesson-practice-heading-actions">
           {drills.length > 1 && <label className="lesson-drill">
             <span>{selectLabel ?? 'Technique'}</span>
@@ -106,25 +229,60 @@ export function Practice({ block, variant }: { block: Extract<LessonBlock, { typ
         {generation === 'loading' ? 'Generating example…' : generation === 'ready' ? 'New example ready.'
           : generation === 'error' ? 'Could not generate an example. Try again.' : ''}
       </p>
-      <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction} />
+    <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction} practiceGuide={block.guide} />
     </section>
   )
 }
 
-export function Block({ block, variant }: { block: LessonBlock; variant: string }) {
+function alternateNames(id: string, title: string, extra: readonly string[] = []) {
+  const label = title.toLowerCase()
+  return [...new Set([...(techniqueAliases[id] ?? []), ...extra])]
+    .filter(name => name.toLowerCase() !== label && `${name.toLowerCase()}s` !== label)
+}
+
+function AlternateNames({ names, technique }: { names: string[]; technique?: string }) {
+  return names.length > 0 && <p className="lesson-alternate-names">
+    {technique && <strong>{technique}.</strong>}{technique && ' '}Also known as {names.join(', ')}.
+  </p>
+}
+
+export function ExplanationBlock({ block, index, drills }: { block: LessonBlock; index: number; drills: PracticeBlock['drills'] }) {
   switch (block.type) {
-    case 'heading': return <h2 className="article-subheading" id={block.id}>{block.title}</h2>
-    case 'text': return <>{block.paragraphs.map((paragraph, index) => <p className="article-paragraph" key={index}>{paragraph}</p>)}</>
-    case 'list': return <ul className="article-list">{block.items.map((item, index) => <li key={index}>{item}</li>)}</ul>
-    case 'diagram': return <Diagram example={lessonExamples[block.example]} crop={block.region} copy={block.copy} />
-    case 'practice': return <Practice block={block} variant={variant} />
+    case 'heading': return <>
+      <h3 className="article-subheading" id={block.id} data-lesson-block={index}>{block.title}</h3>
+      {drills.some(({ example }) => example === block.id) &&
+        <AlternateNames names={alternateNames(block.id, block.title)} />}
+    </>
+    case 'text': return <>{block.paragraphs.map((paragraph, paragraphIndex) =>
+      <p className="article-paragraph" key={paragraphIndex} data-lesson-block={index}>{paragraph}</p>)}</>
+    case 'list': return <ul className="article-list" data-lesson-block={index}>
+      {block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+    </ul>
+    case 'table': return <div className="lesson-table-scroll" data-lesson-block={index}><table className="lesson-table">
+      <caption>{block.caption}</caption>
+      <thead><tr>{block.columns.map((column, i) => <th scope="col" key={i}>{column}</th>)}</tr></thead>
+      <tbody>{block.rows.map((row, i) => <tr key={i}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody>
+    </table></div>
+    case 'concept-check': return <div data-lesson-block={index}><ConceptCheck block={block} /></div>
+    case 'foundation-visual': return <div data-lesson-block={index}><FoundationVisual visual={block.visual} /></div>
+    default: return null
   }
 }
 
-export function TechniqueLesson({ lesson, variant }: { lesson: LessonArticle; variant: string }) {
-  const index = articles.indexOf(lesson)
-  const previous = articles[index - 1]
-  const next = articles[index + 1]
+export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
+  lesson: LessonArticle; variant: string; editorPreview?: boolean
+}) {
+  const showEditableExamples = useLocation({
+    select: ({ searchStr }) => editorPreview && new URLSearchParams(searchStr).has('preview'),
+  })
+  const index = lessonReadingOrder.indexOf(lesson)
+  const previous = lessonReadingOrder[index - 1]
+  const next = lessonReadingOrder[index + 1]
+  const practice = lesson.blocks.find(block => block.type === 'practice')
+  const drills = practice?.drills ?? []
+  const diagrams = useMemo(() => lesson.blocks.flatMap((block, index) =>
+    block.type === 'diagram' ? [{ block, index }] : []), [lesson.blocks])
+  const headings = new Set(lesson.blocks.flatMap(block => block.type === 'heading' ? [block.id] : []))
 
   useEffect(() => {
     if (variant === lesson.id || window.location.hash) return
@@ -137,10 +295,24 @@ export function TechniqueLesson({ lesson, variant }: { lesson: LessonArticle; va
       <header className="lesson-heading">
         <LearnBreadcrumbs current={lesson.title} />
         <p>{lesson.summary}</p>
+        {lesson.difficulty && <p className="lesson-course-level">{lessonDifficultyLabels.get(lesson.id)}</p>}
+        {!!lesson.prerequisites?.length && <p className="lesson-prerequisites">Learn first: {lesson.prerequisites.map((id, index) => <Fragment key={id}>
+          {index > 0 && ', '}<Link to="/learn/$technique" params={{ technique: id }}>{lessonRoutes.get(id)?.title ?? id}</Link>
+        </Fragment>)}</p>}
+        <AlternateNames names={alternateNames(lesson.id, lesson.title, lesson.aliases)} />
+        {drills.filter(({ example }) => example !== lesson.id && !headings.has(example) && lesson.id !== 'fundamentals')
+          .map(({ example, title }) => <AlternateNames key={example} names={alternateNames(example, title)} technique={title} />)}
       </header>
 
       <div className="lesson-article">
-        {lesson.blocks.map((block, index) => <Block key={index} block={block} variant={variant} />)}
+        <section className="lesson-explanation" aria-labelledby="explanation">
+          <h2 id="explanation">Explanation</h2>
+          {lesson.blocks.map((block, index) => <ExplanationBlock key={index} block={block} index={index} drills={drills} />)}
+        </section>
+        {practice && <>
+          <WorkedExamples article={lesson.id} block={practice} variant={variant} diagrams={diagrams} editorPreview={showEditableExamples} />
+          <Practice block={practice} variant={variant} blockIndex={lesson.blocks.indexOf(practice)} editorPreview={showEditableExamples} />
+        </>}
       </div>
 
       <section className="lesson-references" aria-labelledby="see-also-title">

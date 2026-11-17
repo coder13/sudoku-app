@@ -1,6 +1,10 @@
+#[cfg(feature = "variants")]
+use super::PEERS;
+#[cfg(any(feature = "variants", all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))))]
+use super::candidate_positions;
 use super::{
-    ControlFlow, Deduction, HintEvidence, House, PEERS, Technique, bit_indices,
-    candidate_positions, cell_bit, cells, house_cells, report_eliminations, templates,
+    ControlFlow, Deduction, HintEvidence, House, Technique, bit_indices,
+    cell_bit, cells, house_cells, report_eliminations, templates,
 };
 use crate::{
     Board, CELLS, DIGITS, PatternOverlayDigit, PatternOverlayGeometry, PatternOverlayProof,
@@ -17,6 +21,31 @@ pub(crate) struct OverlaySearch<'a> {
     supports: BTreeMap<u16, [u128; 9]>,
 }
 
+#[cfg(all(
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+impl OverlaySearch<'static> {
+    pub(crate) fn classic(board: &Board, masks: &[u16; CELLS]) -> Self {
+        Self::new(board, candidate_positions(masks))
+    }
+
+    pub(crate) fn update_classic(&mut self, board: &Board, masks: &[u16; CELLS]) {
+        self.positions = candidate_positions(masks);
+        let mut changed = 0;
+        for digit in 0..9 {
+            let allowed = templates::with_placed(self.positions[digit], board, digit as u8 + 1);
+            if self.allowed[digit] != allowed {
+                self.allowed[digit] = allowed;
+                self.layouts[digit].take();
+                changed |= 1 << digit;
+            }
+        }
+        // A group's support only depends on the layouts for its own digits.
+        self.supports.retain(|group, _| group & changed == 0);
+    }
+}
+
 impl<'a> OverlaySearch<'a> {
     pub(super) fn new(board: &Board, positions: [u128; 9]) -> Self {
         Self {
@@ -31,6 +60,7 @@ impl<'a> OverlaySearch<'a> {
         }
     }
 
+    #[cfg(feature = "variants")]
     pub(crate) fn for_variant(
         board: &Board,
         masks: &[u16; CELLS],
@@ -248,6 +278,32 @@ mod tests {
     use super::*;
     use crate::{Candidate, HintAction, VerifiedTemplate, candidates, technique_deductions_at};
 
+    #[cfg(feature = "wasm-api")]
+    #[test]
+    fn a_candidate_edit_keeps_support_for_groups_without_that_digit() {
+        let board = crate::parse_givens(
+            "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+        )
+        .unwrap();
+        let mut masks = candidates(&board).unwrap();
+        let mut search = OverlaySearch::classic(&board, &masks);
+        let unaffected = search.support(0b110);
+        search.support(0b011);
+        assert!(search.layouts[0].get().is_some());
+
+        assert_ne!(masks[2] & 1, 0);
+        masks[2] &= !1;
+        search.update_classic(&board, &masks);
+
+        assert_eq!(search.supports.get(&0b110), Some(&unaffected));
+        assert!(!search.supports.contains_key(&0b011));
+        assert!(search.layouts[0].get().is_none());
+        assert_eq!(
+            search.support(0b011),
+            OverlaySearch::classic(&board, &masks).support(0b011),
+        );
+    }
+
     // Independent checker. Enumerate complete combinations from the row search
     // and build the union in each family without the detector's support pruning.
     fn replay(families: &[&[u128]], used: u128, support: &mut [u128]) -> bool {
@@ -343,6 +399,7 @@ mod tests {
             }
         }
     }
+    #[cfg(feature = "variants")]
     fn variant_layouts(allowed: &[usize], geometry: &PatternOverlayGeometry) -> Vec<u128> {
         fn enumerate(
             rows: &[u128],
@@ -379,6 +436,7 @@ mod tests {
         layouts
     }
 
+    #[cfg(feature = "variants")]
     #[test]
     fn published_jigsaw_geometry_replays_all_five_overlay_sizes() {
         use crate::{
@@ -473,6 +531,7 @@ mod tests {
         assert!(replayed.after.eliminations[76] & (1 << 6) != 0);
     }
 
+    #[cfg(feature = "variants")]
     #[test]
     fn extra_houses_and_knight_conflicts_change_overlay_support() {
         use crate::{

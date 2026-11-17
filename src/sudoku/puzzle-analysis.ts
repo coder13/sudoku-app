@@ -1,9 +1,11 @@
 import type { Candidate, DeductionAction, DeductionMatch, HintChoice, ProofPattern } from './engine'
 
+export const TECHNIQUE_FINDER_TITLE = 'Technique finder'
+
 // Keep each technique in one family. New engine techniques automatically appear
 // in "Other techniques" until a more specific category is added.
 export const ANALYSIS_GROUPS = [
-  { title: 'Singles', techniques: ['full-house', 'naked-single', 'hidden-single'] },
+  { title: 'Singles', techniques: ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single'] },
   { title: 'Locked candidates', techniques: ['pointing', 'claiming'] },
   { title: 'Subsets', techniques: [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',
@@ -122,22 +124,6 @@ export function analysisGroupsForCatalog(catalog: readonly { id: string }[]): An
   const unknown = catalog.map(({ id }) => id).filter((id) => !used.has(id))
   if (unknown.length) groups.push({ title: 'Other techniques', techniques: unknown })
   return groups
-}
-
-/** Count distinct candidate targets for a technique, regardless of whether
- * its rule places a digit or removes a candidate. Multiple proofs for the
- * same target count only once.
- */
-export function techniqueTargetCount(matches: readonly DeductionMatch[], technique: string): number {
-  const targets = new Set<string>()
-  for (const match of matches) {
-    if (!match.proofs.some((proof) => proof.technique === technique)) continue
-    for (const action of match.actions) {
-      const target = 'place' in action ? action.place : action.eliminate
-      targets.add(`${target.cell}:${target.digit}`)
-    }
-  }
-  return targets.size
 }
 
 export type TechniqueSummary = {

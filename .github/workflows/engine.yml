@@ -1,0 +1,80 @@
+name: Sudoku engine
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/engine.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/engine/**'
+      - 'scripts/**'
+      - 'src/sudoku/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/engine.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/engine/**'
+      - 'scripts/**'
+      - 'src/sudoku/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engine-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Native contracts and feature matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - run: rustup toolchain install stable --profile minimal
+      - run: npm run test:engine-features
+        env:
+          RUSTUP_TOOLCHAIN: stable
+      - run: cargo +stable test --locked --release -p sudoku-app-engine --all-features
+      - name: Build full and reduced Cargo documentation
+        env:
+          RUSTDOCFLAGS: '-D warnings'
+        run: |
+          cargo +stable doc --locked -p sudoku-app-engine --all-features --no-deps
+          cargo +stable doc --locked -p sudoku-app-engine --no-default-features --no-deps
+          cargo +stable doc --locked -p sudoku-app-engine --no-default-features --features variants --no-deps
+
+  wasm:
+    name: Wasm profiles and app contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
+      - run: npm ci
+      - run: npm run test:wasm-profiles
+        env:
+          RUSTUP_TOOLCHAIN: stable
+      - run: npm run build:wasm
+        env:
+          RUSTUP_TOOLCHAIN: stable
+      - run: npm run check
+      - run: npm test
+      - name: Verify Wasm, action history, and collections
+        run: node --experimental-strip-types --test tests/engine-wasm.mts tests/action-history-wasm.mts tests/collections-wasm.mts

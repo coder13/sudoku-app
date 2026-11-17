@@ -1,10 +1,11 @@
 import { spawnSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { validateContent } from './validate.mjs'
+import foundationVisuals from '../../src/sudoku/foundation-visuals.json' with { type: 'json' }
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const dataFile = join(root, 'src/sudoku/learn-content.json')
@@ -27,11 +28,9 @@ const previewArticles = new Map([
 ])
 
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('LESSON_EDITOR_PORT must be between 1024 and 65535.')
-if (['engine.wasm', 'lesson-examples.json', 'lesson-difficulties.json'].some((file) => !existsSync(join(generated, file)))) {
-  const result = spawnSync(process.execPath, ['scripts/build-wasm.mjs'], { cwd: root, stdio: 'inherit' })
-  if (result.error) throw result.error
-  if (result.status !== 0) process.exit(result.status ?? 1)
-}
+const build = spawnSync(process.execPath, ['scripts/ensure-wasm.mjs'], { cwd: root, stdio: 'inherit' })
+if (build.error) throw build.error
+if (build.status !== 0) process.exit(build.status ?? 1)
 
 const revisionOf = (source) => createHash('sha256').update(source).digest('hex')
 function readContent() {
@@ -48,7 +47,8 @@ function json(response, status, result) {
 
 async function handleContent(request, response, vite) {
   if (request.method === 'GET') {
-    json(response, 200, { ...readContent(), examples: readExamples() })
+    json(response, 200, { ...readContent(), examples: readExamples(),
+      foundationVisuals: Object.fromEntries(Object.entries(foundationVisuals).map(([id, visual]) => [id, visual.title])) })
     return
   }
   if (request.method !== 'PUT') return json(response, 405, { error: 'Use GET or PUT.' })
@@ -115,7 +115,8 @@ const vite = await createServer({
       const article = previewArticles.get(id.split('?')[0])
       if (!article) return
       // Wait for the article's own hydration commit before touching its DOM.
-      return source.replace(`<article className="${article}">`, `<article className="${article}" ref={(element) => { element?.setAttribute('data-preview-ready', '') }}>`)
+      return source.replace('editorPreview = false', 'editorPreview = true')
+        .replace(`<article className="${article}">`, `<article className="${article}" ref={(element) => { element?.setAttribute('data-preview-ready', '') }}>`)
     },
     configureServer(server) {
       server.middlewares.use((request, response, next) => {

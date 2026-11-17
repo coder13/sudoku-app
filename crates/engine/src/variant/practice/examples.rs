@@ -277,8 +277,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
         LockedCandidates => [
             seed(
                 "500960002010387006003012478000000627020000384000008500000890043209740005064200710",
-                9,
-                9,
+                32,
+                3,
                 [
                     PuzzleRule::Diagonal {
                         diagonal: Diagonal::Main,
@@ -290,8 +290,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             ),
             seed(
                 "000002501004605020725400006600000108951048000000006050017503900462000300500104000",
-                13,
-                1,
+                31,
+                9,
                 [
                     PuzzleRule::Diagonal {
                         diagonal: Diagonal::Main,
@@ -303,8 +303,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             ),
             seed(
                 "070200698406000000052000400080040700031002000004000000300467820020000145948000076",
-                12,
-                5,
+                32,
+                3,
                 [
                     PuzzleRule::Diagonal {
                         diagonal: Diagonal::Main,

@@ -9,8 +9,12 @@ readme = "README.md"
 crate-type = ["rlib", "cdylib"]
 
 [features]
+default = ["variants", "generation", "teaching"]
+variants = []
+generation = []
+teaching = []
 wasm-api = ["dep:serde", "dep:serde_json"]
-cli = ["wasm-api"]
+cli = ["wasm-api", "variants", "generation", "teaching"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
@@ -19,18 +23,31 @@ serde_json = { version = "1", optional = true }
 [[bench]]
 name = "engine"
 harness = false
+required-features = ["generation", "teaching"]
 
 [[bench]]
 name = "coverage"
 harness = false
-required-features = ["wasm-api"]
+required-features = ["wasm-api", "generation", "teaching"]
 
 [[bench]]
 name = "variants"
 harness = false
-required-features = ["wasm-api"]
+required-features = ["wasm-api", "variants", "generation", "teaching"]
 
 [[bin]]
 name = "sudoku-engine"
 path = "src/bin/sudoku-engine.rs"
 required-features = ["cli"]
+
+[[example]]
+name = "quality_audit"
+required-features = ["wasm-api", "generation", "teaching"]
+
+[[example]]
+name = "quality_recheck"
+required-features = ["wasm-api", "generation", "teaching"]
+
+[[example]]
+name = "certify_bank"
+required-features = ["wasm-api", "generation", "teaching"]

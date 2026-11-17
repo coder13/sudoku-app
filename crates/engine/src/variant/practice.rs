@@ -1,4 +1,15 @@
-use super::{PuzzleRule, VariantDeduction, VariantPosition, VariantPuzzle, VariantTechnique};
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+use super::DEFAULT_VARIANT_SEARCH_NODES;
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+use crate::{Analysis, Board};
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+use super::symmetry::SquareTransform;
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+use crate::Random;
+use super::{
+    CompiledVariant, PuzzleRule, VariantDeduction, VariantEvidence,
+    VariantHouseKind, VariantPosition, VariantPuzzle, VariantTechnique,
+};
 use crate::{CELLS, Candidate, HintAction, Technique, parse_givens};
 
 mod examples;
@@ -91,6 +102,66 @@ pub fn variant_practice_examples(
     }
 }
 
+/// Build a seeded variant drill by changing clues around a verified teaching move.
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+pub(crate) fn generate_practice_example(
+    technique: VariantTechnique,
+    seed: u32,
+    exclude: Board,
+) -> Option<VariantPracticeExercise> {
+    let mut random = Random::from_seed(seed);
+    let mut examples = variant_practice_examples(technique).ok()?;
+    random.shuffle(&mut examples);
+    for source in examples.iter().cycle().take(6) {
+        let transform = SquareTransform::ALL[random.index(SquareTransform::ALL.len())];
+        let mut position = source.position.clone();
+        transform.position(&mut position);
+        let mut candidate = source.suggestion.candidate();
+        candidate.cell = transform.cell(candidate.cell);
+        let suggestion = match source.suggestion {
+            HintAction::Place(_) => HintAction::Place(candidate),
+            HintAction::Eliminate(_) => HintAction::Eliminate(candidate),
+        };
+        let mut compiled = position.puzzle.compile().ok()?;
+        let solution = compiled.solve(&position.entries, &position.eliminations, DEFAULT_VARIANT_SEARCH_NODES).ok()?;
+        let mut order: [usize; CELLS] = std::array::from_fn(|cell| cell);
+        random.shuffle(&mut order);
+        let wanted = 2 + random.index(6);
+        let mut edits = 0;
+        let mut generated = None;
+
+        for cell in order.into_iter().take(32) {
+            if cell == candidate.cell || position.entries[cell] != 0 {
+                continue;
+            }
+            let before = position.puzzle.givens[cell];
+            let after = if before == 0 { solution[cell] } else { 0 };
+            position.puzzle.givens[cell] = after;
+            compiled.givens[cell] = after;
+            let unique = after != 0 || compiled.analyze(
+                &position.entries, &position.eliminations, DEFAULT_VARIANT_SEARCH_NODES,
+            ) == Ok(Analysis::Unique);
+            if unique && let Ok(example) = exercise_with(&compiled, 0, &position, technique, suggestion) {
+                edits += 1;
+                let values = std::array::from_fn(|cell| position.puzzle.givens[cell].max(position.entries[cell]));
+                if values != exclude {
+                    generated = Some(example);
+                }
+                if edits == wanted {
+                    break;
+                }
+            } else {
+                position.puzzle.givens[cell] = before;
+                compiled.givens[cell] = before;
+            }
+        }
+        if generated.is_some() {
+            return generated;
+        }
+    }
+    None
+}
+
 fn exercise(
     index: usize,
     position: VariantPosition,
@@ -101,10 +172,26 @@ fn exercise(
         .puzzle
         .compile()
         .map_err(|_| VariantPracticeError::InvalidPosition(index))?;
+    exercise_with(&compiled, index, &position, technique, suggestion)
+}
+
+fn exercise_with(
+    compiled: &CompiledVariant,
+    index: usize,
+    position: &VariantPosition,
+    technique: VariantTechnique,
+    suggestion: HintAction,
+) -> Result<VariantPracticeExercise, VariantPracticeError> {
     let snapshot = compiled
         .proof_position(&position.entries, &position.eliminations)
         .map_err(|_| VariantPracticeError::InvalidPosition(index))?;
-    let proofs = compiled.explain(&snapshot, technique);
+    let mut proofs = compiled.explain(&snapshot, technique);
+    if technique == VariantTechnique::LockedCandidates {
+        proofs.retain(|proof| matches!(proof.evidence,
+            VariantEvidence::Intersection { source: VariantHouseKind::Diagonal(_), .. } |
+            VariantEvidence::Intersection { target: VariantHouseKind::Diagonal(_), .. }
+        ));
+    }
     let mut answers: Vec<_> = proofs
         .iter()
         .flat_map(|proof| proof.actions.iter().copied())
@@ -116,7 +203,7 @@ fn exercise(
         .find(|proof| proof.actions.contains(&suggestion))
         .ok_or(VariantPracticeError::MissingProof(index))?;
     Ok(VariantPracticeExercise {
-        position,
+        position: position.clone(),
         candidates: snapshot.masks,
         answers,
         suggestion,

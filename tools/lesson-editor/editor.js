@@ -15,6 +15,7 @@ let content
 let saved
 let revision
 let examples
+let foundationVisuals
 let pageId = ''
 let activeBlock
 let preview
@@ -210,7 +211,7 @@ const input = (value, set, props = {}) => node('input', {
 })
 const panel = (title, ...children) => node('section', { className: 'panel' }, node('h2', {}, title), ...children)
 const buttons = (...items) => node('div', { className: 'inline-controls' }, ...items)
-const kinds = { text: 'Paragraph', heading: 'Heading', list: 'List', diagram: 'Diagram', practice: 'Practice puzzle' }
+const kinds = { text: 'Paragraph', heading: 'Heading', list: 'List', table: 'Table', 'concept-check': 'Concept check', 'foundation-visual': 'Foundation visual', diagram: 'Diagram', practice: 'Practice puzzle' }
 
 function chooseBlock(block, scroll = false) {
   if (activeBlock !== block) {
@@ -234,14 +235,20 @@ function insertBlock(lesson, type) {
   if (type === 'text') block.paragraphs = ['New paragraph']
   if (type === 'heading') Object.assign(block, { id: headingId(lesson), title: 'New section' })
   if (type === 'list') block.items = ['New item']
+  if (type === 'table') Object.assign(block, { caption: 'New table', columns: ['Item', 'Meaning'], rows: [['Example', 'Explanation']] })
+  if (type === 'concept-check') Object.assign(block, { title: 'Check your understanding', questions: [
+    { prompt: 'First question', options: ['First answer', 'Second answer'], answer: 0, explanation: 'Why the first answer is correct.' },
+    { prompt: 'Second question', options: ['First answer', 'Second answer'], answer: 1, explanation: 'Why the second answer is correct.' },
+  ] })
   if (type === 'diagram') block.example = lesson.blocks.find((item) => item.type === 'diagram')?.example ?? examples[0]
+  if (type === 'foundation-visual') block.visual = 'diagram-key'
   lesson.blocks.splice(lesson.blocks.indexOf(activeBlock) + 1, 0, block)
   changeBlock(block)
   chooseBlock(block)
 }
 
 function blockName(block) {
-  return block.title ?? block.paragraphs?.[0] ?? block.items?.[0] ?? block.example ?? kinds[block.type]
+  return block.title ?? block.caption ?? block.paragraphs?.[0] ?? block.items?.[0] ?? block.example ?? foundationVisuals?.[block.visual] ?? kinds[block.type]
 }
 
 function structure(lesson) {
@@ -261,11 +268,12 @@ function structure(lesson) {
 function diagramControls(block) {
   const example = node('select', {}, ...examples.map((id) => new Option(id, id, false, id === block.example)))
   example.onchange = () => {
-    if (block.copy && !window.confirm('Changing the example will remove your custom diagram copy. Continue?')) {
+    if ((block.copy || block.notes) && !window.confirm('Changing the example will remove its custom caption and notes. Continue?')) {
       example.value = block.example
       return
     }
     delete block.copy
+    delete block.notes
     block.example = example.value
     changeBlock(block)
     renderInspector()
@@ -319,6 +327,27 @@ function blockDetails(lesson) {
     controls.push(field('Heading text', input(block.title, (value) => { block.title = value })))
   }
   if (block.type === 'diagram') controls.push(...diagramControls(block))
+  if (block.type === 'foundation-visual') {
+    const visual = node('select', {}, ...Object.entries(foundationVisuals).map(([id, title]) => new Option(title, id, false, id === block.visual)))
+    visual.onchange = () => { block.visual = visual.value; changeBlock(block) }
+    controls.push(field('Visual walkthrough', visual), node('p', {}, 'Diagram steps and proofs are maintained in src/sudoku/foundation-visuals.json.'))
+  }
+  if (block.type === 'table') {
+    controls.push(field('Caption', input(block.caption, (value) => { block.caption = value })))
+    block.columns.forEach((value, index) => controls.push(field(`Column ${index + 1}`, input(value, (value) => { block.columns[index] = value }))))
+    block.rows.forEach((row, rowIndex) => row.forEach((value, columnIndex) =>
+      controls.push(field(`Row ${rowIndex + 1}, column ${columnIndex + 1}`, input(value, (value) => { row[columnIndex] = value })))))
+  }
+  if (block.type === 'concept-check') {
+    controls.push(field('Heading', input(block.title, (value) => { block.title = value })))
+    block.questions.forEach((question, index) => {
+      controls.push(field(`Question ${index + 1}`, input(question.prompt, (value) => { question.prompt = value })))
+      question.options.forEach((option, optionIndex) => controls.push(field(`Answer ${optionIndex + 1}`, input(option, (value) => { question.options[optionIndex] = value }))))
+      const answer = node('select', {}, ...question.options.map((option, optionIndex) => new Option(option, String(optionIndex), false, optionIndex === question.answer)))
+      answer.onchange = () => { question.answer = Number(answer.value); change(true) }
+      controls.push(field('Correct answer', answer), field('Explanation', input(question.explanation, (value) => { question.explanation = value })))
+    })
+  }
   if (block.type === 'practice') {
     if (block.drills.length > 1) controls.push(field('Practice instruction', input(block.instruction ?? '', (value) => {
       if (value.trim()) block.instruction = value
@@ -401,6 +430,7 @@ try {
   content = data.content
   revision = data.revision
   examples = data.examples
+  foundationVisuals = data.foundationVisuals
   saved = structuredClone(content)
   updatePicker()
   renderInspector()

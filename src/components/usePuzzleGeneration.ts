@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
-import { EngineError, runEngine, type Difficulty } from '../sudoku/engine'
+import { type DifficultyPreference } from '../sudoku/difficulty'
+import { EngineError } from '../sudoku/engine'
+import { generateClassic } from '../sudoku/classic-generation'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
-import { readSolverProfile } from '../sudoku/solver-profile'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
-import { autoTechniqueFocus } from '../sudoku/technique-progress'
 import { generatePlayableVariant } from '../sudoku/variant-play'
 import { VARIANTS, variantDifficulty, type VariantId } from '../sudoku/variants'
 
@@ -52,7 +51,8 @@ export function usePuzzleGeneration() {
         onGenerated?.()
         return
       }
-      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, auto)
+      const previousPuzzles = roomStore.getSnapshot().games.filter(game => !game.variant).map(game => game.givens)
+      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, auto ? await techniqueHistory.readProgress() : undefined, previousPuzzles)
       if (!mounted.current) return
       const game = makeGame(createGameId(), nextPuzzleTitle(), givens, 'generated')
       if (auto) game.generatedWithAuto = true
@@ -81,42 +81,6 @@ export function usePuzzleGeneration() {
   return { busy, error, generate }
 }
 
-async function generateClassic(difficulty: Difficulty, seed: number, auto: boolean) {
-  const { defaultOrder, techniques } = await runEngine({ type: 'techniques' })
-  const techniqueOrder = (auto ? undefined : readSolverProfile()) ?? defaultOrder
-  const maxAttempts = difficulty === 'extreme' ? 2048 : 512
-  const needsMoreThanSingles = auto && difficulty !== 'easy'
-  const available = techniques.filter(({ id, difficulty: tier }) =>
-    tier === difficulty && defaultOrder.includes(id) && !SINGLE_TECHNIQUES.includes(id)).map(({ id }) => id)
-  const focus = needsMoreThanSingles ? autoTechniqueFocus(await techniqueHistory.readProgress(), available) : undefined
-  if (focus) {
-    try {
-      const board = await runEngine({
-        type: 'generate-constrained', seed, maxAttempts: 64, clues: [24, 36], difficulty, technique: focus, techniqueOrder,
-      })
-      const rating = await runEngine({ type: 'rate', values: board, techniqueOrder })
-      if (rating.status !== 'stalled' && rating.status.solved === difficulty && rating.score.counts[focus]) {
-        return { board, rating, canonical: rating }
-      }
-    } catch (error) {
-      if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
-    }
-  }
-
-  for (let attempt = 0; attempt < (needsMoreThanSingles ? 6 : 1); attempt++) {
-    const board = await runEngine({
-      type: 'generate-targeted', seed: (seed + attempt) >>> 0, maxAttempts,
-      target: { type: 'difficulty', level: difficulty, techniqueOrder },
-    })
-    const rating = await runEngine({ type: 'rate', values: board, techniqueOrder }).catch(() => undefined)
-    if (auto && (!rating || rating.status === 'stalled' || rating.status.solved !== difficulty)) continue
-    if (needsMoreThanSingles && !Object.keys(rating?.score.counts ?? {}).some((id) => !SINGLE_TECHNIQUES.includes(id))) continue
-    const canonical = techniqueOrder === defaultOrder ? rating
-      : await runEngine({ type: 'rate', values: board, techniqueOrder: defaultOrder }).catch(() => undefined)
-    return { board, rating, canonical }
-  }
-  throw new EngineError('No puzzle found for this difficulty.', 'search-limit')
-}
 
 function nextPuzzleTitle(prefix = '') {
   const titles = new Set(roomStore.getSnapshot().games.map((game) => game.title))
