@@ -430,10 +430,9 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
     }
   }
   const houses = variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
-  let extraIndex = 0
-  const extra = variant?.rules?.flatMap((rule) => {
+  const extra = variant?.rules?.flatMap((rule, index) => {
     if (rule.type === 'diagonal') return [variantHouseCells({ diagonal: rule.diagonal }, variant)]
-    if (rule.type === 'extra-house') return [variantHouseCells({ extra: extraIndex++ }, variant)]
+    if (rule.type === 'extra-house') return [variantHouseCells({ extra: index }, variant)]
     return []
   }) ?? []
   for (const house of [...houses, ...extra]) {

@@ -57,10 +57,10 @@ function readRegions(labels: unknown): VariantPuzzle['regions'] {
 }
 
 function makeImportedPuzzle(format: ImportFormat, givens: string, rules: VariantRule[], regions: VariantPuzzle['regions']): ImportedPuzzle {
-  const id = regions?.type === 'jigsaw' ? 'jigsaw' : rules[0]?.type
+  const id = regions?.type === 'jigsaw' ? 'jigsaw' : rules[0]?.type === 'extra-house' ? 'windoku' : rules[0]?.type
   if (!id) return { givens, format }
   const puzzle: VariantPuzzle = { version: 1, givens, ...(regions && { regions }), ...(rules.length && { rules }) }
-  if (rules.some((rule) => rule.type !== id)) throw new Error('This combination of Sudoku rules is not supported yet.')
+  if (rules.some((rule) => rule.type !== (id === 'windoku' ? 'extra-house' : id))) throw new Error('This combination of Sudoku rules is not supported yet.')
   if (!isVariantId(id) || !isPlayablePuzzle(id, puzzle)) {
     throw new Error('This puzzle has unsupported or invalid rules.')
   }
@@ -140,7 +140,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (constraint.type !== 'region' && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'cage') {
       const cages = constraint.segments.map((segment: unknown) => {
         if (!record(segment) || !Array.isArray(segment.cells) || !record(segment.parameters) ||
@@ -155,6 +155,19 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
       if (constraint.segments.length) throw new Error(`This Sudoku Coach puzzle uses unsupported cells for ${constraint.type}.`)
       if (constraint.type === 'antiKnight') rules.push({ type: 'anti-knight' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })
+    } else if (constraint.type === 'region') {
+      const styling = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
+      if (hasData(constraint.settings) && (!record(constraint.settings) ||
+        Object.keys(constraint.settings).some((key) => !styling.has(key)))) {
+        throw new Error('This Sudoku Coach extra region uses unsupported settings.')
+      }
+      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no extra regions.')
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid extra region.')
+        }
+        rules.push({ type: 'extra-house', cells: segment.cells })
+      }
     } else if (constraint.type === 'thermometer' || constraint.type === 'arrow') {
       if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no cells for ${constraint.type}.`)
       for (const segment of constraint.segments) {

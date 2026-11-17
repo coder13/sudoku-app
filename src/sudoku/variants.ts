@@ -11,6 +11,10 @@ export const VARIANTS = {
     name: 'Killer',
     rule: 'Digits in each dashed cage must add to the small total in its corner. Digits cannot repeat in a cage.',
   },
+  windoku: {
+    name: 'Windoku',
+    rule: 'Each of the four shaded 3 × 3 regions must also contain the digits 1–9 once each.',
+  },
   diagonal: {
     name: 'Diagonal',
     rule: 'Each of the two marked diagonals must also contain the digits 1–9 once each.',
@@ -36,6 +40,9 @@ export const VARIANTS = {
     rule: 'Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other. Unmarked pairs have no extra rule.',
   },
 } as const
+
+export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
+  Array.from({ length: 9 }, (_, index) => start + Math.floor(index / 3) * 9 + index % 3))
 
 export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>
@@ -79,7 +86,10 @@ export function variantHouseCells(house: VariantHouse, puzzle: VariantPuzzle): r
   if ('row' in house) return cells.map((i) => house.row * 9 + i)
   if ('column' in house) return cells.map((i) => i * 9 + house.column)
   if ('diagonal' in house) return house.diagonal === 'main' ? mainDiagonal : antiDiagonal
-  if ('extra' in house) return puzzle.rules?.filter((rule) => rule.type === 'extra-house')[house.extra]?.cells ?? []
+  if ('extra' in house) {
+    const rule = puzzle.rules?.[house.extra]
+    return rule?.type === 'extra-house' ? rule.cells : []
+  }
   if (puzzle.regions?.type === 'jigsaw') return puzzle.regions.regions[house.region]
   const top = Math.floor(house.region / 3) * 27 + (house.region % 3) * 3
   return cells.map((i) => top + Math.floor(i / 3) * 9 + i % 3)
@@ -96,9 +106,9 @@ export function variantHouseName(house: VariantHouse, puzzle: VariantPuzzle) {
 export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
   const masks = [...values].map((digit, cell) => digit === '0' ? 511 & ~(eliminations?.[cell] ?? 0) : 0)
   const houses: VariantHouse[] = cells.flatMap((i) => [{ row: i }, { column: i }, { region: i }])
-  for (const rule of puzzle.rules ?? []) {
+  for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
-    if (rule.type === 'extra-house') houses.push({ extra: houses.filter((house) => 'extra' in house).length })
+    if (rule.type === 'extra-house') houses.push({ extra: index })
   }
   for (const house of houses) {
     const indices = variantHouseCells(house, puzzle)
@@ -161,6 +171,10 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
   if (id === 'jigsaw') return regions?.type === 'jigsaw' && validJigsawRegions(regions.regions) &&
     (rules === undefined || (Array.isArray(rules) && rules.length === 0))
   if ((regions !== undefined && regions?.type !== 'boxes') || !Array.isArray(rules) || !rules.length || rules.length > 81) return false
+  if (id === 'windoku') return rules.length === WINDOKU_REGIONS.length &&
+    rules.every((rule) => rule?.type === 'extra-house' && validCells(rule.cells, 9) && rule.cells.length === 9) &&
+    WINDOKU_REGIONS.every((region) => rules.some((rule) =>
+      rule.type === 'extra-house' && region.every((cell) => rule.cells.includes(cell))))
   return rules.every((rule: VariantRule) => {
     if (!rule || rule.type !== id) return false
     switch (rule.type) {

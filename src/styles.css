@@ -3024,6 +3024,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   font-size: calc(min(calc(clamp(6px, 2.05cqw, 11px) * var(--board-font-scale, 1)), 2.22cqw) * var(--app-text-scale));
 }
 .variant-board .board-links { z-index: 3; }
+.variant-extra-region rect { fill: var(--board-selected-border); opacity: .1; }
+.variant-extra-region path { fill: none; stroke: var(--board-selected-border); stroke-opacity: .4; stroke-width: .025; }
 .variant-diagonal { stroke: var(--board-selected-border); opacity: .26; stroke-width: .032; }
 .variant-preview .variant-diagonal { opacity: .65; stroke-width: .2; }
 .variant-cage-edge { fill: none; stroke: var(--board-ink); opacity: .52; stroke-width: .022; stroke-dasharray: .067 .049; }

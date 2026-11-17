@@ -2,12 +2,13 @@ import { Check } from 'lucide-react'
 import { useId } from 'react'
 import type { VariantRule } from '../sudoku/engine'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
-import { regionMembership, VARIANTS, type VariantId } from '../sudoku/variants'
+import { regionMembership, VARIANTS, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
 import { VariantClues } from './VariantClues'
 
 const previews: Record<VariantId, readonly VariantRule[]> = {
   classic: [],
   'killer-cages': [{ type: 'killer-cages', cages: [{ cells: [10, 11, 20], sum: 12 }, { cells: [33, 34, 43, 52], sum: 23 }, { cells: [49, 58, 59], sum: 18 }] }],
+  windoku: WINDOKU_REGIONS.map(cells => ({ type: 'extra-house', cells })),
   diagonal: [{ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' }],
   jigsaw: [],
   'anti-knight': [],

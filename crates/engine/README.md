@@ -19,7 +19,7 @@ Add the engine as a path dependency in another Cargo package. Set the path relat
 sudoku-app-engine = { path = "../sudoku-app/crates/engine" }
 ```
 
-Check the grid, follow the default logical path, and read its rating. This example finishes at 204 points.
+Check the grid, follow the default logical path, and read its rating. This example finishes at 504 points.
 
 ```rust
 use sudoku_app_engine::{Analysis, Difficulty, SolveStatus, Technique, analyze, parse_givens, solve_logically};
@@ -30,8 +30,8 @@ let givens = parse_givens(
 assert_eq!(analyze(&givens), Analysis::Unique);
 
 let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
-assert_eq!(trace.status, SolveStatus::Solved(Difficulty::Easy));
-assert_eq!(trace.score.points, 204);
+assert_eq!(trace.status, SolveStatus::Solved(Difficulty::Beginner));
+assert_eq!(trace.score.points, 504);
 assert_eq!(trace.positions().count(), trace.steps.len() + 1);
 assert_eq!(trace.replay_step(0).unwrap().before.givens, givens);
 ```

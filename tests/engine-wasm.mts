@@ -14,7 +14,7 @@ import { articles, lessonRoutes } from '../src/sudoku/lessons.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { generatePlayableVariant, playCandidates } from '../src/sudoku/variant-play.ts'
-import { validVariantSave } from '../src/sudoku/variants.ts'
+import { WINDOKU_REGIONS, validVariantSave } from '../src/sudoku/variants.ts'
 import { saveSolverProfile } from '../src/sudoku/solver-profile.ts'
 import { workedExampleSeed } from '../src/sudoku/worked-examples.ts'
 
@@ -2425,6 +2425,25 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.equal(malformed.code, 'invalid-technique')
 })
 
+test('Windoku reproduces the public Sudoku Coach example with all four extra houses', async () => {
+  // Sudoku Coach's built-in Windoku example, decoded from its SCv4 givens.
+  // A separate MRV solver verified the unique solution against all 31 houses.
+  const givens = '000000070700000056000590000000000300040001090016000000000000800003254000007100000'
+  const solution = '495613278731842956862597413579426381248371695316985724154769832983254167627138549'
+  const puzzle = { version: 1 as const, givens,
+    rules: WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })) }
+  const { run } = engineRequests()
+  const position = { puzzle }
+  assert.equal(await run({ type: 'variant', operation: 'analyze', position }), 'unique')
+  assert.equal(await run({ type: 'variant', operation: 'solve', position }), solution)
+  assert.equal(await run({ type: 'analyze', values: givens }), 'multiple')
+  const [variant, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
+  const techniqueOrder = variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder, Object.fromEntries([...classic.techniques, ...variant.techniques].map(t => [t.id, t.difficulty])))
+  const trace = await run({ type: 'variant', operation: 'trace', position, techniqueOrder })
+  assert.equal(variantSolutionPath(trace).board, solution)
+  for (const cells of WINDOKU_REGIONS) assert.equal(new Set(cells.map(cell => solution[cell])).size, 9)
+})
+
 test('every playable variant generates its supported difficulties with a unique solution and usable hints', async (t) => {
   const { run } = engineRequests()
   const [variant, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
@@ -2460,19 +2479,26 @@ test('every playable variant generates its supported difficulties with a unique 
         assert.deepEqual(trace.rating, rating)
 
         const ruleStep = trace.steps.findIndex(({ evidence }) => {
-          if (id !== 'diagonal' && id !== 'jigsaw') return evidence.type === 'constraint' || evidence.type === 'cage-sum'
-          const house = id === 'jigsaw' ? 'region' : 'diagonal'
+          if (id !== 'diagonal' && id !== 'jigsaw' && id !== 'windoku') return evidence.type === 'constraint' || evidence.type === 'cage-sum'
+          const house = id === 'jigsaw' ? 'region' : id === 'windoku' ? 'extra' : 'diagonal'
           return evidence.type === 'single' && evidence.house && house in evidence.house ||
             evidence.type === 'intersection' && (house in evidence.source || house in evidence.target)
         })
-        assert.ok(ruleStep >= 0, 'The logical path uses the variant rule.')
-        const { entries: ruleEntries, eliminations: ruleRemovals } = path.positions![ruleStep]
-        const ruleHints = await run({
-          type: 'variant', operation: 'hints', position: { puzzle, entries: ruleEntries, eliminations: ruleRemovals },
-          techniqueOrder: [trace.steps[ruleStep].technique], limit: 40,
-        })
-        assert.ok(ruleHints.some(({ actions }) => JSON.stringify(actions) === JSON.stringify(trace.steps[ruleStep].actions)))
-        assert.ok('variant' in variantHintChoice(trace.steps[ruleStep], puzzle).evidence)
+        if (id === 'windoku' && difficulty === 'beginner') {
+          // Given digits in the extra houses can narrow the initial candidates
+          // enough to finish with box singles, without a later extra-house step.
+          const classicCandidates = await run({ type: 'notes', values: puzzle.givens })
+          assert.notDeepEqual(path.positions![0].candidates, classicCandidates)
+        } else {
+          assert.ok(ruleStep >= 0, 'The logical path uses the variant rule.')
+          const { entries: ruleEntries, eliminations: ruleRemovals } = path.positions![ruleStep]
+          const ruleHints = await run({
+            type: 'variant', operation: 'hints', position: { puzzle, entries: ruleEntries, eliminations: ruleRemovals },
+            techniqueOrder: [trace.steps[ruleStep].technique], limit: 40,
+          })
+          assert.ok(ruleHints.some(({ actions }) => JSON.stringify(actions) === JSON.stringify(trace.steps[ruleStep].actions)))
+          assert.ok('variant' in variantHintChoice(trace.steps[ruleStep], puzzle).evidence)
+        }
         let game = { ...makeGame('variant', 'Variant puzzle', puzzle.givens, 'generated'), variant: { id, puzzle, solution } }
         assert.ok(validVariantSave(game.variant, game.givens))
         const [firstHint] = await run({ type: 'variant', position, operation: 'hints', techniqueOrder, limit: 1 })

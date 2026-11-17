@@ -356,5 +356,57 @@
       {"seed":55617927,"maxGivens":19,"dotCount":10},
       {"seed":209999259,"maxGivens":18,"dotCount":10}
     ]
+  },
+  "windoku": {
+    "beginner": [
+      {"seed":1,"maxGivens":40},
+      {"seed":2,"maxGivens":40},
+      {"seed":3,"maxGivens":40}
+    ],
+    "easy": [
+      {"seed":1,"maxGivens":36},
+      {"seed":2,"maxGivens":36},
+      {"seed":3,"maxGivens":36}
+    ],
+    "medium": [
+      {"seed":1,"maxGivens":30},
+      {"seed":2,"maxGivens":30},
+      {"seed":3,"maxGivens":30}
+    ],
+    "tricky": [
+      {"seed":6,"maxGivens":30},
+      {"seed":11,"maxGivens":30},
+      {"seed":16,"maxGivens":30}
+    ],
+    "hard": [
+      {"seed":8,"maxGivens":30},
+      {"seed":22,"maxGivens":30},
+      {"seed":31,"maxGivens":30}
+    ],
+    "very-hard": [
+      {"seed":3,"maxGivens":30},
+      {"seed":10,"maxGivens":30},
+      {"seed":18,"maxGivens":30}
+    ],
+    "expert": [
+      {"seed":7,"maxGivens":30},
+      {"seed":20,"maxGivens":30},
+      {"seed":29,"maxGivens":30}
+    ],
+    "master": [
+      {"seed":3,"maxGivens":30},
+      {"seed":11,"maxGivens":30},
+      {"seed":19,"maxGivens":30}
+    ],
+    "extreme": [
+      {"seed":11,"maxGivens":30},
+      {"seed":16,"maxGivens":30},
+      {"seed":19,"maxGivens":30}
+    ],
+    "impossible": [
+      {"seed":3,"maxGivens":30},
+      {"seed":4,"maxGivens":30},
+      {"seed":6,"maxGivens":30}
+    ]
   }
 }
