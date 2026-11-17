@@ -58,6 +58,13 @@ export function houseCells(house: House) {
   })
 }
 
+function sharedHouse(cells: readonly number[]) {
+  const [first] = cells
+  if (first === undefined) return undefined
+  const houses = [{ row: Math.floor(first / 9) }, { column: first % 9 }, { box: Math.floor(first / 27) * 3 + Math.floor(first % 9 / 3) }]
+  return houses.find((house) => cells.every((cell) => houseCells(house).includes(cell)))
+}
+
 export function aicEndpoints(hint?: Deduction) {
   if (!hint || (hint.technique !== 'aic' && !hint.technique.endsWith('-aic')) || !('inference' in hint.evidence)) return
   const { links } = hint.evidence.inference
@@ -261,14 +268,10 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const { cells, digits, unrestricted } = evidence['wxyz-wing']
     const restricted = digits.filter((digit) => digit !== unrestricted)
     const restrictedDigits = list.format(restricted.map(String))
-    const once = unrestricted === null ? 'Each digit can appear at most once in the wing.'
-      : `In the wing, ${restrictedDigits} can each appear at most once.`
     const limits = restricted.map((digit) => {
       const locations = marks(cells, [digit]).map(({ cell }) => cell)
       if (locations.length === 1) return `In the wing, ${digit} can go only in ${cellName(locations[0])}.`
-      const [start] = locations
-      const houses = [{ row: Math.floor(start / 9) }, { column: start % 9 }, { box: Math.floor(start / 27) * 3 + Math.floor(start % 9 / 3) }]
-      const house = houses.find((house) => locations.every((cell) => houseCells(house).includes(cell)))
+      const house = sharedHouse(locations)
       return house ? `The candidates for ${digit} share ${houseName(house)}.`
         : `Any two cells with candidate ${digit} share a row, column, or box.`
     })
@@ -289,13 +292,13 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const consequence = actions.length === 1 ? 'That leaves' : 'Each of those moves would leave'
     return {
       cells, candidates: marks(cells, restricted),
-      mainLabel: 'Digits that can appear at most once',
+      mainLabel: 'Digits that cannot repeat',
       accent: unrestricted === null ? undefined : { candidates: marks(cells, [unrestricted]), label: 'Digit the wing must use' },
       description: `The four highlighted cells have only four candidate digits between them. They are ${list.format(digits.map(String))}.`,
       ...explainSteps([
-        [once, ...limits].join(' '),
+        [...limits, 'If you place one of these digits in a wing cell, it rules out the same digit in the other wing cells.'].join(' '),
         ...blocked,
-        `${consequence} ${remaining} for four cells. Each remaining digit can appear at most once, so one cell would have no digit.`,
+        `${consequence} ${remaining} for four cells. These three digits can fill at most three cells.`,
       ]),
     }
   }
@@ -510,17 +513,22 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
   if ('als-xz' in evidence || 'als-chain' in evidence) {
     const { sets, links } = 'als-xz' in evidence ? evidence['als-xz'] : evidence['als-chain']
     const setLocation = (index: number) => list.format(sets[index].cells.map(cellName))
+    const linkConflict = (index: number, digit: number) => {
+      const locations = marks([...sets[index].cells, ...sets[index + 1].cells], [digit]).map(({ cell }) => cell)
+      const house = sharedHouse(locations)
+      return house ? `The ${digit} candidates in sets ${index + 1} and ${index + 2} share ${houseName(house)}.`
+        : `Each ${digit} candidate in set ${index + 1} shares a row, column, or box with every ${digit} candidate in set ${index + 2}.`
+    }
     const last = sets.length - 1
-    const linked = list.format(links.map(String))
     const cells = sets.flatMap(({ cells }) => cells)
     const pattern = {
       cells, candidates: sets.flatMap(({ cells, digits }) => marks(cells, digits)),
       mainLabel: 'Set candidate',
-      description: 'The cells in each set share a row, column, or box. Each set has one more candidate digit than cells, so it can skip only one digit.',
+      description: 'Each set fits in one row, column, or box. Placing a digit in one cell rules it out in the rest of that set. Each set has one more candidate digit than cells, so it leaves out exactly one digit.',
     }
     if (sets.length === 2) {
       const setup = `Set 1 is at ${setLocation(0)}. Set 2 is at ${setLocation(1)}.`
-      const reasonSteps = [setup, `The sets link on ${linked}. Placing a linked digit in one set rules it out in the other.`]
+      const reasonSteps = [setup, ...links.map(digit => `${linkConflict(0, digit)} Placing ${digit} in one set rules it out in the other.`)]
       if (links.length === 2) {
         reasonSteps.push(`One set must skip ${links[0]} and the other must skip ${links[1]}. Each set must use all its remaining digits.`)
         const targets = actions.flatMap(action => 'eliminate' in action ? [action.eliminate] : [])
@@ -544,7 +552,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const ends = [...sets[0].cells, ...sets[last].cells]
     const reasonSteps = [
       `Start with set 1 at ${setLocation(0)}. If it skips ${first.digit}, it must use ${links[0]}.`,
-      ...links.map((digit, index) => `That ${digit} rules out ${digit} in set ${index + 2} (${setLocation(index + 1)}). This set must use ${links[index + 1] ?? first.digit}.`),
+      ...links.map((digit, index) => `${linkConflict(index, digit)} Placing ${digit} in set ${index + 1} rules it out in set ${index + 2} (${setLocation(index + 1)}). This set must use ${links[index + 1] ?? first.digit}.`),
       `Either way, one of the end sets must use ${first.digit}.`,
       explainRemoval(first, marks(ends, [first.digit])),
     ]

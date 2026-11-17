@@ -137,7 +137,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     return {
       start: { cells: cells.slice(0, 1), text: `Start at ${cellName(cells[0])}. Look nearby for cells that use some of the same candidates.` },
       check: { cells, candidates: marks(cells, values), text: 'Count the different candidate digits in the four highlighted cells. There must be four in total.' },
-      follow: 'Check one digit at a time. If two cells with that candidate share no row, column, or box, the digit can appear more than once in the wing.',
+      follow: 'Check one digit at a time. For each pair of cells with that candidate, look for a shared row, column, or box. If every pair shares one, placing the digit in one wing cell rules it out everywhere else in the wing.',
     }
   }
   if ('als-xz' in evidence || 'als-chain' in evidence) {
@@ -146,7 +146,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     return {
       start: { cells: a.cells, text: `Start at ${names(a.cells)}. Count the distinct candidate digits. There must be one more digit than cells.` },
       check: { cells: [...a.cells, ...b.cells], candidates: marks([...a.cells, ...b.cells], sets.length === 2 ? links : [links[0]]),
-        text: `Compare that set with ${names(b.cells)}. Can the two sets both use ${sets.length === 2 && links.length === 2 ? 'either marked digit' : links[0]}?` },
+        text: `Compare that set with ${names(b.cells)}. Would placing ${sets.length === 2 && links.length === 2 ? 'a marked digit' : links[0]} in one set rule it out everywhere in the other?` },
       follow: sets.length === 2
         ? links.length === 2
           ? 'Each set must skip a different linked digit. Which digits does that force into the sets?'

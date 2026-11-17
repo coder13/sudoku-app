@@ -88,9 +88,9 @@ test('WXYZ-Wing shows why placing the outside candidate would leave a cell unfil
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.deepEqual(diagram.reasonSteps, [
-    'In the wing, 1, 5, and 9 can each appear at most once. The candidates for 1 share row 9. The candidates for 5 share column 7. The candidates for 9 share column 7.',
+    'The candidates for 1 share row 9. The candidates for 5 share column 7. The candidates for 9 share column 7. If you place one of these digits in a wing cell, it rules out the same digit in the other wing cells.',
     'Placing 8 in R4C3 would rule out every 8 in the wing (R4C7 and R9C3).',
-    'That leaves only 1, 5, and 9 for four cells. Each remaining digit can appear at most once, so one cell would have no digit.',
+    'That leaves only 1, 5, and 9 for four cells. These three digits can fill at most three cells.',
   ])
   assert.doesNotMatch(diagram.reason, /fourth cell|exactly one.*8/)
   assert.equal(diagram.accentLabel, 'Digit the wing must use')
@@ -113,7 +113,8 @@ test('WXYZ-Wing handles all four restricted digits without inventing an unrestri
     evidence: { 'wxyz-wing': { cells: [0, 3, 27, 30], digits: [1, 2, 3, 4], unrestricted: null } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.match(diagram.reason, /Each digit can appear at most once in the wing/)
+  assert.match(diagram.reason, /The candidates for 4 share row 4/)
+  assert.match(diagram.reason, /rules out the same digit in the other wing cells/)
   assert.match(diagram.reason, /Placing 1 in R7C1 would rule out every 1 in the wing \(R1C1 and R4C1\)/)
   assert.match(diagram.reason, /Placing any crossed-out 4 would rule out every 4 in the wing \(R4C1 and R4C4\)/)
   assert.deepEqual(diagram.results, ['Remove 1 from R7C1.', 'Remove 4 from R4C2 and R4C3.'])
@@ -137,6 +138,7 @@ test('Doubly linked ALS-XZ explains a removal supported by only one of the two s
     ], links: [1, 2] } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
+  assert.match(diagram.reason, /The 1 candidates in sets 1 and 2 share row 1/)
   assert.match(diagram.reason, /One set must skip 1 and the other must skip 2/)
   assert.match(diagram.reason, /At least one of R1C1 and R1C4 must be 1/)
   assert.match(diagram.reason, /At least one of R1C1 and R1C2 must be 3\. Putting 3 in R2C2/)
@@ -156,7 +158,9 @@ test('ALS-XY-Wing names the middle set and the digit passed to the last set', ()
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.match(diagram.reason, /If it skips 8, it must use 1/)
-  assert.match(diagram.reason, /rules out 1 in set 2 \(R1C4\)\. This set must use 2/)
-  assert.match(diagram.reason, /rules out 2 in set 3 \(R2C4\)\. This set must use 8/)
+  assert.match(diagram.reason, /The 1 candidates in sets 1 and 2 share row 1/)
+  assert.match(diagram.reason, /rules it out in set 2 \(R1C4\)\. This set must use 2/)
+  assert.match(diagram.reason, /The 2 candidates in sets 2 and 3 share column 4/)
+  assert.match(diagram.reason, /rules it out in set 3 \(R2C4\)\. This set must use 8/)
   assert.match(diagram.reason, /At least one of R1C1 and R2C4 must be 8/)
 })
