@@ -1,7 +1,7 @@
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, ListFilter, ListOrdered, LogOut, MoreHorizontal, Pause, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LogOut, MoreHorizontal, Pause, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
@@ -51,6 +51,12 @@ import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
 
 const ANALYSIS_CARD_KEY = 'sudoku-app:v1:techniques-card-open'
+const desktopInsightTabs = [
+  { id: 'solution', label: 'Solution' },
+  { id: 'techniques', label: 'Available techniques' },
+  { id: 'chains', label: 'Chains' },
+] as const
+type DesktopInsightTab = typeof desktopInsightTabs[number]['id']
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -159,7 +165,7 @@ function matchesHintPosition(game: Game, position: HintPosition) {
 function isChainStep(step?: Deduction) {
   if (!step) return false
   const { evidence, technique } = step
-  return 'chain' in evidence || 'inference' in evidence || 'single-digit-chain' in evidence ||
+  return 'chain' in evidence || 'inference' in evidence || 'single-digit-chain' in evidence || 'coloring' in evidence ||
     ['forcing-chain', 'als-chain', 'sk-loop'].includes(technique)
 }
 
@@ -219,6 +225,7 @@ export function Worktable({
   const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
   const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
+  const [standardChainsOpen, setStandardChainsOpen] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
   const [pencil, setPencil] = usePlayPreference('pencil')
@@ -232,7 +239,7 @@ export function Worktable({
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const [analysisCardOpen, setAnalysisCardOpen] = useState(false)
-  const [desktopInsightTab, setDesktopInsightTab] = useState<'solution' | 'techniques'>('techniques')
+  const [desktopInsightTab, setDesktopInsightTab] = useState<DesktopInsightTab>('techniques')
   const [focusAnalysisRequest, setFocusAnalysisRequest] = useState(0)
   const [focusSolutionRequest, setFocusSolutionRequest] = useState(0)
   const [desktopSolutionVisible, setDesktopSolutionVisible] = useState(false)
@@ -282,6 +289,8 @@ export function Worktable({
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
   const puzzleMenuPopupRef = useRef<HTMLDivElement>(null)
+  const chainsButtonRef = useRef<HTMLButtonElement>(null)
+  const insightTabsRef = useRef<HTMLDivElement>(null)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
@@ -366,13 +375,16 @@ export function Worktable({
   const { mounted: puzzleMenuMounted, exiting: puzzleMenuExiting } = usePresence(puzzleMenuOpen)
   const openSolutionTab = desktop && !draft && solutionPathRevealed && solutionPath !== null
   const openTechniqueTab = desktop && !draft && !variant && analysisCardOpen
-  const activeDesktopTab: 'solution' | 'techniques' = desktopInsightTab === 'solution' && openSolutionTab
-    ? 'solution' : desktopInsightTab === 'techniques' && openTechniqueTab
-      ? 'techniques' : openTechniqueTab ? 'techniques' : 'solution'
-  const previewing = openSolutionTab && (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab === 'solution')
+  const openChainsTab = desktop && !advancedWorkspace && !placeholder && !draft && !solved && standardChainsOpen
+  const openInsightTabs = desktopInsightTabs.filter(({ id }) => (
+    id === 'solution' ? openSolutionTab : id === 'techniques' ? openTechniqueTab : openChainsTab
+  ))
+  const activeDesktopTab = openInsightTabs.find(({ id }) => id === desktopInsightTab) ??
+    openInsightTabs.find(({ id }) => id === 'techniques') ?? openInsightTabs[0]
+  const previewing = openSolutionTab && (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab?.id === 'solution')
   const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
-  const chainsVisible = advancedWorkspace && showRightPanel && desktopChainsVisible
+  const chainsVisible = advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains'
   const variantEliminations = variant && eliminations
   const currentNotes = notes?.values === values && notes.variant === variant && notes.eliminations === variantEliminations ? notes : undefined
   const masks = currentNotes?.masks
@@ -384,11 +396,13 @@ export function Worktable({
   const offerSingles = !draft && !solved && (generatedWithAuto || (
     !ratingPending && needsSinglesCheck && singlesCheck?.givens === givens && singlesCheck.variant === variant && singlesCheck.needsMore
   ))
-  const chainMasks = useMemo(() => chainsVisible && !draft && !solved && !previewing && masks
-    ? masks.map((mask, index) => mask & ~(eliminations?.[index] ?? 0)) : null,
-  [chainsVisible, draft, solved, previewing, masks, eliminations])
-  const chainGraph = useMemo(() => chainMasks && makeChainGraph(chainMasks, variant?.puzzle), [chainMasks, variant])
-  const sketch = useChainSketch(chainGraph, `${id}:${values}:${eliminations?.join(',') ?? ''}`, Boolean(chainGraph))
+  const chainMasks = useMemo(() => chainsVisible && !disabled && !draft && !solved && masks
+    ? masks.map((mask, index) => mask & (displayedCandidates?.[index] ?? 0x1ff) & ~(eliminations?.[index] ?? 0))
+    : null, [chainsVisible, disabled, draft, solved, masks, displayedCandidates, eliminations])
+  const missingChainCandidates = chainMasks?.some((mask, cell) => !mask && values[cell] === '0')
+  const chainGraph = useMemo(() => chainMasks && !missingChainCandidates ? makeChainGraph(chainMasks, variant?.puzzle) : null,
+    [chainMasks, missingChainCandidates, variant])
+  const sketch = useChainSketch(chainGraph, `${id}:${values}:${eliminations?.join(',') ?? ''}:${displayedCandidates?.join(',') ?? ''}`)
   const canPaint = !cellColorsDisabled && advancedWorkspace && showRightPanel
   const brush = canPaint ? colorBrush : null
   const candidateBrush = colorTarget === 'candidate' && !cellColorsDisabled && !sketch.drawing && !hintAnnotations && !mobileHintOpen
@@ -457,6 +471,7 @@ export function Worktable({
     hintReturnFocus.current = false
     setSolutionPath(null)
     setSolutionPathRevealed(false)
+    setStandardChainsOpen(false)
     setDesktopInsightTab(analysisCardOpen ? 'techniques' : 'solution')
     setSolutionStep(0)
     setSolutionHintOpen(false)
@@ -472,7 +487,7 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor]') || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
+    target.closest('[data-panel-editor], .desktop-insight-panel, .chains-panel') || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
 
@@ -635,6 +650,12 @@ export function Worktable({
     setColorBrush(null)
     boardRef.current?.querySelector<HTMLElement>('.chain-candidate[tabindex="0"]')?.focus({ preventScroll: true })
   }, [sketch.drawing])
+
+  useLayoutEffect(() => {
+    if (!advancedWorkspace && focusChainsRequest && activeDesktopTab?.id === 'chains') {
+      insightTabsRef.current?.querySelector<HTMLButtonElement>('[data-insight-tab="chains"]')?.focus({ preventScroll: true })
+    }
+  }, [advancedWorkspace, focusChainsRequest, activeDesktopTab?.id])
 
   useLayoutEffect(() => {
     if (paintingCandidates) {
@@ -1052,7 +1073,13 @@ export function Worktable({
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
       if (sketch.drawing) {
-        if (key === 'escape') sketch.cancel()
+        if (key === 'escape') {
+          event.preventDefault()
+          if (sketch.pending === null) {
+            sketch.stop()
+            requestAnimationFrame(() => boardRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus({ preventScroll: true }))
+          } else sketch.endPath()
+        }
         if (shortcut && key === 'z' && !event.shiftKey) {
           event.preventDefault()
           if (sketch.canUndo) sketch.undo()
@@ -1367,8 +1394,7 @@ export function Worktable({
   function applyToCurrentPosition(actions: readonly DeductionAction[], candidates: readonly number[], hintSnapshot?: HintPosition, technique?: string) {
     let applied = false
     edit((current) => {
-      const currentPosition = hintSnapshot ? matchesHintPosition(current, hintSnapshot)
-        : valuesOf(current) === values && current.position.eliminations === eliminations
+      const currentPosition = matchesHintPosition(current, hintSnapshot ?? hintPosition)
       if (!currentPosition) return current
       const next = applyDeduction(current, actions, candidates)
       applied = next !== current
@@ -1492,7 +1518,9 @@ export function Worktable({
   const chainUnavailable = chainGraph ? undefined
     : previewing ? 'Select a chain step in Solution.'
     : draft || solved ? 'Chains are available while solving.'
-    : currentNotes?.failed ? 'Candidates couldn’t load.'
+    : game.paused ? 'Resume the puzzle to mark chains.'
+    : missingChainCandidates ? 'Restore candidates in empty cells before you mark chains.'
+    : currentNotes?.failed ? 'The candidates did not load.'
     : currentNotes?.masks === null ? 'Resolve the grid conflicts to draw links.'
     : 'Loading candidates…'
   const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} unavailable={chainUnavailable} inspection={chainInspection} />
@@ -1511,6 +1539,28 @@ export function Worktable({
     aria-keyshortcuts={shortcutLabel(shortcuts.solveSingles)}>
     <CheckCheck size={17} /> Solve all singles <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.solveSingles)}</kbd>
   </button>
+  function showChains() {
+    setPuzzleMenuOpen(false)
+    setActionsOpen(false)
+    setHintRevealed(false)
+    setStandardChainsOpen(true)
+    setDesktopInsightTab('chains')
+    setFocusChainsRequest((request) => request + 1)
+  }
+
+  function closeDesktopInsight() {
+    if (!activeDesktopTab) return
+    const remaining = openInsightTabs.filter(({ id }) => id !== activeDesktopTab.id)
+    if (activeDesktopTab.id === 'solution') closeSolutionPath()
+    else if (activeDesktopTab.id === 'techniques') setPinnedAnalysis(false)
+    else setStandardChainsOpen(false)
+    const next = remaining.find(({ id }) => id === 'techniques') ?? remaining[0]
+    if (next) {
+      setDesktopInsightTab(next.id)
+      insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`)?.focus({ preventScroll: true })
+    } else if (activeDesktopTab.id === 'chains') chainsButtonRef.current?.focus({ preventScroll: true })
+    else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+  }
   function showAnalysis() {
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -1697,6 +1747,13 @@ export function Worktable({
                   <Play className="pause-toggle-play" size={18} />
                 </span>
               </button>}
+              {desktop && !advancedWorkspace && !draft && !solved && !placeholder && (
+                <button type="button" ref={chainsButtonRef} className="button soft"
+                  title="Mark chains" aria-pressed={activeDesktopTab?.id === 'chains'}
+                  aria-controls={openChainsTab ? 'desktop-insight-content' : undefined} onClick={showChains}>
+                  <Link2 size={16} aria-hidden="true" /> Chains
+                </button>
+              )}
               <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
                 <button ref={puzzleMenuButtonRef} className="icon-button borderless puzzle-menu-trigger" aria-label="Open puzzle options"
                   title="Puzzle options" disabled={Boolean(placeholder)} aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
@@ -1843,36 +1900,36 @@ export function Worktable({
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">
               {inputPanel}
               {hintPanel}
-              {(openSolutionTab || openTechniqueTab) && <section className="desktop-insight-panel" aria-label="Puzzle insights">
+              {activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
                 <div className="desktop-insight-toolbar">
-                  <div className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
+                  <div ref={insightTabsRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
                     onKeyDown={(event) => {
-                      if (!openSolutionTab || !openTechniqueTab || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return
+                      if (openInsightTabs.length < 2 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
                       event.preventDefault()
-                      const next = activeDesktopTab === 'solution' ? 'techniques' : 'solution'
+                      const index = openInsightTabs.indexOf(activeDesktopTab)
+                      const step = event.key === 'ArrowLeft' ? -1 : 1
+                      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? openInsightTabs.length - 1
+                        : (index + step + openInsightTabs.length) % openInsightTabs.length
+                      const next = openInsightTabs[nextIndex].id
                       setDesktopInsightTab(next)
                       event.currentTarget.querySelector<HTMLButtonElement>(`[data-insight-tab="${next}"]`)?.focus()
                     }}>
-                    {openSolutionTab && <button type="button" role="tab" data-insight-tab="solution"
-                      id="desktop-insight-tab-solution" aria-controls="desktop-insight-content"
-                      aria-selected={activeDesktopTab === 'solution'} tabIndex={activeDesktopTab === 'solution' ? 0 : -1}
-                      onClick={() => setDesktopInsightTab('solution')}>Solution</button>}
-                    {openTechniqueTab && <button type="button" role="tab" data-insight-tab="techniques"
-                      id="desktop-insight-tab-techniques" aria-controls="desktop-insight-content"
-                      aria-selected={activeDesktopTab === 'techniques'} tabIndex={activeDesktopTab === 'techniques' ? 0 : -1}
-                      onClick={() => setDesktopInsightTab('techniques')}>Available techniques</button>}
+                    {openInsightTabs.map(({ id, label }) => <button type="button" key={id} role="tab" data-insight-tab={id}
+                      id={`desktop-insight-tab-${id}`} aria-controls="desktop-insight-content"
+                      aria-selected={activeDesktopTab.id === id} tabIndex={activeDesktopTab.id === id ? 0 : -1}
+                      onClick={() => setDesktopInsightTab(id)}>{label}</button>)}
                   </div>
                   <button type="button" className="icon-button borderless desktop-insight-close"
-                    aria-label={`Close ${activeDesktopTab === 'solution' ? 'solution' : 'available techniques'} tab`}
-                    onClick={() => activeDesktopTab === 'solution' ? closeSolutionPath() : setPinnedAnalysis(false)}>
+                    aria-label={`Close ${activeDesktopTab.label.toLowerCase()} tab`}
+                    onClick={closeDesktopInsight}>
                     <X size={18} aria-hidden="true" />
                   </button>
                 </div>
                 <div className="desktop-insight-body" id="desktop-insight-content" role="tabpanel"
-                  aria-labelledby={`desktop-insight-tab-${activeDesktopTab}`}>
-                  {activeDesktopTab === 'techniques'
+                  aria-labelledby={`desktop-insight-tab-${activeDesktopTab.id}`}>
+                  {activeDesktopTab.id === 'techniques'
                     ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
-                    : solutionPathPanel}
+                    : activeDesktopTab.id === 'chains' ? chainsPanel : solutionPathPanel}
                 </div>
               </section>}
             </div></>
