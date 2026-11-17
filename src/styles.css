@@ -1758,6 +1758,15 @@ svg { flex-shrink: 0; }
 .analysis-table .analysis-data-row th { font-weight: 500; overflow-wrap: anywhere; }
 .analysis-table .analysis-data-row td { font-weight: 680; font-variant-numeric: tabular-nums; }
 .analysis-table .analysis-data-row .analysis-zero { color: var(--muted); font-weight: 450; }
+
+.analysis-pending { display: inline-flex; justify-content: flex-end; align-items: center; min-height: 18px; color: var(--muted); }
+.analysis-spinner { animation: analysis-spin 950ms linear infinite; }
+.analysis-failed { color: var(--muted); font-size: 11px; font-weight: 500; }
+@keyframes analysis-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .analysis-spinner { animation: none; }
+}
+
 .analysis-table tbody:last-child .analysis-data-row:last-child > * { border-bottom: 0; }
 .analysis-error { display: grid; justify-items: start; gap: 10px; font-size: 13px; }
 
