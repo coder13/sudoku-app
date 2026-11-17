@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  createPlayPreferenceStore, DEFAULT_DESKTOP_LAYOUT_WIDTH, DEFAULT_PLAY_PREFERENCES, parsePlayPreferences, PLAY_PREFERENCES_KEY,
+  createPlayPreferenceStore, DEFAULT_DESKTOP_INPUT_WIDTH, DEFAULT_DESKTOP_LAYOUT_WIDTH, DEFAULT_PLAY_PREFERENCES,
+  parsePlayPreferences, PLAY_PREFERENCES_KEY,
 } from '../src/sudoku/play-preferences.ts'
 
 function memoryStorage(initial: string | null = null) {
@@ -79,23 +80,28 @@ test('the mode badge position survives reloads and other play setting changes', 
   const store = createPlayPreferenceStore(storage)
   const otherTab = createPlayPreferenceStore(storage)
   const position = { edge: 'right', offset: 0.37 } as const
-  store.set('modeBadgePosition', position)
+  store.set('cardModeBadgePosition', position)
   otherTab.set('multi', true)
   const reloaded = createPlayPreferenceStore(storage)
-  assert.deepEqual(reloaded.getSnapshot().modeBadgePosition, position)
+  assert.deepEqual(reloaded.getSnapshot().cardModeBadgePosition, position)
   assert.equal(reloaded.getSnapshot().pencil, true)
   assert.equal(reloaded.getSnapshot().multi, true)
 })
 
-test('invalid badge positions fall back to the default edge and offset', () => {
-  for (const modeBadgePosition of [
+test('invalid card badge positions fall back to the default edge and offset', () => {
+  for (const cardModeBadgePosition of [
     null, { edge: 'middle', offset: 0.5 }, { edge: 'left' }, { edge: 'right', offset: '0.5' },
     { edge: 'top', offset: -0.1 }, { edge: 'bottom', offset: 1.1 }, { edge: 'right', offset: Infinity },
   ]) {
-    assert.deepEqual(parsePlayPreferences({ modeBadgePosition, pencil: true }), {
+    assert.deepEqual(parsePlayPreferences({ cardModeBadgePosition, pencil: true }), {
       ...DEFAULT_PLAY_PREFERENCES, pencil: true,
     })
   }
+})
+
+test('a saved grid badge position leaves the card badge at its bottom-right default', () => {
+  const prefs = parsePlayPreferences({ modeBadgePosition: { edge: 'top', offset: 0.2 } })
+  assert.deepEqual(prefs.cardModeBadgePosition, { edge: 'bottom', offset: 0.95 })
 })
 
 test('desktop layout width persists and can be reset without clearing other preferences', () => {
@@ -108,6 +114,31 @@ test('desktop layout width persists and can be reset without clearing other pref
   assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), { ...DEFAULT_PLAY_PREFERENCES, selectedDigit: 6 })
   for (const desktopLayoutWidth of [0, -1, 760.5, '1520', Infinity]) {
     assert.equal(parsePlayPreferences({ desktopLayoutWidth }).desktopLayoutWidth, DEFAULT_DESKTOP_LAYOUT_WIDTH)
+  }
+})
+
+test('both desktop panel widths save and reset independently of the outer width', () => {
+  const storage = memoryStorage(JSON.stringify({ desktopLayoutWidth: 1520 }))
+  const store = createPlayPreferenceStore(storage)
+  const widths = { input: 360, puzzle: 631 }
+  store.set('desktopPanelWidths', widths)
+  const reloaded = createPlayPreferenceStore(storage)
+  assert.deepEqual(reloaded.getSnapshot().desktopPanelWidths, widths)
+  reloaded.set('desktopPanelWidths', DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), {
+    ...DEFAULT_PLAY_PREFERENCES, desktopLayoutWidth: 1520,
+  })
+})
+
+test('the desktop split restores earlier input widths and validates saved pairs', () => {
+  assert.deepEqual(parsePlayPreferences({ desktopInputWidth: 550 }).desktopPanelWidths, { input: 550, puzzle: null })
+  assert.deepEqual(parsePlayPreferences({
+    desktopInputWidth: 550, desktopPanelWidths: { input: DEFAULT_DESKTOP_INPUT_WIDTH, puzzle: null },
+  }).desktopPanelWidths, DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)
+  for (const desktopPanelWidths of [
+    null, { input: 323, puzzle: 600 }, { input: 420, puzzle: 259 }, { input: 420, puzzle: 900 }, { input: '500', puzzle: 400 },
+  ]) {
+    assert.deepEqual(parsePlayPreferences({ desktopPanelWidths }).desktopPanelWidths, DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)
   }
 })
 
