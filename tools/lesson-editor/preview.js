@@ -101,7 +101,7 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
   const header = article.querySelector('.lesson-heading')
   property(header.querySelector('.lesson-title'), 'Page title', lesson ?? content.overview, 'title')
   if (lesson) {
-    property(header.querySelector('.lesson-summary'), 'Article summary', lesson, 'summary')
+    property(article.querySelector('[data-lesson-intro]'), 'Article introduction', lesson, 'summary')
     for (const [index, block] of lesson.blocks.entries()) {
       const elements = Array.from(article.querySelectorAll(`[data-lesson-block="${index}"]`))
       const [element] = elements

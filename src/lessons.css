@@ -99,9 +99,8 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-summary { max-width: 62ch; color: var(--muted); font-size: 1.0625rem; line-height: 1.5; font-weight: 400; }
 .lesson-metadata { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-8) var(--space-20); margin-block-start: var(--space-6); }
 .lesson-metadata:empty { display: none; }
-.lesson-tag-group { display: flex; align-items: baseline; gap: var(--space-8); min-width: 0; max-width: 100%; }
-.lesson-tag-label { flex: none; max-width: 35%; color: var(--muted); font-size: 0.8125rem; line-height: 1.4; overflow-wrap: anywhere; }
-.lesson-tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-6); min-width: 0; margin: 0; padding: 0; list-style: none; }
+.lesson-tag-label { color: var(--muted); font-size: 0.8125rem; line-height: 1.4; overflow-wrap: anywhere; }
+.lesson-tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-6); min-width: 0; max-width: 100%; margin: 0; padding: 0; list-style: none; }
 .lesson-tags li { display: flex; min-width: 0; max-width: 100%; }
 .lesson-chip {
   display: inline-flex;
@@ -226,7 +225,6 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-example-controls > span { font-size: 0.875rem; font-variant-numeric: tabular-nums; }
 @media (pointer: coarse) {
   .lesson-example-controls .button { min-height: 44px; }
-  .lesson-prerequisite-link { min-height: 40px; }
 }
 .lesson-new-example { min-height: 44px; }
 .lesson-new-example-error { font-size: 0.875rem; color: var(--muted); }
@@ -389,6 +387,13 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
     .learn-navigation[data-expanded="true"] .learn-nav-panel { opacity: 0; transform: translateY(-4px); }
   }
   .learn-nav-link { min-height: 44px; }
+  .lesson-metadata { margin-block-start: 0; row-gap: var(--space-6); }
+  .lesson-tag-label, .lesson-chip { font-size: 0.75rem; }
+  .lesson-tags { column-gap: 3px; }
+  .lesson-chip { padding: var(--space-2) var(--space-4); }
+  .lesson-prerequisite-link { position: relative; min-height: var(--space-24); }
+  .lesson-prerequisite-link::after { content: ""; position: absolute; inset: -2px 0; }
+  .lesson-prerequisite-link svg { display: none; }
 }
 
 @container (max-width: 640px) {

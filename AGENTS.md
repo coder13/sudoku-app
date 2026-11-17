@@ -1,5 +1,7 @@
 # Sudoku teaching text
 
+Open each Learn article with a short explanation of the idea and what it tells the player. Then explain when to use it and what to look for on the grid.
+
 Avoid `take`, `takes`, `taking`, `taken`, and `took` in Learn articles, practice clues, and hints.
 
 - Use “Place 9 in R4C2” to describe a move.

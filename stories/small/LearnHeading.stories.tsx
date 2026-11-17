@@ -12,6 +12,6 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Overview: Story = {}
 export const Technique: Story = { args: {
-  title: 'Naked single', difficulty: 'Easy', summary: 'Place a digit when a cell has only one candidate.',
+  title: 'Naked Single', difficulty: 'Easy',
 } }
 export const UnavailableTechnique: Story = { args: { title: 'Technique unavailable' } }

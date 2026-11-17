@@ -244,10 +244,10 @@ function alternateNames(id: string, title: string, extra: readonly string[] = []
 }
 
 function LessonTags({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="lesson-tag-group">
-    <span className="lesson-tag-label" aria-hidden="true">{label}</span>
-    <ul className="lesson-tags" role="list" aria-label={label}>{children}</ul>
-  </div>
+  return <ul className="lesson-tags" role="list" aria-label={label}>
+    <li className="lesson-tag-label" aria-hidden="true">{label}</li>
+    {children}
+  </ul>
 }
 
 function AlternateNames({ names, technique }: { names: string[]; technique?: string }) {
@@ -303,7 +303,7 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
 
   return (
     <article className="technique-lesson">
-      <LearnHeading title={lesson.title} summary={lesson.summary} difficulty={lessonDifficultyLabels.get(lesson.id)}>
+      <LearnHeading title={lesson.title} difficulty={lessonDifficultyLabels.get(lesson.id)}>
         <div className="lesson-metadata">
           {!!lesson.prerequisites?.length && <LessonTags label="Learn first">
             {lesson.prerequisites.map(id => <li key={id}>
@@ -320,6 +320,7 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
 
       <div className="lesson-article">
         <section className="lesson-explanation" id="explanation" aria-label="Explanation">
+          <p className="article-paragraph" data-lesson-intro>{lesson.summary}</p>
           {lesson.blocks.map((block, index) => <ExplanationBlock key={index} block={block} index={index} drills={drills} />)}
         </section>
         {practice && <>
