@@ -15,6 +15,7 @@ export type PlayPreferences = {
   selectedColor: number | null
   colorTarget: ColorTarget
   colorBrush: number | null
+  colorsPanelOpen: boolean
   highlightCandidatePairs: boolean
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
@@ -34,6 +35,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   selectedColor: null,
   colorTarget: 'cell',
   colorBrush: null,
+  colorsPanelOpen: false,
   highlightCandidatePairs: false,
   multi: false,
   puzzleBrowserView: 'active',
@@ -70,6 +72,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     selectedColor: inRange(saved.selectedColor, 0, COLORS.length) ? saved.selectedColor : null,
     colorTarget: saved.colorTarget === 'candidate' ? 'candidate' : 'cell',
     colorBrush: inRange(saved.colorBrush, 0, COLORS.length) ? saved.colorBrush : null,
+    colorsPanelOpen: saved.colorsPanelOpen === true,
     highlightCandidatePairs: saved.highlightCandidatePairs === true,
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'

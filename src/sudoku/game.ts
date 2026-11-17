@@ -49,7 +49,14 @@ export type Game = {
 
 export const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 export const EMPTY = '0'.repeat(81)
-export const COLORS = ['Rose', 'Peach', 'Yellow', 'Mint', 'Blue', 'Lavender']
+export const COLOR_FAMILIES = ['Rose', 'Peach', 'Yellow', 'Mint', 'Blue', 'Lavender']
+// Keep IDs 1–6 unchanged so saved puzzles retain their original shades.
+export const COLORS = [...COLOR_FAMILIES, ...COLOR_FAMILIES.map((name) => `Dark ${name.toLowerCase()}`)]
+
+export function alternateColorShade(color: number): number | null {
+  if (!Number.isInteger(color) || color < 1 || color > COLORS.length) return null
+  return color <= COLOR_FAMILIES.length ? color + COLOR_FAMILIES.length : color - COLOR_FAMILIES.length
+}
 const HISTORY_SIZE = 64
 const HOUSES = [
   ...Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, column) => row * 9 + column)),
@@ -256,6 +263,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
   let { entries, center, corner, colors } = game.position
   let replacedEntry = false
   if (mode === 'color') {
+    if (!Number.isInteger(digit) || digit < 0 || digit > COLORS.length) return game
     const add = digit !== 0 && selection.some((i) => colors[i] !== digit)
     colors = colors.map((color, i) => selection.includes(i) ? (add ? digit : 0) : color)
   } else {

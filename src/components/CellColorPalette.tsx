@@ -1,5 +1,5 @@
-import { Check, Eraser } from 'lucide-react'
-import { COLORS, type ColorTarget } from '../sudoku/game'
+import { ArrowUpDown, Check, Eraser } from 'lucide-react'
+import { alternateColorShade, COLORS, COLOR_FAMILIES, type ColorTarget } from '../sudoku/game'
 
 type Props = {
   target: ColorTarget
@@ -21,6 +21,31 @@ export function ColorTargetPicker({ target, disabled, onTarget }: Pick<Props, 't
   )
 }
 
+export function ColorSwatches({ brush, disabled, onColor }: Pick<Props, 'brush' | 'disabled' | 'onColor'>) {
+  const alternate = brush === null ? null : alternateColorShade(brush)
+  return <div className="color-picker">
+    <div className="cell-color-swatches" role="group" aria-label="Color shades">
+      {['Light', 'Dark'].map((shade, row) => <div className="color-shade-row" key={shade}>
+        <span className="color-shade-label">{shade}</span>
+        {COLOR_FAMILIES.map((name, index) => {
+          const color = row * COLOR_FAMILIES.length + index + 1
+          const label = `${shade} ${name.toLowerCase()}`
+          return <button type="button" className={`cell-color-swatch color-${color}`} key={name}
+            aria-label={label} title={label} aria-pressed={brush === color} disabled={disabled}
+            onClick={() => onColor(color)}>
+            {brush === color && <Check size={16} aria-hidden="true" />}
+          </button>
+        })}
+      </div>)}
+    </div>
+    <button type="button" className="button secondary color-shade-switch" disabled={disabled || alternate === null}
+      title={alternate === null ? 'Choose a color first' : `Switch to ${COLORS[alternate - 1].toLowerCase()}`}
+      onClick={() => { if (alternate !== null) onColor(alternate) }}>
+      <ArrowUpDown size={15} aria-hidden="true" /> Switch shade
+    </button>
+  </div>
+}
+
 export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onStop, onClear }: Props) {
   const subject = target === 'cell' ? 'cells' : 'candidates'
   const instructions = disabled ? 'Coloring is available while playing.'
@@ -33,15 +58,8 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
     <section className="cell-color-palette" aria-label="Coloring">
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
       <p aria-live="polite">{instructions}</p>
-      <div className="cell-color-swatches" role="group" aria-label={target === 'cell' ? 'Cell colors' : 'Candidate colors'}>
-        {COLORS.map((name, index) => (
-          <button type="button" className={`cell-color-swatch color-${index + 1}`} key={name}
-            aria-label={name} title={name} aria-pressed={brush === index + 1} disabled={disabled}
-            onClick={() => onColor(index + 1)}>
-            {brush === index + 1 && <Check size={16} aria-hidden="true" />}
-          </button>
-        ))}
-      </div>
+      <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} />
+      <p className="color-pair-help">Use light and dark shades of one color to mark the two sides of a strong link.</p>
       <div className="cell-color-actions">
         <button type="button" className="button secondary" aria-pressed={brush === 0} aria-label={`Erase ${target} color`}
           disabled={disabled} onClick={() => onColor(0)}><Eraser size={15} aria-hidden="true" /> Erase</button>

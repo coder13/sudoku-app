@@ -117,7 +117,7 @@ test('malformed values cannot arm invalid digits, colors, or conflicting modes',
   }
   const saved = parsePlayPreferences({
     pencil: true, highlightMode: true, colorMode: true, eraseMode: true,
-    candidateKind: 'invalid', colorTarget: 'invalid', selectedColor: 7, colorBrush: -1,
+    candidateKind: 'invalid', colorTarget: 'invalid', selectedColor: 13, colorBrush: -1,
     multi: 'true', highlightCandidatePairs: 1, puzzleBrowserView: 'invalid', selectedDigit: 8,
   })
   assert.deepEqual(saved, { ...DEFAULT_PLAY_PREFERENCES, eraseMode: true, selectedDigit: 8 })

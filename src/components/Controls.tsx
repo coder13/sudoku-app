@@ -3,8 +3,8 @@ import {
   type ReactNode, type Ref, type SetStateAction,
   useEffect, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { Check, Delete, Eraser, Highlighter, Layers2, ListChecks, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
-import { COLORS, DIGITS, type ColorTarget, type Mode } from '../sudoku/game'
+import { ArrowUpDown, Check, Delete, Eraser, Highlighter, Layers2, ListChecks, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { alternateColorShade, COLORS, COLOR_FAMILIES, DIGITS, type ColorTarget, type Mode } from '../sudoku/game'
 import type { AdvancedModes } from '../sudoku/preferences'
 import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 import { ColorTargetPicker } from './CellColorPalette'
@@ -19,6 +19,8 @@ type Props = {
   advancedModes: AdvancedModes
   colorMode: boolean
   toggleColorMode: () => void
+  onOpenColors?: () => void
+  colorsActive?: boolean
   colorTarget: ColorTarget
   setColorTarget: (target: ColorTarget) => void
   eraseMode: boolean
@@ -56,7 +58,9 @@ export function Controls(props: Props) {
   const drag = useRef<{ y: number; height: number } | null>(null)
   const colors = props.mode === 'color'
   const candidateColors = colors && props.colorTarget === 'candidate'
-  const choices = colors ? COLORS.map((_, i) => i + 1) : DIGITS
+  const darkColors = props.selectedDigit !== null && props.selectedDigit > COLOR_FAMILIES.length
+  const choices = colors ? COLOR_FAMILIES.map((_, index) => index + 1 + (darkColors ? COLOR_FAMILIES.length : 0)) : DIGITS
+  const alternate = props.selectedDigit === null ? null : alternateColorShade(props.selectedDigit)
   const counts = Array(10).fill(0) as number[]
   for (const value of props.values) counts[Number(value)]++
 
@@ -167,7 +171,7 @@ export function Controls(props: Props) {
                   <button type="button" key={digit}
                     className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && !colors && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
                     aria-label={colors ? COLORS[digit - 1] : digitLabel}
-                    aria-keyshortcuts={colors ? `${digit}` : `Shift+${digit} F${digit}`}
+                    aria-keyshortcuts={colors ? digit <= 9 ? `${digit}` : undefined : `Shift+${digit} F${digit}`}
                     aria-pressed={armed} disabled={props.disabled}
                     onClick={() => props.input(digit)}>
                     {colors ? <span className="swatch" /> : <span>{digit}</span>}
@@ -175,6 +179,10 @@ export function Controls(props: Props) {
                 )
               })}
             </div>
+            {colors && <button type="button" className="button secondary color-shade-switch"
+              disabled={props.disabled || alternate === null} onClick={() => { if (alternate !== null) props.input(alternate) }}>
+              <ArrowUpDown size={15} aria-hidden="true" /> Switch shade
+            </button>}
             {candidateColors && <button type="button" className="button secondary candidate-color-eraser"
               aria-label="Erase candidate color" aria-pressed={props.selectedDigit === 0} aria-keyshortcuts="0 Delete Backspace"
               disabled={props.disabled} onClick={() => props.input(0)}><Eraser size={15} aria-hidden="true" /> Erase</button>}
@@ -194,9 +202,11 @@ export function Controls(props: Props) {
                 <Highlighter size={18} />
               </button>
             )}
-            {!props.draft && props.advancedModes.colorsEnabled && (
-              <button className="icon-button color-mode-button" title={`Color mode (${shortcutLabel(shortcuts.colorMode)})`} aria-label="Color mode"
-                aria-pressed={props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)} onClick={props.toggleColorMode} disabled={props.disabled}>
+            {!props.draft && (props.advancedModes.colorsEnabled || props.onOpenColors) && (
+              <button className="icon-button color-mode-button" title={`${props.onOpenColors ? 'Colors' : 'Color mode'} (${shortcutLabel(shortcuts.colorMode)})`}
+                aria-label={props.onOpenColors ? 'Open colors panel' : 'Color mode'}
+                aria-pressed={props.colorMode || props.colorsActive || false} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)}
+                onClick={props.onOpenColors ?? props.toggleColorMode} disabled={props.disabled}>
                 <Palette size={18} />
               </button>
             )}
