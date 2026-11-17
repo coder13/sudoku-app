@@ -2696,5 +2696,2030 @@
         ]
       }
     ]
+  },
+  "seeing-cells": {
+    "title": "Trace the three houses of R2C2",
+    "note": "The large 5 is a placement. The small 5s are marks to check against that placement.",
+    "region": {
+      "row": 1,
+      "column": 1,
+      "rows": 3,
+      "columns": 3
+    },
+    "candidates": {
+      "12": [
+        5
+      ],
+      "20": [
+        5
+      ],
+      "28": [
+        5
+      ],
+      "30": [
+        5
+      ]
+    },
+    "key": [
+      "removal",
+      "accent"
+    ],
+    "steps": [
+      {
+        "title": "Start with the placed 5",
+        "description": "R2C2 is 5. Follow its row, column, and box to find peers.",
+        "filled": {
+          "10": 5
+        }
+      },
+      {
+        "title": "Follow row 2",
+        "description": "R2C4 shares row 2 with the placed 5. That row cannot contain another 5.",
+        "filled": {
+          "10": 5
+        },
+        "marks": [
+          {
+            "cell": 12,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ]
+      },
+      {
+        "title": "Follow column 2",
+        "description": "R4C2 shares column 2 with the placed 5. Its 5 is also ruled out.",
+        "filled": {
+          "10": 5
+        },
+        "marks": [
+          {
+            "cell": 12,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 28,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ]
+      },
+      {
+        "title": "Follow box 1",
+        "description": "R3C3 shares box 1 with the placed 5. R4C4 shares no house, so this placement leaves its 5 alone.",
+        "filled": {
+          "10": 5
+        },
+        "marks": [
+          {
+            "cell": 12,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 20,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 28,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 30,
+            "digit": 5,
+            "kind": "accent"
+          }
+        ]
+      }
+    ]
+  },
+  "subset-count": {
+    "title": "Three cells need three digits",
+    "note": "All candidates are shown in the four marked cells. The cells are in row 4.",
+    "region": {
+      "row": 3,
+      "column": 0,
+      "rows": 1,
+      "columns": 6
+    },
+    "candidates": {
+      "27": [
+        2,
+        4
+      ],
+      "28": [
+        4,
+        7
+      ],
+      "30": [
+        2,
+        7
+      ],
+      "32": [
+        1,
+        2,
+        7
+      ]
+    },
+    "key": [
+      "pattern",
+      "removal",
+      "result"
+    ],
+    "steps": [
+      {
+        "title": "Choose three cells",
+        "description": "R4C1, R4C2, and R4C4 must each contain one digit. Every digit in their lists is 2, 4, or 7.",
+        "marks": [
+          {
+            "cell": 27,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 7,
+            "kind": "pattern"
+          }
+        ],
+        "states": [
+          "3 cells",
+          "3 distinct digits"
+        ]
+      },
+      {
+        "title": "Reserve all three digits",
+        "description": "A digit cannot repeat within row 4. The three blue cells therefore use 2, 4, and 7 in some order.",
+        "marks": [
+          {
+            "cell": 27,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 7,
+            "kind": "pattern"
+          }
+        ],
+        "states": [
+          "Reserved digits: 2, 4, 7"
+        ]
+      },
+      {
+        "title": "Remove those digits from peers",
+        "description": "R4C6 cannot contain 2 or 7 because the blue cells use those digits. That leaves 1 as its only candidate.",
+        "marks": [
+          {
+            "cell": 27,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 32,
+            "digit": 2,
+            "kind": "removal"
+          },
+          {
+            "cell": 32,
+            "digit": 7,
+            "kind": "removal"
+          },
+          {
+            "cell": 32,
+            "digit": 1,
+            "kind": "result"
+          }
+        ]
+      }
+    ]
+  },
+  "fish-count": {
+    "title": "Three rows share three columns",
+    "note": "The diagram shows every candidate 5 in rows 3, 5, and 7, plus the target in row 4. Other digits are outside this example.",
+    "region": {
+      "row": 2,
+      "column": 2,
+      "rows": 5,
+      "columns": 5
+    },
+    "candidates": {
+      "20": [
+        5
+      ],
+      "21": [
+        5
+      ],
+      "39": [
+        5
+      ],
+      "42": [
+        5
+      ],
+      "56": [
+        5
+      ],
+      "60": [
+        5
+      ],
+      "30": [
+        5
+      ]
+    },
+    "key": [
+      "pattern",
+      "accent",
+      "removal"
+    ],
+    "steps": [
+      {
+        "title": "Count the base rows",
+        "description": "Rows 3, 5, and 7 each need a 5. The blue rings show all their possible places.",
+        "marks": [
+          {
+            "cell": 20,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 21,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 39,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 42,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 56,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 60,
+            "digit": 5,
+            "kind": "pattern"
+          }
+        ],
+        "states": [
+          "Bases: rows 3, 5, 7"
+        ]
+      },
+      {
+        "title": "Count the cover columns",
+        "description": "All six blue candidates sit in columns 3, 4, and 7. Three rows need three different columns, so they use all three.",
+        "marks": [
+          {
+            "cell": 20,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 21,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 39,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 42,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 56,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 60,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 5,
+            "kind": "accent"
+          }
+        ],
+        "states": [
+          "Covers: columns 3, 4, 7"
+        ]
+      },
+      {
+        "title": "Reserve column 4 for a base row",
+        "description": "R4C4 sits outside the base rows. If you place 5 there, the three base rows have only columns 3 and 7 left.",
+        "marks": [
+          {
+            "cell": 20,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 21,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 39,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 42,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 56,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 60,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ],
+        "states": [
+          "Remove 5 from R4C4"
+        ]
+      }
+    ]
+  },
+  "coloring-states": {
+    "title": "Two colors, two possible states",
+    "note": "Only the relevant 5s are shown. Each solid line joins the only two places for 5 in its row or column.",
+    "region": {
+      "row": 1,
+      "column": 1,
+      "rows": 3,
+      "columns": 4
+    },
+    "candidates": {
+      "10": [
+        5
+      ],
+      "31": [
+        5
+      ],
+      "13": [
+        5
+      ],
+      "29": [
+        5
+      ],
+      "20": [
+        5
+      ]
+    },
+    "key": [
+      "pattern",
+      "accent",
+      "strong",
+      "removal"
+    ],
+    "steps": [
+      {
+        "title": "Give the row pair two colors",
+        "description": "In row 2, exactly one of R2C2 and R2C5 contains 5. Mark one blue and the other amber.",
+        "marks": [
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "accent"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 10,
+              "digit": 5
+            },
+            "to": {
+              "cell": 13,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          }
+        ]
+      },
+      {
+        "title": "Keep alternating along the pairs",
+        "description": "Column 5 links R2C5 to R4C5, so R4C5 is blue. Row 4 then makes R4C3 amber.",
+        "marks": [
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 31,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 29,
+            "digit": 5,
+            "kind": "accent"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 10,
+              "digit": 5
+            },
+            "to": {
+              "cell": 13,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 13,
+              "digit": 5
+            },
+            "to": {
+              "cell": 31,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 31,
+              "digit": 5
+            },
+            "to": {
+              "cell": 29,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          }
+        ],
+        "states": [
+          "Blue: R2C2, R4C5",
+          "Amber: R2C5, R4C3"
+        ]
+      },
+      {
+        "title": "Suppose blue is true",
+        "description": "R2C2 rules out 5 from R3C3 through box 1. Both amber candidates are false in this case.",
+        "marks": [
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 31,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 29,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 20,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 10,
+              "digit": 5
+            },
+            "to": {
+              "cell": 13,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 13,
+              "digit": 5
+            },
+            "to": {
+              "cell": 31,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 31,
+              "digit": 5
+            },
+            "to": {
+              "cell": 29,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          }
+        ],
+        "states": [
+          "Blue: true (assumed)",
+          "Amber: false"
+        ]
+      },
+      {
+        "title": "Suppose amber is true",
+        "description": "R4C3 rules out 5 from R3C3 through column 3. Both blue candidates are false in this case.",
+        "marks": [
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 29,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 31,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 20,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 10,
+              "digit": 5
+            },
+            "to": {
+              "cell": 13,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 13,
+              "digit": 5
+            },
+            "to": {
+              "cell": 31,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 31,
+              "digit": 5
+            },
+            "to": {
+              "cell": 29,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          }
+        ],
+        "states": [
+          "Amber: true (assumed)",
+          "Blue: false"
+        ]
+      },
+      {
+        "title": "Keep only the common removal",
+        "description": "One color must be true. Both cases rule out 5 from R3C3, so you can remove that candidate.",
+        "marks": [
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 31,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 29,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 20,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 10,
+              "digit": 5
+            },
+            "to": {
+              "cell": 13,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 13,
+              "digit": 5
+            },
+            "to": {
+              "cell": 31,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 31,
+              "digit": 5
+            },
+            "to": {
+              "cell": 29,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          }
+        ]
+      }
+    ]
+  },
+  "loop-matching-links": {
+    "title": "Return through the same type of link",
+    "note": "The first three steps use one setup. The last two use a different setup. Only the relevant 5s are shown.",
+    "region": {
+      "row": 1,
+      "column": 0,
+      "rows": 2,
+      "columns": 3
+    },
+    "candidates": {
+      "9": [
+        5
+      ],
+      "11": [
+        5
+      ],
+      "19": [
+        5
+      ]
+    },
+    "key": [
+      "pattern",
+      "accent",
+      "weak",
+      "strong",
+      "arrow",
+      "removal",
+      "result"
+    ],
+    "steps": [
+      {
+        "title": "Two weak links meet at A",
+        "description": "A is R3C2. Row 2 needs one of B at R2C1 and C at R2C3. A sees both through box 1.",
+        "marks": [
+          {
+            "cell": 19,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 9,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 11,
+            "digit": 5,
+            "kind": "pattern"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 19,
+              "digit": 5
+            },
+            "to": {
+              "cell": 9,
+              "digit": 5
+            },
+            "kind": "weak",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 9,
+              "digit": 5
+            },
+            "to": {
+              "cell": 11,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 11,
+              "digit": 5
+            },
+            "to": {
+              "cell": 19,
+              "digit": 5
+            },
+            "kind": "weak",
+            "arrow": false
+          }
+        ],
+        "notation": [
+          "A",
+          "-",
+          "B",
+          "=",
+          "C",
+          "-",
+          "A"
+        ],
+        "active": [
+          0,
+          6
+        ]
+      },
+      {
+        "title": "Try A true",
+        "description": "A true makes B false. The solid link forces C true. The closing dashed link then makes A false.",
+        "marks": [
+          {
+            "cell": 19,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 9,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 11,
+            "digit": 5,
+            "kind": "pattern"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 19,
+              "digit": 5
+            },
+            "to": {
+              "cell": 9,
+              "digit": 5
+            },
+            "kind": "weak",
+            "arrow": true
+          },
+          {
+            "from": {
+              "cell": 9,
+              "digit": 5
+            },
+            "to": {
+              "cell": 11,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": true
+          },
+          {
+            "from": {
+              "cell": 11,
+              "digit": 5
+            },
+            "to": {
+              "cell": 19,
+              "digit": 5
+            },
+            "kind": "weak",
+            "arrow": true
+          }
+        ],
+        "notation": [
+          "A",
+          "-",
+          "B",
+          "=",
+          "C",
+          "-",
+          "A"
+        ],
+        "states": [
+          "A: true (assumed)",
+          "B: false",
+          "C: true",
+          "A: false (conflict)"
+        ]
+      },
+      {
+        "title": "Remove A",
+        "description": "The chain made A both true and false. The assumption that A is true must fail. Remove 5 from R3C2.",
+        "marks": [
+          {
+            "cell": 9,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 11,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 19,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 19,
+              "digit": 5
+            },
+            "to": {
+              "cell": 9,
+              "digit": 5
+            },
+            "kind": "weak",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 9,
+              "digit": 5
+            },
+            "to": {
+              "cell": 11,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 11,
+              "digit": 5
+            },
+            "to": {
+              "cell": 19,
+              "digit": 5
+            },
+            "kind": "weak",
+            "arrow": false
+          }
+        ],
+        "notation": [
+          "A",
+          "-",
+          "B",
+          "=",
+          "C",
+          "-",
+          "A"
+        ]
+      },
+      {
+        "title": "New setup with two strong links at A",
+        "description": "A is now R2C2. It has a strong link to B in row 2 and to C in column 2. B and C share box 1.",
+        "candidates": {
+          "10": [
+            5
+          ],
+          "11": [
+            5
+          ],
+          "19": [
+            5
+          ]
+        },
+        "marks": [
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 11,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 19,
+            "digit": 5,
+            "kind": "pattern"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 10,
+              "digit": 5
+            },
+            "to": {
+              "cell": 11,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 11,
+              "digit": 5
+            },
+            "to": {
+              "cell": 19,
+              "digit": 5
+            },
+            "kind": "weak",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 19,
+              "digit": 5
+            },
+            "to": {
+              "cell": 10,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": false
+          }
+        ],
+        "notation": [
+          "A",
+          "=",
+          "B",
+          "-",
+          "C",
+          "=",
+          "A"
+        ],
+        "active": [
+          0,
+          6
+        ]
+      },
+      {
+        "title": "Try A false",
+        "description": "A false forces B true, which rules out C in box 1. The closing solid link forces A true. That conflict proves A must be true.",
+        "candidates": {
+          "10": [
+            5
+          ],
+          "11": [
+            5
+          ],
+          "19": [
+            5
+          ]
+        },
+        "marks": [
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "result"
+          },
+          {
+            "cell": 11,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 19,
+            "digit": 5,
+            "kind": "pattern"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 10,
+              "digit": 5
+            },
+            "to": {
+              "cell": 11,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": true
+          },
+          {
+            "from": {
+              "cell": 11,
+              "digit": 5
+            },
+            "to": {
+              "cell": 19,
+              "digit": 5
+            },
+            "kind": "weak",
+            "arrow": true
+          },
+          {
+            "from": {
+              "cell": 19,
+              "digit": 5
+            },
+            "to": {
+              "cell": 10,
+              "digit": 5
+            },
+            "kind": "strong",
+            "arrow": true
+          }
+        ],
+        "notation": [
+          "A",
+          "=",
+          "B",
+          "-",
+          "C",
+          "=",
+          "A"
+        ],
+        "states": [
+          "A: false (assumed)",
+          "B: true",
+          "C: false",
+          "A: true (conflict)"
+        ]
+      }
+    ]
+  },
+  "loop-alternating-links": {
+    "title": "Read around the other side of a weak link",
+    "note": "R4C1 and R4C2 each have {2, 7}. Each cell supplies a solid link. The two dashed links come from row 4.",
+    "region": {
+      "row": 3,
+      "column": 0,
+      "rows": 1,
+      "columns": 4
+    },
+    "candidates": {
+      "27": [
+        2,
+        7
+      ],
+      "28": [
+        2,
+        7
+      ],
+      "30": [
+        7,
+        9
+      ]
+    },
+    "key": [
+      "pattern",
+      "accent",
+      "weak",
+      "strong",
+      "arrow",
+      "removal"
+    ],
+    "steps": [
+      {
+        "title": "Find the weak link between the 7s",
+        "description": "These two 7s see each other. The dashed link alone says that at most one can be true.",
+        "marks": [
+          {
+            "cell": 27,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 7,
+            "kind": "accent"
+          },
+          {
+            "cell": 28,
+            "digit": 7,
+            "kind": "accent"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 27,
+              "digit": 2
+            },
+            "to": {
+              "cell": 27,
+              "digit": 7
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 27,
+              "digit": 7
+            },
+            "to": {
+              "cell": 28,
+              "digit": 7
+            },
+            "kind": "weak",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 28,
+              "digit": 7
+            },
+            "to": {
+              "cell": 28,
+              "digit": 2
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 28,
+              "digit": 2
+            },
+            "to": {
+              "cell": 27,
+              "digit": 2
+            },
+            "kind": "weak",
+            "arrow": false
+          }
+        ],
+        "notation": [
+          "(2)r4c1",
+          "=",
+          "(7)r4c1",
+          "-",
+          "(7)r4c2",
+          "=",
+          "(2)r4c2",
+          "-",
+          "(2)r4c1"
+        ],
+        "active": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "title": "Follow the rest of the loop",
+        "description": "If R4C1 is not 7, it must be 2. R4C2 then cannot be 2, so it must be 7.",
+        "marks": [
+          {
+            "cell": 27,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 7,
+            "kind": "removal"
+          },
+          {
+            "cell": 28,
+            "digit": 2,
+            "kind": "removal"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 27,
+              "digit": 7
+            },
+            "to": {
+              "cell": 27,
+              "digit": 2
+            },
+            "kind": "strong",
+            "arrow": true
+          },
+          {
+            "from": {
+              "cell": 27,
+              "digit": 7
+            },
+            "to": {
+              "cell": 28,
+              "digit": 7
+            },
+            "kind": "weak",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 28,
+              "digit": 2
+            },
+            "to": {
+              "cell": 28,
+              "digit": 7
+            },
+            "kind": "strong",
+            "arrow": true
+          },
+          {
+            "from": {
+              "cell": 27,
+              "digit": 2
+            },
+            "to": {
+              "cell": 28,
+              "digit": 2
+            },
+            "kind": "weak",
+            "arrow": true
+          }
+        ],
+        "states": [
+          "R4C1: not 7 (assumed)",
+          "R4C2: 7"
+        ]
+      },
+      {
+        "title": "Remove a candidate that sees both 7s",
+        "description": "At least one of the linked 7s is true. Both see R4C4 through row 4, so R4C4 cannot be 7.",
+        "marks": [
+          {
+            "cell": 27,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 28,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 7,
+            "kind": "accent"
+          },
+          {
+            "cell": 28,
+            "digit": 7,
+            "kind": "accent"
+          },
+          {
+            "cell": 30,
+            "digit": 7,
+            "kind": "removal"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 27,
+              "digit": 2
+            },
+            "to": {
+              "cell": 27,
+              "digit": 7
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 27,
+              "digit": 7
+            },
+            "to": {
+              "cell": 28,
+              "digit": 7
+            },
+            "kind": "weak",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 28,
+              "digit": 7
+            },
+            "to": {
+              "cell": 28,
+              "digit": 2
+            },
+            "kind": "strong",
+            "arrow": false
+          },
+          {
+            "from": {
+              "cell": 28,
+              "digit": 2
+            },
+            "to": {
+              "cell": 27,
+              "digit": 2
+            },
+            "kind": "weak",
+            "arrow": false
+          }
+        ],
+        "notation": [
+          "(2)r4c1",
+          "=",
+          "(7)r4c1",
+          "-",
+          "(7)r4c2",
+          "=",
+          "(2)r4c2",
+          "-",
+          "(2)r4c1"
+        ],
+        "active": [
+          2,
+          4
+        ]
+      }
+    ]
+  },
+  "als-link": {
+    "title": "A strong link between two digit groups",
+    "note": "The same two cells appear in every step. The equals sign describes the statements about the whole set.",
+    "region": {
+      "row": 5,
+      "column": 3,
+      "rows": 1,
+      "columns": 2
+    },
+    "candidates": {
+      "48": [
+        1,
+        4
+      ],
+      "49": [
+        4,
+        8
+      ]
+    },
+    "key": [
+      "pattern",
+      "accent",
+      "removal"
+    ],
+    "steps": [
+      {
+        "title": "Find every copy of each digit",
+        "description": "The blue group asks if the set contains 1. The amber group asks if either cell contains 4.",
+        "marks": [
+          {
+            "cell": 48,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 48,
+            "digit": 4,
+            "kind": "accent"
+          },
+          {
+            "cell": 49,
+            "digit": 4,
+            "kind": "accent"
+          }
+        ],
+        "notation": [
+          "1 in the set",
+          "=",
+          "4 in the set"
+        ]
+      },
+      {
+        "title": "Suppose 1 is absent",
+        "description": "R6C4 must contain 4. R6C5 then contains 8. The amber statement is true in this case.",
+        "marks": [
+          {
+            "cell": 48,
+            "digit": 1,
+            "kind": "removal"
+          },
+          {
+            "cell": 48,
+            "digit": 4,
+            "kind": "accent"
+          },
+          {
+            "cell": 49,
+            "digit": 4,
+            "kind": "removal"
+          }
+        ],
+        "states": [
+          "1 absent (assumed)",
+          "4 present"
+        ],
+        "notation": [
+          "1 in the set",
+          "=",
+          "4 in the set"
+        ]
+      },
+      {
+        "title": "Suppose 4 is absent",
+        "description": "Both amber candidates must go. R6C4 must contain 1 and R6C5 must contain 8.",
+        "marks": [
+          {
+            "cell": 48,
+            "digit": 4,
+            "kind": "removal"
+          },
+          {
+            "cell": 49,
+            "digit": 4,
+            "kind": "removal"
+          },
+          {
+            "cell": 48,
+            "digit": 1,
+            "kind": "pattern"
+          }
+        ],
+        "states": [
+          "4 absent (assumed)",
+          "1 present"
+        ],
+        "notation": [
+          "1 in the set",
+          "=",
+          "4 in the set"
+        ]
+      },
+      {
+        "title": "Both can appear together",
+        "description": "The cells can contain 1 and 4, with no 8. This option satisfies the strong link because both digit statements are true.",
+        "marks": [
+          {
+            "cell": 48,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 49,
+            "digit": 4,
+            "kind": "accent"
+          }
+        ],
+        "states": [
+          "One possible filling: R6C4 = 1, R6C5 = 4"
+        ],
+        "notation": [
+          "1 in the set",
+          "=",
+          "4 in the set"
+        ]
+      }
+    ]
+  },
+  "placement-capacity": {
+    "title": "Four cells need four slots",
+    "note": "The blue cells are the selected group. The diagram shows all their candidates and one target at R1C5.",
+    "region": {
+      "row": 0,
+      "column": 0,
+      "rows": 5,
+      "columns": 5
+    },
+    "candidates": {
+      "0": [
+        1,
+        2
+      ],
+      "3": [
+        1,
+        2
+      ],
+      "27": [
+        1,
+        3
+      ],
+      "36": [
+        1,
+        3
+      ],
+      "4": [
+        1,
+        6
+      ]
+    },
+    "key": [
+      "pattern",
+      "accent",
+      "removal"
+    ],
+    "steps": [
+      {
+        "title": "Cover each candidate",
+        "description": "The four blue cells need a digit each. Every candidate in those cells belongs to at least one of these four slots.",
+        "marks": [
+          {
+            "cell": 0,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 0,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 3,
+            "kind": "pattern"
+          },
+          {
+            "cell": 36,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 36,
+            "digit": 3,
+            "kind": "pattern"
+          }
+        ],
+        "states": [
+          "Row 1: one 1",
+          "Column 1: one 1",
+          "Row 1: one 2",
+          "Box 4: one 3"
+        ]
+      },
+      {
+        "title": "Check the overlap at R1C1",
+        "description": "If R1C1 is 1, it uses both the row 1 and column 1 slots for 1. Only two slots remain for three cells.",
+        "marks": [
+          {
+            "cell": 0,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 3,
+            "kind": "pattern"
+          },
+          {
+            "cell": 36,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 36,
+            "digit": 3,
+            "kind": "pattern"
+          },
+          {
+            "cell": 0,
+            "digit": 1,
+            "kind": "removal"
+          }
+        ],
+        "states": [
+          "R1C1 cannot be 1"
+        ]
+      },
+      {
+        "title": "Check a candidate outside the group",
+        "description": "If R1C5 is 1, it uses one of the four slots. Only three slots remain for the four blue cells.",
+        "marks": [
+          {
+            "cell": 0,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 27,
+            "digit": 3,
+            "kind": "pattern"
+          },
+          {
+            "cell": 36,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 36,
+            "digit": 3,
+            "kind": "pattern"
+          },
+          {
+            "cell": 0,
+            "digit": 1,
+            "kind": "removal"
+          },
+          {
+            "cell": 4,
+            "digit": 1,
+            "kind": "removal"
+          }
+        ],
+        "states": [
+          "R1C5 cannot be 1"
+        ]
+      }
+    ]
+  },
+  "complete-digit-layouts": {
+    "title": "Every layout needs the last column",
+    "note": "Six 5s are already placed outside the crop. Only rows 1 to 3 and columns 2, 5, and 8 need a 5.",
+    "region": {
+      "row": 0,
+      "column": 1,
+      "rows": 3,
+      "columns": 7
+    },
+    "candidates": {
+      "1": [
+        5
+      ],
+      "4": [
+        5
+      ],
+      "10": [
+        5
+      ],
+      "13": [
+        5
+      ],
+      "22": [
+        5
+      ],
+      "25": [
+        5
+      ]
+    },
+    "key": [
+      "pattern",
+      "accent",
+      "removal",
+      "result"
+    ],
+    "steps": [
+      {
+        "title": "List the remaining places for 5",
+        "description": "Each of the three rows needs a 5. Each of the three columns and each box in the top band also needs one.",
+        "marks": [
+          {
+            "cell": 1,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 4,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 22,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 25,
+            "digit": 5,
+            "kind": "pattern"
+          }
+        ],
+        "states": [
+          "Rows 1 to 3",
+          "Columns 2, 5, 8",
+          "Boxes 1 to 3"
+        ]
+      },
+      {
+        "title": "Try 5 in R3C5",
+        "description": "That choice leaves only column 2 for the 5s in both row 1 and row 2. They cannot both use it.",
+        "marks": [
+          {
+            "cell": 22,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 1,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 4,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ],
+        "states": [
+          "R3C5: 5 (assumed)",
+          "Rows 1 and 2 both need column 2"
+        ]
+      },
+      {
+        "title": "One layout uses R1C2 and R2C5",
+        "description": "Together with R3C8, this gives the three rows, columns, and boxes one 5 each.",
+        "marks": [
+          {
+            "cell": 1,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 25,
+            "digit": 5,
+            "kind": "pattern"
+          }
+        ],
+        "states": [
+          "Layout A: R1C2, R2C5, R3C8"
+        ]
+      },
+      {
+        "title": "The other layout swaps rows 1 and 2",
+        "description": "R1C5 and R2C2 also fit with R3C8. The two layouts keep the same 5 in row 3.",
+        "marks": [
+          {
+            "cell": 4,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 25,
+            "digit": 5,
+            "kind": "pattern"
+          }
+        ],
+        "states": [
+          "Layout B: R1C5, R2C2, R3C8"
+        ]
+      },
+      {
+        "title": "Place the 5 shared by both layouts",
+        "description": "Every layout uses R3C8. R3C5 appears in none of them.",
+        "marks": [
+          {
+            "cell": 1,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 4,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 22,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 25,
+            "digit": 5,
+            "kind": "result"
+          }
+        ]
+      }
+    ]
   }
 }

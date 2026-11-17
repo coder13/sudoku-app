@@ -9,7 +9,7 @@
       "A difficulty describes the techniques used to solve a puzzle. Repeating an easy technique does not raise its level. Every level has one puzzle quality standard, with no separate workload setting.",
       "Beginner focuses on visual scanning. Easy adds all singles. Medium introduces local candidate removals. Tricky follows one digit across houses, and Hard introduces wings. Very Hard starts chains and coloring; Expert and Master build general and grouped chains. Extreme combines forcing proofs and specialist patterns.",
       "Impossible is our highest level. A skilled person may still solve these puzzles, but a practical human solution is not promised. Some may need extensive case analysis or computer help.",
-      "Foundation lessons introduce the logic before the techniques that use it. Each has short examples and questions. Technique articles follow in the same course order."
+      "Foundation lessons come before the techniques that use them. Use Learn first on a technique page to find the concepts you need."
     ],
     "fundamentalsNote": "For the rules, cell addresses, and candidates, start with"
   },
@@ -142,6 +142,87 @@
       "difficulty": "beginner",
       "lessons": [
         {
+          "id": "cells-that-see",
+          "title": "Which cells see each other?",
+          "summary": "Trace a row, column, or box to find where a digit cannot go.",
+          "kind": "foundation",
+          "difficulty": "beginner",
+          "prerequisites": [
+            "fundamentals"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a placed digit. Find the row, column, and box that contain it."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "sharing-a-house",
+              "title": "One shared house is enough"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Two different cells that share a house are peers. Sudoku players say that the cells see each other.",
+                "If one cell contains 5, none of its peers can contain 5. Each shared house allows only one copy of the digit."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "seeing-cells"
+            },
+            {
+              "type": "heading",
+              "id": "seeing-a-candidate",
+              "title": "The same rule works before you place a digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Suppose two peers both have a small candidate 5. If one candidate is correct, the other must go.",
+                "If you rule out one 5, its peer can still have other choices. A later lesson uses this conflict to build a weak link."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "R2C2 and R3C3 are on different rows and columns. Do they see each other?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "They share box 1. A single shared house is enough."
+                },
+                {
+                  "prompt": "R2C2 is 5. Does that placement rule out 5 from R4C4?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "The two cells share none of the three houses."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Fundamentals",
+              "href": "/learn/fundamentals"
+            }
+          ]
+        },
+        {
           "id": "full-house",
           "title": "Full House",
           "summary": "Fill the last empty cell in a house.",
@@ -191,7 +272,9 @@
             }
           ],
           "difficulty": "beginner",
-          "prerequisites": []
+          "prerequisites": [
+            "cells-that-see"
+          ]
         },
         {
           "id": "hidden-single-box",
@@ -1040,6 +1123,7 @@
           "difficulty": "medium",
           "summary": "Use complete notes to prove what a cell cannot contain.",
           "prerequisites": [
+            "cells-that-see",
             "fundamentals",
             "hidden-single",
             "naked-single"
@@ -1245,6 +1329,122 @@
           ]
         },
         {
+          "id": "counting-cells-and-digits",
+          "title": "Counting cells and digits",
+          "summary": "Use an equal count to find cells or digits that are reserved for each other.",
+          "kind": "foundation",
+          "difficulty": "medium",
+          "prerequisites": [
+            "candidate-logic",
+            "locked-candidates"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose a house with several short candidate lists. Pick two or three cells in that house. Count the different digits across their lists."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "count-from-cells",
+              "title": "Start with the cells"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Each selected cell needs a digit. A house can use each digit only once.",
+                "If three cells have only three different digits between them, those cells need all three digits. The order can still vary."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "subset-count"
+            },
+            {
+              "type": "heading",
+              "id": "count-from-digits",
+              "title": "Start with the missing digits"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Suppose row 6 needs 3 and 8. Only R6C2 and R6C6 can contain either digit.",
+                "Both digits must fit in those two cells. You can remove every other digit from those cells."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "Two ways to count",
+              "columns": [
+                "Start with",
+                "Equal count",
+                "Where to remove candidates"
+              ],
+              "rows": [
+                [
+                  "Selected cells in a house",
+                  "As many distinct digits as cells",
+                  "Those digits in other cells of the house"
+                ],
+                [
+                  "Selected missing digits in a house",
+                  "As many possible cells as digits",
+                  "Other digits in those cells"
+                ]
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Three cells in a row have {2, 4}, {4, 7}, and {2, 7}. How many distinct digits do they have?",
+                  "options": [
+                    "Three",
+                    "Six"
+                  ],
+                  "answer": 0,
+                  "explanation": "The digits are 2, 4, and 7. Count each digit once."
+                },
+                {
+                  "prompt": "In one box, 2 and 9 can only go in the same two cells. Where can you remove other digits?",
+                  "options": [
+                    "From those two cells",
+                    "From the rest of the box"
+                  ],
+                  "answer": 0,
+                  "explanation": "Those two cells must contain 2 and 9 in some order."
+                },
+                {
+                  "prompt": "Three selected cells have four distinct candidates. Does that count reserve all four digits for them?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "Three cells can use only three digits. The count alone cannot tell you which digit is absent."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu on naked subsets",
+              "href": "https://hodoku.sourceforge.net/en/tech_naked.php"
+            },
+            {
+              "label": "HoDoKu on hidden subsets",
+              "href": "https://hodoku.sourceforge.net/en/tech_hidden.php"
+            }
+          ]
+        },
+        {
           "id": "naked-subsets",
           "title": "Naked Subsets",
           "summary": "When several cells have just enough digits to fill them, erase those digits from the rest of the house.",
@@ -1379,6 +1579,7 @@
           ],
           "difficulty": "medium",
           "prerequisites": [
+            "counting-cells-and-digits",
             "locked-candidates"
           ]
         },
@@ -1486,6 +1687,7 @@
           ],
           "difficulty": "medium",
           "prerequisites": [
+            "counting-cells-and-digits",
             "naked-subsets"
           ]
         },
@@ -1751,8 +1953,9 @@
           "title": "Strong and weak links",
           "kind": "foundation",
           "difficulty": "tricky",
-          "summary": "Learn the two rules behind short patterns, wings, coloring, and chains.",
+          "summary": "See why one candidate rules out another, and why the last remaining choice must be true.",
           "prerequisites": [
+            "cells-that-see",
             "candidate-logic",
             "hidden-single",
             "naked-single"
@@ -1767,26 +1970,28 @@
               "type": "text",
               "paragraphs": [
                 "Highlight one digit. Find a house where it has exactly two remaining places. Then find a house where it has three.",
-                "A link joins candidate statements. For example, A means “R4C2 is 5.” True means that placement is correct. False means it is ruled out."
+                "A candidate such as 5 at R4C2 is a statement about the solution. It is true if the solution has 5 there.",
+                "A link describes what one candidate tells you about another."
               ]
             },
             {
               "type": "text",
               "paragraphs": [
-                "Our diagrams use solid lines for strong links and dashed lines for weak links. An arrow shows the direction of one implication.",
-                "Rings identify the linked candidates. Colors separate roles, not true and false. Each example states its temporary assumption before any conditional removal."
+                "Our diagrams use solid lines for strong links and dashed lines for weak links. An arrow shows the direction of the reasoning.",
+                "Rings mark the candidates in the example. The captions tell you which states follow from a temporary assumption."
               ]
             },
             {
               "type": "heading",
               "id": "weak-links",
-              "title": "Weak: the two statements cannot both be true"
+              "title": "A weak link comes from a conflict"
             },
             {
               "type": "text",
               "paragraphs": [
-                "If A is true, B must be false. Two copies of one digit in a house have this relationship. So do different digits in one cell.",
-                "If row 4 has 5 in R4C2, R4C5, or R4C8, ruling out R4C2 alone does not choose between the other two."
+                "A row can contain only one copy of each digit. If R4C2 is 5, R4C5 cannot be 5. The same rule works in the other direction.",
+                "A cell can hold only one digit. If a cell is 2, it cannot also be 7.",
+                "These are weak links. A true end forces the other end false. Both ends can be false if a third choice remains."
               ]
             },
             {
@@ -1796,18 +2001,35 @@
             {
               "type": "heading",
               "id": "strong-links",
-              "title": "Strong: the two statements cannot both be false"
+              "title": "A strong link comes from a required choice"
             },
             {
               "type": "text",
               "paragraphs": [
-                "If A is false, B must be true. If R4C2 and R4C8 are the only places for 5 in row 4, removing one forces the other.",
-                "This pair also has a weak link: the row cannot contain both 5s. A cell with exactly two candidates also has both properties. This is a dual link."
+                "Row 4 must contain a 5. If R4C2 and R4C8 are its only places, ruling out R4C2 forces 5 into R4C8.",
+                "This is a strong link. A false end forces the other end true. At least one end must be true.",
+                "Check the whole house for the digit. A third candidate in that house breaks this reason for a strong link."
               ]
             },
             {
               "type": "foundation-visual",
               "visual": "strong-link"
+            },
+            {
+              "type": "heading",
+              "id": "dual-links",
+              "title": "One pair can have both links"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The two places for 5 in row 4 also conflict. Exactly one must be true. A pair with both properties has a dual link.",
+                "The same rule applies in a cell with only two candidates. The cell needs a digit and can hold only one."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "cell-link"
             },
             {
               "type": "table",
@@ -1853,13 +2075,25 @@
             {
               "type": "heading",
               "id": "common-mistake",
-              "title": "Do not reverse the wrong rule"
+              "title": "What each link guarantees"
             },
             {
               "type": "text",
               "paragraphs": [
-                "Weak does not mean uncertain. It states a definite conflict. Strong does not mean the candidates must have opposite values.",
-                "A derived strong link can allow both ends to be true. Use its weak property only if you also prove a conflict."
+                "A weak link proves a conflict. A strong link proves that at least one end is true.",
+                "Some later proofs give a strong link whose ends can both be true. Use it as a weak link only if the two ends also conflict."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "use-links",
+              "title": "Where to use links"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In Skyscraper, two row pairs each need a 5. The two candidates in the shared column conflict. Those three links work together.",
+                "In wings and chains, links can also switch digits inside a cell. Follow the rule for the link you are using."
               ]
             },
             {
@@ -1905,6 +2139,88 @@
             {
               "label": "Pure Sudoku: propositions and inference chains",
               "href": "https://docs.pure-sudoku.app/en/tech/chains-intro"
+            }
+          ]
+        },
+        {
+          "id": "fish-basics",
+          "title": "Counting rows and columns",
+          "summary": "See why equal numbers of rows and columns reserve every place for one digit.",
+          "kind": "foundation",
+          "difficulty": "tricky",
+          "prerequisites": [
+            "counting-cells-and-digits"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Highlight one missing digit. Choose rows that have few places for that digit. Read all nine cells in each chosen row."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "base-and-cover",
+              "title": "The rows need a place each"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The selected rows are the bases. Each base needs one copy of the digit.",
+                "The columns that contain every candidate in those rows are the covers. Each cover can hold at most one copy.",
+                "If the number of bases and covers matches, the bases need every cover. This is the count behind a basic fish."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "fish-count"
+            },
+            {
+              "type": "heading",
+              "id": "find-the-target",
+              "title": "Where the count removes a candidate"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A candidate outside the base rows cannot use one of the cover columns. The base rows need that column for the same digit.",
+                "You can start with columns as the bases instead. Then the rows are the covers."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Three chosen rows need a 5 each. All their 5s fit in the same three columns. Must all three columns get a 5 from those rows?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "Each row needs one 5. The three placements must use different columns."
+                },
+                {
+                  "prompt": "One of those rows has another 5 in a fourth column. Does the same count still reserve the first three columns?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "The extra candidate gives the row a place outside those covers. The basic fish count needs all base candidates inside its covers."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu on basic fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishb.php"
             }
           ]
         },
@@ -2020,6 +2336,7 @@
           ],
           "difficulty": "tricky",
           "prerequisites": [
+            "fish-basics",
             "hidden-subsets"
           ]
         },
@@ -2053,7 +2370,9 @@
             {
               "type": "text",
               "paragraphs": [
-                "Only one of the aligned cells can take the digit. At least one row has to put it at its far end. Erase the digit from cells that see both far ends. You can also use two columns with one pair of ends in the same row."
+                "The row pairs supply strong links. The aligned candidates in the shared column supply a weak link.",
+                "If one far end is false, its row forces the aligned candidate true. That rules out the other aligned candidate and forces the other far end.",
+                "At least one far end must be true. Remove the digit from any cell that sees both far ends. The same logic works with rows and columns swapped."
               ]
             },
             {
@@ -2331,6 +2650,7 @@
           ],
           "difficulty": "tricky",
           "prerequisites": [
+            "fish-basics",
             "x-wing"
           ]
         }
@@ -2755,6 +3075,7 @@
           ],
           "difficulty": "hard",
           "prerequisites": [
+            "fish-basics",
             "swordfish"
           ]
         },
@@ -3439,6 +3760,99 @@
           ]
         },
         {
+          "id": "coloring-basics",
+          "title": "Why two colors work",
+          "summary": "Use two colors to keep track of opposite states along connected links.",
+          "kind": "foundation",
+          "difficulty": "very-hard",
+          "prerequisites": [
+            "strong-weak-links",
+            "chain-basics"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick two candidates that are the only places for one digit in a house. Mark them with different colors."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "opposite-states",
+              "title": "Each pair has exactly one true candidate"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A strong link and a weak link between the same two candidates mean that exactly one is true. This pair has a dual link.",
+                "If a candidate has another dual link, give the new endpoint the opposite color. Each step keeps the two colors opposite."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "coloring-states"
+            },
+            {
+              "type": "heading",
+              "id": "color-conclusions",
+              "title": "Test what each color means"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In one connected set, all blue candidates are true or all amber candidates are true. In either case, the other color is false.",
+                "If two candidates of one color conflict, that color must be false. If a target conflicts with both colors, the target must be false.",
+                "Separate sets can choose their true colors independently. Compare colors only within the same connected set."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Can you color both ends of a weak link as opposites from that link alone?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "A weak link lets both ends be false. Opposite colors need exactly one true end."
+                },
+                {
+                  "prompt": "An uncolored 5 sees a blue 5 and an amber 5 in the same connected set. What can you remove?",
+                  "options": [
+                    "Only the uncolored 5",
+                    "All blue 5s",
+                    "All amber 5s"
+                  ],
+                  "answer": 0,
+                  "explanation": "One of the colored 5s must be true. Either one rules out the uncolored 5."
+                },
+                {
+                  "prompt": "Two blue candidates in separate connected sets conflict. Does that prove that all blue candidates are false?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "Both of those sets cannot use blue together. Each set still has its own choice of color."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu on coloring",
+              "href": "https://hodoku.sourceforge.net/en/tech_col.php"
+            }
+          ]
+        },
+        {
           "id": "simple-coloring",
           "title": "Simple Coloring",
           "summary": "Use two colors to follow the possible placements of one digit.",
@@ -3520,6 +3934,7 @@
           ],
           "difficulty": "very-hard",
           "prerequisites": [
+            "coloring-basics",
             "skyscraper",
             "chain-basics"
           ]
@@ -3730,6 +4145,7 @@
           ],
           "difficulty": "very-hard",
           "prerequisites": [
+            "coloring-basics",
             "simple-coloring",
             "xy-chain",
             "chain-basics"
@@ -3742,6 +4158,7 @@
           "difficulty": "very-hard",
           "summary": "Recognize a group that is one digit away from a locked subset.",
           "prerequisites": [
+            "counting-cells-and-digits",
             "naked-subsets",
             "bivalue-case-splits"
           ],
@@ -4254,6 +4671,116 @@
           ]
         },
         {
+          "id": "closed-chains",
+          "title": "When a chain closes",
+          "summary": "Read the first and last links to see what a closed chain proves.",
+          "kind": "foundation",
+          "difficulty": "expert",
+          "prerequisites": [
+            "chain-notation",
+            "aic"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find the candidate where an alternating chain returns to its start. Compare the first and last links at that candidate."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "matching-links",
+              "title": "Two matching links force the starting candidate"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If both links are weak, start with the candidate true. Each link forces the next state. The closing weak link makes the candidate false.",
+                "If both links are strong, start with the candidate false. The closing strong link makes the candidate true.",
+                "In each case the chain gives the starting candidate two conflicting states. The original assumption must be false."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "loop-matching-links"
+            },
+            {
+              "type": "heading",
+              "id": "alternating-join",
+              "title": "An alternating join strengthens each weak link"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose one weak link in a loop that alternates all the way around. Follow the rest of the loop between the ends of that link.",
+                "That path starts and ends with strong links. If one end is false, the other must be true. Now exactly one of the two ends is true.",
+                "You can remove a candidate that conflicts with both ends of the weak link. Repeat this check for each weak link."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "loop-alternating-links"
+            },
+            {
+              "type": "table",
+              "caption": "Read the join",
+              "columns": [
+                "Links at the start",
+                "What the chain proves"
+              ],
+              "rows": [
+                [
+                  "Two weak links",
+                  "Remove the starting candidate."
+                ],
+                [
+                  "Two strong links",
+                  "Place the starting candidate."
+                ],
+                [
+                  "One of each",
+                  "Exactly one end of each weak link is true."
+                ]
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "A loop starts and ends at the same candidate through weak links. Which starting state leads to a conflict?",
+                  "options": [
+                    "True",
+                    "False"
+                  ],
+                  "answer": 0,
+                  "explanation": "A weak link carries true to false. The loop returns to the starting candidate false."
+                },
+                {
+                  "prompt": "The links alternate all the way around. Why can you remove a candidate that conflicts with both ends of a weak link?",
+                  "options": [
+                    "At least one of those endpoints must be true",
+                    "Both endpoints must be false"
+                  ],
+                  "answer": 0,
+                  "explanation": "The rest of the loop supplies the strong link. Either true endpoint rules out the target."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu on chains and loops",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            }
+          ]
+        },
+        {
           "id": "nice-loops",
           "title": "Nice Loops",
           "summary": "Follow a chain back to the same candidate and check the two links that meet there.",
@@ -4340,6 +4867,7 @@
           ],
           "difficulty": "expert",
           "prerequisites": [
+            "closed-chains",
             "aic",
             "chain-notation"
           ]
@@ -4537,6 +5065,7 @@
           "summary": "Check how grouped links meet at the start of a loop.",
           "difficulty": "master",
           "prerequisites": [
+            "closed-chains",
             "grouped-candidates",
             "grouped-aic",
             "nice-loops"
@@ -4731,6 +5260,92 @@
           ]
         },
         {
+          "id": "als-links",
+          "title": "Links inside an almost locked set",
+          "summary": "Use the fact that an almost locked set can leave out only one digit.",
+          "kind": "foundation",
+          "difficulty": "master",
+          "prerequisites": [
+            "almost-locked-set-basics",
+            "grouped-candidates",
+            "restricted-common-candidates",
+            "chain-notation"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find an almost locked set, or ALS. Choose two different digits in the set. Find every candidate for each of those digits."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "one-digit-can-be-absent",
+              "title": "The set can omit only one digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Two cells in one house have candidates {1, 4} and {4, 8}. They must use two of the three digits because they see each other.",
+                "If the set has no 1, it must include 4. If it has no 4, it must include 1. These statements have a strong link.",
+                "The set can also contain both 1 and 4. The link says that at least one of the two digits appears."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "als-link"
+            },
+            {
+              "type": "heading",
+              "id": "connect-from-outside",
+              "title": "Connect to the whole digit group"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "An outside 4 can rule out 4 from the set only if it sees every 4 in the set.",
+                "If the outside 4 is true, those set candidates are false. The strong link inside the set then says that 1 must appear.",
+                "The chain can continue to an outside 1 that sees every 1 in the set. The forced 1 in the set rules out that outside candidate."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "The set has two candidate 4s. An outside 4 sees only one of them. Does placing the outside 4 rule out 4 from the set?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "The second 4 can still fill a cell in the set. The whole digit group must lose 4 before the strong link applies."
+                },
+                {
+                  "prompt": "In this set, can 1 and 4 both appear even though the digit groups have a strong link?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "The cells can contain 1 and 4 and omit 8. A strong link permits both statements to be true."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu on ALS links in chains",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            }
+          ]
+        },
+        {
           "id": "almost-locked-sets",
           "title": "Almost Locked Sets (ALS)",
           "summary": "One extra candidate digit lets a set connect to another set and force a removal.",
@@ -4856,6 +5471,7 @@
           ],
           "difficulty": "master",
           "prerequisites": [
+            "als-links",
             "wxyz-wing",
             "aic",
             "almost-locked-set-basics",
@@ -5038,6 +5654,7 @@
           ],
           "difficulty": "master",
           "prerequisites": [
+            "als-links",
             "restricted-common-candidates"
           ]
         },
@@ -5094,6 +5711,8 @@
           ],
           "difficulty": "master",
           "prerequisites": [
+            "als-links",
+            "closed-chains",
             "restricted-common-candidates"
           ]
         },
@@ -5150,6 +5769,8 @@
           ],
           "difficulty": "master",
           "prerequisites": [
+            "als-links",
+            "closed-chains",
             "restricted-common-candidates"
           ]
         },
@@ -5264,6 +5885,7 @@
           ],
           "difficulty": "master",
           "prerequisites": [
+            "closed-chains",
             "unique-rectangle",
             "chain-notation",
             "grouped-candidates"
@@ -5322,6 +5944,7 @@
           ],
           "difficulty": "master",
           "prerequisites": [
+            "closed-chains",
             "unique-rectangle",
             "chain-notation",
             "grouped-candidates"
@@ -5548,6 +6171,7 @@
           ],
           "difficulty": "master",
           "prerequisites": [
+            "als-links",
             "restricted-common-candidates"
           ]
         },
@@ -6212,6 +6836,94 @@
           ]
         },
         {
+          "id": "house-digit-slots",
+          "title": "Counting placements across houses",
+          "summary": "Count how many house rules each placement uses before you rule out an extra candidate.",
+          "kind": "foundation",
+          "difficulty": "extreme",
+          "prerequisites": [
+            "counting-cells-and-digits",
+            "fish-basics"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick cells that do not all share one house. For each candidate, look for a house that contains its cell."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "one-slot-per-digit",
+              "title": "A slot is one digit in one house"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A slot such as “1 in column 1” can hold at most one placement. A different digit in the same house uses a different slot.",
+                "Choose slots that cover every candidate in the selected cells. A slot covers a candidate of the same digit inside its house.",
+                "Each selected cell needs at least one slot. If there are as many slots as cells, every placement must use exactly one slot."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "placement-capacity"
+            },
+            {
+              "type": "heading",
+              "id": "overlap-counts",
+              "title": "An overlap can use two slots"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A 1 at the intersection of row 1 and column 1 uses both slots for 1 if both are in the count.",
+                "If that leaves fewer slots than cells to fill, you can remove the candidate. The group needs all the slots, so a candidate outside the group cannot use one.",
+                "Complex fish also compare counts across houses. A placement in two selected houses affects both counts."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Four selected cells need four slots. A candidate inside the group uses two slots at once. Can that candidate be true?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "Only two slots remain for the other three cells."
+                },
+                {
+                  "prompt": "One selected cell has a candidate that fits none of the slots. Can you apply the equal count?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "That cell can use a digit outside the count. Every candidate in the selected cells needs at least one slot."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Counting rows and columns",
+              "href": "/learn/fish-basics"
+            },
+            {
+              "label": "HoDoKu on complex fish",
+              "href": "https://hodoku.sourceforge.net/en/tech_fishc.php"
+            }
+          ]
+        },
+        {
           "id": "sk-loop",
           "title": "SK loop",
           "summary": "Count the digit slots in a ring around four placed digits.",
@@ -6259,6 +6971,7 @@
           "references": [],
           "difficulty": "extreme",
           "prerequisites": [
+            "house-digit-slots",
             "forcing-proof-basics"
           ]
         },
@@ -6315,6 +7028,7 @@
           ],
           "difficulty": "extreme",
           "prerequisites": [
+            "house-digit-slots",
             "forcing-proof-basics"
           ]
         },
@@ -6542,6 +7256,7 @@
           ],
           "difficulty": "extreme",
           "prerequisites": [
+            "house-digit-slots",
             "forcing-proof-basics"
           ]
         },
@@ -6602,6 +7317,7 @@
           ],
           "difficulty": "extreme",
           "prerequisites": [
+            "house-digit-slots",
             "forcing-proof-basics"
           ]
         },
@@ -6662,6 +7378,8 @@
           ],
           "difficulty": "extreme",
           "prerequisites": [
+            "house-digit-slots",
+            "franken-fish",
             "forcing-proof-basics"
           ]
         },
@@ -6722,6 +7440,8 @@
           ],
           "difficulty": "extreme",
           "prerequisites": [
+            "house-digit-slots",
+            "franken-fish",
             "forcing-proof-basics"
           ]
         }
@@ -6907,6 +7627,88 @@
           ]
         },
         {
+          "id": "digit-layouts",
+          "title": "Complete layouts for a digit",
+          "summary": "Check where a digit appears across every way to place it.",
+          "kind": "foundation",
+          "difficulty": "impossible",
+          "prerequisites": [
+            "fish-basics",
+            "nested-proofs-and-search"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose one digit. Mark its placed copies and the cells that still allow it. Start with a row that has few choices."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "one-digit-at-a-time",
+              "title": "A layout needs every house"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A complete layout contains nine copies of the digit. It includes each placed copy and uses every row, column, and box once.",
+                "Check each possible layout. If a candidate appears in none of them, remove it. If every layout includes one cell, place the digit there."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "complete-digit-layouts"
+            },
+            {
+              "type": "heading",
+              "id": "compare-layouts",
+              "title": "Two digits cannot share a cell"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A layout for 5 and a layout for 8 must use different cells. If none of the layouts for 8 fit beside a layout for 5, discard that layout for 5.",
+                "For three digits, you need three layouts that fit together at the same time. A layout can pass these checks and still conflict with a digit outside the check."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "A 5 is absent from one valid layout but appears in another. Can you remove it from that evidence?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "A removal requires the candidate to be absent from every valid layout."
+                },
+                {
+                  "prompt": "A layout for 5 and a layout for 8 both use R3C8. Can they be part of the same solution?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "One cell can hold only one digit. Try other layouts for the two digits."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu on templates",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php"
+            }
+          ]
+        },
+        {
           "id": "pattern-overlay",
           "title": "Pattern Overlay",
           "summary": "Check every complete way to place one digit across the grid.",
@@ -6959,6 +7761,7 @@
           ],
           "difficulty": "impossible",
           "prerequisites": [
+            "digit-layouts",
             "nested-proofs-and-search"
           ]
         },
@@ -7015,6 +7818,8 @@
           ],
           "difficulty": "impossible",
           "prerequisites": [
+            "pattern-overlay",
+            "digit-layouts",
             "nested-proofs-and-search"
           ]
         },
@@ -7071,6 +7876,8 @@
           ],
           "difficulty": "impossible",
           "prerequisites": [
+            "pattern-overlay",
+            "digit-layouts",
             "nested-proofs-and-search"
           ]
         },
@@ -7127,6 +7934,8 @@
           ],
           "difficulty": "impossible",
           "prerequisites": [
+            "pattern-overlay",
+            "digit-layouts",
             "nested-proofs-and-search"
           ]
         },
@@ -7183,6 +7992,8 @@
           ],
           "difficulty": "impossible",
           "prerequisites": [
+            "pattern-overlay",
+            "digit-layouts",
             "nested-proofs-and-search"
           ]
         }

@@ -9,16 +9,27 @@ const catalog = lessonCatalog(curriculum)
 
 test('foundation concepts precede the techniques that first rely on them', () => {
   const requirements = {
+    'full-house': 'cells-that-see',
     'locked-candidates': 'candidate-logic',
+    'naked-subsets': 'counting-cells-and-digits',
+    'hidden-subsets': 'counting-cells-and-digits',
+    'x-wing': 'fish-basics',
     skyscraper: 'strong-weak-links',
     'xy-wing': 'bivalue-case-splits',
     'unique-rectangle': 'uniqueness-assumption',
-    'simple-coloring': 'chain-basics',
+    'simple-coloring': 'coloring-basics',
+    '3d-medusa': 'coloring-basics',
     'wxyz-wing': 'almost-locked-set-basics',
     aic: 'chain-notation',
+    'nice-loops': 'closed-chains',
     'grouped-aic': 'grouped-candidates',
     'almost-locked-sets': 'restricted-common-candidates',
+    'als-aic': 'als-links',
     'forcing-chain': 'forcing-proof-basics',
+    'multi-sector-locked-sets': 'house-digit-slots',
+    'franken-fish': 'house-digit-slots',
+    'pattern-overlay': 'digit-layouts',
+    'pairwise-pattern-overlay': 'digit-layouts',
   }
   for (const [technique, foundation] of Object.entries(requirements)) {
     const lesson = catalog.lessonRoutes.get(technique)!
@@ -28,6 +39,16 @@ test('foundation concepts precede the techniques that first rely on them', () =>
     assert.ok(catalog.articles.indexOf(prerequisite) < catalog.articles.indexOf(lesson), technique)
   }
   assert.equal(catalog.lessonRoutes.get('nested-proofs-and-search')?.difficulty, 'impossible')
+})
+
+test('every prerequisite names an earlier article in the course', () => {
+  const positions = new Map(catalog.articles.map(({ id }, index) => [id, index]))
+  for (const [index, article] of catalog.articles.entries()) {
+    for (const prerequisite of article.prerequisites ?? []) {
+      const position = positions.get(prerequisite)
+      assert.ok(position !== undefined && position < index, `${article.id} requires ${prerequisite}`)
+    }
+  }
 })
 
 test('grouped techniques keep their URLs and move to Master after their foundations', () => {

@@ -79,8 +79,8 @@ function completions(visual: FoundationVisualDefinition) {
   return assignments
 }
 
-test('the final subset, wing, and contradiction results hold in every possible filling', () => {
-  for (const id of ['candidate-elimination', 'wing-cases', 'contradiction'] as const) {
+test('the final marks in the multi-digit examples hold in every possible filling', () => {
+  for (const id of ['candidate-elimination', 'subset-count', 'wing-cases', 'contradiction', 'loop-alternating-links', 'placement-capacity'] as const) {
     const visual = foundationVisuals[id]
     const solutions = completions(visual)
     assert.ok(solutions.length > 0, id)
@@ -88,6 +88,51 @@ test('the final subset, wing, and contradiction results hold in every possible f
       if (kind === 'result') assert.ok(solutions.every(values => values.get(cell) === digit), `${id}: placement`)
       if (kind === 'removal') assert.ok(solutions.every(values => values.get(cell) !== digit), `${id}: removal`)
     }
+  }
+})
+
+function digitLayouts(candidates: Record<string, number[]>, requiredHouses: number[][]) {
+  const cells = Object.keys(candidates).map(Number)
+  const layouts = Array.from({ length: 1 << cells.length }, (_, mask) => cells.filter((_, i) => mask & (1 << i)))
+  return layouts.filter(layout =>
+    layout.every((cell, i) => layout.slice(0, i).every(other => !peer(cell, other))) &&
+    requiredHouses.every(house => house.filter(cell => layout.includes(cell)).length === 1))
+}
+
+test('both fish placements use every cover and exclude the marked candidate', () => {
+  const visual = foundationVisuals['fish-count']
+  const layouts = digitLayouts(visual.candidates!, [[20, 21], [39, 42], [56, 60]])
+  assert.deepEqual(layouts, [[21, 42, 56], [20, 39, 60]])
+  assert.ok(layouts.every(layout => !layout.includes(30)))
+})
+
+test('both color states are possible and rule out the same target', () => {
+  const visual = foundationVisuals['coloring-states']
+  const layouts = digitLayouts(visual.candidates!, [[10, 13], [13, 31], [29, 31]])
+  assert.deepEqual(layouts, [[13, 29], [10, 31]])
+  assert.ok(layouts.every(layout => !layout.includes(20)))
+})
+
+test('the illustrated closed chains eliminate or place their starting candidate', () => {
+  const visual = foundationVisuals['loop-matching-links']
+  assert.deepEqual(digitLayouts(visual.candidates!, [[9, 11]]), [[9], [11]])
+  assert.deepEqual(digitLayouts(visual.steps.at(-1)!.candidates!, [[10, 11], [10, 19]]), [[10]])
+})
+
+test('either ALS digit can be absent but the set needs at least one of them', () => {
+  const fillings = completions(foundationVisuals['als-link']).map(values => [...values.values()])
+  assert.ok(fillings.every(digits => digits.includes(1) || digits.includes(4)))
+  assert.ok(fillings.some(digits => digits.includes(1) && digits.includes(4)))
+  for (const digit of [1, 4]) assert.ok(fillings.some(digits => !digits.includes(digit)))
+})
+
+test('both complete layouts agree on the placement in row 3', () => {
+  const visual = foundationVisuals['complete-digit-layouts']
+  const layouts = digitLayouts(visual.candidates!, [[1, 4], [10, 13], [22, 25]])
+  assert.deepEqual(layouts, [[4, 10, 25], [1, 13, 25]])
+  for (const layout of layouts) {
+    const withGivens = [...layout, 27, 39, 51, 56, 68, 80]
+    assert.ok(withGivens.every((cell, i) => withGivens.slice(0, i).every(other => !peer(cell, other))))
   }
 })
 

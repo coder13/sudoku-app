@@ -72,9 +72,9 @@ Overview, sidebar, and previous/next article links share the course order in `le
 
 Beginner has a dedicated box Hidden Single lesson and detector. The existing `hidden-single` ID remains valid. Learn ordinary wings before the full ALS family, restricted chains before general AICs, and ordinary AICs before grouped or ALS chains. Rare fish and uniqueness techniques are extensions rather than prerequisites for every later lesson.
 
-Foundation pages teach concepts before the techniques that require them. They have worked examples, tables, and short questions with explanations and a New example control. They do not introduce new generator techniques or change a puzzle's grade.
+Foundation pages teach concepts before the techniques that use them. Each has a visual walkthrough and short questions with explanations. The Learn first links point back to the relevant concepts.
 
-Every foundation includes a visual walkthrough. Fundamentals introduces candidate slots, cell addresses, and the diagram key before its first solving example. The link lessons introduce solid and dashed lines. Chain lessons connect those lines to written notation and show each implication in order.
+Fundamentals introduces candidate slots, cell addresses, and the diagram key. The link lesson derives weak links from conflicts and strong links from required choices. Chain lessons connect solid and dashed lines to written notation and show each implication in order.
 
 | Mark | Meaning |
 | --- | --- |
@@ -92,14 +92,15 @@ Definitions live in `src/sudoku/foundation-visuals.json`. The lesson editor can 
 
 | Level | Foundation pages | First uses |
 | --- | --- | --- |
-| Medium | Candidates and eliminations | Locked Candidates and subsets |
-| Tricky | Strong and weak links | Skyscraper, Two-String Kite, Empty Rectangle |
-| Hard | Bivalue cells and cases; The uniqueness assumption | Wings; Unique Rectangle and BUG+1 |
-| Very Hard | Following a chain; Almost locked set basics | Coloring and chains; WXYZ-Wing |
-| Expert | Reading chain notation | AIC and Nice Loops |
-| Master | Grouped candidates; Restricted common candidates | Grouped AIC, grouped loops, and ALS techniques |
-| Extreme | Assumptions and contradictions | Forcing Chains and Nets |
-| Impossible | Nested proofs and search | Deeper case analysis and computer methods |
+| Beginner | Which cells see each other? | Scanning and singles |
+| Medium | Candidates and eliminations, counting cells and digits | Locked Candidates and subsets |
+| Tricky | Strong and weak links, counting rows and columns | Skyscraper, Two-String Kite, Empty Rectangle, X-Wing and Swordfish |
+| Hard | Bivalue cells and cases, the uniqueness assumption | Wings, Unique Rectangle, and BUG+1 |
+| Very Hard | Following a chain, why two colors work, almost locked set basics | Chains, coloring, and WXYZ-Wing |
+| Expert | Reading chain notation, when a chain closes | AIC and Nice Loops |
+| Master | Grouped candidates, restricted common candidates, links inside an almost locked set | Grouped chains, grouped loops, and ALS techniques |
+| Extreme | Assumptions and contradictions, counting placements across houses | Forcing proofs, Multi-Sector Locked Sets, and complex fish |
+| Impossible | Nested proofs and search, complete layouts for a digit | Nested Forcing Nets and Pattern Overlay |
 
 Grouped AIC and grouped Nice Loops have separate Master articles. Their existing technique URLs still work. The ordinary AIC and Nice Loops articles stay at Expert. Foundation review drills must never replace a technique's route in the lesson catalog.
 
