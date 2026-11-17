@@ -1,5 +1,5 @@
 import { ArrowUpDown, Check, Eraser, Link2 } from 'lucide-react'
-import { useSyncExternalStore } from 'react'
+import { useId, useSyncExternalStore } from 'react'
 import { alternateColorShade, COLORS, COLOR_FAMILIES, type ColorTarget } from '../sudoku/game'
 import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 
@@ -13,9 +13,9 @@ type Props = {
   onSwitchShade: () => void
   onStop: () => void
   onClear: () => void
-  canColorStrongLinks: boolean
-  strongLinkMessage: string
-  onColorStrongLinks: () => void
+  canContinueGroup: boolean
+  groupMessage: string
+  onContinueGroup: () => void
 }
 
 export function ColorTargetPicker({ target, disabled, onTarget }: Pick<Props, 'target' | 'disabled' | 'onTarget'>) {
@@ -55,7 +55,8 @@ export function ColorSwatches({ brush, disabled, onColor, onSwitchShade }: Pick<
 }
 
 export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onSwitchShade, onStop, onClear,
-  canColorStrongLinks, strongLinkMessage, onColorStrongLinks }: Props) {
+  canContinueGroup, groupMessage, onContinueGroup }: Props) {
+  const groupMessageId = useId()
   const subject = target === 'cell' ? 'cells' : 'candidates'
   const instructions = disabled ? 'Coloring is available while playing.'
     : brush === null ? target === 'cell'
@@ -78,10 +79,10 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
           aria-label="Stop coloring" aria-keyshortcuts="Escape" onClick={onStop}>Done</button>}
       </div>
       <div className="color-link-tools">
-        <p className="color-link-message" aria-live="polite">{strongLinkMessage}</p>
-        <button type="button" className="button secondary color-strong-links" disabled={disabled || !canColorStrongLinks}
-          title="Follow every strong link for the highlighted number, alternating light and dark shades."
-          onClick={onColorStrongLinks}><Link2 size={16} aria-hidden="true" /> Auto-color strong links</button>
+        <p className="color-link-message" id={groupMessageId} aria-live="polite">{groupMessage}</p>
+        <button type="button" className="button secondary color-strong-links" disabled={disabled || !canContinueGroup}
+          title="Follow strong links from your starting mark, keeping its color pair and existing shades."
+          aria-describedby={groupMessageId} onClick={onContinueGroup}><Link2 size={16} aria-hidden="true" /> Continue this group</button>
       </div>
     </section>
   )

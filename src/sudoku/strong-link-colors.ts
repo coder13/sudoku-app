@@ -1,65 +1,56 @@
-import { chainCandidate, makeChainGraph } from './chains.ts'
+import { candidateId, chainCandidate, makeChainGraph } from './chains.ts'
 import type { Candidate, VariantPuzzle } from './engine.ts'
-import { alternateColorShade, COLOR_FAMILIES, DIGITS } from './game.ts'
+import { alternateColorShade, DIGITS, hasCandidate, type ColorTarget, type Position } from './game.ts'
 
-export type StrongLinkGroup = {
-  sides: [Candidate[], Candidate[]]
-  links: number
+export type ColorContinuation = {
+  status: 'ready' | 'complete' | 'uncolored' | 'missing-candidate' | 'no-links' | 'link-conflict' | 'color-conflict'
+  marks: (Candidate & { color: number })[]
+  conflicts: Candidate[]
 }
 
-export function findStrongLinkGroups(masks: readonly number[], digit: number, puzzle?: VariantPuzzle) {
-  const groups: StrongLinkGroup[] = []
-  if (masks.length !== 81 || !DIGITS.includes(digit)) return { groups, conflictingGroups: 0 }
-  const graph = makeChainGraph(masks, puzzle)
-  const nodes = graph.candidates.filter((node) => chainCandidate(node).digit === digit)
-  const neighbors = new Map<number, number[]>()
-  for (let i = 0; i < nodes.length; i++) {
-    for (const other of nodes.slice(i + 1)) {
-      const node = nodes[i]
-      if (graph.strength(node, other) !== 'strong') continue
-      neighbors.set(node, [...neighbors.get(node) ?? [], other])
-      neighbors.set(other, [...neighbors.get(other) ?? [], node])
-    }
-  }
+export function continueStrongLinkColors(
+  masks: readonly number[], start: Candidate, position: Position, target: ColorTarget, puzzle?: VariantPuzzle,
+): ColorContinuation {
+  const blocked = (status: ColorContinuation['status'], conflicts: Candidate[] = []): ColorContinuation => ({
+    status, marks: [], conflicts,
+  })
+  if (masks.length !== 81 || !Number.isInteger(start.cell) || start.cell < 0 || start.cell >= 81 ||
+    !DIGITS.includes(start.digit) || !hasCandidate(masks[start.cell], start.digit)) return blocked('missing-candidate')
 
-  const visited = new Set<number>()
-  let conflictingGroups = 0
-  for (const root of neighbors.keys()) {
-    if (visited.has(root)) continue
-    const queue = [root]
-    const sides = new Map<number, 0 | 1>([[root, 0]])
-    let conflict = false
-    let links = 0
-    for (const node of queue) {
-      visited.add(node)
-      const side = sides.get(node)!
-      for (const neighbor of neighbors.get(node)!) {
-        links++
-        if (sides.has(neighbor)) {
-          if (sides.get(neighbor) === side) conflict = true
-        } else {
-          sides.set(neighbor, side === 0 ? 1 : 0)
-          queue.push(neighbor)
-        }
+  const colorAt = ({ cell, digit }: Candidate) => target === 'cell'
+    ? position.colors[cell] : position.candidateColors?.[cell]?.[digit] ?? 0
+  const firstColor = colorAt(start)
+  const otherColor = alternateColorShade(firstColor)
+  if (otherColor === null) return blocked('uncolored')
+
+  const graph = makeChainGraph(masks, puzzle)
+  const nodes = graph.candidates.filter((node) => chainCandidate(node).digit === start.digit)
+  const root = candidateId(start)
+  const queue = [root]
+  const colors = new Map([[root, firstColor]])
+  for (const node of queue) {
+    const nextColor = colors.get(node) === firstColor ? otherColor : firstColor
+    for (const neighbor of nodes) {
+      if (graph.strength(node, neighbor) !== 'strong') continue
+      if (colors.has(neighbor)) {
+        if (colors.get(neighbor) !== nextColor) return blocked('link-conflict')
+      } else {
+        colors.set(neighbor, nextColor)
+        queue.push(neighbor)
       }
     }
-    if (conflict) { conflictingGroups++; continue }
-    const group: StrongLinkGroup = { sides: [[], []], links: links / 2 }
-    for (const [node, side] of sides) group.sides[side].push(chainCandidate(node))
-    groups.push(group)
   }
-  return { groups, conflictingGroups }
-}
+  if (colors.size === 1) return blocked('no-links')
 
-export function strongLinkColorMarks(groups: readonly StrongLinkGroup[], firstColor: number) {
-  if (alternateColorShade(firstColor) === null || groups.length > COLOR_FAMILIES.length) return []
-  const firstFamily = (firstColor - 1) % COLOR_FAMILIES.length
-  const darkFirst = firstColor > COLOR_FAMILIES.length
-  return groups.flatMap(({ sides }, index) => {
-    const light = (firstFamily + index) % COLOR_FAMILIES.length + 1
-    const dark = alternateColorShade(light)!
-    return sides.flatMap((candidates, side) => candidates.map((candidate) => ({
-      ...candidate, color: (side === 0) !== darkFirst ? light : dark,
-    })))
-  })
+  const marks: ColorContinuation['marks'] = []
+  const conflicts: Candidate[] = []
+  for (const [node, color] of colors) {
+    const candidate = chainCandidate(node)
+    const existing = colorAt(candidate)
+    if (!existing) marks.push({ ...candidate, color })
+    else if (existing !== color) conflicts.push(candidate)
+  }
+  // Never partially fill a group whose existing marks disagree with the starting mark.
+  if (conflicts.length) return blocked('color-conflict', conflicts)
+  return { status: marks.length ? 'ready' : 'complete', marks, conflicts }
 }

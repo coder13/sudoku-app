@@ -8,7 +8,7 @@ import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
-  COLORS, COLOR_FAMILIES, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
+  COLORS, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
   formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
@@ -24,7 +24,7 @@ import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
-import { findStrongLinkGroups, strongLinkColorMarks } from '../sudoku/strong-link-colors'
+import { continueStrongLinkColors } from '../sudoku/strong-link-colors'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
@@ -229,6 +229,7 @@ export function Worktable({
   const [selectedColor, setSelectedColor] = usePlayPreference('selectedColor')
   const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
   const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
+  const [lastColoredCandidate, setLastColoredCandidate] = useState<{ gameId: string; candidate: Candidate } | null>(null)
   const [desktopColorsVisible, setDesktopColorsVisible] = useState(false)
   const [focusColorsRequest, setFocusColorsRequest] = useState(0)
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
@@ -405,18 +406,36 @@ export function Worktable({
       ? mask & displayedCandidates[cell] & ~(eliminations?.[cell] ?? 0) : 0)
     return result.some((mask, cell) => values[cell] === '0' && !mask) ? null : result
   }, [masks, displayedCandidates, values, eliminations])
-  const colorLinks = useMemo(() => colorsVisible && colorLinkMasks && coloringDigit
-    ? findStrongLinkGroups(colorLinkMasks, coloringDigit, variant?.puzzle) : { groups: [], conflictingGroups: 0 },
-  [colorsVisible, colorLinkMasks, coloringDigit, variant])
-  const canColorStrongLinks = colorLinks.groups.length > 0 && colorLinks.groups.length <= COLOR_FAMILIES.length && !colorLinks.conflictingGroups
-  const strongLinkMessage = !coloringDigit ? 'Select a number in the digit input to find its strong links.'
+  const paintedStart = lastColoredCandidate?.gameId === id && lastColoredCandidate.candidate.cell === active
+    ? lastColoredCandidate.candidate : null
+  const colorStartCell = selected.length > 1 ? null : selected[0] ?? active
+  const colorStartDigit = colorTarget === 'candidate' && !selected.length && paintedStart ? paintedStart.digit : coloringDigit
+  const colorStart = useMemo(() => colorStartCell !== null && colorStartDigit
+    ? { cell: colorStartCell, digit: colorStartDigit } : null, [colorStartCell, colorStartDigit])
+  const colorContinuation = useMemo(() => colorsVisible && colorLinkMasks && colorStart
+    ? continueStrongLinkColors(colorLinkMasks, colorStart, game.position, colorTarget, variant?.puzzle) : null,
+  [colorsVisible, colorLinkMasks, colorStart, game.position, colorTarget, variant])
+  const colorStartLocation = colorStart && cellReference(colorStart.cell, cellReferenceStyle, game.difficulty ?? undefined)
+  const colorConflict = colorContinuation?.conflicts[0]
+  const colorConflictLocation = colorConflict && cellReference(colorConflict.cell, cellReferenceStyle, game.difficulty ?? undefined)
+  const remainingColors = colorContinuation?.marks.length ?? 0
+  const colorSubject = colorTarget === 'cell' ? 'cell' : 'candidate'
+  const canContinueColorGroup = colorContinuation?.status === 'ready'
+  const colorGroupMessage = selected.length > 1 ? 'Select one starting cell to continue its group.'
+    : !colorStart ? colorTarget === 'candidate' ? 'Color a starting candidate, then continue its group.'
+      : 'Select a number in the digit input, then color a starting cell.'
     : !displayedCandidates ? 'Generate candidates in every empty cell first.'
     : masks === undefined ? 'Loading candidates…'
     : !colorLinkMasks ? 'Check the grid and candidates before coloring links.'
-    : colorLinks.conflictingGroups ? 'These links cannot use alternating shades. Check the candidates.'
-    : colorLinks.groups.length > COLOR_FAMILIES.length ? 'There are more groups than color pairs. Color these groups manually.'
-    : colorLinks.groups.length ? `${colorLinks.groups.reduce((count, group) => count + group.links, 0)} strong links for ${coloringDigit}. Each connected group gets its own light/dark pair.`
-    : `No strong links for ${coloringDigit}.`
+    : colorContinuation?.status === 'uncolored' ? colorTarget === 'cell'
+      ? `Color ${colorStartLocation} to start a group for ${colorStart.digit}.`
+      : `Color ${colorStart.digit} in ${colorStartLocation} to start a group.`
+    : colorContinuation?.status === 'missing-candidate' ? `Choose a cell with candidate ${colorStart.digit}.`
+    : colorContinuation?.status === 'no-links' ? `${colorStart.digit} in ${colorStartLocation} has no strong links.`
+    : colorContinuation?.status === 'link-conflict' ? 'This group cannot alternate shades. Check its candidates.'
+    : colorConflict ? `The color at ${colorConflictLocation} conflicts with this group. Adjust or erase that color.`
+    : colorContinuation?.status === 'complete' ? `The group for ${colorStart.digit} at ${colorStartLocation} is fully colored.`
+    : `Continue ${colorStart.digit} from ${colorStartLocation}: ${remainingColors} more ${colorSubject}${remainingColors === 1 ? '' : 's'}.`
   const canActivateTemporaryPencil = !pencil && !highlightMode && !colorMode && !eraseMode &&
     !disabled && !draft && !solved && !sketch.drawing && brush === null && !modalOpen && !mobileHintOpen &&
     !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !changePuzzleOpen && !variantRulesOpen && !analysisOpen
@@ -956,18 +975,9 @@ export function Worktable({
     setHighlightMode((current) => !current)
   }
 
-  function colorStrongLinks() {
-    if (!canPaint || !canColorStrongLinks) return
-    const firstColor = brush && brush > 0 ? brush : selectedColor && selectedColor > 0 ? selectedColor : 1
-    const marks = strongLinkColorMarks(colorLinks.groups, firstColor)
-    if (sketch.drawing) sketch.stop()
-    setHintRevealed(false)
-    setColorMode(false)
-    setEraseMode(false)
-    setPencil(false)
-    highlightColorDigit(coloringDigit)
-    setSelectedColor(firstColor)
-    setColorBrush(firstColor)
+  function continueColorGroup() {
+    if (!canPaint || colorContinuation?.status !== 'ready') return
+    const { marks } = colorContinuation
     edit((current) => current.position !== game.position ? current
       : colorTarget === 'cell' ? paintCells(current, marks) : paintCandidates(current, marks))
   }
@@ -982,6 +992,8 @@ export function Worktable({
   function colorCandidate(candidate: Candidate) {
     if (candidateBrush === null) return
     setActive(candidate.cell)
+    setSelected([])
+    setLastColoredCandidate({ gameId: id, candidate })
     edit((current) => paintCandidate(current, candidate, candidateBrush))
   }
 
@@ -1634,7 +1646,7 @@ export function Worktable({
   const cellColorsPanel = (
     <CellColorPalette target={colorTarget} onTarget={changeColorTarget} brush={brush}
       hasColors={colorTarget === 'cell' ? game.position.colors.some(Boolean) : Boolean(game.position.candidateColors)}
-      canColorStrongLinks={canColorStrongLinks} strongLinkMessage={strongLinkMessage} onColorStrongLinks={colorStrongLinks}
+      canContinueGroup={canContinueColorGroup} groupMessage={colorGroupMessage} onContinueGroup={continueColorGroup}
       disabled={cellColorsDisabled} onColor={chooseColor} onSwitchShade={switchColorShade}
       onStop={() => setColorBrush(null)} onClear={clearColors} />
   )
