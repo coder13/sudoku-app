@@ -29,6 +29,7 @@ function prerenderPages() {
     '/import',
     '/puzzles/browse',
     '/puzzles/new',
+    '/puzzles/collections',
     '/puzzles/statistics',
     '/settings',
     '/settings/appearance',
