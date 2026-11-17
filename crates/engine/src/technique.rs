@@ -149,9 +149,14 @@ catalog! {
     BugPlusOne: "bug-plus-one", 100, Hard, true, ["BUG+1", "Bivalue Universal Grave + 1"];
     WxyzWing: "wxyz-wing", 220, Unfair, false, [];
     Fireworks: "fireworks", 240, Unfair, false, ["Triple Firework", "Quadruple Firework"];
+    FireworkWWing: "firework-w-wing", 320, Unfair, false, ["W-Wing Fireworks"];
+    FireworkLWing: "firework-l-wing", 320, Unfair, false, ["L-Wing Fireworks"];
+    FireworkAlsWing: "firework-als-wing", 350, Unfair, false, ["ALS-Wing Fireworks"];
+    FireworkAic: "firework-aic", 360, Unfair, false, ["Firework Alternating Inference Chain"];
     AlignedPairExclusion: "aligned-pair-exclusion", 310, Unfair, false, [];
     AlignedTripletExclusion: "aligned-triplet-exclusion", 370, Unfair, false, [];
     Tridagon: "tridagon", 410, Extreme, false, ["Trivalue Oddagon", "Thor's Hammer"];
+    TridagonAic: "tridagon-aic", 540, Extreme, false, ["Tridagon Alternating Inference Chain"];
     TridagonForcingNet: "tridagon-forcing-net", 850, Extreme, false, [];
     ForcingChain: "forcing-chain", 500, Extreme, false, [];
     ForcingNet: "forcing-net", 700, Extreme, false, [];

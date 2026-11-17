@@ -228,6 +228,169 @@ test('Fireworks exposes the published triple and quadruple through practice and 
   assert.equal(step.after.eliminations[48] & (1 << 3), 1 << 3)
 })
 
+test('Firework chains expose crossing-house links and replay a published removal', async () => {
+  const { run } = engineRequests()
+  const technique = 'firework-aic'
+  const { techniques, defaultOrder } = await run({ type: 'techniques' })
+  assert.equal(techniques.find(item => item.id === technique)?.cost, 360)
+  assert.ok(!defaultOrder.includes(technique))
+  const [published, , wide] = await run({ type: 'practice-examples', technique })
+  const { givens: values, entries, eliminations, suggestion, deduction } = published
+  assert.deepEqual(suggestion, { eliminate: { cell: 44, digit: 5 } })
+  const proof = await run({ type: 'check-practice-move', values, entries, eliminations, technique, action: suggestion })
+  assert.ok(proof && proof.technique === technique)
+  assert.ok(proof.actions.some(action => 'eliminate' in action &&
+    action.eliminate.cell === 44 && action.eliminate.digit === 5))
+  assert.ok('inference' in deduction.evidence)
+  const { links } = deduction.evidence.inference
+  const firework = links.find(link => 'firework' in link.source)
+  assert.deepEqual(firework, {
+    from: { candidate: { cell: 12, digit: 4 } },
+    to: { group: { digit: 4, cells: [16, 57] } },
+    source: { firework: 12 },
+    strength: 'strong',
+  })
+  assert.ok(links.some(link => link.strength === 'weak' && 'peers' in link.source))
+  const currentValues = [...values].map((digit, cell) => entries[cell] === '0' ? digit : entries[cell]).join('')
+  const moves = await run({ type: 'deductions', values: currentValues, eliminations, techniqueOrder: [technique] })
+  const diagram = moves.flatMap(move => move.proofs).find(proof => 'inference' in proof.evidence &&
+    proof.evidence.inference.links.some(link => 'firework' in link.source && link.source.firework === 12 &&
+      ('candidate' in link.from ? link.from.candidate.digit : link.from.group.digit) === 4))
+  assert.ok(diagram)
+  assert.ok(diagram.pattern.houses.some(house => 'box' in house && house.box === 1))
+  assert.ok(diagram.pattern.houses.some(house => 'column' in house && house.column === 3))
+  assert.ok(diagram.pattern.houses.some(house => 'row' in house && house.row === 1))
+  assert.ok(diagram.pattern.candidates.some(candidate => candidate.digit === 4 && candidate.cell === 13))
+  const trace = await run({
+    type: 'logical-solve', values, entries, eliminations, techniqueOrder: [technique], includePositions: true,
+  })
+  const index = trace.steps.findIndex(step => step.actions.some(action => 'eliminate' in action &&
+    action.eliminate.cell === 44 && action.eliminate.digit === 5))
+  assert.ok(index >= 0)
+  const step = replayStep(trace, index)
+  assert.ok(step)
+  assert.equal(step.before.eliminations[44] & (1 << 4), 0)
+  assert.equal(step.after.eliminations[44] & (1 << 4), 1 << 4)
+  assert.equal(trace.rating.score.points, trace.steps.length * 360)
+  const evidence = wide.deduction.evidence
+  assert.ok('inference' in evidence)
+  assert.ok(evidence.inference.links.some(link => 'firework' in link.source &&
+    [link.from, link.to].some(node => 'group' in node && node.group.cells.length >= 5)))
+})
+
+test('Firework W-Wing reports grouped wings and bills once for two removals', async () => {
+  const { run } = engineRequests()
+  const technique = 'firework-w-wing'
+  const { techniques, defaultOrder } = await run({ type: 'techniques' })
+  assert.equal(techniques.find(item => item.id === technique)?.cost, 320)
+  assert.ok(!defaultOrder.includes(technique))
+  const [published, grouped, double] = await run({ type: 'practice-examples', technique })
+  assert.deepEqual(published.suggestion, { eliminate: { cell: 8, digit: 9 } })
+  assert.deepEqual(published.deduction.evidence, {
+    'firework-w-wing': { pivot: 72, digits: [1, 9], wings: [[80], [0]], bivalue: [44, 4] },
+  })
+  assert.deepEqual(grouped.deduction.evidence, {
+    'firework-w-wing': { pivot: 72, digits: [4, 9], wings: [[79, 80], [0]], bivalue: [71, 1] },
+  })
+  const { givens: values, entries, eliminations, suggestion } = grouped
+  assert.deepEqual(await run({
+    type: 'check-practice-move', values, entries, eliminations, technique, action: suggestion,
+  }), grouped.deduction)
+  const trace = await run({
+    type: 'logical-solve', values: double.givens, techniqueOrder: [technique], includeStepDetails: true,
+  })
+  assert.deepEqual(trace.steps[0], double.deduction)
+  const step = replayStep(trace, 0)
+  assert.ok(step)
+  const removed = (1 << 3) | (1 << 8)
+  assert.equal(step.after.eliminations[8] & removed, removed)
+  assert.equal(step.before.eliminations[8] & removed, 0)
+  assert.ok(step.before.pattern?.houses.some(house => 'box' in house && house.box === 6))
+  assert.equal(trace.rating.score.points, 320 * trace.steps.length)
+})
+
+test('Firework L-Wing records the conjugate link and ALS-Wing replays all its removals', async () => {
+  const { run } = engineRequests()
+  const { techniques, defaultOrder } = await run({ type: 'techniques' })
+  for (const [id, cost] of [['firework-l-wing', 320], ['firework-als-wing', 350]] as const) {
+    assert.equal(techniques.find(technique => technique.id === id)?.cost, cost)
+    assert.ok(!defaultOrder.includes(id))
+  }
+  const [l] = await run({ type: 'practice-examples', technique: 'firework-l-wing' })
+  assert.deepEqual(l.suggestion, { eliminate: { cell: 53, digit: 5 } })
+  assert.deepEqual(l.deduction.evidence, {
+    'firework-l-wing': { pivot: 48, digits: [4, 6], wings: [53, 3], linked_digit: 5,
+      link: { house: { row: 0 }, cells: [3, 8] } },
+  })
+  const [als] = await run({ type: 'practice-examples', technique: 'firework-als-wing' })
+  assert.deepEqual(als.deduction.evidence, {
+    'firework-als-wing': { pivots: [8, 72], digits: [2, 8], wings: [[[4], [44]], [[76], [36]]], bivalue: 40 },
+  })
+  const { givens: values, entries, eliminations } = als
+  const trace = await run({
+    type: 'logical-solve', values, entries, eliminations, techniqueOrder: ['firework-als-wing'], includeStepDetails: true,
+  })
+  assert.deepEqual(trace.steps, [als.deduction])
+  assert.equal(trace.rating.score.points, 350)
+  const step = replayStep(trace, 0)
+  assert.ok(step)
+  assert.equal(als.deduction.actions.length, 12)
+  for (const action of als.deduction.actions) {
+    assert.ok('eliminate' in action)
+    const { cell, digit } = action.eliminate
+    const mask = 1 << (digit - 1)
+    assert.equal(step.before.eliminations[cell] & mask, 0)
+    assert.equal(step.after.eliminations[cell] & mask, mask)
+  }
+  assert.ok(step.before.pattern?.houses.some(house => 'row' in house && house.row === 4))
+  assert.ok(step.before.pattern?.houses.some(house => 'column' in house && house.column === 4))
+})
+
+test('Tridagon chains expose guardian, almost locked set, and Firework links', async () => {
+  const { run } = engineRequests()
+  const technique = 'tridagon-aic'
+  const { techniques, defaultOrder } = await run({ type: 'techniques' })
+  assert.equal(techniques.find(item => item.id === technique)?.cost, 540)
+  assert.ok(!defaultOrder.includes(technique))
+  const [mission, grouped, combined] = await run({ type: 'practice-examples', technique })
+  assert.deepEqual(mission.suggestion, { eliminate: { cell: 42, digit: 9 } })
+  const scan = async (values: string) => {
+    const moves = await run({ type: 'deductions', values, techniqueOrder: [technique] })
+    return moves.flatMap(move => move.proofs.flatMap(({ evidence, pattern }) =>
+      'inference' in evidence ? [{ actions: move.actions, links: evidence.inference.links, pattern }] : []))
+  }
+  const missionProofs = await scan(mission.givens)
+  const companion = missionProofs.find(({ actions, links }) => links.length === 5 &&
+    links.some(link => 'almost-locked-set' in link.source) &&
+    actions.some(action => 'eliminate' in action && action.eliminate.cell === 30 && action.eliminate.digit === 7))
+  assert.ok(companion)
+  const guardian = companion.links.find(link => 'tridagon' in link.source)
+  assert.ok(guardian && 'tridagon' in guardian.source)
+  assert.deepEqual(guardian.source.tridagon, {
+    cells: [[0, 10, 20], [3, 13, 23], [27, 37, 47], [32, 40, 48]], digits: [1, 2, 3],
+  })
+  assert.ok(companion.pattern.cells.includes(20))
+  const groupedProofs = await scan(grouped.givens)
+  assert.ok(groupedProofs.some(({ links }) => links.some(link => 'tridagon' in link.source &&
+    ('group' in link.from || 'group' in link.to))))
+  const combinedProofs = await scan(combined.givens)
+  assert.ok(combinedProofs.some(({ actions, links }) => links.length === 3 &&
+    links.some(link => 'tridagon' in link.source) && links.some(link => 'firework' in link.source) &&
+    actions.some(action => 'eliminate' in action && action.eliminate.cell === 26 && action.eliminate.digit === 3)))
+  const trace = await run({
+    type: 'logical-solve', values: mission.givens, techniqueOrder: [technique, ...defaultOrder], includePositions: true,
+  })
+  assert.deepEqual(trace.rating.status, { solved: 'extreme' })
+  const first = replayStep(trace, 0)
+  assert.ok(first)
+  assert.equal(first.deduction.technique, technique)
+  for (const action of first.deduction.actions) {
+    assert.ok('eliminate' in action)
+    const { cell, digit } = action.eliminate
+    assert.equal(first.after.eliminations[cell] & (1 << (digit - 1)), 1 << (digit - 1))
+  }
+})
+
 test('opt-in rank solve records the rank removal, score, and replay positions', async () => {
   const { run } = engineRequests()
   const named = await run({ type: 'logical-solve', values: LOCKED_PAIR, techniqueOrder: ['pointing'], includePositions: true })

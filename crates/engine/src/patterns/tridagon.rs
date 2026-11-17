@@ -2,7 +2,7 @@ use super::{
     Candidate, ControlFlow, Deduction, DeductionActions, HintAction, HintEvidence, PEERS,
     PatternSearch, Technique, cell_bit, digits, forcing::GuardianSearch, report_eliminations,
 };
-use crate::{DIGITS, ForcingBranch};
+use crate::{DIGITS, ForcingBranch, LinkSource};
 
 // The three even permutations precede the three odd permutations.
 const PERMUTATIONS: [[usize; 3]; 6] = [
@@ -231,6 +231,60 @@ fn visit_patterns(
     ControlFlow::Continue(())
 }
 
+pub(super) fn visit_links(
+    search: &PatternSearch<'_>,
+    mut visit: impl FnMut([(u8, u128); 2], LinkSource),
+) {
+    // A two-node link can cover guardians of at most two digits, with one
+    // occurrence of each digit per cell in the twelve-cell pattern.
+    let _ = visit_patterns(search, 24, &mut |pattern| {
+        if pattern.guardians.len() < 2 {
+            return ControlFlow::Continue(());
+        }
+        let mut positions = [0; 9];
+        let mut digits = 0u16;
+        for guardian in pattern.guardians {
+            let index = usize::from(guardian.digit - 1);
+            positions[index] |= cell_bit(guardian.cell);
+            digits |= 1 << index;
+            if digits.count_ones() > 2 {
+                return ControlFlow::Continue(());
+            }
+        }
+        let source = LinkSource::Tridagon {
+            // Sudoku has 81 cells. Keep this geometry compact in graph edges.
+            cells: pattern.cells.map(|triple| triple.map(|cell| cell as u8)),
+            digits: pattern.digits,
+        };
+        let first = digits.trailing_zeros() as usize;
+        let last = digits.ilog2() as usize;
+        let digit = first as u8 + 1;
+        if first != last {
+            visit(
+                [(digit, positions[first]), (last as u8 + 1, positions[last])],
+                source,
+            );
+        } else {
+            let all = positions[first];
+            let anchored = cell_bit(all.trailing_zeros() as usize);
+            let optional = all ^ anchored;
+            // Enumerate each complementary partition once.
+            let mut subset = (optional - 1) & optional;
+            loop {
+                visit(
+                    [(digit, anchored | subset), (digit, optional ^ subset)],
+                    source,
+                );
+                if subset == 0 {
+                    break;
+                }
+                subset = (subset - 1) & optional;
+            }
+        }
+        ControlFlow::Continue(())
+    });
+}
+
 fn visit_direct(
     search: &PatternSearch<'_>,
     pattern: &Pattern,
@@ -267,4 +321,50 @@ fn visit_direct(
 fn conflicts(a: Candidate, b: Candidate) -> bool {
     (a.cell == b.cell && a.digit != b.digit)
         || (a.digit == b.digit && PEERS[a.cell] & cell_bit(b.cell) != 0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn guardian_links_cover_every_live_alternative() {
+        let position = Technique::TridagonAic
+            .practice_example()
+            .position()
+            .unwrap();
+        let board = position.values().unwrap();
+        let mut masks = crate::candidates(&board).unwrap();
+        let source = LinkSource::Tridagon {
+            cells: [[0, 10, 20], [3, 13, 23], [27, 37, 47], [32, 40, 48]],
+            digits: [1, 2, 3],
+        };
+        let links = |masks: &[u16; crate::CELLS]| {
+            let search = PatternSearch::new(&board, masks);
+            let mut links = Vec::new();
+            visit_links(&search, |endpoints, found| {
+                if found == source {
+                    links.push(endpoints);
+                }
+            });
+            links
+        };
+        assert_eq!(links(&masks), [[(7, cell_bit(32)), (9, cell_bit(40))]]);
+
+        // A third digit breaks that two-node link.
+        masks[0] |= 1 << (4 - 1);
+        assert!(links(&masks).is_empty());
+
+        // Three guardians of one digit can be grouped without losing an alternative.
+        masks[0] = (masks[0] & !(1 << (4 - 1))) | 1 << (7 - 1);
+        masks[3] |= 1 << (7 - 1);
+        masks[40] &= !(1 << (9 - 1));
+        let links = links(&masks);
+        assert_eq!(links.len(), 3);
+        for [(first_digit, first), (second_digit, second)] in links {
+            assert_eq!([first_digit, second_digit], [7, 7]);
+            assert_eq!(first & second, 0);
+            assert_eq!(first | second, cell_bit(0) | cell_bit(3) | cell_bit(32));
+        }
+    }
 }

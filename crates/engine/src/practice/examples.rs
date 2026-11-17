@@ -5,6 +5,141 @@ use super::{PracticeExample, Technique, elimination_masks, place, remove};
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
+        Technique::TridagonAic => {
+            const {
+                [
+                    // Philip Newman's depth-three collection, line 621.
+                    PracticeExample {
+                        givens: "103006000057109030690730050000000000015007000906301007060000013000903800000605402",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[remove(31, 2)],
+                    },
+                    // Depth-three line 1863. This three-link proof also uses a Firework.
+                    PracticeExample {
+                        givens: "103056700057080000680007500068013075501670000000805061000000100000001042016000350",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[remove(26, 3)],
+                    },
+                ]
+            }
+        }
+        Technique::FireworkLWing => {
+            const {
+                [
+                    // Carved from the solution for seed 9. The link uses the column wing.
+                    PracticeExample {
+                        givens: "060000085900600100301000700007006000120504000045000200008203000500900010000400530",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[remove(53, 7)],
+                    },
+                    // Carved from the solution for seed 3. The link uses the row wing.
+                    PracticeExample {
+                        givens: "000080000602100000075049000400000000000010090938004160003800000100620400060400700",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[remove(3, 2)],
+                    },
+                ]
+            }
+        }
+        Technique::FireworkAlsWing => {
+            const {
+                [
+                    // Carved from the solution for seed 294. The intersections share a band.
+                    PracticeExample {
+                        givens: "854306000000801542000050060500030001008600200260100003000200970400000030600040000",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[
+                            remove(9, 3),
+                            remove(37, 7),
+                            remove(37, 9),
+                            remove(41, 7),
+                            remove(41, 9),
+                            remove(43, 9),
+                            remove(49, 7),
+                            remove(49, 9),
+                            remove(67, 7),
+                            remove(67, 9),
+                        ],
+                    },
+                    // Carved from the solution for seed 6728. The intersections share a stack.
+                    PracticeExample {
+                        givens: "020607100000080670050010300500729801000000000004030702009201003000000006400060007",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[
+                            remove(8, 8),
+                            remove(8, 9),
+                            remove(39, 4),
+                            remove(39, 5),
+                            remove(41, 4),
+                            remove(41, 5),
+                            remove(43, 4),
+                            remove(43, 5),
+                            remove(67, 4),
+                            remove(67, 5),
+                        ],
+                    },
+                ]
+            }
+        }
+        Technique::FireworkWWing => {
+            const {
+                [
+                    // Carved from the solution for seed 42. The row wing uses two cells.
+                    PracticeExample {
+                        givens: "002000700630000000500109000104080005780000040200000080010040002308010070000820600",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[remove(8, 4)],
+                    },
+                    // Carved from the solution for seed 27. Both digits are removed.
+                    PracticeExample {
+                        givens: "007010300100060000800500000615002870700000003309700006000038500050907000000651230",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[remove(8, 4), remove(8, 9)],
+                    },
+                ]
+            }
+        }
+        Technique::FireworkAic => {
+            const {
+                [
+                    // A linear deduction on Neler12345's published Fireworks Ring grid.
+                    // https://www.reddit.com/r/sudoku/comments/1lyix43/sudoku_puzzle_challenges_thread/
+                    PracticeExample {
+                        givens: "008000200000407000900050001070305060003000100060701050200030008000504000001000900",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[remove(40, 2)],
+                    },
+                    // Monhard line 2201 after singles, locked candidates, and subsets.
+                    // https://github.com/denis-berthier/Sudoku-classif/blob/main/Monhard-until-2023-08-15-TE23/puzzles.txt#L2201
+                    PracticeExample {
+                        givens: "980760500740009080000408000320000000100000050000506000007890604000605870000040090",
+                        entries: Some(
+                            "000000040000050000000000000005000000000000000000000000000000000000000000000007005",
+                        ),
+                        eliminations: Some(&elimination_masks(&[
+                            (24, 1),
+                            (24, 2),
+                            (24, 3),
+                            (26, 1),
+                            (26, 2),
+                            (26, 3),
+                            (26, 6),
+                            (44, 6),
+                        ])),
+                        expected_actions: &[remove(74, 1)],
+                    },
+                ]
+            }
+        }
         Technique::Fireworks => {
             const {
                 [

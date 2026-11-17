@@ -239,7 +239,14 @@ type ColoringReason =
   | { 'emptied-cell': number }
   | { 'emptied-house': { house: House; digit: number } }
 export type InferenceNode = { candidate: Candidate } | { group: { digit: number; cells: number[] } }
-type InferenceLink = Omit<CandidateLink, 'from' | 'to'> & { from: InferenceNode; to: InferenceNode }
+type InferenceLink = {
+  from: InferenceNode
+  to: InferenceNode
+  source: CandidateLink['source'] | { firework: number } | { peers: Record<string, never> }
+    | { tridagon: { cells: [number, number, number][]; digits: [number, number, number] } }
+    | { 'almost-locked-set': AlmostLockedSet }
+  strength: CandidateLink['strength']
+}
 type RectangleSupport =
   | { 'extra-candidates': Candidate[] }
   | { subset: { houses: House[]; cells: number[]; digits: number[] } }
@@ -301,6 +308,9 @@ type Evidence =
   | { 'bug-plus-one': { cell: number; candidates: [number, number, number]; houses: [House, House, House] } }
   | { 'aligned-exclusion': { cells: number[]; cases: { digits: number[]; reason: { 'repeated-digit': [number, number] } | { 'empty-cell': number } }[] } }
   | { firework: { wings: [number, number]; pivots: { cell: number; digits: number[] }[] } }
+  | { 'firework-w-wing': { pivot: number; digits: [number, number]; wings: [number[], number[]]; bivalue: [number, number] } }
+  | { 'firework-l-wing': { pivot: number; digits: [number, number]; wings: [number, number]; link: ConjugatePair; linked_digit: number } }
+  | { 'firework-als-wing': { pivots: [number, number]; digits: [number, number]; wings: [[number[], number[]], [number[], number[]]]; bivalue: number } }
   | { tridagon: { cells: [number, number, number][]; digits: [number, number, number]; guardians: Candidate[]; branches: ForcingBranch[] } }
   | { forcing: { scope: ForcingScope | null; branches: ForcingBranch[] } }
   | { 'als-xz': { sets: [AlmostLockedSet, AlmostLockedSet]; links: number[] } }

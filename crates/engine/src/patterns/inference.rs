@@ -11,28 +11,38 @@ enum Shape {
     Continuous,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Scope {
+    Plain,
+    Grouped,
+    Firework,
+    Tridagon,
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct Rule {
     technique: Technique,
     shape: Shape,
-    grouped: bool,
+    scope: Scope,
 }
 
 impl Rule {
     pub fn for_technique(technique: Technique) -> Option<Self> {
-        let (shape, grouped) = match technique {
-            Technique::Aic => (Shape::Open, false),
-            Technique::DiscontinuousNiceLoop => (Shape::Discontinuous, false),
-            Technique::ContinuousNiceLoop => (Shape::Continuous, false),
-            Technique::GroupedAic => (Shape::Open, true),
-            Technique::GroupedDiscontinuousNiceLoop => (Shape::Discontinuous, true),
-            Technique::GroupedContinuousNiceLoop => (Shape::Continuous, true),
+        let (shape, scope) = match technique {
+            Technique::Aic => (Shape::Open, Scope::Plain),
+            Technique::DiscontinuousNiceLoop => (Shape::Discontinuous, Scope::Plain),
+            Technique::ContinuousNiceLoop => (Shape::Continuous, Scope::Plain),
+            Technique::GroupedAic => (Shape::Open, Scope::Grouped),
+            Technique::GroupedDiscontinuousNiceLoop => (Shape::Discontinuous, Scope::Grouped),
+            Technique::GroupedContinuousNiceLoop => (Shape::Continuous, Scope::Grouped),
+            Technique::FireworkAic => (Shape::Open, Scope::Firework),
+            Technique::TridagonAic => (Shape::Open, Scope::Tridagon),
             _ => return None,
         };
         Some(Self {
             technique,
             shape,
-            grouped,
+            scope,
         })
     }
 
@@ -41,16 +51,21 @@ impl Rule {
         graph: &InferenceGraph,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
+        if self.scope == Scope::Firework && !graph.has_strong_link(Edge::is_firework) {
+            return ControlFlow::Continue(());
+        }
         let mut paths = Paths::new(graph, self);
-        let start_count = if self.grouped && self.shape != Shape::Discontinuous {
+        let start_count = if self.scope != Scope::Plain && self.shape != Shape::Discontinuous {
             graph.nodes.len()
         } else {
             graph.singles
         };
         for node in 0..start_count {
-            paths.walk(State::new(node, false, node >= graph.singles), visit)?;
+            let qualifies = self.scope == Scope::Plain
+                || (self.scope == Scope::Grouped && node >= graph.singles);
+            paths.walk(State::new(node, false, qualifies), visit)?;
             if self.shape == Shape::Discontinuous {
-                paths.walk(State::new(node, true, false), visit)?;
+                paths.walk(State::new(node, true, qualifies), visit)?;
             }
         }
         ControlFlow::Continue(())
@@ -61,8 +76,8 @@ impl Rule {
 struct State(usize);
 
 impl State {
-    fn new(node: usize, truth: bool, uses_group: bool) -> Self {
-        Self(node * 4 + usize::from(truth) * 2 + usize::from(uses_group))
+    fn new(node: usize, truth: bool, qualifies: bool) -> Self {
+        Self(node * 4 + usize::from(truth) * 2 + usize::from(qualifies))
     }
 
     fn node(self) -> usize {
@@ -73,7 +88,7 @@ impl State {
         self.0 & 2 != 0
     }
 
-    fn uses_group(self) -> bool {
+    fn qualifies(self) -> bool {
         self.0 & 1 != 0
     }
 
@@ -103,6 +118,7 @@ struct Paths<'a> {
     rule: Rule,
     parents: Vec<Option<PathEdge>>,
     queue: Vec<State>,
+    before_guardian: Option<Vec<bool>>,
 }
 
 impl<'a> Paths<'a> {
@@ -112,6 +128,7 @@ impl<'a> Paths<'a> {
             rule,
             parents: vec![None; graph.nodes.len() * 4],
             queue: Vec::new(),
+            before_guardian: (rule.scope == Scope::Tridagon).then(|| before_guardian(graph)),
         }
     }
 
@@ -120,7 +137,7 @@ impl<'a> Paths<'a> {
         start: State,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
-        if !start.truth() && !self.has_strong_neighbor(start.node()) {
+        if !self.can_qualify(start) || (!start.truth() && !self.has_strong_neighbor(start.node())) {
             return ControlFlow::Continue(());
         }
         for state in self.queue.drain(..) {
@@ -131,7 +148,7 @@ impl<'a> Paths<'a> {
         while next < self.queue.len() {
             let current = self.queue[next];
             next += 1;
-            if current.uses_group() == self.rule.grouped {
+            if current.qualifies() {
                 self.deduction(start, current, visit)?;
             }
             let neighbors = self
@@ -139,20 +156,27 @@ impl<'a> Paths<'a> {
                 .neighbors(current.node(), current.next_strength());
             for &edge in neighbors {
                 let next_is_group = edge.to >= self.graph.singles;
-                if next_is_group && !self.rule.grouped {
+                if next_is_group && self.rule.scope == Scope::Plain {
                     continue;
                 }
-                let target = State::new(
-                    edge.to,
-                    !current.truth(),
-                    current.uses_group() || next_is_group,
-                );
+                let qualifies = current.qualifies()
+                    || match self.rule.scope {
+                        Scope::Plain => false,
+                        Scope::Grouped => next_is_group,
+                        Scope::Firework => edge.is_firework(),
+                        Scope::Tridagon => edge.is_tridagon(),
+                    };
+                let target = State::new(edge.to, !current.truth(), qualifies);
                 if target != start
                     && self.parents[target.0].is_none()
+                    && self.can_qualify(target)
                     && (target.truth()
                         || (self.rule.shape == Shape::Discontinuous
                             && target.node() == start.node())
                         || self.has_strong_neighbor(target.node()))
+                    && !(qualifies
+                        && matches!(self.rule.scope, Scope::Firework | Scope::Tridagon)
+                        && self.repeats_literal(start, current, target))
                 {
                     self.parents[target.0] = Some(PathEdge {
                         from: current,
@@ -165,11 +189,37 @@ impl<'a> Paths<'a> {
         ControlFlow::Continue(())
     }
 
+    fn can_qualify(&self, state: State) -> bool {
+        state.qualifies()
+            || self
+                .before_guardian
+                .as_ref()
+                .is_none_or(|reaches| reaches[state.0 / 2])
+    }
+
+    fn repeats_literal(&self, start: State, mut current: State, target: State) -> bool {
+        let unqualified = State::new(target.node(), target.truth(), false);
+        if unqualified == start {
+            return true;
+        }
+        // A path that returns to the same literal can discard the detour.
+        // Keep the slot available for a chain that needs the special link.
+        if self.parents[unqualified.0].is_some() {
+            while let Some(parent) = self.parents[current.0] {
+                if current == unqualified {
+                    return true;
+                }
+                current = parent.from;
+            }
+        }
+        false
+    }
+
     fn has_strong_neighbor(&self, node: usize) -> bool {
         self.graph
             .neighbors(node, LinkStrength::Strong)
             .first()
-            .is_some_and(|edge| self.rule.grouped || edge.to < self.graph.singles)
+            .is_some_and(|edge| self.rule.scope != Scope::Plain || edge.to < self.graph.singles)
     }
 
     fn deduction(
@@ -295,6 +345,41 @@ impl<'a> Paths<'a> {
             actions,
         })
     }
+}
+
+fn before_guardian(graph: &InferenceGraph) -> Vec<bool> {
+    let mut reaches = vec![false; graph.nodes.len() * 2];
+    let mut queue = Vec::new();
+    for node in 0..graph.nodes.len() {
+        if graph
+            .neighbors(node, LinkStrength::Strong)
+            .iter()
+            .any(|edge| edge.is_tridagon())
+        {
+            reaches[node * 2] = true;
+            queue.push(node * 2);
+        }
+    }
+    let mut next = 0;
+    while let Some(&state) = queue.get(next) {
+        next += 1;
+        let node = state / 2;
+        let truth = state & 1;
+        // Reverse the implications to find starts that can reach a guardian.
+        let strength = if truth == 1 {
+            LinkStrength::Strong
+        } else {
+            LinkStrength::Weak
+        };
+        for edge in graph.neighbors(node, strength) {
+            let prior = edge.to * 2 + (truth ^ 1);
+            if !reaches[prior] {
+                reaches[prior] = true;
+                queue.push(prior);
+            }
+        }
+    }
+    reaches
 }
 
 fn see_each_other(left: Candidate, right: Candidate) -> bool {

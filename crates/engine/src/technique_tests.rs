@@ -126,14 +126,36 @@ fn transpose_literal(literal: ForcingLiteral) -> ForcingLiteral {
     }
 }
 
+fn transpose_link_source(source: LinkSource) -> LinkSource {
+    match source {
+        LinkSource::Cell(cell) => LinkSource::Cell(transpose(cell)),
+        LinkSource::House(house) => LinkSource::House(transpose_house(house)),
+        LinkSource::Firework(cell) => LinkSource::Firework(transpose(cell)),
+        LinkSource::Tridagon { cells, digits } => {
+            let mut cells = cells.map(|triple| {
+                let mut result = triple.map(|cell| transpose(usize::from(cell)) as u8);
+                result.sort_unstable();
+                result
+            });
+            cells.sort_unstable_by_key(|triple| crate::coordinates(usize::from(triple[0])).2);
+            LinkSource::Tridagon { cells, digits }
+        }
+        LinkSource::AlmostLockedSet(set) => {
+            let digits = set.digits().fold(0, |bits, digit| bits | digit_bit(digit));
+            LinkSource::AlmostLockedSet(crate::AlmostLockedSetLink::new(
+                set.cells().map(transpose),
+                digits,
+            ))
+        }
+        LinkSource::Peers {} => source,
+    }
+}
+
 fn transpose_link(link: CandidateLink) -> CandidateLink {
     CandidateLink {
         from: transpose_candidate(link.from),
         to: transpose_candidate(link.to),
-        source: match link.source {
-            LinkSource::Cell(cell) => LinkSource::Cell(transpose(cell)),
-            LinkSource::House(house) => LinkSource::House(transpose_house(house)),
-        },
+        source: transpose_link_source(link.source),
         strength: link.strength,
     }
 }
@@ -417,10 +439,7 @@ fn transpose_hint(hint: &Hint) -> Hint {
                 .map(|link| InferenceLink {
                     from: transpose_node(&link.from),
                     to: transpose_node(&link.to),
-                    source: match link.source {
-                        LinkSource::Cell(cell) => LinkSource::Cell(transpose(cell)),
-                        LinkSource::House(house) => LinkSource::House(transpose_house(house)),
-                    },
+                    source: transpose_link_source(link.source),
                     strength: link.strength,
                 })
                 .collect(),
@@ -531,6 +550,51 @@ fn transpose_hint(hint: &Hint) -> Hint {
                 wings.swap(0, 1);
             }
             HintEvidence::Firework { wings, pivots }
+        }
+        HintEvidence::FireworkWWing {
+            pivot,
+            digits,
+            wings: [row, column],
+            bivalue: [row_end, column_end],
+        } => HintEvidence::FireworkWWing {
+            pivot: transpose(*pivot),
+            digits: *digits,
+            wings: [transpose_cells(column), transpose_cells(row)],
+            bivalue: [transpose(*column_end), transpose(*row_end)],
+        },
+        HintEvidence::FireworkLWing {
+            pivot,
+            digits,
+            wings: [row, column],
+            link,
+            linked_digit,
+        } => HintEvidence::FireworkLWing {
+            pivot: transpose(*pivot),
+            digits: *digits,
+            wings: [transpose(*column), transpose(*row)],
+            link: transpose_pair(*link),
+            linked_digit: *linked_digit,
+        },
+        HintEvidence::FireworkAlsWing {
+            pivots,
+            digits,
+            wings,
+            bivalue,
+        } => {
+            let mut pivots = pivots.map(transpose);
+            let mut wings = wings
+                .each_ref()
+                .map(|[row, column]| [transpose_cells(column), transpose_cells(row)]);
+            if pivots[0] > pivots[1] {
+                pivots.swap(0, 1);
+                wings.swap(0, 1);
+            }
+            HintEvidence::FireworkAlsWing {
+                pivots,
+                digits: *digits,
+                wings,
+                bivalue: transpose(*bivalue),
+            }
         }
         HintEvidence::Tridagon {
             cells,

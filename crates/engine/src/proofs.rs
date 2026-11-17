@@ -317,6 +317,20 @@ impl<'a> Pattern<'a> {
             HintEvidence::Inference { links } => {
                 for link in links {
                     self.source(link.source);
+                    match (link.source, self.masks) {
+                        (LinkSource::Peers {}, _) => {
+                            for &first in link.from.cells() {
+                                for &second in link.to.cells() {
+                                    self.shared_houses(first, second);
+                                }
+                            }
+                        }
+                        (LinkSource::Firework(pivot), Some(masks)) => {
+                            let bit = digit_bit(link.from.digit());
+                            self.firework_arms(pivot, bit, masks);
+                        }
+                        _ => {}
+                    }
                     self.proposition(&link.from);
                     self.proposition(&link.to);
                 }
@@ -385,16 +399,64 @@ impl<'a> Pattern<'a> {
             }
             HintEvidence::Firework { wings, pivots } => {
                 for pivot in pivots {
-                    let [row, column, block] = House::at(pivot.cell);
-                    self.houses.extend([row, column, block]);
                     let digits = mask(pivot.digits.iter().copied());
-                    self.mark([pivot.cell, wings[0], wings[1]], digits);
-                    for cell in block.cells() {
-                        if cell != pivot.cell
-                            && (cell / 9 == pivot.cell / 9 || cell % 9 == pivot.cell % 9)
-                            && self.masks.is_some_and(|masks| masks[cell] & digits != 0)
-                        {
-                            self.mark([cell], digits);
+                    self.firework(pivot.cell, digits);
+                    self.mark(*wings, digits);
+                }
+            }
+            HintEvidence::FireworkWWing {
+                pivot,
+                digits,
+                wings,
+                bivalue,
+            } => {
+                let digits = mask(*digits);
+                self.firework(*pivot, digits);
+                self.mark(wings.iter().flatten().chain(bivalue).copied(), digits);
+                for (wing, attached) in wings.iter().zip(bivalue) {
+                    self.shared_houses(result.cell, *attached);
+                    for &cell in wing {
+                        self.shared_houses(cell, *attached);
+                        self.shared_houses(result.cell, cell);
+                    }
+                }
+            }
+            HintEvidence::FireworkLWing {
+                pivot,
+                digits,
+                wings,
+                link,
+                linked_digit,
+            } => {
+                let digits = mask(*digits);
+                self.firework(*pivot, digits);
+                self.mark(*wings, digits | digit_bit(*linked_digit));
+                self.houses.insert(link.house);
+                self.mark(link.cells, digit_bit(*linked_digit));
+                for cell in link.cells {
+                    self.shared_houses(cell, result.cell);
+                }
+            }
+            HintEvidence::FireworkAlsWing {
+                pivots,
+                digits,
+                wings,
+                bivalue,
+            } => {
+                let digits = mask(*digits);
+                self.mark([*bivalue], digits);
+                for (pivot, wing) in pivots.iter().zip(wings) {
+                    self.firework(*pivot, digits);
+                    self.mark(wing.iter().flatten().copied(), digits);
+                    for &cell in wing.iter().flatten() {
+                        self.shared_houses(cell, *bivalue);
+                        self.shared_houses(cell, result.cell);
+                    }
+                }
+                for &first in wings[0].iter().flatten() {
+                    for &second in wings[1].iter().flatten() {
+                        if first != second {
+                            self.shared_houses(first, second);
                         }
                     }
                 }
@@ -555,12 +617,52 @@ impl<'a> Pattern<'a> {
         }
     }
 
+    fn firework(&mut self, pivot: usize, digits: u16) {
+        self.houses.extend(House::at(pivot));
+        self.mark([pivot], digits);
+        if let Some(masks) = self.masks {
+            self.firework_arms(pivot, digits, masks);
+        }
+    }
+
+    fn firework_arms(&mut self, pivot: usize, digits: u16, masks: &[u16; CELLS]) {
+        let [row, column, block] = House::at(pivot);
+        self.mark(
+            block.cells().into_iter().filter(|&cell| {
+                let houses = House::at(cell);
+                masks[cell] & digits != 0 && (houses[0] == row || houses[1] == column)
+            }),
+            digits,
+        );
+    }
+
     fn source(&mut self, source: LinkSource) {
         match source {
             LinkSource::Cell(cell) => self.mark([cell], 0),
             LinkSource::House(house) => {
                 self.houses.insert(house);
             }
+            LinkSource::Firework(pivot) => {
+                self.houses.extend(House::at(pivot));
+                self.mark([pivot], 0);
+            }
+            LinkSource::Tridagon { cells, digits } => {
+                self.mark(cells.into_iter().flatten().map(usize::from), mask(digits));
+                for triple in cells {
+                    self.houses.insert(House::at(usize::from(triple[0]))[2]);
+                }
+            }
+            LinkSource::AlmostLockedSet(set) => {
+                self.mark(set.cells(), mask(set.digits()));
+                if let Some(first) = set.cells().next() {
+                    self.houses.extend(
+                        House::at(first).into_iter().filter(|house| {
+                            set.cells().all(|cell| House::at(cell).contains(house))
+                        }),
+                    );
+                }
+            }
+            LinkSource::Peers {} => {}
         }
     }
 
@@ -633,12 +735,7 @@ impl<'a> Pattern<'a> {
     }
 
     fn proposition(&mut self, node: &InferenceNode) {
-        match node {
-            InferenceNode::Candidate(candidate) => self.candidate(*candidate),
-            InferenceNode::Group { digit, cells } => {
-                self.mark(cells.iter().copied(), digit_bit(*digit));
-            }
-        }
+        self.mark(node.cells().iter().copied(), digit_bit(node.digit()));
     }
 
     fn mark(&mut self, cells: impl IntoIterator<Item = usize>, mask: u16) {

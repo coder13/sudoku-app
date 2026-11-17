@@ -22,15 +22,15 @@ pub use generation::{
     start_targeted,
 };
 pub use hints::{
-    AlignedExclusionCase, AlignedExclusionReason, AlmostLockedSet, BlossomPetal, Candidate,
-    CandidateLink, ColoringReason, ConjugatePair, DEFAULT_HINT_LIMIT, DeductionMatch,
-    DeductionProof, DoubleExocetProof, ExocetAssignment, ExocetComponent, ExocetCover,
-    ExocetTarget, FireworkPivot, ForcingBranch, ForcingCase, ForcingConflict, ForcingInference,
-    ForcingLiteral, ForcingScope, GroupedDoubleExocetProof, GroupedExocetComponent, Hint,
-    HintAction, HintChoices, HintError, HintEvidence, HintStages, House, InferenceLink,
-    InferenceNode, KrakenLink, KrakenLinkReason, LinkSource, LinkStrength, ProofPattern,
-    RectangleSupport, SectorLink, SectorSubset, SkLoopProof, UniquenessSupport, deductions,
-    deductions_at, hint_choices, hints_at, next_deduction, next_deduction_at,
+    AlignedExclusionCase, AlignedExclusionReason, AlmostLockedSet, AlmostLockedSetLink,
+    BlossomPetal, Candidate, CandidateLink, ColoringReason, ConjugatePair, DEFAULT_HINT_LIMIT,
+    DeductionMatch, DeductionProof, DoubleExocetProof, ExocetAssignment, ExocetComponent,
+    ExocetCover, ExocetTarget, FireworkPivot, ForcingBranch, ForcingCase, ForcingConflict,
+    ForcingInference, ForcingLiteral, ForcingScope, GroupedDoubleExocetProof,
+    GroupedExocetComponent, Hint, HintAction, HintChoices, HintError, HintEvidence, HintStages,
+    House, InferenceLink, InferenceNode, KrakenLink, KrakenLinkReason, LinkSource, LinkStrength,
+    ProofPattern, RectangleSupport, SectorLink, SectorSubset, SkLoopProof, UniquenessSupport,
+    deductions, deductions_at, hint_choices, hints_at, next_deduction, next_deduction_at,
     next_enabled_deduction, ranked_hints, technique_deductions, technique_deductions_at,
 };
 pub use logical::{

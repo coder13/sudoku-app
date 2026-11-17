@@ -535,6 +535,59 @@ const FIREWORKS: PracticeExample = PracticeExample {
     ],
 };
 
+// Taupier's published Firework W-Wing for 9 in r1c9.
+// https://www.taupierbw.be/SudokuCoach/SC_Firework.shtml
+const FIREWORK_W_WING: PracticeExample = PracticeExample {
+    givens: "085700600300040010200000008504800000600020050090001003000009004000100007000037280",
+    entries: Some(
+        "000000000000008000000000000000000000000000000000000000000000000000000000000000000",
+    ),
+    eliminations: None,
+    expected_actions: &[remove(8, 9)],
+};
+
+// Taupier's L-Wing and ALS-Wing diagrams.
+// https://www.taupierbw.be/SudokuCoach/SC_Firework.shtml
+const FIREWORK_L_WING: PracticeExample = PracticeExample {
+    givens: "900037080070100009500200000060005008400000007000000230705000000020006090609040501",
+    entries: None,
+    eliminations: None,
+    expected_actions: &[remove(53, 5)],
+};
+
+const FIREWORK_ALS_WING: PracticeExample = PracticeExample {
+    givens: "000601000002030700080000040100004005070100090300960001060000080009050200000706000",
+    entries: Some(
+        "000000000000000000000000000090000000000000000000000000000000000000000000000000000",
+    ),
+    eliminations: None,
+    expected_actions: &[
+        remove(8, 3),
+        remove(8, 9),
+        remove(22, 2),
+        remove(31, 2),
+        remove(31, 8),
+        remove(38, 8),
+        remove(41, 2),
+        remove(41, 8),
+        remove(42, 8),
+        remove(58, 2),
+        remove(72, 4),
+        remove(72, 5),
+    ],
+};
+
+// The Firework chain published by Pelagic Amber for 5 in r5c9.
+// https://www.reddit.com/r/sudoku/comments/1dgrgfb/til_fireworkstype_links/
+const FIREWORK_AIC: PracticeExample = PracticeExample {
+    givens: "000016000010000008009080020200004900037000060080300200500002000090100072000760030",
+    entries: Some(
+        "020000000005000600460500001051670083900000000604000007070000006006000000142000000",
+    ),
+    eliminations: Some(&elimination_masks(&[(6, 4), (6, 5)])),
+    expected_actions: &[remove(44, 5)],
+};
+
 // Published Sudoku Explainer puzzles, advanced to a position with an aligned exclusion.
 const ALIGNED_PAIR_EXCLUSION: PracticeExample = PracticeExample {
     givens: "009040300670030094000806000400050002050903010090000060000020000500401009030000020",
@@ -588,6 +641,15 @@ const TRIDAGON: PracticeExample = PracticeExample {
         (65, 8),
     ])),
     expected_actions: &[place(47, 6)],
+};
+
+// Mission Impossible by Coloin.
+// https://www.reddit.com/r/sudoku/comments/1gxr5ml/trivalue_oddagon/
+const TRIDAGON_AIC: PracticeExample = PracticeExample {
+    givens: "079048060604509000850670040046080000508000006790065004960000470000000002000050091",
+    entries: None,
+    eliminations: None,
+    expected_actions: &[remove(42, 9)],
 };
 
 // Philip Newman's depth-three collection, line 75697.
@@ -1178,9 +1240,14 @@ impl Technique {
             Self::BugPlusOne => return BUG_PLUS_ONE,
             Self::WxyzWing => return WXYZ_WING,
             Self::Fireworks => return FIREWORKS,
+            Self::FireworkWWing => return FIREWORK_W_WING,
+            Self::FireworkLWing => return FIREWORK_L_WING,
+            Self::FireworkAlsWing => return FIREWORK_ALS_WING,
+            Self::FireworkAic => return FIREWORK_AIC,
             Self::AlignedPairExclusion => return ALIGNED_PAIR_EXCLUSION,
             Self::AlignedTripletExclusion => return ALIGNED_TRIPLET_EXCLUSION,
             Self::Tridagon => return TRIDAGON,
+            Self::TridagonAic => return TRIDAGON_AIC,
             Self::TridagonForcingNet => return TRIDAGON_FORCING_NET,
             Self::ForcingChain => return FORCING_CHAIN,
             Self::ForcingNet => return FORCING_NET,
@@ -1255,9 +1322,19 @@ mod tests {
         ]
         .map(|technique| (technique, technique.practice_example()));
         let grouped = (Technique::SeniorExocet, GROUPED_SENIOR_EXOCET);
-        let fireworks = Technique::Fireworks
-            .practice_examples()
-            .map(|example| (Technique::Fireworks, example));
+        let fireworks = [
+            Technique::Fireworks,
+            Technique::FireworkWWing,
+            Technique::FireworkLWing,
+            Technique::FireworkAlsWing,
+            Technique::FireworkAic,
+        ]
+        .into_iter()
+        .flat_map(|technique| {
+            technique
+                .practice_examples()
+                .map(|example| (technique, example))
+        });
         for (technique, example) in primary.into_iter().chain([grouped]).chain(fireworks) {
             let original = example.position().unwrap();
             let position = PositionSnapshot {
@@ -2079,20 +2156,188 @@ mod tests {
         }
     }
 
+    #[test]
+    fn firework_inference_replays_crossing_lines_and_extends_grouped_chains() {
+        let [published, ring, wide] = Technique::FireworkAic.practice_examples();
+        for (example, group_size) in [(published, 2), (ring, 2), (wide, 5)] {
+            let position = example.position().unwrap();
+            let mut masks = candidates(&position.values().unwrap()).unwrap();
+            for (mask, removed) in masks.iter_mut().zip(position.eliminations) {
+                *mask &= !removed;
+            }
+            let hints = technique_deductions_at(&position, Technique::FireworkAic).unwrap();
+            let mut covers_expected_link = false;
+            for hint in hints {
+                let HintEvidence::Inference { links } = hint.evidence else {
+                    panic!("Firework chain must record its links");
+                };
+                let first = &links[0];
+                let last = links.last().unwrap();
+                assert_eq!(first.strength, LinkStrength::Strong);
+                assert_eq!(last.strength, LinkStrength::Strong);
+                assert!(links.len() >= 3);
+                assert_ne!(first.from, last.to);
+                let mut literals = vec![(&first.from, false)];
+                for pair in links.windows(2) {
+                    assert_eq!(pair[0].to, pair[1].from);
+                    assert_ne!(pair[0].strength, pair[1].strength);
+                }
+                for link in &links {
+                    assert_link_is_valid(link, &masks);
+                    let literal = (&link.to, link.strength == LinkStrength::Strong);
+                    assert!(!literals.contains(&literal), "chain repeats a literal");
+                    literals.push(literal);
+                }
+                let max_group = links
+                    .iter()
+                    .filter(|link| matches!(link.source, LinkSource::Firework(_)))
+                    .map(|link| link.from.cells().len().max(link.to.cells().len()))
+                    .max()
+                    .expect("chain uses a Firework link");
+                covers_expected_link |=
+                    max_group >= group_size && hint.actions == example.expected_actions;
+                for action in hint.actions {
+                    let HintAction::Eliminate(target) = action else {
+                        panic!("open chains remove candidates");
+                    };
+                    assert!(
+                        inference_members(&first.from)
+                            .chain(inference_members(&last.to))
+                            .all(|end| candidates_conflict(target, end))
+                    );
+                }
+            }
+            assert!(covers_expected_link);
+            for technique in [Technique::Aic, Technique::GroupedAic] {
+                assert!(
+                    technique_deductions_at(&position, technique)
+                        .unwrap()
+                        .iter()
+                        .all(|hint| hint
+                            .actions
+                            .iter()
+                            .all(|a| !example.expected_actions.contains(a)))
+                );
+            }
+        }
+    }
+
+    fn inference_members(node: &InferenceNode) -> impl Iterator<Item = Candidate> + '_ {
+        let digit = node.digit();
+        node.cells()
+            .iter()
+            .map(move |&cell| Candidate { cell, digit })
+    }
+
+    #[test]
+    fn tridagon_chains_replay_guardian_groups_and_combined_links() {
+        let [mission, grouped, firework] = Technique::TridagonAic.practice_examples();
+        for (number, example) in [mission, grouped, firework].into_iter().enumerate() {
+            let position = example.position().unwrap();
+            let mut masks = candidates(&position.values().unwrap()).unwrap();
+            for (mask, removed) in masks.iter_mut().zip(position.eliminations) {
+                *mask &= !removed;
+            }
+            let hints = technique_deductions_at(&position, Technique::TridagonAic).unwrap();
+            let mut matching = false;
+            let mut companion = None;
+            for hint in hints {
+                let HintEvidence::Inference { links } = hint.evidence else {
+                    panic!("expected an inference chain");
+                };
+                assert!(links.len() >= 3);
+                let first = &links[0];
+                let last = links.last().unwrap();
+                assert_eq!(first.strength, LinkStrength::Strong);
+                assert_eq!(last.strength, LinkStrength::Strong);
+                for pair in links.windows(2) {
+                    assert_eq!(pair[0].to, pair[1].from);
+                    assert_ne!(pair[0].strength, pair[1].strength);
+                }
+                for link in &links {
+                    assert_link_is_valid(link, &masks);
+                }
+                let uses_guardian =
+                    |link: &InferenceLink| matches!(link.source, LinkSource::Tridagon { .. });
+                assert!(links.iter().any(uses_guardian));
+                if hint.actions == example.expected_actions {
+                    matching |= match number {
+                        0 => links.len() == 3,
+                        1 => links
+                            .iter()
+                            .filter(|link| uses_guardian(link))
+                            .any(|link| link.from.cells().len() + link.to.cells().len() > 2),
+                        _ => {
+                            links.len() == 3
+                                && links
+                                    .iter()
+                                    .any(|link| matches!(link.source, LinkSource::Firework(_)))
+                        }
+                    };
+                }
+                if hint.actions.contains(&remove(30, 7)) {
+                    companion = Some(companion.unwrap_or(usize::MAX).min(links.len()));
+                }
+                for action in hint.actions {
+                    assert!(matches!(action, HintAction::Eliminate(_)));
+                    assert!(
+                        inference_members(&first.from)
+                            .chain(inference_members(&last.to))
+                            .all(|end| candidates_conflict(action.candidate(), end))
+                    );
+                }
+            }
+            assert!(
+                matching,
+                "missing expected proof in practice exercise {number}"
+            );
+            if number == 0 {
+                assert_eq!(companion, Some(5));
+                let forcing_steps =
+                    technique_deductions_at(&position, Technique::TridagonForcingNet)
+                        .unwrap()
+                        .into_iter()
+                        .filter(|hint| hint.actions.contains(&remove(30, 7)))
+                        .filter_map(|hint| match hint.evidence {
+                            HintEvidence::Tridagon { branches, .. } => Some(
+                                branches
+                                    .iter()
+                                    .map(|branch| branch.steps.len())
+                                    .sum::<usize>(),
+                            ),
+                            _ => None,
+                        })
+                        .min()
+                        .unwrap();
+                assert!(forcing_steps > companion.unwrap());
+            }
+        }
+    }
+
+    fn candidates_conflict(a: Candidate, b: Candidate) -> bool {
+        a != b
+            && (a.cell == b.cell
+                || (a.digit == b.digit
+                    && House::at(a.cell)
+                        .into_iter()
+                        .any(|house| House::at(b.cell).contains(&house))))
+    }
+
     fn assert_link_is_valid(link: &InferenceLink, masks: &[u16; CELLS]) {
-        let members = |node: &InferenceNode| match node {
-            InferenceNode::Candidate(value) => vec![*value],
-            InferenceNode::Group { digit, cells } => cells
-                .iter()
-                .map(|&cell| Candidate {
-                    cell,
-                    digit: *digit,
-                })
-                .collect(),
-        };
-        let from = members(&link.from);
-        let to = members(&link.to);
+        let from: Vec<_> = inference_members(&link.from).collect();
+        let to: Vec<_> = inference_members(&link.to).collect();
         assert!(from.iter().all(|value| !to.contains(value)));
+        assert!(
+            from.iter()
+                .chain(&to)
+                .all(|candidate| { masks[candidate.cell] & (1 << (candidate.digit - 1)) != 0 })
+        );
+        if link.strength == LinkStrength::Weak {
+            assert!(
+                from.iter()
+                    .all(|&a| to.iter().all(|&b| candidates_conflict(a, b)))
+            );
+        }
         let mut linked = from;
         linked.extend(to);
         linked.sort_unstable();
@@ -2110,11 +2355,108 @@ mod tests {
                     .map(|cell| Candidate { cell, digit })
                     .collect()
             }
+            LinkSource::Firework(pivot) => {
+                assert_eq!(link.strength, LinkStrength::Strong);
+                let digit = linked[0].digit;
+                assert!(linked.iter().all(|candidate| candidate.digit == digit));
+                let [row, column, _] = House::at(pivot);
+                let options = |house: House| {
+                    house
+                        .cells()
+                        .into_iter()
+                        .filter(|&cell| masks[cell] & (1 << (digit - 1)) != 0)
+                        .map(|cell| Candidate { cell, digit })
+                };
+                // The same placement can satisfy both lines. Two different
+                // placements must coexist.
+                let mut compatible = options(row)
+                    .flat_map(|a| {
+                        options(column)
+                            .filter(move |&b| !candidates_conflict(a, b))
+                            .map(move |b| (a, b))
+                    })
+                    .peekable();
+                assert!(compatible.peek().is_some());
+                assert!(compatible.all(|(a, b)| linked.contains(&a) || linked.contains(&b)));
+                return;
+            }
+            LinkSource::Tridagon { cells, digits } => {
+                assert_eq!(link.strength, LinkStrength::Strong);
+                let core = digits
+                    .into_iter()
+                    .fold(0, |bits, digit| bits | (1 << (digit - 1)));
+                let cells: Vec<_> = cells.into_iter().flatten().map(usize::from).collect();
+                let mut guardians: Vec<_> = cells
+                    .iter()
+                    .flat_map(|&cell| {
+                        crate::hints::digits(masks[cell] & !core)
+                            .map(move |digit| Candidate { cell, digit })
+                    })
+                    .collect();
+                guardians.sort_unstable();
+                assert_eq!(guardians, linked);
+                assert!(!can_fill_core(&cells, core, masks, &mut Vec::new()));
+                return;
+            }
+            LinkSource::AlmostLockedSet(set) => {
+                assert_eq!(link.strength, LinkStrength::Strong);
+                assert_ne!(link.from.digit(), link.to.digit());
+                let first = set.cells().next().unwrap();
+                assert!(
+                    House::at(first)
+                        .into_iter()
+                        .any(|house| { set.cells().all(|cell| House::at(cell).contains(&house)) })
+                );
+                let union = set.cells().fold(0, |bits, cell| bits | masks[cell]);
+                let digits = set
+                    .digits()
+                    .fold(0, |bits, digit| bits | (1 << (digit - 1)));
+                assert_eq!(union, digits);
+                assert_eq!(set.digits().count(), set.cells().count() + 1);
+                for endpoint in [&link.from, &link.to] {
+                    let bit = 1 << (endpoint.digit() - 1);
+                    let sites: Vec<_> =
+                        set.cells().filter(|&cell| masks[cell] & bit != 0).collect();
+                    assert_eq!(sites, endpoint.cells());
+                }
+                return;
+            }
+            LinkSource::Peers {} => {
+                assert_eq!(link.strength, LinkStrength::Weak);
+                return;
+            }
         };
         assert!(linked.iter().all(|value| constraint.contains(value)));
         if link.strength == LinkStrength::Strong {
             assert_eq!(constraint, linked);
         }
+    }
+
+    fn can_fill_core(
+        cells: &[usize],
+        core: u16,
+        masks: &[u16; CELLS],
+        placed: &mut Vec<Candidate>,
+    ) -> bool {
+        let Some((&cell, remaining)) = cells.split_first() else {
+            return true;
+        };
+        for digit in crate::hints::digits(masks[cell] & core) {
+            let choice = Candidate { cell, digit };
+            if placed
+                .iter()
+                .any(|&other| candidates_conflict(choice, other))
+            {
+                continue;
+            }
+            placed.push(choice);
+            let possible = can_fill_core(remaining, core, masks, placed);
+            placed.pop();
+            if possible {
+                return true;
+            }
+        }
+        false
     }
 
     #[test]

@@ -296,6 +296,97 @@ const FIREWORKS_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
     ],
 )];
 
+const FIREWORK_AIC_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
+    "firework-aic",
+    &[
+        (
+            "pelagic-amber",
+            Technique::FireworkAic.practice_examples()[0].givens,
+        ),
+        (
+            "firework-ring-grid",
+            Technique::FireworkAic.practice_examples()[1].givens,
+        ),
+        (
+            "monhard-2201",
+            Technique::FireworkAic.practice_examples()[2].givens,
+        ),
+    ],
+)];
+
+const FIREWORK_W_WING_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
+    "firework-w-wing",
+    &[
+        (
+            "published-w-wing",
+            Technique::FireworkWWing.practice_examples()[0].givens,
+        ),
+        (
+            "grouped-w-wing",
+            Technique::FireworkWWing.practice_examples()[1].givens,
+        ),
+        (
+            "two-digit-w-wing",
+            Technique::FireworkWWing.practice_examples()[2].givens,
+        ),
+    ],
+)];
+
+const FIREWORK_L_ALS_EXAMPLES: &[(&str, &[(&str, &str)])] = &[
+    (
+        "firework-l-wing",
+        &[
+            (
+                "published-l-wing",
+                Technique::FireworkLWing.practice_examples()[0].givens,
+            ),
+            (
+                "column-link-l-wing",
+                Technique::FireworkLWing.practice_examples()[1].givens,
+            ),
+            (
+                "row-link-l-wing",
+                Technique::FireworkLWing.practice_examples()[2].givens,
+            ),
+        ],
+    ),
+    (
+        "firework-als-wing",
+        &[
+            (
+                "published-als-wing",
+                Technique::FireworkAlsWing.practice_examples()[0].givens,
+            ),
+            (
+                "same-band-als-wing",
+                Technique::FireworkAlsWing.practice_examples()[1].givens,
+            ),
+            (
+                "same-stack-als-wing",
+                Technique::FireworkAlsWing.practice_examples()[2].givens,
+            ),
+        ],
+    ),
+];
+
+const TRIDAGON_AIC_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
+    "tridagon-aic",
+    &[
+        (
+            "mission-impossible",
+            Technique::TridagonAic.practice_examples()[0].givens,
+        ),
+        (
+            "grouped-guardians",
+            Technique::TridagonAic.practice_examples()[1].givens,
+        ),
+        (
+            "firework-and-guardian",
+            Technique::TridagonAic.practice_examples()[2].givens,
+        ),
+    ],
+)];
+
 fn main() {
     let args: Vec<_> = std::env::args().collect();
     if args.iter().any(|arg| arg == "--rank-discovery") {
@@ -325,8 +416,17 @@ fn main() {
     let double_examples = args.iter().any(|arg| arg == "--double-exocet-examples");
     let fireworks = args.iter().any(|arg| arg == "--fireworks");
     let fireworks_examples = args.iter().any(|arg| arg == "--fireworks-examples");
+    let firework_aic = args.iter().any(|arg| arg == "--firework-aic");
+    let firework_aic_examples = args.iter().any(|arg| arg == "--firework-aic-examples");
+    let firework_w_wing = args.iter().any(|arg| arg == "--firework-w-wing");
+    let firework_w_wing_examples = args.iter().any(|arg| arg == "--firework-w-wing-examples");
+    let firework_l_als_examples = args.iter().any(|arg| arg == "--firework-l-als-examples");
+    let firework_l_wing = args.iter().any(|arg| arg == "--firework-l-wing");
+    let firework_als_wing = args.iter().any(|arg| arg == "--firework-als-wing");
     let depth_three = args.iter().any(|arg| arg == "--depth-three");
     let tridagon = args.iter().any(|arg| arg == "--tridagon");
+    let tridagon_aic = args.iter().any(|arg| arg == "--tridagon-aic");
+    let tridagon_aic_examples = args.iter().any(|arg| arg == "--tridagon-aic-examples");
     let depth_puzzles: Vec<_> = if depth_three {
         include_str!("fixtures/te3-stalls-v10.jsonl")
             .lines()
@@ -359,6 +459,14 @@ fn main() {
         DOUBLE_EXOCET_EXAMPLES
     } else if fireworks_examples {
         FIREWORKS_EXAMPLES
+    } else if firework_aic_examples {
+        FIREWORK_AIC_EXAMPLES
+    } else if firework_w_wing_examples {
+        FIREWORK_W_WING_EXAMPLES
+    } else if firework_l_als_examples {
+        FIREWORK_L_ALS_EXAMPLES
+    } else if tridagon_aic_examples {
+        TRIDAGON_AIC_EXAMPLES
     } else if senior_examples {
         SENIOR_EXOCET_EXAMPLES
     } else {
@@ -422,6 +530,29 @@ fn main() {
             .unwrap();
         order.insert(before_medusa, Technique::Fireworks);
     }
+    if firework_aic {
+        let before_forcing = order
+            .iter()
+            .position(|&technique| technique == Technique::ForcingChain)
+            .unwrap();
+        order.insert(before_forcing, Technique::FireworkAic);
+    }
+    if tridagon_aic {
+        let before_forcing = order
+            .iter()
+            .position(|&technique| technique == Technique::ForcingChain)
+            .unwrap();
+        order.insert(before_forcing, Technique::TridagonAic);
+    }
+    if firework_w_wing {
+        order.insert(0, Technique::FireworkWWing);
+    }
+    if firework_l_wing {
+        order.insert(0, Technique::FireworkLWing);
+    }
+    if firework_als_wing {
+        order.insert(0, Technique::FireworkAlsWing);
+    }
     let label = if nested {
         "Default order plus Dynamic and Nested Forcing Nets"
     } else if dynamic {
@@ -450,11 +581,25 @@ fn main() {
     if fireworks {
         eprintln!("Fireworks before 3D Medusa");
     }
+    if firework_aic {
+        eprintln!("Firework chains before forcing");
+    }
+    if firework_w_wing {
+        eprintln!("Firework W-Wing first");
+    }
+    if firework_l_wing || firework_als_wing {
+        eprintln!(
+            "Enabled Firework L-Wing and ALS-Wing detectors run before the default techniques"
+        );
+    }
     if advanced {
         eprintln!("Advanced Forcing Net after Dynamic Forcing Net");
     }
     if tridagon {
         eprintln!("Tridagon before forcing and Tridagon Forcing Net after dynamic propagation");
+    }
+    if tridagon_aic {
+        eprintln!("Tridagon chains before forcing");
     }
     let mut seen = BTreeSet::new();
     for &(group, puzzles) in corpus {
@@ -489,17 +634,21 @@ fn main() {
                 black_box(rate_puzzle(black_box(&board), &order)).expect("repeatable rating");
                 timings.push(start.elapsed().as_secs_f64() * 1000.0);
             }
-            if group == "fireworks" {
-                let count = trace
-                    .score
-                    .counts
-                    .get(&Technique::Fireworks)
-                    .copied()
-                    .unwrap_or(0);
+            if let Some(technique) = match group {
+                "fireworks" => Some(Technique::Fireworks),
+                "firework-aic" => Some(Technique::FireworkAic),
+                "firework-w-wing" => Some(Technique::FireworkWWing),
+                "firework-l-wing" => Some(Technique::FireworkLWing),
+                "firework-als-wing" => Some(Technique::FireworkAlsWing),
+                "tridagon-aic" => Some(Technique::TridagonAic),
+                _ => None,
+            } {
+                let count = trace.score.counts.get(&technique).copied().unwrap_or(0);
                 eprintln!(
-                    "{name}: {} steps, {} points, {count} Fireworks",
+                    "{name}: {} steps, {} points, {count} {}",
                     trace.steps.len(),
-                    trace.score.points
+                    trace.score.points,
+                    technique.id(),
                 );
             }
             if dynamic && (group == "expert" || forcing_examples) {

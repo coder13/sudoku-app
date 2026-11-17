@@ -126,6 +126,64 @@ pub enum LinkSource {
     Cell(usize),
     /// The link follows from the positions of a digit in one house.
     House(House),
+    /// The row and column through this pivot require a digit in at least one endpoint.
+    Firework(usize),
+    /// At least one of the endpoint candidates must break this Tridagon.
+    Tridagon {
+        /// Four triples of cells in box order. Indices are zero-based.
+        cells: [[u8; 3]; 4],
+        /// Three digits in the impossible core.
+        digits: [u8; 3],
+    },
+    /// At least one of the two endpoint digits must occur in this almost locked set.
+    AlmostLockedSet(AlmostLockedSetLink),
+    /// Every candidate in one endpoint conflicts with every candidate in the other.
+    Peers {},
+}
+
+/// An almost locked set used as an inference link.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AlmostLockedSetLink {
+    packed_cells: [u8; 8],
+    digit_mask: u16,
+}
+
+impl AlmostLockedSetLink {
+    pub(crate) fn new(cells: impl IntoIterator<Item = usize>, digit_mask: u16) -> Self {
+        let mut packed_cells = [0; 8];
+        for (slot, cell) in packed_cells.iter_mut().zip(cells) {
+            *slot = cell as u8 + 1;
+        }
+        packed_cells.sort_unstable();
+        Self {
+            packed_cells,
+            digit_mask,
+        }
+    }
+
+    /// Cell indices in the set.
+    pub fn cells(self) -> impl Iterator<Item = usize> {
+        self.packed_cells
+            .into_iter()
+            .filter(|&cell| cell != 0)
+            .map(|cell| usize::from(cell - 1))
+    }
+
+    /// Candidate digits in the set.
+    pub fn digits(self) -> impl Iterator<Item = u8> {
+        digits(self.digit_mask)
+    }
+}
+
+#[cfg(feature = "wasm-api")]
+impl serde::Serialize for AlmostLockedSetLink {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        AlmostLockedSet {
+            cells: self.cells().collect(),
+            digits: self.digits().collect(),
+        }
+        .serialize(serializer)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -173,6 +231,22 @@ pub enum InferenceNode {
         /// Possible cells for the digit.
         cells: Vec<usize>,
     },
+}
+
+impl InferenceNode {
+    pub(crate) fn digit(&self) -> u8 {
+        match self {
+            Self::Candidate(candidate) => candidate.digit,
+            Self::Group { digit, .. } => *digit,
+        }
+    }
+
+    pub(crate) fn cells(&self) -> &[usize] {
+        match self {
+            Self::Candidate(candidate) => std::slice::from_ref(&candidate.cell),
+            Self::Group { cells, .. } => cells,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -829,6 +903,41 @@ pub enum HintEvidence {
         /// One intersection for a triple, or two for a quadruple.
         pivots: Vec<FireworkPivot>,
     },
+    /// Two Firework digits and two bivalue cells with that candidate pair.
+    FireworkWWing {
+        /// Intersection of the Firework's row and column.
+        pivot: usize,
+        /// Digits shared by the Fireworks and both bivalue cells.
+        digits: [u8; 2],
+        /// Outside candidate cells in the row, then in the column.
+        wings: [Vec<usize>; 2],
+        /// The bivalue cell linked to each corresponding wing group.
+        bivalue: [usize; 2],
+    },
+    /// A Firework pair and a conjugate link for a third digit.
+    FireworkLWing {
+        /// Intersection of the Firework's row and column.
+        pivot: usize,
+        /// The two Firework digits.
+        digits: [u8; 2],
+        /// The row wing followed by the column wing.
+        wings: [usize; 2],
+        /// Link with one end at a wing.
+        link: ConjugatePair,
+        /// Digit removed from the wing at the other end of the Firework.
+        linked_digit: u8,
+    },
+    /// Two Firework pairs connected to the same bivalue cell.
+    FireworkAlsWing {
+        /// The intersections in cell order.
+        pivots: [usize; 2],
+        /// The two digits shared by both Fireworks and the bivalue cell.
+        digits: [u8; 2],
+        /// Outside cells for each intersection, with the row first.
+        wings: [[Vec<usize>; 2]; 2],
+        /// Cell whose value forces the same digit into both intersections.
+        bivalue: usize,
+    },
     /// At least one candidate outside the three core digits must break a Tridagon.
     Tridagon {
         /// One triple in each of the four boxes, ordered by box and then by row.
@@ -1023,6 +1132,13 @@ impl HintEvidence {
             HintEvidence::AlignedExclusion { cells, cases } => cells.len() + cases.len(),
             HintEvidence::Firework { pivots, .. } => {
                 2 + pivots.len() + pivots.iter().map(|pivot| pivot.digits.len()).sum::<usize>()
+            }
+            HintEvidence::FireworkWWing { wings, .. } => {
+                5 + wings.iter().map(Vec::len).sum::<usize>()
+            }
+            HintEvidence::FireworkLWing { .. } => 7,
+            HintEvidence::FireworkAlsWing { wings, .. } => {
+                5 + wings.iter().flatten().map(Vec::len).sum::<usize>()
             }
             HintEvidence::Tridagon {
                 guardians,

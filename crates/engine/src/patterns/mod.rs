@@ -37,6 +37,8 @@ pub(super) struct PatternSearch<'a> {
     fish_lines: OnceCell<[fish::Lines; 2]>,
     conjugates: OnceCell<[u32; 9]>,
     inference: OnceCell<inference_graph::InferenceGraph>,
+    firework_inference: OnceCell<Box<inference_graph::InferenceGraph>>,
+    tridagon_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
     rectangles: OnceCell<Vec<uniqueness::Rectangle>>,
     complex_fish_targets: OnceCell<[u128; 9]>,
     kraken: OnceCell<Box<kraken::Search>>,
@@ -54,6 +56,8 @@ impl<'a> PatternSearch<'a> {
             fish_lines: OnceCell::new(),
             conjugates: OnceCell::new(),
             inference: OnceCell::new(),
+            firework_inference: OnceCell::new(),
+            tridagon_inference: OnceCell::new(),
             rectangles: OnceCell::new(),
             complex_fish_targets: OnceCell::new(),
             kraken: OnceCell::new(),
@@ -74,7 +78,21 @@ impl<'a> PatternSearch<'a> {
             return rule.visit(lines, visit);
         }
         if let Some(rule) = inference::Rule::for_technique(technique) {
-            return rule.visit(self.inference_graph(), visit);
+            let graph = match technique {
+                Technique::FireworkAic => self
+                    .firework_inference
+                    .get_or_init(|| Box::new(self.inference_graph().with_fireworks())),
+                Technique::TridagonAic => {
+                    let Some(graph) = self.tridagon_inference.get_or_init(|| {
+                        inference_graph::InferenceGraph::for_tridagons(self).map(Box::new)
+                    }) else {
+                        return ControlFlow::Continue(());
+                    };
+                    graph
+                }
+                _ => self.inference_graph(),
+            };
+            return rule.visit(graph, visit);
         }
         match technique {
             Technique::XYWing | Technique::XYZWing => {
@@ -133,6 +151,9 @@ impl<'a> PatternSearch<'a> {
             Technique::Exocet | Technique::SeniorExocet => exocet::visit(self, technique, visit),
             Technique::DoubleExocet => exocet::visit_double(self, visit),
             Technique::Fireworks => fireworks::visit(self, visit),
+            Technique::FireworkWWing => fireworks::visit_w_wings(self, visit),
+            Technique::FireworkLWing => fireworks::wings::visit_l_wings(self, visit),
+            Technique::FireworkAlsWing => fireworks::wings::visit_als_wings(self, visit),
             Technique::SkLoop => sk_loop::visit(self, visit),
             Technique::MultiSectorLockedSets => multi_sector::visit(self, visit),
             Technique::FrankenFish | Technique::MutantFish => complex_fish::visit(
