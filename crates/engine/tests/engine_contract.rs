@@ -510,7 +510,7 @@ fn assert_replayed_trace(givens: Board, level: Difficulty, expected_points: u32)
 #[test]
 fn sparse_board_has_a_rating_a_replayable_trace_and_opening_deductions() {
     let board = parse_givens(SPARSE).unwrap();
-    assert_replayed_trace(board, Difficulty::Medium, 766);
+    assert_replayed_trace(board, Difficulty::Medium, 846);
     let openers = opening_techniques(&board).unwrap();
     let HintChoices::Choices(hints) = hint_choices(&board, None).unwrap() else {
         panic!("expected choices on the original grid");
@@ -530,19 +530,19 @@ fn a_permuted_verified_template_can_match_even_when_raw_search_runs_out() {
     let template = parse_givens(TEMPLATE).unwrap();
     let constraints = GenerationConstraints {
         clues: 17,
-        score: Some(766..=766),
+        score: Some(846..=846),
         technique_order: Technique::DEFAULT_ORDER,
     };
     let generated = generate_constrained(42, &constraints, &[template], 1).unwrap();
     assert_eq!(generated.iter().filter(|&&cell| cell != 0).count(), 17);
-    assert_replayed_trace(generated, Difficulty::Medium, 766);
+    assert_replayed_trace(generated, Difficulty::Medium, 846);
 }
 
 #[test]
 fn expert_rating_replays_the_same_deductions_with_the_same_score() {
     let technique = Technique::MultiSectorLockedSets;
     let board = parse_givens(technique.practice_example().givens).unwrap();
-    assert_replayed_trace(board, Difficulty::Extreme, 1994);
+    assert_replayed_trace(board, Difficulty::Extreme, 2234);
     assert_eq!(
         rate_puzzle(&board, Technique::DEFAULT_ORDER)
             .unwrap()

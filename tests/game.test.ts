@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
-import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
+import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
+import { jigsawLayout, reflectVariant, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantHouseCells, variantHouseMasks } from '../src/sudoku/variants.ts'
 import {
   applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, onlyCandidate, paintCandidate, redo,
@@ -364,6 +365,10 @@ test('Windoku peers, conflicts, and saved games include all four extra regions',
   const rules = WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells }))
   const puzzle = { version: 1 as const, givens: '0'.repeat(81), rules }
   assert.ok(isPlayablePuzzle('windoku', puzzle))
+  assert.deepEqual(Object.keys(variantSeeds.windoku), DIFFICULTY_LEVELS)
+  for (let symmetry = 1; symmetry < 8; symmetry++) {
+    assert.ok(isPlayablePuzzle('windoku', reflectVariant(puzzle, symmetry)))
+  }
   assert.equal(isPlayablePuzzle('windoku', { ...puzzle, rules: rules.slice(1) }), false)
   assert.equal(isPlayablePuzzle('windoku', { ...puzzle, rules: [rules[0], rules[0], rules[2], rules[3]] }), false)
   const game = makeGame('windoku', 'Windoku', puzzle.givens, 'imported')
