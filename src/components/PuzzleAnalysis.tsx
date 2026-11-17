@@ -90,7 +90,7 @@ export function PuzzleAnalysis({ game, close }: { game: Game; close: () => void 
         </div>}
         {findings !== null && <>
           {ANALYSIS_GROUPS.map((group) => {
-            const kind = group.title === 'Singles' ? 'placements' : 'removals'
+            const kind = group.kind
             const rows = group.techniques.flatMap((technique) => {
               const row = findings.find((finding) => finding.technique === technique)
               return row && row[kind].length ? [row] : []
