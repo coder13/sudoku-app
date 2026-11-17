@@ -70,6 +70,7 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
+      if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt
@@ -116,7 +117,7 @@ function hintEvidence(game: Game): RatingEvent | undefined {
     id: `hints:${game.id}`, gameId: game.id, givens: game.givens, puzzleKey: puzzleIdentity(game),
     difficulty: attempt.grade.difficulty, at: attempt.lastHintAt, finish: 'hints',
     viewed: attempt.viewed.length, applied: attempt.applied.length, hintsRequested: attempt.requested?.length,
-    elapsed: attempt.priorElapsed + game.elapsed,
+    analysisUsed: attempt.analysisUsed, elapsed: attempt.priorElapsed + game.elapsed,
   }
 }
 
@@ -127,7 +128,7 @@ function playerRatingFor(games: readonly Game[]) {
     if (game.source === 'draft') continue
     const puzzleKey = puzzleIdentity(game)
     if (known.has(puzzleKey)) continue
-    if (isSolved(game) && game.difficulty) {
+    if (isSolved(game) && game.difficulty && !game.analysisUsed) {
       events.push({
         id: `saved:${game.id}`, gameId: game.id, givens: game.givens, puzzleKey, difficulty: game.difficulty,
         at: game.created + game.elapsed * 1000, finish: 'solved', elapsed: game.elapsed, viewed: 0, applied: 0, estimated: true,
@@ -152,6 +153,7 @@ function finishAttempt(game: Game, finish: RatingFinish): Game {
   }
   if (attempt.requested || attempt.lastHintAt !== undefined) outcome.hintsRequested = attempt.requested?.length ?? 0
   if (attempt.singlesAssistance) outcome.singlesAssistance = attempt.singlesAssistance
+  if (attempt.analysisUsed) outcome.analysisUsed = true
   if (attempt.mode) outcome.mode = attempt.mode
   return { ...game, ratingAttempt: { ...attempt, outcome } }
 }
@@ -168,13 +170,14 @@ function mergeRatingAttempt(game: Game): Game {
     const applied = [...new Set([...attempt.applied, ...saved.applied])]
     const requested = [...new Set([...(attempt.requested ?? []), ...(saved.requested ?? [])])]
     const singlesAssistance = saved.singlesAssistance === 'all' ? 'all' : attempt.singlesAssistance ?? saved.singlesAssistance
+    const analysisUsed = attempt.analysisUsed || saved.analysisUsed ? true : undefined
     const lastHintAt = Math.max(attempt.lastHintAt ?? 0, saved.lastHintAt ?? 0) || undefined
     const priorElapsed = Math.max(attempt.priorElapsed, saved.priorElapsed)
     if (outcome !== attempt.outcome || priorElapsed !== attempt.priorElapsed ||
       viewed.length !== attempt.viewed.length || applied.length !== attempt.applied.length ||
       requested.length !== (attempt.requested?.length ?? 0) || lastHintAt !== attempt.lastHintAt ||
-      singlesAssistance !== attempt.singlesAssistance) {
-      return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, singlesAssistance, outcome, priorElapsed, lastHintAt } }
+      singlesAssistance !== attempt.singlesAssistance || analysisUsed !== attempt.analysisUsed) {
+      return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, singlesAssistance, analysisUsed, outcome, priorElapsed, lastHintAt } }
     }
   } catch { /* The in-memory attempt still has this tab’s assistance. */ }
   return game

@@ -24,7 +24,7 @@ const meta = {
     multi: false, actionsRef: { current: null }, inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(),
     beginResize: fn(), toggleMulti: fn(), onDifficultyChange: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(), onStopPlaying: fn(),
     onNewPuzzle: fn(), onCreatePuzzle: fn(), onEditPuzzle: fn(),
-    showLeftPanel: true, showRightPanel: true, showBottomPanel: true, onOpenHintPanel: fn(),
+    showLeftPanel: true, showRightPanel: true, showBottomPanel: true, onOpenHintPanel: fn(), onOpenRightPanel: fn(),
     puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),
   },
   beforeEach: ({ args }) => { seedRoom([args.game, ...args.games.filter(({ id }) => id !== args.game.id)]) },
