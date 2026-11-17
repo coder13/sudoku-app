@@ -1959,9 +1959,11 @@ export function Worktable({
           onChainsVisibleChange={setDesktopChainsVisible}
           onSolutionVisibleChange={setDesktopSolutionVisible} />
         : desktop
-          ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack" id="standard-digit-input">
-              {inputPanel}
+          ? <><div className="standard-puzzle-stack">
+              {puzzlePanel}
               <MotionSurface>{hintPanel}</MotionSurface>
+            </div><div className="standard-input-stack" id="standard-digit-input">
+              {inputPanel}
               <MotionSurface>{activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
                 <div className="desktop-insight-toolbar">
                   <div ref={insightTabsRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"

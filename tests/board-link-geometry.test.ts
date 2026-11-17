@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { boardLinkEndpoints } from '../src/sudoku/board-link-geometry.ts'
+import { boardLinkEndpoints, boardLinkRoutes } from '../src/sudoku/board-link-geometry.ts'
 
 test('a group link starts at the near member instead of crossing its digit', () => {
   assert.deepEqual(boardLinkEndpoints({ cells: [18, 19], digit: 5 }, { cell: 25, digit: 5 }), {
@@ -25,4 +25,32 @@ test('ordinary candidate and cell links keep the board coordinate system', () =>
   const within = boardLinkEndpoints({ cell: 48, digit: 2 }, { cell: 48, digit: 7 })!
   assert.ok(within.start.y < within.end.y)
   assert.ok(within.start.x > within.end.x)
+})
+
+test('overlapping links use separate lanes, including reversed links', () => {
+  const routes = boardLinkRoutes([
+    { from: { cell: 0, digit: 5 }, to: { cell: 8, digit: 5 } },
+    { from: { cell: 7, digit: 5 }, to: { cell: 1, digit: 5 } },
+    { from: { cell: 2, digit: 5 }, to: { cell: 6, digit: 5 } },
+  ])
+  const lanes = routes.map(points => points.length === 4 ? points[1].y : points[0].y)
+  assert.equal(new Set(lanes).size, 3)
+  for (const points of routes) {
+    assert.ok(points.every(point => Number.isFinite(point.x) && Number.isFinite(point.y)))
+    assert.ok(Math.abs(points[0].y - 5) < 1.4)
+    assert.ok(Math.abs(points.at(-1)!.y - 5) < 1.4)
+  }
+})
+
+test('separate links stay straight and empty or zero-length links stay hidden', () => {
+  assert.deepEqual(boardLinkRoutes([
+    { from: { cell: 0, digit: 5 }, to: { cell: 2, digit: 5 } },
+    { from: { cell: 6, digit: 5 }, to: { cell: 8, digit: 5 } },
+    { from: { cells: [], digit: 5 }, to: { cell: 0, digit: 5 } },
+    { from: { cell: 0, digit: 5 }, to: { cell: 0, digit: 5 } },
+  ]), [
+    [{ x: 6.4, y: 5 }, { x: 23.6, y: 5 }],
+    [{ x: 66.4, y: 5 }, { x: 83.6, y: 5 }],
+    [], [],
+  ])
 })

@@ -173,7 +173,7 @@ export function Board({
                 const candidateHighlightStyle = candidateMatches && highlighting.matchingCandidates ? highlighting.candidateStyle : undefined
                 const candidateCountMatches = !value && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
                 const cellStyle = cellAnnotation && {
-                  backgroundColor: error ? undefined : cellAnnotation.fill,
+                  '--cell-fill': error ? undefined : cellAnnotation.fill,
                   color: error ? undefined : cellAnnotation.ink,
                   '--annotation-outline': cellAnnotation.outline,
                 } as CSSProperties
