@@ -1,8 +1,8 @@
-import nikoli from './collections/nikoli-100.json' with { type: 'json' }
-import exchange from './collections/sudoku-exchange.json' with { type: 'json' }
+import index from './generated/collection-index.json' with { type: 'json' }
 import type { Difficulty } from './engine.ts'
 import { DIFFICULTY_LABELS } from './difficulty.ts'
 import { isSolved, type Game } from './game.ts'
+import { collectionGridHash } from './collection-integrity.ts'
 
 export type CollectionPuzzle = {
   id: string
@@ -15,6 +15,8 @@ export type CollectionPuzzle = {
   sourceRating?: number
 }
 
+export type CollectionPuzzleInfo = Omit<CollectionPuzzle, 'givens'> & { givensHash: string; bytes: number }
+
 export type PuzzleCollection = {
   id: string
   title: string
@@ -26,27 +28,19 @@ export type PuzzleCollection = {
   licenseUrl: string
   changes: string
   kind: 'handmade' | 'generated'
-  starterPuzzleIds?: readonly string[]
-  puzzles: readonly CollectionPuzzle[]
+  puzzles: readonly CollectionPuzzleInfo[]
 }
-
-export type CollectionSelection = 'starter' | 'all'
 
 export const COLLECTIONS: readonly PuzzleCollection[] = [
   {
     id: 'nikoli-classics', title: 'Nikoli Classics', creator: 'Nikoli',
-    description: 'Handmade classics by Nikoli. Start with a short set at your difficulty.',
+    description: 'Handmade classics by Nikoli. Choose how many to keep for offline play.',
     sourceUrl: 'https://huggingface.co/datasets/SakanaAI/sudoku-bench-nikoli',
     sourceRevision: '9034906b4ec06ab1e08daf110c6b562ef72859fd',
     license: 'CC BY 4.0', licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
     changes: 'Original givens and titles retained. Difficulty ratings added by this app.',
     kind: 'handmade',
-    starterPuzzleIds: [
-      '170714_sd_easy', 'nhk2209e', 'nhk2107m', 'nhk2304e', 'nhk2209m', 'nhk2108m',
-      'nhk1810h', 'nhk2309h2', 'nhk2303h1', 'nhk2311h1', 'nhk2304h1', 'nhk1911h2',
-      'nhk2202h2', 'nhk2007h2', 'nhk1903h', 'nhk2403h3', 'nhk2302h3', 'nhk2209h2',
-    ],
-    puzzles: nikoli as CollectionPuzzle[],
+    puzzles: index['nikoli-classics'] as CollectionPuzzleInfo[],
   },
   {
     id: 'sudoku-exchange', title: 'Sudoku Exchange Selection', creator: 'Grant McLean / Sudoku Exchange',
@@ -56,7 +50,7 @@ export const COLLECTIONS: readonly PuzzleCollection[] = [
     license: 'Public domain', licenseUrl: 'https://github.com/grantm/sudoku-exchange-puzzle-bank/blob/d8c8ebaee0c08c412cfba96af1923dfa61c83317/LICENSE.txt',
     changes: 'Original givens retained. Selection, titles, and difficulty ratings added by this app.',
     kind: 'generated',
-    puzzles: exchange as CollectionPuzzle[],
+    puzzles: index['sudoku-exchange'] as CollectionPuzzleInfo[],
   },
 ]
 
@@ -72,18 +66,22 @@ export function getCollectionPuzzle(collectionId: string | undefined, puzzleId: 
 
 export function getGameCollection(game: Game) {
   const entry = getCollectionPuzzle(game.collection?.collectionId, game.collection?.puzzleId)
-  return entry?.puzzle.givens === game.givens && !game.variant && game.source !== 'draft' ? entry : undefined
+  return entry && matchesCollectionPuzzle(entry.puzzle, game) ? entry : undefined
 }
 
-export function findCollectionGame(puzzle: CollectionPuzzle, games: readonly Game[]) {
-  const matching = games.filter(game => game.source !== 'draft' && !game.variant && game.givens === puzzle.givens)
+export function matchesCollectionPuzzle(puzzle: CollectionPuzzleInfo, game: Game) {
+  return game.source !== 'draft' && !game.variant && collectionGridHash(game.givens) === puzzle.givensHash
+}
+
+export function findCollectionGame(puzzle: CollectionPuzzleInfo, games: readonly Game[]) {
+  const matching = games.filter(game => matchesCollectionPuzzle(puzzle, game))
   return matching.find(game => game.started && !isSolved(game)) ?? matching.find(isSolved) ?? matching[0]
 }
 
 export type CollectionPuzzleStatus = 'unplayed' | 'in-progress' | 'solved'
 
-export function collectionPuzzleStatus(puzzle: CollectionPuzzle, games: readonly Game[]): CollectionPuzzleStatus {
-  const matching = games.filter(game => game.source !== 'draft' && !game.variant && game.givens === puzzle.givens)
+export function collectionPuzzleStatus(puzzle: CollectionPuzzleInfo, games: readonly Game[]): CollectionPuzzleStatus {
+  const matching = games.filter(game => matchesCollectionPuzzle(puzzle, game))
   if (matching.some(isSolved)) return 'solved'
   return matching.some(game => game.started) ? 'in-progress' : 'unplayed'
 }
@@ -95,34 +93,29 @@ export function collectionDifficulties(collection: PuzzleCollection) {
 
 // Show handmade collections first. Keep a previously played generated collection
 // visible so an app update never hides a player's ongoing collection.
-export function discoverCollections(games: readonly Game[], all = false) {
+export function discoverCollections(games: readonly Game[], all = false, downloaded: ReadonlySet<string> = new Set()) {
   return COLLECTIONS.filter(collection => all || collection.kind === 'handmade' ||
+    downloaded.has(collection.id) ||
     games.some(game => getGameCollection(game)?.collection.id === collection.id))
 }
 
-export function collectionSelection(collection: PuzzleCollection, selection: CollectionSelection = 'all') {
-  const ids = collection.starterPuzzleIds ?? []
-  const starters = ids.flatMap(id => collection.puzzles.find(puzzle => puzzle.id === id) ?? [])
-  if (selection === 'starter' && ids.length) return starters
-  return [...starters, ...collection.puzzles.filter(puzzle => !ids.includes(puzzle.id))]
+export function collectionPuzzles(collection: PuzzleCollection, difficulty: Difficulty) {
+  return collection.puzzles.filter(puzzle => puzzle.difficulty === difficulty)
 }
 
-export function collectionPuzzles(collection: PuzzleCollection, difficulty: Difficulty, selection: CollectionSelection = 'all') {
-  return collectionSelection(collection, selection).filter(puzzle => puzzle.difficulty === difficulty)
-}
-
-export function collectionProgress(collection: PuzzleCollection, games: readonly Game[], difficulty?: Difficulty, selection: CollectionSelection = 'all') {
-  const puzzles = difficulty ? collectionPuzzles(collection, difficulty, selection) : collectionSelection(collection, selection)
+export function collectionProgress(collection: PuzzleCollection, games: readonly Game[], difficulty?: Difficulty) {
+  const puzzles = difficulty ? collectionPuzzles(collection, difficulty) : collection.puzzles
   return puzzles.reduce((counts, puzzle) => {
     counts[collectionPuzzleStatus(puzzle, games)]++
     return counts
   }, { unplayed: 0, 'in-progress': 0, solved: 0 })
 }
 
-// Play the starter selection first, then the remaining puzzles in source order.
+// Play downloaded or previously saved puzzles in source order.
 // Wrap to earlier unfinished puzzles without switching difficulty or replaying a solve.
-export function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string) {
+export function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string, downloaded: ReadonlySet<string> = new Set()) {
   const puzzles = collectionPuzzles(collection, difficulty)
+    .filter(puzzle => downloaded.has(puzzle.id) || findCollectionGame(puzzle, games))
   if (!afterId) {
     return puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'in-progress')
       ?? puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'unplayed')

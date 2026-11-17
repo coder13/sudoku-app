@@ -10,6 +10,8 @@ const files = (await readdir(directory, { recursive: true, withFileTypes: true }
     const path = relative(fileURLToPath(directory), join(entry.parentPath, entry.name))
     return '/' + path.split(sep).map(encodeURIComponent).join('/')
   })
+  // Collection grids are downloaded only when the player chooses them.
+  .filter((path) => !path.startsWith('/collections/'))
   .sort()
 
 if (!files.includes('/index.html') || !files.some((path) => path.endsWith('.wasm'))) {

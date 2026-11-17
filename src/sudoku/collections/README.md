@@ -1,9 +1,10 @@
-# Built-in puzzle collections
+# Downloadable puzzle collections
 
-The app bundles these classic 9×9 puzzles for offline play. All 160 grids have
-exactly one solution and a complete logical solve in the current engine.
-Each record retains its source ID and original givens. Puzzle data is separate
-from player progress, which uses the existing game store.
+The app bundles collection metadata and **zero collection grids**. Players choose
+a difficulty and a quantity before a download. Each grid is an optional 81-byte
+text file. All 160 hosted grids have exactly one solution and a complete logical
+solve in the current engine. Each record retains its source ID and original givens.
+Downloaded grids are separate from player progress, which uses the existing game store.
 
 ## Nikoli Classics
 
@@ -12,33 +13,35 @@ from player progress, which uses the existing game store.
 - Revision: `9034906b4ec06ab1e08daf110c6b562ef72859fd`.
 - Original file: `data/test-00000-of-00001.parquet` at that revision.
 - License: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
-- All 100 puzzles are included in source order, with their original IDs and titles.
+- All 100 puzzles are available to download in source order, with their original IDs and titles.
 - Changes: empty cells use `0` instead of `.`. App difficulty ratings were added.
-  Original solutions and SudokuPad metadata are omitted from the app bundle.
+  Original solutions and SudokuPad metadata are omitted from the downloads.
 - The initial import compared every engine solution with the published solution.
 
 The collection page, each preview, and the play view retain creator credit and a
 license link. Collection pages also link to the source and state the changes.
 These puzzle permissions are separate from the app's code.
 
-### Starter selection
+### Download flow
 
-New players see Nikoli first, with six puzzles at each available difficulty.
-The 18 starter IDs in `../collections.ts` refer to the existing catalog records.
-No puzzle grids are copied or added for this view. The original titles, credits,
-IDs, and saved progress remain intact.
+A fresh install has zero downloaded collection puzzles. The collection card and
+its difficulty choices show the available counts and puzzle data sizes. Players
+can enter any whole number from one to the remaining count at their difficulty,
+or choose all remaining puzzles. The size changes before they press Download.
+Transfer sizes can vary because of compression and connection overhead.
 
-The Easy selection spans naked and hidden singles. Medium introduces locked
-pairs, claiming, pointing, hidden pairs, naked triples, and hidden triples.
-Hard includes X-Wings and Swordfish. Each selection progresses by app score.
-These are app selections of puzzles authored by Nikoli, not a new endorsement
-or selection by Nikoli. The solver checks correctness and technique coverage;
-it does not replace a person's authorship or establish enjoyment.
+The app fetches only the selected missing grids, with at most four requests at
+once. It checks every grid against the catalog checksum before one storage write
+commits the batch. Cancellation, network errors, invalid data, and storage errors
+leave earlier downloads and games intact. Retrying skips puzzles already present.
+No download creates game history or replaces a game in progress.
 
-Players can browse the full collection at any time. The next-puzzle action
-plays the starter puzzles first, then continues through the remaining puzzles
-at the same difficulty. It skips solved grids and preserves any existing game.
-The completion screen shows the solved count without a large target total.
+Downloaded grids persist in local storage under a separate collection key. App
+updates preserve these keys. Existing collection games and matching imports also
+count as available offline, so updates do not require another download for them.
+The next-puzzle action uses downloaded or previously saved puzzles at the same
+difficulty. When those run out, the completion screen links to more downloads.
+It never downloads another puzzle automatically.
 
 ## Sudoku Exchange Selection
 
@@ -58,7 +61,7 @@ The completion screen shows the solved count without a large target total.
 
 This older collection remains accessible through **Browse all collections** and
 saved puzzle links. It also remains visible for players who already opened one
-of its puzzles. New players start with the handmade selection.
+of its puzzles. The initial discovery view favors handmade collections.
 
 ## Authorship and size
 
@@ -69,14 +72,23 @@ source and license. Label generated collections honestly.
 
 The Sudoku Garden and Park datasets are not bundled. The LiveSudoku booklets
 are not bundled because their license alone does not establish human authorship.
-No new outside puzzle set was imported for the starter selection.
+This change adds no new outside puzzle set.
 
-Store grids and source metadata as text. Do not bundle source PDFs, images,
-solutions, or solve traces. The full serialized catalog has a test budget of
-64 KiB uncompressed and 12 KiB gzip. The existing catalogs stay available
-offline after the first app download, without per-puzzle network requests.
-Measure the production client before and after any catalog expansion; a data
-budget alone does not account for UI code or other cached assets.
+Store grids and source metadata as text. Do not ship source PDFs, images,
+solutions, or solve traces. The metadata catalog has a test budget of 64 KiB
+uncompressed and 12 KiB gzip. Puzzle data has no default offline allocation.
+
+`npm run build:collections` generates a metadata-only index in
+`src/sudoku/generated/collection-index.json` and optional text files in
+`public/collections/`. Client code never imports the source grid JSON files.
+The offline build excludes `/collections/` from the service worker cache.
+Explicit downloads use `cache: 'no-store'` and save to the collection store,
+so grids do not also accumulate in the HTTP or app shell cache.
+
+Measure the initial offline assets separately from optional hosted downloads.
+After a production build, check that no collection text files appear in the
+service worker asset list and no collection grids appear in JavaScript assets.
+The checksum detects stale or damaged data. It is not a security credential.
 
 ## Update ratings
 
@@ -91,13 +103,14 @@ npm run test:collections
 The rating script checks uniqueness and logical completion before it writes
 either catalog. It does not change givens, IDs, titles, source ratings, or order.
 The WASM test checks every puzzle against its stored app rating. The regular
-test suite checks identity, credits, progress, resuming, and storage reloads.
+test suite checks identity, credits, progress, resuming, batch downloads,
+cancellation, invalid data, storage failures, retries, and offline reloads.
 
 ## Add another collection
 
 Obtain a source with explicit puzzle reuse terms. Keep its revision and creator
 credit. Add the normalized records and the catalog entry in `../collections.ts`.
-Add the file to the rating script. Check every grid before release and review
+Add the file to the rating and collection build scripts. Check every grid before release and review
 the solving experience. A unique solution alone does not establish puzzle quality.
 
 Collection progress reflects matching classic games saved on this device,
@@ -109,9 +122,8 @@ the source reference. The play view uses the current engine for player ratings.
 Each collection opens with a required difficulty choice. Counts and progress in
 the puzzle list apply to that difficulty. The completion screen and the next
 puzzle shortcut continue in source order within the same collection difficulty.
-The starter selection comes first, followed by the remaining source order.
 They skip solved puzzles and wrap to earlier unfinished puzzles at the end.
-They stop when the difficulty is complete. The catalog difficulty controls this
+They stop when the downloaded puzzles are complete. The catalog difficulty controls this
 sequence, even if the player's current technique order produces a different rating.
 Players can change the collection difficulty or return to Puzzles from the
 completion screen.

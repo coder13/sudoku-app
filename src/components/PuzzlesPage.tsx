@@ -232,8 +232,7 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
   const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
   const collection = getCollection(collectionSearch?.collection)
   const collectionPuzzle = getCollectionPuzzle(collectionSearch?.collection, collectionSearch?.puzzle)?.puzzle
-  const collectionView = collectionSearch?.view ?? (collectionPuzzle &&
-    !collection?.starterPuzzleIds?.includes(collectionPuzzle.id) ? 'all' : undefined)
+  const collectionView = collectionSearch?.view
   const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
     collectionDifficulties(collection).includes(collectionSearch.difficulty) ? collectionSearch.difficulty : undefined)
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })

@@ -1,12 +1,15 @@
 import { findCollectionGame, getCollectionPuzzle, getGameCollection, nextCollectionPuzzle } from './collections.ts'
 import { createGameId, makeGame } from './game.ts'
 import { roomStore } from './storage.ts'
+import { collectionDownloads } from './collection-downloads.ts'
 
 // Reuse an existing game, including a prior import, without replacing its progress.
 export function openCollectionPuzzle(collectionId: string, puzzleId: string, play = true) {
   const entry = getCollectionPuzzle(collectionId, puzzleId)
   if (!entry) throw new Error('This puzzle is not in the collection.')
   const { puzzle } = entry
+  const givens = collectionDownloads.grids(entry.collection, roomStore.getSnapshot().games)[puzzle.id]
+  if (!givens) throw new Error('Download this puzzle before you play it.')
   const collection = { collectionId, puzzleId }
   const existing = findCollectionGame(puzzle, roomStore.getSnapshot().games)
   if (existing) {
@@ -14,7 +17,7 @@ export function openCollectionPuzzle(collectionId: string, puzzleId: string, pla
     if (play) roomStore.select(existing.id)
     return { id: existing.id, added: false }
   }
-  const game = { ...makeGame(createGameId(), puzzle.title, puzzle.givens, 'collection'), collection }
+  const game = { ...makeGame(createGameId(), puzzle.title, givens, 'collection'), collection }
   // The play view rates the game with the current engine, just like an import.
   roomStore.add(play ? game : { ...game, savedForLater: true })
   return { id: game.id, added: true }
@@ -26,6 +29,7 @@ export function openNextCollectionPuzzle(gameId: string) {
   const entry = game && getGameCollection(game)
   if (!entry) throw new Error('This puzzle is not in the collection.')
   if (!entry.puzzle.difficulty) return undefined
-  const next = nextCollectionPuzzle(entry.collection, games, entry.puzzle.difficulty, entry.puzzle.id)
+  const downloaded = new Set(Object.keys(collectionDownloads.grids(entry.collection, games)))
+  const next = nextCollectionPuzzle(entry.collection, games, entry.puzzle.difficulty, entry.puzzle.id, downloaded)
   return next ? openCollectionPuzzle(entry.collection.id, next.id) : undefined
 }

@@ -10,6 +10,7 @@ import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
 import { collectionProgress, getGameCollection, nextCollectionPuzzle } from '../sudoku/collections'
 import { openNextCollectionPuzzle } from '../sudoku/collection-play'
+import { collectionDownloads } from '../sudoku/collection-downloads'
 
 export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, onChooseDifficulty, onChooseVariant }: {
   game: Game
@@ -27,11 +28,13 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const { recommended, results } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
   const [collectionError, setCollectionError] = useState('')
+  useSyncExternalStore(collectionDownloads.subscribe, collectionDownloads.getSnapshot, collectionDownloads.getServerSnapshot)
   const collectionEntry = getGameCollection(game)
   const inCollection = Boolean(collectionEntry)
   const collectionDifficulty = collectionEntry?.puzzle.difficulty
   const collectionNext = collectionEntry && collectionDifficulty
-    ? nextCollectionPuzzle(collectionEntry.collection, games, collectionDifficulty, collectionEntry.puzzle.id) : undefined
+    ? nextCollectionPuzzle(collectionEntry.collection, games, collectionDifficulty, collectionEntry.puzzle.id,
+      new Set(Object.keys(collectionDownloads.grids(collectionEntry.collection, games)))) : undefined
   const progress = collectionEntry && collectionDifficulty
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const nextDifficulty = variantDifficulty(game.variant?.id, preferredDifficulty)
@@ -107,10 +110,12 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
           </p>}
           {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
           <div className="completion-actions">
-            {collectionEntry && !collectionNext ? <p className="completion-collection-complete" role="status">
-              {progress && progress.unplayed === 0 && progress['in-progress'] === 0
-                ? 'You solved all the puzzles at this difficulty.' : 'No next puzzle is available at this difficulty.'}
-            </p> : <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
+            {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
+              ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
+              : <Link className="button primary completion-next" to="/puzzles/collections"
+                search={{ collection: collectionEntry.collection.id, difficulty: collectionDifficulty ?? undefined }}>
+                Download more puzzles <ArrowRight size={18} aria-hidden="true" />
+              </Link> : <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
               onClick={playNext}>
               {collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
               {!busy && <ArrowRight size={18} aria-hidden="true" />}
