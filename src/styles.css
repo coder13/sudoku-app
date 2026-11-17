@@ -664,8 +664,14 @@ svg { flex-shrink: 0; }
   align-items: center;
   gap: 8px;
 }
-.hint-card-actions .button { min-height: 36px; margin-inline-start: auto; font-size: 13px; }
-.hint-card-actions .button.secondary { margin-inline-start: 0; }
+.hint-card-actions .button { min-height: 36px; font-size: 13px; }
+.hint-card-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-inline-start: auto;
+}
 .hint-card-navigation {
   display: flex;
   align-items: center;

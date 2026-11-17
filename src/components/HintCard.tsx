@@ -6,12 +6,13 @@ import type { lessonDiagram } from '../sudoku/lesson-diagram'
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
 type HintAction = { label: string; onClick: () => void }
 
-export function HintCard({ hint, onClose, onShown, navigation, action, secondaryAction, explanation, explanationSteps, collapseExplanation, trace, lesson, removals }: {
+export function HintCard({ hint, onClose, onShown, navigation, action, lessDetail, secondaryAction, explanation, explanationSteps, collapseExplanation, trace, lesson, removals }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
   navigation?: HintNavigation
   action?: HintAction
+  lessDetail?: { disabled: boolean; onClick: () => void }
   secondaryAction?: HintAction & { expanded?: boolean }
   explanation?: string | readonly string[]
   explanationSteps?: readonly string[]
@@ -54,7 +55,11 @@ export function HintCard({ hint, onClose, onShown, navigation, action, secondary
           </div>}
           {secondaryAction && <button type="button" className="button secondary" aria-expanded={secondaryAction.expanded}
             onClick={secondaryAction.onClick}>{secondaryAction.label}</button>}
-          {action && <button type="button" className="button primary" onClick={action.onClick}>{action.label}</button>}
+          {action && <div className="hint-card-detail-actions" role="group" aria-label="Hint detail">
+            {lessDetail && <button type="button" className="button secondary" disabled={lessDetail.disabled}
+              onClick={lessDetail.onClick}>Less detail</button>}
+            <button type="button" className="button primary" onClick={action.onClick}>{action.label}</button>
+          </div>}
         </div>}
       </div>
       {(paragraphs.length > 0 || Boolean(explanationSteps?.length)) && (collapseExplanation ? <details className="hint-card-explanation">

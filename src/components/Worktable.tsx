@@ -11,7 +11,7 @@ import {
   formatTime, hasCandidate, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
-import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
+import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
 import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
@@ -114,18 +114,6 @@ type HintPosition = Pick<Position, 'center' | 'corner' | 'eliminations'> & {
   values: string
 }
 
-type HintStage = 'technique' | 'digits' | 'location' | 'explanation'
-const nextHintReveal = {
-  technique: { stage: 'digits', label: 'Show digits' },
-  digits: { stage: 'location', label: 'Show location' },
-  location: { stage: 'explanation', label: 'Show explanation' },
-} satisfies Record<Exclude<HintStage, 'explanation'>, { stage: HintStage; label: string }>
-
-function initialHintStage(hint: HintChoice | undefined, fromTechniqueList: boolean): HintStage {
-  if (!fromTechniqueList) return 'technique'
-  return aicEndpoints(hint) ? 'location' : 'explanation'
-}
-
 type HintState = {
   position: HintPosition
   choices: HintChoice[]
@@ -135,7 +123,6 @@ type HintState = {
   error?: PuzzleHint
   recovery?: CandidateRecovery
   reviewingRemoval?: boolean
-  fromTechniqueList?: boolean
 }
 
 type CandidateDrag = {
@@ -1217,12 +1204,12 @@ export function Worktable({
       if (!candidates) throw new Error('Missing candidates for the selected technique.')
       const choices = techniqueHintsFromMatches(matches, technique)
       result = {
-        position, choices, candidates, index: 0, stage: initialHintStage(choices[0], true), fromTechniqueList: true,
+        position, choices, candidates, index: 0, stage: 'technique',
         ...(choices.length ? {} : { error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' } }),
       }
     } catch (error) {
       result = {
-        position, choices: [], index: 0, stage: 'explanation',
+        position, choices: [], index: 0, stage: 'technique',
         error: error instanceof EngineError && error.code === 'invalid-eliminations'
           ? HINT_CANDIDATES_ERROR : HINT_ERROR,
       }
@@ -1237,18 +1224,17 @@ export function Worktable({
     setHint((current) => {
       if (!current || !current.choices.length) return current
       const index = moveHintIndex(current.index, current.choices.length, offset)
-      return { ...current, index, stage: initialHintStage(current.choices[index], current.fromTechniqueList ?? false) }
+      return index === current.index ? current : { ...current, index, stage: 'technique' }
     })
   }
 
-  function revealHint() {
-    setHint((current) => current && current.stage !== 'explanation'
-      ? { ...current, stage: nextHintReveal[current.stage].stage } : current)
-  }
-
-  function revealCandidateRecovery() {
-    setHint((current) => current?.recovery
-      ? { ...current, stage: current.stage === 'technique' ? 'location' : 'explanation' } : current)
+  function changeHintDetail(offset: -1 | 1) {
+    setHint((current) => {
+      if (!current) return current
+      const stage = moveHintStage(current.stage, offset, Boolean(current.recovery))
+      return stage === current.stage ? current
+        : { ...current, stage, reviewingRemoval: stage === 'technique' ? false : current.reviewingRemoval }
+    })
   }
 
   function applyCandidateRecovery() {
@@ -1340,13 +1326,14 @@ export function Worktable({
   const hintTechnique = solutionHintPanel ? replayedSolutionStep?.deduction.technique
     : visibleHint && !recovery ? deduction?.technique : undefined
   const hintLesson = hintTechnique ? lessonRoutes.get(hintTechnique) : undefined
-  const reveal = hintStage && hintStage !== 'explanation' ? nextHintReveal[hintStage] : undefined
-  const revealLabel = hintStage === 'digits' && aicEndpoints(deduction) ? 'Show endpoints' : reveal?.label
-  const hintAction = solutionHintPanel ? undefined
-    : recovery ? fullHint ? { label: 'Restore candidate', onClick: applyCandidateRecovery }
-      : { label: hintStage === 'technique' ? 'Show cell' : 'Show explanation', onClick: revealCandidateRecovery }
-    : deduction && hintCandidates ? revealLabel ? { label: revealLabel, onClick: revealHint } : { label: 'Apply hint', onClick: applyHint }
-    : undefined
+  const hasHintDetails = !solutionHintPanel && (recovery || (deduction && hintCandidates))
+  const revealLabel = hintStage === 'technique' ? recovery ? 'Show cell' : 'Show digits'
+    : hintStage === 'digits' ? aicEndpoints(deduction) ? 'Show endpoints' : 'Show location'
+      : 'Show explanation'
+  const hintAction = !hasHintDetails ? undefined
+    : !fullHint ? { label: revealLabel, onClick: () => changeHintDetail(1) }
+      : recovery ? { label: 'Restore candidate', onClick: applyCandidateRecovery }
+        : { label: 'Apply hint', onClick: applyHint }
   const explanation = solutionHintPanel ? stepDiagram : hintDiagram
   const revealedDeduction = solutionHintPanel ? replayedSolutionStep?.deduction : fullHint && !recovery ? deduction : undefined
   const recoveryExplanation = !solutionHintPanel && recovery && fullHint
@@ -1363,6 +1350,7 @@ export function Worktable({
         onClose={() => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)}
         onShown={!solutionHintPanel && deduction ? markHintVisible : undefined}
         action={hintAction}
+        lessDetail={hasHintDetails ? { disabled: hintStage === 'technique', onClick: () => changeHintDetail(-1) } : undefined}
         secondaryAction={!solutionHintPanel && recoveryLocationVisible && recovery.movesAgo
           ? { label: 'Review move', expanded: visibleHint?.reviewingRemoval ?? false,
             onClick: () => setHint((current) => current?.recovery ? { ...current, reviewingRemoval: !current.reviewingRemoval } : current) }
