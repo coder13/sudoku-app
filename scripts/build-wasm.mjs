@@ -32,8 +32,12 @@ for (const { id } of techniques) {
   examples[id] = { ...diagram, practice }
 }
 const difficulties = Object.fromEntries(techniques.map(({ id, difficulty }) => [id, difficulty]))
+const aliases = Object.fromEntries([...request('techniques').techniques, ...techniques]
+  .filter(({ aliases }) => aliases.length)
+  .map(({ id, aliases }) => [id, aliases]))
 
 mkdirSync('src/sudoku/generated', { recursive: true })
 writeFileSync('src/sudoku/generated/engine.wasm', bytes)
 writeFileSync('src/sudoku/generated/lesson-examples.json', `${JSON.stringify(examples)}\n`)
 writeFileSync('src/sudoku/generated/lesson-difficulties.json', `${JSON.stringify(difficulties)}\n`)
+writeFileSync('src/sudoku/generated/lesson-aliases.json', `${JSON.stringify(aliases)}\n`)

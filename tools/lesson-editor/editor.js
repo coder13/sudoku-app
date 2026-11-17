@@ -268,11 +268,12 @@ function structure(lesson) {
 function diagramControls(block) {
   const example = node('select', {}, ...examples.map((id) => new Option(id, id, false, id === block.example)))
   example.onchange = () => {
-    if (block.copy && !window.confirm('Changing the example will remove your custom diagram copy. Continue?')) {
+    if ((block.copy || block.notes) && !window.confirm('Changing the example will remove its custom caption and notes. Continue?')) {
       example.value = block.example
       return
     }
     delete block.copy
+    delete block.notes
     block.example = example.value
     changeBlock(block)
     renderInspector()

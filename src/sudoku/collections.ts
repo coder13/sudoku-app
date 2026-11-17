@@ -1,8 +1,8 @@
-import nikoli from './collections/nikoli-100.json' with { type: 'json' }
-import exchange from './collections/sudoku-exchange.json' with { type: 'json' }
+import index from './generated/collection-index.json' with { type: 'json' }
 import type { Difficulty } from './engine.ts'
 import { DIFFICULTY_LABELS } from './difficulty.ts'
 import { isSolved, type Game } from './game.ts'
+import { collectionGridHash } from './collection-integrity.ts'
 
 export type CollectionPuzzle = {
   id: string
@@ -15,6 +15,8 @@ export type CollectionPuzzle = {
   sourceRating?: number
 }
 
+export type CollectionPuzzleInfo = Omit<CollectionPuzzle, 'givens'> & { givensHash: string; bytes: number }
+
 export type PuzzleCollection = {
   id: string
   title: string
@@ -25,18 +27,20 @@ export type PuzzleCollection = {
   license: string
   licenseUrl: string
   changes: string
-  puzzles: readonly CollectionPuzzle[]
+  kind: 'handmade' | 'generated'
+  puzzles: readonly CollectionPuzzleInfo[]
 }
 
 export const COLLECTIONS: readonly PuzzleCollection[] = [
   {
     id: 'nikoli-classics', title: 'Nikoli Classics', creator: 'Nikoli',
-    description: '100 handmade classic puzzles, selected by Nikoli for Sudoku-Bench.',
+    description: 'Handmade classics by Nikoli.',
     sourceUrl: 'https://huggingface.co/datasets/SakanaAI/sudoku-bench-nikoli',
     sourceRevision: '9034906b4ec06ab1e08daf110c6b562ef72859fd',
     license: 'CC BY 4.0', licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
     changes: 'Original givens and titles retained. Difficulty ratings added by this app.',
-    puzzles: nikoli as CollectionPuzzle[],
+    kind: 'handmade',
+    puzzles: index['nikoli-classics'] as CollectionPuzzleInfo[],
   },
   {
     id: 'sudoku-exchange', title: 'Sudoku Exchange Selection', creator: 'Grant McLean / Sudoku Exchange',
@@ -45,7 +49,8 @@ export const COLLECTIONS: readonly PuzzleCollection[] = [
     sourceRevision: 'd8c8ebaee0c08c412cfba96af1923dfa61c83317',
     license: 'Public domain', licenseUrl: 'https://github.com/grantm/sudoku-exchange-puzzle-bank/blob/d8c8ebaee0c08c412cfba96af1923dfa61c83317/LICENSE.txt',
     changes: 'Original givens retained. Selection, titles, and difficulty ratings added by this app.',
-    puzzles: exchange as CollectionPuzzle[],
+    kind: 'generated',
+    puzzles: index['sudoku-exchange'] as CollectionPuzzleInfo[],
   },
 ]
 
@@ -61,29 +66,33 @@ export function getCollectionPuzzle(collectionId: string | undefined, puzzleId: 
 
 export function getGameCollection(game: Game) {
   const entry = getCollectionPuzzle(game.collection?.collectionId, game.collection?.puzzleId)
-  return entry?.puzzle.givens === game.givens && !game.variant && game.source !== 'draft' ? entry : undefined
+  return entry && matchesCollectionPuzzle(entry.puzzle, game) ? entry : undefined
 }
 
-export function findCollectionGame(puzzle: CollectionPuzzle, games: readonly Game[]) {
-  const matching = games.filter(game => game.source !== 'draft' && !game.variant && game.givens === puzzle.givens)
+export function matchesCollectionPuzzle(puzzle: CollectionPuzzleInfo, game: Game) {
+  return game.source !== 'draft' && !game.variant && collectionGridHash(game.givens) === puzzle.givensHash
+}
+
+export function findCollectionGame(puzzle: CollectionPuzzleInfo, games: readonly Game[]) {
+  const matching = games.filter(game => matchesCollectionPuzzle(puzzle, game))
   return matching.find(game => game.started && !isSolved(game)) ?? matching.find(isSolved) ?? matching[0]
 }
 
 export type CollectionPuzzleStatus = 'unplayed' | 'in-progress' | 'solved'
 
-export function collectionPuzzleStatus(puzzle: CollectionPuzzle, games: readonly Game[]): CollectionPuzzleStatus {
-  const matching = games.filter(game => game.source !== 'draft' && !game.variant && game.givens === puzzle.givens)
+export function collectionPuzzleStatus(puzzle: CollectionPuzzleInfo, games: readonly Game[]): CollectionPuzzleStatus {
+  const matching = games.filter(game => matchesCollectionPuzzle(puzzle, game))
   if (matching.some(isSolved)) return 'solved'
   return matching.some(game => game.started) ? 'in-progress' : 'unplayed'
 }
 
-export function collectionDifficulties(collection: PuzzleCollection) {
+export function collectionDifficulties(collection: PuzzleCollection, available?: ReadonlySet<string>) {
   return (Object.keys(DIFFICULTY_LABELS) as Difficulty[]).filter(difficulty =>
-    collection.puzzles.some(puzzle => puzzle.difficulty === difficulty))
+    collection.puzzles.some(puzzle => puzzle.difficulty === difficulty && (!available || available.has(puzzle.id))))
 }
 
-export function collectionPuzzles(collection: PuzzleCollection, difficulty: Difficulty) {
-  return collection.puzzles.filter(puzzle => puzzle.difficulty === difficulty)
+export function collectionPuzzles(collection: PuzzleCollection, difficulty: Difficulty, available?: ReadonlySet<string>) {
+  return collection.puzzles.filter(puzzle => puzzle.difficulty === difficulty && (!available || available.has(puzzle.id)))
 }
 
 export function collectionProgress(collection: PuzzleCollection, games: readonly Game[], difficulty?: Difficulty) {
@@ -94,10 +103,9 @@ export function collectionProgress(collection: PuzzleCollection, games: readonly
   }, { unplayed: 0, 'in-progress': 0, solved: 0 })
 }
 
-// Continue in source order within one difficulty, wrapping to earlier unfinished
-// puzzles at the end. Never switch difficulty or replay a completed puzzle.
-export function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string) {
-  const puzzles = collectionPuzzles(collection, difficulty)
+// Wrap to earlier unfinished puzzles without switching difficulty or replaying a solve.
+export function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string, available?: ReadonlySet<string>) {
+  const puzzles = collectionPuzzles(collection, difficulty, available)
   if (!afterId) {
     return puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'in-progress')
       ?? puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'unplayed')

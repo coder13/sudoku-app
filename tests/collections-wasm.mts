@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { COLLECTIONS } from '../src/sudoku/collections.ts'
+import { fullCollections as COLLECTIONS } from './collection-fixtures.ts'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
 import type { EngineRequest, EngineResult } from '../src/sudoku/engine.ts'
 

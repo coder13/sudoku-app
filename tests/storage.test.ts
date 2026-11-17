@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EMPTY, enter, makeGame, paintCandidate, restartGame, STARTER_GAME, undo } from '../src/sudoku/game.ts'
-import { addRatingHints, placementHintKey } from '../src/sudoku/player-rating.ts'
+import { addRatingHints, placementHintKey, PLAYER_RATING_VERSION, type RatingAttempt, type RatingEvent } from '../src/sudoku/player-rating.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
 import { createPuzzleSelectionStore, puzzleSelectionKey } from '../src/sudoku/selection-preferences.ts'
 
@@ -151,6 +151,59 @@ test('rating survives reset, interrupted saves, and deleting or replaying a puzz
     fresh.update(replay.id, (game) => enter(game, [0], 'value', 5))
     assert.equal(fresh.getSnapshot().games[0].ratingAttempt, undefined)
     assert.equal(fresh.getSnapshot().playerRating.count, 1)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('an upgrade preserves production rating evidence and records later solves under the new rules', async () => {
+  const local = new MemoryStorage()
+  const prefix = 'sudoku-app:v1:'
+  const outcome: RatingEvent = {
+    id: 'old-outcome', gameId: 'deleted-solve', givens: STARTER_GAME.givens, difficulty: 'medium',
+    at: 1, finish: 'solved', elapsed: 90, viewed: 0, applied: 0,
+  }
+  const oldRecord = JSON.stringify(outcome)
+  local.setItem(prefix + 'rating-result:' + outcome.id, oldRecord)
+  const givens = '034678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const attempt: RatingAttempt = {
+    grade: { difficulty: 'hard', points: 960, scoringVersion: 10, techniqueOrder: ['full-house'] },
+    viewed: ['p0:5', 'p1:3'], applied: [], requested: ['first-position', 'second-position'],
+    priorElapsed: 0, lastHintAt: 2,
+  }
+  const puzzle = { ...makeGame('in-progress', 'A saved puzzle', givens, 'generated'), elapsed: 120,
+    difficulty: 'hard' as const, ratingAttempt: attempt }
+  local.setItem(prefix + 'game:' + puzzle.id, JSON.stringify(puzzle))
+
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?prod-rating-upgrade')
+    const old = roomStore.getSnapshot().playerRating
+    assert.ok(Math.abs(old.rating - 946.9965032228188) < 1e-10)
+    assert.equal(old.recommended, 'medium')
+    assert.equal(old.results.get(outcome.gameId)?.after, 951)
+    assert.equal(old.results.get(puzzle.id)?.event.finish, 'hints')
+
+    roomStore.update(puzzle.id, game => enter(game, [0], 'value', 5))
+    const updated = roomStore.getSnapshot().playerRating
+    assert.equal(updated.count, 2)
+    assert.deepEqual(updated.results.get(outcome.gameId), old.results.get(outcome.gameId))
+    const solved = updated.results.get(puzzle.id)
+    assert.equal(solved?.before, 951)
+    assert.equal(solved?.event.finish, 'solved')
+    assert.equal(solved?.event.difficulty, 'hard')
+    assert.equal(solved?.event.hintsRequested, 2)
+    assert.equal(solved?.event.ratingVersion, PLAYER_RATING_VERSION)
+    assert.equal(local.getItem(prefix + 'rating-result:' + outcome.id), oldRecord)
+
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?prod-rating-upgrade-reload')
+    assert.deepEqual(reloaded.getSnapshot().playerRating, updated)
   } finally {
     delete (globalThis as { window?: unknown }).window
     delete (globalThis as { localStorage?: unknown }).localStorage

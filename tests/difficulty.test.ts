@@ -33,13 +33,18 @@ test('variant choices only offer verified recipes and clamp saved choices', () =
 })
 
 test('the learning path follows tier order and teaches prerequisites first', () => {
-  assert.deepEqual(lessonGroups.map(group => group.title),
+  const classic = lessonGroups.filter(group => !group.variant)
+  assert.deepEqual(classic.map(group => group.title),
     ['Beginner', 'Easy', 'Medium', 'Tricky', 'Hard', 'Very Hard', 'Expert', 'Master', 'Extreme', 'Impossible'])
+  assert.deepEqual(lessonGroups.filter(group => group.variant).map(group => group.title),
+    ['X Sudoku', 'Killer Sudoku', 'Chess variants', 'Thermometer', 'Arrow', 'Kropki',
+      'Other cell and pair rules', 'Other line rules', 'Outside clues'])
+  const classicIds = new Set(classic.flatMap(group => group.lessons.map(lesson => lesson.id)))
   const seen = new Set<string>()
   let previous = -1
   for (const article of articles) {
     for (const prerequisite of article.prerequisites ?? []) assert.ok(seen.has(prerequisite), `${article.id} needs ${prerequisite}`)
-    if (article.difficulty) {
+    if (article.difficulty && classicIds.has(article.id)) {
       const level = difficultyIndex(article.difficulty)
       assert.ok(level >= previous, article.id)
       previous = level

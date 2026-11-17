@@ -102,7 +102,7 @@
     "steps": [
       {
         "title": "Two cells reserve two digits",
-        "description": "R3C4 and R3C5 each contain only 2 and 8. They share a row, so one takes 2 and the other takes 8.",
+        "description": "R3C4 and R3C5 each contain only 2 and 8. They share a row, so one must contain 2 and the other must contain 8.",
         "marks": [
           {
             "cell": 21,
@@ -2082,7 +2082,7 @@
       },
       {
         "title": "The weak link also allows neither",
-        "description": "If neither set uses 6, A takes 1 and 4 while B takes 7 and 2. The RCC alone does not force a 6.",
+        "description": "If neither set uses 6, A contains 1 and 4 while B contains 7 and 2. The RCC alone does not force a 6.",
         "marks": [
           {
             "cell": 63,

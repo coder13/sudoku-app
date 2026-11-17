@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useMatch, useRouterState } from '@tanstack/react-router'
 import { ChevronDown, List } from 'lucide-react'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import { lessonsByDifficulty } from '../sudoku/lesson-difficulties'
+import { lessonsByVariant } from '../sudoku/lesson-difficulties'
 import { learnFundamentals, lessonRoutes } from '../sudoku/lessons'
 import '../lessons.css'
 
@@ -85,14 +85,25 @@ export function TechniqueNavigation() {
           <Link to="/learn/$technique" params={{ technique: learnFundamentals.id }} activeOptions={activeOptions}
             className="learn-nav-link" onClick={select}>{learnFundamentals.title}</Link>
         </div>
-        <div className="learn-nav-list" ref={list}>
-          {lessonsByDifficulty.map(({ title, lessons }) => <div className="learn-nav-group" key={title}>
-            <h2>{title}</h2>
-            <ul>{lessons.map(({ id, title }) => <li key={id}>
-              <Link to="/learn/$technique" params={{ technique: id }} activeOptions={activeOptions}
-                className="learn-nav-link" aria-current={current?.id === id ? 'page' : undefined} onClick={select}>{title}</Link>
-            </li>)}</ul>
-          </div>)}
+        <div className="learn-nav-list" ref={list} key={current?.id}>
+          {lessonsByVariant.map(({ title, group, difficulties }) => <details className="learn-nav-variant" key={title}
+            open={current && current !== learnFundamentals
+              ? difficulties.some(({ families }) => families.some(({ lessons }) => lessons.includes(current)))
+              : !group}>
+            <summary>{title}</summary>
+            {difficulties.map(({ title, families, count }) => {
+              const lessons = families.flatMap(family => family.lessons)
+              const links = <ul>{lessons.map(({ id, title }) => <li key={id}>
+                <Link to="/learn/$technique" params={{ technique: id }} activeOptions={activeOptions}
+                  className="learn-nav-link" aria-current={current?.id === id ? 'page' : undefined} onClick={select}>{title}</Link>
+              </li>)}</ul>
+              return !group && count > 8
+                ? <details className="learn-nav-group" key={title} open={current && lessons.includes(current)}>
+                    <summary>{title}</summary>{links}
+                  </details>
+                : <div className="learn-nav-group" key={title}><h2>{title}</h2>{links}</div>
+            })}
+          </details>)}
         </div>
       </nav>
     </aside>

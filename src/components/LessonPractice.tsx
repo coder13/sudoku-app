@@ -88,7 +88,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
     <div className="lesson-practice-step" tabIndex={0} role="group" aria-label="Step details" ref={stepBody}>
       <div aria-live="polite">
         {clue ? <><h3>{clue.title}</h3><p>{clue.text}</p></>
-          : solution ? <h3>Solution</h3> : <p>{instruction ?? defaultInstruction}</p>}
+          : solution ? <h3>Solution</h3> : <p className="lesson-practice-instruction">{instruction ?? defaultInstruction}</p>}
       </div>
       {solutionDiagram && <>
         <DeductionOutcome removals={describeHintRemovals(puzzle.deduction, { cellReferenceStyle: 'concise' })}

@@ -64,7 +64,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'unique-rectangle-discontinuous-nice-loop': 'Unique Rectangle discontinuous Nice Loop',
   'unique-rectangle-continuous-nice-loop': 'Unique Rectangle continuous Nice Loop',
   'w-wing': 'W-wing',
-  'wxyz-wing': 'WXYZ-wing',
+  'wxyz-wing': 'WXYZ-Wing',
   'x-chain': 'X-chain',
   'x-wing': 'X-wing',
   'xy-chain': 'XY-chain',

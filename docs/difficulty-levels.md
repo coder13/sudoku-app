@@ -110,7 +110,7 @@ Some family articles still contain several levels. Further course work can split
 
 Keep old puzzles, grades, scores, and earned outcomes. A saved `unfair` grade still displays Unfair. A legacy `unfair` generation preference maps to Expert, and the engine accepts it as an input alias. New output and the selector use only the ten current levels. Do not relabel old puzzles as if they were newly rated under version 11.
 
-The initial player rating still recommends Medium. Auto follows the new ten-step order. Its numerical performance estimates are provisional and do not change puzzle classification.
+New players start at 855 with Medium as the Auto recommendation. On upgrade, saved results without a player rating version use the original five levels when the app calculates the rating. New results continue from that rating and use the ten levels. An old Auto recommendation of Unfair becomes Expert. The browser keeps the existing records, including scores from puzzles the player deleted.
 
 ## Research behind the policy
 
