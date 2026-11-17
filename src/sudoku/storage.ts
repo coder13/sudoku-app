@@ -1,4 +1,5 @@
 import { validVariantSave } from './variants.ts'
+import { validActionHistory } from './action-history.ts'
 import { isDifficulty } from './difficulty.ts'
 import { COLORS, createGameId, isSolved, puzzleIdentity, type Game, type Position } from './game.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
@@ -72,6 +73,7 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
       if (value.analysisUsed !== true) delete value.analysisUsed
+      if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory)) delete value.actionHistory
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt

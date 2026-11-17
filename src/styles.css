@@ -1750,11 +1750,19 @@ svg { flex-shrink: 0; }
 .completion-techniques[open] summary > svg { transform: rotate(180deg); }
 .completion-techniques-panel { max-height: min(148px, 30cqw); overflow-y: auto; padding: var(--space-4) var(--space-10); }
 .completion-techniques-panel p { padding: 7px 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
-.completion-techniques-panel ul { display: grid; margin: 0; padding: 0; list-style: none; }
+.completion-techniques-panel ol { display: grid; margin: 0; padding: 0; list-style: none; }
 .completion-techniques-panel li { display: grid; gap: 1px; padding: 7px 0; }
 .completion-techniques-panel li + li { border-top: 1px solid var(--border); }
 .completion-techniques-panel li strong { font-size: 12px; }
 .completion-techniques-panel li small { color: var(--muted); font-size: 10px; line-height: 1.35; }
+.completion:has(.action-history[open]) { aspect-ratio: auto; }
+.action-history .completion-techniques-panel { max-height: min(240px, 50cqw); overscroll-behavior: contain; }
+.action-history li small { font-size: 12px; }
+.action-history-heading { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
+.action-history-number, .action-history-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.action-history-time { flex-shrink: 0; font-size: 11px; }
+.action-history .action-history-technique { color: var(--dark-purple); }
+.action-history-changes { overflow-wrap: anywhere; }
 .completion-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
 .completion-actions .button { white-space: normal; }
 .completion-next { grid-column: 1 / -1; }

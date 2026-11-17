@@ -3,6 +3,7 @@ import {
 } from 'react'
 import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, ListFilter, ListOrdered, LogOut, MoreHorizontal, Pause, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
+import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
@@ -45,6 +46,7 @@ import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckR
 import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
+import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
 
@@ -206,6 +208,7 @@ export function Worktable({
   puzzleBrowserView: PuzzleBrowserView
   setPuzzleBrowserView: (view: PuzzleBrowserView) => void
 }) {
+  useActionHistory(game)
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
   const gridModeId = useId()
   const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('modeBadgePosition')
@@ -779,9 +782,10 @@ export function Worktable({
     return result
   }, [conflicts, draft, errorMode, game.position.entries, solution])
 
-  function edit(transform: (current: Game) => Game) {
+  function edit(transform: (current: Game) => Game, kind: ActionKind = transform === undo ? 'undo' : transform === redo ? 'redo' : 'edit',
+    options?: { technique?: string; actions?: readonly DeductionAction[] }) {
     if (disabled) return
-    roomStore.update(game.id, transform)
+    roomStore.update(game.id, (current) => recordAction(current, transform(current), kind, options))
   }
 
   function enterFromInput(cells: number[], digit: number, inputMode: Mode, options?: EnterOptions) {
@@ -1001,7 +1005,7 @@ export function Worktable({
       stroke.previous = index
       setActive(index)
       setAnchor(index)
-      roomStore.update(game.id, (current) => paintCandidateStroke(
+      edit((current) => paintCandidateStroke(
         current, stroke.initial, [...stroke.cells], stroke.mode, stroke.digit, stroke.action,
       ))
       return
@@ -1203,7 +1207,8 @@ export function Worktable({
         setDialogResult({ title: 'Puzzle action', text: 'Candidates cannot be generated until the grid conflicts are resolved.', tone: 'error' })
         return
       }
-      roomStore.update(game.id, (latest) => valuesOf(latest) === values ? replaceCandidates(latest, masks) : latest)
+      roomStore.update(game.id, (latest) => valuesOf(latest) === values
+        ? recordAction(latest, replaceCandidates(latest, masks), 'candidates') : latest)
     } catch (error) {
       setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
     } finally {
@@ -1231,7 +1236,7 @@ export function Worktable({
         if (valuesOf(latest) !== values || latest.position.eliminations !== eliminations) return latest
         const placements = [...result].flatMap((digit, cell) => digit !== '0' && values[cell] !== digit ? [{ place: { cell, digit: Number(digit) } }] : [])
         void observeTechniqueActions(latest, placements, 'automated')
-        const next = fillEntries(latest, result)
+        const next = recordAction(latest, fillEntries(latest, result), 'singles')
         return latest.ratingAttempt ? { ...next, ratingAttempt: addSinglesAssistance(latest.ratingAttempt, assistance) } : next
       })
     } catch (error) {
@@ -1353,13 +1358,13 @@ export function Worktable({
 
   function applyCandidateRecovery() {
     if (!recovery || !visibleHint || !fullHint) return
-    edit((current) => matchesHintPosition(current, visibleHint.position) ? restoreCandidate(current, recovery) : current)
+    edit((current) => matchesHintPosition(current, visibleHint.position) ? restoreCandidate(current, recovery) : current, 'recovery')
     setHint(null)
     setHintRevealed(false)
     if (!mobile) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
   }
 
-  function applyToCurrentPosition(actions: readonly DeductionAction[], candidates: readonly number[], hintSnapshot?: HintPosition) {
+  function applyToCurrentPosition(actions: readonly DeductionAction[], candidates: readonly number[], hintSnapshot?: HintPosition, technique?: string) {
     let applied = false
     edit((current) => {
       const currentPosition = hintSnapshot ? matchesHintPosition(current, hintSnapshot)
@@ -1370,7 +1375,7 @@ export function Worktable({
       if (applied && !hintSnapshot) void observeTechniqueActions(current, actions, 'independent',
         hintEliminations(valuesOf(current), completeCandidateMasks(current), current.position.eliminations))
       return applied && hintSnapshot ? withRatingHints(next, [hintKey(actions)], true) : next
-    })
+    }, hintSnapshot ? 'hint' : 'edit', { technique, actions })
     return applied
   }
 
@@ -1380,7 +1385,7 @@ export function Worktable({
 
   function applyHint() {
     if (!fullHint || !deduction || !hintCandidates || !visibleHint) return
-    applyToCurrentPosition(deduction.actions, hintCandidates, visibleHint.position)
+    applyToCurrentPosition(deduction.actions, hintCandidates, visibleHint.position, deduction.technique)
     setHint(null)
     setHintRevealed(false)
     if (!mobile) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
@@ -1494,7 +1499,7 @@ export function Worktable({
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={!rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen}
-      showGuides={appearance.showGuides} onChooseDifficulty={() => {
+      showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle} onChooseDifficulty={() => {
         if (mobile) onNewPuzzle('difficulty')
         else setSolvedView('difficulty')
       }} onChooseVariant={onNewPuzzle} />

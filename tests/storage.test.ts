@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EMPTY, enter, makeGame, paintCandidate, restartGame, STARTER_GAME, undo } from '../src/sudoku/game.ts'
 import { addRatingHints, placementHintKey } from '../src/sudoku/player-rating.ts'
+import { recordAction } from '../src/sudoku/action-history.ts'
 import { createPuzzleSelectionStore, puzzleSelectionKey } from '../src/sudoku/selection-preferences.ts'
 
 class MemoryStorage {
@@ -76,6 +77,33 @@ test('the puzzle library hydrates synchronously when the client module reloads',
     assert.deepEqual(saved?.future.at(-1)?.candidateColors, { 4: { 7: 1 } })
     assert.equal(snapshot.games.some(({ id }) => id === STARTER_GAME.id), false)
     assert.equal(local.getItem('sudoku-app:v1:game:warmup'), null)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('action history survives a reload and corrupt history does not discard the puzzle', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?action-history')
+    const original = makeGame('history', 'History', EMPTY, 'custom')
+    roomStore.add(original)
+    roomStore.update(original.id, (game) => recordAction(game, enter(game, [0], 'value', 3)))
+    const saved = roomStore.getSnapshot().games[0]
+    const reloaded = (await import('../src/sudoku/storage.ts?action-history-reload')).roomStore
+    assert.deepEqual(reloaded.getSnapshot().games[0].actionHistory, JSON.parse(JSON.stringify(saved.actionHistory)))
+    assert.ok(reloaded.getSnapshot().games[0].actionHistory![0].pending)
+    local.setItem('sudoku-app:v1:game:history', JSON.stringify({ ...saved, actionHistory: [null] }))
+    const recovered = (await import('../src/sudoku/storage.ts?action-history-corrupt')).roomStore
+    assert.equal(recovered.getSnapshot().games[0].position.entries[0], '3')
+    assert.equal(recovered.getSnapshot().games[0].actionHistory, undefined)
   } finally {
     delete (globalThis as { window?: unknown }).window
     delete (globalThis as { localStorage?: unknown }).localStorage
