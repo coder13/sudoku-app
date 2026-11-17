@@ -1,4 +1,4 @@
-import { DifficultyStepper } from './DifficultyStepper'
+import { DifficultySelector } from './DifficultySelector'
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentType } from 'react'
 import { getRouteApi, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { BarChart3, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
@@ -139,9 +139,9 @@ function NewPuzzleSection({ difficulty, remembered, save, done }: {
   return <section className="main-menu-section" aria-labelledby={`${group}-title`}>
     <header><h2 id={`${group}-title`}>New puzzle</h2></header>
     <VariantSelector value={variant} onChange={setVariant} busy={busy} />
-    <DifficultyStepper value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+    <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
-    <button className="button primary main-start-puzzle" disabled={busy} onClick={start}>
+    <button className="button primary main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
         ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
     </button>

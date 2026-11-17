@@ -1,4 +1,4 @@
-import { DifficultyStepper } from './DifficultyStepper'
+import { DifficultySelector } from './DifficultySelector'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
@@ -82,7 +82,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         <ActionHistoryPanel entries={game.actionHistory} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="completion-actions">
-          <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canGenerate}
+          <button className="button primary completion-next puzzle-start-button" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canGenerate}
             onClick={() => { void generate(preferredDifficulty, undefined, game.variant?.id) }}>
             {busy ? 'Generating…' : nextLabel}
             {!busy && <ArrowRight size={18} aria-hidden="true" />}
@@ -130,8 +130,8 @@ export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack 
           </div>
         </header>
         {error && <p className="form-error" role="alert">{error}</p>}
-        <DifficultyStepper value={selection} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
-        <button type="button" className="button primary" disabled={busy} onClick={() => { void selectDifficulty(selection) }}>
+        <DifficultySelector value={selection} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+        <button type="button" className="button primary puzzle-start-button" disabled={busy} onClick={() => { void selectDifficulty(selection) }}>
           {busy ? 'Generating…' : 'Start puzzle'} <ArrowRight size={18} aria-hidden="true" />
         </button>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
-import { DifficultyStepper } from './DifficultyStepper'
+import { DifficultySelector } from './DifficultySelector'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Check, ChevronRight, Dices, Gauge, PencilLine } from 'lucide-react'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
@@ -42,7 +42,7 @@ export function MobileNewPuzzle({ screen, variant, remembered, remember, done, o
 
   if (screen === 'difficulty') return <section className="mobile-new-puzzle" aria-labelledby="puzzles-page-title">
     <p className="mobile-new-puzzle-variant"><VariantPreview variant={variant} />{VARIANTS[variant].name}</p>
-    <DifficultyStepper value={selected} recommended={recommended} variant={variant} onChange={setSelection} />
+    <DifficultySelector value={selected} recommended={recommended} variant={variant} onChange={setSelection} />
     <button type="button" className="button primary" onClick={() => {
       remember({ variant, difficulty: selected })
       void navigate({ to: '/puzzles/new', search: {}, replace: true })
@@ -66,7 +66,7 @@ export function MobileNewPuzzle({ screen, variant, remembered, remember, done, o
       </button>
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
-    <button type="button" className="button primary" disabled={busy}
+    <button type="button" className="button primary puzzle-start-button" disabled={busy}
       onClick={() => { void generate(remembered.difficulty, () => done(remembered), remembered.variant) }}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : 'Start puzzle'}
     </button>

@@ -1,4 +1,4 @@
-import { DifficultyStepper } from './DifficultyStepper'
+import { DifficultySelector } from './DifficultySelector'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Dices, PencilLine, Trash2 } from 'lucide-react'
 import { type DifficultyPreference } from '../sudoku/difficulty'
@@ -92,9 +92,9 @@ export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDif
     <Modal title="New puzzle" onClose={close}>
       <form className="dialog-form" onSubmit={submit}>
         <VariantSelector value={variant} onChange={setVariant} busy={busy} />
-        <DifficultyStepper value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+        <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
         {error && <p className="form-error" role="alert">{error}</p>}
-        <button type="submit" className="button primary" disabled={busy}>
+        <button type="submit" className="button primary puzzle-start-button" disabled={busy}>
           <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
         </button>
       </form>

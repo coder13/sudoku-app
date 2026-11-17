@@ -55,9 +55,11 @@ The app only offers variant levels backed by checked generation recipes. A class
 
 ## Selecting a level
 
-Use one horizontal control everywhere: decrease arrow, current name and position, increase arrow. The endpoints disable their respective arrows; the control does not wrap. Arrow keys work while a difficulty arrow has focus. Changing a level does not start generation until the player presses Start or Continue.
+Desktop shows the difficulties in one vertical list. Mobile uses a decrease arrow, the current name and position, and an increase arrow. The endpoints disable their respective arrows. The control does not wrap. Arrow keys work while a difficulty arrow has focus. Changing a level does not start generation until the player presses Start or Continue.
 
-Auto is a separate checkbox, not an eleventh difficulty. It uses the same profiles and acceptance checks. Switching an arrow returns to a fixed choice. Controls have mobile-friendly targets and stable space for the description.
+Each difficulty shows personal results from saved games on this device: puzzles solved and average solve time. Results use the selected variant and the saved difficulty. Unstarted imports, incomplete puzzles, and drafts do not count. Games without a positive recorded time do not enter the average. An empty history shows zero solves and no average. The selector has no difficulty descriptions.
+
+Auto is a separate checkbox, not an eleventh difficulty. It uses the same profiles and acceptance checks. Selecting a row or using an arrow returns to a fixed choice. Controls have mobile-friendly targets. The Start button keeps the same size across selections and during generation.
 
 ## Learning order
 
