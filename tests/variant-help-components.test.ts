@@ -4,7 +4,7 @@ import { createElement, isValidElement, type ReactElement, type ReactNode } from
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import { isSolved, makeGame } from '../src/sudoku/game.ts'
-import { VARIANTS, type PlayableVariant } from '../src/sudoku/variants.ts'
+import { PUZZLE_VARIANTS, type PuzzleVariantId } from '../src/sudoku/variants.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 
 let server: ViteDevServer
@@ -51,7 +51,7 @@ test('mobile solutions render a read-only Jigsaw preview, explanation, and navig
   assert.match(html, /aria-label="Close dialog"/)
 })
 
-function worktableTree(id: PlayableVariant | 'classic', workspaceMode: 'standard' | 'advanced', solved = false) {
+function worktableTree(id: Exclude<PuzzleVariantId, 'mixed'>, workspaceMode: 'standard' | 'advanced', solved = false) {
   const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
   const game = { ...makeGame('help-controls', 'Puzzle', STARTER, 'generated'), difficulty: 'medium' as const, score: 100 }
   if (solved) game.position.entries = [...solution].map((digit, cell) => STARTER[cell] === '0' ? digit : '0').join('')
@@ -77,7 +77,7 @@ function worktableTree(id: PlayableVariant | 'classic', workspaceMode: 'standard
   return elements(tree)
 }
 
-for (const id of Object.keys(VARIANTS) as (PlayableVariant | 'classic')[]) {
+for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixed'>)[]) {
   test(`${id} exposes hint actions, solution, and technique finder in both desktop workspaces`, () => {
     const previous = playPreferences.DEFAULT_PLAY_PREFERENCES.desktopViews
     playPreferences.DEFAULT_PLAY_PREFERENCES.desktopViews = { open: ['solution', 'techniques'], active: 'techniques' }

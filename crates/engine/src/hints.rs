@@ -1714,10 +1714,22 @@ pub(crate) struct DeductionSearch<'a> {
 
 impl<'a> DeductionSearch<'a> {
     pub(crate) fn new(board: &'a Board, masks: &'a [u16; CELLS]) -> Self {
+        Self::with_verified_solution(board, masks, None)
+    }
+
+    /// Supply a checked completion that respects the board and candidate masks.
+    /// Contradiction searches can omit assumptions satisfied by that completion.
+    pub(crate) fn with_verified_solution(
+        board: &'a Board,
+        masks: &'a [u16; CELLS],
+        solution: Option<&'a Board>,
+    ) -> Self {
+        let mut patterns = patterns::PatternSearch::new(board, masks);
+        patterns.verified_solution = solution;
         Self {
             board,
             masks,
-            patterns: patterns::PatternSearch::new(board, masks),
+            patterns,
         }
     }
 

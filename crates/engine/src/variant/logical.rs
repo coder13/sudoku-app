@@ -14,6 +14,10 @@ use crate::{
     hints::{Deduction, DeductionSearch, OverlaySearch, digit_bit, digits},
 };
 
+#[cfg(test)]
+#[path = "logical_tests.rs"]
+mod tests;
+
 /// Version of the point costs and difficulty thresholds for structured puzzles.
 pub const VARIANT_SCORING_VERSION: u32 = 6;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
@@ -957,7 +961,19 @@ impl CompiledVariant {
             });
             return;
         }
-        let search = DeductionSearch::new(&position.board, &position.masks);
+        // A completion witnesses the outer assumptions it satisfies. Each
+        // remaining contradiction still needs the original logical proof.
+        let solution = (technique == Technique::NestedForcingNet)
+            .then(|| {
+                let eliminations = std::array::from_fn(|cell| {
+                    if position.board[cell] == 0 { DIGITS & !position.masks[cell] } else { 0 }
+                });
+                self.solve(&position.board, &eliminations, UNIQUENESS_PROBE_NODES).ok()
+            })
+            .flatten();
+        let search = DeductionSearch::with_verified_solution(
+            &position.board, &position.masks, solution.as_ref(),
+        );
         for hint in search.hints(technique) {
             let swap_cells = if technique.requires_unique_solution() {
                 let cells = match &hint.evidence {

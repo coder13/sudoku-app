@@ -11,6 +11,8 @@ import { lessonExample } from '../src/sudoku/lesson-examples.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
+import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 useWasmWorker()
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/quadruple-clover.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string; coach: string }
 const real = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach.json', import.meta.url), 'utf8')) as { coach: string }
@@ -139,4 +141,49 @@ test('exact candidate enforcement remains active when Quadruple deductions are d
   assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle }, maxNodes: 100_000 }), 'multiple')
   const broken = { puzzle, entries: '1' + '0'.repeat(80) }
   assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: broken }), 'conflict')
+})
+
+test('Quadruple uses the actual app hint pages, technique finder and complete solution service', async () => {
+  const { game } = await prepareImportedPuzzle(fixture.coach)
+  const ranked = await puzzleHints(game)
+  assert.ok(ranked.choices.length > 1 && ranked.choices.length <= 10)
+  const full = await puzzleHints(game, 'all')
+  const first = await puzzleHints(game, 'all', undefined, 900)
+  assert.equal(first.available, full.available)
+  const choices = [...first.choices]
+  while (choices.length < full.available) {
+    const page = await puzzleHintPage(game.variant, 900, choices.length)
+    assert.equal(page.offset, choices.length)
+    choices.push(...page.choices)
+  }
+  assert.deepEqual(choices, full.choices)
+  assert.deepEqual((await puzzleHintPage(game.variant, 900, 0)).choices, first.choices)
+  await runEngine({ type: 'release-hints', collection: 900 })
+  const selected = await puzzleHints(game, 'all', 'quadruple')
+  assert.ok(selected.choices.length)
+  const scan = watchTechniqueScan(valuesOf(game), undefined, variantPosition(game.variant!, game.position))
+  try {
+    const expected = new Set(selected.choices.flatMap(({ actions }) => actions.map(action => {
+      const { cell, digit } = 'place' in action ? action.place : action.eliminate
+      return `${'place' in action ? 'p' : 'e'}:${cell}:${digit}`
+    }))).size
+    assert.equal(await scan.count('quadruple'), expected)
+  } finally { scan.close() }
+  const path = await puzzleSolution(game)
+  assert.notEqual(path.rating.status, 'stalled')
+  assert.equal(path.board, fixture.solution)
+  assert.equal(path.positions!.length, path.steps.length + 1)
+})
+
+test('batched singles and the compiled-rule cache honor each Quadruple definition', async () => {
+  const givens = Array<string>(81).fill('0')
+  givens[0] = '1'; givens[1] = '2'; givens[9] = '3'
+  const board = givens.join('')
+  assert.equal(await runEngine({ type: 'solve-singles', values: board }), board)
+  for (const digit of [9, 8, 9]) {
+    const puzzle: VariantPuzzle = { version: 1, givens: board, rules: [{ type: 'quadruple', topLeft: 0, digits: [digit] }] }
+    const answer = [...givens]
+    answer[10] = String(digit)
+    assert.equal(await runEngine({ type: 'variant', operation: 'solve-singles', position: { puzzle } }), answer.join(''))
+  }
 })
