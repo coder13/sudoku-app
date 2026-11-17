@@ -1,9 +1,41 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import ts from 'typescript'
 import type { Deduction, HintChoice } from '../src/sudoku/engine.ts'
 import { hintLocation, lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
+import { findDisallowedTeachingWord, validateContent } from '../tools/lesson-editor/validate.mjs'
 
 const mask = (...digits: number[]) => digits.reduce((value, digit) => value | 1 << (digit - 1), 0)
+
+test('Learn copy and hint templates follow the teaching wording rule', () => {
+  const content = JSON.parse(readFileSync(new URL('../src/sudoku/learn-content.json', import.meta.url), 'utf8'))
+  const lessons = [content.fundamentals, ...content.groups.flatMap(({ lessons }) => lessons)]
+  const examples = lessons.flatMap(({ blocks }) => blocks.flatMap((block) =>
+    block.type === 'diagram' ? [block.example] : block.type === 'practice' ? block.drills.map(({ example }) => example) : []))
+  validateContent(content, content, examples)
+
+  const draft = structuredClone(content)
+  const wing = draft.groups.flatMap(({ lessons }) => lessons).find(({ id }) => id === 'wxyz-wing')
+  wing.summary = 'If R4C2 takes 9, the wing has only three digits left.'
+  assert.throws(() => validateContent(draft, content, examples), /Replace “takes” in WXYZ-Wing/)
+
+  for (const path of [
+    '../src/sudoku/hints.ts', '../src/sudoku/lesson-diagram.ts', '../src/sudoku/lesson-guidance.ts', '../src/sudoku/variant-hints.ts',
+    '../src/components/HintCard.tsx', '../src/components/LessonPractice.tsx', '../src/components/TechniqueLesson.tsx', '../src/components/Worktable.tsx',
+    '../src/routes/learn.index.tsx', '../src/routes/learn.$technique.tsx',
+  ]) {
+    const source = readFileSync(new URL(path, import.meta.url), 'utf8')
+    const syntax = ts.createSourceFile(path, source, ts.ScriptTarget.Latest)
+    function checkText(node: ts.Node) {
+      if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node) || ts.isJsxText(node)) {
+        assert.equal(findDisallowedTeachingWord(node.text), undefined, `${path}: ${node.text}`)
+      }
+      ts.forEachChild(node, checkText)
+    }
+    checkText(syntax)
+  }
+})
 
 test('AIC location reveals the endpoint candidates without revealing links or the removal', () => {
   const start = { candidate: { cell: 3, digit: 4 } }
@@ -57,7 +89,7 @@ test('WXYZ-Wing shows why placing the outside candidate would leave a cell unfil
   const diagram = lessonDiagram({ deduction, candidates })
   assert.deepEqual(diagram.reasonSteps, [
     'In the wing, 1, 5, and 9 can each appear at most once. The candidates for 1 share row 9. The candidates for 5 share column 7. The candidates for 9 share column 7.',
-    'If R4C3 takes 8, it rules out every 8 in the wing (R4C7 and R9C3).',
+    'Placing 8 in R4C3 would rule out every 8 in the wing (R4C7 and R9C3).',
     'That leaves only 1, 5, and 9 for four cells. Each remaining digit can appear at most once, so one cell would have no digit.',
   ])
   assert.doesNotMatch(diagram.reason, /fourth cell|exactly one.*8/)
@@ -82,8 +114,8 @@ test('WXYZ-Wing handles all four restricted digits without inventing an unrestri
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.match(diagram.reason, /Each digit can appear at most once in the wing/)
-  assert.match(diagram.reason, /If R7C1 takes 1, it rules out every 1 in the wing \(R1C1 and R4C1\)/)
-  assert.match(diagram.reason, /If you place any crossed-out 4, it rules out every 4 in the wing \(R4C1 and R4C4\)/)
+  assert.match(diagram.reason, /Placing 1 in R7C1 would rule out every 1 in the wing \(R1C1 and R4C1\)/)
+  assert.match(diagram.reason, /Placing any crossed-out 4 would rule out every 4 in the wing \(R4C1 and R4C4\)/)
   assert.deepEqual(diagram.results, ['Remove 1 from R7C1.', 'Remove 4 from R4C2 and R4C3.'])
   assert.doesNotMatch(diagram.reason, /null|undefined|other three/)
   assert.equal(diagram.accentLabel, undefined)
@@ -106,8 +138,8 @@ test('Doubly linked ALS-XZ explains a removal supported by only one of the two s
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.match(diagram.reason, /One set must skip 1 and the other must skip 2/)
-  assert.match(diagram.reason, /At least one of R1C1 and R1C4 must take 1/)
-  assert.match(diagram.reason, /At least one of R1C1 and R1C2 must take 3\. Putting 3 in R2C2/)
+  assert.match(diagram.reason, /At least one of R1C1 and R1C4 must be 1/)
+  assert.match(diagram.reason, /At least one of R1C1 and R1C2 must be 3\. Putting 3 in R2C2/)
 })
 
 test('ALS-XY-Wing names the middle set and the digit passed to the last set', () => {
@@ -126,5 +158,5 @@ test('ALS-XY-Wing names the middle set and the digit passed to the last set', ()
   assert.match(diagram.reason, /If it skips 8, it must use 1/)
   assert.match(diagram.reason, /rules out 1 in set 2 \(R1C4\)\. This set must use 2/)
   assert.match(diagram.reason, /rules out 2 in set 3 \(R2C4\)\. This set must use 8/)
-  assert.match(diagram.reason, /At least one of R1C1 and R2C4 must take 8/)
+  assert.match(diagram.reason, /At least one of R1C1 and R2C4 must be 8/)
 })

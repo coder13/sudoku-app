@@ -53,7 +53,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
       start: { houses: [house], text: `Start in ${houseName(house)}. ${technique === 'full-house' ? 'Count the empty cells.' : 'Pick a digit that is still missing.'}` },
       check: { houses: [house], text: technique === 'full-house'
         ? 'There is one gap. Compare the eight placed digits with the digits 1 to 9.'
-        : `Check every empty cell in ${houseName(house)} for digit ${first.digit}. Use the crossing houses to rule out any cell that cannot take it.` },
+        : `Check every empty cell in ${houseName(house)} for digit ${first.digit}. Use the crossing houses to check where that digit can go.` },
     }
   }
   if ('intersection' in evidence) {
@@ -129,7 +129,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     return {
       start: { cells: wings.slice(0, 1), text: `Start at ${cellName(wings[0])}. Look for a second cell with the same two candidates.` },
       check: { cells: wings, houses: [link.house], candidates: marks(wings), text: `The matching cell is ${cellName(wings[1])}. Find the two places for ${linkedDigit} in ${houseName(link.house)}. Does each one see a different wing?` },
-      follow: `Try both places for ${linkedDigit}. Each forces a different wing to take ${digit}. Look for a ${digit} that sees both wings.`,
+      follow: `Try both places for ${linkedDigit}. Each forces ${digit} into a different wing. Look for a ${digit} that sees both wings.`,
     }
   }
   if ('wxyz-wing' in evidence) {
@@ -251,7 +251,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     const firstEffect = steps[0]?.effect
     const effect = firstEffect && (firstEffect.candidate.cell !== first.cell || firstEffect.candidate.digit !== first.digit) ? firstEffect : undefined
     return {
-      start: { cells: [assumption.candidate.cell], text: `Start at ${cellName(assumption.candidate.cell)}. Look for a candidate whose placement would take a choice away from nearby cells with few candidates.` },
+      start: { cells: [assumption.candidate.cell], text: `Start at ${cellName(assumption.candidate.cell)}. Look for a move that would rule out a digit in nearby cells with few candidates.` },
       check: { candidates: [assumption.candidate, ...(effect ? [effect.candidate] : [])],
         text: `${describe(assumption)} as an assumption. ${effect ? `The first change is to ${describe(effect).toLowerCase()}. ` : ''}Look for the next cell or house with one choice left.` },
       follow: branches.length === 1
