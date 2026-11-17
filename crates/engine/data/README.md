@@ -9,6 +9,7 @@ The app excludes structures from saved classic games before drawing candidates. 
 Candidates come from the Enjoy Sudoku Players Forum hardest-puzzle collection, distributed in Tom Dillon's [Tdoku benchmark data](https://github.com/t-dillon/tdoku/blob/af426180dc53aef89b82868e7b3fdfcf42165654/benchmarks/README.md). The selected source is `data/puzzles5_forum_hardest_1905_11+` inside `data.zip` at commit `af426180dc53aef89b82868e7b3fdfcf42165654`. Its external ratings are only a way to find candidates; the app grades them independently.
 
 - Source archive Git blob SHA-1: `2ae6e4f8d021d2198069814c7db18bf11fcd9591`.
+- Bundled bank SHA-256: `67b40fabf859c16ada79013f54702b6153578517c69f3b88c6744ad2c3f437ad`.
 - Tdoku's BSD 2-Clause notice is included in [`public/licenses/tdoku.txt`](../../../public/licenses/tdoku.txt) and ships with the app.
 - Credit for the original puzzle collection belongs to its contributors in the [Enjoy Sudoku Players Forum](http://forum.enjoysudoku.com/the-hardest-sudokus-new-thread-t6539-600.html#p277835).
 

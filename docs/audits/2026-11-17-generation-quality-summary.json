@@ -1,0 +1,1972 @@
+{
+  "beginner": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 599,
+    "largestStructureFamily": 1,
+    "effectiveStructureCount": 599.0,
+    "routes": {
+      "fresh": 599
+    },
+    "flags": {},
+    "targetTechniquePuzzles": {
+      "hidden-single-box": 599
+    },
+    "targetTechniqueMoves": {
+      "hidden-single-box": 15718
+    },
+    "unseenTargetTechniques": [],
+    "metrics": {
+      "givens": {
+        "min": 34,
+        "p10": 34.0,
+        "median": 34,
+        "p90": 37.0,
+        "p95": 38.0,
+        "max": 40
+      },
+      "nonSingleSteps": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "targetTierSteps": {
+        "min": 20,
+        "p10": 24.0,
+        "median": 26,
+        "p90": 28.0,
+        "p95": 28.0,
+        "max": 29
+      },
+      "nonSingleTechniqueCount": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "eliminationStretches": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "initialSingles": {
+        "min": 41,
+        "p10": 44.0,
+        "median": 47,
+        "p90": 47.0,
+        "p95": 47.0,
+        "max": 47
+      },
+      "finalSingles": {
+        "min": 41,
+        "p10": 44.0,
+        "median": 47,
+        "p90": 47.0,
+        "p95": 47.0,
+        "max": 47
+      },
+      "initialEasyChoices": {
+        "min": 2,
+        "p10": 5.0,
+        "median": 8,
+        "p90": 11.0,
+        "p95": 12.0,
+        "max": 15
+      },
+      "maxProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "generationMs": {
+        "min": 0.272233,
+        "p10": 0.49463419999999997,
+        "median": 0.7184980000000001,
+        "p90": 10.160996800000001,
+        "p95": 13.9979953,
+        "max": 64.81442799999999
+      },
+      "analysisMs": {
+        "min": 0.099034,
+        "p10": 0.1641974,
+        "median": 0.184896,
+        "p90": 0.5639282000000003,
+        "p95": 2.1843804000000064,
+        "max": 23.95526
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 1.0,
+        "p95": 1.0,
+        "max": 2
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "easy": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 599,
+    "largestStructureFamily": 1,
+    "effectiveStructureCount": 599.0,
+    "routes": {
+      "fresh": 599
+    },
+    "flags": {},
+    "targetTechniquePuzzles": {
+      "full-house": 599,
+      "naked-single": 566,
+      "hidden-single": 122
+    },
+    "targetTechniqueMoves": {
+      "full-house": 11948,
+      "naked-single": 1185,
+      "hidden-single": 192
+    },
+    "unseenTargetTechniques": [
+      "parity",
+      "anti-king",
+      "anti-knight",
+      "non-consecutive",
+      "inequality",
+      "clone",
+      "kropki",
+      "xv",
+      "palindrome",
+      "between",
+      "thermometer",
+      "cage-combinations",
+      "arrow"
+    ],
+    "metrics": {
+      "givens": {
+        "min": 22,
+        "p10": 27.0,
+        "median": 31,
+        "p90": 34.0,
+        "p95": 34.0,
+        "max": 38
+      },
+      "nonSingleSteps": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "targetTierSteps": {
+        "min": 19,
+        "p10": 20.0,
+        "median": 22,
+        "p90": 25.0,
+        "p95": 25.100000000000023,
+        "max": 33
+      },
+      "nonSingleTechniqueCount": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "eliminationStretches": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "initialSingles": {
+        "min": 43,
+        "p10": 47.0,
+        "median": 50,
+        "p90": 54.0,
+        "p95": 55.0,
+        "max": 59
+      },
+      "finalSingles": {
+        "min": 43,
+        "p10": 47.0,
+        "median": 50,
+        "p90": 54.0,
+        "p95": 55.0,
+        "max": 59
+      },
+      "initialEasyChoices": {
+        "min": 3,
+        "p10": 6.0,
+        "median": 10,
+        "p90": 14.0,
+        "p95": 16.0,
+        "max": 20
+      },
+      "maxProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "generationMs": {
+        "min": 0.362116,
+        "p10": 0.5843704000000001,
+        "median": 1.107974,
+        "p90": 9.654045600000003,
+        "p95": 13.878590400000002,
+        "max": 89.684614
+      },
+      "analysisMs": {
+        "min": 0.13670100000000002,
+        "p10": 0.19466460000000002,
+        "median": 0.253164,
+        "p90": 0.8123798000000005,
+        "p95": 3.1179788000000013,
+        "max": 24.039520000000003
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 2.0,
+        "p95": 2.0,
+        "max": 4
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "medium": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 599,
+    "largestStructureFamily": 1,
+    "effectiveStructureCount": 599.0,
+    "routes": {
+      "fresh": 599
+    },
+    "flags": {
+      "30-plus-single-finish": 564,
+      "20-plus-single-opening": 46
+    },
+    "targetTechniquePuzzles": {
+      "pointing": 584,
+      "claiming": 314,
+      "locked-pair": 261,
+      "naked-pair": 237,
+      "naked-triple": 132,
+      "locked-triple": 72,
+      "hidden-pair": 46,
+      "hidden-triple": 2
+    },
+    "targetTechniqueMoves": {
+      "pointing": 2058,
+      "claiming": 478,
+      "naked-pair": 316,
+      "locked-pair": 308,
+      "naked-triple": 157,
+      "locked-triple": 75,
+      "hidden-pair": 49,
+      "hidden-triple": 2
+    },
+    "unseenTargetTechniques": [
+      "whispers",
+      "renban",
+      "region-sum",
+      "locked-candidates",
+      "little-killer",
+      "cage-house-sum"
+    ],
+    "metrics": {
+      "givens": {
+        "min": 22,
+        "p10": 24.0,
+        "median": 26,
+        "p90": 29.0,
+        "p95": 30.0,
+        "max": 34
+      },
+      "nonSingleSteps": {
+        "min": 4,
+        "p10": 4.0,
+        "median": 5,
+        "p90": 8.0,
+        "p95": 9.0,
+        "max": 14
+      },
+      "targetTierSteps": {
+        "min": 4,
+        "p10": 4.0,
+        "median": 5,
+        "p90": 8.0,
+        "p95": 9.0,
+        "max": 14
+      },
+      "nonSingleTechniqueCount": {
+        "min": 2,
+        "p10": 2.0,
+        "median": 3,
+        "p90": 4.0,
+        "p95": 4.0,
+        "max": 6
+      },
+      "eliminationStretches": {
+        "min": 2,
+        "p10": 2.0,
+        "median": 2,
+        "p90": 3.0,
+        "p95": 4.0,
+        "max": 5
+      },
+      "initialSingles": {
+        "min": 0,
+        "p10": 4.0,
+        "median": 10,
+        "p90": 18.200000000000045,
+        "p95": 20.0,
+        "max": 29
+      },
+      "finalSingles": {
+        "min": 22,
+        "p10": 31.0,
+        "median": 40,
+        "p90": 48.0,
+        "p95": 49.0,
+        "max": 57
+      },
+      "initialEasyChoices": {
+        "min": 0,
+        "p10": 3.0,
+        "median": 5,
+        "p90": 8.0,
+        "p95": 9.0,
+        "max": 12
+      },
+      "maxProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "generationMs": {
+        "min": 1.291924,
+        "p10": 20.6974734,
+        "median": 147.855805,
+        "p90": 584.0994340000001,
+        "p95": 726.7955039000003,
+        "max": 1751.789571
+      },
+      "analysisMs": {
+        "min": 0.21833,
+        "p10": 0.3552696,
+        "median": 0.5523509999999999,
+        "p90": 1.9491086000000002,
+        "p95": 4.6327021,
+        "max": 10.278071
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 3.0,
+        "median": 17,
+        "p90": 58.0,
+        "p95": 79.20000000000005,
+        "max": 166
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "tricky": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 599,
+    "largestStructureFamily": 1,
+    "effectiveStructureCount": 599.0,
+    "routes": {
+      "focused": 211,
+      "fresh": 388
+    },
+    "flags": {
+      "one-target-tier-step": 388,
+      "20-plus-single-opening": 209,
+      "30-plus-single-finish": 384
+    },
+    "targetTechniquePuzzles": {
+      "skyscraper": 512,
+      "x-wing": 110,
+      "two-string-kite": 90,
+      "empty-rectangle": 34,
+      "swordfish": 22
+    },
+    "targetTechniqueMoves": {
+      "skyscraper": 607,
+      "x-wing": 118,
+      "two-string-kite": 114,
+      "empty-rectangle": 37,
+      "swordfish": 22
+    },
+    "unseenTargetTechniques": [],
+    "metrics": {
+      "givens": {
+        "min": 21,
+        "p10": 24.0,
+        "median": 27,
+        "p90": 31.0,
+        "p95": 33.0,
+        "max": 37
+      },
+      "nonSingleSteps": {
+        "min": 4,
+        "p10": 4.0,
+        "median": 6,
+        "p90": 10.0,
+        "p95": 11.0,
+        "max": 18
+      },
+      "targetTierSteps": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 3.0,
+        "p95": 3.0,
+        "max": 6
+      },
+      "nonSingleTechniqueCount": {
+        "min": 2,
+        "p10": 3.0,
+        "median": 4,
+        "p90": 5.0,
+        "p95": 6.0,
+        "max": 8
+      },
+      "eliminationStretches": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 2,
+        "p90": 3.0,
+        "p95": 4.0,
+        "max": 5
+      },
+      "initialSingles": {
+        "min": 1,
+        "p10": 9.0,
+        "median": 17,
+        "p90": 26.0,
+        "p95": 29.0,
+        "max": 35
+      },
+      "finalSingles": {
+        "min": 13,
+        "p10": 23.0,
+        "median": 32,
+        "p90": 42.0,
+        "p95": 44.0,
+        "max": 53
+      },
+      "initialEasyChoices": {
+        "min": 1,
+        "p10": 4.0,
+        "median": 7,
+        "p90": 10.0,
+        "p95": 12.0,
+        "max": 18
+      },
+      "maxProofLinks": {
+        "min": 0,
+        "p10": 2.0,
+        "median": 2,
+        "p90": 2.0,
+        "p95": 2.0,
+        "max": 2
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 2.0,
+        "median": 2,
+        "p90": 2.0,
+        "p95": 2.0,
+        "max": 2
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "generationMs": {
+        "min": 1.877159,
+        "p10": 44.40850700000001,
+        "median": 277.270075,
+        "p90": 610.0022534000009,
+        "p95": 766.4658179,
+        "max": 1339.577255
+      },
+      "analysisMs": {
+        "min": 0.239227,
+        "p10": 0.40915880000000004,
+        "median": 0.627579,
+        "p90": 4.489050000000001,
+        "p95": 4.9402268000000005,
+        "max": 29.751738
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 7.0,
+        "median": 36,
+        "p90": 62.0,
+        "p95": 70.0,
+        "max": 135
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "hard": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 599,
+    "largestStructureFamily": 1,
+    "effectiveStructureCount": 599.0,
+    "routes": {
+      "fresh": 599
+    },
+    "flags": {
+      "one-target-tier-step": 379,
+      "20-plus-single-opening": 239,
+      "30-plus-single-finish": 330
+    },
+    "targetTechniquePuzzles": {
+      "w-wing": 370,
+      "xy-wing": 180,
+      "bug-plus-one": 68,
+      "unique-rectangle-1": 54,
+      "xyz-wing": 47,
+      "unique-rectangle-3": 18,
+      "finned-x-wing": 13,
+      "hidden-rectangle": 11,
+      "sashimi-x-wing": 7,
+      "unique-rectangle-6": 5,
+      "unique-rectangle-4": 5,
+      "unique-rectangle-2": 5,
+      "naked-quadruple": 4,
+      "jellyfish": 3,
+      "hidden-quadruple": 1
+    },
+    "targetTechniqueMoves": {
+      "w-wing": 454,
+      "xy-wing": 208,
+      "bug-plus-one": 68,
+      "unique-rectangle-1": 58,
+      "xyz-wing": 51,
+      "unique-rectangle-3": 18,
+      "finned-x-wing": 15,
+      "hidden-rectangle": 12,
+      "sashimi-x-wing": 8,
+      "unique-rectangle-2": 6,
+      "unique-rectangle-6": 5,
+      "unique-rectangle-4": 5,
+      "naked-quadruple": 4,
+      "jellyfish": 3,
+      "hidden-quadruple": 1
+    },
+    "unseenTargetTechniques": [
+      "skyscrapers",
+      "sandwich",
+      "x-sum",
+      "unique-rectangle-5"
+    ],
+    "metrics": {
+      "givens": {
+        "min": 21,
+        "p10": 24.0,
+        "median": 27,
+        "p90": 31.0,
+        "p95": 33.0,
+        "max": 34
+      },
+      "nonSingleSteps": {
+        "min": 4,
+        "p10": 4.0,
+        "median": 7,
+        "p90": 11.0,
+        "p95": 13.0,
+        "max": 17
+      },
+      "targetTierSteps": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 3.0,
+        "p95": 3.0,
+        "max": 6
+      },
+      "nonSingleTechniqueCount": {
+        "min": 2,
+        "p10": 3.0,
+        "median": 4,
+        "p90": 7.0,
+        "p95": 7.0,
+        "max": 10
+      },
+      "eliminationStretches": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 2,
+        "p90": 4.0,
+        "p95": 4.0,
+        "max": 6
+      },
+      "initialSingles": {
+        "min": 3,
+        "p10": 8.800000000000004,
+        "median": 17,
+        "p90": 27.0,
+        "p95": 29.0,
+        "max": 39
+      },
+      "finalSingles": {
+        "min": 14,
+        "p10": 21.0,
+        "median": 31,
+        "p90": 40.0,
+        "p95": 42.10000000000002,
+        "max": 52
+      },
+      "initialEasyChoices": {
+        "min": 1,
+        "p10": 4.0,
+        "median": 6,
+        "p90": 10.0,
+        "p95": 11.0,
+        "max": 17
+      },
+      "maxProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 2.0,
+        "p95": 2.0,
+        "max": 2
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "generationMs": {
+        "min": 0.851217,
+        "p10": 4.9988476,
+        "median": 44.39214,
+        "p90": 157.22927740000003,
+        "p95": 200.0841194000001,
+        "max": 657.353304
+      },
+      "analysisMs": {
+        "min": 0.25595,
+        "p10": 0.37600480000000003,
+        "median": 0.663994,
+        "p90": 4.7032536,
+        "p95": 5.624333300000004,
+        "max": 27.321153000000002
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 5,
+        "p90": 16.0,
+        "p95": 22.0,
+        "max": 38
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "very-hard": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 599,
+    "largestStructureFamily": 1,
+    "effectiveStructureCount": 599.0,
+    "routes": {
+      "focused": 274,
+      "fresh": 325
+    },
+    "flags": {
+      "one-target-tier-step": 312,
+      "30-plus-single-finish": 452,
+      "20-plus-single-opening": 140
+    },
+    "targetTechniquePuzzles": {
+      "3d-medusa": 450,
+      "xy-chain": 226,
+      "finned-swordfish": 79,
+      "wxyz-wing": 71,
+      "x-chain": 30,
+      "simple-coloring": 25,
+      "sashimi-swordfish": 15,
+      "finned-jellyfish": 6,
+      "unique-loop": 2,
+      "sashimi-jellyfish": 1
+    },
+    "targetTechniqueMoves": {
+      "3d-medusa": 583,
+      "xy-chain": 350,
+      "finned-swordfish": 84,
+      "wxyz-wing": 83,
+      "x-chain": 37,
+      "simple-coloring": 26,
+      "sashimi-swordfish": 17,
+      "finned-jellyfish": 6,
+      "unique-loop": 2,
+      "sashimi-jellyfish": 1
+    },
+    "unseenTargetTechniques": [],
+    "metrics": {
+      "givens": {
+        "min": 22,
+        "p10": 24.0,
+        "median": 27,
+        "p90": 30.0,
+        "p95": 31.0,
+        "max": 35
+      },
+      "nonSingleSteps": {
+        "min": 4,
+        "p10": 5.0,
+        "median": 10,
+        "p90": 17.0,
+        "p95": 19.0,
+        "max": 27
+      },
+      "targetTierSteps": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 4.0,
+        "p95": 5.0,
+        "max": 11
+      },
+      "nonSingleTechniqueCount": {
+        "min": 2,
+        "p10": 4.0,
+        "median": 7,
+        "p90": 10.0,
+        "p95": 11.0,
+        "max": 14
+      },
+      "eliminationStretches": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 3,
+        "p90": 4.0,
+        "p95": 5.0,
+        "max": 8
+      },
+      "initialSingles": {
+        "min": 0,
+        "p10": 6.0,
+        "median": 14,
+        "p90": 23.0,
+        "p95": 25.0,
+        "max": 32
+      },
+      "finalSingles": {
+        "min": 14,
+        "p10": 25.0,
+        "median": 34,
+        "p90": 43.0,
+        "p95": 45.0,
+        "max": 53
+      },
+      "initialEasyChoices": {
+        "min": 0,
+        "p10": 3.0,
+        "median": 6,
+        "p90": 9.0,
+        "p95": 11.0,
+        "max": 16
+      },
+      "maxProofLinks": {
+        "min": 0,
+        "p10": 5.0,
+        "median": 21,
+        "p90": 43.0,
+        "p95": 49.0,
+        "max": 62
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 5.0,
+        "median": 21,
+        "p90": 43.0,
+        "p95": 49.0,
+        "max": 62
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "generationMs": {
+        "min": 1.6307699999999998,
+        "p10": 24.290762400000002,
+        "median": 217.64805900000002,
+        "p90": 464.6332636000001,
+        "p95": 519.8318594,
+        "max": 829.236496
+      },
+      "analysisMs": {
+        "min": 0.426173,
+        "p10": 0.8336975999999999,
+        "median": 1.68938,
+        "p90": 6.259731400000001,
+        "p95": 8.315642500000003,
+        "max": 65.92003000000001
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 3.0,
+        "median": 33,
+        "p90": 44.0,
+        "p95": 48.0,
+        "max": 70
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "expert": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 599,
+    "largestStructureFamily": 1,
+    "effectiveStructureCount": 599.0,
+    "routes": {
+      "fresh": 599
+    },
+    "flags": {
+      "30-plus-single-finish": 470,
+      "one-target-tier-step": 221,
+      "20-plus-single-opening": 41
+    },
+    "targetTechniquePuzzles": {
+      "aic": 599
+    },
+    "targetTechniqueMoves": {
+      "aic": 1648
+    },
+    "unseenTargetTechniques": [
+      "discontinuous-nice-loop",
+      "continuous-nice-loop"
+    ],
+    "metrics": {
+      "givens": {
+        "min": 22,
+        "p10": 24.0,
+        "median": 26,
+        "p90": 29.0,
+        "p95": 30.0,
+        "max": 34
+      },
+      "nonSingleSteps": {
+        "min": 4,
+        "p10": 8.0,
+        "median": 15,
+        "p90": 24.0,
+        "p95": 26.0,
+        "max": 36
+      },
+      "targetTierSteps": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 2,
+        "p90": 6.0,
+        "p95": 8.0,
+        "max": 13
+      },
+      "nonSingleTechniqueCount": {
+        "min": 2,
+        "p10": 5.0,
+        "median": 9,
+        "p90": 12.0,
+        "p95": 13.0,
+        "max": 16
+      },
+      "eliminationStretches": {
+        "min": 1,
+        "p10": 2.0,
+        "median": 3,
+        "p90": 6.0,
+        "p95": 6.0,
+        "max": 9
+      },
+      "initialSingles": {
+        "min": 1,
+        "p10": 5.0,
+        "median": 10,
+        "p90": 18.0,
+        "p95": 21.0,
+        "max": 31
+      },
+      "finalSingles": {
+        "min": 11,
+        "p10": 25.0,
+        "median": 36,
+        "p90": 44.0,
+        "p95": 47.0,
+        "max": 53
+      },
+      "initialEasyChoices": {
+        "min": 1,
+        "p10": 3.0,
+        "median": 5,
+        "p90": 8.0,
+        "p95": 9.0,
+        "max": 14
+      },
+      "maxProofLinks": {
+        "min": 5,
+        "p10": 9.0,
+        "median": 17,
+        "p90": 41.0,
+        "p95": 46.10000000000002,
+        "max": 75
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofLinks": {
+        "min": 5,
+        "p10": 7.0,
+        "median": 9,
+        "p90": 15.0,
+        "p95": 17.0,
+        "max": 25
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "generationMs": {
+        "min": 5.828914,
+        "p10": 24.8945862,
+        "median": 104.361644,
+        "p90": 353.6265432000002,
+        "p95": 448.3352348000001,
+        "max": 1046.493318
+      },
+      "analysisMs": {
+        "min": 0.840899,
+        "p10": 3.059885,
+        "median": 8.103791000000001,
+        "p90": 22.387355200000002,
+        "p95": 30.69731080000003,
+        "max": 64.25188
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 2.0,
+        "median": 9,
+        "p90": 31.0,
+        "p95": 39.0,
+        "max": 82
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "master": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 599,
+    "largestStructureFamily": 1,
+    "effectiveStructureCount": 599.0,
+    "routes": {
+      "fresh": 599
+    },
+    "flags": {
+      "30-plus-single-finish": 518,
+      "one-target-tier-step": 180,
+      "20-plus-single-opening": 13
+    },
+    "targetTechniquePuzzles": {
+      "grouped-aic": 495,
+      "als-xz": 157,
+      "als-xy-wing": 152,
+      "grouped-discontinuous-nice-loop": 114,
+      "als-chain": 88,
+      "firework-aic": 23,
+      "sue-de-coq": 15,
+      "death-blossom": 15,
+      "unique-rectangle-aic": 13,
+      "als-aic": 8
+    },
+    "targetTechniqueMoves": {
+      "grouped-aic": 1110,
+      "als-xy-wing": 278,
+      "als-xz": 213,
+      "grouped-discontinuous-nice-loop": 167,
+      "als-chain": 161,
+      "firework-aic": 43,
+      "death-blossom": 17,
+      "unique-rectangle-aic": 16,
+      "sue-de-coq": 15,
+      "als-aic": 9
+    },
+    "unseenTargetTechniques": [
+      "grouped-continuous-nice-loop",
+      "unique-rectangle-discontinuous-nice-loop",
+      "unique-rectangle-continuous-nice-loop",
+      "fireworks",
+      "firework-w-wing",
+      "firework-l-wing",
+      "firework-als-wing",
+      "aligned-pair-exclusion",
+      "als-discontinuous-nice-loop",
+      "als-continuous-nice-loop"
+    ],
+    "metrics": {
+      "givens": {
+        "min": 22,
+        "p10": 24.0,
+        "median": 25,
+        "p90": 28.0,
+        "p95": 29.0,
+        "max": 32
+      },
+      "nonSingleSteps": {
+        "min": 7,
+        "p10": 14.0,
+        "median": 23,
+        "p90": 35.0,
+        "p95": 38.10000000000002,
+        "max": 56
+      },
+      "targetTierSteps": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 2,
+        "p90": 7.0,
+        "p95": 9.0,
+        "max": 21
+      },
+      "nonSingleTechniqueCount": {
+        "min": 3,
+        "p10": 8.0,
+        "median": 12,
+        "p90": 15.0,
+        "p95": 17.0,
+        "max": 22
+      },
+      "eliminationStretches": {
+        "min": 1,
+        "p10": 2.0,
+        "median": 4,
+        "p90": 7.0,
+        "p95": 8.0,
+        "max": 11
+      },
+      "initialSingles": {
+        "min": 0,
+        "p10": 3.0,
+        "median": 8,
+        "p90": 14.0,
+        "p95": 17.0,
+        "max": 24
+      },
+      "finalSingles": {
+        "min": 13,
+        "p10": 28.0,
+        "median": 37,
+        "p90": 46.0,
+        "p95": 48.0,
+        "max": 55
+      },
+      "initialEasyChoices": {
+        "min": 0,
+        "p10": 2.0,
+        "median": 4,
+        "p90": 7.0,
+        "p95": 8.0,
+        "max": 14
+      },
+      "maxProofLinks": {
+        "min": 5,
+        "p10": 9.0,
+        "median": 19,
+        "p90": 46.200000000000045,
+        "p95": 55.0,
+        "max": 77
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 4.0,
+        "median": 9,
+        "p90": 15.0,
+        "p95": 17.0,
+        "max": 23
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "generationMs": {
+        "min": 21.201813,
+        "p10": 92.5350168,
+        "median": 361.160186,
+        "p90": 1138.5219462,
+        "p95": 1525.4998227000008,
+        "max": 3599.4834669999996
+      },
+      "analysisMs": {
+        "min": 1.838734,
+        "p10": 9.8697142,
+        "median": 27.246741,
+        "p90": 71.26246640000001,
+        "p95": 99.27010310000011,
+        "max": 343.810609
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 5.0,
+        "median": 27,
+        "p90": 83.20000000000005,
+        "p95": 114.10000000000002,
+        "max": 186
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "extreme": {
+    "sample": 599,
+    "generationCalls": 601,
+    "failedCalls": 2,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 580,
+    "largestStructureFamily": 10,
+    "effectiveStructureCount": 469.02091503267974,
+    "routes": {
+      "fresh": 556,
+      "pool": 43
+    },
+    "flags": {
+      "30-plus-single-finish": 481,
+      "one-target-tier-step": 249,
+      "20-plus-single-opening": 26
+    },
+    "targetTechniquePuzzles": {
+      "forcing-chain": 536,
+      "forcing-net": 161,
+      "multi-sector-locked-sets": 28
+    },
+    "targetTechniqueMoves": {
+      "forcing-chain": 1254,
+      "forcing-net": 313,
+      "multi-sector-locked-sets": 28
+    },
+    "unseenTargetTechniques": [
+      "aligned-triplet-exclusion",
+      "tridagon",
+      "tridagon-aic",
+      "tridagon-forcing-net",
+      "dynamic-forcing-net",
+      "advanced-forcing-net",
+      "exocet",
+      "senior-exocet",
+      "double-exocet",
+      "sk-loop",
+      "franken-fish",
+      "mutant-fish",
+      "kraken-fish-1",
+      "kraken-fish-2"
+    ],
+    "metrics": {
+      "givens": {
+        "min": 17,
+        "p10": 23.0,
+        "median": 25,
+        "p90": 28.0,
+        "p95": 28.100000000000023,
+        "max": 33
+      },
+      "nonSingleSteps": {
+        "min": 6,
+        "p10": 16.0,
+        "median": 29,
+        "p90": 43.0,
+        "p95": 47.0,
+        "max": 66
+      },
+      "targetTierSteps": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 2,
+        "p90": 6.0,
+        "p95": 7.0,
+        "max": 16
+      },
+      "nonSingleTechniqueCount": {
+        "min": 3,
+        "p10": 9.0,
+        "median": 15,
+        "p90": 19.0,
+        "p95": 21.0,
+        "max": 26
+      },
+      "eliminationStretches": {
+        "min": 1,
+        "p10": 3.0,
+        "median": 5,
+        "p90": 8.0,
+        "p95": 9.0,
+        "max": 11
+      },
+      "initialSingles": {
+        "min": 0,
+        "p10": 2.0,
+        "median": 7,
+        "p90": 14.0,
+        "p95": 18.0,
+        "max": 30
+      },
+      "finalSingles": {
+        "min": 12,
+        "p10": 25.0,
+        "median": 36,
+        "p90": 46.0,
+        "p95": 47.0,
+        "max": 59
+      },
+      "initialEasyChoices": {
+        "min": 0,
+        "p10": 2.0,
+        "median": 4,
+        "p90": 7.0,
+        "p95": 8.0,
+        "max": 13
+      },
+      "maxProofLinks": {
+        "min": 2,
+        "p10": 9.0,
+        "median": 19,
+        "p90": 47.0,
+        "p95": 54.0,
+        "max": 79
+      },
+      "maxProofAssumptions": {
+        "min": 0,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 1.0,
+        "p95": 1.0,
+        "max": 1
+      },
+      "maxForcingInferences": {
+        "min": 0,
+        "p10": 11.0,
+        "median": 18,
+        "p90": 38.0,
+        "p95": 48.0,
+        "max": 90
+      },
+      "maxBranchDepth": {
+        "min": 0,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 1.0,
+        "p95": 1.0,
+        "max": 1
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 9
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 1.0,
+        "p95": 1.0,
+        "max": 1
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 11.0,
+        "median": 18,
+        "p90": 38.0,
+        "p95": 48.0,
+        "max": 90
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 1.0,
+        "p95": 1.0,
+        "max": 1
+      },
+      "generationMs": {
+        "min": 219.21601399999997,
+        "p10": 873.8580634000001,
+        "median": 2450.953004,
+        "p90": 6252.475927000003,
+        "p95": 7842.414465999999,
+        "max": 14008.635691
+      },
+      "analysisMs": {
+        "min": 31.772003,
+        "p10": 130.2108846,
+        "median": 311.306369,
+        "p90": 788.8049182000001,
+        "p95": 995.2648117000006,
+        "max": 3234.770902
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 24.0,
+        "median": 147,
+        "p90": 452.0,
+        "p95": 533.1,
+        "max": 722
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  },
+  "impossible": {
+    "sample": 599,
+    "generationCalls": 599,
+    "failedCalls": 0,
+    "passed": 599,
+    "distinctGrids": 599,
+    "distinctStructures": 422,
+    "largestStructureFamily": 5,
+    "effectiveStructureCount": 335.01493930905696,
+    "routes": {
+      "impossible-bank": 599
+    },
+    "flags": {
+      "30-plus-single-finish": 574,
+      "one-target-tier-step": 37
+    },
+    "targetTechniquePuzzles": {
+      "nested-forcing-net": 584,
+      "quintuple-pattern-overlay": 177,
+      "quadruple-pattern-overlay": 109
+    },
+    "targetTechniqueMoves": {
+      "nested-forcing-net": 4142,
+      "quintuple-pattern-overlay": 251,
+      "quadruple-pattern-overlay": 144
+    },
+    "unseenTargetTechniques": [
+      "pattern-overlay",
+      "pairwise-pattern-overlay",
+      "triple-pattern-overlay"
+    ],
+    "metrics": {
+      "givens": {
+        "min": 21,
+        "p10": 23.0,
+        "median": 24,
+        "p90": 26.0,
+        "p95": 26.0,
+        "max": 26
+      },
+      "nonSingleSteps": {
+        "min": 12,
+        "p10": 37.0,
+        "median": 55,
+        "p90": 70.20000000000005,
+        "p95": 75.0,
+        "max": 90
+      },
+      "targetTierSteps": {
+        "min": 1,
+        "p10": 2.0,
+        "median": 7,
+        "p90": 14.0,
+        "p95": 16.0,
+        "max": 22
+      },
+      "nonSingleTechniqueCount": {
+        "min": 5,
+        "p10": 13.0,
+        "median": 19,
+        "p90": 24.0,
+        "p95": 25.0,
+        "max": 29
+      },
+      "eliminationStretches": {
+        "min": 1,
+        "p10": 3.0,
+        "median": 6,
+        "p90": 9.0,
+        "p95": 10.0,
+        "max": 15
+      },
+      "initialSingles": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "finalSingles": {
+        "min": 15,
+        "p10": 34.0,
+        "median": 46,
+        "p90": 54.0,
+        "p95": 55.0,
+        "max": 58
+      },
+      "initialEasyChoices": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxProofLinks": {
+        "min": 0,
+        "p10": 7.0,
+        "median": 15,
+        "p90": 47.0,
+        "p95": 61.10000000000002,
+        "max": 101
+      },
+      "maxProofAssumptions": {
+        "min": 1,
+        "p10": 3.0,
+        "median": 3,
+        "p90": 3.0,
+        "p95": 3.0,
+        "max": 5
+      },
+      "maxForcingInferences": {
+        "min": 34,
+        "p10": 88.0,
+        "median": 120,
+        "p90": 149.0,
+        "p95": 159.0,
+        "max": 209
+      },
+      "maxBranchDepth": {
+        "min": 1,
+        "p10": 2.0,
+        "median": 2,
+        "p90": 2.0,
+        "p95": 2.0,
+        "max": 2
+      },
+      "maxTargetProofLinks": {
+        "min": 0,
+        "p10": 0.0,
+        "median": 0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "max": 0
+      },
+      "maxTargetProofAssumptions": {
+        "min": 0,
+        "p10": 3.0,
+        "median": 3,
+        "p90": 3.0,
+        "p95": 3.0,
+        "max": 3
+      },
+      "maxTargetForcingInferences": {
+        "min": 0,
+        "p10": 83.0,
+        "median": 120,
+        "p90": 149.0,
+        "p95": 159.0,
+        "max": 209
+      },
+      "maxTargetBranchDepth": {
+        "min": 0,
+        "p10": 2.0,
+        "median": 2,
+        "p90": 2.0,
+        "p95": 2.0,
+        "max": 2
+      },
+      "generationMs": {
+        "min": 474.79814,
+        "p10": 1856.9837692,
+        "median": 3941.65841,
+        "p90": 7853.095308999999,
+        "p95": 9785.2594775,
+        "max": 15366.28704
+      },
+      "analysisMs": {
+        "min": 445.279549,
+        "p10": 1571.289849,
+        "median": 3537.2047740000003,
+        "p90": 7682.634737800002,
+        "p95": 9440.4527576,
+        "max": 19412.087689
+      },
+      "attempts": {
+        "min": 1,
+        "p10": 1.0,
+        "median": 1,
+        "p90": 1.0,
+        "p95": 1.0,
+        "max": 1
+      }
+    },
+    "alternateLowerSolved": 0,
+    "equivalentLowerSolved": 0,
+    "alternateTraceErrors": 0
+  }
+}

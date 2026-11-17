@@ -57,6 +57,8 @@ On mobile, press and hold a card for five seconds to rearrange the cards. Drag a
 
 Use **Create by hand** to enter givens for Classic Sudoku. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
 
+Open **Puzzles → Collections** to browse Nikoli Classics (100 handmade puzzles) or Sudoku Exchange Selection (60 generated puzzles). Choose a difficulty, then play the next puzzle or preview a grid and save it for later. Opening a puzzle you already have resumes that game. After you finish, choose **Next puzzle in collection** to continue at the same difficulty. You can also change the collection difficulty or return to Puzzles to choose a different puzzle. The app includes both collections in its offline download and shows creator credits and reuse terms. Random generation remains available under **New puzzle**. See the [collection sources and update steps](src/sudoku/collections/README.md).
+
 Open **Learn** for technique articles with diagrams and practice puzzles. In a practice puzzle, select an empty cell and a digit, then check your move.
 
 If you have more than one saved puzzle, open Puzzle options and choose Switch puzzle.

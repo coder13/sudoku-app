@@ -1,6 +1,7 @@
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
 import { isDifficulty } from './difficulty.ts'
+import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, puzzleIdentity, type Game, type Position } from './game.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
@@ -16,7 +17,7 @@ const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
 const ACTIVE = PREFIX + 'active'
 const READY = PREFIX + 'initialized'
 const BUILT_IN_STARTER_ID = 'warmup'
-const sources = ['starter', 'generated', 'imported', 'custom', 'draft']
+const sources = ['starter', 'generated', 'imported', 'collection', 'custom', 'draft']
 
 type Room = { games: Game[]; active: string | null; stoppedPlaying: boolean; storageAvailable: boolean; playerRating: PlayerRating }
 const initial: Room = { games: [], active: null, stoppedPlaying: false, storageAvailable: true, playerRating: initialPlayerRating }
@@ -72,6 +73,7 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
+      if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
       if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory)) delete value.actionHistory
       if (value.savedForLater !== true) delete value.savedForLater

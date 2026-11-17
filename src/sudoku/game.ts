@@ -3,12 +3,13 @@ import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './en
 import { variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
+import type { CollectionReference } from './collection-reference.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
 export type ColorTarget = 'cell' | 'candidate'
 export type ErrorMode = 'all' | 'incorrect' | 'none'
-export type Source = 'starter' | 'generated' | 'imported' | 'custom' | 'draft'
+export type Source = 'starter' | 'generated' | 'imported' | 'collection' | 'custom' | 'draft'
 export type EnterOptions = { allowMultipleValues?: boolean; toggleValue?: boolean; candidateAction?: 'add' | 'remove' }
 
 export type Position = {
@@ -24,6 +25,7 @@ export type Game = {
   id: string
   title: string
   source: Source
+  collection?: CollectionReference
   difficulty?: Difficulty | null
   score?: number | null
   variant?: VariantGame
@@ -79,6 +81,7 @@ export function restartGame(game: Game): Game {
   return {
     ...makeGame(game.id, game.title, game.givens, game.source, game.created),
     difficulty: game.difficulty,
+    collection: game.collection,
     score: game.score,
     variant: game.variant,
     generatedWithAuto: game.generatedWithAuto,
