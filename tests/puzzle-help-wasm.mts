@@ -77,6 +77,15 @@ test('app hints, technique selection, and complete solutions work for every offe
       assert.equal(count, targets(selected.choices))
       assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(valuesOf(game), removals, puzzle))[technique], { count })
       assert.equal(JSON.stringify(game), saved, 'Viewing hints and solutions must not edit the game')
+      const blank = game.givens.indexOf('0')
+      const invalid = { ...game, position: { ...game.position, eliminations: Array<number>(81).fill(0) } }
+      invalid.position.eliminations[blank] = 1 << (Number(solution[blank]) - 1)
+      await assert.rejects(puzzleHints(invalid), { code: 'invalid-eliminations' })
+      await assert.rejects(puzzleHints(invalid, 'all', technique), { code: 'invalid-eliminations' })
+      const wrong = String(Number(solution[blank]) % 9 + 1)
+      const incorrect = { ...invalid, position: { ...invalid.position,
+        entries: game.position.entries.slice(0, blank) + wrong + game.position.entries.slice(blank + 1) } }
+      await assert.rejects(puzzleHints(incorrect), { code: 'conflict' }, 'Incorrect digits must be reported before candidate warnings')
       if (id === 'jigsaw') {
         const regionStep = path.steps.findIndex(step => 'variant' in step.evidence && step.evidence.variant.description.includes('region'))
         assert.ok(regionStep >= 0, 'Jigsaw help must use its actual regions')
