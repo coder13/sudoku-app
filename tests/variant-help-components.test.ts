@@ -11,6 +11,7 @@ let server: ViteDevServer
 let Worktable: (props: Record<string, unknown>) => ReactNode
 let SolutionDialog: (props: Record<string, unknown>) => ReactNode
 let Board: (props: Record<string, unknown>) => ReactNode
+let PuzzleAnalysisContents: (props: Record<string, unknown>) => ReactNode
 let preferences: Record<string, unknown>
 let playPreferences: { DEFAULT_PLAY_PREFERENCES: { desktopViews: { open: string[]; active: string | null } } }
 
@@ -21,10 +22,27 @@ before(async () => {
   ;({ Worktable } = await server.ssrLoadModule('/src/components/Worktable.tsx'))
   ;({ SolutionDialog } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
+  ;({ PuzzleAnalysisContents } = await server.ssrLoadModule('/src/components/PuzzleAnalysis.tsx'))
   preferences = await server.ssrLoadModule('/src/sudoku/preferences.ts')
   playPreferences = await server.ssrLoadModule('/src/sudoku/play-preferences.ts')
 })
 after(async () => { await server?.close() })
+
+test('the variant finder explains invalid candidates and entries before showing technique counts', () => {
+  const game = { ...makeGame('invalid-finder', 'Variant', STARTER, 'imported'), variant: {
+    id: 'jigsaw', puzzle: { version: 1, givens: STARTER },
+    solution: '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  } }
+  game.position.eliminations = Array(81).fill(0)
+  game.position.eliminations[2] = 1 << 3
+  const candidates = renderToStaticMarkup(createElement(PuzzleAnalysisContents, { game }))
+  assert.match(candidates, /role="alert"/)
+  assert.match(candidates, /current candidates rule out the solution/)
+  game.position.entries = '009' + '0'.repeat(78)
+  const entries = renderToStaticMarkup(createElement(PuzzleAnalysisContents, { game }))
+  assert.match(entries, /Resolve any conflicts/)
+  assert.doesNotMatch(entries, /current candidates rule out the solution/)
+})
 
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
   if (Array.isArray(node)) return node.flatMap(elements)
