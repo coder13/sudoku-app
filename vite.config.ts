@@ -15,6 +15,8 @@ function prerenderPages() {
     [...lessonExampleIds].some((id) => !lessonExamples[id]?.practice)) {
     throw new Error('Lesson slugs must be unique and every diagram or practice puzzle needs a verified engine example.')
   }
+  const missing = Object.keys(lessonDifficulties).filter((technique) => !lessonRoutes.has(technique))
+  if (missing.length) throw new Error(`Add Learn articles for these hint techniques: ${missing.join(', ')}`)
   for (const lesson of lessons) {
     const drills = lesson.blocks.flatMap((block) => block.type === 'practice' ? block.drills : [])
     if (!drills.length || drills.some(({ example }) => !isDifficulty(lessonDifficulties[example]))) {

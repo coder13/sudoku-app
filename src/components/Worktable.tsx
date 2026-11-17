@@ -1528,7 +1528,7 @@ export function Worktable({
       ref={mobile ? mobileHintPanelRef : undefined} aria-live="polite">
       <HintCard hint={solutionHintPanel ? solutionHintCopy
         : hintLoading ? { title: 'Finding a hint…', text: '' } : hintCopy}
-        lesson={hintLesson}
+        lesson={hintLesson && hintTechnique ? { id: hintTechnique, title: hintLesson.title } : undefined}
         removals={revealedDeduction ? describeHintRemovals(revealedDeduction, {
           difficulty: techniqueDifficulties[revealedDeduction.technique], cellReferenceStyle,
         }) : undefined}

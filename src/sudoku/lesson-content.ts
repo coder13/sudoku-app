@@ -2,6 +2,7 @@ import type { BoardRegion } from '../components/BoardAnnotations'
 
 type Reference = { label: string; href: string }
 export type Drill = { example: string; title: string }
+export type PracticeGuide = { start: string; check: string; follow?: string; reason?: string }
 type DiagramCopy = {
   description?: string
   reason?: string
@@ -18,7 +19,7 @@ export type LessonBlock =
   | { type: 'heading'; id: string; title: string }
   | { type: 'list'; items: string[] }
   | { type: 'diagram'; example: string; region?: BoardRegion; copy?: DiagramCopy }
-  | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string }
+  | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string; guide?: PracticeGuide }
 
 export type LessonArticle = {
   id: string

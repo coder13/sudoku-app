@@ -372,7 +372,7 @@ export type DeductionMatch = Pick<Deduction, 'actions'> & {
 }
 
 export type PositionSnapshot = { givens: string; entries: string; eliminations: number[] }
-export type LessonPosition = PositionSnapshot & { candidates: number[] }
+export type LessonPosition = PositionSnapshot & { candidates: number[]; pattern?: ProofPattern }
 
 export type LessonPractice = LessonPosition & { answers: DeductionAction[]; suggestion: DeductionAction }
 export type PracticeExercise = LessonPractice & { deduction: Deduction }

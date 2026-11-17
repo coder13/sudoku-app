@@ -1,5 +1,6 @@
 import type { BoardAnnotations, BoardLink, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
 import type { Candidate, House, InferenceNode, PracticeExercise } from './engine'
+import type { PracticeGuide } from './lesson-content.ts'
 import { DIGITS } from './game.ts'
 import { boardPoint, candidateName, cellName, houseCells, houseName, inferenceCandidates, inferenceName } from './lesson-diagram.ts'
 
@@ -32,7 +33,7 @@ export function practiceClueAnnotations({ houses = [], cells = [], candidates = 
   return { cells: area, candidates: marks, links }
 }
 
-export function practiceSearch({ deduction: { technique, evidence, actions }, candidates }: PracticeExercise): Search {
+export function practiceSearch({ deduction: { technique, evidence, actions }, candidates, pattern }: PracticeExercise, guide?: PracticeGuide): Search {
   const marks = (cells: number[], values = DIGITS) => cells.flatMap((cell) =>
     values.filter(digit => candidates[cell] & (1 << (digit - 1))).map(digit => ({ cell, digit })))
   const spots = (house: House, digit: number) => marks(houseCells(house), [digit])
@@ -151,6 +152,17 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
         : `Trace the sets in order through the links for ${links.join(', ')}. Then look for a shared digit at the two ends and a candidate that sees all its copies there.`,
     }
   }
+  if ('death-blossom' in evidence) {
+    const { stem, petals } = evidence['death-blossom']
+    const links = petals.map(({ digit }) => digit)
+    return {
+      start: { cells: [stem], text: `Start at ${cellName(stem)}. Find an almost locked set for each of its candidates.` },
+      check: { cells: [stem, ...petals.flatMap(({ set }) => set.cells)], accent: marks([stem], links),
+        candidates: petals.flatMap(({ digit, set }) => marks(set.cells, [digit])),
+        text: 'Check each stem digit against its set. The stem must see every copy of that digit in the set.' },
+      follow: 'Find another digit in every set. Look for an outside candidate that sees all of its copies across the sets.',
+    }
+  }
   if ('coloring' in evidence) {
     const { links, colors: [blue] } = evidence.coloring
     const local = links.find(link => 'cell' in link.source)
@@ -245,6 +257,18 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
           ? 'Track the changes that follow. If several earlier steps leave only one choice, use them together. Look for a rule the assumption breaks.'
           : 'Keep following forced changes. Look for a cell with no candidates, a house with no place for a digit, or a candidate that must both stay and go.'
         : 'Repeat for every starting choice. Look for the same placement or removal in all the branches.',
+    }
+  }
+  if (pattern) {
+    const targets = actions.map((action) => 'place' in action ? action.place : action.eliminate)
+    const supporting = pattern.candidates.filter(({ cell, digit }) =>
+      (candidates[cell] & (1 << (digit - 1))) && !targets.some((target) => target.cell === cell && target.digit === digit))
+    const seed = pattern.cells.find((cell) => !targets.some((target) => target.cell === cell)) ?? pattern.cells[0] ?? first.cell
+    return {
+      start: { cells: [seed], text: guide?.start ?? `Start near ${cellName(seed)}. Look for the pattern in the candidates.` },
+      check: { cells: pattern.cells.length ? pattern.cells : [seed], houses: pattern.houses, candidates: supporting,
+        text: guide?.check ?? 'Use the highlighted cells to check which candidates can fit together.' },
+      follow: guide?.follow,
     }
   }
   throw new Error(`Missing practice guidance for ${technique}`)

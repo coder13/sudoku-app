@@ -455,6 +455,19 @@ fn position_with_candidates(position: &PositionSnapshot) -> ResultValue {
     Ok(data)
 }
 
+fn lesson_position(position: &PositionSnapshot, deduction: &Hint) -> ResultValue {
+    let masks = position_masks(position)?;
+    let mut data = snapshot_value(position);
+    data["candidates"] = json!(masks[..]);
+    data["deduction"] = json!(deduction);
+    data["pattern"] = json!(ProofPattern::from_evidence(
+        &deduction.evidence,
+        deduction.actions[0].candidate(),
+        &masks,
+    ));
+    Ok(data)
+}
+
 fn transpose_lesson_position(position: &PositionSnapshot) -> PositionSnapshot {
     // Transpose the grid and rename every digit. The same technique applies in a new orientation.
     let transpose = |cell: usize| cell % 9 * 9 + cell / 9;
@@ -482,8 +495,7 @@ fn lesson_examples() -> ResultValue {
         let practice = transpose_lesson_position(&position);
         let proofs = technique_deductions_at(&practice, technique).map_err(|_| INVALID_LESSON)?;
         let proof = proofs.first().ok_or(INVALID_LESSON)?;
-        let mut lesson = position_with_candidates(&position)?;
-        lesson["deduction"] = json!(deduction);
+        let mut lesson = lesson_position(&position, &deduction)?;
         lesson["practice"] = practice_value(&practice, &proofs, proof)?;
         lessons.insert(technique.id().into(), lesson);
     }
@@ -501,10 +513,9 @@ fn practice_value(
         .collect();
     answers.sort_unstable();
     answers.dedup();
-    let mut drill = position_with_candidates(position)?;
+    let mut drill = lesson_position(position, proof)?;
     drill["answers"] = json!(answers);
     drill["suggestion"] = json!(proof.actions.first().ok_or(INVALID_LESSON)?);
-    drill["deduction"] = json!(proof);
     Ok(drill)
 }
 

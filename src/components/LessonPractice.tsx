@@ -1,9 +1,11 @@
 import { ArrowLeft, X } from 'lucide-react'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { DeductionAction, PracticeExercise } from '../sudoku/engine'
+import type { DeductionAction } from '../sudoku/engine'
 import { describeHint, describeHintRemovals } from '../sudoku/hints'
 import { cellName, lessonDiagram } from '../sudoku/lesson-diagram'
 import { practiceClueAnnotations, practiceSearch } from '../sudoku/lesson-guidance'
+import type { PracticeGuide } from '../sudoku/lesson-content'
+import type { LessonExercise } from '../sudoku/lesson-examples'
 import { DeductionExplanation, DeductionOutcome } from './HintCard'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardAnnotations } from './BoardAnnotations'
@@ -37,7 +39,9 @@ function retryGuidance(attempt: DeductionAction, answers: readonly DeductionActi
     : `Look for a different candidate to remove from ${address} with ${technique}.`
 }
 
-export function PracticePuzzle({ puzzle, technique, instruction }: { puzzle: PracticeExercise; technique: string; instruction?: string }) {
+export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }: {
+  puzzle: LessonExercise; technique: string; instruction?: string; practiceGuide?: PracticeGuide
+}) {
   const canPlace = puzzle.answers.some((answer) => 'place' in answer)
   const canRemove = puzzle.answers.some((answer) => 'eliminate' in answer)
   const defaultInstruction = canPlace && canRemove ? 'Find one placement or candidate removal.'
@@ -48,7 +52,7 @@ export function PracticePuzzle({ puzzle, technique, instruction }: { puzzle: Pra
   const nextButton = useRef<HTMLButtonElement>(null)
   const stepBody = useRef<HTMLDivElement>(null)
   const clues = useMemo(() => {
-    const { start, check, follow } = practiceSearch(puzzle)
+    const { start, check, follow } = practiceSearch(puzzle, practiceGuide)
     const checkAnnotations = practiceClueAnnotations(check)
     const stages = [
       { title: 'Where to look', text: start.text, annotations: practiceClueAnnotations(start) },
@@ -57,7 +61,7 @@ export function PracticePuzzle({ puzzle, technique, instruction }: { puzzle: Pra
     if (follow) stages.push({ title: 'Follow the pattern', text: follow,
       annotations: 'forcing' in puzzle.deduction.evidence ? checkAnnotations : lessonDiagram(puzzle, undefined, { showActions: false }).annotations })
     return stages
-  }, [puzzle])
+  }, [puzzle, practiceGuide])
   const clue = step === null ? undefined : clues[step]
   const solution = step === clues.length
   const solutionDiagram = useMemo(() => solution ? lessonDiagram(puzzle) : undefined, [puzzle, solution])
@@ -89,7 +93,9 @@ export function PracticePuzzle({ puzzle, technique, instruction }: { puzzle: Pra
       {solutionDiagram && <>
         <DeductionOutcome removals={describeHintRemovals(puzzle.deduction, { cellReferenceStyle: 'concise' })}
           text={describeHint(puzzle.deduction, { cellReferenceStyle: 'concise' }).text} />
-        <DeductionExplanation explanation={[solutionDiagram.description, ...(solutionDiagram.reasonSteps ? [] : [solutionDiagram.reason])]}
+        <DeductionExplanation explanation={[solutionDiagram.description, ...(solutionDiagram.reasonSteps ? [] : [
+          (puzzle.variantPuzzle || !solutionDiagram.reason) ? practiceGuide?.reason ?? solutionDiagram.reason : solutionDiagram.reason,
+        ])].filter(Boolean)}
           explanationSteps={solutionDiagram.reasonSteps} trace={solutionDiagram.trace} />
       </>}
     </div>
