@@ -434,6 +434,7 @@ svg { flex-shrink: 0; }
 .chains-panel p { color: var(--muted); overflow-wrap: anywhere; }
 .chain-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-6); }
 .chains-panel .button { min-height: 34px; padding-inline: 9px; font-size: 12px; }
+.chain-panel-tools { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-8); }
 .chain-draw-tools, .chain-edit-actions { gap: var(--space-4); }
 .chain-edit-actions { display: flex; }
 .chain-draw-tools .button { padding-inline: var(--space-8); }
@@ -461,6 +462,7 @@ svg { flex-shrink: 0; }
 .chain-swatches i { width: 8px; height: 8px; border-radius: 50%; }
 .chain-row h2 { font-size: 12px; margin-bottom: 2px; }
 .chain-row .chain-notation { color: var(--ink); }
+.chain-editor { display: grid; gap: var(--space-8); margin-top: var(--space-8); padding-top: var(--space-8); border-top: 1px solid var(--border); }
 .chain-settings { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); }
 .chain-settings label:first-child { flex: 1 1 136px; }
 .chain-settings label { flex: 1 1 80px; }
