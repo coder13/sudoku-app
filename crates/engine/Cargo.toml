@@ -51,3 +51,7 @@ required-features = ["wasm-api", "generation", "teaching"]
 [[example]]
 name = "certify_bank"
 required-features = ["wasm-api", "generation", "teaching"]
+
+[[example]]
+name = "generator_lab"
+required-features = ["wasm-api", "generation"]

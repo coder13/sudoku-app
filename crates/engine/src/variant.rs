@@ -18,7 +18,7 @@ mod wire;
 #[cfg(any(feature = "generation", test))]
 pub use generation::{
     GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
-    VariantGenerationOptions, start_variant_generation,
+    VariantGenerationOptions, start_variant_generation, start_variant_generation_with_symmetry,
 };
 use lines::LineConstraint;
 pub use logical::{

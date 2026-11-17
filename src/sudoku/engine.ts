@@ -81,6 +81,7 @@ export type VariantGenerationRequest = {
   template: VariantPuzzle
   derivedClues?: readonly VariantClueLayout[]
   givens: number | readonly [number, number]
+  halfTurnGivens?: boolean
   variantClues?: number | readonly [number, number]
   requiredRule?: string
   technique?: TechniqueTarget

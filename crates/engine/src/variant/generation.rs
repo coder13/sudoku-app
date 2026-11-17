@@ -139,6 +139,14 @@ impl VariantPuzzle {
 pub fn start_variant_generation(
     options: VariantGenerationOptions,
 ) -> Result<GenerationSearch<'static, GeneratedVariant>, VariantGenerationError> {
+    start_variant_generation_with_symmetry(options, false)
+}
+
+/// Optionally remove opposite cells together. Only the positions of givens have half-turn symmetry.
+pub fn start_variant_generation_with_symmetry(
+    options: VariantGenerationOptions,
+    half_turn_givens: bool,
+) -> Result<GenerationSearch<'static, GeneratedVariant>, VariantGenerationError> {
     use VariantGenerationError::*;
     let mut options = options;
     if let Some(GenerationRating::Difficulty(level)) = options.rating {
@@ -202,7 +210,7 @@ pub fn start_variant_generation(
     Ok(GenerationSearch::new(
         Random::from_seed(options.seed),
         options.max_attempts,
-        move |random| attempt(&base, &options, &excluded, random),
+        move |random| attempt(&base, &options, &excluded, half_turn_givens, random),
     ))
 }
 
@@ -210,6 +218,7 @@ fn attempt(
     base: &CompiledVariant,
     options: &VariantGenerationOptions,
     excluded: &HashSet<VariantPuzzle>,
+    half_turn_givens: bool,
     random: &mut Random,
 ) -> Option<GeneratedVariant> {
     let empty = [0; CELLS];
@@ -253,6 +262,10 @@ fn attempt(
     let mut order: [usize; CELLS] = std::array::from_fn(|index| index);
     random.shuffle(&mut order);
     let mut remaining = CELLS;
+    // In a half-turn pattern an odd number of givens always includes the center.
+    let keep_center = half_turn_givens
+        && options.givens.start() == options.givens.end()
+        && options.givens.start() % 2 == 1;
     let mut last_checked = None;
     for next in order.into_iter().map(Some).chain(std::iter::once(None)) {
         if options.givens.contains(&remaining) && last_checked != Some(remaining) {
@@ -274,12 +287,23 @@ fn attempt(
         if remaining == *options.givens.start() {
             break;
         }
+        if keep_center && cell == CELLS / 2 {
+            continue;
+        }
+        let opposite = if half_turn_givens { CELLS - 1 - cell } else { cell };
+        let count = 1 + usize::from(cell != opposite);
+        if cell > opposite || count > remaining - options.givens.start() {
+            continue;
+        }
         compiled.givens[cell] = 0;
+        compiled.givens[opposite] = 0;
         if compiled.analyze(&empty, &[0; CELLS], options.max_nodes) == Ok(Analysis::Unique) {
-            remaining -= 1;
+            remaining -= count;
             puzzle.givens[cell] = 0;
+            puzzle.givens[opposite] = 0;
         } else {
             compiled.givens[cell] = solution[cell];
+            compiled.givens[opposite] = solution[opposite];
         }
     }
     None

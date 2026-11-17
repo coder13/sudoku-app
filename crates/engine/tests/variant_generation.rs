@@ -449,3 +449,29 @@ fn invalid_exhausted_and_cancelled_searches_are_distinct() {
         Err(VariantGenerationError::InvalidLayout(0))
     ));
 }
+
+#[test]
+fn paired_removals_respect_even_and_odd_exact_clue_counts() {
+    let solution = parse_givens(SOLUTION).unwrap();
+    for seed in [0, 39, 112] {
+        for clues in [76, 77, 80, 81] {
+            let mut options = VariantGenerationOptions::new(seed, jigsaw(solution), clues..=clues);
+            options.max_attempts = 1;
+            let mut search =
+                sudoku_app_engine::start_variant_generation_with_symmetry(options, true).unwrap();
+            let puzzle = std::iter::from_fn(|| search.advance())
+                .find_map(|step| match step {
+                    GenerationStep::Matched { puzzle, .. } => Some(puzzle),
+                    _ => None,
+                })
+                .unwrap();
+            assert_eq!(puzzle.givens, clues);
+            let mask = puzzle.puzzle.givens.map(|d| d != 0);
+            assert!(mask.iter().eq(mask.iter().rev()));
+            assert_eq!(
+                puzzle.puzzle.compile().unwrap().analyze(&EMPTY, &NO_REMOVALS, 10_000),
+                Ok(Analysis::Unique)
+            );
+        }
+    }
+}
