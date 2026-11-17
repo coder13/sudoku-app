@@ -9,7 +9,7 @@
       "A difficulty describes the techniques used to solve a puzzle. Repeating an easy technique does not raise its level. Every level has one puzzle quality standard, with no separate workload setting.",
       "Beginner focuses on visual scanning. Easy adds all singles. Medium introduces local candidate removals. Tricky follows one digit across houses, and Hard introduces wings. Very Hard starts chains and coloring; Expert and Master build general and grouped chains. Extreme combines forcing proofs and specialist patterns.",
       "Impossible is our highest level. A skilled person may still solve these puzzles, but a practical human solution is not promised. Some may need extensive case analysis or computer help.",
-      "Articles follow the course order below. A family article can include later extensions, which are marked by their practice difficulty. You can return to those extensions after learning their prerequisites."
+      "Foundation lessons introduce the logic before the techniques that use it. Each has short examples and questions. Technique articles follow in the same course order."
     ],
     "fundamentalsNote": "For the rules, cell addresses, and candidates, start with"
   },
@@ -390,6 +390,122 @@
       "difficulty": "medium",
       "lessons": [
         {
+          "id": "candidate-logic",
+          "title": "Candidates and eliminations",
+          "kind": "foundation",
+          "difficulty": "medium",
+          "summary": "Use complete notes to prove what a cell cannot contain.",
+          "prerequisites": [
+            "fundamentals",
+            "hidden-single",
+            "naked-single"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start after singles stop. Check that your notes include every digit still possible in each cell you will use.",
+                "A missing pencil mark is not proof that a digit is impossible. Partial notes can create a false pair or a false strong link."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "possibility-and-proof",
+              "title": "Possible does not mean certain"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A candidate is a digit that remains possible. An elimination proves that one specific digit cannot occupy one specific cell.",
+                "After an elimination, check both the cell and its houses for singles. A useful elimination does not have to place a digit immediately."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "One cell, two different claims",
+              "columns": [
+                "Claim",
+                "What it means"
+              ],
+              "rows": [
+                [
+                  "R3C6 contains candidate 8",
+                  "8 is still possible in R3C6."
+                ],
+                [
+                  "Remove 8 from R3C6",
+                  "A proof rules out that particular 8."
+                ],
+                [
+                  "Place 8 in R3C6",
+                  "Every valid completion must put 8 there."
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "count-distinct-digits",
+              "title": "Count cells and distinct digits"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Suppose two cells in row 3 each contain only {2, 8}. They need both digits, although their order is unknown.",
+                "Together they reserve 2 and 8 for those cells. Later subset lessons extend this counting argument to more cells.",
+                "Count distinct digits across the cells. Two copies of candidate 2 still count as one digit."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "A cell has notes {2, 8}, but you never checked whether 5 fits. Is this a proven two-choice cell?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "The notes are incomplete. Check 5 before using a two-choice argument."
+                },
+                {
+                  "prompt": "An elimination creates no single. Can it still be useful?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "It reduces the remaining possibilities and can make another pattern available."
+                },
+                {
+                  "prompt": "Two cells contain {2, 8} and {2, 8}. How many distinct candidate digits are there?",
+                  "options": [
+                    "Two",
+                    "Four"
+                  ],
+                  "answer": 0,
+                  "explanation": "The distinct digits are 2 and 8. Repeated pencil marks do not add new digits."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Sudoku Coach: full candidate notation",
+              "href": "https://sudoku.coach/en/learn/full-candidate-notation"
+            },
+            {
+              "label": "Sudoku Coach: eliminating candidates",
+              "href": "https://sudoku.coach/en/learn/eliminate-candidates"
+            }
+          ]
+        },
+        {
           "id": "locked-candidates",
           "title": "Locked Candidates",
           "summary": "Erase a candidate when its only places in one house are also in another.",
@@ -476,7 +592,8 @@
           ],
           "difficulty": "medium",
           "prerequisites": [
-            "naked-single"
+            "naked-single",
+            "candidate-logic"
           ]
         },
         {
@@ -732,6 +849,153 @@
       "difficulty": "tricky",
       "lessons": [
         {
+          "id": "strong-weak-links",
+          "title": "Strong and weak links",
+          "kind": "foundation",
+          "difficulty": "tricky",
+          "summary": "Learn the two rules behind short patterns, wings, coloring, and chains.",
+          "prerequisites": [
+            "candidate-logic",
+            "hidden-single",
+            "naked-single"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Highlight one digit. Find a house where it has exactly two remaining places. Then find a house where it has three.",
+                "A link joins candidate statements. For example, A means “R4C2 is 5.” True means that placement is correct. False means it is ruled out."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "weak-links",
+              "title": "Weak: the two statements cannot both be true"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If A is true, B must be false. Two copies of one digit in a house have this relationship. So do different digits in one cell.",
+                "If row 4 has 5 in R4C2, R4C5, or R4C8, ruling out R4C2 alone does not choose between the other two."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "strong-links",
+              "title": "Strong: the two statements cannot both be false"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If A is false, B must be true. If R4C2 and R4C8 are the only places for 5 in row 4, removing one forces the other.",
+                "This pair also has a weak link: the row cannot contain both 5s. A cell with exactly two candidates also has both properties. This is a dual link."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "Which truth combinations does each link allow?",
+              "columns": [
+                "A",
+                "B",
+                "Weak",
+                "Strong",
+                "Dual"
+              ],
+              "rows": [
+                [
+                  "True",
+                  "True",
+                  "No",
+                  "Yes",
+                  "No"
+                ],
+                [
+                  "True",
+                  "False",
+                  "Yes",
+                  "Yes",
+                  "Yes"
+                ],
+                [
+                  "False",
+                  "True",
+                  "Yes",
+                  "Yes",
+                  "Yes"
+                ],
+                [
+                  "False",
+                  "False",
+                  "Yes",
+                  "No",
+                  "No"
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "common-mistake",
+              "title": "Do not reverse the wrong rule"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Weak does not mean uncertain. It states a definite conflict. Strong does not mean the candidates must have opposite values.",
+                "A derived strong link can allow both ends to be true. Use its weak property only if you also prove a conflict."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Three cells in a row can contain 7. One loses 7. Must a particular other cell now be 7?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "Two places remain. The weak link does not force either one."
+                },
+                {
+                  "prompt": "A cell contains exactly {3, 9}. Which relationship joins its candidates?",
+                  "options": [
+                    "Weak only",
+                    "Strong only",
+                    "Both strong and weak"
+                  ],
+                  "answer": 2,
+                  "explanation": "One must be true and they cannot both be true."
+                },
+                {
+                  "prompt": "A proof establishes a strong link but no conflict between its ends. Can both ends be true?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "A strong link only rules out both ends being false. A separate conflict is needed for a weak link."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Sudoku Coach: link type summary",
+              "href": "https://sudoku.coach/en/learn/link-type-summary"
+            },
+            {
+              "label": "Pure Sudoku: propositions and inference chains",
+              "href": "https://docs.pure-sudoku.app/en/tech/chains-intro"
+            }
+          ]
+        },
+        {
           "id": "x-wing",
           "title": "X-Wing",
           "summary": "Look for two rows that use the same two columns for a digit, or the same pattern turned sideways.",
@@ -907,7 +1171,8 @@
           ],
           "difficulty": "tricky",
           "prerequisites": [
-            "x-wing"
+            "x-wing",
+            "strong-weak-links"
           ]
         },
         {
@@ -976,7 +1241,8 @@
           ],
           "difficulty": "tricky",
           "prerequisites": [
-            "skyscraper"
+            "skyscraper",
+            "strong-weak-links"
           ]
         },
         {
@@ -1051,7 +1317,8 @@
           ],
           "difficulty": "tricky",
           "prerequisites": [
-            "two-string-kite"
+            "two-string-kite",
+            "strong-weak-links"
           ]
         },
         {
@@ -1162,6 +1429,118 @@
       "difficulty": "hard",
       "lessons": [
         {
+          "id": "bivalue-case-splits",
+          "title": "Bivalue cells and cases",
+          "kind": "foundation",
+          "difficulty": "hard",
+          "summary": "Use every possible value of a cell to prove a result.",
+          "prerequisites": [
+            "strong-weak-links",
+            "naked-subsets"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a cell with exactly two candidates, called a bivalue cell. Look for nearby bivalue cells that share one of its candidates."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "cover-every-choice",
+              "title": "Cover every choice"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Suppose a pivot has {2, 6}. A peer A has {2, 9}, and another peer B has {6, 9}.",
+                "If the pivot is 2, A must be 9. If the pivot is 6, B must be 9. These are all choices for the pivot."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "The two possible cases",
+              "columns": [
+                "Pivot",
+                "Forced result"
+              ],
+              "rows": [
+                [
+                  "2",
+                  "A is 9."
+                ],
+                [
+                  "6",
+                  "B is 9."
+                ]
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "At least one of A and B is 9. A target that sees both cannot be 9. You do not have to decide which case is correct.",
+                "These are hypothetical branches of one proof. Do not place the pivot value on the real board while you examine a branch."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "check-all-targets",
+              "title": "Check the target in every case"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Seeing only A is not enough: the other case forces B. If the pivot also contains 9, you need a third case.",
+                "This is the reasoning behind wings. Their shapes help you find this proof quickly."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "A pivot has {2, 6}. Both cases remove 9 from the same target. Can you remove that 9?",
+                  "options": [
+                    "Yes",
+                    "Only after choosing the pivot"
+                  ],
+                  "answer": 0,
+                  "explanation": "All possible pivot values lead to the same removal."
+                },
+                {
+                  "prompt": "The pivot has {2, 6, 9}, but you checked only 2 and 6. Is the proof complete?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "The pivot can still be 9. That case needs its own argument."
+                },
+                {
+                  "prompt": "One case forces A=9 and the other forces B=9. A target sees A but not B. Is its 9 removed?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "The target must conflict with the forced result in every case."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu: wings",
+              "href": "https://hodoku.sourceforge.net/en/tech_wings.php"
+            }
+          ]
+        },
+        {
           "id": "xy-wing",
           "title": "XY-Wing",
           "summary": "Either digit in the pivot makes one of the wings take their common digit.",
@@ -1226,7 +1605,8 @@
           ],
           "difficulty": "hard",
           "prerequisites": [
-            "naked-subsets"
+            "naked-subsets",
+            "bivalue-case-splits"
           ]
         },
         {
@@ -1294,7 +1674,8 @@
           ],
           "difficulty": "hard",
           "prerequisites": [
-            "xy-wing"
+            "xy-wing",
+            "bivalue-case-splits"
           ]
         },
         {
@@ -1355,7 +1736,9 @@
           "difficulty": "hard",
           "prerequisites": [
             "xy-wing",
-            "skyscraper"
+            "skyscraper",
+            "strong-weak-links",
+            "bivalue-case-splits"
           ]
         },
         {
@@ -1456,6 +1839,116 @@
           "difficulty": "hard",
           "prerequisites": [
             "swordfish"
+          ]
+        },
+        {
+          "id": "uniqueness-assumption",
+          "title": "The uniqueness assumption",
+          "kind": "foundation",
+          "difficulty": "hard",
+          "summary": "Understand the extra promise behind uniqueness techniques.",
+          "prerequisites": [
+            "naked-subsets",
+            "bivalue-case-splits"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Before using a uniqueness technique, make sure the puzzle has exactly one solution. Sudoku rules alone do not guarantee this."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "a-second-completion",
+              "title": "Why a second completion matters"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Imagine four empty cells at R1C2, R1C3, R4C2, and R4C3, each restricted to {1, 7}. They occupy two rows, two columns, and two boxes.",
+                "If one valid completion fills them in an alternating pattern, swapping 1 and 7 in all four preserves each affected house.",
+                "The swap leaves all other cells unchanged. It would give a second valid completion, contradicting a known promise of uniqueness."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "Two interchangeable fillings",
+              "columns": [
+                "Cells",
+                "First filling",
+                "Swapped filling"
+              ],
+              "rows": [
+                [
+                  "R1C2, R1C3",
+                  "1, 7",
+                  "7, 1"
+                ],
+                [
+                  "R4C2, R4C3",
+                  "7, 1",
+                  "1, 7"
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "limits",
+              "title": "Know when this argument applies"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Unique Rectangle and BUG techniques use this extra promise. Ordinary singles, subsets, and link arguments do not need it.",
+                "A rectangle spanning four boxes does not support this swap argument. Givens cannot be swapped. Variant rules can also make the swap invalid.",
+                "For imported or unfinished custom puzzles, verify uniqueness before using these techniques. Finding one solution is not enough."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "A solver finds one completed grid and stops. Does that prove uniqueness?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "Another completion might still exist. Uniqueness requires ruling out a second solution."
+                },
+                {
+                  "prompt": "Can ordinary candidate conflicts be used without assuming a unique solution?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "They follow from the Sudoku rules and apply to every valid completion."
+                },
+                {
+                  "prompt": "A proposed swap changes a given digit. Is it a valid uniqueness argument?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "Every valid completion must preserve the givens."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu: uniqueness",
+              "href": "https://hodoku.sourceforge.net/en/tech_ur.php"
+            }
           ]
         },
         {
@@ -1660,7 +2153,8 @@
           ],
           "difficulty": "hard",
           "prerequisites": [
-            "naked-subsets"
+            "naked-subsets",
+            "uniqueness-assumption"
           ]
         },
         {
@@ -1730,7 +2224,8 @@
           ],
           "difficulty": "hard",
           "prerequisites": [
-            "unique-rectangle"
+            "unique-rectangle",
+            "uniqueness-assumption"
           ]
         }
       ]
@@ -1740,6 +2235,130 @@
       "overview": "Follow restricted chains and coloring.",
       "difficulty": "very-hard",
       "lessons": [
+        {
+          "id": "chain-basics",
+          "title": "Following a chain",
+          "kind": "foundation",
+          "difficulty": "very-hard",
+          "summary": "Trace what is forced, then check what the endpoints prove.",
+          "prerequisites": [
+            "strong-weak-links",
+            "bivalue-case-splits",
+            "skyscraper"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with two candidates joined by a strong link. At the next candidate, look for a conflict that leads to another strong link."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "one-step-at-a-time",
+              "title": "One forced step at a time"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Give four candidate statements the names A, B, C, and D. Suppose their links are strong, weak, strong in that order."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "Assume A is false",
+              "columns": [
+                "Step",
+                "Reason",
+                "Result"
+              ],
+              "rows": [
+                [
+                  "A to B",
+                  "Strong link",
+                  "B is true."
+                ],
+                [
+                  "B to C",
+                  "Weak link",
+                  "C is false."
+                ],
+                [
+                  "C to D",
+                  "Strong link",
+                  "D is true."
+                ]
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If A is false, D must be true. If A is true, there is no need to follow this branch. Either way, at least one endpoint is true.",
+                "A candidate that conflicts with both endpoints can be removed. The endpoints need not see each other and need not have opposite truth values."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "colors-and-links",
+              "title": "Colors record a relationship"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Coloring uses two colors to record opposite states along dual links. The colors do not tell you which state is correct.",
+                "An arbitrary weak link does not force opposite colors: both of its candidates can be false. Always check which implication the next step needs."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Your current statement is false. Which property can force the next statement true?",
+                  "options": [
+                    "Strong",
+                    "Weak"
+                  ],
+                  "answer": 0,
+                  "explanation": "A strong link rules out both statements being false."
+                },
+                {
+                  "prompt": "A chain proves that at least one endpoint is true. Which target can it remove?",
+                  "options": [
+                    "A candidate conflicting with both ends",
+                    "Any candidate near the chain"
+                  ],
+                  "answer": 0,
+                  "explanation": "That target would make both endpoints false, which the proof excludes."
+                },
+                {
+                  "prompt": "Two candidates have only a weak link. Must their truth values be opposite?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "Both can be false. A coloring step that requires opposite states needs a dual link."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Sudoku Coach: chaining basics",
+              "href": "https://sudoku.coach/en/learn/chaining-basics"
+            },
+            {
+              "label": "Sudoku Coach: AIC basics",
+              "href": "https://sudoku.coach/en/learn/aic-basics"
+            }
+          ]
+        },
         {
           "id": "simple-coloring",
           "title": "Simple Coloring",
@@ -1822,7 +2441,8 @@
           ],
           "difficulty": "very-hard",
           "prerequisites": [
-            "skyscraper"
+            "skyscraper",
+            "chain-basics"
           ]
         },
         {
@@ -1882,7 +2502,8 @@
           ],
           "difficulty": "very-hard",
           "prerequisites": [
-            "simple-coloring"
+            "simple-coloring",
+            "chain-basics"
           ]
         },
         {
@@ -1941,7 +2562,8 @@
           "difficulty": "very-hard",
           "prerequisites": [
             "xy-wing",
-            "x-chain"
+            "x-chain",
+            "chain-basics"
           ]
         },
         {
@@ -2030,7 +2652,133 @@
           "difficulty": "very-hard",
           "prerequisites": [
             "simple-coloring",
-            "xy-chain"
+            "xy-chain",
+            "chain-basics"
+          ]
+        },
+        {
+          "id": "almost-locked-set-basics",
+          "title": "Almost locked set basics",
+          "kind": "foundation",
+          "difficulty": "very-hard",
+          "summary": "Recognize a group that is one digit away from a locked subset.",
+          "prerequisites": [
+            "naked-subsets",
+            "bivalue-case-splits"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "While looking for a naked subset, count the distinct candidate digits in a few cells that all share one house."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "one-extra-digit",
+              "title": "One extra digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "An almost locked set, or ALS, has N cells and N+1 distinct candidate digits. The cells must all share a house.",
+                "Two cells with {1, 4} and {4, 8} form an ALS. Their combined digits are {1, 4, 8}. A bivalue cell is the smallest ALS."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "Remove a digit from the whole set",
+              "columns": [
+                "Digit excluded",
+                "First cell",
+                "Second cell"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "4",
+                  "8"
+                ],
+                [
+                  "4",
+                  "1",
+                  "8"
+                ],
+                [
+                  "8",
+                  "1",
+                  "4"
+                ]
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Each case leaves two distinct digits for two cells. Those remaining digits become locked in the set.",
+                "The set cannot lose two distinct digits entirely: that would leave too few digits to fill its cells."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "do-not-skip-the-proof",
+              "title": "An ALS alone does not remove anything"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The word “almost” matters. Finding an ALS does not prove which digit is absent. Another relationship must force a useful result.",
+                "This counting idea appears in WXYZ-Wing. Later ALS techniques connect several sets. Learn the count before their connection rules."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Two cells in one row contain {1, 4} and {4, 8}. Is this an ALS?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "Two cells have three distinct candidate digits."
+                },
+                {
+                  "prompt": "You find an ALS. Can you immediately remove one of its digits from nearby cells?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "An ALS alone does not establish which digits must appear. It needs another constraint."
+                },
+                {
+                  "prompt": "An ALS has three cells. How many distinct candidate digits does it contain?",
+                  "options": [
+                    "Three",
+                    "Four",
+                    "Six"
+                  ],
+                  "answer": 1,
+                  "explanation": "An ALS contains one more distinct candidate digit than cells."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu: almost locked sets",
+              "href": "https://hodoku.sourceforge.net/en/tech_als.php"
+            },
+            {
+              "label": "SudokuWiki: almost locked sets",
+              "href": "https://www.sudokuwiki.org/Almost_Locked_Sets"
+            }
           ]
         },
         {
@@ -2138,7 +2886,8 @@
           "referencesTitle": "Related lessons and references",
           "difficulty": "very-hard",
           "prerequisites": [
-            "xyz-wing"
+            "xyz-wing",
+            "almost-locked-set-basics"
           ]
         }
       ]
@@ -2148,6 +2897,130 @@
       "overview": "Construct general alternating inference chains and loops.",
       "difficulty": "expert",
       "lessons": [
+        {
+          "id": "chain-notation",
+          "title": "Reading chain notation",
+          "kind": "foundation",
+          "difficulty": "expert",
+          "summary": "Read candidates, link symbols, and conclusions without guessing from the drawing.",
+          "prerequisites": [
+            "chain-basics",
+            "x-chain",
+            "xy-chain"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Read a written chain one link at a time. Name the candidate at each end and the Sudoku rule that justifies the connection."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "A small notation guide",
+              "columns": [
+                "Notation",
+                "Read it as"
+              ],
+              "rows": [
+                [
+                  "(5)r2c3",
+                  "The statement “R2C3 is 5.”"
+                ],
+                [
+                  "A = B",
+                  "A and B have a strong link."
+                ],
+                [
+                  "A - B",
+                  "A and B have a weak link."
+                ],
+                [
+                  "(2=7)r6c4",
+                  "A strong link between 2 and 7 inside R6C4."
+                ],
+                [
+                  "R8C1 ≠ 5",
+                  "Remove candidate 5 from R8C1."
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "read-the-implications",
+              "title": "Read the implications, not just the symbols"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For A = B - C = D, start with A false. The forced states are B true, C false, and D true.",
+                "The equals sign here marks a strong link. It does not say the two candidates have equal values. A dash marks a conflict.",
+                "A dual link can supply either property. The symbol records the property used at that point in the chain."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "check-the-ends",
+              "title": "Check the ends separately"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The middle of an AIC can change digits. The final removal must conflict with both endpoint statements, not merely their cells.",
+                "If a path returns to its start, check the two links at that join. The Nice Loops lesson explains the different conclusions.",
+                "The app draws strong links as solid lines and weak links as dashed lines. Read the stated proof as well as the picture."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "In A = B, does the equals sign mean the two candidates have the same truth value?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "It marks a strong link: at least one statement is true."
+                },
+                {
+                  "prompt": "A dual link appears as a dash in a chain. Is that allowed?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "The dash uses its weak property. Dual links support both properties."
+                },
+                {
+                  "prompt": "An AIC changes digits inside a cell. Is that automatically invalid?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "AICs can change digits. Each link still needs a valid strong or weak implication."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu: chains, inferences, and notation",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            },
+            {
+              "label": "Pure Sudoku: propositions and inference chains",
+              "href": "https://docs.pure-sudoku.app/en/tech/chains-intro"
+            }
+          ]
+        },
         {
           "id": "aic",
           "title": "Alternating Inference Chains",
@@ -2162,8 +3035,7 @@
               "type": "text",
               "paragraphs": [
                 "Start with a strong link. Look for a cell with two candidates or a digit with exactly two places in a house.",
-                "From the far end, find a candidate that conflicts with it and has a strong link of its own. Keep alternating. After a strong link, look for a candidate that conflicts with both ends.",
-                "For a grouped chain, also look for several spots for one digit in the same stretch of a box and a line. Treat the group as one end."
+                "From the far end, find a candidate that conflicts with it and has a strong link of its own. Keep alternating. After a strong link, look for a candidate that conflicts with both ends."
               ]
             },
             {
@@ -2199,35 +3071,20 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "grouped-aic",
-              "title": "Grouped AIC"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Candidates for one digit where a line crosses a box can act as a single end of a link. The group is true when any member is true. A weak link into the group has to rule out all its members. A strong link can join two groups, or a group and a single candidate, if they cover every place for the digit in a house."
-              ]
-            },
-            {
-              "type": "diagram",
-              "example": "grouped-aic"
-            },
-            {
               "type": "practice",
               "drills": [
                 {
                   "example": "aic",
                   "title": "Alternating Inference Chain"
-                },
-                {
-                  "example": "grouped-aic",
-                  "title": "Grouped AIC"
                 }
               ]
             }
           ],
           "references": [
+            {
+              "label": "Grouped AIC (Master)",
+              "href": "/learn/grouped-aic"
+            },
             {
               "label": "HoDoKu",
               "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
@@ -2244,7 +3101,8 @@
           "difficulty": "expert",
           "prerequisites": [
             "x-chain",
-            "xy-chain"
+            "xy-chain",
+            "chain-notation"
           ]
         },
         {
@@ -2261,7 +3119,7 @@
               "type": "text",
               "paragraphs": [
                 "Start at a candidate with several links, such as a digit in a cell with two candidates and a two-place link in its row.",
-                "Alternate strong and weak links. Continue if a link can return to the original candidate or group. Check whether the first and last links match."
+                "Alternate strong and weak links. Continue if a link can return to the original candidate. Check whether the first and last links match."
               ]
             },
             {
@@ -2301,6 +3159,249 @@
               "example": "continuous-nice-loop"
             },
             {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "discontinuous-nice-loop",
+                  "title": "Discontinuous Nice Loop"
+                },
+                {
+                  "example": "continuous-nice-loop",
+                  "title": "Continuous Nice Loop"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Grouped Nice Loops (Master)",
+              "href": "/learn/grouped-nice-loops"
+            },
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            },
+            {
+              "label": "SudokuWiki AIC",
+              "href": "https://www.sudokuwiki.org/Alternating_Inference_Chains"
+            },
+            {
+              "label": "SudokuWiki grouped AIC",
+              "href": "https://www.sudokuwiki.org/AIC_with_Groups"
+            }
+          ],
+          "difficulty": "expert",
+          "prerequisites": [
+            "aic",
+            "chain-notation"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Master",
+      "overview": "Connect groups of candidates and almost locked sets.",
+      "difficulty": "master",
+      "lessons": [
+        {
+          "id": "grouped-candidates",
+          "title": "Grouped candidates",
+          "kind": "foundation",
+          "difficulty": "master",
+          "summary": "Treat several possible positions as one logical statement.",
+          "prerequisites": [
+            "strong-weak-links",
+            "chain-notation",
+            "aic"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Highlight one digit. Look for several of its candidates where a row or column crosses a box."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "one-statement",
+              "title": "A group is one statement"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Let G mean “5 is in R3C1 or R3C2.” G is true when at least one member is true. G is false only when both are false.",
+                "Suppose the only 5s in row 3 are R3C1, R3C2, and R3C8. The group G and the candidate at R3C8 have a strong link."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "A group in a link",
+              "columns": [
+                "Information",
+                "What follows"
+              ],
+              "rows": [
+                [
+                  "R3C1 loses 5",
+                  "G may still be true through R3C2."
+                ],
+                [
+                  "Both group members lose 5",
+                  "R3C8 must be 5."
+                ],
+                [
+                  "R3C8 is 5",
+                  "Every member of G loses 5."
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "every-member",
+              "title": "Check every member"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "An outside candidate has a weak link to G only if it conflicts with every member. Seeing one member is not enough.",
+                "The same rule applies to removals from grouped endpoints. A target must conflict with every possible member of each endpoint group.",
+                "Use groups from one line-box intersection first. More general grouped statements still need their own link proofs."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "G means “R3C1 or R3C2 is 5.” Only R3C1 loses 5. Is G false?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "R3C2 can still make the group true."
+                },
+                {
+                  "prompt": "A target sees only one member of a two-member group. Does that prove a weak link to the group?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "The target must conflict with every member."
+                },
+                {
+                  "prompt": "G and a separate candidate cover all remaining 5s in a row. Is there a strong link between them?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 0,
+                  "explanation": "If the group is false, the separate candidate is the only remaining place for 5."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Sudoku Coach: AICs and grouped candidates",
+              "href": "https://sudoku.coach/en/learn/aic"
+            },
+            {
+              "label": "Pure Sudoku: propositions and inference chains",
+              "href": "https://docs.pure-sudoku.app/en/tech/chains-intro"
+            }
+          ]
+        },
+        {
+          "id": "grouped-aic",
+          "title": "Grouped AIC",
+          "summary": "Use groups as nodes in an alternating inference chain.",
+          "difficulty": "master",
+          "prerequisites": [
+            "grouped-candidates",
+            "aic"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a line-box intersection that can act as one group. Check all its members before extending a link."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "grouped-aic",
+              "title": "Grouped AIC"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Candidates for one digit where a line crosses a box can act as a single end of a link. The group is true when any member is true. A weak link into the group has to rule out all its members. A strong link can join two groups, or a group and a single candidate, if they cover every place for the digit in a house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "grouped-aic"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "grouped-aic",
+                  "title": "Grouped AIC"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu",
+              "href": "https://hodoku.sourceforge.net/en/tech_chains.php"
+            },
+            {
+              "label": "SudokuWiki AIC",
+              "href": "https://www.sudokuwiki.org/Alternating_Inference_Chains"
+            },
+            {
+              "label": "SudokuWiki grouped AIC",
+              "href": "https://www.sudokuwiki.org/AIC_with_Groups"
+            }
+          ]
+        },
+        {
+          "id": "grouped-nice-loops",
+          "title": "Grouped Nice Loops",
+          "summary": "Check how grouped links meet at the start of a loop.",
+          "difficulty": "master",
+          "prerequisites": [
+            "grouped-candidates",
+            "grouped-aic",
+            "nice-loops"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Follow a grouped chain until it returns to its starting statement. Check the first and last link at that join."
+              ]
+            },
+            {
               "type": "heading",
               "id": "grouped-discontinuous-nice-loop",
               "title": "Grouped Discontinuous Nice Loop"
@@ -2334,14 +3435,6 @@
               "type": "practice",
               "drills": [
                 {
-                  "example": "discontinuous-nice-loop",
-                  "title": "Discontinuous Nice Loop"
-                },
-                {
-                  "example": "continuous-nice-loop",
-                  "title": "Continuous Nice Loop"
-                },
-                {
                   "example": "grouped-discontinuous-nice-loop",
                   "title": "Grouped Discontinuous Nice Loop"
                 },
@@ -2365,19 +3458,122 @@
               "label": "SudokuWiki grouped AIC",
               "href": "https://www.sudokuwiki.org/AIC_with_Groups"
             }
-          ],
-          "difficulty": "expert",
-          "prerequisites": [
-            "aic"
           ]
-        }
-      ]
-    },
-    {
-      "title": "Master",
-      "overview": "Connect groups of candidates and almost locked sets.",
-      "difficulty": "master",
-      "lessons": [
+        },
+        {
+          "id": "restricted-common-candidates",
+          "title": "Restricted common candidates",
+          "kind": "foundation",
+          "difficulty": "master",
+          "summary": "Check the connection that lets two almost locked sets affect each other.",
+          "prerequisites": [
+            "almost-locked-set-basics",
+            "grouped-candidates"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find two separate ALSs that contain the same digit. Start with sets that do not share any cells."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "shared-is-not-restricted",
+              "title": "Shared is not yet restricted"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A restricted common candidate, or RCC, is a shared digit whose every occurrence in one set sees every occurrence in the other.",
+                "For example, suppose both sets contain 6, and all their possible 6s lie in row 8. The row prevents both sets from containing 6."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "Check all occurrences",
+              "columns": [
+                "Locations of 6",
+                "RCC?"
+              ],
+              "rows": [
+                [
+                  "All occurrences in both sets share row 8",
+                  "Yes."
+                ],
+                [
+                  "One occurrence in the first set cannot see one in the second",
+                  "No."
+                ],
+                [
+                  "Both sets contain 6, but their cells have no shared house",
+                  "No."
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "why-it-matters",
+              "title": "Why the connection matters"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "If one set uses the RCC digit, the other loses that digit entirely and becomes locked. This is a weak link between the sets using that digit.",
+                "The RCC condition does not promise that either set uses the digit. If neither uses it, both become locked.",
+                "ALS techniques turn these possible locked sets into a removal. When checking a removal, look at every occurrence of the affected digit."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Both ALSs contain 6. One possible 6 cannot see a 6 in the other set. Is 6 restricted common?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "Every occurrence in one set must see every occurrence in the other."
+                },
+                {
+                  "prompt": "Does an RCC guarantee that exactly one set contains its digit?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "It guarantees at most one. Both sets may omit it."
+                },
+                {
+                  "prompt": "One ALS uses the RCC digit. What happens to the other ALS?",
+                  "options": [
+                    "It loses that digit and becomes locked",
+                    "It must use that digit too"
+                  ],
+                  "answer": 0,
+                  "explanation": "The RCC conflicts with every occurrence in the other set, leaving N digits for its N cells."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu: restricted common candidates",
+              "href": "https://hodoku.sourceforge.net/en/tech_als.php"
+            },
+            {
+              "label": "SudokuWiki: almost locked sets",
+              "href": "https://www.sudokuwiki.org/Almost_Locked_Sets"
+            }
+          ]
+        },
         {
           "id": "almost-locked-sets",
           "title": "Almost Locked Sets (ALS)",
@@ -2505,7 +3701,9 @@
           "difficulty": "master",
           "prerequisites": [
             "wxyz-wing",
-            "aic"
+            "aic",
+            "almost-locked-set-basics",
+            "restricted-common-candidates"
           ]
         }
       ]
@@ -2515,6 +3713,113 @@
       "overview": "Combine forcing proofs and specialist patterns.",
       "difficulty": "extreme",
       "lessons": [
+        {
+          "id": "forcing-proof-basics",
+          "title": "Assumptions and contradictions",
+          "kind": "foundation",
+          "difficulty": "extreme",
+          "summary": "Separate a complete proof from an unfinished what-if.",
+          "prerequisites": [
+            "chain-notation",
+            "nice-loops",
+            "bivalue-case-splits"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose one candidate statement and write down the assumption you will test. Keep every deduction tied to that assumption."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "a-rule-must-break",
+              "title": "A contradiction must break a rule"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A branch fails if it forces two equal digits into one house, two different digits into one cell, or no legal value for a cell.",
+                "It also fails if a required digit has no possible place in a house. Failing to find the next move is not a contradiction."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "Two ways to prove a result",
+              "columns": [
+                "Method",
+                "What you must establish"
+              ],
+              "rows": [
+                [
+                  "Contradiction",
+                  "Assuming A leads to an impossible state, so A is false."
+                ],
+                [
+                  "Common result",
+                  "Every possible case leads to the same placement or removal."
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "separate-cases",
+              "title": "Keep separate cases separate"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For a cell with {2, 5, 8}, a common-result proof must cover all three values. A result reached in two cases is not enough.",
+                "You cannot combine a removal from the 2 case with a removal from the 5 case. Those assumptions cannot hold together.",
+                "Within one assumption, several forced consequences can combine. That is the basis of a forcing net."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "An assumption leaves a difficult position where you cannot find a move. Is the assumption disproved?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "A stalled search does not violate a Sudoku rule."
+                },
+                {
+                  "prompt": "Cases 2 and 5 remove 9 from a target. The starting cell also allows 8. Is the removal proved?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "The 8 case must give the same removal or be disproved."
+                },
+                {
+                  "prompt": "Under one assumption, forced consequences remove every 4 from row 7. What does that prove?",
+                  "options": [
+                    "The assumption is false",
+                    "The row does not need a 4"
+                  ],
+                  "answer": 0,
+                  "explanation": "Every row needs a 4. Removing all its possible places is a contradiction."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Sudoku Coach: forcing chain types",
+              "href": "https://sudoku.coach/en/learn/forcing-chain-types"
+            }
+          ]
+        },
         {
           "id": "forcing-chain",
           "title": "Forcing Chains and Nets",
@@ -2606,7 +3911,8 @@
           "difficulty": "extreme",
           "prerequisites": [
             "aic",
-            "nice-loops"
+            "nice-loops",
+            "forcing-proof-basics"
           ]
         }
       ]
@@ -2615,7 +3921,122 @@
       "title": "Impossible",
       "overview": "Explore deeply nested proofs and computer methods. A practical human solution is not promised.",
       "difficulty": "impossible",
-      "lessons": []
+      "lessons": [
+        {
+          "id": "nested-proofs-and-search",
+          "title": "Nested proofs and search",
+          "kind": "foundation",
+          "difficulty": "impossible",
+          "summary": "Understand deeper case analysis and what a computer result proves.",
+          "prerequisites": [
+            "forcing-proof-basics",
+            "forcing-chain"
+          ],
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "When one assumption does not settle the question, record it before testing a second assumption inside that branch."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "keep-the-scope",
+              "title": "Keep each conclusion in its scope"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Suppose you are testing A. Inside that branch, both B and not-B force C. This proves C under A, not C on the original board.",
+                "To remove the outer assumption, show that A fails or that every outer case gives the same result."
+              ]
+            },
+            {
+              "type": "table",
+              "caption": "What a search result proves",
+              "columns": [
+                "Result",
+                "Conclusion"
+              ],
+              "rows": [
+                [
+                  "One valid completed grid",
+                  "At least one solution exists."
+                ],
+                [
+                  "A second distinct valid grid",
+                  "The puzzle is not unique."
+                ],
+                [
+                  "Every branch under A fails",
+                  "A is impossible."
+                ],
+                [
+                  "The search reaches a time limit",
+                  "The search is unfinished."
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "computers-and-people",
+              "title": "Computer methods and human proofs"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A computer can propagate constraints, explore branches, and return to an earlier choice when a branch fails. This is backtracking.",
+                "One digit can also be studied through its possible complete placement patterns. Patterns incompatible with the puzzle are discarded.",
+                "Impossible describes our top tier, not a claim that humans can never solve it. A person can still find a shorter proof than the solver."
+              ]
+            },
+            {
+              "type": "concept-check",
+              "title": "Check your understanding",
+              "questions": [
+                {
+                  "prompt": "Under A, both B and not-B force C. What has been proved?",
+                  "options": [
+                    "C under A",
+                    "C without any assumptions"
+                  ],
+                  "answer": 0,
+                  "explanation": "The inner cases settle C only while the outer assumption A is in force."
+                },
+                {
+                  "prompt": "A solver reaches its time limit without a solution. Is the puzzle proved impossible?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "It has not finished checking the remaining cases."
+                },
+                {
+                  "prompt": "A computer finds a valid completion. Does that alone explain the easiest human technique?",
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "answer": 1,
+                  "explanation": "A completion proves existence. It does not identify the simplest logical solving path."
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu: templates, forcing nets, and brute force",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

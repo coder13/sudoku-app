@@ -3,6 +3,7 @@ import type { BoardRegion } from '../components/BoardAnnotations'
 
 type Reference = { label: string; href: string }
 export type Drill = { example: string; title: string }
+export type ConceptQuestion = { prompt: string; options: string[]; answer: number; explanation: string }
 type DiagramCopy = {
   description?: string
   reason?: string
@@ -18,10 +19,13 @@ export type LessonBlock =
   | { type: 'text'; paragraphs: string[] }
   | { type: 'heading'; id: string; title: string }
   | { type: 'list'; items: string[] }
+  | { type: 'table'; caption: string; columns: string[]; rows: string[][] }
+  | { type: 'concept-check'; title: string; questions: ConceptQuestion[] }
   | { type: 'diagram'; example: string; region?: BoardRegion; copy?: DiagramCopy }
   | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string }
 
 export type LessonArticle = {
+  kind?: 'foundation' | 'technique'
   difficulty?: CurrentDifficulty
   prerequisites?: string[]
   id: string
@@ -60,7 +64,7 @@ export function lessonCatalog({ fundamentals, groups }: Pick<LearnContent, 'fund
       if (block.type === 'practice') {
         for (const { example } of block.drills) {
           lessonExampleIds.add(example)
-          if (lesson !== fundamentals) lessonRoutes.set(example, lesson)
+          if (lesson !== fundamentals && lesson.kind !== 'foundation') lessonRoutes.set(example, lesson)
         }
       }
     }

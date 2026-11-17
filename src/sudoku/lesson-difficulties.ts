@@ -12,7 +12,8 @@ const lessonLevels = lessons.map((lesson) => {
   const ordered = levels.filter((level) => variants.has(level))
   const first = lesson.difficulty ?? ordered[0]
   const last = ordered[ordered.length - 1] ?? first
-  const label = first === last ? DIFFICULTY_LABELS[first] : `${DIFFICULTY_LABELS[first]} to ${DIFFICULTY_LABELS[last]}`
+  const label = lesson.kind === 'foundation' ? `${DIFFICULTY_LABELS[first]} foundation`
+    : first === last ? DIFFICULTY_LABELS[first] : `${DIFFICULTY_LABELS[first]} to ${DIFFICULTY_LABELS[last]}`
   return { lesson, first, label }
 })
 

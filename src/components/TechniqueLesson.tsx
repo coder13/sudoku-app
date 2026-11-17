@@ -13,6 +13,7 @@ import type { BoardRegion } from './BoardAnnotations'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
 import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
+import { ConceptCheck } from './ConceptCheck'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, LessonExample>
 
@@ -120,6 +121,12 @@ export function Block({ block, variant }: { block: LessonBlock; variant: string 
     case 'heading': return <h2 className="article-subheading" id={block.id}>{block.title}</h2>
     case 'text': return <>{block.paragraphs.map((paragraph, index) => <p className="article-paragraph" key={index}>{paragraph}</p>)}</>
     case 'list': return <ul className="article-list">{block.items.map((item, index) => <li key={index}>{item}</li>)}</ul>
+    case 'table': return <div className="lesson-table-scroll"><table className="lesson-table">
+      <caption>{block.caption}</caption>
+      <thead><tr>{block.columns.map((column, index) => <th scope="col" key={index}>{column}</th>)}</tr></thead>
+      <tbody>{block.rows.map((row, index) => <tr key={index}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody>
+    </table></div>
+    case 'concept-check': return <ConceptCheck block={block} />
     case 'diagram': return <Diagram example={lessonExamples[block.example]} crop={block.region} copy={block.copy} />
     case 'practice': return <Practice block={block} variant={variant} />
   }

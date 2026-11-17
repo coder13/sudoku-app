@@ -67,7 +67,22 @@ Overview, sidebar, and previous/next article links share the course order in `le
 
 Beginner has a dedicated box Hidden Single lesson and detector. The existing `hidden-single` ID remains valid. Learn ordinary wings before the full ALS family, restricted chains before general AICs, and ordinary AICs before grouped or ALS chains. Rare fish and uniqueness techniques are extensions rather than prerequisites for every later lesson.
 
-Whole family articles still contain several levels. Further course work can split those extensions into independent course steps while preserving their URLs and saved progress. The current metadata and practice labels make that distinction explicit without breaking old links.
+Foundation pages teach concepts before the techniques that require them. They have worked examples, tables, and short questions with explanations and a New example control. They do not introduce new generator techniques or change a puzzle's grade.
+
+| Level | Foundation pages | First uses |
+| --- | --- | --- |
+| Medium | Candidates and eliminations | Locked Candidates and subsets |
+| Tricky | Strong and weak links | Skyscraper, Two-String Kite, Empty Rectangle |
+| Hard | Bivalue cells and cases; The uniqueness assumption | Wings; Unique Rectangle and BUG+1 |
+| Very Hard | Following a chain; Almost locked set basics | Coloring and chains; WXYZ-Wing |
+| Expert | Reading chain notation | AIC and Nice Loops |
+| Master | Grouped candidates; Restricted common candidates | Grouped AIC, grouped loops, and ALS techniques |
+| Extreme | Assumptions and contradictions | Forcing Chains and Nets |
+| Impossible | Nested proofs and search | Deeper case analysis and computer methods |
+
+Grouped AIC and grouped Nice Loops have separate Master articles. Their existing technique URLs still work. The ordinary AIC and Nice Loops articles stay at Expert. Foundation review drills must never replace a technique's route in the lesson catalog.
+
+Some family articles still contain several levels. Further course work can split those extensions into independent course steps while preserving their URLs and saved progress. The current metadata and practice labels make that distinction explicit without breaking old links.
 
 ## Saved data and compatibility
 

@@ -8,7 +8,8 @@ const isOptionalText = (value) => value === undefined || isText(value)
 const isSlug = (value) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
 
 function validLink(link) {
-  return isText(link?.label) && isText(link.href) && /^https?:\/\//i.test(link.href) && URL.canParse(link.href)
+  return isText(link?.label) && isText(link.href) &&
+    (/^\/learn\/[a-z0-9-]+$/.test(link.href) || /^https?:\/\//i.test(link.href) && URL.canParse(link.href))
 }
 
 function validCrop(crop) {
@@ -52,6 +53,16 @@ function checkLesson(lesson, original, examples) {
         break
       case 'list':
         requireValue(isTextList(block.items), `${label} needs list text.`)
+        break
+      case 'table':
+        requireValue(isText(block.caption) && isTextList(block.columns) && Array.isArray(block.rows) && block.rows.length > 0 &&
+          block.rows.every((row) => isTextList(row) && row.length === block.columns.length), `${label} needs matching table columns and rows.`)
+        break
+      case 'concept-check':
+        requireValue(isText(block.title) && Array.isArray(block.questions) && block.questions.length > 1 &&
+          block.questions.every((question) => isText(question.prompt) && isTextList(question.options) && question.options.length > 1 &&
+            Number.isInteger(question.answer) && question.answer >= 0 && question.answer < question.options.length && isText(question.explanation)),
+          `${label} needs questions with valid answers and explanations.`)
         break
       case 'diagram':
         requireValue(examples.includes(block.example) && validCrop(block.region) && validDiagramCopy(block.copy),
