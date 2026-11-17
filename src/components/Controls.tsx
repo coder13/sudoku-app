@@ -142,7 +142,7 @@ export function Controls(props: Props) {
             {props.onActions && (
               <div className="controls-actions-wrap">
                 <button type="button" ref={props.actionsButtonRef} className="icon-button actions-key"
-                  aria-label="Actions" title={`Actions (${shortcutLabel(shortcuts.actions)})`} disabled={editsDisabled} aria-expanded={props.actionsOpen}
+                  aria-label="Actions" title={`Actions (${shortcutLabel(shortcuts.actions)})`} disabled={props.disabled} aria-expanded={props.actionsOpen}
                   aria-keyshortcuts={shortcutLabel(shortcuts.actions)}
                   aria-controls={props.actionsOpen ? (props.compact ? 'mobile-actions-menu' : 'input-actions-menu') : undefined}
                   aria-haspopup={props.compact ? 'dialog' : undefined} onClick={props.onActions}>

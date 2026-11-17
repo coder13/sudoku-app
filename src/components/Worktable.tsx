@@ -1077,6 +1077,12 @@ export function Worktable({
         return
       }
       if (previewing) return
+      if (!draft && !disabled && !solved && (mobile || !advancedWorkspace) && shortcutMatches(event, shortcuts, 'actions')) {
+        event.preventDefault()
+        setPuzzleMenuOpen(false)
+        setActionsOpen(true)
+        return
+      }
       if (chainGraph && shortcutMatches(event, shortcuts, 'newChain')) {
         event.preventDefault()
         if (event.repeat) return
@@ -1165,10 +1171,6 @@ export function Worktable({
         if (colorTarget === 'candidate' && (paintingCandidates || colorMode) && event.repeat) return
         if (paintingCandidates && !colorMode) chooseColor(0)
         else input(0)
-      } else if (!draft && shortcutMatches(event, shortcuts, 'actions') && !solved && (mobile || !advancedWorkspace)) {
-        event.preventDefault()
-        setPuzzleMenuOpen(false)
-        setActionsOpen(true)
       } else if (!draft && shortcutMatches(event, shortcuts, 'generateCandidates') && !solved && !busy) {
         event.preventDefault()
         void generateCandidates()
@@ -1627,7 +1629,8 @@ export function Worktable({
       <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.generateCandidates)}</kbd>
     </button>
     <button aria-pressed={highlightCandidatePairs} disabled={solved} onClick={() => {
-      setSelectedDigit(null)
+      if (sketch.drawing) setChainHighlightDigit(null)
+      else setSelectedDigit(null)
       setHighlightCandidatePairs((current) => !current)
       setPuzzleMenuOpen(false)
       setActionsOpen(false)
@@ -1703,7 +1706,7 @@ export function Worktable({
   : sketch.drawing && chainMasks ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
-      highlightedDigit={chainHighlightDigit} highlighting={highlighting}
+      highlightedDigit={chainHighlightDigit} highlighting={highlighting} highlightCandidateCount={highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
