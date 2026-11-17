@@ -39,7 +39,9 @@ This stage is isolated on `codex/sudoku-quadruple-integration`. [Quadruple issue
 - [x] Test Quadruple with every subset of the eight existing rendered families through the app's Wasm import service.
 - [x] Add accessible circle labels, a Quadruple lesson, and three practice positions. Verify desktop preview, Play, hint text, move history, reload, and a checked practice removal.
 - [ ] Finish mobile, sharing, and completion browser checks after the interrupted browser session.
-- [ ] Finish full native, Wasm, feature-profile, documentation, production-build, and performance checks against current main.
+- [x] Pass the full optimized native suite (246 tests including doctests), Wasm suite (138 tests), app suite (306 tests), strict full/reduced Cargo documentation, TypeScript check, and production build against main at `e0e4b69`.
+- [x] Check all 16 native feature combinations and pass the capability/omitted-operation contracts for each Wasm API combination.
+- [ ] Finish the four Wasm build-profile checks and repeat the paired performance baseline on the final integration artifact. Refresh integration checks after the built-in hint and solution repair reaches main.
 - [ ] Merge the complete app flow. Keep New puzzle generation presets unavailable until their difficulty recipes pass calibration.
 
 ## 1. Share a reliable engine contract

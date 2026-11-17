@@ -124,3 +124,19 @@ test('Quadruple combines with every subset of the eight existing rendered famili
     for (let cell = 0; cell < 81; cell++) if (game.givens[cell] === '0') assert.ok(masks![cell] & 1 << (Number(combined.solution[cell]) - 1))
   }
 })
+
+test('exact candidate enforcement remains active when Quadruple deductions are disabled', async () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'quadruple', topLeft: 0, digits: [2, 4, 6, 8] },
+  ] }
+  const position = { puzzle }
+  const masks = await runEngine({ type: 'variant', operation: 'candidates', position })
+  const expected = [2, 4, 6, 8].reduce((mask, digit) => mask | 1 << (digit - 1), 0)
+  for (const cell of [0, 1, 9, 10]) assert.equal(masks[cell], expected)
+  const disabled = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: [] })
+  assert.equal(disabled.rating.status, 'stalled')
+  assert.equal(disabled.steps.length, 0)
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle }, maxNodes: 100_000 }), 'multiple')
+  const broken = { puzzle, entries: '1' + '0'.repeat(80) }
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: broken }), 'conflict')
+})

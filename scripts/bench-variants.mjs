@@ -6,13 +6,19 @@ import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 const fixtures = JSON.parse(await readFile(new URL('../crates/engine/benches/fixtures/variants.json', import.meta.url), 'utf8'))
 const mixed = JSON.parse(await readFile(new URL('../tests/fixtures/mixed-puzzles.json', import.meta.url), 'utf8'))
 const combined = JSON.parse(await readFile(new URL('../tests/fixtures/combined-families.json', import.meta.url), 'utf8'))
+const quadruple = JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-clover.json', import.meta.url), 'utf8'))
 fixtures.push({
   name: 'x-killer', position: mixed['x-killer'].puzzle,
   template: { version: 1, givens: '0'.repeat(81), rules: [
     { type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' },
   ] },
   derivedClues: [{ type: 'killer-cage-sizes', sizes: Array(27).fill(3), coverGrid: true }], givens: 8,
-}, { name: 'all-families', position: combined.puzzle })
+}, { name: 'all-families', position: combined.puzzle }, {
+  name: 'quadruple', position: quadruple.puzzle,
+  template: { version: 1, givens: '0'.repeat(81) },
+  derivedClues: Array.from({ length: 64 }, (_, i) => ({ type: 'quadruple', topLeft: Math.floor(i / 8) * 9 + i % 8, clueSize: 4 })),
+  givens: 0,
+})
 const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
 const { instance } = await WebAssembly.instantiate(bytes)
 const handle = createEngineHandler(async () => instance.exports)
@@ -70,7 +76,8 @@ for (const { name, position: puzzle, template, derivedClues, givens } of fixture
     const start = performance.now()
     const response = await handle({
       id: ++id,
-      request: { type: 'generate-variant', seed, maxAttempts, maxNodes, template, derivedClues, givens },
+      request: { type: 'generate-variant', seed, maxAttempts, maxNodes, template, derivedClues, givens,
+        ...(name === 'quadruple' && { requiredRule: 'quadruple', variantClues: 64 }) },
     })
     measurements.push(performance.now() - start)
     if ('value' in response) {
