@@ -59,7 +59,9 @@ test('hint copy uses Sudoku terms and one-based cell coordinates', () => {
 })
 
 test('technique labels preserve common Sudoku capitalization', () => {
+  assert.equal(techniqueLabel('3d-medusa'), '3D Medusa')
   assert.equal(techniqueLabel('als-xz'), 'ALS-XZ')
+  assert.equal(techniqueLabel('hidden-single-box'), 'Hidden single in a box')
   assert.equal(techniqueLabel('naked-pair'), 'Naked pair')
 })
 

@@ -75,9 +75,19 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle) {
     case 'palindrome':
       return { description: `Match the cells inward from ${at(a)} and ${at(cells[cells.length - 1])}.`,
         reason: 'Cells the same distance from opposite ends must match. A digit missing from one cannot go in its partner.' }
-    case 'between':
-      return { description: `The endpoints are ${at(a)} and ${at(cells[cells.length - 1])}.`,
-        reason: 'Each interior digit must fall strictly between the endpoints. The crossed-out choices leave no pair of endpoints that fits every cell.' }
+    case 'between': {
+      const last = cells.length - 1
+      const firstDigit = onlyCandidate(domains[0])
+      const lastDigit = onlyCandidate(domains[last])
+      if (firstDigit !== null && lastDigit !== null) {
+        const inside = DIGITS.filter(digit => digit > Math.min(firstDigit, lastDigit) && digit < Math.max(firstDigit, lastDigit))
+        const choices = new Intl.ListFormat('en', { type: 'disjunction' }).format(inside.map(String))
+        return { description: `The endpoints are ${firstDigit} in ${at(a)} and ${lastDigit} in ${at(cells[last])}.`,
+          reason: `Each cell between them must contain ${choices}.` }
+      }
+      return { description: `The endpoints are ${at(a)} and ${at(cells[last])}.`,
+        reason: 'For each possible pair, check that every cell inside can hold a digit between the two values. Remove any candidate that fits no pair.' }
+    }
     case 'whispers':
       return { description: `Neighbors on this line must differ by at least ${rule.minDifference}.`,
         reason: 'A crossed-out digit leaves no way to keep that difference along the line.' }
