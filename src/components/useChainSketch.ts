@@ -195,6 +195,12 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string) {
     setStatus('')
   }
 
+  function switchSketch(id: number) {
+    if (id === active.id) return
+    endPath()
+    setActiveId(id)
+  }
+
   function changeEdges(next: ChainEdge[], endpoint: number | null = null) {
     updateActive((sketch) => ({ ...sketch, history: [...sketch.history, next] }))
     setPending(endpoint)
@@ -264,16 +270,17 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string) {
         setStatus('')
       }
     },
-    switchSketch(id: number) {
-      if (id === active.id) return
-      endPath()
-      setActiveId(id)
-    },
+    switchSketch,
     addSketch() {
+      if (edges.length === 0) return
+      const empty = sketches.find(({ history }) => history.at(-1)?.length === 0)
+      if (empty) {
+        switchSketch(empty.id)
+        return
+      }
       const sketch = newSketch(nextId.current++)
       setSketches((previous) => [...previous, sketch])
-      setActiveId(sketch.id)
-      endPath()
+      switchSketch(sketch.id)
     },
     toggleVisibility(id: number) {
       setSketches((previous) => previous.map((sketch) => sketch.id === id ? { ...sketch, hidden: !sketch.hidden } : sketch))
