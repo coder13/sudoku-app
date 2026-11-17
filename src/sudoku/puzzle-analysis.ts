@@ -1,4 +1,4 @@
-import type { Candidate, DeductionMatch } from './engine'
+import type { Candidate, DeductionAction, DeductionMatch, HintChoice, ProofPattern } from './engine'
 
 // Keep each technique in one family. New engine techniques automatically appear
 // in "Other techniques" until a more specific category is added.
@@ -45,6 +45,40 @@ export const ANALYSIS_GROUPS = [
 export const ANALYSIS_TECHNIQUES = ANALYSIS_GROUPS.flatMap(({ techniques }) => [...techniques])
 
 export type AnalysisGroup = { title: string; techniques: string[] }
+
+/** One hint per distinct proof pattern, with all of its supported actions.
+ * Multiple candidate eliminations from the same pointing group appear together.
+ */
+export function techniqueHintsFromMatches(matches: readonly DeductionMatch[], technique: string): HintChoice[] {
+  const patterns = new Map<string, {
+    evidence: HintChoice['evidence']
+    pattern: ProofPattern
+    actions: Map<string, DeductionAction>
+  }>()
+  for (const match of matches) {
+    for (const proof of match.proofs) {
+      if (proof.technique !== technique) continue
+      const key = JSON.stringify(proof.evidence)
+      let group = patterns.get(key)
+      if (!group) {
+        group = { evidence: proof.evidence, pattern: proof.pattern, actions: new Map() }
+        patterns.set(key, group)
+      }
+      for (const action of match.actions) {
+        const candidate = 'place' in action ? action.place : action.eliminate
+        const actionKey = `${'place' in action ? 'p' : 'e'}:${candidate.cell}:${candidate.digit}`
+        group.actions.set(actionKey, action)
+      }
+    }
+  }
+  return [...patterns.values()].map(({ evidence, pattern, actions }) => ({
+    technique, evidence, pattern, actions: [...actions.values()].sort((left, right) => {
+      const a = 'place' in left ? left.place : left.eliminate
+      const b = 'place' in right ? right.place : right.eliminate
+      return a.cell - b.cell || a.digit - b.digit
+    }),
+  }))
+}
 
 export type AnalysisCount = { count: number } | { error: string }
 
