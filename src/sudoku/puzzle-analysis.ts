@@ -17,6 +17,7 @@ export const ANALYSIS_GROUPS = [
   { title: 'Single-digit patterns', kind: 'removals', techniques: [
     'skyscraper', 'two-string-kite', 'empty-rectangle', 'simple-coloring',
   ] },
+  { title: 'Uniqueness', kind: 'placements', techniques: ['bug-plus-one'] },
 ] as const
 
 export const ANALYSIS_TECHNIQUES: string[] = ANALYSIS_GROUPS.flatMap(({ techniques }) => [...techniques])
