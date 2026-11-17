@@ -354,6 +354,7 @@ export function Worktable({
   const showSolvedGrid = solved && solvedView === 'grid'
   const mobileResults = mobile && (showResults || showDifficulty)
   const { id, givens, difficulty, score, variant, generatedWithAuto } = game
+  const analysisDialogOpen = analysisOpen && mobile && !draft && !solved && !variant
   const needsRating = difficulty === undefined || score === undefined
   const needsAttempt = !solved && !game.ratingAttempt
   const ratingPending = !draft && needsRating && !ratingFailed
@@ -395,7 +396,7 @@ export function Worktable({
   const paintingCandidates = candidateBrush !== null
   const canActivateTemporaryPencil = !pencil && !highlightMode && !colorMode && !eraseMode &&
     !disabled && !draft && !solved && !sketch.drawing && brush === null && !modalOpen && !mobileHintOpen &&
-    !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !changePuzzleOpen && !variantRulesOpen && !analysisOpen
+    !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !changePuzzleOpen && !variantRulesOpen && !analysisDialogOpen
   const temporaryPencil = pencilModifier && canActivateTemporaryPencil
   const pencilActive = pencil || temporaryPencil
   const mode: Mode = draft ? 'value' : colorMode ? 'color' : pencilActive ? candidateMode : 'value'
@@ -403,7 +404,7 @@ export function Worktable({
     !paintingCandidates && !sketch.drawing && !hintAnnotations && selectedDigit !== null && selectedDigit > 0
   const canPreviewCandidates = canDragCandidates && selected.length === 0 && brush === null && !solved &&
     !modalOpen && !mobileHintOpen && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen &&
-    !changePuzzleOpen && !variantRulesOpen && !analysisOpen
+    !changePuzzleOpen && !variantRulesOpen && !analysisDialogOpen
   const trace = solutionPath?.status === 'ready' ? solutionPath.trace : undefined
   const previewPosition = trace?.positions?.[solutionStep]
   const replayedSolutionStep = useMemo(() => trace && replayStep(trace, solutionStep), [trace, solutionStep])
@@ -426,7 +427,7 @@ export function Worktable({
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
   const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || solved)
   useTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
-    !resetOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen && !analysisOpen)
+    !resetOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen && !analysisDialogOpen)
 
   useEffect(() => {
     if (!timing.trackTime && !draft && !solved && game.started && !game.timeUntracked) {
@@ -452,6 +453,7 @@ export function Worktable({
   }, [givens, id, variant])
 
   useLayoutEffect(() => {
+    puzzleCardRef.current?.closest<HTMLElement>('.dock-puzzle-panel')?.scrollTo(0, 0)
     setPointerFocusedCell(null)
     setDialogResult(null)
     setPuzzleMenuOpen(false)
@@ -459,6 +461,7 @@ export function Worktable({
     setChangePuzzleOpen(false)
     setResetOpen(false)
     setVariantRulesOpen(false)
+    setAnalysisOpen(false)
     setHint(null)
     setHintRevealed(false)
     hintReturnFocus.current = false
@@ -485,6 +488,7 @@ export function Worktable({
   ))
 
   useEffect(() => {
+    if (!mobile) setAnalysisOpen(false)
     if (!mobile) return
     pathRequest.current++
     setSolutionPath(null)
@@ -1086,7 +1090,7 @@ export function Worktable({
       if (event.key === 'Shift') setCandidatePreviewCell(null)
       if (event.key === 'Tab' || event.key === 'Enter' || event.key === ' ' || ARROWS[event.key]) setPointerFocusedCell(null)
       const target = event.target
-      if (event.defaultPrevented || rearranging || game.paused || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
+      if (event.defaultPrevented || rearranging || game.paused || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisDialogOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       if (desktop && !draft && !solved && !placeholder && shortcutMatches(event, shortcuts, 'chainDrawing')) {
         event.preventDefault()
@@ -1997,7 +2001,7 @@ export function Worktable({
             </div></>
           : mobileResults ? <div className="mobile-completion-layout mobile-completion">{puzzlePanel}</div>
           : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
-            blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisOpen ||
+            blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisDialogOpen ||
               dialogResult !== null || changePuzzleOpen || resetOpen || cancelDraftOpen}
             onRearrangingChange={(active) => {
               setMobileRearranging(active)
@@ -2025,7 +2029,7 @@ export function Worktable({
           <p>{VARIANTS[variant.id].rule}</p>
         </div>
       </Modal>}
-      {analysisOpen && mobile && !draft && !solved && !variant && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} onSelectTechnique={showTechniqueHints} />}
+      {analysisDialogOpen && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} onSelectTechnique={showTechniqueHints} />}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       {changePuzzleOpen && <Modal title="Change puzzle" onClose={() => setChangePuzzleOpen(false)}>
         <div className="stop-puzzle-options">

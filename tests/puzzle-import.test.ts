@@ -3,9 +3,11 @@ import { test } from 'node:test'
 import { deflateSync } from 'node:zlib'
 import lzString from 'lz-string'
 import { exportPuzzle, STARTER } from '../src/sudoku/formats.ts'
-import { WINDOKU_REGIONS } from '../src/sudoku/variants.ts'
+import { WINDOKU_REGIONS, isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import { EMPTY } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
+import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
+import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 
 const killerCode = 'SCv7_32_f2ear5619r1j0424vv2ueeb4dmnhrtoafv013t8gml8m9a8dak99187anvhi042qle5n5g57oht8itr6ctujbgskht7vj8pnnc237p5nfpucogqucqpj7jeneb6rubfjfn1c7ipo5t9pfhvlj3jqnia7mehgcpjpnua3lj513ft85jnte3n7v423fstaqjodq8fedkidrmslvul9dhesrv3qbqvrvnfgpcosgap014oa5fef8m0h3a6po9cjgk41tlutgui1fe8dm917g1s5769ddje089io8k85jac8c0ajab210ulnibi91ao8l714o441no0kiolen2rm4keaq02t0ejqbi29maqd7g99lamep49bil33g9ae2gi4ps0d7gkr0b6obeo44ilvng1infda8230vs0hboktfih9u44qph55vaogeashio3b0hugm8nt7ggc1pdstpg8qre9f6f6gigch48112ikkbbtqm20c135u9i36gsbl205bug245l36amr2cma45l5tat2n923rhs3ecl2s9uaqfh1dbb5fvqcd3vh1davtvumbif3m3n9ftur4t4r05u3'
 const jigsawCode = 'SCv7_32_f2e6rjmd1b130360u5rsjec7tihmncvjrpg4fsb656skp67287crmbq9lc7b8vp8pm7l5uk2njp6bpj7ga8hpb19udqrjgbod9eajd9ql7vinvhjfl2mrc2k6hnha2uirfk20kaik4lb2him72ccjma1sp3lk9mefibhu0uqt8u65l23bdj15gg6e4k67lcv8mtfbejp19p5qni1r1r21nhsn4'
@@ -138,4 +140,122 @@ test('reports unsupported or damaged codes without treating them as Classic', as
     { type: 'diagonalNegative', segments: [] },
   ] })), /combination/)
   await assert.rejects(detectPuzzle('x'.repeat(MAX_IMPORT_LENGTH + 1)), /one puzzle at a time/)
+})
+
+test('every Classic share format round-trips sparse and dense grids without player progress', async () => {
+  let state = 0x13579bdf
+  const random = () => (state = Math.imul(state, 1664525) + 1013904223 >>> 0)
+  const grids = [EMPTY, '123456789'.repeat(9), STARTER,
+    ...Array.from({ length: 80 }, () => Array.from({ length: 81 }, () => String(random() % 10)).join(''))]
+  for (const givens of grids) {
+    for (const format of ['link', 'givens', 'grid', 'hodoku', 'exchange', 'coach'] as const) {
+      assert.equal((await detectPuzzle(exportPuzzle(givens, format, 'https://example.org'))).givens, givens, format)
+    }
+  }
+})
+
+test('supported SudokuPad hosts, compact codes, and encoded f-puzzles exports preserve givens', async () => {
+  const grid = Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, column) => {
+    const value = Number(STARTER[row * 9 + column])
+    return value ? { value, given: true } : {}
+  }))
+  const code = lzString.compressToBase64(JSON.stringify({ size: 9, grid }))
+  for (const host of ['sudokupad.app', 'beta.sudokupad.app', 'sudokupad.svencodes.com', 'app.crackingthecryptic.com']) {
+    for (const payload of [`scf${shortGrid}`, `fpuz${encodeURIComponent(code)}`, `fpuzzles${encodeURIComponent(code)}`]) {
+      const imported = await detectPuzzle(`https://${host}/${payload}/`)
+      assert.equal(imported.givens, STARTER, `${host}/${payload}`)
+      assert.equal(imported.format, 'SudokuPad')
+    }
+  }
+  for (const input of [`scf${shortGrid}`, `fpuz${code}`, `fpuzzles${code}`]) {
+    assert.equal((await detectPuzzle(input)).givens, STARTER, input)
+  }
+})
+
+test('internal sharing round-trips all eight playable variants and fragment-only links', async () => {
+  const puzzle = (extra: Partial<VariantPuzzle>): VariantPuzzle => ({ version: 1, givens: EMPTY, ...extra })
+  const variants = [
+    { id: 'killer-cages', puzzle: puzzle({ rules: [{ type: 'killer-cages', cages: [{ cells: [0, 1], sum: 3 }] }] }) },
+    { id: 'windoku', puzzle: puzzle({ rules: WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })) }) },
+    { id: 'diagonal', puzzle: puzzle({ rules: [{ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' }] }) },
+    { id: 'jigsaw', puzzle: puzzle({ regions: jigsawLayout(variantSeeds.jigsaw.easy![0].regions!) }) },
+    { id: 'anti-knight', puzzle: puzzle({ rules: [{ type: 'anti-knight' }] }) },
+    { id: 'thermometer', puzzle: puzzle({ rules: [{ type: 'thermometer', cells: [0, 1, 2] }] }) },
+    { id: 'arrow', puzzle: puzzle({ rules: [{ type: 'arrow', circle: 0, cells: [9, 10] }] }) },
+    { id: 'kropki', puzzle: puzzle({ rules: [{ type: 'kropki', consecutive: { pairs: [[0, 1]] }, ratioTwo: { pairs: [[9, 10]] } }] }) },
+  ]
+  for (const variant of variants) {
+    assert.ok(isPlayablePuzzle(variant.id, variant.puzzle), variant.id)
+    const fragment = '#variant=' + encodeURIComponent(JSON.stringify(variant))
+    for (const input of [fragment, `https://example.org/${fragment}`]) {
+      assert.deepEqual(await detectPuzzle(input), { givens: EMPTY, format: 'Puzzle link', variant }, variant.id)
+    }
+  }
+  assert.equal((await detectPuzzle('#puzzle=' + STARTER)).givens, STARTER)
+})
+
+test('f-puzzles preserves diagonal directions, Killer cages, and irregular region labels', async () => {
+  const regions = jigsawLayout(variantSeeds.jigsaw.easy![0].regions!)
+  const membership = Array<number>(81)
+  regions.regions.forEach((cells, index) => cells.forEach(cell => { membership[cell] = index + 1 }))
+  const grid = Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, column) => ({
+    region: membership[row * 9 + column],
+  })))
+  assert.deepEqual((await detectPuzzle(JSON.stringify({ size: 9, grid }))).variant?.puzzle.regions, regions)
+  const plain = grid.map(row => row.map(() => ({})))
+  const diagonals = await detectPuzzle(JSON.stringify({ size: 9, grid: plain, 'diagonal+': true, 'diagonal-': true }))
+  assert.deepEqual(diagonals.variant?.puzzle.rules, [{ type: 'diagonal', diagonal: 'anti' }, { type: 'diagonal', diagonal: 'main' }])
+  const killer = await detectPuzzle(JSON.stringify({ size: 9, grid: plain, killercage: [{ cells: ['r1c1', 'r1c2'], value: 3 }] }))
+  assert.deepEqual(killer.variant?.puzzle.rules, [{ type: 'killer-cages', cages: [{ cells: [0, 1], sum: 3 }] }])
+})
+
+test('malformed formats reject invalid dimensions, regions, rules, givens, and URL data', async () => {
+  const grid = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => ({})))
+  const invalid = [
+    '', '1'.repeat(80), '1'.repeat(82), '0'.repeat(MAX_IMPORT_LENGTH + 1),
+    'https://example.org/#variant=%7B', 'https://example.org/#variant=' + encodeURIComponent(JSON.stringify({ id: 'classic', puzzle: { version: 1, givens: EMPTY } })),
+    'https://example.org/#puzzle=' + STARTER + '1',
+    'https://sudokuexchange.com/play/?s=zzzz', 'https://sudokupad.app/sclunsupported',
+    'https://f-puzzles.com/?load=not_a_compressed_puzzle',
+    JSON.stringify({ size: 8, grid }), JSON.stringify({ size: 9, grid: grid.slice(1) }),
+    JSON.stringify({ size: 9, grid: grid.map(row => row.slice(1)) }),
+    JSON.stringify({ size: 9, grid, 'diagonal+': 'true' }),
+    JSON.stringify({ size: 9, grid, killercage: [{ cells: ['R0C1'], value: 3 }] }),
+    JSON.stringify({ size: 9, grid, killercage: [{ cells: ['R1C1'], value: 0 }] }),
+    JSON.stringify({ size: 9, grid, ruleset: 'Digits on a red line add to 10.' }),
+    coach({ gridSize: 4 }), coach({ givenDigits: '0'.repeat(80) }), coach({ regions: Array(81).fill(0) }),
+    coach({ givenConstraints: [{ type: 'thermometer', settings: { unknownRule: true }, segments: [{ cells: [0, 1], parameters: {} }] }] }),
+    coach({ givenConstraints: [{ type: 'thermometer', segments: [{ cells: [0, 0], parameters: {} }] }] }),
+    coach({ givenConstraints: [{ type: 'arrow', segments: [{ cells: [0], parameters: {} }] }] }),
+  ]
+  for (const input of invalid) await assert.rejects(detectPuzzle(input), Error, input.slice(0, 100))
+})
+
+test('compressed puzzles enforce the decoded-size limit without committing a partial grid', async () => {
+  const coachCode = coach({ givenDigits: STARTER, meta: { title: 'x'.repeat(128_001) } })
+  const grid = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => ({})))
+  const fpCode = lzString.compressToBase64(JSON.stringify({ size: 9, grid, title: 'x'.repeat(128_001) }))
+  assert.ok(coachCode.length < MAX_IMPORT_LENGTH)
+  assert.ok(fpCode.length < MAX_IMPORT_LENGTH)
+  await assert.rejects(detectPuzzle(coachCode), /could not be opened/)
+  await assert.rejects(detectPuzzle(fpCode), /unreadable/)
+})
+
+test('deterministic malformed-input stress run always resolves to a validated grid or a bounded error', async () => {
+  let state = 0x2468ace0
+  const alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:/%#?=&+_{}[]\\\n'
+  const random = () => (state = Math.imul(state, 1103515245) + 12345 >>> 0)
+  for (let sample = 0; sample < 500; sample++) {
+    const input = Array.from({ length: random() % 180 }, () => alphabet[random() % alphabet.length]).join('')
+    let imported
+    try {
+      imported = await detectPuzzle(input)
+    } catch (error) {
+      assert.ok(error instanceof Error)
+      assert.ok(error.message.length > 0 && error.message.length < 300)
+      continue
+    }
+    assert.match(imported.givens, /^[0-9]{81}$/)
+    if (imported.variant) assert.ok(isPlayablePuzzle(imported.variant.id, imported.variant.puzzle))
+  }
 })

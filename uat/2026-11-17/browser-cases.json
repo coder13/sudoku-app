@@ -1,0 +1,550 @@
+[
+  {
+    "id": "B09-editor",
+    "details": {
+      "invalidMessage": "Choose a letter key or question mark without Ctrl, Command, or Alt.",
+      "cancelMessage": "Shortcut change canceled.",
+      "remapChecks": [
+        {
+          "name": "Change shortcut for Digit placement mode. Current shortcut D",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Pencil mode. Current shortcut P",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Highlight mode. Current shortcut H",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Color mode. Current shortcut C",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Erase mode. Current shortcut E",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Draw links. Current shortcut L",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for New chain. Current shortcut B",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Open Actions. Current shortcut A",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Generate all candidates. Current shortcut G",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Solve all singles. Current shortcut S",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Next puzzle. Current shortcut N",
+          "changed": true
+        },
+        {
+          "name": "Change shortcut for Keyboard shortcuts. Current shortcut ?",
+          "changed": true
+        }
+      ],
+      "persistenceAfterReset": [
+        "Change shortcut for Digit placement mode. Current shortcut D",
+        "Change shortcut for Pencil mode. Current shortcut P",
+        "Change shortcut for Highlight mode. Current shortcut H",
+        "Change shortcut for Color mode. Current shortcut C",
+        "Change shortcut for Erase mode. Current shortcut E",
+        "Change shortcut for Draw links. Current shortcut L",
+        "Change shortcut for New chain. Current shortcut B",
+        "Change shortcut for Open Actions. Current shortcut A",
+        "Change shortcut for Generate all candidates. Current shortcut G",
+        "Change shortcut for Solve all singles. Current shortcut S",
+        "Change shortcut for Next puzzle. Current shortcut N",
+        "Change shortcut for Keyboard shortcuts. Current shortcut ?"
+      ],
+      "viewport": {
+        "height": 720,
+        "width": 1152
+      }
+    }
+  },
+  {
+    "id": "B26-radio-defect",
+    "details": {
+      "radios": [
+        {
+          "checked": false,
+          "name": "candidate-layout",
+          "value": "grid",
+          "visible": true
+        },
+        {
+          "checked": false,
+          "name": "candidate-layout",
+          "value": "center-corner",
+          "visible": true
+        },
+        {
+          "checked": true,
+          "name": "candidate-layout",
+          "value": "grid",
+          "visible": false
+        },
+        {
+          "checked": false,
+          "name": "candidate-layout",
+          "value": "center-corner",
+          "visible": false
+        }
+      ],
+      "issue": "Visible desktop candidate-layout radios both unchecked; hidden mobile radio owns checked state."
+    }
+  },
+  {
+    "id": "B01",
+    "details": {
+      "placed": "Row 1, column 3, digit 4",
+      "protectedGiven": "Row 1, column 1, given 5",
+      "digitFirst": "Row 1, column 4, digit 6",
+      "digitToggled": "Row 1, column 4, empty"
+    }
+  },
+  {
+    "id": "B05-history",
+    "details": {
+      "erased": "Row 1, column 3, empty",
+      "undoKeyboard": "Row 1, column 3, digit 4",
+      "redoKeyboard": "Row 1, column 3, empty"
+    }
+  },
+  {
+    "id": "B02",
+    "details": {
+      "selectedAfterArrow": [
+        "Row 1, column 4, empty"
+      ],
+      "rectangle": [
+        "Row 1, column 4, empty",
+        "Row 1, column 5, given 7",
+        "Row 2, column 4, given 1",
+        "Row 2, column 5, given 9"
+      ],
+      "modifierSelection": [
+        "Row 1, column 4, empty",
+        "Row 1, column 5, given 7",
+        "Row 1, column 6, empty",
+        "Row 2, column 4, given 1",
+        "Row 2, column 5, given 9"
+      ],
+      "multiSelection": [
+        "Row 1, column 3, empty",
+        "Row 1, column 4, empty"
+      ]
+    }
+  },
+  {
+    "id": "B03-center-corner",
+    "details": {
+      "cornerNotes": [
+        "Row 1, column 3, empty, corner candidates 1",
+        "Row 1, column 4, empty, corner candidates 1"
+      ],
+      "mixedNotes": [
+        "Row 1, column 3, empty, corner candidates 1, center candidates 2",
+        "Row 1, column 4, empty, corner candidates 1, center candidates 2"
+      ],
+      "temporaryNotes": [
+        "Row 1, column 3, empty, corner candidates 1, center candidates 2 3",
+        "Row 1, column 4, empty, corner candidates 1, center candidates 2 3"
+      ]
+    }
+  },
+  {
+    "id": "B05-candidates",
+    "details": {
+      "erasedNotes": "Row 1, column 3, empty",
+      "restoredNotes": "Row 1, column 3, empty, corner candidates 1, center candidates 2 3",
+      "redone": "Row 1, column 3, empty"
+    }
+  },
+  {
+    "id": "B07",
+    "details": {
+      "cellBlue": "Row 1, column 3, empty, Blue",
+      "cellUndo": "Row 1, column 3, empty",
+      "paintedCandidate": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose",
+      "candidateUndo": "Row 1, column 3, empty, center candidates 4, Blue",
+      "candidateErased": "Row 1, column 3, empty, center candidates 4, Blue",
+      "colorAfterReload": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose"
+    }
+  },
+  {
+    "id": "B07-palette",
+    "details": {
+      "paletteResults": [
+        {
+          "color": "Rose",
+          "cell": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose"
+        },
+        {
+          "color": "Peach",
+          "cell": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose"
+        },
+        {
+          "color": "Yellow",
+          "cell": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose"
+        },
+        {
+          "color": "Mint",
+          "cell": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose"
+        },
+        {
+          "color": "Blue",
+          "cell": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose"
+        },
+        {
+          "color": "Lavender",
+          "cell": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose"
+        }
+      ],
+      "cellColorErased": "Row 1, column 3, empty, center candidates 4, Blue, 4 rose"
+    }
+  },
+  {
+    "id": "B04",
+    "details": {
+      "generatedCell": "Row 1, column 3, empty, corner candidates 1 2 4, Blue, 4 rose",
+      "peerBefore": "Row 2, column 2, empty, corner candidates 2 4 7",
+      "placementWithCandidates": "Row 1, column 3, digit 4, Blue",
+      "peerAfter": "Row 2, column 2, empty, corner candidates 2 7",
+      "peerRestored": "Row 2, column 2, empty, corner candidates 2 4 7"
+    }
+  },
+  {
+    "id": "B07-palette-corrected",
+    "details": {
+      "palettePainted": [
+        {
+          "color": "Rose",
+          "cell": "Row 1, column 3, empty, corner candidates 1 2 4, Rose, 4 rose"
+        },
+        {
+          "color": "Peach",
+          "cell": "Row 1, column 3, empty, corner candidates 1 2 4, Peach, 4 rose"
+        },
+        {
+          "color": "Yellow",
+          "cell": "Row 1, column 3, empty, corner candidates 1 2 4, Yellow, 4 rose"
+        },
+        {
+          "color": "Mint",
+          "cell": "Row 1, column 3, empty, corner candidates 1 2 4, Mint, 4 rose"
+        },
+        {
+          "color": "Blue",
+          "cell": "Row 1, column 3, empty, corner candidates 1 2 4, Blue, 4 rose"
+        },
+        {
+          "color": "Lavender",
+          "cell": "Row 1, column 3, empty, corner candidates 1 2 4, Lavender, 4 rose"
+        }
+      ],
+      "clearedCellColor": "Row 1, column 3, empty, corner candidates 1 2 4, Lavender, 4 rose",
+      "correction": "Earlier palette-only clicks armed the brush; this replay applies every brush to the cell."
+    }
+  },
+  {
+    "id": "B06-shortcut",
+    "details": {
+      "highlighted": [
+        {
+          "class": "cell entry peer  candidate-highlight-cell   colored color-6  selected",
+          "label": "Row 1, column 3, empty, corner candidates 1 2 4, Lavender, 4 rose, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry peer  candidate-highlight-cell     ",
+          "label": "Row 1, column 6, empty, corner candidates 2 4 6 8, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry peer  candidate-highlight-cell     ",
+          "label": "Row 1, column 7, empty, corner candidates 1 4 8 9, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry peer  candidate-highlight-cell     ",
+          "label": "Row 1, column 8, empty, corner candidates 1 2 4 9, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry peer  candidate-highlight-cell     ",
+          "label": "Row 1, column 9, empty, corner candidates 2 4 8, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry peer  candidate-highlight-cell     ",
+          "label": "Row 2, column 2, empty, corner candidates 2 4 7, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry peer  candidate-highlight-cell     ",
+          "label": "Row 2, column 3, empty, corner candidates 2 4 7, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 2, column 7, empty, corner candidates 3 4 7 8, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 2, column 8, empty, corner candidates 2 3 4, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 2, column 9, empty, corner candidates 2 4 7 8, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 3, column 5, empty, corner candidates 3 4, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 3, column 6, empty, corner candidates 2 4, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 3, column 7, empty, corner candidates 1 3 4 5 7, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 3, column 9, empty, corner candidates 2 4 7, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 4, column 6, empty, corner candidates 1 4 7, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 4, column 7, empty, corner candidates 4 5 7 9, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 4, column 8, empty, corner candidates 2 4 5 9, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell given  matching      ",
+          "label": "Row 5, column 1, given 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 6, column 6, empty, corner candidates 1 4, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 6, column 7, empty, corner candidates 4 5 8 9, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 6, column 8, empty, corner candidates 4 5 9, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry peer  candidate-highlight-cell     ",
+          "label": "Row 7, column 3, empty, corner candidates 1 3 4 5 7 9, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 7, column 9, empty, corner candidates 4, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell given  matching      ",
+          "label": "Row 8, column 4, given 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 9, column 2, empty, corner candidates 1 2 4 5, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry peer  candidate-highlight-cell     ",
+          "label": "Row 9, column 3, empty, corner candidates 1 2 3 4 5, cell highlighted for candidate 4"
+        },
+        {
+          "class": "cell entry   candidate-highlight-cell     ",
+          "label": "Row 9, column 7, empty, corner candidates 1 3 4 6, cell highlighted for candidate 4"
+        }
+      ]
+    }
+  },
+  {
+    "id": "B09-hold",
+    "details": {
+      "hold1400ms": "true",
+      "hold1900ms": "true",
+      "note": "Native hold behavior; source repeat handling is reviewed separately."
+    }
+  },
+  {
+    "id": "B07-cell-erase",
+    "details": {
+      "cellAfterSelectedZero": "Row 1, column 3, empty, corner candidates 1 2 4, 4 rose, cell highlighted for candidate 4",
+      "note": "0 clears a selected cell color; with no selection it disarms the brush."
+    }
+  },
+  {
+    "id": "B06-mode",
+    "details": {
+      "highlightPlaced": [
+        "Row 1, column 3, digit 4, incorrect",
+        "Row 1, column 4, digit 4, incorrect"
+      ],
+      "highlightUndone": [
+        "Row 1, column 3, empty, corner candidates 1 2 4, 4 rose, cell highlighted for candidate 4",
+        "Row 1, column 4, empty, corner candidates 2 6"
+      ],
+      "bivalueCells": [
+        "Row 1, column 4, empty, corner candidates 2 6, 2-candidate cell highlighted",
+        "Row 3, column 1, empty, corner candidates 1 2, 2-candidate cell highlighted",
+        "Row 3, column 4, empty, corner candidates 2 3, 2-candidate cell highlighted",
+        "Row 3, column 5, empty, corner candidates 3 4, 2-candidate cell highlighted",
+        "Row 3, column 6, empty, corner candidates 2 4, 2-candidate cell highlighted",
+        "Row 5, column 2, empty, corner candidates 2 5, 2-candidate cell highlighted",
+        "Row 6, column 2, empty, corner candidates 1 5, 2-candidate cell highlighted",
+        "Row 6, column 4, empty, corner candidates 5 9, 2-candidate cell highlighted",
+        "Row 6, column 6, empty, corner candidates 1 4, 2-candidate cell highlighted",
+        "Row 7, column 5, empty, corner candidates 3 5, 2-candidate cell highlighted",
+        "Row 8, column 1, empty, corner candidates 2 3, 2-candidate cell highlighted",
+        "Row 8, column 7, empty, corner candidates 3 6, 2-candidate cell highlighted",
+        "Row 9, column 6, empty, corner candidates 2 6, 2-candidate cell highlighted"
+      ]
+    }
+  },
+  {
+    "id": "B08-keyboard",
+    "details": {
+      "firstChainLabel": "1 in row 1, column 3",
+      "selectedEndpoint": [
+        "1 in row 1, column 3, selected for linking"
+      ],
+      "target": "2 in row 1, column 3, can link to the selected candidate",
+      "firstChainText": "Chain 1\n\n1r1c3 − 2r1c3\n\nType\nAlternating (XY, AIC)\n3D Medusa\nColor\nBlue\nOrange\nPurple\nTeal\nPink\nGreen\nDone drawing\nEnd path",
+      "undoChainText": "Chain 1\n\nNo links yet.\n\nType\nAlternating (XY, AIC)\n3D Medusa\nColor\nBlue\nOrange\nPurple\nTeal\nPink\nGreen\nDone drawing\nEnd path\n\nLink edit undone."
+    }
+  },
+  {
+    "id": "B38-Chrome",
+    "details": {
+      "home": "Production build loaded/generated Medium puzzle",
+      "placement": "R1C1 changed from empty to digit2 and received incorrect feedback",
+      "candidates": "Pencil mode added candidate3 toR1C1",
+      "history": "Undo removed candidate3; Redo restored it",
+      "navigation": "Learn and Settings opened",
+      "returnEvidence": [
+        "The following is a diff from the previous accessibility tree for Window: \"Learn Sudoku techniques\" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.",
+        "~48 standard window Learn Sudoku techniques - Google Chrome - Your Chrome, URL: 127.0.0.1:8769/learn, Secondary Actions: Raise",
+        "~\t49 container Learn Sudoku techniques - Google Chrome - Your Chrome, URL: 127.0.0.1:8769/learn",
+        "~\t\t\t\t\t120 HTML content Learn Sudoku techniques, URL: 127.0.0.1:8769/learn"
+      ]
+    }
+  },
+  {
+    "id": "B38-Chrome-hint",
+    "details": {
+      "hint": "Hidden single box",
+      "digitsEvidence": [
+        "~\t\t\t\t\t\t\t\t\t\t\t270 button Show location",
+        "+\t\t\t\t\t\t\t\t\t\t271 text Look for digit 6.",
+        "The focused UI element is 270 button Show location"
+      ]
+    }
+  },
+  {
+    "id": "B26-radio-fixed",
+    "details": {
+      "radioChecks": [
+        {
+          "section": "input",
+          "groups": []
+        },
+        {
+          "section": "highlighting",
+          "groups": [
+            [
+              {
+                "checked": false,
+                "value": "text"
+              },
+              {
+                "checked": false,
+                "value": "spotlight"
+              },
+              {
+                "checked": true,
+                "value": "cell"
+              },
+              {
+                "checked": false,
+                "value": "outline"
+              }
+            ]
+          ]
+        },
+        {
+          "section": "appearance",
+          "groups": [
+            [
+              {
+                "checked": false,
+                "value": "standard"
+              },
+              {
+                "checked": true,
+                "value": "advanced"
+              }
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "B26-input-radio-fixed",
+    "details": {
+      "inputRadioCheck": [
+        {
+          "checked": false,
+          "name": "_R_16oaq_",
+          "value": "grid"
+        },
+        {
+          "checked": true,
+          "name": "_R_16oaq_",
+          "value": "center-corner"
+        }
+      ]
+    }
+  },
+  {
+    "id": "B39-Firefox-core",
+    "details": {
+      "placement": "62 cell Row 1, column 1, digit 2, incorrect",
+      "undo": "62 cell Row 1, column 1, empty",
+      "candidates": "62 cell Row 1, column 1, empty, candidates 3",
+      "redo": "62 cell Row 1, column 1, empty, candidates 3"
+    }
+  },
+  {
+    "id": "B39-Firefox-navigation-hints",
+    "details": {
+      "hint": [
+        "190 heading Hidden single box, Value: 2",
+        "201 button Show digits"
+      ],
+      "digits": [
+        "201 button Show location",
+        "202 text Look for digit 3.",
+        "The focused UI element is 201 button Show location"
+      ],
+      "learn": "42 HTML Content Description: Learn Sudoku techniques, URL: 127.0.0.1:8769/learn",
+      "settingsReturn": "40 HTML Content Description: Learn Sudoku techniques, URL: 127.0.0.1:8769/learn"
+    }
+  }
+]

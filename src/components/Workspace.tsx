@@ -1,4 +1,4 @@
-import { Link, useMatch, useNavigate } from '@tanstack/react-router'
+import { Link, useLocation, useMatch, useNavigate } from '@tanstack/react-router'
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Play, Plus,
@@ -30,6 +30,7 @@ import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
 
 type Panel = 'new' | 'import' | 'share' | 'publish' | 'stop' | null
+type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
 const PUZZLE_LINK = /^#(?:puzzle|variant)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
 const ADVANCED_PANEL_VISIBILITY_KEY = 'sudoku-app:v1:advanced-panel-visibility'
@@ -88,6 +89,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const settingsParam = useMatch({ from: '/settings/$section', shouldThrow: false, select: ({ params }) => params.section })
   const settingsSection = isSettingsSection(settingsParam) ? settingsParam : null
   const navigate = useNavigate()
+  const locationHref = useLocation({ select: (location) => location.href })
   const { games, active, stoppedPlaying, storageAvailable } = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot, roomStore.getServerSnapshot)
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [panel, setPanel] = useState<Panel>(null)
@@ -112,6 +114,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const savedAppearance = useRef(appearance)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const settingsReturnLocation = useRef<SettingsReturnLocation | null>(null)
   const worktableActions = useRef<WorktableActions | null>(null)
   const resizeStartHeight = useRef(panelHeight)
   const resizeStartInputSize = useRef(inputSize)
@@ -266,9 +269,28 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   }
 
   function openSettings() {
+    if (!settingsRoute) settingsReturnLocation.current = {
+      href: locationHref,
+      left: window.scrollX,
+      top: window.scrollY,
+      articleTop: document.querySelector<HTMLElement>('.learn-content-scroll')?.scrollTop ?? 0,
+    }
     setMenuOpen(false)
     setPanel(null)
     void navigate({ to: '/settings' })
+  }
+
+  function closeSettings() {
+    const origin = settingsReturnLocation.current
+    settingsReturnLocation.current = null
+    void navigate({ href: origin?.href ?? '/', replace: true, resetScroll: false }).then(() => {
+      requestAnimationFrame(() => {
+        menuButtonRef.current?.focus({ preventScroll: true })
+        if (!origin) return
+        window.scrollTo(origin.left, origin.top)
+        document.querySelector<HTMLElement>('.learn-content-scroll')?.scrollTo(0, origin.articleTop)
+      })
+    })
   }
 
   function setAdvancedModes(next: AdvancedModes) {
@@ -515,7 +537,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
       {panel === 'stop' && game && <StopPlaying game={game} fromPlay close={close}
         onDone={() => { void navigate({ to: '/puzzles/browse' }) }} />}
-      {settingsRoute && <Settings close={() => { void navigate({ to: '/' }) }} section={settingsSection}
+      {settingsRoute && <Settings close={closeSettings} section={settingsSection}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
         appearance={appearance} setAppearance={setAppearance}
         highlighting={highlighting} setHighlighting={setHighlighting}

@@ -1,0 +1,13 @@
+{
+  "cacheName": "'sudoku-app-shell-322ca956e899ff59'",
+  "assets": 174,
+  "missing": [],
+  "wasm": [
+    {
+      "path": "/assets/engine-D9B6D1V5.wasm",
+      "sha256": "b3155357f4cfd0ad7d40cddb5ef9703470febe265f9c47ff99aec3e5d0965bcb"
+    }
+  ],
+  "collectionAssetsPrecached": [],
+  "totalBytes": 20086919
+}

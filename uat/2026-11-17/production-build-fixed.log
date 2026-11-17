@@ -1,0 +1,372 @@
+vite v8.3.8 building client environment for production...
+transforming...
+[tanstack-router] These exports from "/private/tmp/sudoku-uat-fixed-IdKF1g/src/routes/learn.$technique.tsx" will not be code-split and will increase your bundle size:
+- LessonPage
+For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.
+✓ 1825 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/assets/engine.worker-BT2Epp9L.js                         1.75 kB
+dist/client/assets/dm-sans-latin-ext-wght-normal-BOFOeGcA.woff2     18.22 kB
+dist/client/assets/dm-sans-latin-wght-normal-Xz1IZZA0.woff2         36.93 kB
+dist/client/assets/engine-D9B6D1V5.wasm                          3,741.41 kB │ gzip: 893.25 kB
+dist/client/assets/index-COgWtfsZ.css                              282.86 kB │ gzip:  38.28 kB
+dist/client/assets/puzzles.browse-DJ7LAi8J.js                        0.03 kB │ gzip:   0.05 kB
+dist/client/assets/puzzles.collections-DJ7LAi8J.js                   0.03 kB │ gzip:   0.05 kB
+dist/client/assets/puzzles.new-DJ7LAi8J.js                           0.03 kB │ gzip:   0.05 kB
+dist/client/assets/puzzles.statistics-DJ7LAi8J.js                    0.03 kB │ gzip:   0.05 kB
+dist/client/assets/settings._section-DJ7LAi8J.js                     0.03 kB │ gzip:   0.05 kB
+dist/client/assets/puzzles-BbbI2DTP.js                               0.07 kB │ gzip:   0.08 kB
+dist/client/assets/routes-e-OShHtp.js                                0.07 kB │ gzip:   0.08 kB
+dist/client/assets/settings-e-OShHtp.js                              0.07 kB │ gzip:   0.08 kB
+dist/client/assets/learn._technique-DTejBf2H.js                      0.18 kB │ gzip:   0.17 kB
+dist/client/assets/import-DoySetKa.js                                0.38 kB │ gzip:   0.28 kB
+dist/client/assets/shortcuts-CArLLW-h.js                             5.58 kB │ gzip:   2.02 kB
+dist/client/assets/createLucideIcon-PASRjhwK.js                      9.70 kB │ gzip:   3.76 kB
+dist/client/assets/index-CDxjdqc1.js                             1,895.23 kB │ gzip: 463.26 kB
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 512ms
+vite v8.3.8 building ssr environment for production...
+transforming...
+[tanstack-router] These exports from "/private/tmp/sudoku-uat-fixed-IdKF1g/src/routes/learn.$technique.tsx" will not be code-split and will increase your bundle size:
+- LessonPage
+For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.
+✓ 186 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/server/assets/puzzles.new-BrBhA73W.js                     0.12 kB │ gzip:   0.11 kB
+dist/server/assets/puzzles.browse-CkV8vIfa.js                  0.12 kB │ gzip:   0.11 kB
+dist/server/assets/settings._section-CKhH-fvL.js               0.12 kB │ gzip:   0.12 kB
+dist/server/assets/puzzles.statistics-CMUNBtfF.js              0.13 kB │ gzip:   0.11 kB
+dist/server/assets/puzzles.collections-UblldSS_.js             0.13 kB │ gzip:   0.12 kB
+dist/server/assets/start-CEWNMhF_.js                           0.16 kB │ gzip:   0.14 kB
+dist/server/assets/routes-BwpkZHqI.js                          0.17 kB │ gzip:   0.14 kB
+dist/server/assets/settings-BSSYLWwt.js                        0.17 kB │ gzip:   0.14 kB
+dist/server/assets/puzzles-Df5ZKn6C.js                         0.18 kB │ gzip:   0.14 kB
+dist/server/assets/empty-plugin-adapters-CLEENALa.js           0.24 kB │ gzip:   0.17 kB
+dist/server/assets/learn._technique--oIN3t0C.js                0.33 kB │ gzip:   0.23 kB
+dist/server/assets/import-Bk2Ii6dH.js                          0.65 kB │ gzip:   0.35 kB
+dist/server/assets/_tanstack-start-manifest_v-BDtq2bZ7.js      2.52 kB │ gzip:   0.62 kB
+dist/server/assets/shortcuts-RfC8Qmnm.js                       8.99 kB │ gzip:   2.59 kB
+dist/server/server.js                                         93.36 kB │ gzip:  23.49 kB
+dist/server/assets/ImportPuzzle-B3YcwC5i.js                  223.60 kB │ gzip:  53.17 kB
+dist/server/assets/lessons-C-nsxPuL.js                       252.30 kB │ gzip:  43.83 kB
+dist/server/assets/router-BK9lrLOm.js                      1,180.10 kB │ gzip: 219.13 kB
+
+✓ built in 157ms
+[prerender] Prerendering pages...
+[prerender] Concurrency: 8
+[prerender] Crawling: /
+[prerender] Crawling: /puzzles
+[prerender] Crawling: /import
+[prerender] Crawling: /shortcuts
+[prerender] Crawling: /puzzles/browse
+[prerender] Crawling: /puzzles/new
+[prerender] Crawling: /puzzles/collections
+[prerender] Crawling: /puzzles/statistics
+(node:11548) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[prerender] Crawling: /settings
+[prerender] Crawling: /settings/appearance
+[prerender] Crawling: /settings/input
+[prerender] Crawling: /settings/highlighting
+[prerender] Crawling: /settings/solving
+[prerender] Crawling: /settings/hints
+[prerender] Crawling: /learn
+[prerender] Crawling: /learn/fundamentals
+[prerender] Crawling: /learn/cells-that-see
+[prerender] Crawling: /learn/full-house
+[prerender] Crawling: /learn/hidden-single-box
+[prerender] Crawling: /learn/hidden-single
+[prerender] Crawling: /learn/naked-single
+[prerender] Crawling: /learn/candidate-logic
+[prerender] Crawling: /learn/locked-candidates
+[prerender] Crawling: /learn/counting-cells-and-digits
+[prerender] Crawling: /learn/naked-subsets
+[prerender] Crawling: /learn/hidden-subsets
+[prerender] Crawling: /learn/strong-weak-links
+[prerender] Crawling: /learn/fish-basics
+[prerender] Crawling: /learn/x-wing
+[prerender] Crawling: /learn/skyscraper
+[prerender] Crawling: /learn/two-string-kite
+[prerender] Crawling: /learn/empty-rectangle
+[prerender] Crawling: /learn/swordfish
+[prerender] Crawling: /learn/bivalue-case-splits
+[prerender] Crawling: /learn/xy-wing
+[prerender] Crawling: /learn/xyz-wing
+[prerender] Crawling: /learn/w-wing
+[prerender] Crawling: /learn/jellyfish
+[prerender] Crawling: /learn/uniqueness-assumption
+[prerender] Crawling: /learn/unique-rectangle
+[prerender] Crawling: /learn/bug-plus-one
+[prerender] Crawling: /learn/chain-basics
+[prerender] Crawling: /learn/coloring-basics
+[prerender] Crawling: /learn/simple-coloring
+[prerender] Crawling: /learn/x-chain
+[prerender] Crawling: /learn/xy-chain
+[prerender] Crawling: /learn/3d-medusa
+[prerender] Crawling: /learn/almost-locked-set-basics
+[prerender] Crawling: /learn/wxyz-wing
+[prerender] Crawling: /learn/unique-loop
+[prerender] Crawling: /learn/chain-notation
+[prerender] Crawling: /learn/aic
+[prerender] Crawling: /learn/closed-chains
+[prerender] Crawling: /learn/nice-loops
+[prerender] Crawling: /learn/grouped-candidates
+[prerender] Crawling: /learn/grouped-aic
+[prerender] Crawling: /learn/grouped-nice-loops
+[prerender] Crawling: /learn/restricted-common-candidates
+[prerender] Crawling: /learn/als-links
+[prerender] Crawling: /learn/almost-locked-sets
+[prerender] Crawling: /learn/death-blossom
+[prerender] Crawling: /learn/sue-de-coq
+[prerender] Crawling: /learn/als-aic
+[prerender] Crawling: /learn/als-discontinuous-nice-loop
+[prerender] Crawling: /learn/als-continuous-nice-loop
+[prerender] Crawling: /learn/unique-rectangle-aic
+[prerender] Crawling: /learn/unique-rectangle-discontinuous-nice-loop
+[prerender] Crawling: /learn/unique-rectangle-continuous-nice-loop
+[prerender] Crawling: /learn/fireworks
+[prerender] Crawling: /learn/firework-w-wing
+[prerender] Crawling: /learn/firework-l-wing
+[prerender] Crawling: /learn/firework-als-wing
+[prerender] Crawling: /learn/firework-aic
+[prerender] Crawling: /learn/aligned-pair-exclusion
+[prerender] Crawling: /learn/forcing-proof-basics
+[prerender] Crawling: /learn/forcing-chain
+[prerender] Crawling: /learn/tridagon-forcing-net
+[prerender] Crawling: /learn/dynamic-forcing-net
+[prerender] Crawling: /learn/advanced-forcing-net
+[prerender] Crawling: /learn/aligned-triplet-exclusion
+[prerender] Crawling: /learn/tridagon
+[prerender] Crawling: /learn/tridagon-aic
+[prerender] Crawling: /learn/house-digit-slots
+[prerender] Crawling: /learn/sk-loop
+[prerender] Crawling: /learn/multi-sector-locked-sets
+[prerender] Crawling: /learn/exocet
+[prerender] Crawling: /learn/senior-exocet
+[prerender] Crawling: /learn/double-exocet
+[prerender] Crawling: /learn/franken-fish
+[prerender] Crawling: /learn/mutant-fish
+[prerender] Crawling: /learn/kraken-fish-1
+[prerender] Crawling: /learn/kraken-fish-2
+[prerender] Crawling: /learn/nested-proofs-and-search
+[prerender] Crawling: /learn/nested-forcing-net
+[prerender] Crawling: /learn/digit-layouts
+[prerender] Crawling: /learn/pattern-overlay
+[prerender] Crawling: /learn/pairwise-pattern-overlay
+[prerender] Crawling: /learn/triple-pattern-overlay
+[prerender] Crawling: /learn/quadruple-pattern-overlay
+[prerender] Crawling: /learn/quintuple-pattern-overlay
+[prerender] Crawling: /learn/diagonal-locked-candidates
+[prerender] Crawling: /learn/cage-combinations
+[prerender] Crawling: /learn/cage-house-sum
+[prerender] Crawling: /learn/anti-knight
+[prerender] Crawling: /learn/anti-king
+[prerender] Crawling: /learn/thermometer
+[prerender] Crawling: /learn/arrow
+[prerender] Crawling: /learn/kropki
+[prerender] Crawling: /learn/parity
+[prerender] Crawling: /learn/non-consecutive
+[prerender] Crawling: /learn/inequality
+[prerender] Crawling: /learn/clone
+[prerender] Crawling: /learn/xv
+[prerender] Crawling: /learn/palindrome
+[prerender] Crawling: /learn/between
+[prerender] Crawling: /learn/whispers
+[prerender] Crawling: /learn/renban
+[prerender] Crawling: /learn/region-sum
+[prerender] Crawling: /learn/little-killer
+[prerender] Crawling: /learn/skyscrapers
+[prerender] Crawling: /learn/sandwich
+[prerender] Crawling: /learn/x-sum
+[prerender] Crawling: /learn/pointing
+[prerender] Crawling: /learn/claiming
+[prerender] Crawling: /learn/naked-pair
+[prerender] Crawling: /learn/naked-triple
+[prerender] Crawling: /learn/naked-quadruple
+[prerender] Crawling: /learn/locked-pair
+[prerender] Crawling: /learn/locked-triple
+[prerender] Crawling: /learn/hidden-pair
+[prerender] Crawling: /learn/hidden-triple
+[prerender] Crawling: /learn/hidden-quadruple
+[prerender] Crawling: /learn/finned-x-wing
+[prerender] Crawling: /learn/sashimi-x-wing
+[prerender] Crawling: /learn/finned-swordfish
+[prerender] Crawling: /learn/sashimi-swordfish
+[prerender] Crawling: /learn/finned-jellyfish
+[prerender] Crawling: /learn/sashimi-jellyfish
+[prerender] Crawling: /learn/unique-rectangle-1
+[prerender] Crawling: /learn/unique-rectangle-2
+[prerender] Crawling: /learn/unique-rectangle-3
+[prerender] Crawling: /learn/unique-rectangle-4
+[prerender] Crawling: /learn/unique-rectangle-5
+[prerender] Crawling: /learn/unique-rectangle-6
+[prerender] Crawling: /learn/hidden-rectangle
+[prerender] Crawling: /learn/discontinuous-nice-loop
+[prerender] Crawling: /learn/continuous-nice-loop
+[prerender] Crawling: /learn/grouped-discontinuous-nice-loop
+[prerender] Crawling: /learn/grouped-continuous-nice-loop
+[prerender] Crawling: /learn/als-xz
+[prerender] Crawling: /learn/als-xy-wing
+[prerender] Crawling: /learn/als-chain
+[prerender] Crawling: /learn/forcing-net
+[prerender] Prerendered 153 pages:
+[prerender] - /
+[prerender] - /shortcuts
+[prerender] - /import
+[prerender] - /puzzles/browse
+[prerender] - /puzzles/new
+[prerender] - /settings
+[prerender] - /puzzles/statistics
+[prerender] - /puzzles
+[prerender] - /puzzles/collections
+[prerender] - /settings/appearance
+[prerender] - /settings/input
+[prerender] - /settings/highlighting
+[prerender] - /settings/solving
+[prerender] - /settings/hints
+[prerender] - /learn/full-house
+[prerender] - /learn/fundamentals
+[prerender] - /learn/hidden-single-box
+[prerender] - /learn/cells-that-see
+[prerender] - /learn
+[prerender] - /learn/hidden-single
+[prerender] - /learn/naked-single
+[prerender] - /learn/candidate-logic
+[prerender] - /learn/locked-candidates
+[prerender] - /learn/counting-cells-and-digits
+[prerender] - /learn/naked-subsets
+[prerender] - /learn/hidden-subsets
+[prerender] - /learn/strong-weak-links
+[prerender] - /learn/fish-basics
+[prerender] - /learn/x-wing
+[prerender] - /learn/skyscraper
+[prerender] - /learn/two-string-kite
+[prerender] - /learn/empty-rectangle
+[prerender] - /learn/swordfish
+[prerender] - /learn/bivalue-case-splits
+[prerender] - /learn/xy-wing
+[prerender] - /learn/xyz-wing
+[prerender] - /learn/w-wing
+[prerender] - /learn/jellyfish
+[prerender] - /learn/uniqueness-assumption
+[prerender] - /learn/unique-rectangle
+[prerender] - /learn/bug-plus-one
+[prerender] - /learn/chain-basics
+[prerender] - /learn/coloring-basics
+[prerender] - /learn/simple-coloring
+[prerender] - /learn/xy-chain
+[prerender] - /learn/x-chain
+[prerender] - /learn/3d-medusa
+[prerender] - /learn/almost-locked-set-basics
+[prerender] - /learn/wxyz-wing
+[prerender] - /learn/unique-loop
+[prerender] - /learn/chain-notation
+[prerender] - /learn/closed-chains
+[prerender] - /learn/aic
+[prerender] - /learn/nice-loops
+[prerender] - /learn/grouped-candidates
+[prerender] - /learn/grouped-aic
+[prerender] - /learn/als-links
+[prerender] - /learn/restricted-common-candidates
+[prerender] - /learn/grouped-nice-loops
+[prerender] - /learn/almost-locked-sets
+[prerender] - /learn/death-blossom
+[prerender] - /learn/sue-de-coq
+[prerender] - /learn/als-aic
+[prerender] - /learn/als-continuous-nice-loop
+[prerender] - /learn/als-discontinuous-nice-loop
+[prerender] - /learn/unique-rectangle-aic
+[prerender] - /learn/unique-rectangle-continuous-nice-loop
+[prerender] - /learn/fireworks
+[prerender] - /learn/unique-rectangle-discontinuous-nice-loop
+[prerender] - /learn/firework-w-wing
+[prerender] - /learn/firework-l-wing
+[prerender] - /learn/firework-aic
+[prerender] - /learn/firework-als-wing
+[prerender] - /learn/aligned-pair-exclusion
+[prerender] - /learn/forcing-proof-basics
+[prerender] - /learn/tridagon-forcing-net
+[prerender] - /learn/forcing-chain
+[prerender] - /learn/dynamic-forcing-net
+[prerender] - /learn/advanced-forcing-net
+[prerender] - /learn/aligned-triplet-exclusion
+[prerender] - /learn/tridagon
+[prerender] - /learn/tridagon-aic
+[prerender] - /learn/house-digit-slots
+[prerender] - /learn/sk-loop
+[prerender] - /learn/multi-sector-locked-sets
+[prerender] - /learn/exocet
+[prerender] - /learn/senior-exocet
+[prerender] - /learn/double-exocet
+[prerender] - /learn/franken-fish
+[prerender] - /learn/mutant-fish
+[prerender] - /learn/kraken-fish-1
+[prerender] - /learn/nested-proofs-and-search
+[prerender] - /learn/kraken-fish-2
+[prerender] - /learn/nested-forcing-net
+[prerender] - /learn/digit-layouts
+[prerender] - /learn/pattern-overlay
+[prerender] - /learn/pairwise-pattern-overlay
+[prerender] - /learn/triple-pattern-overlay
+[prerender] - /learn/quadruple-pattern-overlay
+[prerender] - /learn/diagonal-locked-candidates
+[prerender] - /learn/quintuple-pattern-overlay
+[prerender] - /learn/cage-combinations
+[prerender] - /learn/cage-house-sum
+[prerender] - /learn/anti-knight
+[prerender] - /learn/anti-king
+[prerender] - /learn/thermometer
+[prerender] - /learn/arrow
+[prerender] - /learn/kropki
+[prerender] - /learn/parity
+[prerender] - /learn/inequality
+[prerender] - /learn/non-consecutive
+[prerender] - /learn/clone
+[prerender] - /learn/xv
+[prerender] - /learn/palindrome
+[prerender] - /learn/between
+[prerender] - /learn/whispers
+[prerender] - /learn/region-sum
+[prerender] - /learn/renban
+[prerender] - /learn/little-killer
+[prerender] - /learn/skyscrapers
+[prerender] - /learn/sandwich
+[prerender] - /learn/x-sum
+[prerender] - /learn/pointing
+[prerender] - /learn/claiming
+[prerender] - /learn/naked-pair
+[prerender] - /learn/naked-triple
+[prerender] - /learn/naked-quadruple
+[prerender] - /learn/locked-pair
+[prerender] - /learn/locked-triple
+[prerender] - /learn/hidden-pair
+[prerender] - /learn/hidden-quadruple
+[prerender] - /learn/hidden-triple
+[prerender] - /learn/finned-x-wing
+[prerender] - /learn/sashimi-x-wing
+[prerender] - /learn/finned-swordfish
+[prerender] - /learn/sashimi-swordfish
+[prerender] - /learn/finned-jellyfish
+[prerender] - /learn/unique-rectangle-1
+[prerender] - /learn/sashimi-jellyfish
+[prerender] - /learn/unique-rectangle-2
+[prerender] - /learn/unique-rectangle-3
+[prerender] - /learn/unique-rectangle-4
+[prerender] - /learn/unique-rectangle-6
+[prerender] - /learn/unique-rectangle-5
+[prerender] - /learn/hidden-rectangle
+[prerender] - /learn/discontinuous-nice-loop
+[prerender] - /learn/continuous-nice-loop
+[prerender] - /learn/grouped-discontinuous-nice-loop
+[prerender] - /learn/grouped-continuous-nice-loop
+[prerender] - /learn/als-xz
+[prerender] - /learn/als-xy-wing
+[prerender] - /learn/forcing-net
+[prerender] - /learn/als-chain

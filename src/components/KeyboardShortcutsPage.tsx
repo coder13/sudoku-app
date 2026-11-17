@@ -87,8 +87,9 @@ export function KeyboardShortcutsPage() {
         }}><RotateCcw size={17} /> Reset all</button>
       </header>
 
-      <p className="shortcuts-save-note">Changes save automatically on this device.</p>
-      <p className="sr-only" role="status" aria-live="polite">{message}</p>
+      <p className="shortcuts-save-note" role="status" aria-live="polite">
+        {message || 'Changes save automatically on this device.'}
+      </p>
 
       {editableSections.map((category) => {
         const sectionId = `shortcut-${category.toLowerCase().replaceAll(' ', '-')}`

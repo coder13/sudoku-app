@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMPTY, enter, makeGame, paintCandidate, restartGame, STARTER_GAME, undo } from '../src/sudoku/game.ts'
+import { EMPTY, enter, makeGame, paintCandidate, puzzleIdentity, redo, restartGame, STARTER_GAME, undo } from '../src/sudoku/game.ts'
 import { addRatingHints, placementHintKey, PLAYER_RATING_VERSION, ratingAttemptFor, type RatingAttempt, type RatingEvent } from '../src/sudoku/player-rating.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
 import { createPuzzleSelectionStore, puzzleSelectionKey } from '../src/sudoku/selection-preferences.ts'
 import { puzzleTiming } from '../src/sudoku/puzzle-timing.ts'
+import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 
 class MemoryStorage {
   get length() { return Object.keys(this).length }
@@ -24,6 +25,186 @@ class MemoryStorage {
 
   clear() { Object.keys(this).forEach((key) => this.removeItem(key)) }
 }
+
+test('readable puzzles remain available when initializing storage cannot write', async () => {
+  const local = new MemoryStorage()
+  const original = makeGame('read-only', 'Read-only storage', EMPTY, 'custom')
+  const played = undo(enter(enter(original, [4], 'corner', 7), [3], 'value', 2))
+  local.setItem('sudoku-app:v1:game:read-only', JSON.stringify(played))
+  local.setItem('sudoku-app:v1:active', played.id)
+  Object.defineProperty(local, 'setItem', { value: () => { throw new DOMException('Quota exceeded', 'QuotaExceededError') } })
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?read-only-initialization')
+    const snapshot = roomStore.getSnapshot()
+    assert.equal(snapshot.storageAvailable, false)
+    assert.equal(snapshot.active, played.id)
+    assert.deepEqual(snapshot.games, [JSON.parse(JSON.stringify(played))])
+    assert.deepEqual(redo(snapshot.games[0]).position, redo(played).position)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('legacy library migration preserves newer records, session selection, progress, and undo', async () => {
+  const local = new MemoryStorage()
+  const session = new MemoryStorage()
+  const legacy = makeGame('legacy', 'Legacy puzzle', EMPTY, 'custom', 1)
+  const edited = enter(enter(legacy, [4], 'corner', 7), [3], 'value', 2)
+  const newer = { ...undo(edited), elapsed: 137, saved: true, difficulty: 'unfair' as const }
+  const savedForLater = { ...makeGame('later', 'Saved puzzle', EMPTY, 'imported', 2), savedForLater: true as const }
+  local.setItem('gridroom:v1:game:legacy', JSON.stringify(legacy))
+  local.setItem('sudoku-app:v1:game:legacy', JSON.stringify(newer))
+  local.setItem('gridroom:v1:game:later', JSON.stringify(savedForLater))
+  local.setItem('gridroom:v1:initialized', '1')
+  local.setItem('gridroom:v1:active', 'missing-puzzle')
+  session.setItem('gridroom:v1:active', newer.id)
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: session, configurable: true },
+  })
+
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?legacy-library-integrity')
+    const snapshot = roomStore.getSnapshot()
+    assert.equal(snapshot.storageAvailable, true)
+    assert.equal(snapshot.active, newer.id)
+    assert.equal(snapshot.games.length, 2)
+    assert.deepEqual(snapshot.games.find(game => game.id === newer.id), JSON.parse(JSON.stringify(newer)))
+    assert.deepEqual(redo(snapshot.games.find(game => game.id === newer.id)!).position, edited.position)
+    assert.equal(snapshot.games.find(game => game.id === savedForLater.id)?.savedForLater, true)
+    assert.ok(Object.keys(local).every(key => !key.startsWith('gridroom:v1:')))
+    assert.equal(session.getItem('sudoku-app:v1:active'), newer.id)
+    assert.equal(session.getItem('gridroom:v1:active'), null)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('isolated corruption and invalid optional metadata do not hide the rest of the saved library', async () => {
+  const local = new MemoryStorage()
+  const original = enter(makeGame('recover', 'Recover this puzzle', EMPTY, 'custom'), [2], 'value', 4)
+  const corruptedMetadata = { ...original, difficulty: 'nonexistent-level', score: -1, actionHistory: [null],
+    candidatesInitialized: 'yes', savedForLater: 'yes', ratingAttempt: { viewed: [] }, collection: { bad: true } }
+  local.setItem('sudoku-app:v1:game:recover', JSON.stringify(corruptedMetadata))
+  local.setItem('sudoku-app:v1:game:broken-json', '{"broken"')
+  local.setItem('sudoku-app:v1:game:null', 'null')
+  local.setItem('sudoku-app:v1:game:broken-position', JSON.stringify({ ...original, id: 'broken-position', position: {} }))
+  local.setItem('sudoku-app:v1:active', 'broken-json')
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?corruption-isolation')
+    const snapshot = roomStore.getSnapshot()
+    assert.equal(snapshot.active, original.id)
+    assert.equal(snapshot.games.length, 1)
+    assert.deepEqual(snapshot.games[0].position, original.position)
+    assert.deepEqual(snapshot.games[0].past, original.past)
+    for (const key of ['difficulty', 'score', 'actionHistory', 'candidatesInitialized', 'savedForLater', 'ratingAttempt', 'collection'] as const) {
+      assert.equal(snapshot.games[0][key], undefined, key)
+    }
+    assert.equal(local.getItem('sudoku-app:v1:game:broken-json'), '{"broken"', 'recovery does not erase unreadable evidence')
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('repeated play, undo, redo, and reset preserve their state through reloads', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    let store = (await import('../src/sudoku/storage.ts?repeated-reload-0')).roomStore
+    let expected = { ...makeGame('stress-reload', 'Reload stress', EMPTY, 'custom'), saved: true }
+    store.add(expected)
+    for (let step = 0; step < 180; step++) {
+      const update = step % 11 === 0 ? undo : step % 13 === 0 ? redo :
+        (game: typeof expected) => enter(game, [step % 81], step % 3 === 0 ? 'value' : step % 3 === 1 ? 'corner' : 'center', step % 9 + 1)
+      expected = update(expected)
+      store.update(expected.id, update)
+      if (step % 9 === 0) {
+        store = (await import(`../src/sudoku/storage.ts?repeated-reload-${step + 1}`)).roomStore
+        assert.deepEqual(store.getSnapshot().games[0], JSON.parse(JSON.stringify(expected)), 'reload after edit ' + step)
+      }
+    }
+    const reset = restartGame(expected)
+    store.update(expected.id, restartGame)
+    const reloaded = (await import('../src/sudoku/storage.ts?reset-reload-final')).roomStore
+    assert.deepEqual(reloaded.getSnapshot().games[0], JSON.parse(JSON.stringify(reset)))
+    assert.equal(reset.position.entries, EMPTY)
+    assert.equal(reset.past.length, 0)
+    assert.equal(reset.future.length, 0)
+    assert.equal(reset.saved, true)
+    assert.equal(reset.elapsed, 0)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('historical variant identity ordering preserves rating outcomes and prevents replay credit after deletion', async () => {
+  const local = new MemoryStorage()
+  const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const givens = '0' + solution.slice(1)
+  const regions: VariantPuzzle['regions'] = { type: 'jigsaw', regions: Array.from({ length: 9 }, (_, box) =>
+    Array.from({ length: 9 }, (_, offset) => Math.floor(box / 3) * 27 + box % 3 * 3 + Math.floor(offset / 3) * 9 + offset % 3)) }
+  const legacyPuzzle: VariantPuzzle = { regions, givens, version: 1 }
+  const legacyIdentity = 'jigsaw:' + JSON.stringify(legacyPuzzle)
+  const variant = { id: 'jigsaw' as const, puzzle: legacyPuzzle, solution }
+  const original = { ...makeGame('old-variant', 'Old variant', givens, 'generated'), variant }
+  const event: RatingEvent = { id: 'old-variant-outcome', gameId: original.id, givens, puzzleKey: legacyIdentity,
+    at: 1, finish: 'solved', elapsed: 100, viewed: 0, applied: 0, difficulty: 'easy', ratingVersion: PLAYER_RATING_VERSION }
+  const attempt = ratingAttemptFor({ difficulty: 'easy', points: 4, scoringVersion: 10, techniqueOrder: ['full-house'] })
+  const saved = { ...original, difficulty: 'easy', ratingAttempt: { ...attempt, outcome: event } }
+  const rawEvent = JSON.stringify(event)
+  local.setItem('sudoku-app:v1:game:old-variant', JSON.stringify(saved))
+  local.setItem('sudoku-app:v1:rating-result:' + event.id, rawEvent)
+  local.setItem('sudoku-app:v1:seen-puzzle:' + legacyIdentity, original.id)
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const store = (await import('../src/sudoku/storage.ts?legacy-variant-outcome')).roomStore
+    assert.deepEqual(store.getSnapshot().games[0].ratingAttempt?.outcome, event, 'the original attempt is retained')
+    assert.equal(store.getSnapshot().playerRating.count, 1)
+    assert.equal(store.getSnapshot().playerRating.results.get(original.id)?.event.puzzleKey, puzzleIdentity(original))
+    assert.equal(local.getItem('sudoku-app:v1:rating-result:' + event.id), rawEvent, 'historical rating evidence is not rewritten')
+
+    local.removeItem('sudoku-app:v1:game:old-variant')
+    const reloaded = (await import('../src/sudoku/storage.ts?legacy-variant-replay')).roomStore
+    const replay = { ...makeGame('new-variant', 'Replayed variant', givens, 'generated'), ratingAttempt: attempt,
+      variant: { ...variant, puzzle: { version: 1 as const, givens, regions } } }
+    reloaded.add(replay)
+    assert.equal(reloaded.getSnapshot().games[0].ratingAttempt, undefined, 'old seen keys prevent new replay credit')
+    assert.equal(reloaded.getSnapshot().playerRating.count, 1)
+    assert.equal(local.getItem('sudoku-app:v1:rating-result:' + event.id), rawEvent)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
 
 test('deleting a puzzle also deletes its saved cell selection', async () => {
   const local = new MemoryStorage()

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, FileUp, Play } from 'lucide-react'
 import { runEngine } from '../sudoku/engine'
-import { createGameId, makeGame, type Game } from '../sudoku/game'
+import { createGameId, makeGame, puzzleIdentity, type Game } from '../sudoku/game'
 import { detectPuzzle, MAX_IMPORT_LENGTH, type ImportedPuzzle } from '../sudoku/puzzle-import'
 import { roomStore } from '../sudoku/storage'
 import { VARIANTS } from '../sudoku/variants'
@@ -10,8 +10,8 @@ import { Modal } from './Modal'
 import { validation } from './PuzzleCheckResult'
 
 function existingPuzzle({ givens, variant }: Pick<ImportedPuzzle, 'givens' | 'variant'>) {
-  return roomStore.getSnapshot().games.find((game) => game.source !== 'draft' && game.givens === givens &&
-    (variant ? game.variant?.id === variant.id && JSON.stringify(game.variant.puzzle) === JSON.stringify(variant.puzzle) : !game.variant))
+  const identity = puzzleIdentity({ givens, variant })
+  return roomStore.getSnapshot().games.find((game) => game.source !== 'draft' && puzzleIdentity(game) === identity)
 }
 
 export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] }
