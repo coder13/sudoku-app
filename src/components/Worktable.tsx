@@ -43,6 +43,7 @@ import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckR
 import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
+import { usePlayPreference } from './usePlayPreference'
 
 const ANALYSIS_CARD_KEY = 'sudoku-app:v1:techniques-card-open'
 
@@ -203,17 +204,17 @@ export function Worktable({
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
   const [active, setActive] = useState(start)
   const [selected, setSelected] = useState<number[]>([])
-  const [selectedDigit, setSelectedDigit] = useState<number | null>(null)
-  const [selectedColor, setSelectedColor] = useState<number | null>(null)
-  const [colorTarget, setColorTarget] = useState<ColorTarget>('cell')
-  const [colorBrush, setColorBrush] = useState<number | null>(null)
+  const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
+  const [selectedColor, setSelectedColor] = usePlayPreference('selectedColor')
+  const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
+  const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
-  const [highlightCandidatePairs, setHighlightCandidatePairs] = useState(false)
-  const [highlightMode, setHighlightMode] = useState(false)
-  const [pencil, setPencil] = useState(false)
-  const [candidateKind, setCandidateKind] = useState<'center' | 'corner'>('corner')
-  const [colorMode, setColorMode] = useState(false)
-  const [eraseMode, setEraseMode] = useState(false)
+  const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
+  const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
+  const [pencil, setPencil] = usePlayPreference('pencil')
+  const [candidateKind, setCandidateKind] = usePlayPreference('candidateKind')
+  const [colorMode, setColorMode] = usePlayPreference('colorMode')
+  const [eraseMode, setEraseMode] = usePlayPreference('eraseMode')
   const [solution, setSolution] = useState<string | null>(null)
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
@@ -414,9 +415,6 @@ export function Worktable({
     setActive(nextActive)
     anchor.current = nextActive
     setSelected([])
-    setColorBrush(null)
-    setSelectedColor(null)
-    setHighlightCandidatePairs(false)
     setDialogResult(null)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -696,10 +694,6 @@ export function Worktable({
     setColorMode(false)
     setSelectedColor(null)
   }, [advancedModes.colorsEnabled])
-
-  useEffect(() => {
-    if (!canPaint) setColorBrush(null)
-  }, [canPaint])
 
   useEffect(() => {
     let current = true
