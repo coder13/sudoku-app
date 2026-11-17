@@ -1,6 +1,10 @@
+#[cfg(feature = "variants")]
+use super::PEERS;
+#[cfg(any(feature = "variants", all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))))]
+use super::candidate_positions;
 use super::{
-    ControlFlow, Deduction, HintEvidence, House, PEERS, Technique, bit_indices,
-    candidate_positions, cell_bit, cells, house_cells, report_eliminations, templates,
+    ControlFlow, Deduction, HintEvidence, House, Technique, bit_indices,
+    cell_bit, cells, house_cells, report_eliminations, templates,
 };
 use crate::{
     Board, CELLS, DIGITS, PatternOverlayDigit, PatternOverlayGeometry, PatternOverlayProof,
@@ -56,6 +60,7 @@ impl<'a> OverlaySearch<'a> {
         }
     }
 
+    #[cfg(feature = "variants")]
     pub(crate) fn for_variant(
         board: &Board,
         masks: &[u16; CELLS],
@@ -394,6 +399,7 @@ mod tests {
             }
         }
     }
+    #[cfg(feature = "variants")]
     fn variant_layouts(allowed: &[usize], geometry: &PatternOverlayGeometry) -> Vec<u128> {
         fn enumerate(
             rows: &[u128],
@@ -430,6 +436,7 @@ mod tests {
         layouts
     }
 
+    #[cfg(feature = "variants")]
     #[test]
     fn published_jigsaw_geometry_replays_all_five_overlay_sizes() {
         use crate::{
@@ -524,6 +531,7 @@ mod tests {
         assert!(replayed.after.eliminations[76] & (1 << 6) != 0);
     }
 
+    #[cfg(feature = "variants")]
     #[test]
     fn extra_houses_and_knight_conflicts_change_overlay_support() {
         use crate::{

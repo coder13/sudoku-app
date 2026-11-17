@@ -1,18 +1,25 @@
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::{
-    Analysis, DEFAULT_HINT_LIMIT, DEFAULT_VARIANT_SEARCH_NODES, Difficulty, HintAction, PuzzleRule,
-    VARIANT_SCORING_VERSION, VariantClueLayout, VariantDefinitionError, VariantGenerationError,
-    VariantGenerationOptions, VariantLogicalError, VariantPosition, VariantPositionError,
-    VariantPuzzle, VariantTechnique, VariantVisibility, VariantVisibilityError,
-    start_variant_generation, variant_practice_examples,
-};
-
+#[cfg(feature = "teaching")]
+use super::INVALID_LESSON;
+#[cfg(feature = "generation")]
 use super::{
-    ActiveGeneration, ClueCount, GenerationOutput, GenerationProfile, INVALID_ELIMINATIONS,
-    INVALID_LESSON, INVALID_TECHNIQUE, ResultValue, TechniqueRequest, grid_string, puzzle_error,
+    ActiveGeneration, ClueCount, GenerationOutput, GenerationProfile, TechniqueRequest,
     rating_target,
+};
+use super::{INVALID_ELIMINATIONS, INVALID_TECHNIQUE, ResultValue, grid_string, puzzle_error};
+use crate::{
+    Analysis, DEFAULT_HINT_LIMIT, DEFAULT_VARIANT_SEARCH_NODES, Difficulty, PuzzleRule,
+    VARIANT_SCORING_VERSION, VariantDefinitionError, VariantLogicalError, VariantPosition,
+    VariantPositionError, VariantTechnique, VariantVisibility, VariantVisibilityError,
+};
+#[cfg(feature = "teaching")]
+use crate::{HintAction, variant_practice_examples};
+#[cfg(feature = "generation")]
+use crate::{
+    VariantClueLayout, VariantGenerationError, VariantGenerationOptions, VariantPuzzle,
+    start_variant_generation,
 };
 
 pub(super) fn catalog() -> Value {
@@ -38,6 +45,7 @@ pub(super) fn catalog() -> Value {
     })
 }
 
+#[cfg(feature = "teaching")]
 pub(super) fn practice_examples(id: &str) -> ResultValue {
     let technique = VariantTechnique::from_id(id).ok_or(INVALID_TECHNIQUE)?;
     Ok(json!(
@@ -45,10 +53,12 @@ pub(super) fn practice_examples(id: &str) -> ResultValue {
     ))
 }
 
+#[cfg(feature = "teaching")]
 pub(super) fn generate_practice_example(id: &str, seed: u32, exclude: crate::Board) -> ResultValue {
     let technique = VariantTechnique::from_id(id).ok_or(INVALID_TECHNIQUE)?;
     Ok(json!(
-        crate::variant::generate_practice_example(technique, seed, exclude).ok_or(INVALID_LESSON)?
+        crate::variant::generate_practice_example(technique, seed, exclude)
+            .ok_or(INVALID_LESSON)?
     ))
 }
 
@@ -64,7 +74,9 @@ pub(super) enum Operation {
     Rate,
     Trace,
     ReplayStep,
+    #[cfg(feature = "teaching")]
     PracticePosition,
+    #[cfg(feature = "teaching")]
     CheckPracticeMove,
 }
 
@@ -74,18 +86,21 @@ pub(super) struct Options {
     max_nodes: Option<u32>,
     seed: Option<u32>,
     technique_order: Option<Vec<String>>,
+    #[cfg(feature = "teaching")]
     technique: Option<String>,
     limit: Option<usize>,
     #[serde(default)]
     prefer_progress: bool,
     difficulty: Option<Difficulty>,
     step_index: Option<usize>,
+    #[cfg(feature = "teaching")]
     action: Option<HintAction>,
     visibility: Option<Box<VariantVisibility>>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[cfg(feature = "generation")]
 pub(super) struct GenerationRequest {
     seed: u32,
     max_attempts: u32,
@@ -104,6 +119,7 @@ pub(super) struct GenerationRequest {
     exclude: Vec<VariantPuzzle>,
 }
 
+#[cfg(feature = "generation")]
 impl GenerationRequest {
     pub(super) fn start(self) -> ResultValue<(GenerationProfile, ActiveGeneration)> {
         let order = technique_order(self.technique_order.as_deref())?;
@@ -137,6 +153,7 @@ impl GenerationRequest {
     }
 }
 
+#[cfg(feature = "generation")]
 fn generation_error(error: VariantGenerationError) -> (&'static str, &'static str) {
     use VariantGenerationError::*;
     match error {
@@ -229,6 +246,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         None => position,
     };
     let order = || technique_order(options.technique_order.as_deref());
+    #[cfg(feature = "teaching")]
     let technique = || {
         options
             .technique
@@ -252,6 +270,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
                 .ok_or(("invalid-step", "Choose a step index."))?;
             return Ok(json!(trace()?.replay_step(step)));
         }
+        #[cfg(feature = "teaching")]
         Operation::PracticePosition => {
             return Ok(json!(trace()?.practice_position(technique()?)));
         }
@@ -299,6 +318,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             };
             json!(hints.map_err(position_error)?)
         }
+        #[cfg(feature = "teaching")]
         Operation::CheckPracticeMove => {
             let action = options.action.ok_or((
                 "invalid-action",

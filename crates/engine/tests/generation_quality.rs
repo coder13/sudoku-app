@@ -1,3 +1,5 @@
+#![cfg(all(feature = "generation"))]
+
 use sudoku_app_engine::{Analysis, Difficulty, accepts_difficulty, analyze, canonical_puzzle, impossible_templates, parse_givens};
 
 #[test]

@@ -1,3 +1,5 @@
+#![cfg(all(feature = "variants", feature = "teaching"))]
+
 use sudoku_app_engine::{
     DEFAULT_VARIANT_SEARCH_NODES, Difficulty, SolveStatus, Technique, VARIANT_SCORING_VERSION,
     VariantDeduction, VariantEvidence, VariantTechnique, variant_practice_examples,

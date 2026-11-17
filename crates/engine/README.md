@@ -10,6 +10,12 @@ Run this command from the repository root to build and open the API reference.
 cargo doc --locked -p sudoku-app-engine --all-features --no-deps --open
 ```
 
+## Select build capabilities
+
+The default includes variant rules, generation, and teaching fixtures. Set `default-features = false` for Classic solving, ratings, hints, and rank proofs. Enable `variants`, `generation`, and `teaching` independently when the caller needs them. The [build guide](BUILD_FEATURES.md) lists the Cargo dependencies, browser profiles, and capability matrix commands.
+
+The app explicitly builds the `app` profile. A runtime solver profile selects techniques inside that build. Use the structured `capabilities` request to discover the compiled capabilities. An omitted operation returns `unsupported-capability` and leaves subsequent requests usable.
+
 ## Start with one puzzle
 
 Add the engine as a path dependency in another Cargo package. Set the path relative to that package's manifest.
@@ -300,6 +306,7 @@ A structured reply has either `value` or `code` and `error`. Request tags are ke
 
 | Structured request | Inputs and result |
 | --- | --- |
+| `capabilities` | Reports `classic`, `variants`, `generation`, and `teaching` for the compiled build. |
 | `techniques` | Technique IDs, aliases, costs, difficulty, uniqueness flags, default analysis order, canonical difficulty order, and scoring version |
 | `rate` | `values` and optional `techniqueOrder`. Returns a versioned rating. |
 | `logical-solve` | Start from `values` and optional `entries` and `eliminations`. `includePositions` adds snapshots. `includeStepDetails` adds masks and proof patterns. `includeMoveAvailability` adds Easy move counts and bottleneck flags. |

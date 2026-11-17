@@ -2,6 +2,19 @@
 
 The Rust engine supports ordered logical solving, ratings, ranked hints, and targeted generation. It detects singles, pointing, claiming, naked and hidden subsets through size four, locked pairs and triples, basic, finned, and Sashimi fish through Jellyfish, XY-Wing, XYZ-Wing, WXYZ-Wing, W-Wing, Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, 3D Medusa, X-Chains, and XY-Chains. It also detects plain and grouped Alternating Inference Chains and Nice Loops, Unique Rectangles, Hidden Rectangle, BUG+1, forcing chains and nets, ALS-XZ, ALS-XY-Wing, ALS chains, Sue de Coq, Death Blossom, Junior Exocet, Senior Exocet, Double Exocet, SK Loop, and Multi-Sector Locked Sets. The browser worker exposes these engine functions through WebAssembly. [Engine requirements](README.md#engine-requirements) · [Browser worker](src/sudoku/engine.worker.ts)
 
+See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration status, architecture boundaries, and addition criteria.
+
+## Packaging and release discipline
+
+- [x] Compile variant rules, puzzle generation, and teaching fixtures independently while preserving default behavior.
+- [x] Publish named Wasm profiles and report the compiled capabilities through the public request API.
+- [x] Test every capability combination and compare retained behavior and measured Wasm sizes.
+- [x] Record what reached main and identify the remaining research work without changing the original worktrees.
+- [x] Define how and why to add a rule, technique, policy, or optimization, with evidence and release criteria.
+- [x] Add automated native, feature-matrix, Wasm, app, and Cargo documentation checks for engine changes.
+- [ ] Evaluate narrower expert-detector and variant-family boundaries against actual callers and package savings.
+- [ ] Integrate each remaining research contribution through a focused change against current main.
+
 ## App integration
 
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.

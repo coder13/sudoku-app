@@ -9,6 +9,8 @@
     "dev": "npm run build:collections && node scripts/ensure-wasm.mjs && vite",
     "dev:lessons": "node tools/lesson-editor/server.mjs",
     "build:wasm": "node scripts/build-wasm.mjs",
+    "test:engine-features": "node scripts/check-engine-features.mjs",
+    "test:wasm-profiles": "node scripts/check-wasm-profiles.mjs",
     "build:collections": "node --experimental-strip-types scripts/build-collections.mjs",
     "build": "npm run build:collections && npm run build:wasm && vite build && node scripts/build-offline.mjs",
     "check": "npm run build:collections && tsc --noEmit",

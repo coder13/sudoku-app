@@ -1,6 +1,8 @@
 import { withHintPreferences } from './hint-preferences.ts'
 import { withSolverProfile } from './solver-profile.ts'
 
+export type EngineCapabilities = { classic: true; variants: boolean; generation: boolean; teaching: boolean }
+
 export type Analysis = 'conflict' | 'unsolvable' | 'unique' | 'multiple' | 'search-limit'
 // 'unfair' is accepted only for historical saves and legacy input.
 export type Difficulty = 'beginner' | 'easy' | 'medium' | 'tricky' | 'hard' | 'very-hard' | 'expert' | 'master' | 'extreme' | 'impossible' | 'unfair'
@@ -119,6 +121,7 @@ type VariantRequest = {
 )
 
 export type EngineRequest =
+  | { type: 'capabilities' }
   | VariantRequest
   | { type: 'canonical-puzzles'; values: readonly string[] }
   | { type: 'impossible-templates' }
@@ -464,6 +467,7 @@ export type VariantPracticeExercise = {
 }
 
 export type EngineResult<T extends EngineRequest> =
+  T extends { type: 'capabilities' } ? EngineCapabilities :
   T extends VariantRequest ? VariantResult<T> :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
