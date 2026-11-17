@@ -6,7 +6,7 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `562243f`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, and variant hint repairs, plus the focused Quadruple integration described below. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `fc4142f`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ This inventory uses main at `562243f`, including capability packaging, mixed-rul
 | Windoku | In main through [PR 93](https://github.com/coder13/sudoku-app/pull/93) | Maintain its import, play, save, hint, and generation coverage |
 | Mixed rules in the eight currently rendered families | In main through [PR 95](https://github.com/coder13/sudoku-app/pull/95) | Preserve the combined-flow regressions and extend coverage with each new family in [issue 87](https://github.com/coder13/sudoku-app/issues/87) |
 | Built-in variant hint and solution access | In main through [PR 98](https://github.com/coder13/sudoku-app/pull/98) and [PR 102](https://github.com/coder13/sudoku-app/pull/102) | Preserve visible controls, valid candidate assumptions, and independent workers in standard, advanced, and mobile play |
-| Quadruple circles, proofs, imports, and teaching | App integration on `codex/sudoku-quadruple-integration` for [issue 37](https://github.com/coder13/sudoku-app/issues/37) | Preserve repeated occurrences and combined clues; calibrate generation recipes before offering app presets |
+| Quadruple circles, proofs, imports, and teaching | In main through [PR 104](https://github.com/coder13/sudoku-app/pull/104) | Preserve repeated occurrences and combined clues; finish live mobile viewport review and calibrate generation recipes before offering app presets |
 | Additional rule families and shading | Research on `codex/sudoku-engine-integration` | Port one app-ready family from current main through [issue 35](https://github.com/coder13/sudoku-app/issues/35) |
 | Proof explorer and expert lesson work | Open in [PR 14](https://github.com/coder13/sudoku-app/pull/14) | Reconcile its diff with current main and the research branch before integration |
 | Uncommitted proof, technique, and lesson edits | Preserved in the original R&D worktree | Compare each change with current main and the research branch before porting it |
