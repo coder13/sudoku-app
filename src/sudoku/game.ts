@@ -2,6 +2,7 @@ import { STARTER } from './formats.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
+import type { ActionHistoryEntry } from './action-history.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -33,6 +34,7 @@ export type Game = {
   position: Position
   past: Position[]
   future: Position[]
+  actionHistory?: ActionHistoryEntry[]
   elapsed: number
   started: boolean
   candidatesInitialized?: true
