@@ -1,5 +1,6 @@
 import '../collections.css'
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { BookOpen, Bookmark, Check, ChevronLeft, ChevronRight, Download, Play } from 'lucide-react'
 import {
@@ -64,7 +65,7 @@ function DownloadPuzzles({ collection, puzzles, games }: { collection: PuzzleCol
       setOpen(true)
     }}>Download</button>}
     <span className="sr-only" role="status">{message}</span>
-    {open && <Modal title="Download puzzles" onClose={close}>
+    {open && createPortal(<Modal title="Download puzzles" onClose={close}>
       <form className="dialog-form" onSubmit={event => { event.preventDefault(); void download() }}>
         <label htmlFor={`${id}-count`}>Number of puzzles ({puzzles.length} available)</label>
         <div className="collection-download-quantity">
@@ -83,7 +84,7 @@ function DownloadPuzzles({ collection, puzzles, games }: { collection: PuzzleCol
           </button>
         </div>
       </form>
-    </Modal>}
+    </Modal>, document.body)}
   </div>
 }
 
