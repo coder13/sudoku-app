@@ -3,8 +3,7 @@ use std::collections::BTreeMap;
 use super::hints::{Deduction, DeductionSearch, checked_position};
 use super::position::Position;
 use super::{
-    Analysis, Board, GenerationRating, Hint, HintError, PositionSnapshot, Technique,
-    TechniqueTargetMode,
+    Analysis, Board, Hint, HintError, PositionSnapshot, Technique,
 };
 
 #[path = "logical/paths.rs"]
@@ -14,7 +13,10 @@ pub use paths::{
     search_alternate_path,
 };
 mod rank_fallback;
+#[cfg(any(feature = "generation", test))]
 mod quality;
+#[cfg(any(feature = "generation", test))]
+use crate::{GenerationRating, TechniqueTargetMode};
 pub use rank_fallback::{
     RankFallbackOptions, RankSolve, RankSolveReplay, RankSolveSearch, RankSolveStatus,
     RankSolveStep, solve_position_with_rank,
@@ -355,6 +357,7 @@ impl RatingTally {
     }
 }
 
+#[cfg(any(feature = "generation", test))]
 pub(crate) fn matches_generation_path(
     board: &Board,
     technique_order: &[Technique],
@@ -485,6 +488,7 @@ pub fn opening_techniques(board: &Board) -> Result<Vec<Technique>, Analysis> {
     Ok(available_openers(&position).collect())
 }
 
+#[cfg(any(feature = "generation", test))]
 pub(crate) fn has_exclusive_opener(board: &Board, opening: Technique) -> bool {
     let position = Position::known_unique(board);
     let mut available = available_openers(&position);

@@ -5,6 +5,7 @@ use super::{Analysis, Board, CELLS, PositionSnapshot, Technique, coordinates, lo
 
 #[path = "patterns/mod.rs"]
 mod patterns;
+#[cfg(any(feature = "variants", all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))))]
 pub(crate) use patterns::OverlaySearch;
 
 #[path = "proofs.rs"]
@@ -1451,12 +1452,14 @@ pub(crate) fn rank_position(
     choices
 }
 
+#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
 fn technique_rank(technique: &Technique) -> (super::Difficulty, u16) {
     (technique.difficulty(), technique.cost())
 }
 
 /// Play hints prefer the cheapest proof that unlocks placements through singles.
 /// This bounded probe does not change rating, attribution, or the solver profile.
+#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
 pub(crate) fn rank_useful_position(
     position: &Position,
     limit: usize,
@@ -1546,6 +1549,7 @@ pub(crate) fn rank_useful_position(
     choices
 }
 
+#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
 fn singles_progress(mut position: Position) -> usize {
     let mut placed = 0;
     while !position.is_solved() {
@@ -1562,6 +1566,7 @@ fn singles_progress(mut position: Position) -> usize {
     placed
 }
 
+#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
 fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
     let mut techniques: Vec<_> = Technique::ALL
         .into_iter()
@@ -1572,7 +1577,7 @@ fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
 }
 
 /// Attribute each action independently. A proof may also affect other candidates.
-#[cfg(feature = "wasm-api")]
+#[cfg(all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
 pub(crate) fn classify_actions(
     board: &Board,
     eliminations: Option<&[u16; CELLS]>,
@@ -2036,6 +2041,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "variants")]
     #[test]
     fn useful_variant_play_hints_also_prefer_a_single_unlocking_move() {
         use crate::{Difficulty, VariantPuzzle, VariantTechnique};

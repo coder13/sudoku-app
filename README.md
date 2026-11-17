@@ -85,6 +85,8 @@ The same Rust engine in `crates/engine` runs in the browser as WebAssembly. A br
 
 See the [engine guide](crates/engine/README.md) for Rust, WebAssembly, and batch usage. Run `cargo doc --locked -p sudoku-app-engine --all-features --no-deps --open` to browse the API reference.
 
+The [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) records integration priorities and the criteria for additions. The [build guide](crates/engine/BUILD_FEATURES.md) describes optional Cargo capabilities and smaller Wasm profiles.
+
 Client code calls `runEngine()` in `src/sudoku/engine.ts` for ratings, solve traces, hints, deduction searches, and targeted generation. Requests can supply a technique order by ID. If a request omits the order, the client uses the saved solver profile or the engine default.
 
 ## Engine requirements

@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use crate::{Analysis, Board, Technique, logical, parse_givens};
+use crate::{Analysis, Board, logical, parse_givens};
 
 /// A set of givens and the solution proved unique for those givens.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -42,9 +42,9 @@ pub fn builtin_templates() -> &'static [VerifiedTemplate] {
             "500600020040000000000000000083000400090000100000200000700040001200000050000908000",
             "100000480007250000000300000000000025600004000000030000320000000000800100000000600",
             // Expert fixtures retain their provenance in the practice catalog.
-            Technique::MultiSectorLockedSets.practice_example().givens,
-            Technique::Exocet.practice_example().givens,
-            Technique::AlsXz.practice_example().givens,
+            "000000000001000803400090060000108200008000001500040000000000302090050070070000040",
+            "007020004930000600600300000000000050200010008006900400003700900020050001000008000",
+            "000200600670008000085300000000006000500190002004000790000004260000700803010002900",
             // Additional selections from Royle's collection, including high-scoring solves.
             "000000010400000000020000000000050407008000300001090000300400200050100000000806000",
             "000000012050400000000000030700600400001000000000080000920000800000510700000003000",

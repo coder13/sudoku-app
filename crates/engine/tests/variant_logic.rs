@@ -1,3 +1,5 @@
+#![cfg(all(feature = "variants"))]
+
 use sudoku_app_engine::{
     Analysis, Candidate, ClueDirection, HintAction, KillerCage, MarkedPairs, Parity, PuzzleRule,
     SolveStatus, Technique, VARIANT_SCORING_VERSION, VariantEvidence, VariantHouseKind,
@@ -687,6 +689,7 @@ fn classic_fish_gate_only_the_detectors_that_require_standard_boxes() {
     );
 }
 
+#[cfg(feature = "teaching")]
 #[test]
 fn a_uniqueness_proof_requires_every_extra_rule_to_preserve_the_swap() {
     use sudoku_app_engine::HintEvidence;
@@ -755,6 +758,7 @@ fn a_uniqueness_proof_requires_every_extra_rule_to_preserve_the_swap() {
     );
 }
 
+#[cfg(feature = "teaching")]
 #[test]
 fn variant_rectangle_chains_check_the_corners_of_the_inference_link() {
     let example = Technique::UniqueRectangleAic.practice_examples()[1];
@@ -795,6 +799,7 @@ fn variant_rectangle_chains_check_the_corners_of_the_inference_link() {
     assert!(!proofs(&puzzle).iter().any(uses_rectangle));
 }
 
+#[cfg(feature = "teaching")]
 #[test]
 fn a_variant_unique_loop_checks_every_cell_that_can_swap() {
     use sudoku_app_engine::HintEvidence;

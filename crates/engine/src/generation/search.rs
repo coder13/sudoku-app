@@ -110,7 +110,7 @@ impl<'a, T> GenerationSearch<'a, T> {
     }
 
     #[cfg(all(
-        feature = "wasm-api",
+        feature = "generation", feature = "wasm-api",
         any(target_arch = "wasm32", test, feature = "cli")
     ))]
     pub(crate) fn map<U>(self, mut convert: impl FnMut(T) -> U + 'a) -> GenerationSearch<'a, U>

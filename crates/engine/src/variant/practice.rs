@@ -1,8 +1,16 @@
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+use super::DEFAULT_VARIANT_SEARCH_NODES;
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+use crate::{Analysis, Board};
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+use super::symmetry::SquareTransform;
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+use crate::Random;
 use super::{
-    CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, PuzzleRule, VariantDeduction, VariantEvidence,
-    VariantHouseKind, VariantPosition, VariantPuzzle, VariantTechnique, symmetry::SquareTransform,
+    CompiledVariant, PuzzleRule, VariantDeduction, VariantEvidence,
+    VariantHouseKind, VariantPosition, VariantPuzzle, VariantTechnique,
 };
-use crate::{Analysis, Board, CELLS, Candidate, HintAction, Random, Technique, parse_givens};
+use crate::{CELLS, Candidate, HintAction, Technique, parse_givens};
 
 mod examples;
 
@@ -95,6 +103,7 @@ pub fn variant_practice_examples(
 }
 
 /// Build a seeded variant drill by changing clues around a verified teaching move.
+#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
 pub(crate) fn generate_practice_example(
     technique: VariantTechnique,
     seed: u32,

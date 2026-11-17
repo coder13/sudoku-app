@@ -1,3 +1,5 @@
+#![cfg(all(feature = "variants"))]
+
 use sudoku_app_engine::{
     Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
     Parity, PuzzleRule, VariantDefinitionError, VariantHouseKind, VariantPositionError,

@@ -1,3 +1,5 @@
+#![cfg(all(feature = "generation", feature = "teaching"))]
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use sudoku_app_engine::{

@@ -483,6 +483,7 @@ fn overlay_proof(step: Deduction) -> VariantDeduction {
 }
 
 impl CompiledVariant {
+    #[cfg(any(feature = "generation", test))]
     pub(super) fn has_exclusive_opening(&self, selected: VariantTechnique) -> bool {
         let Ok(position) = self.proof_position(&[0; CELLS], &[0; CELLS]) else {
             return false;
@@ -558,6 +559,7 @@ impl CompiledVariant {
     }
 
     /// Prefer the easiest enabled move that unlocks singles, within the puzzle's tier.
+    #[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
     pub(crate) fn useful_hints(
         &self,
         entries: &Board,
@@ -644,6 +646,7 @@ impl CompiledVariant {
         Ok(choices)
     }
 
+    #[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
     fn single_progress(&self, mut board: Board, mut removals: [u16; CELLS]) -> usize {
         let mut placed = 0;
         while board.contains(&0) {

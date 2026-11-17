@@ -7,7 +7,7 @@ export type EngineExports = {
   analyze_board(): number
   fill_notes(): number
   solve_board(): number
-  generate_board(seed: number): void
+  generate_board?(seed: number): void
   request_buffer(length: number): number
   run_request(): number
   response_buffer(): number
@@ -46,6 +46,7 @@ export function createEngineHandler(load: () => Promise<EngineExports>) {
       const wasm = await (engine ??= load())
       const boardView = () => new Uint8Array(wasm.memory.buffer, wasm.board_buffer(), CELL_COUNT)
       if (request.type === 'generate') {
+        if (!wasm.generate_board) return { id, code: 'unsupported-capability', error: 'This engine build does not include puzzle generation.' }
         wasm.generate_board(request.seed)
         return { id, value: boardView().join('') }
       }

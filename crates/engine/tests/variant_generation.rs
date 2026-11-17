@@ -1,3 +1,5 @@
+#![cfg(all(feature = "variants", feature = "generation"))]
+
 use sudoku_app_engine::{
     Analysis, ClueDirection, Difficulty, GeneratedVariant, GenerationRating, GenerationStep,
     KillerCage, MarkedPairs, MarkerFamily, OutsideClueKind, PuzzleRule, SolveStatus,
