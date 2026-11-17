@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from 'react'
+import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react'
 import type { Candidate, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
 import { activeHighlightDigit } from '../sudoku/highlighting'
@@ -9,7 +9,6 @@ import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnno
 
 type Props = {
   descriptionId?: string
-  modeBadge?: ReactNode
   variantPuzzle?: VariantPuzzle
   givens: string
   values: string
@@ -53,7 +52,7 @@ export function Board({
   variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides,
   highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, modeBadge,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId,
 }: Props) {
   const variantRules = variantPuzzle?.rules
   const regions = variantPuzzle?.regions
@@ -264,7 +263,6 @@ export function Board({
         </div>
         {variantRules && <VariantClues rules={variantRules} />}
         {!!annotations?.links?.length && <BoardLinks links={annotations.links} region={region} />}
-        {modeBadge}
       </div>
     </div>
   )
