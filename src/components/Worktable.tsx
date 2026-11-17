@@ -18,6 +18,7 @@ import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudo
 import { lessonRoutes } from '../sudoku/lessons'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
 import { techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
+import type { DesktopPuzzleView } from '../sudoku/play-preferences'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
@@ -50,13 +51,11 @@ import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
 
-const ANALYSIS_CARD_KEY = 'sudoku-app:v1:techniques-card-open'
 const desktopInsightTabs = [
   { id: 'solution', label: 'Solution' },
   { id: 'techniques', label: 'Available techniques' },
   { id: 'chains', label: 'Chains' },
 ] as const
-type DesktopInsightTab = typeof desktopInsightTabs[number]['id']
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -226,7 +225,7 @@ export function Worktable({
   const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
   const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
-  const [standardChainsOpen, setStandardChainsOpen] = useState(false)
+  const [desktopViews, setDesktopViews] = usePlayPreference('desktopViews')
   const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
@@ -240,8 +239,6 @@ export function Worktable({
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
   const [analysisOpen, setAnalysisOpen] = useState(false)
-  const [analysisCardOpen, setAnalysisCardOpen] = useState(false)
-  const [desktopInsightTab, setDesktopInsightTab] = useState<DesktopInsightTab>('techniques')
   const [focusAnalysisRequest, setFocusAnalysisRequest] = useState(0)
   const [focusSolutionRequest, setFocusSolutionRequest] = useState(0)
   const [desktopSolutionVisible, setDesktopSolutionVisible] = useState(false)
@@ -255,21 +252,6 @@ export function Worktable({
   const [notes, setNotes] = useState<{
     values: string; eliminations?: number[]; variant?: Game['variant']; masks: number[] | null; failed?: boolean
   }>()
-  useEffect(() => {
-    try {
-      const pinned = localStorage.getItem(ANALYSIS_CARD_KEY) === 'true'
-      setAnalysisCardOpen(pinned)
-      if (pinned) setDesktopInsightTab('techniques')
-    } catch { /* The card is still usable without persistent storage. */ }
-  }, [])
-
-  function setPinnedAnalysis(open: boolean) {
-    setAnalysisCardOpen(open)
-    setDesktopInsightTab(open ? 'techniques' : 'solution')
-    try { localStorage.setItem(ANALYSIS_CARD_KEY, String(open)) }
-    catch { /* Remember the choice for this session. */ }
-  }
-
   const [hintState, setHint] = useState<HintState | null>(null)
   const [hintRevealed, setHintRevealed] = useState(false)
   const mobile = useMobileLayout()
@@ -374,15 +356,13 @@ export function Worktable({
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
   const { mounted: puzzleMenuMounted, exiting: puzzleMenuExiting } = usePresence(puzzleMenuOpen)
-  const openSolutionTab = desktop && !draft && solutionPathRevealed && solutionPath !== null
-  const openTechniqueTab = desktop && !draft && !variant && analysisCardOpen
-  const openChainsTab = desktop && !advancedWorkspace && !placeholder && !draft && !solved && standardChainsOpen
-  const openInsightTabs = desktopInsightTabs.filter(({ id }) => (
-    id === 'solution' ? openSolutionTab : id === 'techniques' ? openTechniqueTab : openChainsTab
-  ))
-  const activeDesktopTab = openInsightTabs.find(({ id }) => id === desktopInsightTab) ??
+  const openInsightTabs = desktop && !advancedWorkspace && !placeholder && !draft
+    ? desktopInsightTabs.filter(({ id }) => desktopViews.open.includes(id) && (id === 'chains' ? !solved : !variant))
+    : []
+  const activeDesktopTab = openInsightTabs.find(({ id }) => id === desktopViews.active) ??
     openInsightTabs.find(({ id }) => id === 'techniques') ?? openInsightTabs[0]
-  const previewing = openSolutionTab && (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab?.id === 'solution')
+  const previewing = desktop && !draft && solutionPathRevealed && solutionPath !== null &&
+    (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab?.id === 'solution')
   const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const chainsVisible = advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains'
@@ -472,9 +452,7 @@ export function Worktable({
     hintReturnFocus.current = false
     setSolutionPath(null)
     setSolutionPathRevealed(false)
-    setStandardChainsOpen(false)
     setStartDrawingOnOpen(false)
-    setDesktopInsightTab(analysisCardOpen ? 'techniques' : 'solution')
     setSolutionStep(0)
     setSolutionHintOpen(false)
     setSolvedView('results')
@@ -1471,7 +1449,7 @@ export function Worktable({
     if (advancedWorkspace) {
       onOpenRightPanel()
       setFocusSolutionRequest((request) => request + 1)
-    } else setDesktopInsightTab('solution')
+    } else openDesktopView('solution')
     setSolutionPathRevealed(true)
     if (solutionPath && !force) return
     setSolutionStep(0)
@@ -1497,10 +1475,10 @@ export function Worktable({
 
   function closeSolutionPath() {
     setSolutionPathRevealed(false)
-    if (analysisCardOpen) setDesktopInsightTab('techniques')
     setSolutionHintOpen(false)
     setPuzzleMenuOpen(false)
-    puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+    if (advancedWorkspace) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+    else closeDesktopView('solution')
   }
 
   function selectSolutionStep(index: number) {
@@ -1596,22 +1574,25 @@ export function Worktable({
       if (previewing) closeSolutionPath()
       else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
       onOpenRightPanel()
-    } else {
-      setStandardChainsOpen(true)
-      setDesktopInsightTab('chains')
-    }
+    } else openDesktopView('chains')
     setFocusChainsRequest((request) => request + 1)
   }
 
-  function closeDesktopInsight() {
-    if (!activeDesktopTab) return
-    const remaining = openInsightTabs.filter(({ id }) => id !== activeDesktopTab.id)
-    if (activeDesktopTab.id === 'solution') closeSolutionPath()
-    else if (activeDesktopTab.id === 'techniques') setPinnedAnalysis(false)
-    else setStandardChainsOpen(false)
+  function openDesktopView(view: DesktopPuzzleView) {
+    setDesktopViews((current) => current.active === view ? current : {
+      open: current.open.includes(view) ? current.open : [...current.open, view],
+      active: view,
+    })
+  }
+
+  function closeDesktopView(view: DesktopPuzzleView) {
+    const remaining = openInsightTabs.filter(({ id }) => id !== view)
     const next = remaining.find(({ id }) => id === 'techniques') ?? remaining[0]
+    setDesktopViews((current) => {
+      const open = current.open.filter((id) => id !== view)
+      return { open, active: next?.id ?? open[0] ?? null }
+    })
     if (next) {
-      setDesktopInsightTab(next.id)
       insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`)?.focus({ preventScroll: true })
     } else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
   }
@@ -1622,7 +1603,7 @@ export function Worktable({
       onOpenRightPanel()
       setFocusAnalysisRequest((request) => request + 1)
     } else if (desktop) {
-      setPinnedAnalysis(true)
+      openDesktopView('techniques')
     } else {
       setAnalysisOpen(true)
     }
@@ -1882,11 +1863,6 @@ export function Worktable({
           setPanelHeight={setPanelHeight} beginResize={beginResize} multi={multi} toggleMulti={toggleMulti} />
       </div>
   )
-  const solutionPathPanel = previewing ? (
-    <SolutionPath state={solutionPath} index={solutionStep}
-      onSelect={selectSolutionStep} onRetry={() => { void showSolutionPath(true) }} onClose={closeSolutionPath}
-      onReveal={markSolutionVisible} embedded />
-  ) : null
   const advancedHintPanel = hintPanel || (
     <section className="advanced-spoiler-panel" aria-label="Hint">
       <span className="advanced-spoiler-icon" aria-hidden="true"><Lightbulb size={21} /></span>
@@ -1899,10 +1875,10 @@ export function Worktable({
       </button>
     </section>
   )
-  const advancedSolutionPathPanel = solutionPathRevealed && solutionPath ? (
+  const solutionPathPanel = solutionPathRevealed && solutionPath ? (
     <SolutionPath state={solutionPath} index={solutionStep}
       onSelect={selectSolutionStep} onRetry={() => { void showSolutionPath(true) }} onClose={closeSolutionPath}
-      onReveal={markSolutionVisible} />
+      onReveal={markSolutionVisible} embedded={!advancedWorkspace} />
   ) : (
     <section className="advanced-spoiler-panel" aria-label="Solution">
       <span className="advanced-spoiler-icon" aria-hidden="true"><ListOrdered size={21} /></span>
@@ -1944,7 +1920,7 @@ export function Worktable({
     <>
       {advancedWorkspace
         ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel} chains={chainsPanel} cellColors={cellColorsPanel}
-          hint={advancedHintPanel} solutionPath={advancedSolutionPathPanel}
+          hint={advancedHintPanel} solutionPath={solutionPathPanel}
           techniques={!draft && !variant
             ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
             : <p className="analysis-empty">Available for classic Sudoku puzzles.</p>}
@@ -1969,17 +1945,17 @@ export function Worktable({
                       const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? openInsightTabs.length - 1
                         : (index + step + openInsightTabs.length) % openInsightTabs.length
                       const next = openInsightTabs[nextIndex].id
-                      setDesktopInsightTab(next)
+                      openDesktopView(next)
                       event.currentTarget.querySelector<HTMLButtonElement>(`[data-insight-tab="${next}"]`)?.focus()
                     }}>
                     {openInsightTabs.map(({ id, label }) => <button type="button" key={id} role="tab" data-insight-tab={id}
                       id={`desktop-insight-tab-${id}`} aria-controls="desktop-insight-content"
                       aria-selected={activeDesktopTab.id === id} tabIndex={activeDesktopTab.id === id ? 0 : -1}
-                      onClick={() => setDesktopInsightTab(id)}>{label}</button>)}
+                      onClick={() => openDesktopView(id)}>{label}</button>)}
                   </div>
                   <button type="button" className="icon-button borderless desktop-insight-close"
                     aria-label={`Close ${activeDesktopTab.label.toLowerCase()} tab`}
-                    onClick={closeDesktopInsight}>
+                    onClick={() => activeDesktopTab.id === 'solution' ? closeSolutionPath() : closeDesktopView(activeDesktopTab.id)}>
                     <X size={18} aria-hidden="true" />
                   </button>
                 </div>

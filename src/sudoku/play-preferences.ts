@@ -2,6 +2,9 @@ import { COLORS, type ColorTarget } from './game.ts'
 
 export const GRID_MODE_BADGE_EDGES = ['top', 'right', 'bottom', 'left'] as const
 export type GridModeBadgePosition = { edge: typeof GRID_MODE_BADGE_EDGES[number]; offset: number }
+const DESKTOP_VIEW_IDS = ['solution', 'techniques', 'chains'] as const
+export type DesktopPuzzleView = typeof DESKTOP_VIEW_IDS[number]
+type DesktopViewPreferences = { open: DesktopPuzzleView[]; active: DesktopPuzzleView | null }
 
 export type PlayPreferences = {
   pencil: boolean
@@ -17,10 +20,12 @@ export type PlayPreferences = {
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
   modeBadgePosition: GridModeBadgePosition
+  desktopViews: DesktopViewPreferences
 }
 
 // Keep this key independent of the app build and service-worker cache version.
 export const PLAY_PREFERENCES_KEY = 'sudoku-app:v1:play-preferences'
+const LEGACY_TECHNIQUES_KEY = 'sudoku-app:v1:techniques-card-open'
 export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   pencil: false,
   candidateKind: 'corner',
@@ -35,6 +40,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   multi: false,
   puzzleBrowserView: 'active',
   modeBadgePosition: { edge: 'bottom', offset: 0.05 },
+  desktopViews: { open: [], active: null },
 }
 const INPUT_MODE_KEYS = ['eraseMode', 'colorMode', 'highlightMode', 'pencil'] as const
 
@@ -49,6 +55,16 @@ function parseModeBadgePosition(value: unknown): GridModeBadgePosition {
     if (edge && typeof offset === 'number' && Number.isFinite(offset) && offset >= 0 && offset <= 1) return { edge, offset }
   }
   return DEFAULT_PLAY_PREFERENCES.modeBadgePosition
+}
+
+function parseDesktopViews(value: unknown): DesktopViewPreferences {
+  if (!value || typeof value !== 'object' || !('open' in value) || !Array.isArray(value.open)) {
+    return DEFAULT_PLAY_PREFERENCES.desktopViews
+  }
+  const saved = value.open
+  const open = DESKTOP_VIEW_IDS.filter((view) => saved.includes(view))
+  const active = open.find((view) => 'active' in value && view === value.active) ?? open[0] ?? null
+  return { open, active }
 }
 
 export function parsePlayPreferences(value: unknown): PlayPreferences {
@@ -71,6 +87,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',
     modeBadgePosition: parseModeBadgePosition(saved.modeBadgePosition),
+    desktopViews: parseDesktopViews(saved.desktopViews),
   }
 }
 
@@ -86,7 +103,12 @@ function readSavedPreferences(storage: PreferenceStorage): Record<string, unknow
 export function createPlayPreferenceStore(storage?: PreferenceStorage) {
   let current = { ...DEFAULT_PLAY_PREFERENCES }
   try {
-    current = parsePlayPreferences(readSavedPreferences(storage ?? localStorage))
+    const target = storage ?? localStorage
+    const saved = readSavedPreferences(target)
+    current = parsePlayPreferences(saved)
+    if (saved?.desktopViews === undefined && target.getItem(LEGACY_TECHNIQUES_KEY) === 'true') {
+      current.desktopViews = { open: ['techniques'], active: 'techniques' }
+    }
   } catch { /* Defaults also work during server rendering or with blocked storage. */ }
   const listeners = new Set<() => void>()
   let pending: Partial<PlayPreferences> = {}
