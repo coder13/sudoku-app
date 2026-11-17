@@ -127,7 +127,8 @@ export function MobilePanelLayout(props: Props) {
   function startHold(event: ReactPointerEvent<HTMLDivElement>) {
     if (!event.isPrimary) { cancelHold(); return }
     if (props.rearranging || props.blocked || event.button !== 0 ||
-      !(event.target instanceof Element) || !event.target.closest('[data-mobile-panel]')) return
+      !(event.target instanceof Element) || !event.target.closest('[data-mobile-panel]') ||
+      event.target.closest('[data-no-panel-hold]')) return
     cancelHold()
     hold.current = {
       pointerId: event.pointerId, x: event.clientX, y: event.clientY,

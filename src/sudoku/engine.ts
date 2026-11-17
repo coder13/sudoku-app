@@ -371,7 +371,7 @@ export type PracticeExercise = LessonPractice & { deduction: Deduction }
 
 export type LessonExample = LessonPosition & {
   deduction: Deduction
-  practice: LessonPractice
+  practice: PracticeExercise
 }
 
 export type SolvePosition = PositionSnapshot & { candidates?: number[]; pattern?: ProofPattern }

@@ -26,31 +26,31 @@ const either = new Intl.ListFormat('en', { type: 'disjunction' })
 export const cellName = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
 export const lessonValues = ({ givens, entries }: Pick<PositionSnapshot, 'givens' | 'entries'>) =>
   [...givens].map((digit, cell) => digit === '0' ? entries[cell] : digit).join('')
-const candidateName = ({ cell, digit }: Candidate) => `${digit} in ${cellName(cell)}`
+export const candidateName = ({ cell, digit }: Candidate) => `${digit} in ${cellName(cell)}`
 const candidatesConflict = (a: Candidate, b: Candidate) =>
   a.cell === b.cell ? a.digit !== b.digit : a.digit === b.digit && peer(a.cell, b.cell)
 const capital = (phrase: string) => phrase[0].toUpperCase() + phrase.slice(1)
-const inferenceCandidates = (node: InferenceNode): Candidate[] => {
+export const inferenceCandidates = (node: InferenceNode): Candidate[] => {
   if ('candidate' in node) return [node.candidate]
   if ('group' in node) return node.group.cells.map(cell => ({ cell, digit: node.group.digit }))
   return node['mixed-group']
 }
-const inferenceName = (node: InferenceNode, nameCell = cellName) => 'group' in node
+export const inferenceName = (node: InferenceNode, nameCell = cellName) => 'group' in node
   ? `${node.group.digit} in ${either.format(node.group.cells.map(nameCell))}`
   : either.format(inferenceCandidates(node).map(({ digit, cell }) => `${digit} in ${nameCell(cell)}`))
-const boardPoint = (node: InferenceNode) => {
+export const boardPoint = (node: InferenceNode) => {
   if ('candidate' in node) return node.candidate
   if ('group' in node) return node.group
   return { candidates: node['mixed-group'] }
 }
 
-function houseName(house: House) {
+export function houseName(house: House) {
   if ('row' in house) return `row ${house.row + 1}`
   if ('column' in house) return `column ${house.column + 1}`
   return `box ${house.box + 1}`
 }
 
-function houseCells(house: House) {
+export function houseCells(house: House) {
   return DIGITS.map((_, index) => {
     if ('row' in house) return house.row * 9 + index
     if ('column' in house) return index * 9 + house.column
@@ -567,7 +567,7 @@ export function deductionResults(actions: readonly DeductionAction[]) {
   return results
 }
 
-export function lessonDiagram({ deduction, candidates }: Pick<LessonExample, 'deduction' | 'candidates'>, proof?: ProofPattern) {
+export function lessonDiagram({ deduction, candidates }: Pick<LessonExample, 'deduction' | 'candidates'>, proof?: ProofPattern, { showActions = true } = {}) {
   const pattern: Pattern | undefined = 'variant' in deduction.evidence
     ? proof && { ...proof, ...deduction.evidence.variant }
     : describePattern(deduction, candidates) ?? (proof && { ...proof, description: '', reason: '' })
@@ -591,7 +591,7 @@ export function lessonDiagram({ deduction, candidates }: Pick<LessonExample, 'de
   if (pattern.accent) {
     for (const candidate of pattern.accent.candidates) mark(candidate, accentColor, pattern.accent.label)
   }
-  for (const action of deduction.actions) {
+  for (const action of showActions ? deduction.actions : []) {
     if ('place' in action) {
       const { cell } = action.place
       cells.set(cell, { ...cells.get(cell), outline: resultColor })

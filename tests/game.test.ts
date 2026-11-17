@@ -116,6 +116,21 @@ test('highlight entry works with one or many selected cells while ordinary value
   assert.deepEqual(undo(filled).position, STARTER_GAME.position)
 })
 
+test('a selected Pen digit toggles only a matching placed digit', () => {
+  const options = { toggleValue: true }
+  const cell = 7
+  const placed = enter(STARTER_GAME, [cell], 'value', 1, options)
+  assert.equal(placed.position.entries[cell], '1')
+  assert.equal(enter(placed, [cell], 'value', 1), placed)
+  assert.equal(enter(placed, [cell], 'value', 2, options).position.entries[cell], '2')
+  assert.equal(enter(placed, [0], 'value', 5, options), placed)
+
+  const cleared = enter(placed, [cell], 'value', 1, options)
+  assert.equal(cleared.position.entries[cell], '0')
+  assert.equal(undo(cleared).position, placed.position)
+  assert.equal(redo(undo(cleared)).position, cleared.position)
+})
+
 test('highlight candidate input toggles a digit across the selected cells', () => {
   const selection = [2, 3, 18]
   const marked = enter(STARTER_GAME, selection, 'candidate', 7)

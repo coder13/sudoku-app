@@ -16,7 +16,14 @@ export const Placement: Story = {}
 export const CandidateRemoval: Story = { args: { puzzle: lessonExamples['xy-wing'].practice, technique: 'XY-wing' } }
 export const RevealAndReset: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Show one move' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Get a hint' }))
+    await expect(canvas.getByText('Where to look')).toBeVisible()
+    await expect(canvas.queryByRole('button', { name: 'Apply one move' })).not.toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Show the first check' }))
+    await expect(canvas.getByText('What to check')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Show solution' }))
+    await expect(canvas.getByRole('heading', { name: 'Why this works' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Apply one move' }))
     await expect(canvas.getByRole('status')).toHaveTextContent('One possible move.')
     await expect(canvas.getByRole('button', { name: 'Reset puzzle' })).toBeEnabled()
   },
