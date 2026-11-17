@@ -39,9 +39,11 @@ import { useGridClickAway } from './useGridClickAway'
 import { Modal } from './Modal'
 import { usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
-import { PuzzleAnalysis } from './PuzzleAnalysis'
+import { PuzzleAnalysis, PuzzleAnalysisCard, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
+
+const ANALYSIS_CARD_KEY = 'sudoku-app:v1:techniques-card-open'
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -149,7 +151,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 export function Worktable({
   game, games, placeholder, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
   beginResize, toggleMulti, onDifficultyChange, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onStopPlaying,
-  cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, puzzleBrowserView, setPuzzleBrowserView,
+  cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
   games: Game[]
@@ -181,6 +183,7 @@ export function Worktable({
   showRightPanel: boolean
   showBottomPanel: boolean
   onOpenHintPanel: () => void
+  onOpenRightPanel: () => void
   puzzleBrowserView: PuzzleBrowserView
   setPuzzleBrowserView: (view: PuzzleBrowserView) => void
 }) {
@@ -202,6 +205,8 @@ export function Worktable({
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
   const [analysisOpen, setAnalysisOpen] = useState(false)
+  const [analysisCardOpen, setAnalysisCardOpen] = useState(false)
+  const [focusAnalysisRequest, setFocusAnalysisRequest] = useState(0)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [changePuzzleOpen, setChangePuzzleOpen] = useState(false)
@@ -212,6 +217,17 @@ export function Worktable({
   const [notes, setNotes] = useState<{
     values: string; eliminations?: number[]; variant?: Game['variant']; masks: number[] | null; failed?: boolean
   }>()
+  useEffect(() => {
+    try { setAnalysisCardOpen(localStorage.getItem(ANALYSIS_CARD_KEY) === 'true') }
+    catch { /* The card is still usable without persistent storage. */ }
+  }, [])
+
+  function setPinnedAnalysis(open: boolean) {
+    setAnalysisCardOpen(open)
+    try { localStorage.setItem(ANALYSIS_CARD_KEY, String(open)) }
+    catch { /* Remember the choice for this session. */ }
+  }
+
   const [hintState, setHint] = useState<HintState | null>(null)
   const [hintRevealed, setHintRevealed] = useState(false)
   const mobile = useMobileLayout()
@@ -1255,13 +1271,22 @@ export function Worktable({
     aria-keyshortcuts={shortcutLabel(shortcuts.solveSingles)}>
     <CheckCheck size={17} /> Solve all singles <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.solveSingles)}</kbd>
   </button>
-  const analysisAction = !draft && !solved && !variant && (
-    <button onClick={() => {
-      setPuzzleMenuOpen(false)
-      setActionsOpen(false)
+  function showAnalysis() {
+    setPuzzleMenuOpen(false)
+    setActionsOpen(false)
+    if (advancedWorkspace) {
+      onOpenRightPanel()
+      setFocusAnalysisRequest((request) => request + 1)
+    } else if (desktop) {
+      setPinnedAnalysis(!analysisCardOpen)
+    } else {
       setAnalysisOpen(true)
-    }}>
-      <ListFilter size={17} /> Available techniques
+    }
+  }
+
+  const analysisAction = !draft && !solved && !variant && (
+    <button onClick={showAnalysis} aria-pressed={desktop && !advancedWorkspace ? analysisCardOpen : undefined}>
+      <ListFilter size={17} /> {desktop && !advancedWorkspace && analysisCardOpen ? 'Hide available techniques' : 'Available techniques'}
     </button>
   )
   const commonSolvingMenuItems = <>
@@ -1486,8 +1511,8 @@ export function Worktable({
       <button className="button secondary" disabled={busy || solved || draft || game.paused} onClick={() => { void showHint('all') }}>
         <ListFilter size={17} /> Analyze all moves
       </button>
-      {!variant && !draft && !solved && <button className="button secondary" onClick={() => setAnalysisOpen(true)}>
-        <ListFilter size={17} /> Available techniques
+      {!variant && !draft && !solved && <button className="button secondary" onClick={showAnalysis}>
+        <ListFilter size={17} /> Open techniques panel
       </button>}
     </section>
   )
@@ -1537,11 +1562,19 @@ export function Worktable({
       {advancedWorkspace
         ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel} chains={chainsPanel} cellColors={cellColorsPanel}
           hint={advancedHintPanel} solutionPath={advancedSolutionPathPanel}
+          techniques={!draft && !variant
+            ? <PuzzleAnalysisContents game={game} />
+            : <p className="analysis-empty">Available for classic Sudoku puzzles.</p>}
           details={detailsPanel} browser={browserPanel} showLeft={showLeftPanel} showRight={showRightPanel} showBottom={showBottomPanel}
-          focusHintRequest={focusHintRequest} focusChainsRequest={chainInspection ? focusChainsRequest : 0}
+          focusHintRequest={focusHintRequest} focusAnalysisRequest={focusAnalysisRequest}
+          focusChainsRequest={chainInspection ? focusChainsRequest : 0}
           onChainsVisibleChange={setDesktopChainsVisible} />
         : desktop
-          ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">{inputPanel}{hintPanel}{solutionPathPanel}</div></>
+          ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">
+              {inputPanel}
+              {analysisCardOpen && !draft && !variant && <PuzzleAnalysisCard game={game} close={() => setPinnedAnalysis(false)} />}
+              {hintPanel}{solutionPathPanel}
+            </div></>
           : <>{puzzlePanel}{mobileResults
             ? <div className="workspace-controls mobile-completion">{completionPanel}</div>
             : <div className={`workspace-controls mobile-solving-controls${mobileHintOpen ? ' with-hint' : ''}`}>
@@ -1555,7 +1588,7 @@ export function Worktable({
           <p>{VARIANTS[variant.id].rule}</p>
         </div>
       </Modal>}
-      {analysisOpen && !draft && !solved && !variant && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} />}
+      {analysisOpen && mobile && !draft && !solved && !variant && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} />}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       {changePuzzleOpen && <Modal title="Change puzzle" onClose={() => setChangePuzzleOpen(false)}>
         <div className="stop-puzzle-options">
