@@ -272,15 +272,21 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       return house ? `The candidates for ${digit} share ${houseName(house)}.`
         : `Any two cells with candidate ${digit} share a row, column, or box.`
     })
-    const targets = new Map<number, Candidate>()
+    const targets = new Map<number, number[]>()
     for (const action of actions) {
-      if ('eliminate' in action && !targets.has(action.eliminate.digit)) targets.set(action.eliminate.digit, action.eliminate)
+      if (!('eliminate' in action)) continue
+      const { cell, digit } = action.eliminate
+      const targetCells = targets.get(digit) ?? []
+      targetCells.push(cell)
+      targets.set(digit, targetCells)
     }
-    const blocked = Array.from(targets.values(), ({ cell, digit }) => {
+    const blocked = Array.from(targets, ([digit, targetCells]) => {
       const locations = marks(cells, [digit]).map(({ cell }) => cellName(cell))
-      return `If ${cellName(cell)} takes ${digit}, it rules out every ${digit} in the wing (${list.format(locations)}).`
+      const placement = targetCells.length === 1 ? `${cellName(targetCells[0])} takes ${digit}` : `you place any crossed-out ${digit}`
+      return `If ${placement}, it rules out every ${digit} in the wing (${list.format(locations)}).`
     })
     const remaining = unrestricted === null ? 'only three digits' : `only ${restrictedDigits}`
+    const consequence = actions.length === 1 ? 'That leaves' : 'Each of those moves would leave'
     return {
       cells, candidates: marks(cells, restricted),
       mainLabel: 'Digits that can appear at most once',
@@ -289,7 +295,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       ...explainSteps([
         [once, ...limits].join(' '),
         ...blocked,
-        `That leaves ${remaining} for four cells. Each remaining digit can appear at most once, so one cell would have no digit.`,
+        `${consequence} ${remaining} for four cells. Each remaining digit can appear at most once, so one cell would have no digit.`,
       ]),
     }
   }

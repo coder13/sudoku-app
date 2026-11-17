@@ -72,15 +72,19 @@ test('WXYZ-Wing handles all four restricted digits without inventing an unrestri
   candidates[30] = mask(3, 4)
   candidates[27] = mask(1, 4)
   candidates[28] = mask(4, 5)
+  candidates[29] = mask(4, 6)
   candidates[54] = mask(1, 5)
   const deduction: Deduction = {
-    technique: 'wxyz-wing', actions: [{ eliminate: { cell: 54, digit: 1 } }, { eliminate: { cell: 28, digit: 4 } }],
+    technique: 'wxyz-wing', actions: [
+      { eliminate: { cell: 54, digit: 1 } }, { eliminate: { cell: 28, digit: 4 } }, { eliminate: { cell: 29, digit: 4 } },
+    ],
     evidence: { 'wxyz-wing': { cells: [0, 3, 27, 30], digits: [1, 2, 3, 4], unrestricted: null } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.match(diagram.reason, /Each digit can appear at most once in the wing/)
   assert.match(diagram.reason, /If R7C1 takes 1, it rules out every 1 in the wing \(R1C1 and R4C1\)/)
-  assert.match(diagram.reason, /If R4C2 takes 4, it rules out every 4 in the wing \(R4C1 and R4C4\)/)
+  assert.match(diagram.reason, /If you place any crossed-out 4, it rules out every 4 in the wing \(R4C1 and R4C4\)/)
+  assert.deepEqual(diagram.results, ['Remove 1 from R7C1.', 'Remove 4 from R4C2 and R4C3.'])
   assert.doesNotMatch(diagram.reason, /null|undefined|other three/)
   assert.equal(diagram.accentLabel, undefined)
 })
