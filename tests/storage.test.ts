@@ -1,29 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMPTY, enter, makeGame, paintCandidate, restartGame, STARTER_GAME, undo } from '../src/sudoku/game.ts'
+import { MemoryStorage } from './helpers/memory-storage.ts'
+import { EMPTY, enter, makeGame, paintCandidate, restartGame, STARTER_GAME, redo, undo } from '../src/sudoku/game.ts'
 import { addRatingHints, placementHintKey, PLAYER_RATING_VERSION, ratingAttemptFor, type RatingAttempt, type RatingEvent } from '../src/sudoku/player-rating.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
 import { createPuzzleSelectionStore, puzzleSelectionKey } from '../src/sudoku/selection-preferences.ts'
+import { mixedFixtures } from './helpers/mixed-fixtures.ts'
+import { WINDOKU_REGIONS } from '../src/sudoku/variants.ts'
 import { puzzleTiming } from '../src/sudoku/puzzle-timing.ts'
-
-class MemoryStorage {
-  get length() { return Object.keys(this).length }
-
-  key(index: number) { return Object.keys(this)[index] ?? null }
-
-  getItem(key: string) {
-    const values = this as unknown as Record<string, unknown>
-    return Object.hasOwn(values, key) ? String(values[key]) : null
-  }
-
-  setItem(key: string, value: string) {
-    Object.defineProperty(this, key, { value: String(value), writable: true, enumerable: true, configurable: true })
-  }
-
-  removeItem(key: string) { delete (this as unknown as Record<string, unknown>)[key] }
-
-  clear() { Object.keys(this).forEach((key) => this.removeItem(key)) }
-}
 
 test('deleting a puzzle also deletes its saved cell selection', async () => {
   const local = new MemoryStorage()
@@ -271,6 +255,49 @@ test('an untimed solve stays untimed in the library and counts toward player rat
     assert.deepEqual(reloaded.getSnapshot().playerRating.results.get(game.id), result)
   } finally {
     puzzleTiming.set('trackTime', true)
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+
+test('mixed rules, candidates, and undo history survive reload alongside older named variants', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { puzzle, solution } = mixedFixtures['x-killer']
+    const { roomStore } = await import('../src/sudoku/storage.ts?mixed-rules')
+    roomStore.add({ ...makeGame('mixed-save', 'Mixed puzzle', puzzle.givens, 'imported'),
+      variant: { id: 'mixed', puzzle, solution } })
+    roomStore.update('mixed-save', game => enter(game, [0], 'value', Number(solution[0])))
+    roomStore.update('mixed-save', game => enter(game, [1], 'center', Number(solution[1])))
+    roomStore.update('mixed-save', game => undo(enter(game, [2], 'corner', 3)))
+    const saved = roomStore.getSnapshot().games.find(game => game.id === 'mixed-save')!
+    const windoku = {
+      version: 1 as const,
+      givens: '000000070700000056000590000000000300040001090016000000000000800003254000007100000',
+      rules: WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })),
+    }
+    roomStore.add({ ...makeGame('legacy-windoku', 'Older Windoku save', windoku.givens, 'imported'),
+      variant: { id: 'windoku', puzzle: windoku,
+        solution: '495613278731842956862597413579426381248371695316985724154769832983254167627138549' } })
+    roomStore.select('mixed-save')
+    const reloaded = (await import('../src/sudoku/storage.ts?mixed-rules-reload')).roomStore.getSnapshot()
+    const restored = reloaded.games.find(game => game.id === 'mixed-save')!
+    assert.equal(reloaded.active, restored.id)
+    assert.deepEqual(restored.variant, saved.variant)
+    assert.deepEqual(restored.position, JSON.parse(JSON.stringify(saved.position)))
+    assert.deepEqual(restored.past, JSON.parse(JSON.stringify(saved.past)))
+    assert.deepEqual(restored.future, JSON.parse(JSON.stringify(saved.future)))
+    assert.equal(redo(restored).position.corner[2], 1 << 2)
+    assert.equal(reloaded.games.find(game => game.id === 'legacy-windoku')?.variant?.id, 'windoku')
+    assert.deepEqual(reloaded.games.find(game => game.id === 'legacy-windoku')?.variant?.puzzle, windoku)
+  } finally {
     delete (globalThis as { window?: unknown }).window
     delete (globalThis as { localStorage?: unknown }).localStorage
     delete (globalThis as { sessionStorage?: unknown }).sessionStorage

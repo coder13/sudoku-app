@@ -77,4 +77,4 @@ jobs:
       - run: npm run check
       - run: npm test
       - name: Verify Wasm, action history, and collections
-        run: node --experimental-strip-types --test tests/engine-wasm.mts tests/action-history-wasm.mts tests/collections-wasm.mts
+        run: npm run test:wasm:contracts

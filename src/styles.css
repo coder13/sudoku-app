@@ -2355,6 +2355,7 @@ svg { flex-shrink: 0; }
 .import-preview { --board-frame-width: min(100%, 430px); display: grid; gap: var(--space-16); }
 .import-preview-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
 .import-preview-meta span { color: var(--muted); font-size: 0.875rem; }
+.import-preview-rules { display: grid; gap: var(--space-8); margin: 0; padding-inline-start: var(--space-20); color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
 .import-preview-actions { flex-wrap: wrap; }
 .import-preview-actions .import-edit { margin-inline-end: auto; }
 .import-page .import-edit { display: none; }

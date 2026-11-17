@@ -1,40 +1,20 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, FileUp, Play } from 'lucide-react'
-import { runEngine } from '../sudoku/engine'
-import { createGameId, makeGame, type Game } from '../sudoku/game'
-import { detectPuzzle, MAX_IMPORT_LENGTH, type ImportedPuzzle } from '../sudoku/puzzle-import'
+import type { Game } from '../sudoku/game'
+import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
+import { findImportedPuzzle, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
 import { roomStore } from '../sudoku/storage'
-import { VARIANTS } from '../sudoku/variants'
+import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { Board } from './Board'
 import { Modal } from './Modal'
-import { validation } from './PuzzleCheckResult'
+export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
-function existingPuzzle({ givens, variant }: Pick<ImportedPuzzle, 'givens' | 'variant'>) {
-  return roomStore.getSnapshot().games.find((game) => game.source !== 'draft' && game.givens === givens &&
-    (variant ? game.variant?.id === variant.id && JSON.stringify(game.variant.puzzle) === JSON.stringify(variant.puzzle) : !game.variant))
+function existingPuzzle(game: Pick<Game, 'givens' | 'variant'>) {
+  return findImportedPuzzle(roomStore.getSnapshot().games, game)
 }
 
-export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] }
-
-async function preparePuzzle(input: string): Promise<PuzzlePreview> {
-  const imported = await detectPuzzle(input)
-  const { givens, variant, format } = imported
-  const existing = existingPuzzle(imported)
-  const name = variant ? `Imported ${VARIANTS[variant.id].name} puzzle` : 'Imported puzzle'
-  const game = makeGame(createGameId(), name, givens, 'imported')
-  if (!existing) {
-    const status = variant
-      ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle } })
-      : await runEngine({ type: 'analyze', values: givens })
-    if (status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
-    if (status !== 'unique') throw new Error(validation[status].text)
-  }
-  if (variant) {
-    const solution = existing?.variant?.solution ??
-      await runEngine({ type: 'variant', operation: 'solve', position: { puzzle: variant.puzzle } })
-    game.variant = { ...variant, solution }
-  }
-  return { game, format }
+function preparePuzzle(input: string): Promise<PuzzlePreview> {
+  return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
 
 function finishImport(game: Game, play: boolean) {
@@ -111,11 +91,14 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const content = preview ? (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
-        <strong>{VARIANTS[preview.game.variant?.id ?? 'classic'].name}</strong>
+        <strong>{variantName(preview.game.variant)}</strong>
         <span>{preview.format}</span>
       </p>
       <Board label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
         variantPuzzle={preview.game.variant?.puzzle} showGuides={false} />
+      {preview.game.variant && <ul className="import-preview-rules">
+        {variantRuleDescriptions(preview.game.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
+      </ul>}
       <div className="dialog-actions import-preview-actions">
         <button type="button" className="button secondary import-edit" onClick={() => setPreview(undefined)}>Edit input</button>
         <button type="button" className="button secondary" onClick={() => saveAndContinue(preview.game)}>

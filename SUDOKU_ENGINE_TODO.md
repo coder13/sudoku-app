@@ -21,11 +21,14 @@ Track app-ready variants individually in [the integration issue](https://github.
 
 - [x] Create an issue for each planned variant and separate combined-rule and performance work.
 - [x] Add Windoku rendering, accessible rule labels, import, save/reload, and generation recipes for all ten difficulty levels using the existing extra-house engine rule. [Windoku](https://github.com/coder13/sudoku-app/issues/36)
+- [x] Complete mixed-rule import, preview, Play, hints, sharing, and save/reload for the eight currently rendered families. Preserve rule indices and independent negative Kropki settings. Check all 256 family subsets on a representative fixture, sparse rule-dependent puzzles, and actual imported-game persistence. [Fixture evidence](tests/fixtures/README.md)
 - [ ] Support every Sudoku Coach rule combination through import, preview, Play, sharing, and saved games. Preserve the full rule list and parameters. [Coach import](https://github.com/coder13/sudoku-app/issues/7) · [Combined rules](https://github.com/coder13/sudoku-app/issues/87)
 - [ ] Complete UI support for each remaining engine rule family before integrating that variant. [Variant queue](https://github.com/coder13/sudoku-app/issues/35)
 - [ ] Audit rule checks, candidate updates, technique searches, ratings, exact solving, and generation. Merge measured improvements to main in focused changes. [Performance](https://github.com/coder13/sudoku-app/issues/88)
 
 The Wasm audit now measures candidates, uniqueness verification, exact solving, rating, hints, and generation. On the fixed Windoku fixture, warmed median/p95 times were 0.017/0.019 ms for candidates, 0.024/0.025 ms for verification, 0.024/0.027 ms for solving, 0.064/0.073 ms for rating, and 0.042/0.045 ms for ten hints. Generation matched 20 of 20 seeds at 0.927/2.413 ms. Run `node --experimental-strip-types scripts/bench-variants.mjs` after building Wasm to repeat the audit on one machine. [Fixtures](crates/engine/benches/fixtures/variants.json)
+
+The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
 ## 1. Share a reliable engine contract
 

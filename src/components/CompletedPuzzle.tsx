@@ -43,9 +43,11 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
       online ? undefined : new Set(Object.keys(collectionDownloads.grids(collectionEntry.collection, games)))) : undefined
   const progress = collectionEntry && collectionDifficulty
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
-  const nextDifficulty = variantDifficulty(game.variant?.id, preferredDifficulty)
-  const nextLabel = nextDifficulty === 'auto'
-    ? `Next ${variantDifficultyLabel(game.variant?.id, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
+  const mixed = game.variant?.id === 'mixed'
+  const recipe = game.variant?.id === 'mixed' ? undefined : game.variant?.id
+  const nextDifficulty = variantDifficulty(recipe, preferredDifficulty)
+  const nextLabel = mixed ? 'Choose another puzzle' : nextDifficulty === 'auto'
+    ? `Next ${variantDifficultyLabel(recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
   const result = results.get(game.id)
   const ratingChange = result && Math.round(result.after) - Math.round(result.before)
   const difficultyLabel = game.difficulty ? DIFFICULTY_LABELS[game.difficulty] : 'Unrated'
@@ -58,6 +60,10 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const canPlayNext = collectionEntry ? Boolean(collectionNext) && !ratingPending && !loadingNext : canGenerate
   const playNext = useCallback(() => {
     if (!canPlayNext) return
+    if (mixed) {
+      onChooseVariant()
+      return
+    }
     if (inCollection) {
       if (nextRequest.current) return
       const request = new AbortController()
@@ -70,8 +76,8 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(preferredDifficulty, undefined, game.variant?.id)
-  }, [canPlayNext, inCollection, game.id, game.variant?.id, generate, online, preferredDifficulty])
+    } else void generate(preferredDifficulty, undefined, recipe)
+  }, [canPlayNext, inCollection, mixed, game.id, recipe, generate, onChooseVariant, online, preferredDifficulty])
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
 
@@ -138,7 +144,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
             {collectionEntry ? <>
               <Link className="button secondary" to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
               <Link className="button secondary" to="/puzzles">Choose a different puzzle</Link>
-            </> : <>
+            </> : !mixed && <>
               <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
               <button className="button secondary" aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</button>
             </>}

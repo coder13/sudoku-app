@@ -1,10 +1,11 @@
 import { useId } from 'react'
 import type { VariantRule } from '../sudoku/engine'
-import { hasMarkedPair } from '../sudoku/variants'
+import { extraRegionName } from '../sudoku/variants'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
 const center = (cell: number) => [x(cell) + 0.5, y(cell) + 0.5] as const
+const pairKey = (a: number, b: number) => Math.min(a, b) * 81 + Math.max(a, b)
 const points = (cells: readonly number[]) => cells.map((cell) => center(cell).join(',')).join(' ')
 
 function Cage({ cells, sum }: { cells: readonly number[]; sum: number }) {
@@ -69,6 +70,16 @@ function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly 
 
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const marker = useId()
+  const dots = new Map<number, number>()
+  for (const rule of rules) {
+    if (rule.type !== 'kropki') continue
+    for (const [kind, marks] of [rule.consecutive, rule.ratioTwo].entries()) {
+      for (const [a, b] of marks?.pairs ?? []) {
+        const key = pairKey(a, b)
+        dots.set(key, (dots.get(key) ?? 0) | (1 << kind))
+      }
+    }
+  }
   return <svg className="variant-clues" viewBox="0 0 9 9" aria-hidden="true" focusable="false">
     {rules.some((rule) => rule.type === 'arrow') && <defs>
       <marker id={marker} viewBox="0 0 1 1" refX=".9" refY=".5" markerWidth=".29" markerHeight=".29"
@@ -95,8 +106,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         case 'kropki':
           return <g key={index}>{[rule.consecutive, rule.ratioTwo].flatMap((marks, kind) =>
             (marks?.pairs ?? []).map(([a, b]) => {
-              const other = kind ? rule.consecutive : rule.ratioTwo
-              const offset = hasMarkedPair(other?.pairs, a, b) ? (kind ? .125 : -.125) : 0
+              const other = dots.get(pairKey(a, b)) === 3
+              const offset = other ? (kind ? .125 : -.125) : 0
               return <circle key={`${kind}-${a}-${b}`} className={`variant-dot ${kind ? 'variant-dot-black' : 'variant-dot-white'}`}
                 cx={(x(a) + x(b) + 1) / 2 + (x(a) === x(b) ? offset : 0)}
                 cy={(y(a) + y(b) + 1) / 2 + (y(a) === y(b) ? offset : 0)} r=".105" />
@@ -121,7 +132,7 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
         break
       }
       case 'extra-house':
-        for (const cell of rule.cells) labels[cell].push(`extra region ${index + 1}, digits 1–9 once each`)
+        for (const cell of rule.cells) labels[cell].push(`${extraRegionName(rules, index)}, digits 1–9 once each`)
         break
       case 'killer-cages':
         for (const { cells, sum } of rule.cages) {

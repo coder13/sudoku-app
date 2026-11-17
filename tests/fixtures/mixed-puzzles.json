@@ -1,0 +1,603 @@
+{
+  "x-killer": {
+    "puzzle": {
+      "givens": "000000000000000500200000000000095000000000000050000000000000000000000100010000900",
+      "rules": [
+        {
+          "diagonal": "main",
+          "type": "diagonal"
+        },
+        {
+          "diagonal": "anti",
+          "type": "diagonal"
+        },
+        {
+          "cages": [
+            {
+              "cells": [
+                30,
+                39,
+                48
+              ],
+              "sum": 16
+            },
+            {
+              "cells": [
+                28,
+                37,
+                46
+              ],
+              "sum": 10
+            },
+            {
+              "cells": [
+                0,
+                9,
+                18
+              ],
+              "sum": 17
+            },
+            {
+              "cells": [
+                29,
+                38,
+                47
+              ],
+              "sum": 21
+            },
+            {
+              "cells": [
+                6,
+                15,
+                24
+              ],
+              "sum": 18
+            },
+            {
+              "cells": [
+                8,
+                17,
+                26
+              ],
+              "sum": 11
+            },
+            {
+              "cells": [
+                55,
+                64,
+                73
+              ],
+              "sum": 16
+            },
+            {
+              "cells": [
+                35,
+                44,
+                53
+              ],
+              "sum": 20
+            },
+            {
+              "cells": [
+                57,
+                66,
+                75
+              ],
+              "sum": 12
+            },
+            {
+              "cells": [
+                56,
+                65,
+                74
+              ],
+              "sum": 15
+            },
+            {
+              "cells": [
+                5,
+                14,
+                23
+              ],
+              "sum": 7
+            },
+            {
+              "cells": [
+                7,
+                16,
+                25
+              ],
+              "sum": 16
+            },
+            {
+              "cells": [
+                27,
+                36,
+                45
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                31,
+                40,
+                49
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                54,
+                63,
+                72
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                59,
+                68,
+                77
+              ],
+              "sum": 23
+            },
+            {
+              "cells": [
+                33,
+                42,
+                51
+              ],
+              "sum": 13
+            },
+            {
+              "cells": [
+                3,
+                12,
+                21
+              ],
+              "sum": 17
+            },
+            {
+              "cells": [
+                34,
+                43,
+                52
+              ],
+              "sum": 12
+            },
+            {
+              "cells": [
+                60,
+                69,
+                78
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                4,
+                13,
+                22
+              ],
+              "sum": 21
+            },
+            {
+              "cells": [
+                58,
+                67,
+                76
+              ],
+              "sum": 10
+            },
+            {
+              "cells": [
+                32,
+                41,
+                50
+              ],
+              "sum": 15
+            },
+            {
+              "cells": [
+                62,
+                71,
+                80
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                2,
+                11,
+                20
+              ],
+              "sum": 9
+            },
+            {
+              "cells": [
+                1,
+                10,
+                19
+              ],
+              "sum": 19
+            },
+            {
+              "cells": [
+                61,
+                70,
+                79
+              ],
+              "sum": 17
+            }
+          ],
+          "type": "killer-cages"
+        }
+      ],
+      "version": 1
+    },
+    "solution": "843571692791362548265984731137295864426817359958643217579126483682439175314758926",
+    "coach": "SCv7_32_f2e8r52fhfdj0465nu5strp0hnv5jedmsuit1osigfcgg8a8jj2n22rdp1ruum2d9fiut07t11cckrsuouhv3n2lj7luiqvtj7ai2gedn7aemt2jgtboqld6h6dfdr6o4rbu96vmti2adm1k6jmtgea2int3qjsvdekgmptcehvnjbf9rtqv5mtv7utcpst7ifbeluc49te92p8uteq3tpnllrl4i7ccgpd7tf3jqnaaj3n57a6uf5qsoq2ni3lrslpcjfvhset5l5hq2lfdq7of7jhsqvvhbunbfehvjrvcdfsdck9n6lrfv5u5trtcgp6n0qthrr3njf744n7qn3tqfmtr0ib8fpvm06j04de10o6to4d0ihnihmumv0gts3hcec4p1o7307n40jhq2oo7j0495sndfkurf6a3mitiko9t3grqe02jbs4hu4do6euu0j1tpheuo4d5uvpjq3738111cvcd4d600i9pdj73jgg6704ncv991ie8citrc3nh0b12tm1h7gk052qobrejs24k3s26e3fc1o6fgcibcbssskom9od5ijtt62oq44gkkrevnufo7c90o5sd7tcu0se4vdjtjuf2ae03ltrvak108i1k30nrig4jp5q8c19ofsmcsv8ivda5ps387a0h4mc0up1rsm78unt7j7sq4",
+    "fpuzzles": "fpuzzlesN4IgzglgXgpiBcBOANCA5gJwgEwQbT1AxjQgHsA7BABgF9kiTyr46GRjTKb7GuWAjLw5Nu8Ie07MEEvtPgAmYVLFLJolkoC6yQiP491B1so2G5Y2fvlWVg08YWpSANxgsALhgCuMVC4BDABtfBABWB3k1C01aHT07GmcIN08fPxBAkLhFSLE2GPNrSzz7IxtShGji2PLVON1C+ABmSpa21rqWABY27uTUhC9ff2DQpD6B9yH00ezwtoiuheX4CPimzs2Ovt3V3tWlpqOahY3T9tXmqbSRzLGck8TLpoPXvePFr/PngDY2/6rQFNADsbTBqwhTQAHG1YatYT8zPBgRdUX9wZjIXCbjM7llxrZkfCYQ0Esj0RTcfBhhkCTkicZKcYoRdWc92cTqbS5uNEHCBVodCAANYQIJBGAYADGATQOT00pgErA+BAACVugBhbogVDqsI6vUa35G4X0hAgAS/EDCJUqtWarUKY0G52u00u80PS0Cai29j2oKq+B4DUCLUCV0KSOu5qx73zeBWkEB0BBkNhp3NV2GnP6005xPjEAKKN25XBx0R1P6mO1jXx1PFnJW6FpkAZ6taxDRntx/st33lwOVzMakHu/XQqcaxDuofJ60druhjXa3v6w2bk2D3mthT+isOtfqye66dG/Xz3WLq0u49V0+T/Mamev9Xzov731hFdj7sbTrLUgMbECQDvVNH3HdUI3bYD4LA9s72XaDHW1KMt1jAsEx/JddTQ09tT/LCSN3P8UII0cTyzSdMLfbC51w+4kytKj0wA59wMvUDP3Au8FBzQis21Bs3TE01mzwq0hOop8swjC8NRjJT1XjW9pIEKC5Jg7VELdfTTWQzSHx0x1JzEmcxPnKSWJLAR2M7TiFK1Mj1RjNz4wo6Sy3/GiJ1c10Zzc+dvLs1s/T8+T124jVDV400bRQv9hICnd1RndL517SiopgiMPxjD942/cLLV7VLYNndzqvjL1NIqsyuP0md9PnYyyqXKDhWwCA5UoYIAFo8QyXr+ooYIAGoRtoIA="
+  },
+  "jigsaw-killer": {
+    "puzzle": {
+      "givens": "003000060000700080000005000000000000000000500080400100000000000008004010002000094",
+      "regions": {
+        "regions": [
+          [
+            0,
+            1,
+            2,
+            9,
+            10,
+            11,
+            18,
+            20,
+            29
+          ],
+          [
+            3,
+            4,
+            5,
+            12,
+            13,
+            14,
+            21,
+            22,
+            23
+          ],
+          [
+            6,
+            7,
+            8,
+            15,
+            16,
+            17,
+            24,
+            25,
+            26
+          ],
+          [
+            19,
+            27,
+            28,
+            36,
+            37,
+            38,
+            45,
+            46,
+            47
+          ],
+          [
+            30,
+            31,
+            32,
+            39,
+            40,
+            41,
+            48,
+            49,
+            50
+          ],
+          [
+            33,
+            34,
+            35,
+            42,
+            43,
+            44,
+            51,
+            52,
+            53
+          ],
+          [
+            54,
+            55,
+            56,
+            63,
+            64,
+            65,
+            72,
+            73,
+            74
+          ],
+          [
+            57,
+            58,
+            59,
+            66,
+            67,
+            68,
+            75,
+            76,
+            77
+          ],
+          [
+            60,
+            61,
+            62,
+            69,
+            70,
+            71,
+            78,
+            79,
+            80
+          ]
+        ],
+        "type": "jigsaw"
+      },
+      "rules": [
+        {
+          "cages": [
+            {
+              "cells": [
+                57,
+                48
+              ],
+              "sum": 7
+            },
+            {
+              "cells": [
+                49,
+                58
+              ],
+              "sum": 13
+            },
+            {
+              "cells": [
+                39,
+                30
+              ],
+              "sum": 3
+            },
+            {
+              "cells": [
+                13,
+                22
+              ],
+              "sum": 6
+            },
+            {
+              "cells": [
+                31,
+                40
+              ],
+              "sum": 9
+            },
+            {
+              "cells": [
+                67,
+                76
+              ],
+              "sum": 8
+            },
+            {
+              "cells": [
+                41,
+                32
+              ],
+              "sum": 17
+            },
+            {
+              "cells": [
+                5,
+                6
+              ],
+              "sum": 3
+            },
+            {
+              "cells": [
+                23,
+                14
+              ],
+              "sum": 8
+            },
+            {
+              "cells": [
+                21,
+                12
+              ],
+              "sum": 13
+            },
+            {
+              "cells": [
+                59,
+                50
+              ],
+              "sum": 9
+            },
+            {
+              "cells": [
+                75,
+                66
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                77,
+                68
+              ],
+              "sum": 10
+            },
+            {
+              "cells": [
+                3,
+                4
+              ],
+              "sum": 17
+            },
+            {
+              "cells": [
+                15,
+                24
+              ],
+              "sum": 16
+            },
+            {
+              "cells": [
+                79,
+                70,
+                61
+              ],
+              "sum": 15
+            },
+            {
+              "cells": [
+                19,
+                10,
+                1
+              ],
+              "sum": 22
+            },
+            {
+              "cells": [
+                60,
+                69,
+                78
+              ],
+              "sum": 17
+            },
+            {
+              "cells": [
+                2,
+                11,
+                20
+              ],
+              "sum": 9
+            },
+            {
+              "cells": [
+                52,
+                43,
+                34
+              ],
+              "sum": 12
+            },
+            {
+              "cells": [
+                62,
+                71,
+                80
+              ],
+              "sum": 13
+            },
+            {
+              "cells": [
+                0,
+                9,
+                18
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                27,
+                36,
+                45
+              ],
+              "sum": 9
+            },
+            {
+              "cells": [
+                35,
+                44,
+                53
+              ],
+              "sum": 23
+            },
+            {
+              "cells": [
+                33,
+                42,
+                51
+              ],
+              "sum": 10
+            },
+            {
+              "cells": [
+                73,
+                64,
+                55
+              ],
+              "sum": 9
+            },
+            {
+              "cells": [
+                46,
+                37,
+                28
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                54,
+                63,
+                72
+              ],
+              "sum": 22
+            },
+            {
+              "cells": [
+                56,
+                65,
+                74
+              ],
+              "sum": 14
+            },
+            {
+              "cells": [
+                25,
+                16,
+                7
+              ],
+              "sum": 18
+            },
+            {
+              "cells": [
+                29,
+                38,
+                47
+              ],
+              "sum": 22
+            },
+            {
+              "cells": [
+                8,
+                17,
+                26
+              ],
+              "sum": 9
+            }
+          ],
+          "type": "killer-cages"
+        }
+      ],
+      "version": 1
+    },
+    "solution": "473891265265743981891625743529138476147269538386457129914382657658974312732516894",
+    "coach": "SCv7_32_f2e8ql61dbej047s2ueufc5bql59dbvd3vq1hnn1i4467i3jgbmh9mk7vsulh90kn5nomdb0tjor1mmpm5u7fgpsnru1gvonqtjrgofsb6jevopglq5um7ch208sbvcih2ka7ekkvpcllno649neh3h8aj5eujpp72sbi373reqbhvk9m21imv654d30t32k4pa6h1akvifoi5d9kaljhgasnrjf3rbdbbbfieievd89trjefhojrgddnvf8nqutudqig3je571qrv2h7ibtflvt9o9s4nn6vkt5urr55npu5ulrbcv6tbifre3bvgkgk63919ah9a3d0or55di83tsfgmoqri088r2to2338a58v1atte323hmmrjt5c605bcnltg71pj79tgemppmkjjegaen968gq9lp6h589q4593mkhodo7660f5euaar239gcoi46p21llmdk3163ddupmeh1coi4mlur5u3r6v19m6lcf408cnnd1167s9q4coa3m828pdjqtm9n62ci25q4pgp2h20ikhikhqjl941sag5a7vcqi8g8cq19lr10897oefr3980a29oq03i1dd25891b211u154s246eqoecsp40eo481ven8o04tse3ff7ditusvepeseqeot5mrmr4vu3b0ja0",
+    "fpuzzles": "fpuzzlesN4IgzglgXgpiBcBOANCA5gJwgEwQbT1AxjQgHsA7BABgF9kiTyr46GRjTKbVSA3GCwAuGAK4xUfAIYAbcQgDM9RlxYBGZRybd4G9p2YI9Kw/ABMmgzrO8IA4WIkhpcuPABsl7SwsBdZIRaqjRewayhpmwmOmq29ggi4pKy8vAA7BExmerZCBb63nlxggmOya4IABy55rT+gVYsUUGmSgVhzY1GNcYtMcUOSc4pbgCsNfnRPhN1AVOKNW3z4e2mACw1G6s6W8vj2yz7e7MNhfBLfSwXXeebdwcIu5cIowOlQy6pR8/w3zfj9WW1zOCje8ESTk+bmqD1usLWYIh5VSTxuqLO6LCr3QdhK4LKwwquhqfzOALmP08sKpyxpPwysIZyyZPxhyzZrJOtJqdJu7kRBKhVRqLJuorOaQFHxGjxqHJulSlkJlxNh1UBlJ5PKVyLck3pIsNarlOsJqUQJpx8Xx0qJG18/hAAGsIDIZDAMABjKRoNyBT0wN1gfAgABKaQAwmsQKhQ+4oyBHUL4CA0iBNAGgyG4xHRjGw5G80mVSA1Ap0+xMzJg/A8GHRgnY2sE8WiSByxnA9Xs2Zc/nQwo+63UiB3BXQFWa3XQ8287GG0XdQgQIhxyBJ9nKn3Y4gh0uU5U1xva/WI2Om2fE/vS2nO1mT6G1JfY0+08O3O2j12p2HB+ew72Y7vsuh53t2D6DtGsa9tGwEpmWX73tOkb/jmQHXquYE/qGu5QWGW6wdeajRlh2a7qhW7oWaH5qNQiHgdOT54Y+e7Ucuai3pW349hGaaxoOb5EWOpEPruh6xlu4kFhGh5waWeYidOg5mP2vYqS+EYqXJZgqYp0l8fhvH9ruglsfBnETtxD5PuW0ERrZv72VeZkrvR2HxlJoYNp5zayURulcUh0mrhJEYhWGu6rnJCF6SxaiqRG8X8YlznJqWJGBQxYbNklp65Tm8VyZhmXYc24VeWF/bxlF15mB2JXZs2BkVc18amWltFuWRmn9lu6nSVpGFdQ+8b9RVY3NoNLnEcNyEpaF+W7oVtUBZZQXhk5oUOThTnRRla1ZQOMkJZ5T5+dNoENQ+zbbQ223xuW2mreuVmMZVdnlYONUuZhvi0EAA==="
+  }
+}
