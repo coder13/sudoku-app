@@ -1,6 +1,6 @@
 import { ArrowUpDown, Check, Eraser, Link2 } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
-import { alternateColorShade, COLORS, COLOR_FAMILIES, DIGITS, type ColorTarget } from '../sudoku/game'
+import { alternateColorShade, COLORS, COLOR_FAMILIES, type ColorTarget } from '../sudoku/game'
 import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 
 type Props = {
@@ -13,8 +13,6 @@ type Props = {
   onSwitchShade: () => void
   onStop: () => void
   onClear: () => void
-  highlightedDigit: number | null
-  onHighlightDigit: (digit: number | null) => void
   canColorStrongLinks: boolean
   strongLinkMessage: string
   onColorStrongLinks: () => void
@@ -57,7 +55,7 @@ export function ColorSwatches({ brush, disabled, onColor, onSwitchShade }: Pick<
 }
 
 export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onSwitchShade, onStop, onClear,
-  highlightedDigit, onHighlightDigit, canColorStrongLinks, strongLinkMessage, onColorStrongLinks }: Props) {
+  canColorStrongLinks, strongLinkMessage, onColorStrongLinks }: Props) {
   const subject = target === 'cell' ? 'cells' : 'candidates'
   const instructions = disabled ? 'Coloring is available while playing.'
     : brush === null ? target === 'cell'
@@ -69,12 +67,6 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
     <section className="cell-color-palette" aria-label="Coloring">
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
       <div className="color-link-tools">
-        <span className="color-link-label">Highlight number</span>
-        <div className="color-highlight-digits" role="group" aria-label="Highlight candidates while coloring">
-          {DIGITS.map((digit) => <button type="button" key={digit} className="button secondary"
-            aria-label={`Highlight ${digit}`} aria-pressed={highlightedDigit === digit} disabled={disabled}
-            onClick={() => onHighlightDigit(highlightedDigit === digit ? null : digit)}>{digit}</button>)}
-        </div>
         <button type="button" className="button secondary color-strong-links" disabled={disabled || !canColorStrongLinks}
           title="Follow every strong link for the highlighted number, alternating light and dark shades."
           onClick={onColorStrongLinks}><Link2 size={16} aria-hidden="true" /> Auto-color strong links</button>

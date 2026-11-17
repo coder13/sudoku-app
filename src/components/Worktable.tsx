@@ -409,7 +409,7 @@ export function Worktable({
     ? findStrongLinkGroups(colorLinkMasks, coloringDigit, variant?.puzzle) : { groups: [], conflictingGroups: 0 },
   [colorsVisible, colorLinkMasks, coloringDigit, variant])
   const canColorStrongLinks = colorLinks.groups.length > 0 && colorLinks.groups.length <= COLOR_FAMILIES.length && !colorLinks.conflictingGroups
-  const strongLinkMessage = !coloringDigit ? 'Highlight a number to find its strong links.'
+  const strongLinkMessage = !coloringDigit ? 'Select a number in the digit input to find its strong links.'
     : !displayedCandidates ? 'Generate candidates in every empty cell first.'
     : masks === undefined ? 'Loading candidates…'
     : !colorLinkMasks ? 'Check the grid and candidates before coloring links.'
@@ -867,7 +867,7 @@ export function Worktable({
   }
 
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected) {
-    if (brush !== null && colorTarget === 'candidate' && inputMode === 'value') {
+    if (brush !== null && inputMode === 'value') {
       highlightColorDigit(digit === 0 || digit === coloringDigit ? null : digit)
       return
     }
@@ -1257,12 +1257,10 @@ export function Worktable({
         boardRef.current?.querySelector<HTMLElement>(`[data-cell="${next}"]`)?.focus({ preventScroll: true })
       } else if (!shortcut && /^[1-9]$/.test(key)) {
         event.preventDefault()
-        if (colorTarget === 'candidate' && (paintingCandidates || colorMode) && event.repeat) return
+        if ((brush !== null || colorTarget === 'candidate' && colorMode) && event.repeat) return
         const digit = Number(key)
-        if (brush !== null && colorTarget === 'candidate') {
+        if (brush !== null) {
           highlightColorDigit(digit === coloringDigit ? null : digit)
-        } else if (brush !== null && !colorMode) {
-          if (digit <= COLORS.length) chooseColor(digit)
         } else input(digit)
       } else if (!shortcut && (key === 'delete' || key === 'backspace' || key === '0')) {
         event.preventDefault()
@@ -1636,7 +1634,6 @@ export function Worktable({
   const cellColorsPanel = (
     <CellColorPalette target={colorTarget} onTarget={changeColorTarget} brush={brush}
       hasColors={colorTarget === 'cell' ? game.position.colors.some(Boolean) : Boolean(game.position.candidateColors)}
-      highlightedDigit={coloringDigit} onHighlightDigit={highlightColorDigit}
       canColorStrongLinks={canColorStrongLinks} strongLinkMessage={strongLinkMessage} onColorStrongLinks={colorStrongLinks}
       disabled={cellColorsDisabled} onColor={chooseColor} onSwitchShade={switchColorShade}
       onStop={() => setColorBrush(null)} onClear={clearColors} />
