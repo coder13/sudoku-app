@@ -8,7 +8,9 @@ const isOptionalText = (value) => value === undefined || isText(value)
 const isSlug = (value) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
 
 function validLink(link) {
-  return isText(link?.label) && isText(link.href) && /^https?:\/\//i.test(link.href) && URL.canParse(link.href)
+  if (!isText(link?.label) || !isText(link.href)) return false
+  return (/^https?:\/\//i.test(link.href) && URL.canParse(link.href)) ||
+    (link.href.startsWith('/learn/') && isSlug(link.href.slice('/learn/'.length)))
 }
 
 function validCrop(crop) {
@@ -35,7 +37,7 @@ function checkLesson(lesson, original, examples) {
   requireValue(Array.isArray(lesson.blocks) && Array.isArray(lesson.references) &&
     lesson.references.every(validLink) && (lesson.credits === undefined || (Array.isArray(lesson.credits) &&
     lesson.credits.every(validLink))) && isOptionalText(lesson.referencesTitle) && isOptionalText(lesson.creditsPrefix),
-  `Enter link labels and complete http or https URLs for ${context}.`)
+  `Enter labels and Learn article links or complete http or https URLs for ${context}.`)
 
   const headings = new Set()
   const drills = []
@@ -56,6 +58,8 @@ function checkLesson(lesson, original, examples) {
       case 'diagram':
         requireValue(examples.includes(block.example) && validCrop(block.region) && validDiagramCopy(block.copy),
           `${label} needs a verified example, a crop within the board, and nonempty caption text.`)
+        requireValue(block.interactive === undefined || typeof block.interactive === 'boolean',
+          `${label} must either enable or disable the interactive proof.`)
         break
       case 'practice':
         requireValue(Array.isArray(block.drills) && block.drills.length > 0 &&

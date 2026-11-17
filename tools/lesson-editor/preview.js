@@ -44,12 +44,16 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
     field(element, label, (value) => { object[key] = value })
   }
   function diagram(figure, block) {
-    const caption = figure.querySelector('figcaption')
-    const [description, reason, outcome] = caption.children
     const override = (element, label, key) => field(element, label, (value) => {
       block.copy ??= {}
       block.copy[key] = value
     })
+    if (figure.matches('.lesson-proof-explorer')) {
+      override(figure.querySelector('.lesson-proof-intro'), 'Proof introduction', 'description')
+      return
+    }
+    const caption = figure.querySelector('figcaption')
+    const [description, reason, outcome] = caption.children
     override(description, 'Diagram caption', 'description')
     override(reason, 'Diagram explanation', 'reason')
     const outcomeNodes = outcome.matches('ul') ? Array.from(outcome.children) : [outcome]

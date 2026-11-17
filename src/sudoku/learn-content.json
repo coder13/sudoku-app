@@ -2105,6 +2105,427 @@
           ]
         }
       ]
+    },
+    {
+      "title": "Expert techniques",
+      "overview": "Use a pattern to narrow the cases you have to test. Start with the extra candidates in a Tridagon, follow the fins of a Kraken Fish, then work through a forcing net with a second split.",
+      "lessons": [
+        {
+          "id": "tridagon",
+          "title": "Tridagon",
+          "summary": "Find twelve cells that can’t all use the same three digits, then place the only candidate that can break the pattern.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "A Tridagon uses three cells in each of four boxes. In the right arrangement, those twelve cells cannot all be filled with the same three digits. Any candidate outside those three digits in the selected cells is a guardian. At least one guardian must be true. If there is only one, place it."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "spot-the-tridagon",
+              "title": "Find the box that runs the other way"
+            },
+            {
+              "type": "list",
+              "items": [
+                "Pick four boxes at the intersections of two groups of three rows and two groups of three columns. The boxes may have gaps between them.",
+                "Look for three cells in each box that use the same three core digits, allowing for a few extra candidates. The three cells must occupy different rows and different columns within their box. A selected cell can lack a core digit.",
+                "In each box, label its columns 1, 2, and 3 from left to right. Read the selected column in each row from top to bottom. The orders 123, 231, and 312 go one way. The orders 132, 321, and 213 go the other way. Three boxes must go one way and the fourth must go the other."
+              ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In the diagram, the upper-left box reads 213 and the other three read 123. Find every candidate outside 2, 4, and 8 in the marked cells. How many guardians are there?"
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "tridagon",
+              "copy": {
+                "description": "The marked cells in each box would have to use one 2, one 4, and one 8 if they used only the core digits.",
+                "reason": "Every way to arrange those digits in the first three boxes forces a repeat in the fourth. Only R6C3 has a candidate outside the core digits.",
+                "proofTitle": "Work through the four arrangements",
+                "trace": [
+                  {
+                    "assumption": "Suppose every marked cell takes a core digit. Call the digits in R1C2, R2C1, and R3C3 A, B, and C in that order.",
+                    "steps": [
+                      "In the upper-right box, read the marked cells from top to bottom. They must differ from A, B, C in the same three rows, so their order is B, C, A or C, A, B.",
+                      "In columns 1, 2, and 3, the upper-left box reads B, A, C. The lower-left box must differ in all three of those columns. Its order from left to right is A, C, B or C, B, A."
+                    ],
+                    "conclusion": "Combine the two choices above with the two choices to the left. Check each lower-right cell against the marked cells that share its row and column."
+                  },
+                  {
+                    "assumption": "Check the four ways to fill the upper-right and lower-left boxes.",
+                    "steps": [
+                      "With BCA above and ACB to the left, R4C4 can’t take B or A. R6C6 can’t take A or B. Both would take C.",
+                      "With BCA above and CBA to the left, R4C4 can’t take B or C. R5C5 can’t take C or B. Both would take A.",
+                      "With CAB above and ACB to the left, R4C4 can’t take C or A. R5C5 can’t take A or C. Both would take B.",
+                      "With CAB above and CBA to the left, R5C5 can’t take A or B. R6C6 can’t take B or A. Both would take C."
+                    ],
+                    "conclusion": "Every case repeats a digit in the lower-right box. One marked cell has to take a different digit, and the only option is 6 in R6C3."
+                  }
+                ]
+              }
+            },
+            {
+              "type": "practice",
+              "instruction": "Find the four triples and check their column orders. Then place the only guardian.",
+              "drills": [
+                {
+                  "example": "tridagon",
+                  "title": "Tridagon"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "SudokuWiki’s Tridagon walkthrough",
+              "href": "https://www.sudokuwiki.org/Tridagons"
+            }
+          ],
+          "credits": [
+            {
+              "label": "Philip Newman’s Tridagon collection",
+              "href": "https://github.com/denis-berthier/Classifications-of-TE3-Sudokus/blob/main/puzzles.txt"
+            }
+          ]
+        },
+        {
+          "id": "tridagon-forcing-net",
+          "title": "Tridagon Forcing Net",
+          "summary": "Try each guardian of a Tridagon and look for a candidate that every case rules out.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "A Tridagon can have several guardians. At least one must be true, and they may be true together. Start a separate proof from each guardian. If every branch rules out the same candidate, remove it. The branches can reach it by different routes."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "follow-the-guardians",
+              "title": "Start from each guardian"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The marked triples share 2, 4, and 9. The guardians are 8 in R1C8 and 5 in R3C9. Try each one and keep your notes separate. For the first branch, check what remains in R1C9 after you place 8. For the second, check the other candidates in R3C9 itself."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "tridagon-forcing-net",
+              "interactive": true,
+              "copy": {
+                "description": "The Tridagon needs 8 in R1C8, 5 in R3C9, or both.",
+                "reason": "If R1C8 takes 8, R1C9 takes 9. If R3C9 takes 5, that cell loses 9 directly.",
+                "proofTitle": "Compare the two guardian branches",
+                "trace": [
+                  {
+                    "assumption": "Assume R1C8 takes 8.",
+                    "steps": [
+                      "R1C9 loses 8 because it shares row 1 with R1C8.",
+                      "R1C9 has only 9 left, so it takes 9."
+                    ],
+                    "conclusion": "R3C9 loses 9 because it shares column 9 with R1C9."
+                  },
+                  {
+                    "assumption": "Assume R3C9 takes 5.",
+                    "steps": [
+                      "R3C9 has its digit, so it loses its other candidates."
+                    ],
+                    "conclusion": "This branch also removes 9 from R3C9. The Tridagon guarantees at least one branch applies."
+                  }
+                ]
+              }
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In a new grid, write down every guardian before following any of them. If you see a useful removal in the first branch, check that the other branches reach the same cell and digit."
+              ]
+            },
+            {
+              "type": "practice",
+              "instruction": "Find the guardians. Follow each one and remove a candidate they all rule out.",
+              "drills": [
+                {
+                  "example": "tridagon-forcing-net",
+                  "title": "Tridagon Forcing Net"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "SudokuWiki’s Tridagon cases",
+              "href": "https://www.sudokuwiki.org/Tridagons"
+            }
+          ],
+          "credits": [
+            {
+              "label": "Philip Newman’s Tridagon collection",
+              "href": "https://github.com/denis-berthier/Classifications-of-TE3-Sudokus/blob/main/puzzles.txt"
+            }
+          ]
+        },
+        {
+          "id": "kraken-fish-1",
+          "title": "Kraken Fish Type 1",
+          "summary": "Start with a removal the fish would give without its fins, then prove that each fin gives the same removal.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with one digit and a fish with fins. In a row-based fish, the base rows need one copy of the digit each. If the fin candidates are all false, those copies must use up the same number of cover columns. That gives you a target in a cover column outside the base rows. Keep the target if you can also rule it out from every fin separately."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "pick-the-target",
+              "title": "Pick the target before following the fins"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In the diagram, look at 2 in rows 2 and 6 and columns 7 and 8. If the three fin candidates are all false, where must those rows put their 2s? Then test each fin on its own. In this example, all three branches reach 4 in R8C7, which removes 2 from that cell.",
+                "Some links use an almost locked set. Look for empty cells in one house that have one more distinct candidate digit than they have cells. If a branch removes every occurrence of one of those digits, the cells must use all the other digits. Use that fact to find a placement or a removal outside the set."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "kraken-fish-1",
+              "copy": {
+                "description": "The fish uses 2 in base rows 2 and 6 and cover columns 7 and 8. The three fins are in R2C1, R6C2, and R6C9.",
+                "reason": "The fish rules out 2 in R8C7 when no fin is true. When a fin is true, its chain puts 4 in R8C7.",
+                "proofTitle": "Check the fish and all three fins",
+                "trace": [
+                  {
+                    "assumption": "Suppose no fin is true.",
+                    "steps": [
+                      "Row 2 has only R2C8 left for 2. Row 6 has only R6C7 left for 2."
+                    ],
+                    "conclusion": "The 2 in R6C7 rules out 2 in R8C7."
+                  },
+                  {
+                    "assumption": "Suppose R2C1 takes 2.",
+                    "steps": [
+                      "R2C1 loses 4, so R2C6 is the only place left for 4 in row 2.",
+                      "R2C6 takes 4 and removes 4 from R8C6. Row 8 must now put 4 in R8C7."
+                    ],
+                    "conclusion": "With 4 in R8C7, that cell loses 2."
+                  },
+                  {
+                    "assumption": "Suppose R6C2 takes 2.",
+                    "steps": [
+                      "In column 2, the set R1C2, R3C2, R4C2, R6C2, R7C2, and R8C2 loses its only candidate for 1. The six cells must use 2, 4, 5, 6, 7, and 9.",
+                      "Only R3C2 can take 4 in that set, and it removes 4 from R2C1 in the same box.",
+                      "As in the previous branch, that forces 4 into R2C6 and then into R8C7."
+                    ],
+                    "conclusion": "R8C7 loses 2."
+                  },
+                  {
+                    "assumption": "Suppose R6C9 takes 2.",
+                    "steps": [
+                      "In box 6, R4C7, R4C8, R4C9, R5C7, R5C8, and R6C7 now lose every 2. They must use 3, 5, 6, 7, 8, and 9, so their only 8 goes in R5C8.",
+                      "R5C8 takes 8 and removes it from R8C8. In row 8, the set R8C2, R8C3, R8C7, and R8C8 now has only 2, 4, 5, and 9. Only R8C7 can take 4."
+                    ],
+                    "conclusion": "R8C7 loses 2 again. The target fails whether all fins are false or any fin is true."
+                  }
+                ]
+              }
+            },
+            {
+              "type": "practice",
+              "instruction": "Find a removal in a cover line when the fins are out. Check it against every fin.",
+              "drills": [
+                {
+                  "example": "kraken-fish-1",
+                  "title": "Kraken Fish Type 1"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu’s guide to almost locked sets",
+              "href": "https://hodoku.sourceforge.net/en/tech_als.php"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu’s Kraken Fish practice position",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php#kf"
+            }
+          ]
+        },
+        {
+          "id": "kraken-fish-2",
+          "title": "Kraken Fish Type 2",
+          "summary": "Pick a cover line and follow its fish candidates and the fins to a shared removal, which can use a different digit.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose one cover line of the fish. If the fins are all false, the fish fills that cover line with its digit. Make a list of every fish candidate in the chosen cover line and every fin, even fins in other lines. At least one candidate on the list must be true. Follow each separately and look for a shared removal."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "build-the-case-list",
+              "title": "Count every way the cover can get its digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Reset to the same position used in Type 1. This time, rows 1 and 2 are the bases for the fish on 4, and columns 1 and 6 are its covers. Choose column 1. With both fins out, 4 in column 1 must be in R1C1 or R2C1. Add the fins R1C7 and R1C9. Try to find where the four cases agree. Check 7 in R5C9, even though the fish uses 4."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "kraken-fish-2",
+              "copy": {
+                "description": "Follow 4 from the two fish cells in column 1 and the two fin cells in row 1.",
+                "reason": "Each route rules out 7 in R5C9. Some routes force a digit in that cell and others lock 7 elsewhere in the same house.",
+                "proofTitle": "Follow all four starting candidates",
+                "trace": [
+                  {
+                    "assumption": "Suppose either R1C1 or R2C1 takes 4. Both cases start the same way.",
+                    "steps": [
+                      "Either placement removes 4 from R5C1.",
+                      "The six cells R5C1, R5C3, and R5C6 through R5C9 now have six digits between them. They must use 1, 2, 6, 7, 8, and 9. Only R5C9 can take 1."
+                    ],
+                    "conclusion": "R5C9 takes 1 and loses 7."
+                  },
+                  {
+                    "assumption": "Suppose R1C7 takes 4.",
+                    "steps": [
+                      "R8C7 loses 4 and takes its other candidate, 2.",
+                      "In box 6, the set R4C7 through R4C9, R5C7, and R6C7 loses its 2s in column 7. The five cells must now use 3, 5, 6, 7, and 9."
+                    ],
+                    "conclusion": "One of those cells takes 7, so R5C9 loses 7 in the same box."
+                  },
+                  {
+                    "assumption": "Suppose R1C9 takes 4.",
+                    "steps": [
+                      "R3C9 and R9C9 both lose 4. They form a naked pair on 2 and 7 in column 9."
+                    ],
+                    "conclusion": "That pair uses up 7 in column 9, so R5C9 loses 7."
+                  }
+                ]
+              }
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "On a fresh grid, try the cover with fewer fish candidates first. A short case list gives you fewer chains to check. Before removing anything, compare the exact digits and cells at the ends of those chains."
+              ]
+            },
+            {
+              "type": "practice",
+              "instruction": "Choose a cover, list its fish candidates and the fins, and find one removal they all force.",
+              "drills": [
+                {
+                  "example": "kraken-fish-2",
+                  "title": "Kraken Fish Type 2"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu’s guide to almost locked sets",
+              "href": "https://hodoku.sourceforge.net/en/tech_als.php"
+            }
+          ],
+          "credits": [
+            {
+              "label": "HoDoKu’s Kraken Fish practice position",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php#kf"
+            }
+          ]
+        },
+        {
+          "id": "nested-forcing-net",
+          "title": "Nested Forcing Nets",
+          "summary": "Keep one assumption in force while testing a second choice. Rule out the first assumption if both cases break a rule.",
+          "blocks": [
+            {
+              "type": "text",
+              "paragraphs": [
+                "Sometimes a forcing net stalls before you can confirm or contradict its starting assumption. Keep that assumption and the deductions it forced. Then test both possibilities for a second candidate. If both tests break a rule, the first assumption is impossible."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "split-within-a-split",
+              "title": "Keep the first assumption in both cases"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start by placing 1 in R5C4 in your notes. Row 5 loses its other candidates for 1, and box 4 must then put 1 in R4C2. Keep those effects for both cases. Use 5 in R1C6 for the second choice. Row 1 has only two places for 5, so if R1C6 loses it, R1C7 takes it.",
+                "Before opening the proof, follow the two cases on separate copies of the grid. To switch cases, return to the grid just after the first assumption."
+              ]
+            },
+            {
+              "type": "list",
+              "items": [
+                "When R1C6 takes 5, remove 5 from R5C6 and R6C6. That puts 5 in R5C2 and R6C4. Follow the consequences and track the four places for 2 in column 4.",
+                "When R1C6 loses 5, put it in R1C7. That takes 5 out of R8C7 and R9C7. Check where 5 now has to go in row 8 and in box 9, then track the four places for 8 in column 9."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "nested-forcing-net",
+              "region": {
+                "row": 0,
+                "column": 0,
+                "rows": 9,
+                "columns": 9
+              },
+              "copy": {
+                "description": "The marked deductions follow from assuming 1 in R5C4. The second choice is whether to put 5 in R1C6.",
+                "reason": "With 5 in R1C6, column 4 runs out of places for 2. Without 5 in R1C6, column 9 runs out of places for 8. Both cases started with 1 in R5C4, so remove it.",
+                "patternLabel": "Effect of the first assumption",
+                "accentLabel": "Second choice",
+                "proofTitle": "Replay the first assumption and both cases"
+              }
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For a new net, try a second choice that quickly forces another placement in either case. Write down the exact cell or house that breaks in each branch. If one branch merely stalls, keep looking. You can remove the first candidate only after you have contradicted both cases."
+              ]
+            },
+            {
+              "type": "practice",
+              "instruction": "Try a starting candidate and keep its forced moves. Find a second choice that breaks the grid in both cases.",
+              "drills": [
+                {
+                  "example": "nested-forcing-net",
+                  "title": "Nested Forcing Net"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu’s guide to forcing chains and nets",
+              "href": "https://hodoku.sourceforge.net/en/tech_last.php"
+            }
+          ],
+          "credits": [
+            {
+              "label": "Sudoku Explainer’s nested forcing examples",
+              "href": "https://github.com/SudokuMonster/SukakuExplainer/wiki/SE121---Some-interesting-Sudokus#nested-forcing-chains"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
