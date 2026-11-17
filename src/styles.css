@@ -694,20 +694,28 @@ svg { flex-shrink: 0; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-4);
 }
-.hint-card-actions .button { min-height: 36px; margin-inline-start: auto; font-size: 13px; }
-.hint-card-actions .button.secondary { margin-inline-start: 0; }
+.hint-card-actions .button { min-height: 32px; padding-inline: var(--space-8); font-size: 12px; }
+.hint-card-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-inline-start: auto;
+}
 .hint-card-navigation {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-4);
   color: var(--muted);
   font-size: 13px;
   font-weight: 720;
   font-variant-numeric: tabular-nums;
 }
-.hint-card-navigation span { min-width: 5ch; text-align: center; }
+.hint-card-navigation .icon-button { width: 32px; min-height: 32px; }
+.hint-card-navigation .icon-button svg { width: 14px; height: 14px; }
+.hint-card-navigation span { min-width: 4ch; text-align: center; }
 .hint-card p { margin-top: var(--space-12); color: var(--ink); font-size: 14px; line-height: 1.5; }
 .hint-card-reason, .hint-card-removals { margin-top: var(--space-14); }
 .hint-card :is(.hint-card-reason, .hint-card-removals) h3 { margin: 0; font-size: 13px; font-weight: 780; }
@@ -2501,12 +2509,47 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-panel-layout.with-hint .mobile-hint-panel { height: clamp(130px, 24dvh, 205px); }
   .mobile-panel-layout .mobile-hint-panel .hint-card { max-height: 100%; }
   .mobile-hint-panel .hint-card-heading { grid-template-columns: 38px minmax(0, 1fr) 44px; gap: var(--space-4) var(--space-8); }
-  .mobile-hint-panel .hint-card-actions { grid-column: 1 / -1; grid-row: auto; }
-  .mobile-hint-panel .hint-card-actions .button { padding-inline: var(--space-10); }
-  .mobile-hint-panel .hint-card-navigation { gap: var(--space-4); }
-  .mobile-hint-panel .hint-card-navigation span { min-width: 4ch; }
-  .mobile-hint-panel :is(.icon-button, .hint-card-actions .button) { min-height: 44px; }
-  .mobile-hint-panel .icon-button { width: 44px; }
+  .mobile-hint-panel .hint-card-actions { grid-column: 1 / -1; grid-row: auto; column-gap: var(--space-2); }
+  .mobile-hint-panel .icon-button { width: 44px; min-height: 44px; }
+  .mobile-hint-panel .hint-card-navigation { gap: 0; font-size: 12px; }
+  .mobile-hint-panel .hint-card-actions .button { padding-inline: var(--space-4); }
+  .mobile-hint-panel .hint-card-actions :is(.button, .icon-button) {
+    --hint-button-fill: var(--surface-raised);
+    --hint-button-border: var(--border);
+    position: relative;
+    isolation: isolate;
+    min-width: 44px;
+    min-height: 44px;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+  /* Draw a smaller button inside the full tap target. */
+  .mobile-hint-panel .hint-card-actions button::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 5px -1px;
+    border: 1px solid var(--hint-button-border);
+    border-radius: 8px;
+    background: var(--hint-button-fill);
+    pointer-events: none;
+  }
+  .mobile-hint-panel .hint-card-navigation .icon-button::before { inset: 5px; }
+  .mobile-hint-panel .hint-card-actions .primary {
+    --hint-button-fill: var(--primary-bg);
+    --hint-button-border: transparent;
+  }
+  @media (hover: hover) {
+    .mobile-hint-panel .hint-card-actions button:not(:disabled):hover {
+      --hint-button-fill: var(--surface-hover);
+      --hint-button-border: var(--border-strong);
+    }
+    .mobile-hint-panel .hint-card-actions .primary:not(:disabled):hover {
+      --hint-button-fill: var(--primary-hover);
+      --hint-button-border: transparent;
+    }
+  }
   .mobile-hint-panel .hint-card p { margin-top: 7px; }
 
   .mobile-completion .completion-frame { display: block; width: 100%; }
