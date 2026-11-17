@@ -5,7 +5,7 @@ import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, markSolveUntimed, puzzleIdentity, type Game, type Position } from './game.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
-  calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent,
+  calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
   type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
 } from './player-rating.ts'
 import { puzzleTiming } from './puzzle-timing.ts'
@@ -126,6 +126,7 @@ function hintEvidence(game: Game): RatingEvent | undefined {
   if (!attempt || attempt.outcome || attempt.lastHintAt === undefined || (attempt.requested?.length ?? 0) < 2) return
   return {
     id: `hints:${game.id}`, gameId: game.id, givens: game.givens, puzzleKey: puzzleIdentity(game),
+    ratingVersion: attempt.ratingVersion,
     difficulty: attempt.grade.difficulty, at: attempt.lastHintAt, finish: 'hints',
     viewed: attempt.viewed.length, applied: attempt.applied.length, hintsRequested: attempt.requested?.length,
     analysisUsed: attempt.analysisUsed, elapsed: ratingElapsed(game, attempt),
@@ -143,6 +144,7 @@ function playerRatingFor(games: readonly Game[]) {
       const elapsed = game.timeUntracked ? 0 : game.elapsed
       events.push({
         id: `saved:${game.id}`, gameId: game.id, givens: game.givens, puzzleKey, difficulty: game.difficulty,
+        ratingVersion: game.ratingAttempt?.ratingVersion,
         at: game.created + elapsed * 1000, finish: 'solved', elapsed, viewed: 0, applied: 0, estimated: true,
       })
     } else {
@@ -160,6 +162,7 @@ function finishAttempt(game: Game, finish: RatingFinish): Game {
   for (const event of ratingEvents.values()) at = Math.max(at, event.at + 1)
   const outcome: RatingEvent = {
     id: createGameId(), gameId: game.id, givens: game.givens, puzzleKey: puzzleIdentity(game), difficulty: attempt.grade.difficulty,
+    ratingVersion: PLAYER_RATING_VERSION,
     at,
     finish, viewed: attempt.viewed.length, applied: attempt.applied.length, elapsed: ratingElapsed(game, attempt),
   }
@@ -184,14 +187,15 @@ function mergeRatingAttempt(game: Game): Game {
     const singlesAssistance = saved.singlesAssistance === 'all' ? 'all' : attempt.singlesAssistance ?? saved.singlesAssistance
     const analysisUsed = attempt.analysisUsed || saved.analysisUsed ? true : undefined
     const lastHintAt = Math.max(attempt.lastHintAt ?? 0, saved.lastHintAt ?? 0) || undefined
+    const ratingVersion = attempt.ratingVersion ?? saved.ratingVersion
     const priorElapsed = Math.max(attempt.priorElapsed, saved.priorElapsed)
     const timeUntracked = attempt.timeUntracked || saved.timeUntracked
     if (outcome !== attempt.outcome || priorElapsed !== attempt.priorElapsed ||
       timeUntracked !== attempt.timeUntracked ||
       viewed.length !== attempt.viewed.length || applied.length !== attempt.applied.length ||
       requested.length !== (attempt.requested?.length ?? 0) || lastHintAt !== attempt.lastHintAt ||
-      singlesAssistance !== attempt.singlesAssistance || analysisUsed !== attempt.analysisUsed) {
-      return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, singlesAssistance, analysisUsed, outcome, priorElapsed, timeUntracked, lastHintAt } }
+      singlesAssistance !== attempt.singlesAssistance || analysisUsed !== attempt.analysisUsed || ratingVersion !== attempt.ratingVersion) {
+      return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, singlesAssistance, analysisUsed, outcome, priorElapsed, timeUntracked, lastHintAt, ratingVersion } }
     }
   } catch { /* The in-memory attempt still has this tab’s assistance. */ }
   return game
@@ -394,6 +398,7 @@ export const roomStore = {
     const games = room.games.map((game) => game.id === id ? next : game)
     const evidenceChanged = newOutcome || next.difficulty !== current.difficulty ||
       next.ratingAttempt?.lastHintAt !== current.ratingAttempt?.lastHintAt ||
+      next.ratingAttempt?.ratingVersion !== current.ratingAttempt?.ratingVersion ||
       (!next.ratingAttempt?.outcome && next.position.entries !== current.position.entries && isSolved(next) !== isSolved(current))
     publish({ ...room, games,
       storageAvailable: room.storageAvailable && saved && outcomeSaved && seenSaved,

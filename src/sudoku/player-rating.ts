@@ -1,11 +1,12 @@
-import { isDifficulty } from './difficulty.ts'
+import { isDifficulty, currentDifficulty, DIFFICULTY_LEVELS } from './difficulty.ts'
 import type { DeductionAction, Difficulty } from './engine.ts'
 
 export const STARTING_PLAYER_RATING = 855
+export const PLAYER_RATING_VERSION = 2
 
-const puzzleRatings: Record<Difficulty, number> = { easy: 800, medium: 860, hard: 920, unfair: 980, extreme: 1040 }
-const tiers = Object.keys(puzzleRatings) as Difficulty[]
-const fastSolveSeconds: Record<Difficulty, number> = { easy: 120, medium: 180, hard: 300, unfair: 480, extreme: 720 }
+const puzzleRatings: Record<Difficulty, number> = { beginner: 760, easy: 800, medium: 860, tricky: 890, hard: 920, 'very-hard': 950, expert: 980, master: 1010, extreme: 1040, impossible: 1100, unfair: 980 }
+const legacyTiers: readonly Difficulty[] = ['easy', 'medium', 'hard', 'unfair', 'extreme']
+const fastSolveSeconds: Record<Difficulty, number> = { beginner: 90, easy: 120, medium: 180, tricky: 240, hard: 300, 'very-hard': 420, expert: 480, master: 600, extreme: 720, impossible: 1200, unfair: 480 }
 const EARLY_RESULTS = 4
 
 export type RatingFinish = 'solved' | 'hints' | 'too-hard' | 'solution'
@@ -16,6 +17,7 @@ export type RatingEvent = {
   gameId: string
   givens: string
   puzzleKey?: string
+  ratingVersion?: typeof PLAYER_RATING_VERSION
   difficulty: Difficulty
   at: number
   finish: RatingFinish
@@ -39,6 +41,7 @@ export type RatingAttempt = {
   priorElapsed: number
   timeUntracked?: true
   lastHintAt?: number
+  ratingVersion?: typeof PLAYER_RATING_VERSION
   mode?: RatingMode
   outcome?: RatingEvent
 }
@@ -64,7 +67,7 @@ export const initialPlayerRating: PlayerRating = {
 }
 
 export function ratingAttemptFor(grade: RatingAttempt['grade'], mode?: RatingMode): RatingAttempt {
-  return { grade, viewed: [], applied: [], requested: [], priorElapsed: 0, mode }
+  return { grade, viewed: [], applied: [], requested: [], priorElapsed: 0, ratingVersion: PLAYER_RATING_VERSION, mode }
 }
 
 export function hintKey(actions: readonly DeductionAction[]): string {
@@ -84,8 +87,11 @@ export function addRatingHints(attempt: RatingAttempt, keys: readonly string[], 
   const used = applied ? [...new Set([...attempt.applied, ...keys])] : attempt.applied
   const requested = request ? [...new Set([...(attempt.requested ?? []), request.position])] : attempt.requested
   const requestedMore = (requested?.length ?? 0) > (attempt.requested?.length ?? 0)
-  return viewed.length === attempt.viewed.length && used.length === attempt.applied.length && !requestedMore
-    ? attempt : { ...attempt, viewed, applied: used, requested, lastHintAt: requestedMore ? request?.at : attempt.lastHintAt }
+  if (viewed.length === attempt.viewed.length && used.length === attempt.applied.length && !requestedMore) return attempt
+  return {
+    ...attempt, viewed, applied: used, requested,
+    ...(requestedMore && request ? { lastHintAt: request.at, ratingVersion: PLAYER_RATING_VERSION } : {}),
+  }
 }
 
 export function addAnalysisAssistance(attempt: RatingAttempt): RatingAttempt {
@@ -106,6 +112,7 @@ export function isRatingEvent(data: unknown): data is RatingEvent {
   const event = data as RatingEvent
   return typeof event.id === 'string' && typeof event.gameId === 'string' && typeof event.givens === 'string' && /^[0-9]{81}$/.test(event.givens) &&
     (event.puzzleKey === undefined || typeof event.puzzleKey === 'string' && event.puzzleKey.length > 0 && event.puzzleKey.length <= 20_000) &&
+    validRatingVersion(event.ratingVersion) &&
     (event.estimated === undefined || event.estimated === true && event.finish === 'solved') &&
     isDifficulty(event.difficulty) && ['solved', 'hints', 'too-hard', 'solution'].includes(event.finish) &&
     validRatingMode(event.mode, event.difficulty) &&
@@ -118,7 +125,7 @@ export function isRatingEvent(data: unknown): data is RatingEvent {
 
 export function isRatingAttempt(data: unknown): data is RatingAttempt {
   if (!data || typeof data !== 'object') return false
-  const { grade, viewed, applied, requested, analysisUsed, singlesAssistance, priorElapsed, timeUntracked, lastHintAt, outcome, mode } = data as RatingAttempt
+  const { grade, viewed, applied, requested, analysisUsed, singlesAssistance, priorElapsed, timeUntracked, lastHintAt, ratingVersion, outcome, mode } = data as RatingAttempt
   return Boolean(grade && isDifficulty(grade.difficulty) && Number.isSafeInteger(grade.points) && grade.points >= 0 &&
     Number.isSafeInteger(grade.scoringVersion) && grade.scoringVersion > 0 && Array.isArray(grade.techniqueOrder) &&
     grade.techniqueOrder.length > 0 && grade.techniqueOrder.every((id) => typeof id === 'string') &&
@@ -128,10 +135,15 @@ export function isRatingAttempt(data: unknown): data is RatingAttempt {
     (analysisUsed === undefined || analysisUsed === true) &&
     validSinglesAssistance(singlesAssistance) &&
     (lastHintAt === undefined || Number.isSafeInteger(lastHintAt) && lastHintAt >= 0) &&
+    validRatingVersion(ratingVersion) &&
     Number.isSafeInteger(priorElapsed) && priorElapsed >= 0 &&
     (timeUntracked === undefined || timeUntracked === true) &&
     validRatingMode(mode, grade.difficulty) &&
     (outcome === undefined || (isRatingEvent(outcome) && outcome.mode === mode)))
+}
+
+function validRatingVersion(version: unknown) {
+  return version === undefined || version === PLAYER_RATING_VERSION
 }
 
 function validRatingMode(mode: unknown, difficulty: Difficulty) {
@@ -156,11 +168,21 @@ function speedBonus(elapsed: number, pastTimes: number[]): number {
 }
 
 export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRating {
-  const ordered = [...events].sort((a, b) => a.at - b.at || a.id.localeCompare(b.id))
+  // Production outcomes predate versioned events. Replay them on the ladder that
+  // earned their ratings, then carry the same state into the ten-tier ladder.
+  const legacy: RatingEvent[] = []
+  const current: RatingEvent[] = []
+  for (const event of events) {
+    const bucket = event.ratingVersion === undefined && legacyTiers.includes(event.difficulty) ? legacy : current
+    bucket.push(event)
+  }
+  const byTime = (a: RatingEvent, b: RatingEvent) => a.at - b.at || a.id.localeCompare(b.id)
+  const ordered = [...legacy.sort(byTime), ...current.sort(byTime)]
   const results = new Map<string, RatedResult>()
   const seen = new Set<string>()
   const cleanTimes = new Map<Difficulty, number[]>()
-  const struggled = new Set<number>()
+  let struggled = new Set<number>()
+  let tiers = legacyTiers
   let rating = STARTING_PLAYER_RATING
   let tier = tiers.indexOf(initialPlayerRating.recommended)
   let observed = 0
@@ -168,12 +190,19 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRati
   let fixedEvidence: (number | undefined)[] = []
   let atTier: number[] = []
 
-  for (const event of ordered) {
+  for (const [index, event] of ordered.entries()) {
+    if (index === legacy.length) {
+      const currentTier = (legacyTier: number) => DIFFICULTY_LEVELS.indexOf(currentDifficulty(legacyTiers[legacyTier]))
+      tier = currentTier(tier)
+      fixedEvidence = fixedEvidence.map(value => value === undefined ? undefined : currentTier(value))
+      struggled = new Set([...struggled].map(currentTier))
+      tiers = DIFFICULTY_LEVELS
+    }
     const key = event.puzzleKey ?? event.givens
     if (seen.has(key)) continue
     seen.add(key)
     const { difficulty, elapsed } = event
-    const playedTier = tiers.indexOf(difficulty)
+    const playedTier = tiers.indexOf(tiers === legacyTiers ? difficulty : currentDifficulty(difficulty))
     const solved = event.finish === 'solved'
     if (event.estimated) {
       // Older solves demonstrate completion, but their assistance and speed are unknown.
@@ -189,14 +218,14 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRati
     const applied = legacySingles ? 0 : event.applied
     const onlySingles = singlesAssistance === 'all'
     const analysisUsed = event.analysisUsed === true
-    const skipEasy = Boolean(singlesAssistance && event.mode === undefined && difficulty === 'easy')
+    const skipEasy = Boolean(singlesAssistance && event.mode === undefined && (difficulty === 'beginner' || difficulty === 'easy'))
     if (!analysisUsed && solved && viewed === 0 && (onlySingles || skipEasy)) {
       if (skipEasy && tier === playedTier) {
-        tier++
+        tier = tiers.indexOf('medium')
         recent = []
         atTier = []
       }
-      results.set(event.gameId, { event, before: rating, after: rating, recommended: tiers[tier], speedBonus: 0 })
+      results.set(event.gameId, { event, before: rating, after: rating, recommended: currentDifficulty(tiers[tier]), speedBonus: 0 })
       continue
     }
     const early = !analysisUsed && observed++ < EARLY_RESULTS
@@ -214,7 +243,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRati
     if (analysisUsed) {
       // A technique inventory reveals too much to count as independent solving.
       // It can weakly lower the estimate, but never raise it or change Auto difficulty.
-      results.set(event.gameId, { event, before, after: rating, recommended: tiers[tier], speedBonus: 0 })
+      results.set(event.gameId, { event, before, after: rating, recommended: currentDifficulty(tiers[tier]), speedBonus: 0 })
       continue
     }
     const fixedTier = event.mode === 'fixed' && unaided ? playedTier : undefined
@@ -235,7 +264,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRati
     if (fixedCalibration) {
       nextTier = early ? demonstratedTier : tier + 1
     } else if (early && (fastSolve || solvedBeyondSingles) && playedTier >= tier - 1) {
-      nextTier = Math.min(tiers.length - 1, tier + 2, Math.max(tier, playedTier + (difficulty === 'easy' ? 2 : 1)))
+      nextTier = Math.min(tiers.length - 1, tier + 2, Math.max(tier, playedTier + ((difficulty === 'beginner' || difficulty === 'easy') ? 2 : 1)))
       for (const challengedTier of struggled) {
         if (challengedTier > playedTier && challengedTier >= tier) nextTier = Math.min(nextTier, challengedTier)
       }
@@ -253,9 +282,9 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>): PlayerRati
       recent = []
       atTier = []
     }
-    const result: RatedResult = { event, before, after: rating, recommended: tiers[tier], speedBonus: Math.min(bonus, 1150 - baseRating) }
+    const result: RatedResult = { event, before, after: rating, recommended: currentDifficulty(tiers[tier]), speedBonus: Math.min(bonus, 1150 - baseRating) }
     if (fixedCalibration) result.fixedCalibration = true
     results.set(event.gameId, result)
   }
-  return { rating, recommended: tiers[tier], count: seen.size, results }
+  return { rating, recommended: currentDifficulty(tiers[tier]), count: seen.size, results }
 }

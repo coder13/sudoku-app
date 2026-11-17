@@ -1756,6 +1756,7 @@ fn visit_technique(
         technique,
         Technique::FullHouse
             | Technique::HiddenSingle
+            | Technique::HiddenSingleBox
             | Technique::Pointing
             | Technique::Claiming
             | Technique::NakedPair
@@ -1788,7 +1789,10 @@ fn visit_technique(
                     ))?;
                 }
             }
-            Technique::HiddenSingle => {
+            Technique::HiddenSingle | Technique::HiddenSingleBox => {
+                if technique == Technique::HiddenSingleBox && !matches!(house, House::Box(_)) {
+                    continue;
+                }
                 for digit in 1..=9 {
                     let mut positions = positions_for_digit(&cells, masks, digit);
                     if let (Some(cell), None) = (positions.next(), positions.next()) {
@@ -2111,18 +2115,18 @@ mod tests {
         let HintChoices::Choices(choices) = hint_choices(&board, None).unwrap() else {
             panic!("expected multiple choices");
         };
-        use Technique::{HiddenSingle, NakedSingle};
+        use Technique::{HiddenSingleBox, NakedSingle};
         let expected = [
+            (HiddenSingleBox, 5, 8),
+            (HiddenSingleBox, 24, 5),
+            (HiddenSingleBox, 38, 6),
+            (HiddenSingleBox, 47, 3),
+            (HiddenSingleBox, 51, 8),
+            (HiddenSingleBox, 64, 8),
+            (HiddenSingleBox, 78, 1),
             (NakedSingle, 40, 5),
             (NakedSingle, 59, 7),
             (NakedSingle, 62, 4),
-            (NakedSingle, 70, 3),
-            (HiddenSingle, 5, 8),
-            (HiddenSingle, 7, 1),
-            (HiddenSingle, 22, 4),
-            (HiddenSingle, 24, 5),
-            (HiddenSingle, 38, 6),
-            (HiddenSingle, 42, 7),
         ];
         let actual: Vec<_> = choices
             .iter()
@@ -2240,17 +2244,16 @@ mod tests {
     #[test]
     fn next_deduction_uses_established_removals_and_reserves_the_answer_for_the_final_stage() {
         let mut snapshot = PositionSnapshot::new(parse_givens(WARMUP).unwrap());
-        let original = next_deduction_at(&snapshot).unwrap().unwrap();
+        let original = next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]).unwrap().unwrap();
         assert_eq!(
             original.deduction.actions,
             [HintAction::Place(Candidate { cell: 40, digit: 5 })]
         );
 
         snapshot.eliminations[2] = digit_bit(1) | digit_bit(2);
-        let stages = next_deduction_at(&snapshot).unwrap().unwrap();
-        let HintChoices::Choices(choices) = hints_at(&snapshot).unwrap() else {
-            panic!("expected multiple choices");
-        };
+        let stages = next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]).unwrap().unwrap();
+        let choices = ranked_hints(&snapshot.values().unwrap(), snapshot.removals(), 10, &[Technique::HiddenSingleBox]).unwrap();
+        assert!(choices.len() >= 2);
         assert_eq!(stages.deduction, choices[0]);
         assert_eq!(stages.technique, Technique::NakedSingle);
         assert_eq!(
@@ -2271,7 +2274,7 @@ mod tests {
         );
         snapshot.eliminations[2] |= digit_bit(4);
         assert_eq!(
-            next_deduction_at(&snapshot),
+            next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]),
             Err(HintError::InvalidEliminations)
         );
     }

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { validateContent } from './validate.mjs'
+import foundationVisuals from '../../src/sudoku/foundation-visuals.json' with { type: 'json' }
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const dataFile = join(root, 'src/sudoku/learn-content.json')
@@ -46,7 +47,8 @@ function json(response, status, result) {
 
 async function handleContent(request, response, vite) {
   if (request.method === 'GET') {
-    json(response, 200, { ...readContent(), examples: readExamples() })
+    json(response, 200, { ...readContent(), examples: readExamples(),
+      foundationVisuals: Object.fromEntries(Object.entries(foundationVisuals).map(([id, visual]) => [id, visual.title])) })
     return
   }
   if (request.method !== 'PUT') return json(response, 405, { error: 'Use GET or PUT.' })

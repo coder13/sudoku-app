@@ -34,3 +34,15 @@ required-features = ["wasm-api"]
 name = "sudoku-engine"
 path = "src/bin/sudoku-engine.rs"
 required-features = ["cli"]
+
+[[example]]
+name = "quality_audit"
+required-features = ["wasm-api"]
+
+[[example]]
+name = "quality_recheck"
+required-features = ["wasm-api"]
+
+[[example]]
+name = "certify_bank"
+required-features = ["wasm-api"]

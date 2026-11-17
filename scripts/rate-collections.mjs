@@ -13,7 +13,7 @@ async function run(request) {
   return response.value
 }
 
-const { defaultOrder } = await run({ type: 'techniques' })
+const { difficultyOrder } = await run({ type: 'techniques' })
 const output = []
 const seen = new Set()
 for (const filename of ['nikoli-100.json', 'sudoku-exchange.json']) {
@@ -25,7 +25,7 @@ for (const filename of ['nikoli-100.json', 'sudoku-exchange.json']) {
     if (await run({ type: 'analyze', values: puzzle.givens }) !== 'unique') {
       throw new Error('Puzzle does not have one solution: ' + puzzle.id)
     }
-    const rating = await run({ type: 'rate', values: puzzle.givens, techniqueOrder: defaultOrder })
+    const rating = await run({ type: 'rate', values: puzzle.givens, techniqueOrder: difficultyOrder })
     if (rating.status === 'stalled') throw new Error('No complete logical solve: ' + puzzle.id)
     Object.assign(puzzle, {
       difficulty: rating.status.solved,

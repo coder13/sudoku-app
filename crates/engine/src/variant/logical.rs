@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// Version of the point costs and difficulty thresholds for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 4;
+pub const VARIANT_SCORING_VERSION: u32 = 5;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 
 macro_rules! catalog {
@@ -359,7 +359,7 @@ impl VariantPosition {
                     .hardest
                     .map_or(Difficulty::Easy, VariantTechnique::difficulty);
                 rating.status =
-                    SolveStatus::Solved(floor.max(Difficulty::from_score(rating.points)));
+                    SolveStatus::Solved(floor);
                 break;
             }
             let Some(step) = order

@@ -1,8 +1,7 @@
 import { useId } from 'react'
+import { boardLinkEndpoints, type BoardPoint } from '../sudoku/board-link-geometry'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 
-type BoardPoint = { cell: number; digit?: number } | { cells: readonly number[]; digit: number }
-  | { candidates: readonly { cell: number; digit: number }[] }
 export type BoardRegion = { row: number; column: number; rows: number; columns: number }
 
 export type BoardLink = {
@@ -23,24 +22,6 @@ export type BoardAnnotations = {
 }
 
 const CELL = 10
-const CANDIDATE_INSET = 0.07
-
-function coordinates(point: BoardPoint): { x: number; y: number } {
-  if ('cells' in point || 'candidates' in point) {
-    const candidates = 'cells' in point ? point.cells.map(cell => ({ cell, digit: point.digit })) : point.candidates
-    const positions = candidates.map(coordinates)
-    return {
-      x: positions.reduce((sum, item) => sum + item.x, 0) / positions.length,
-      y: positions.reduce((sum, item) => sum + item.y, 0) / positions.length,
-    }
-  }
-  const { cell, digit } = point
-  const offset = (slot: number) => CANDIDATE_INSET + ((slot + .5) / 3) * (1 - CANDIDATE_INSET * 2)
-  return {
-    x: (cell % 9 + (digit ? offset((digit - 1) % 3) : .5)) * CELL,
-    y: (Math.floor(cell / 9) + (digit ? offset(Math.floor((digit - 1) / 3)) : .5)) * CELL,
-  }
-}
 
 export function BoardLinks({ links, region }: { links?: readonly BoardLink[]; region?: BoardRegion }) {
   const id = useId()
@@ -48,8 +29,9 @@ export function BoardLinks({ links, region }: { links?: readonly BoardLink[]; re
   const counts = new Map<string, number>()
   const items: BoardMark[] = []
   for (const { from, to, color, dashed, arrow } of links ?? []) {
-    const start = coordinates(from)
-    const end = coordinates(to)
+    const endpoints = boardLinkEndpoints(from, to)
+    if (!endpoints) continue
+    const { start, end } = endpoints
     const length = Math.hypot(end.x - start.x, end.y - start.y)
     if (length === 0) continue
     const dx = (end.x - start.x) / length

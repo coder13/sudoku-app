@@ -1,3 +1,5 @@
+import foundationVisuals from '../../src/sudoku/foundation-visuals.json' with { type: 'json' }
+
 function requireValue(valid, message) {
   if (!valid) throw new Error(message)
 }
@@ -68,6 +70,19 @@ function checkLesson(lesson, original, examples) {
         break
       case 'list':
         requireValue(isTextList(block.items), `${label} needs list text.`)
+        break
+      case 'table':
+        requireValue(isText(block.caption) && isTextList(block.columns) && Array.isArray(block.rows) && block.rows.length > 0 &&
+          block.rows.every((row) => isTextList(row) && row.length === block.columns.length), `${label} needs matching table columns and rows.`)
+        break
+      case 'concept-check':
+        requireValue(isText(block.title) && Array.isArray(block.questions) && block.questions.length > 1 &&
+          block.questions.every((question) => isText(question.prompt) && isTextList(question.options) && question.options.length > 1 &&
+            Number.isInteger(question.answer) && question.answer >= 0 && question.answer < question.options.length && isText(question.explanation)),
+          `${label} needs questions with valid answers and explanations.`)
+        break
+      case 'foundation-visual':
+        requireValue(Object.hasOwn(foundationVisuals, block.visual), `${label} needs a known foundation visual.`)
         break
       case 'diagram':
         requireValue(examples.includes(block.example) && validCrop(block.region) && validDiagramCopy(block.copy),

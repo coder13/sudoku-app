@@ -20,14 +20,14 @@ pub struct MoveAvailability {
 }
 
 impl LogicalSolve {
-    /// Count distinct enabled Easy moves at the start and after each deduction.
-    /// An unfinished grid with at most one Easy move is a bottleneck.
+    /// Count distinct enabled Beginner and Easy moves at the start and after each deduction.
+    /// An unfinished grid with at most one such move is a bottleneck.
     pub fn move_availability(&self) -> Vec<MoveAvailability> {
         let easy: Vec<_> = self
             .technique_order
             .iter()
             .copied()
-            .filter(|technique| technique.difficulty() == Difficulty::Easy)
+            .filter(|technique| technique.difficulty() <= Difficulty::Easy)
             .collect();
         self.positions()
             .map(|snapshot| {

@@ -61,3 +61,13 @@ pub fn builtin_templates() -> &'static [VerifiedTemplate] {
         })
     })
 }
+
+/// Distinct canonical candidates certified offline for Impossible generation.
+/// A transformed candidate must still pass the current generation checks.
+/// Source, license, and rebuild instructions are in `data/README.md`.
+pub fn impossible_templates() -> &'static [Board] {
+    static POOL: OnceLock<Vec<Board>> = OnceLock::new();
+    POOL.get_or_init(|| include_str!("../../data/impossible.txt").lines()
+        .map(|text| parse_givens(text).expect("an Impossible candidate has 81 cells"))
+        .collect())
+}

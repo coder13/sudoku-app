@@ -4,899 +4,899 @@
     "title": "Nikoli nhk2212m",
     "givens": "700600008000900500006040030230008000004000600000700091020030400001009000800001005",
     "difficulty": "easy",
-    "points": 338,
+    "points": 568,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2311h1",
     "title": "Nikoli nhk2311h1",
     "givens": "003005000070300020800060400010008005008020600300900010006070009020009040000400100",
     "difficulty": "medium",
-    "points": 494,
+    "points": 724,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2210e",
     "title": "Nikoli nhk2210e",
     "givens": "890000005500400000000380200071002000006070100000600380007069000000001009100000036",
-    "difficulty": "easy",
-    "points": 224,
-    "hardestTechnique": "naked-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 584,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2403h3",
     "title": "Nikoli nhk2403h3",
     "givens": "060080010100002003007500900200009100030000070001200008004008700900300001010040050",
-    "difficulty": "hard",
-    "points": 550,
+    "difficulty": "tricky",
+    "points": 820,
     "hardestTechnique": "swordfish",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2204m",
     "title": "Nikoli nhk2204m",
     "givens": "000100020003040800901007030060500008005000300200004070050200601007050400080009000",
     "difficulty": "easy",
-    "points": 350,
+    "points": 550,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2206e",
     "title": "Nikoli nhk2206e",
     "givens": "054000071300500006800079000090000800007080100002000030000120009900005004620000750",
-    "difficulty": "easy",
-    "points": 296,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 556,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2009h1",
     "title": "Nikoli nhk2009h1",
     "givens": "009207000600090050030000004001008200020060040003500700300000060080030001000809500",
     "difficulty": "medium",
-    "points": 464,
+    "points": 624,
     "hardestTechnique": "pointing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2403h2",
     "title": "Nikoli nhk2403h2",
     "givens": "003100052000009000800040006080002700001000400009600080100090008000200000670008300",
     "difficulty": "medium",
-    "points": 628,
+    "points": 828,
     "hardestTechnique": "locked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2402m",
     "title": "Nikoli nhk2402m",
     "givens": "006004009070010800800500070010020300400000008009060050050002001007050080300900400",
     "difficulty": "easy",
-    "points": 340,
+    "points": 500,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2012h2",
     "title": "Nikoli nhk2012h2",
     "givens": "040100805100007030009030000600200070000080000070005002000070400050900008902006010",
     "difficulty": "medium",
-    "points": 834,
+    "points": 1064,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2311h2",
     "title": "Nikoli nhk2311h2",
     "givens": "020008004700200800004070010040300005006000400500006090070020100005001003300600080",
     "difficulty": "medium",
-    "points": 460,
+    "points": 610,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2401h2",
     "title": "Nikoli nhk2401h2",
     "givens": "900100006030090080500004200001003040600080007090200800002700004050060070300005008",
     "difficulty": "medium",
-    "points": 756,
+    "points": 1036,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2208m",
     "title": "Nikoli nhk2208m",
     "givens": "290005700001400060000030002004050010100000007080060500800090000020003600007500094",
     "difficulty": "easy",
-    "points": 400,
+    "points": 520,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2401h3",
     "title": "Nikoli nhk2401h3",
     "givens": "006030800400200070050006001000100090005000400090005000700800010060009003003040200",
     "difficulty": "medium",
-    "points": 498,
+    "points": 678,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2009h2",
     "title": "Nikoli nhk2009h2",
     "givens": "900006004008000020030010500200500090004090800010007005002080060070000200100400003",
     "difficulty": "medium",
-    "points": 524,
+    "points": 694,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2110h2",
     "title": "Nikoli nhk2110h2",
     "givens": "080005004300200100002070090010000300700504002006000080020050800004003007900100050",
     "difficulty": "medium",
-    "points": 300,
+    "points": 600,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2109h2",
     "title": "Nikoli nhk2109h2",
     "givens": "004700300100008002009040050060007000500090001000800030080010200300500009007002600",
     "difficulty": "medium",
-    "points": 794,
+    "points": 1014,
     "hardestTechnique": "hidden-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2209m",
     "title": "Nikoli nhk2209m",
     "givens": "400005090007001002030020600005009001000000000200400800001070040600900300080600005",
     "difficulty": "easy",
-    "points": 408,
+    "points": 568,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2211h3",
     "title": "Nikoli nhk2211h3",
     "givens": "004900800000007020300010050050006001008000600600100070040080003020500000007009400",
     "difficulty": "medium",
-    "points": 658,
+    "points": 918,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2403m",
     "title": "Nikoli nhk2403m",
     "givens": "040600007100003090900080200030200000006040700000009050001070006090800001800001040",
     "difficulty": "easy",
-    "points": 344,
+    "points": 584,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2205m",
     "title": "Nikoli nhk2205m",
     "givens": "090100020207040008000005060008000003060000050900000800020600000400080701050009040",
     "difficulty": "easy",
-    "points": 228,
+    "points": 538,
     "hardestTechnique": "naked-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2207e",
     "title": "Nikoli nhk2207e",
     "givens": "200501000001030400080000020400809001050000040300602008060000080003070200000105006",
-    "difficulty": "easy",
-    "points": 420,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 570,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2208h1",
     "title": "Nikoli nhk2208h1",
     "givens": "003050070010800300900007060002006004000040000100200500090100008007008030080090700",
     "difficulty": "medium",
-    "points": 514,
+    "points": 714,
     "hardestTechnique": "claiming",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2301m",
     "title": "Nikoli nhk2301m",
     "givens": "050090001003007000400800060030100200600050008002004010080005002000600300100040090",
     "difficulty": "easy",
-    "points": 284,
+    "points": 504,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2309h2",
     "title": "Nikoli nhk2309h2",
     "givens": "008040070600900208090002000900700800010000050007009006000100030405006002030070500",
     "difficulty": "medium",
-    "points": 370,
+    "points": 640,
     "hardestTechnique": "claiming",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2402h1",
     "title": "Nikoli nhk2402h1",
     "givens": "008030060010009007600700000080004100500000006006200030000001009300900020040070500",
     "difficulty": "medium",
-    "points": 428,
+    "points": 618,
     "hardestTechnique": "claiming",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1907h1",
     "title": "Nikoli nhk1907h1",
     "givens": "030040060004005000900000200040100003005080700200006080009000006000700500010020090",
     "difficulty": "medium",
-    "points": 412,
+    "points": 622,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1902h-2",
     "title": "Nikoli nhk1902h-2",
     "givens": "020890000300007080004000100600300040003040600050002009009000500060400007000081020",
     "difficulty": "medium",
-    "points": 514,
+    "points": 654,
     "hardestTechnique": "pointing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2304e",
     "title": "Nikoli nhk2304e",
     "givens": "670009005001400000003070800040700008016020950500001060008050100000008600200900084",
-    "difficulty": "easy",
-    "points": 318,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 528,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2306m",
     "title": "Nikoli nhk2306m",
     "givens": "010006000300500900005080020060900003007020100400007080020070600009003001000400050",
     "difficulty": "easy",
-    "points": 294,
+    "points": 564,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2310m",
     "title": "Nikoli nhk2310m",
     "givens": "007080003020001090000400500800010060009000200040050008006002000010700030500060400",
     "difficulty": "easy",
-    "points": 348,
+    "points": 558,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2202m",
     "title": "Nikoli nhk2202m",
     "givens": "810000006000805200000003400230004500000080000001700069005200000007108000400000078",
     "difficulty": "easy",
-    "points": 234,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "points": 524,
+    "hardestTechnique": "naked-single",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2107m",
     "title": "Nikoli nhk2107m",
     "givens": "600500040001009000050080701007000030500204006020000900309070080000400200010008003",
     "difficulty": "easy",
-    "points": 260,
+    "points": 560,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "170714_sd_easy",
     "title": "Nikoli 170714_sd_easy",
     "givens": "800340601007001000063070009900405010605020903020906004500010460000200100204053007",
-    "difficulty": "easy",
-    "points": 184,
-    "hardestTechnique": "naked-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 434,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2111m",
     "title": "Nikoli nhk2111m",
     "givens": "910003500008060020000400080040005600300010007007200090090008000050040800002700061",
     "difficulty": "easy",
-    "points": 236,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "points": 526,
+    "hardestTechnique": "naked-single",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2309h1",
     "title": "Nikoli nhk2309h1",
     "givens": "004060050003007002800900000400800100090010020008003006000005001200100900060070500",
     "difficulty": "medium",
-    "points": 594,
+    "points": 874,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1907h2",
     "title": "Nikoli nhk1907h2",
     "givens": "000200600004006080050080003300102050009000700020904001700020040090300100008005000",
     "difficulty": "medium",
-    "points": 770,
+    "points": 1030,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1912e",
     "title": "Nikoli nhk1912e",
     "givens": "001000009040200060800030400182004000060070090000500381004010006090003070500000800",
-    "difficulty": "easy",
-    "points": 276,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 556,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2110m",
     "title": "Nikoli nhk2110m",
     "givens": "000010800060700004003005001900200030007080900040003006500400700800002090001060000",
     "difficulty": "easy",
-    "points": 384,
+    "points": 574,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2106m",
     "title": "Nikoli nhk2106m",
     "givens": "003090600500100000070005008800000000012030760000000009100500030000008002006040900",
     "difficulty": "easy",
-    "points": 442,
+    "points": 592,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2212h3",
     "title": "Nikoli nhk2212h3",
     "givens": "080020000007005010400000003009001050300040001070500600600000008010600700000090040",
-    "difficulty": "hard",
-    "points": 742,
+    "difficulty": "tricky",
+    "points": 882,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2203m",
     "title": "Nikoli nhk2203m",
     "givens": "070600509000040000302008070000100800090000060005002000060800301000090000704003020",
     "difficulty": "easy",
-    "points": 228,
+    "points": 558,
     "hardestTechnique": "naked-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2311m",
     "title": "Nikoli nhk2311m",
     "givens": "500900004001020000030007800700000050009403200020000001004100030000050700300006009",
     "difficulty": "easy",
-    "points": 358,
+    "points": 558,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2307m",
     "title": "Nikoli nhk2307m",
     "givens": "200004006010900000008005020400600300090080010005003002030100400000008060600200009",
     "difficulty": "easy",
-    "points": 324,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "points": 574,
+    "hardestTechnique": "naked-single",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2209h2",
     "title": "Nikoli nhk2209h2",
     "givens": "040000005007006030800004060020100800400030009001009050090200001080400900500000070",
-    "difficulty": "hard",
-    "points": 744,
+    "difficulty": "tricky",
+    "points": 914,
     "hardestTechnique": "swordfish",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2104h2",
     "title": "Nikoli nhk2104h2",
     "givens": "030060007004002080000900100400030090005000800010040003006001000080500200500080070",
     "difficulty": "medium",
-    "points": 518,
+    "points": 788,
     "hardestTechnique": "claiming",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2109m",
     "title": "Nikoli nhk2109m",
     "givens": "007600002800040100006005030090000006000738000100000040020500600004020008300001900",
     "difficulty": "easy",
-    "points": 254,
+    "points": 534,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2301h3",
     "title": "Nikoli nhk2301h3",
     "givens": "400070001000800020006009700040003600600010004007200090002500800030008000800030005",
     "difficulty": "medium",
-    "points": 444,
+    "points": 674,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2002h1",
     "title": "Nikoli nhk2002h1",
     "givens": "080000007004508300900010080070009000200000005000300040010050006003206100800000070",
     "difficulty": "medium",
-    "points": 648,
+    "points": 838,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1908m",
     "title": "Nikoli nhk1908m",
     "givens": "000100603400009000005030020080600500100050008009007040010070200000800005306004000",
     "difficulty": "easy",
-    "points": 294,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "points": 574,
+    "hardestTechnique": "naked-single",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2303h1",
     "title": "Nikoli nhk2303h1",
     "givens": "700010600040500090008009003580000100900050008001000045600400300070003020002090007",
     "difficulty": "medium",
-    "points": 446,
+    "points": 606,
     "hardestTechnique": "pointing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1909h",
     "title": "Nikoli nhk1909h",
     "givens": "000200703040070000900000502500800030001020900080004006309000007000050010608003000",
     "difficulty": "medium",
-    "points": 444,
+    "points": 674,
     "hardestTechnique": "locked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2308m",
     "title": "Nikoli nhk2308m",
     "givens": "040008000500100900007030010090000007002040800100000060080090400003007002000500030",
     "difficulty": "easy",
-    "points": 262,
+    "points": 572,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2106h1",
     "title": "Nikoli nhk2106h1",
     "givens": "500100006060000900007004020003700008080030010900006400010200800005000070800009004",
     "difficulty": "medium",
-    "points": 564,
+    "points": 694,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2205h1",
     "title": "Nikoli nhk2205h1",
     "givens": "005030600000700040080006001300800020007000900090001004100500080050002000009040700",
     "difficulty": "medium",
-    "points": 348,
+    "points": 658,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2105m",
     "title": "Nikoli nhk2105m",
     "givens": "006021005000500800400000030050002007009040100600800090010000006002007000800250400",
     "difficulty": "easy",
-    "points": 454,
+    "points": 564,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2202e",
     "title": "Nikoli nhk2202e",
     "givens": "000804005030090010000007400904000300007060200005000106002400000080070090700103000",
-    "difficulty": "easy",
-    "points": 304,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 584,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk1905h",
     "title": "Nikoli nhk1905h",
     "givens": "000200000040009007109040600070600008005070900300001050002010506600400030000003000",
     "difficulty": "medium",
-    "points": 384,
+    "points": 614,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2312m",
     "title": "Nikoli nhk2312m",
     "givens": "004000020090002005600030700200700090008010600030004008001060004300900080070000100",
     "difficulty": "easy",
-    "points": 394,
+    "points": 584,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2310e",
     "title": "Nikoli nhk2310e",
     "givens": "005008001020100300780030090004600009030000010900007200010060085002003070500400600",
-    "difficulty": "easy",
-    "points": 212,
-    "hardestTechnique": "naked-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 552,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2304m",
     "title": "Nikoli nhk2304m",
     "givens": "900600002008003000010070400007000030500801009080000100003060070000900500800002006",
     "difficulty": "easy",
-    "points": 538,
+    "points": 588,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2006h3",
     "title": "Nikoli nhk2006h3",
     "givens": "000010002900700300001008040050800200700090005002006080040300700006001009800060000",
     "difficulty": "medium",
-    "points": 514,
+    "points": 784,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2305m",
     "title": "Nikoli nhk2305m",
     "givens": "800200060003005001040300700901000080000060000030000205006004070200100900080009004",
     "difficulty": "easy",
-    "points": 354,
+    "points": 584,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2307h3",
     "title": "Nikoli nhk2307h3",
     "givens": "000700004230005070005080000400600100080000020002009006000010700050400061900003000",
     "difficulty": "medium",
-    "points": 448,
+    "points": 698,
     "hardestTechnique": "hidden-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1910h1",
     "title": "Nikoli nhk1910h1",
     "givens": "000500003100004600002000090600302040008000100090801005050000200007900008300007000",
     "difficulty": "medium",
-    "points": 498,
+    "points": 678,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2203e",
     "title": "Nikoli nhk2203e",
     "givens": "600090020050004073001000500000700050200030009040001000006000100470300090080050006",
-    "difficulty": "easy",
-    "points": 314,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 574,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk1912h2",
     "title": "Nikoli nhk1912h2",
     "givens": "004080005010900800200000060040100900600000004005007030020000008007002010300060500",
     "difficulty": "medium",
-    "points": 448,
+    "points": 648,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk170929sd",
     "title": "Nikoli nhk170929sd",
     "givens": "006900073050004006400062800073208005001040200600305180004180002300500010210006300",
-    "difficulty": "easy",
-    "points": 184,
-    "hardestTechnique": "naked-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 434,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2307h2",
     "title": "Nikoli nhk2307h2",
     "givens": "020090600004001009700200050200800100000030000003005004050006007100300800006080090",
     "difficulty": "medium",
-    "points": 434,
+    "points": 704,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2112m",
     "title": "Nikoli nhk2112m",
     "givens": "008400030050020060300070080007000004000506000100000900040030007020090010060002800",
     "difficulty": "easy",
-    "points": 308,
+    "points": 598,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2309m",
     "title": "Nikoli nhk2309m",
     "givens": "003090400050800010600002007002000030100080006090000500400100002070006080009050300",
     "difficulty": "easy",
-    "points": 314,
+    "points": 564,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2102h1",
     "title": "Nikoli nhk2102h1",
     "givens": "000308090100000002005010400800007030002000700010900004001050800400000007090603000",
     "difficulty": "medium",
-    "points": 698,
+    "points": 998,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1908h",
     "title": "Nikoli nhk1908h",
     "givens": "001090005900800100002000030700900200040020070005001004020000300008004007600050800",
     "difficulty": "medium",
-    "points": 484,
+    "points": 604,
     "hardestTechnique": "pointing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2201h2",
     "title": "Nikoli nhk2201h2",
     "givens": "600080200005402600000100050090008000800040003000300070040009000002603500003070009",
     "difficulty": "medium",
-    "points": 774,
+    "points": 924,
     "hardestTechnique": "hidden-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2108m",
     "title": "Nikoli nhk2108m",
     "givens": "900800030000001004005060700080000009007010800400000060008030100600900000020004008",
     "difficulty": "easy",
-    "points": 492,
+    "points": 602,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2305h3",
     "title": "Nikoli nhk2305h3",
     "givens": "050002008400100900007000030020008001003040800500600070010000500005003006600700090",
     "difficulty": "medium",
-    "points": 624,
+    "points": 804,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2204e",
     "title": "Nikoli nhk2204e",
     "givens": "709002000000100700306080010030409008007000400500601090090060104001004000000500609",
-    "difficulty": "easy",
-    "points": 272,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 542,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2206m",
     "title": "Nikoli nhk2206m",
     "givens": "003004050200600008090050600704000060000902000010000503001070080400001002070400900",
     "difficulty": "easy",
-    "points": 470,
+    "points": 530,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1903h",
     "title": "Nikoli nhk1903h",
     "givens": "070400003003080200500001060090200000004000800000009050060900004002010700400006010",
-    "difficulty": "hard",
-    "points": 548,
+    "difficulty": "tricky",
+    "points": 788,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2302m",
     "title": "Nikoli nhk2302m",
     "givens": "420000006009300005000012090003000010008020700050000300090630000200009600100000048",
     "difficulty": "easy",
-    "points": 404,
+    "points": 584,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2302h3",
     "title": "Nikoli nhk2302h3",
     "givens": "010060070005002800200100000500600300080070090003005004000004009007800200090030010",
-    "difficulty": "hard",
-    "points": 664,
+    "difficulty": "tricky",
+    "points": 944,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2210m",
     "title": "Nikoli nhk2210m",
     "givens": "050070001900800300060004000080000600500301002004000050000400020001009007300060080",
     "difficulty": "easy",
-    "points": 338,
+    "points": 608,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2206h1",
     "title": "Nikoli nhk2206h1",
     "givens": "600002000001050083050700000900006700080010030004900005000004010340080200000200006",
     "difficulty": "medium",
-    "points": 874,
+    "points": 1184,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2208e",
     "title": "Nikoli nhk2208e",
     "givens": "200300060009010002017008900800400700030000020002006004004200130500070400060009008",
-    "difficulty": "easy",
-    "points": 212,
-    "hardestTechnique": "naked-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 552,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2107h1",
     "title": "Nikoli nhk2107h1",
     "givens": "009050100000009002800600030070004006005090300200300010040008007600200000008040500",
     "difficulty": "medium",
-    "points": 524,
+    "points": 744,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1911h2",
     "title": "Nikoli nhk1911h2",
     "givens": "400700020008000300060059007004300090500080003030001400600190070005000600070002001",
     "difficulty": "medium",
-    "points": 566,
+    "points": 816,
     "hardestTechnique": "hidden-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2209e",
     "title": "Nikoli nhk2209e",
     "givens": "006002001000500300900400020030028076008090500160730090020009004005006000400800100",
-    "difficulty": "easy",
-    "points": 208,
-    "hardestTechnique": "naked-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 518,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2304h2",
     "title": "Nikoli nhk2304h2",
     "givens": "030200600100005030005070008600100020003000900090008004800050700050600001002004090",
     "difficulty": "medium",
-    "points": 430,
+    "points": 670,
     "hardestTechnique": "claiming",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2211m",
     "title": "Nikoli nhk2211m",
     "givens": "009060500010005070500400003080000900000107000004000060100008005070900080003020400",
     "difficulty": "easy",
-    "points": 388,
+    "points": 598,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2103h2",
     "title": "Nikoli nhk2103h2",
     "givens": "040500100200000003008030020900100006080050070600004001090080300400000009002005060",
     "difficulty": "medium",
-    "points": 314,
+    "points": 564,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2303m",
     "title": "Nikoli nhk2303m",
     "givens": "000620009007005000010000400500400080300080002090001006005000090000700100200063000",
     "difficulty": "easy",
-    "points": 332,
+    "points": 592,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2202h2",
     "title": "Nikoli nhk2202h2",
     "givens": "050007003007040200100600080006100000020000050000008600070004009003020400800900010",
-    "difficulty": "hard",
-    "points": 438,
+    "difficulty": "tricky",
+    "points": 748,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk1810h",
     "title": "Nikoli nhk1810h",
     "givens": "008050004010004070700200100030006002005000900600300080004009001090800040200060700",
     "difficulty": "medium",
-    "points": 320,
+    "points": 550,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2205e",
     "title": "Nikoli nhk2205e",
     "givens": "020000005500001400007040060080906000100050002000102090090030800004700003600000010",
-    "difficulty": "easy",
-    "points": 274,
-    "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "difficulty": "beginner",
+    "points": 604,
+    "hardestTechnique": "hidden-single-box",
+    "scoringVersion": 11
   },
   {
     "id": "nhk2207m",
     "title": "Nikoli nhk2207m",
     "givens": "001080020002001000070009004020500100800060009006002040300400060000200400090030700",
     "difficulty": "easy",
-    "points": 384,
+    "points": 554,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2304h1",
     "title": "Nikoli nhk2304h1",
     "givens": "300008070000060409010500000400009100070000040002600003000001060608050000050800002",
     "difficulty": "medium",
-    "points": 518,
+    "points": 708,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2306h2",
     "title": "Nikoli nhk2306h2",
     "givens": "020006001000700300109030080040800009003000500700005020050020406001009000600500030",
     "difficulty": "medium",
-    "points": 330,
+    "points": 600,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2007h2",
     "title": "Nikoli nhk2007h2",
     "givens": "900402003002000090070010000006007010030050060010600800000070080060000400700304009",
-    "difficulty": "hard",
-    "points": 524,
+    "difficulty": "tricky",
+    "points": 854,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2401m",
     "title": "Nikoli nhk2401m",
     "givens": "002004800060000010100900003005006009030010040400800500200003004090000060008200700",
     "difficulty": "easy",
-    "points": 404,
+    "points": 574,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 10
+    "scoringVersion": 11
   },
   {
     "id": "nhk2101h1",
     "title": "Nikoli nhk2101h1",
     "givens": "030070020004006008500800900060010003009000100100020070005004006200100800070090040",
     "difficulty": "medium",
-    "points": 640,
+    "points": 920,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 10
+    "scoringVersion": 11
   }
 ]

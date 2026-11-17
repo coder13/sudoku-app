@@ -1,18 +1,19 @@
-import { DIFFICULTY_LABELS } from './difficulty'
+import { DIFFICULTY_LABELS, DIFFICULTY_LEVELS } from './difficulty'
 import type { Difficulty } from './engine'
 import { learnFundamentals, lessonGroups, lessons } from './lessons'
 import { techniqueDifficulties } from './technique-difficulties'
 
-const levels = Object.keys(DIFFICULTY_LABELS) as Difficulty[]
+const levels: readonly Difficulty[] = DIFFICULTY_LEVELS
 
 const lessonLevels = lessons.map((lesson) => {
   const variants = new Set(lesson.blocks.flatMap((block) =>
     block.type === 'practice' ? block.drills.map(({ example }) => techniqueDifficulties[example]) : [],
   ))
   const ordered = levels.filter((level) => variants.has(level))
-  const first = ordered[0]
-  const last = ordered[ordered.length - 1]
-  const label = first === last ? DIFFICULTY_LABELS[first] : `${DIFFICULTY_LABELS[first]} to ${DIFFICULTY_LABELS[last]}`
+  const first = lesson.difficulty ?? ordered[0]
+  const last = ordered[ordered.length - 1] ?? first
+  const label = lesson.kind === 'foundation' ? `${DIFFICULTY_LABELS[first]} foundation`
+    : first === last ? DIFFICULTY_LABELS[first] : `${DIFFICULTY_LABELS[first]} to ${DIFFICULTY_LABELS[last]}`
   return { lesson, first, label }
 })
 

@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, hash_map::Entry},
+    collections::{HashMap, HashSet, hash_map::Entry},
 };
 
 use serde::{Deserialize, Serialize};
@@ -34,6 +34,8 @@ mod variant;
     rename_all_fields = "camelCase"
 )]
 enum Request {
+    CanonicalPuzzles { values: Vec<String> },
+    ImpossibleTemplates,
     Variant {
         #[serde(default)]
         operation: variant::Operation,
@@ -195,6 +197,8 @@ enum Request {
         seed: u32,
         max_attempts: u32,
         target: Target,
+        #[serde(default)]
+        exclude: Vec<String>,
     },
     GenerateConstrained {
         #[serde(flatten)]
@@ -226,6 +230,8 @@ struct MatchingRequest {
     difficulty: Option<Difficulty>,
     technique: Option<TechniqueRequest>,
     technique_order: Option<Vec<String>>,
+    #[serde(default)]
+    exclude: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -671,11 +677,11 @@ impl MatchingRequest {
                 self.max_attempts,
             )
             .map_err(generation_error)?;
-            return Ok((profile, search.map(GenerationOutput::Board)));
+            return Ok((profile, exclude_puzzles(search.map(GenerationOutput::Board), self.exclude)?));
         }
         let search = start_builtin_pool(self.seed, &criteria, mode, self.max_attempts)
             .map_err(generation_error)?;
-        Ok((profile, search.map(GenerationOutput::Rated)))
+        Ok((profile, exclude_puzzles(search.map(GenerationOutput::Rated), self.exclude)?))
     }
 }
 
@@ -702,6 +708,28 @@ type ActiveGeneration = GenerationSearch<'static, GenerationOutput>;
 thread_local! {
     static GENERATION: RefCell<HashMap<u32, ActiveGeneration>> = RefCell::new(HashMap::new());
     static TECHNIQUE_COUNTS: RefCell<TechniqueCountScan> = RefCell::default();
+    static PUZZLE_KEYS: RefCell<HashMap<Board, Board>> = RefCell::new(HashMap::new());
+}
+
+fn puzzle_key(board: Board) -> Board {
+    PUZZLE_KEYS.with_borrow_mut(|keys| {
+        if let Some(key) = keys.get(&board) { return *key; }
+        let key = crate::canonical_puzzle(&board);
+        if keys.len() >= 8192 { keys.clear(); }
+        keys.insert(board, key);
+        key
+    })
+}
+
+fn exclude_puzzles(search: ActiveGeneration, exclude: Vec<String>) -> ResultValue<ActiveGeneration> {
+    if exclude.is_empty() { return Ok(search); }
+    let excluded = exclude.iter().map(|text| board(text).map(puzzle_key))
+        .collect::<Result<HashSet<_>, _>>()?;
+    Ok(search.filter(move |candidate| match candidate {
+        GenerationOutput::Board(board) => !excluded.contains(&puzzle_key(*board)),
+        GenerationOutput::Rated(puzzle) => !excluded.contains(&puzzle_key(puzzle.board)),
+        GenerationOutput::Variant(_) => true,
+    }))
 }
 
 #[cfg_attr(not(feature = "cli"), allow(dead_code))]
@@ -716,6 +744,7 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
             seed,
             max_attempts,
             target,
+            exclude,
         } => {
             let (profile, search) = match target {
                 Target::Difficulty {
@@ -743,9 +772,9 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
             };
             Ok((
                 GenerationProfile::Classic(profile),
-                search
+                exclude_puzzles(search
                     .map_err(generation_error)?
-                    .map(GenerationOutput::Board),
+                    .map(GenerationOutput::Board), exclude)?,
             ))
         }
         Request::GenerateConstrained { options, templates } => options
@@ -795,6 +824,11 @@ fn trace_value(trace: &super::LogicalSolve) -> Value {
 
 fn execute(request: Request) -> ResultValue<ResponseValue> {
     let result = match request {
+        Request::ImpossibleTemplates => Ok(json!(crate::impossible_templates().iter()
+            .map(|board| grid_string(*board)).collect::<Vec<_>>())),
+        Request::CanonicalPuzzles { values } => values.iter()
+            .map(|text| board(text).map(|board| grid_string(puzzle_key(board))))
+            .collect::<Result<Vec<_>, _>>().map(|keys| json!(keys)),
         Request::Variant {
             operation,
             position,
@@ -1140,6 +1174,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
         Request::Techniques { variant: true } => Ok(variant::catalog()),
         Request::Techniques { variant: false } => Ok(json!({
             "defaultOrder": Technique::DEFAULT_ORDER,
+            "difficultyOrder": Technique::DIFFICULTY_ORDER,
             "scoringVersion": SCORING_VERSION,
             "techniques": Technique::ALL.into_iter().map(|technique| json!({
                 "id": technique,
@@ -1214,7 +1249,7 @@ mod tests {
     #[test]
     fn protocol_distinguishes_a_missing_profile_from_an_empty_profile() {
         let rating = request(json!({"type":"rate", "values":SPARSE}));
-        assert_eq!(rating["value"]["score"]["points"], 766);
+        assert_eq!(rating["value"]["score"]["points"], 846);
         assert_eq!(rating["value"]["status"], json!({"solved":"medium"}));
         assert_eq!(rating["value"]["scoringVersion"], SCORING_VERSION);
         assert_eq!(

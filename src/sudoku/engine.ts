@@ -2,7 +2,8 @@ import { withHintPreferences } from './hint-preferences.ts'
 import { withSolverProfile } from './solver-profile.ts'
 
 export type Analysis = 'conflict' | 'unsolvable' | 'unique' | 'multiple' | 'search-limit'
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'unfair' | 'extreme'
+// 'unfair' is accepted only for historical saves and legacy input.
+export type Difficulty = 'beginner' | 'easy' | 'medium' | 'tricky' | 'hard' | 'very-hard' | 'expert' | 'master' | 'extreme' | 'impossible' | 'unfair'
 type SolverOptions = { techniqueOrder?: readonly string[] }
 type HintOptions = { disabledTechniques?: readonly string[] }
 type CandidatePosition = { values: string; eliminations?: readonly number[] }
@@ -19,10 +20,11 @@ type MatchingOptions = {
   maxAttempts: number
   clues: number | readonly [number, number]
   technique?: TechniqueTarget
+  exclude?: readonly string[]
 } & RatingTarget & SolverOptions
 
 export type GenerationRequest =
-  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget }
+  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget; exclude?: readonly string[] }
   | ({ type: 'generate-constrained'; templates?: readonly string[] } & MatchingOptions)
   | ({ type: 'generate-from-pool' } & MatchingOptions)
   | VariantGenerationRequest
@@ -118,6 +120,8 @@ type VariantRequest = {
 
 export type EngineRequest =
   | VariantRequest
+  | { type: 'canonical-puzzles'; values: readonly string[] }
+  | { type: 'impossible-templates' }
   | { type: 'analyze'; values: string }
   | { type: 'notes'; values: string }
   | { type: 'solve'; values: string }
@@ -402,6 +406,7 @@ export type HintChoices = { choices: HintChoice[]; available: number; candidates
 export type HintStages = { technique: string; pattern: ProofPattern; deduction: Deduction }
 export type TechniqueCatalog = {
   defaultOrder: string[]
+  difficultyOrder: string[]
   scoringVersion: number
   techniques: { id: string; aliases: string[]; cost: number; difficulty: Difficulty; requiresUniqueSolution: boolean }[]
 }
@@ -460,6 +465,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends VariantRequest ? VariantResult<T> :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
+  T extends { type: 'canonical-puzzles' | 'impossible-templates' } ? string[] :
   T extends { type: 'solve' } ? string | null :
   T extends { type: 'rate' } ? PuzzleRating :
   T extends { type: 'logical-solve' } ? LogicalSolution :

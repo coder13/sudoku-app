@@ -1187,6 +1187,7 @@ impl Technique {
     pub const fn practice_example(self) -> PracticeExample {
         let expected_actions: &'static [HintAction] = match self {
             Self::FullHouse => const { &[place(3, 6)] },
+            Self::HiddenSingleBox => const { &[place(76, 3)] },
             Self::NakedSingle => const { &[place(12, 3)] },
             Self::HiddenSingle => const { &[place(5, 9)] },
             Self::Pointing | Self::Claiming => const { &[remove(24, 2), remove(25, 2)] },

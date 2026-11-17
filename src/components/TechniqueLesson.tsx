@@ -1,3 +1,6 @@
+import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
+import { techniqueDifficulties } from '../sudoku/technique-difficulties'
+import { lessonDifficultyLabels } from '../sudoku/lesson-difficulties'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -6,12 +9,14 @@ import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonExample, type EngineLessonExample, type LessonExercise } from '../sudoku/lesson-examples'
 import { lessonReadingOrder } from '../sudoku/lesson-difficulties'
-import type { LessonArticle, LessonBlock } from '../sudoku/lessons'
+import { lessonRoutes, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
 import { generateLessonExercise, loadWorkedExample, readWorkedExampleNumber, saveWorkedExampleNumber, type WorkedExample } from '../sudoku/worked-examples'
 import { LessonWorkbench } from './LessonWorkbench'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
 import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
+import { ConceptCheck } from './ConceptCheck'
+import { FoundationVisual } from './FoundationVisual'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
 const techniqueAliases: Readonly<Record<string, readonly string[]>> = aliasesJson
@@ -198,6 +203,7 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
         <div>
           <h2 id="trainer">Trainer</h2>
           {(title || editorPreview) && <p className="lesson-trainer-title">{title}</p>}
+          {techniqueDifficulties[chosen.example] && <small>{DIFFICULTY_LABELS[techniqueDifficulties[chosen.example]!]}</small>}
         </div>
         <div className="lesson-practice-heading-actions">
           {drills.length > 1 && <label className="lesson-drill">
@@ -252,6 +258,13 @@ export function ExplanationBlock({ block, index, drills }: { block: LessonBlock;
     case 'list': return <ul className="article-list" data-lesson-block={index}>
       {block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
     </ul>
+    case 'table': return <div className="lesson-table-scroll" data-lesson-block={index}><table className="lesson-table">
+      <caption>{block.caption}</caption>
+      <thead><tr>{block.columns.map((column, i) => <th scope="col" key={i}>{column}</th>)}</tr></thead>
+      <tbody>{block.rows.map((row, i) => <tr key={i}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody>
+    </table></div>
+    case 'concept-check': return <div data-lesson-block={index}><ConceptCheck block={block} /></div>
+    case 'foundation-visual': return <div data-lesson-block={index}><FoundationVisual visual={block.visual} /></div>
     default: return null
   }
 }
@@ -282,6 +295,10 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
       <header className="lesson-heading">
         <LearnBreadcrumbs current={lesson.title} />
         <p>{lesson.summary}</p>
+        {lesson.difficulty && <p className="lesson-course-level">{lessonDifficultyLabels.get(lesson.id)}</p>}
+        {!!lesson.prerequisites?.length && <p className="lesson-prerequisites">Learn first: {lesson.prerequisites.map((id, index) => <Fragment key={id}>
+          {index > 0 && ', '}<Link to="/learn/$technique" params={{ technique: id }}>{lessonRoutes.get(id)?.title ?? id}</Link>
+        </Fragment>)}</p>}
         <AlternateNames names={alternateNames(lesson.id, lesson.title, lesson.aliases)} />
         {drills.filter(({ example }) => example !== lesson.id && !headings.has(example) && lesson.id !== 'fundamentals')
           .map(({ example, title }) => <AlternateNames key={example} names={alternateNames(example, title)} technique={title} />)}

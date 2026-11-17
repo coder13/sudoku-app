@@ -18,6 +18,10 @@ const statuses: Analysis[] = ['conflict', 'unsolvable', 'unique', 'multiple', 's
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
+function validGrid(value: unknown): value is string {
+  return typeof value === 'string' && value.length === CELL_COUNT && !/[^0-9.]/.test(value)
+}
+
 function runStructuredRequest(wasm: EngineExports, request: EngineRequest): EnginePayload {
   const bytes = encoder.encode(JSON.stringify(request))
   const address = wasm.request_buffer(bytes.length)
@@ -31,9 +35,10 @@ export function createEngineHandler(load: () => Promise<EngineExports>) {
   let engine: Promise<EngineExports> | undefined
 
   return async ({ id, request }: { id: number; request: EngineRequest }): Promise<EngineResponse> => {
-    if ('values' in request && (
-      typeof request.values !== 'string' || request.values.length !== CELL_COUNT || /[^0-9.]/.test(request.values)
-    )) {
+    const validValues = !('values' in request) || (request.type === 'canonical-puzzles'
+      ? Array.isArray(request.values) && request.values.every(validGrid)
+      : validGrid(request.values))
+    if (!validValues) {
       return { id, code: 'invalid-grid', error: 'Enter exactly 81 cells. Use a dot or 0 for each empty cell.' }
     }
 

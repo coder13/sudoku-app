@@ -17,8 +17,8 @@ mod variant;
 pub use generation::{
     GeneratedPuzzle, GenerationConflict, GenerationConstraints, GenerationCriteria,
     GenerationRating, GenerationSearch, GenerationStep, TechniqueTargetMode, VerifiedTemplate,
-    builtin_templates, canonical_puzzle, generate_constrained, generate_from_pool,
-    generate_matching, generate_matching_with_mode, start_from_pool, start_matching,
+    accepts_difficulty, builtin_templates, canonical_puzzle, generate_constrained, generate_from_pool,
+    generate_matching, generate_matching_with_mode, impossible_templates, start_from_pool, start_matching,
     start_targeted,
 };
 pub use hints::{
@@ -543,20 +543,18 @@ mod tests {
 
     #[test]
     fn targeted_generation_checks_the_rating_under_the_requested_order() {
-        for (level, order) in [
-            (Difficulty::Medium, Technique::ALL.as_slice()),
-            (Difficulty::Easy, [Technique::FullHouse].as_slice()),
-        ] {
+        for level in [Difficulty::Beginner, Difficulty::Easy, Difficulty::Medium] {
+            let order = level.technique_order();
             let target = GenerationTarget::Difficulty {
                 level,
-                technique_order: order,
+                technique_order: &order,
             };
-            let board = generate_targeted(42, target, 1).unwrap();
+            let board = generate_targeted(42, target, 512).unwrap();
             assert_eq!(analyze(&board), Analysis::Unique);
-            assert_eq!(
-                solve_logically(&board, order).unwrap().status,
-                SolveStatus::Solved(level)
-            );
+            assert!(board.iter().filter(|&&digit| digit != 0).count() <= 40);
+            assert_eq!(solve_logically(&board, &order).unwrap().status, SolveStatus::Solved(level));
+            let lower: Vec<_> = order.iter().copied().filter(|t| t.difficulty() < level).collect();
+            assert_eq!(solve_logically(&board, &lower).unwrap().status, SolveStatus::Stalled);
         }
         let stalled = GenerationTarget::Difficulty {
             level: Difficulty::Easy,

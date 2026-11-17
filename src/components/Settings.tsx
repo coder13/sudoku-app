@@ -251,7 +251,7 @@ export function AppearanceSettings({ appearance, setAppearance, inputSize, setIn
 }
 
 const cellReferenceDescriptions: Record<CellReferenceStyle, string> = {
-  automatic: 'Use concise references for Hard, Unfair, and Extreme techniques.',
+  automatic: 'Use concise references for Tricky and higher techniques.',
   concise: 'Show cells as r1c6.',
   verbose: 'Show cells as row 1, column 6.',
 }

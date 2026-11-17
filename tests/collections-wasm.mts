@@ -17,11 +17,11 @@ async function run<T extends EngineRequest>(request: T): Promise<EngineResult<T>
 }
 
 test('every collection puzzle has one solution and a complete logical solve at its published app rating', async () => {
-  const { defaultOrder } = await run({ type: 'techniques' })
+  const { difficultyOrder } = await run({ type: 'techniques' })
   for (const collection of COLLECTIONS) {
     for (const puzzle of collection.puzzles) {
       assert.equal(await run({ type: 'analyze', values: puzzle.givens }), 'unique', puzzle.title)
-      const rating = await run({ type: 'rate', values: puzzle.givens, techniqueOrder: defaultOrder })
+      const rating = await run({ type: 'rate', values: puzzle.givens, techniqueOrder: difficultyOrder })
       assert.notEqual(rating.status, 'stalled', puzzle.title)
       assert.deepEqual(rating.status, { solved: puzzle.difficulty }, puzzle.title)
       assert.equal(rating.score.points, puzzle.points, puzzle.title)

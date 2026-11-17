@@ -50,10 +50,11 @@ device. The next-puzzle action stays at the same difficulty in either mode.
 - Source: <https://github.com/grantm/sudoku-exchange-puzzle-bank>
 - Revision: `d8c8ebaee0c08c412cfba96af1923dfa61c83317`.
 - License: [public-domain dedication](https://github.com/grantm/sudoku-exchange-puzzle-bank/blob/d8c8ebaee0c08c412cfba96af1923dfa61c83317/LICENSE.txt).
-- Selection: take the first 100 records from each source file in this order:
+- Initial selection: take the first 100 records from each source file in this order:
   `easy.txt`, `medium.txt`, `hard.txt`, `diabolical.txt`. Rate them with the app's
-  default technique order. Keep the first 12 distinct, fully solved grids for
-  each app difficulty. Exclude grids already in Nikoli Classics.
+  then-current default technique order and five-level scale. Keep the first 12
+  distinct, fully solved grids for each app difficulty. Exclude grids already
+  in Nikoli Classics. The same 60 givens are retained as the grading scale changes.
 - Sort the 60 selected puzzles by app difficulty, points, and source ID.
   Assign display titles `Exchange 01` through `Exchange 60`.
 - The source ID and Sukaku Explainer rating remain in each record.
@@ -102,6 +103,9 @@ npm run test:collections
 
 The rating script checks uniqueness and logical completion before it writes
 either catalog. It does not change givens, IDs, titles, source ratings, or order.
+Ratings use the full canonical technique order and the current ten-level scale
+(classic scoring version 11). The generation-only quality floors do not remove
+or alter authored puzzles in these collections.
 The WASM test checks every puzzle against its stored app rating. The regular
 test suite checks identity, credits, progress, resuming, batch downloads,
 cancellation, invalid data, storage failures, retries, and offline reloads.

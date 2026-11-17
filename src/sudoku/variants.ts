@@ -1,5 +1,6 @@
-import { DIFFICULTY_OPTIONS, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
+import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
+import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
   classic: {
@@ -44,18 +45,24 @@ export function isVariantId(value: unknown): value is VariantId {
   return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
 }
 
-const jigsawDifficulties: readonly DifficultyPreference[] = ['auto', 'easy', 'medium', 'hard']
-
-export function variantDifficulties(variant?: VariantId) {
-  return variant === 'jigsaw' ? jigsawDifficulties : DIFFICULTY_OPTIONS
+// Offer only levels with recipes verified under the current technique rules.
+export function variantDifficulties(variant?: VariantId): readonly DifficultyPreference[] {
+  if (!variant || variant === 'classic') return DIFFICULTY_OPTIONS
+  return DIFFICULTY_OPTIONS.filter((level) => Object.hasOwn(seedBank[variant], level))
 }
 
-export function variantDifficulty<T extends DifficultyPreference>(variant: VariantId | undefined, preference: T): T | 'hard' {
-  return variantDifficulties(variant).includes(preference) ? preference : 'hard'
+export function variantDifficulty(variant: VariantId | undefined, preference: Difficulty): Difficulty
+export function variantDifficulty(variant: VariantId | undefined, preference: DifficultyPreference): DifficultyPreference
+export function variantDifficulty(variant: VariantId | undefined, preference: DifficultyPreference): DifficultyPreference {
+  if (preference === 'auto') return 'auto'
+  const current = currentDifficulty(preference)
+  const available = variantDifficulties(variant).filter((d): d is Difficulty => d !== 'auto')
+  return available.includes(current) ? current : available.reduce((best, level) =>
+    Math.abs(difficultyIndex(level) - difficultyIndex(current)) < Math.abs(difficultyIndex(best) - difficultyIndex(current)) ? level : best)
 }
 
 export function variantDifficultyLabel(variant: VariantId | undefined, preference: DifficultyPreference, recommended: Difficulty) {
-  return difficultyOptionLabel(preference, variantDifficulty(variant, recommended))
+  return difficultyOptionLabel(preference, variantDifficulty(variant, recommended) as Difficulty)
 }
 
 const cells = Array.from({ length: 9 }, (_, i) => i)

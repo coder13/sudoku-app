@@ -10,9 +10,17 @@ mod search;
 mod templates;
 pub use canonical::canonical_puzzle;
 pub use search::{GenerationSearch, GenerationStep};
-pub use templates::{VerifiedTemplate, builtin_templates};
+pub use templates::{VerifiedTemplate, builtin_templates, impossible_templates};
 
 const MIN_CLUES: usize = 17;
+
+/// Check the normal-play quality floor and all configured lower-tier orders.
+/// This does not prove that no unimplemented or alternate human route exists.
+pub fn accepts_difficulty(board: &Board, level: Difficulty) -> bool {
+    logical::matches_generation_path(
+        board, &level.technique_order(), Some(&GenerationRating::Difficulty(level)), None,
+    )
+}
 
 /// Criteria for an exact clue count and optional point range.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -139,7 +147,11 @@ impl MatchingPlan {
             clues: criteria.clues.clone(),
             rating: criteria.rating.clone(),
             technique: criteria.technique.map(|technique| (technique, mode)),
-            technique_order: criteria.technique_order.to_vec(),
+            technique_order: match &criteria.rating {
+                Some(GenerationRating::Difficulty(level)) => level.technique_order().into_iter()
+                    .filter(|technique| criteria.technique_order.contains(technique)).collect(),
+                _ => criteria.technique_order.to_vec(),
+            },
         })
     }
 
@@ -644,11 +656,11 @@ mod tests {
             );
             expert += usize::from(matches!(
                 rating.status,
-                SolveStatus::Solved(Difficulty::Unfair | Difficulty::Extreme)
+                SolveStatus::Solved(level) if level >= Difficulty::VeryHard
             ));
         }
         assert!(sparse >= 12);
-        assert!(expert >= 6);
+        assert!(expert >= 3);
         assert_eq!(
             VerifiedTemplate::verify([0; CELLS]),
             Err(Analysis::Multiple)
@@ -712,15 +724,16 @@ mod tests {
 
     #[test]
     fn fresh_generation_can_match_an_exact_clue_count_and_score() {
+        let order: Vec<_> = Technique::ALL.into_iter().filter(|t| *t != Technique::HiddenSingleBox).collect();
         let constraints = GenerationConstraints {
             clues: 34,
             score: Some(188..=188),
-            technique_order: &Technique::ALL,
+            technique_order: &order,
         };
         let board = generate_constrained(42, &constraints, &[], 1).unwrap();
         assert_eq!(board.iter().filter(|&&digit| digit != 0).count(), 34);
         assert_eq!(
-            solve_logically(&board, &Technique::ALL)
+            solve_logically(&board, &order)
                 .unwrap()
                 .score
                 .points,
@@ -942,27 +955,28 @@ mod tests {
     }
 
     #[test]
-    fn a_hard_template_supports_combined_sparse_and_score_targets() {
+    fn a_medium_template_supports_combined_sparse_and_score_targets() {
         // This puzzle is from Gordon Royle's 17-clue collection.
         let template = parse_givens(
             "050040000000010040009000300100000080002005000000300000000700502480000000600000000",
         )
         .unwrap();
+        let order: Vec<_> = Technique::ALL.into_iter().filter(|t| *t != Technique::HiddenSingleBox).collect();
         for clues in 17..=20 {
             let constraints = GenerationConstraints {
                 clues,
                 score: Some(1001..=1600),
-                technique_order: &Technique::ALL,
+                technique_order: &order,
             };
             let board = generate_constrained(0, &constraints, &[template], 32).unwrap();
             assert_eq!(board.iter().filter(|&&digit| digit != 0).count(), clues);
-            let rating = solve_logically(&board, &Technique::ALL).unwrap();
-            assert_eq!(rating.status, SolveStatus::Solved(crate::Difficulty::Hard));
+            let rating = solve_logically(&board, &order).unwrap();
+            assert_eq!(rating.status, SolveStatus::Solved(crate::Difficulty::Medium));
             assert!((1001..=1600).contains(&rating.score.points));
         }
         let criteria = GenerationCriteria {
             clues: 17..=20,
-            rating: Some(GenerationRating::Difficulty(Difficulty::Hard)),
+            rating: Some(GenerationRating::Difficulty(Difficulty::Medium)),
             technique: Some(Technique::HiddenSingle),
             technique_order: Technique::DEFAULT_ORDER,
         };
@@ -973,7 +987,7 @@ mod tests {
                 .contains(&board.iter().filter(|&&digit| digit != 0).count())
         );
         let rating = rate_puzzle(&board, criteria.technique_order).unwrap();
-        assert_eq!(rating.status, SolveStatus::Solved(Difficulty::Hard));
+        assert_eq!(rating.status, SolveStatus::Solved(Difficulty::Medium));
         assert!(rating.score.counts.contains_key(&Technique::HiddenSingle));
     }
 
