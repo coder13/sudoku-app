@@ -21,6 +21,9 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
     pairs?.some(([c, d]) => c === a && d === b || c === b && d === a) ?? false
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'non-consecutive':
+        for (const [a, b] of adjacent) if (!marked(rule.except, a, b)) assert.notEqual(Math.abs(digits[a] - digits[b]), 1)
+        break
       case 'anti-king': case 'anti-knight':
         for (let a = 0; a < 81; a++) for (let b = a + 1; b < 81; b++) {
           const dr = Math.abs(Math.floor(a / 9) - Math.floor(b / 9)), dc = Math.abs(a % 9 - b % 9)

@@ -2,6 +2,8 @@ import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, Vari
 import { cellReference, type CellReferenceOptions } from './hints.ts'
 import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName } from './variants.ts'
 
+const alternatives = new Intl.ListFormat('en', { type: 'disjunction' })
+
 export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPuzzle, options: CellReferenceOptions = {}): HintChoice {
   const { actions, evidence, technique } = deduction
   const nameCell = (cell: number) => cellReference(cell, options.cellReferenceStyle ?? 'concise', options.difficulty)
@@ -86,6 +88,16 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
           const name = nameCell
           description = `${cells.map(name).join(' and ')} touch at a corner. Anti-King requires different digits in these cells.`
           reason = focus.map(({ cell, digit }) => `${digit} cannot go in ${name(cell)}; ${name(cells.find(other => other !== cell)!)} is restricted to ${digit}.`).join(' ')
+          break
+        }
+        case 'non-consecutive': {
+          description = `${cells.map(nameCell).join(' and ')} share an edge. Non-Consecutive requires their digits not to differ by 1.`
+          reason = focus.map(({ cell, digit }) => {
+            const other = cells.findIndex(candidate => candidate !== cell)
+            const choices = Array.from({ length: 9 }, (_, index) => index + 1)
+              .filter(candidate => evidence.domains[other] & 1 << (candidate - 1))
+            return `${digit} cannot go in ${nameCell(cell)}; ${nameCell(cells[other])} can contain only ${alternatives.format(choices.map(String))}. Every choice would differ from ${digit} by 1.`
+          }).join(' ')
           break
         }
         case 'thermometer':

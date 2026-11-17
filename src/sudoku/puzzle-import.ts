@@ -2,7 +2,7 @@ import lzString from 'lz-string'
 import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle } from './formats.ts'
 import { EMPTY } from './game.ts'
-import { isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
+import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000
 const MAX_DECODED_LENGTH = 128_000
@@ -175,10 +175,11 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
       })
       if (!cages.length) throw new Error('This Sudoku Coach puzzle has no Killer cages.')
       rules.push({ type: 'killer-cages', cages })
-    } else if (constraint.type === 'diagonalPositive' || constraint.type === 'diagonalNegative' || constraint.type === 'antiKnight' || constraint.type === 'antiKing') {
+    } else if (constraint.type === 'diagonalPositive' || constraint.type === 'diagonalNegative' || constraint.type === 'antiKnight' || constraint.type === 'antiKing' || constraint.type === 'nonconsecutive') {
       if (constraint.segments.length) throw new Error(`This Sudoku Coach puzzle uses unsupported cells for ${constraint.type}.`)
       if (constraint.type === 'antiKnight') rules.push({ type: 'anti-knight' })
       else if (constraint.type === 'antiKing') rules.push({ type: 'anti-king' })
+      else if (constraint.type === 'nonconsecutive') rules.push({ type: 'non-consecutive' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })
     } else if (constraint.type === 'difference' || constraint.type === 'ratio') {
       const kind = constraint.type
@@ -229,6 +230,16 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     } else {
       throw new Error(`This Sudoku Coach rule is not supported yet (${constraint.type}).`)
     }
+  }
+  // Coach exempts difference markers from its global relation, independently of rule order.
+  // The positive dot remains a separate rule and still requires a difference of one.
+  const exceptions = [...new Map(rules.flatMap(rule => rule.type === 'kropki'
+    ? (rule.consecutive?.pairs ?? []).filter(([a, b]) => cellsShareEdge(a, b)).map(([a, b]) => {
+      const pair = [Math.min(a, b), Math.max(a, b)] as const
+      return [pair.join(','), pair] as const
+    }) : [])).values()]
+  if (exceptions.length) for (const [index, rule] of rules.entries()) {
+    if (rule.type === 'non-consecutive') rules[index] = { ...rule, except: exceptions }
   }
   return makeImportedPuzzle('Sudoku Coach', givens, rules, readRegions(data.regions))
 }

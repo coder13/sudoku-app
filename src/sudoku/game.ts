@@ -1,6 +1,6 @@
 import { STARTER } from './formats.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
-import { isPuzzleVariantId, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
+import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
 import type { CollectionReference } from './collection-reference.ts'
@@ -168,7 +168,8 @@ export function conflictsOf(values: string, puzzle?: VariantPuzzle): Set<number>
   for (let i = 0; i < 81; i++) {
     if (values[i] === '0') continue
     for (let j = i + 1; j < 81; j++) {
-      if (values[i] === values[j] && peer(i, j, puzzle)) {
+      if (values[i] === values[j] && peer(i, j, puzzle) ||
+        values[j] !== '0' && (variantDigitExclusions(puzzle, i, j, Number(values[i])) & 1 << (Number(values[j]) - 1))) {
         conflicts.add(i)
         conflicts.add(j)
       }
@@ -335,10 +336,11 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
       }
       if (value) {
         const bit = 1 << (value - 1)
-        const clearDigit = (mask: number, i: number) => editable.some((cell) =>
-          peer(cell, i, game.variant?.puzzle)) ? mask & ~bit : mask
-        center = center.map(clearDigit)
-        corner = corner.map(clearDigit)
+        const clearCandidates = (mask: number, i: number) => editable.reduce((remaining, cell) =>
+          remaining & ~((peer(cell, i, game.variant?.puzzle) ? bit : 0) |
+            variantDigitExclusions(game.variant?.puzzle, cell, i, value)), mask)
+        center = center.map(clearCandidates)
+        corner = corner.map(clearCandidates)
       } else {
         center = center.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
         corner = corner.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
@@ -435,9 +437,10 @@ export function fillEntries(game: Game, nextValues: string): Game {
     corner[index] = 0
     const bit = 1 << (digit - 1)
     for (let peerIndex = 0; peerIndex < 81; peerIndex++) {
-      if (!peer(index, peerIndex, game.variant?.puzzle)) continue
-      center[peerIndex] &= ~bit
-      corner[peerIndex] &= ~bit
+      const removed = (peer(index, peerIndex, game.variant?.puzzle) ? bit : 0) |
+        variantDigitExclusions(game.variant?.puzzle, index, peerIndex, digit)
+      center[peerIndex] &= ~removed
+      corner[peerIndex] &= ~removed
     }
     changed = true
   }

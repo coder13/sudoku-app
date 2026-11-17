@@ -1,6 +1,7 @@
 import type { LessonExample, PracticeExercise, VariantPracticeExercise, VariantPuzzle } from './engine.ts'
 import { cellName } from './lesson-diagram.ts'
 import { variantHintChoice } from './variant-hints.ts'
+import { nonConsecutiveDescription } from './variants.ts'
 
 export type LessonExercise = PracticeExercise & { variantPuzzle?: VariantPuzzle }
 type LessonDiagramExample = Omit<LessonExample, 'practice'> & { practice: LessonExercise; variantPuzzle?: VariantPuzzle }
@@ -36,7 +37,7 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       case 'parity': return [`${rule.parity === 'odd' ? 'Odd' : 'Even'} cells · ${cells(rule.cells)}`]
       case 'anti-knight': return ['Cells a knight’s move apart must differ.']
       case 'anti-king': return ['Cells touching at a corner must differ.']
-      case 'non-consecutive': return ['Cells sharing an edge cannot contain consecutive digits.']
+      case 'non-consecutive': return [nonConsecutiveDescription(puzzle, rule)]
       case 'inequality': return [`${cellName(rule.less)} < ${cellName(rule.greater)}`]
       case 'clone': return rule.groups.map((group) => `Same digit · ${cells(group)}`)
       case 'kropki': return [

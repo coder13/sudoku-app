@@ -7267,7 +7267,8 @@
               "type": "text",
               "paragraphs": [
                 "Start with a placed digit. Check its neighbors above, below, left, and right.",
-                "Look for candidates one less or one more than that digit. For 1, check only 2. For 9, check only 8."
+                "Look for candidates one less or one more than that digit. For 1, check only 2. For 9, check only 8.",
+                "Some mixed puzzles exempt the pairs marked by white dots. Check the puzzle’s rule description before using Non-Consecutive across a dot."
               ]
             },
             {
@@ -7293,7 +7294,16 @@
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "Literally No One by Philip Newman",
+              "href": "https://www.gmpuzzles.com/blog/2025/07/nonconsecutive-sudoku-by-philip-newman/"
+            },
+            {
+              "label": "Consecudoku on Sudoku Coach",
+              "href": "https://sudoku.coach/en/s/7RCb"
+            }
+          ],
           "difficulty": "easy"
         },
         {

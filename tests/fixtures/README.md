@@ -150,3 +150,38 @@ The retained API responses, ratings and traces match across nine fixtures, inclu
 The app adds 1,543 gzip bytes. All four profile contracts and all 16 native/wasm-api feature combinations pass. The optimized artifact also passes 253 Rust tests including doctests, 352 app tests, 214 Wasm tests, strict full/reduced Cargo docs, TypeScript and the production/offline build. Unit cases check positive and negative assumptions, candidate-mask restrictions, zero/exhausted budgets, incompatible domains, and reuse of an existing completion without new probes.
 
 Repeat the paired comparison with `node --experimental-strip-types scripts/compare-variant-engines.mjs before.wasm after.wasm tests/fixtures/parity-big-eight.json`. Additional JSON fixture paths extend both the retained-response corpus and the exhaustive app comparison. Use `scripts/profile-variant-hints.mjs` to retain the full per-technique proofs when testing another optimization.
+
+## Non-Consecutive sources and app coverage
+
+`nonconsecutive-newman.json` records Philip Newman's [Literally No One](https://www.gmpuzzles.com/blog/2025/07/nonconsecutive-sudoku-by-philip-newman/), published 2025-07-09. Its 21 givens and completion were checked against both rendered publisher PDFs. The solution PDF's extracted text runs from bottom to top; the fixture follows the visible grid. A separate set-based counter proves the published unique completion in 176 nodes and multiple completions without Non-Consecutive.
+
+`nonconsecutive-coach.json` retains unmodified SCv7 codes and independently decoded payloads from two public Coach pages. The 9 × 9 [Consecudoku](https://sudoku.coach/en/s/7RCb) has two givens and 38 white dots. The 6 × 6 [Non-consecutive Flockers](https://sudoku.coach/en/s/Cby7) remains an explicit unsupported-size fixture. Coach's [published rule compiler](https://sudoku.coach/js/jCfXtZs-1776367508519.js) exempts difference-marker pairs from its global Nonconsecutive relation. Imports therefore add explicit `except` edges to the native rule and preserve the separate positive Kropki constraints, in either source order. Black dots do not create exceptions. Native definitions keep their explicit semantics; no automatic exemption is inferred from a native dot.
+
+The published 21-given puzzle completes logically under the app order. The two-given Coach puzzle imports with its published exact completion, while its current logical path stalls after 62 deductions. Both partial ratings remain marked as stalled. Missing locked and multi-candidate deductions, proof/training support and request performance are tracked in [issue 111](https://github.com/coder13/sudoku-app/issues/111).
+
+`nonconsecutive-combined.json` contains two authored completion witnesses with 72 givens, connected Jigsaw regions and the previous rendered clue families. All 2,048 family selections retain every selected source rule. The 1,536 compatible samples pass import, hints and rating; 512 samples preserve an added knight rule and reject conflicting fixed clues. These counts concern these supplied givens and do not establish general feasibility of family combinations. A separate checker evaluates every active constraint directly on the completed digits.
+
+App coverage includes both candidate styles, non-wrapping edge conflicts, 1/9 boundaries, explicit exceptions, undo/redo, batched singles, all grid symmetries, three checked practice positions, multiple hints, selected proofs, paging, Technique Finder, complete logical Play on the published puzzle, partial-path status, sharing and actual storage reload. Rendered desktop/mobile components preserve all 38 dots and their exception labels, conflict feedback, help controls and the completion chooser. Live viewport review and calibrated New puzzle presets remain separate follow-ups.
+
+Warmed Node/Wasm timings on Darwin arm64, Node 26.13.0, milliseconds median/p95:
+
+| Operation | Literally No One | Two-given Consecudoku |
+| --- | ---: | ---: |
+| Candidates | 0.014 / 0.016 | 0.043 / 0.056 |
+| Uniqueness | 0.336 / 0.349 | 0.361 / 0.377 |
+| Exact solve | 0.253 / 0.260 | 0.361 / 0.366 |
+| Native default rating | 0.317 / 0.490 | 0.541 / 0.566, stalled |
+| Native default ten hints | 0.050 / 0.058 | 0.073 / 0.084 |
+| App-order rating | 0.345 / 0.431, solved Easy | 2,516.019 / 2,526.339, stalled |
+| App-order ten hints | 0.083 / 0.093 | 1,428.987 / 1,438.757 |
+| App exhaustive first page | 44.632 / 44.798 | 1,417.999 / 1,424.970 |
+
+Fixed operations use five warmups and 40 samples; exhaustive collections use five warmups and ten samples. The published puzzle has 66 choices with eight transferred; Consecudoku has four choices, all transferred. The app order includes 107 techniques and the existing progress preference; the native default searches its smaller order. Run `node --experimental-strip-types scripts/bench-variants.mjs non-consecutive nc-white-dots` to repeat these cases. Other fixture names select narrower audits. These calls exclude worker startup, transfer and rendering.
+
+Generation with required Non-Consecutive and 30 givens matched 17/20 seeds at 116.476/402.132 ms under six attempts and 20,000 nodes per attempt. Three separate generated puzzles pass independent clue-count, uniqueness and rule-dependency checks under 30 attempts and 50,000 nodes. A generated mixed template retains all 38 exceptions and its positive dots. These measurements do not establish human difficulty or calibrated app presets.
+
+Against main at `cda93a3`, complete retained API responses and complete Nested Forcing Net proofs match on eleven fixtures, including the published Non-Consecutive puzzle. Paired exhaustive median/p95 times are 858.485/863.936 → 854.527/862.056 ms for Quadruple, 65.722/68.416 → 65.171/67.239 ms for Odd/Even, 96.658/97.845 → 95.858/96.315 ms for Anti-King and 44.832/45.865 → 44.542/46.881 ms for Non-Consecutive. No scoring version or technique cost changes.
+
+App Wasm measures 3,292,003 raw / 851,248 gzip bytes, compared with main's 3,291,239 / 857,637. The solver-only and Classic profiles remain 2,040,103 / 556,087 and 2,555,726 / 662,305; variant-solver measures 2,537,575 / 678,728. Local gates pass 258 Rust tests including doctests, 379 app tests, 227 Wasm tests, all 16 capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the production/offline build.
+
+The per-technique profile of Consecudoku's starting position uses one warmup and five measured calls per detector, retaining every proof. The largest medians are 750.684 ms for five-digit Pattern Overlay, 293.104 ms for four-digit Pattern Overlay and 237.137 ms for Nested Forcing Net; all three return no deductions. This identifies a follow-up search target, rather than a performance improvement in this integration. Normalize the stored Coach export with `detectPuzzle` and run `scripts/profile-variant-hints.mjs` on its native puzzle definition to repeat the profile.

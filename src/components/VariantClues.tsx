@@ -151,6 +151,12 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
   const labels: string[][] = Array.from({ length: 81 }, () => [])
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
+      case 'non-consecutive':
+        for (const [a, b] of rule.except ?? []) {
+          labels[a].push(`Non-Consecutive exception with ${reference(b)}`)
+          labels[b].push(`Non-Consecutive exception with ${reference(a)}`)
+        }
+        break
       case 'parity':
         for (const cell of rule.cells) labels[cell].push(rule.parity === 'odd'
           ? 'odd circle, digit must be 1, 3, 5, 7, or 9'
