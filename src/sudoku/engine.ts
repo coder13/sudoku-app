@@ -559,7 +559,7 @@ function connect(connection: EngineConnection) {
 export function runEngine<T extends EngineRequest>(request: T, options: { interactive?: boolean; background?: boolean } = {}): Promise<EngineResult<T>> {
   return new Promise((resolve, reject) => {
     // A scan for an unfamiliar move must not hold up hints or candidate updates.
-    const connection = options.interactive && request.type === 'deductions' ? techniqueDetailEngine
+    const connection = options.interactive ? techniqueDetailEngine
       : options.background || request.type === 'classify-actions' || request.type === 'deductions' || request.type === 'technique-count' ? techniqueEngine
       : request.type === 'generate-variant' || request.type === 'generate-practice-example' ? generationEngine : playEngine
     connection.worker ??= connect(connection)

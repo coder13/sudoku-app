@@ -17,7 +17,7 @@ import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/hi
 import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
-import { TECHNIQUE_FINDER_TITLE, techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
+import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { DesktopPuzzleView } from '../sudoku/play-preferences'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
@@ -27,9 +27,9 @@ import { roomStore } from '../sudoku/storage'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
-import { variantHintChoice, variantSolutionPath } from '../sudoku/variant-hints'
-import { getVariantPlayOrder, playCandidates, variantHintOrder, variantPosition } from '../sudoku/variant-play'
-import { variantName, variantRuleDescriptions, variantHouseMasks } from '../sudoku/variants'
+import { puzzleHints, puzzleSolution } from '../sudoku/puzzle-help'
+import { getVariantPlayOrder, playCandidates, variantPosition } from '../sudoku/variant-play'
+import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
@@ -47,7 +47,7 @@ import { Modal } from './Modal'
 import { MotionSurface, usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
-import { SolutionPath, type SolutionPathState } from './SolutionPath'
+import { SolutionDialog, SolutionPath, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
@@ -354,7 +354,7 @@ export function Worktable({
   const showSolvedGrid = solved && solvedView === 'grid'
   const mobileResults = mobile && (showResults || showDifficulty)
   const { id, givens, difficulty, score, variant, generatedWithAuto } = game
-  const analysisDialogOpen = analysisOpen && mobile && !draft && !solved && !variant
+  const analysisDialogOpen = analysisOpen && mobile && !draft && !solved
   const needsRating = difficulty === undefined || score === undefined
   const needsAttempt = !solved && !game.ratingAttempt
   const ratingPending = !draft && needsRating && !ratingFailed
@@ -362,12 +362,12 @@ export function Worktable({
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
   const { mounted: puzzleMenuMounted, exiting: puzzleMenuExiting } = usePresence(puzzleMenuOpen)
   const openInsightTabs = desktop && !advancedWorkspace && !placeholder && !draft
-    ? desktopInsightTabs.filter(({ id }) => desktopViews.open.includes(id) && (id === 'chains' ? !solved : !variant))
+    ? desktopInsightTabs.filter(({ id }) => desktopViews.open.includes(id) && (id === 'solution' || !solved))
     : []
   const activeDesktopTab = openInsightTabs.find(({ id }) => id === desktopViews.active) ??
     openInsightTabs.find(({ id }) => id === 'techniques') ?? openInsightTabs[0]
-  const previewing = desktop && !draft && solutionPathRevealed && solutionPath !== null &&
-    (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab?.id === 'solution')
+  const previewing = !draft && solutionPathRevealed && solutionPath !== null &&
+    (mobile || (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab?.id === 'solution'))
   const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const chainsVisible = advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains'
@@ -1344,15 +1344,7 @@ export function Worktable({
     let result: HintState
     const removals = hintEliminations(values, displayedCandidates, eliminations)
     try {
-      const { choices, candidates } = variant ? {
-        choices: (await runEngine({
-          type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations: removals },
-          techniqueOrder: await variantHintOrder(), limit: limit === 'all' ? 0xffff_ffff : limit,
-          preferProgress: true, difficulty: game.difficulty ?? 'medium',
-        })).map((choice) => variantHintChoice(choice, variant.puzzle)),
-        candidates: variantHouseMasks(variant.puzzle, values, removals),
-      } : await runEngine({ type: 'hints', values, eliminations: removals, limit, includePatterns: true,
-        preferProgress: true, difficulty: game.difficulty ?? 'medium' })
+      const { choices, candidates } = await puzzleHints(game, limit)
       if (!candidates) throw new Error('Missing hint candidates')
       result = { position: hintPosition, choices, candidates, index: 0, stage: 'technique' }
     } catch (error) {
@@ -1376,7 +1368,7 @@ export function Worktable({
   }
 
   async function showTechniqueHints(technique: string) {
-    if (busy || solved || draft || variant) return
+    if (busy || solved || draft) return
     // Mobile must close its modal before the hint and highlighted grid can be used.
     setAnalysisOpen(false)
     setPuzzleMenuOpen(false)
@@ -1389,21 +1381,13 @@ export function Worktable({
     }
     const request = ++techniqueHintRequest.current
     const position = hintPosition
-    const removals = hintEliminations(values, displayedCandidates, eliminations)
     setHint(null)
     setHintRevealed(true)
     setBusy(true)
     let result: HintState
     try {
-      // The selected proof runs on a separate worker, so it can bypass the
-      // 72 background scans. A zero-limit hint call gives the exact masks.
-      const [matches, { candidates }] = await Promise.all([
-        runEngine({ type: 'deductions', values, eliminations: removals, techniqueOrder: [technique] },
-          { interactive: true }),
-        runEngine({ type: 'hints', values, eliminations: removals, includePatterns: true, limit: 0 }),
-      ])
+      const { choices, candidates } = await puzzleHints(game, 'all', technique)
       if (!candidates) throw new Error('Missing candidates for the selected technique.')
-      const choices = techniqueHintsFromMatches(matches, technique)
       result = {
         position, choices, candidates, index: 0, stage: 'technique',
         ...(choices.length ? {} : { error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' } }),
@@ -1473,21 +1457,22 @@ export function Worktable({
   }
 
   async function showSolutionPath(force = false) {
-    if (!desktop || draft || busy) return
+    if (draft || busy) return
     setPuzzleMenuOpen(false)
     if (advancedWorkspace) {
       onOpenRightPanel()
       setFocusSolutionRequest((request) => request + 1)
-    } else openDesktopView('solution')
+    } else if (desktop) openDesktopView('solution')
+    setHintRevealed(false)
+    setSolutionHintOpen(false)
+    setActionsOpen(false)
     setSolutionPathRevealed(true)
     if (solutionPath && !force) return
     setSolutionStep(0)
     setSolutionPath({ status: 'loading' })
     const request = ++pathRequest.current
     try {
-      const result = variant ? variantSolutionPath(await runEngine({
-        type: 'variant', operation: 'trace', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder(),
-      })) : await runEngine({ type: 'logical-solve', values: givens, includeStepDetails: true, includeMoveAvailability: true })
+      const result = await puzzleSolution(game)
       if (request !== pathRequest.current) return
       if (result.positions?.length !== result.steps.length + 1) throw new Error('Missing solution positions')
       setSolutionPath({ status: 'ready', trace: result })
@@ -1507,7 +1492,7 @@ export function Worktable({
     setSolutionHintOpen(false)
     setPuzzleMenuOpen(false)
     if (advancedWorkspace) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
-    else closeDesktopView('solution')
+    else if (desktop) closeDesktopView('solution')
   }
 
   function selectSolutionStep(index: number) {
@@ -1642,12 +1627,12 @@ export function Worktable({
     <button onClick={closeSolutionPath} disabled={busy}>
       <ListOrdered size={17} /> Return to puzzle
     </button>
-  ) : desktop && !draft && !variant && (
+  ) : !draft && (
     <button onClick={() => { void showSolutionPath() }} disabled={busy} aria-label="Open solution panel">
       <ListOrdered size={17} /> Solution
     </button>
   )
-  const analysisAction = !draft && !solved && !variant && (
+  const analysisAction = !draft && !solved && (
     <button onClick={showAnalysis}>
       <ListFilter size={17} /> {TECHNIQUE_FINDER_TITLE}
     </button>
@@ -1655,6 +1640,9 @@ export function Worktable({
   const chainsAction = desktop && !draft && !solved && !placeholder && (
     <button onClick={showChains}><Link2 size={17} /> Chains</button>
   )
+  const hintMenuAction = !draft && !solved && <button onClick={() => { void showHint() }} disabled={busy}>
+    <Lightbulb size={17} /> View hint
+  </button>
   const commonSolvingMenuItems = <>
     <button onClick={() => { void generateCandidates() }} disabled={busy || solved}
       aria-keyshortcuts={shortcutLabel(shortcuts.generateCandidates)}>
@@ -1670,11 +1658,10 @@ export function Worktable({
     }}>
       <Braces size={17} /> Highlight {'{x,y}'} cells
     </button>
-    <button onClick={() => { void showHint() }} disabled={busy || solved}>
-      <Lightbulb size={17} /> View hint
-    </button>
+    {hintMenuAction}
   </>
   const puzzleOptionItems = <>
+    {hintMenuAction}
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
@@ -1726,11 +1713,12 @@ export function Worktable({
     : eraseMode ? 'erase' : colorMode ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging ? undefined : gridInputMode
   const visibleChainAnnotations = !hintAnnotations && !paintingCandidates && sketch.annotations.links?.length ? sketch.annotations : undefined
-  const livePuzzleStage = previewing ? (
+  const solutionGrid = (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} />
-  ) : completionPanel ? completionPanel
+  )
+  const livePuzzleStage = previewing ? solutionGrid : completionPanel ? completionPanel
   : sketch.drawing && chainMasks ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
@@ -1953,9 +1941,9 @@ export function Worktable({
       {advancedWorkspace
         ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel} chains={chainsPanel} cellColors={cellColorsPanel}
           hint={advancedHintPanel} solutionPath={solutionPathPanel}
-          techniques={!draft && !variant
+          techniques={!draft
             ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
-            : <p className="analysis-empty">Available for classic Sudoku puzzles.</p>}
+            : <p className="analysis-empty">Available after starting the puzzle.</p>}
           details={detailsPanel} browser={browserPanel} showLeft={showLeftPanel} showRight={showRightPanel} showBottom={showBottomPanel}
           focusHintRequest={focusHintRequest} focusAnalysisRequest={focusAnalysisRequest}
           focusSolutionRequest={focusSolutionRequest}
@@ -2030,6 +2018,10 @@ export function Worktable({
           {variantRuleDescriptions(variant.puzzle).map(rule => <p key={rule}>{rule}</p>)}
         </div>
       </Modal>}
+      {mobile && solutionPathRevealed && solutionPath && <SolutionDialog
+        grid={solutionGrid} explanation={solutionHintCopy} state={solutionPath} index={solutionStep}
+        onSelect={selectSolutionStep} onRetry={() => { void showSolutionPath(true) }} onClose={closeSolutionPath}
+        onReveal={markSolutionVisible} />}
       {analysisDialogOpen && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} onSelectTechnique={showTechniqueHints} />}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       {changePuzzleOpen && <Modal title="Change puzzle" onClose={() => setChangePuzzleOpen(false)}>
