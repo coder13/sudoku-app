@@ -1,5 +1,6 @@
-import { DIFFICULTY_OPTIONS, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
+import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
+import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
   classic: {
@@ -9,6 +10,10 @@ export const VARIANTS = {
   'killer-cages': {
     name: 'Killer',
     rule: 'Digits in each dashed cage must add to the small total in its corner. Digits cannot repeat in a cage.',
+  },
+  windoku: {
+    name: 'Windoku',
+    rule: 'Each of the four shaded 3 × 3 regions must also contain the digits 1–9 once each.',
   },
   diagonal: {
     name: 'Diagonal',
@@ -36,6 +41,9 @@ export const VARIANTS = {
   },
 } as const
 
+export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
+  Array.from({ length: 9 }, (_, index) => start + Math.floor(index / 3) * 9 + index % 3))
+
 export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>
 export type VariantGame = { id: PlayableVariant; puzzle: VariantPuzzle; solution: string }
@@ -44,18 +52,24 @@ export function isVariantId(value: unknown): value is VariantId {
   return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
 }
 
-const jigsawDifficulties: readonly DifficultyPreference[] = ['auto', 'easy', 'medium', 'hard']
-
-export function variantDifficulties(variant?: VariantId) {
-  return variant === 'jigsaw' ? jigsawDifficulties : DIFFICULTY_OPTIONS
+// Offer only levels with recipes verified under the current technique rules.
+export function variantDifficulties(variant?: VariantId): readonly DifficultyPreference[] {
+  if (!variant || variant === 'classic') return DIFFICULTY_OPTIONS
+  return DIFFICULTY_OPTIONS.filter((level) => Object.hasOwn(seedBank[variant], level))
 }
 
-export function variantDifficulty<T extends DifficultyPreference>(variant: VariantId | undefined, preference: T): T | 'hard' {
-  return variantDifficulties(variant).includes(preference) ? preference : 'hard'
+export function variantDifficulty(variant: VariantId | undefined, preference: Difficulty): Difficulty
+export function variantDifficulty(variant: VariantId | undefined, preference: DifficultyPreference): DifficultyPreference
+export function variantDifficulty(variant: VariantId | undefined, preference: DifficultyPreference): DifficultyPreference {
+  if (preference === 'auto') return 'auto'
+  const current = currentDifficulty(preference)
+  const available = variantDifficulties(variant).filter((d): d is Difficulty => d !== 'auto')
+  return available.includes(current) ? current : available.reduce((best, level) =>
+    Math.abs(difficultyIndex(level) - difficultyIndex(current)) < Math.abs(difficultyIndex(best) - difficultyIndex(current)) ? level : best)
 }
 
 export function variantDifficultyLabel(variant: VariantId | undefined, preference: DifficultyPreference, recommended: Difficulty) {
-  return difficultyOptionLabel(preference, variantDifficulty(variant, recommended))
+  return difficultyOptionLabel(preference, variantDifficulty(variant, recommended) as Difficulty)
 }
 
 const cells = Array.from({ length: 9 }, (_, i) => i)
@@ -72,7 +86,10 @@ export function variantHouseCells(house: VariantHouse, puzzle: VariantPuzzle): r
   if ('row' in house) return cells.map((i) => house.row * 9 + i)
   if ('column' in house) return cells.map((i) => i * 9 + house.column)
   if ('diagonal' in house) return house.diagonal === 'main' ? mainDiagonal : antiDiagonal
-  if ('extra' in house) return puzzle.rules?.filter((rule) => rule.type === 'extra-house')[house.extra]?.cells ?? []
+  if ('extra' in house) {
+    const rule = puzzle.rules?.[house.extra]
+    return rule?.type === 'extra-house' ? rule.cells : []
+  }
   if (puzzle.regions?.type === 'jigsaw') return puzzle.regions.regions[house.region]
   const top = Math.floor(house.region / 3) * 27 + (house.region % 3) * 3
   return cells.map((i) => top + Math.floor(i / 3) * 9 + i % 3)
@@ -89,9 +106,9 @@ export function variantHouseName(house: VariantHouse, puzzle: VariantPuzzle) {
 export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
   const masks = [...values].map((digit, cell) => digit === '0' ? 511 & ~(eliminations?.[cell] ?? 0) : 0)
   const houses: VariantHouse[] = cells.flatMap((i) => [{ row: i }, { column: i }, { region: i }])
-  for (const rule of puzzle.rules ?? []) {
+  for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
-    if (rule.type === 'extra-house') houses.push({ extra: houses.filter((house) => 'extra' in house).length })
+    if (rule.type === 'extra-house') houses.push({ extra: index })
   }
   for (const house of houses) {
     const indices = variantHouseCells(house, puzzle)
@@ -154,6 +171,10 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
   if (id === 'jigsaw') return regions?.type === 'jigsaw' && validJigsawRegions(regions.regions) &&
     (rules === undefined || (Array.isArray(rules) && rules.length === 0))
   if ((regions !== undefined && regions?.type !== 'boxes') || !Array.isArray(rules) || !rules.length || rules.length > 81) return false
+  if (id === 'windoku') return rules.length === WINDOKU_REGIONS.length &&
+    rules.every((rule) => rule?.type === 'extra-house' && validCells(rule.cells, 9) && rule.cells.length === 9) &&
+    WINDOKU_REGIONS.every((region) => rules.some((rule) =>
+      rule.type === 'extra-house' && region.every((cell) => rule.cells.includes(cell))))
   return rules.every((rule: VariantRule) => {
     if (!rule || rule.type !== id) return false
     switch (rule.type) {

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  createPlayPreferenceStore, DEFAULT_PLAY_PREFERENCES, parsePlayPreferences, PLAY_PREFERENCES_KEY,
+  createPlayPreferenceStore, DEFAULT_DESKTOP_INPUT_WIDTH, DEFAULT_DESKTOP_LAYOUT_WIDTH, DEFAULT_PLAY_PREFERENCES,
+  parsePlayPreferences, PLAY_PREFERENCES_KEY,
 } from '../src/sudoku/play-preferences.ts'
 
 function memoryStorage(initial: string | null = null) {
@@ -72,6 +73,102 @@ test('older partial settings gain new defaults without losing saved choices', ()
   assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), {
     ...DEFAULT_PLAY_PREFERENCES, pencil: true, selectedDigit: 4,
   })
+})
+
+test('open desktop views and the active view survive a fresh app instance', () => {
+  const storage = memoryStorage()
+  const store = createPlayPreferenceStore(storage)
+  store.set('desktopViews', { open: ['solution', 'techniques', 'chains'], active: 'chains' })
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, {
+    open: ['solution', 'techniques', 'chains'], active: 'chains',
+  })
+  store.set('desktopViews', { open: ['techniques'], active: 'techniques' })
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, {
+    open: ['techniques'], active: 'techniques',
+  })
+})
+
+test('the legacy techniques panel preference is preserved until the user changes their views', () => {
+  const storage = memoryStorage(JSON.stringify({ pencil: true }))
+  storage.setItem('sudoku-app:v1:techniques-card-open', 'true')
+  const store = createPlayPreferenceStore(storage)
+  assert.deepEqual(store.getSnapshot().desktopViews, { open: ['techniques'], active: 'techniques' })
+  store.set('desktopViews', { open: [], active: null })
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, { open: [], active: null })
+})
+
+test('saved desktop views ignore unknown names and closed active views', () => {
+  const preferences = parsePlayPreferences({
+    desktopViews: { open: ['chains', 'unknown', 'chains'], active: 'solution' },
+  })
+  assert.deepEqual(preferences.desktopViews, { open: ['chains'], active: 'chains' })
+})
+
+test('the mode badge position survives reloads and other play setting changes', () => {
+  const storage = memoryStorage(JSON.stringify({ pencil: true }))
+  const store = createPlayPreferenceStore(storage)
+  const otherTab = createPlayPreferenceStore(storage)
+  const position = { edge: 'right', offset: 0.37 } as const
+  store.set('cardModeBadgePosition', position)
+  otherTab.set('multi', true)
+  const reloaded = createPlayPreferenceStore(storage)
+  assert.deepEqual(reloaded.getSnapshot().cardModeBadgePosition, position)
+  assert.equal(reloaded.getSnapshot().pencil, true)
+  assert.equal(reloaded.getSnapshot().multi, true)
+})
+
+test('invalid card badge positions fall back to the default edge and offset', () => {
+  for (const cardModeBadgePosition of [
+    null, { edge: 'middle', offset: 0.5 }, { edge: 'left' }, { edge: 'right', offset: '0.5' },
+    { edge: 'top', offset: -0.1 }, { edge: 'bottom', offset: 1.1 }, { edge: 'right', offset: Infinity },
+  ]) {
+    assert.deepEqual(parsePlayPreferences({ cardModeBadgePosition, pencil: true }), {
+      ...DEFAULT_PLAY_PREFERENCES, pencil: true,
+    })
+  }
+})
+
+test('a saved grid badge position leaves the card badge at its bottom-right default', () => {
+  const prefs = parsePlayPreferences({ modeBadgePosition: { edge: 'top', offset: 0.2 } })
+  assert.deepEqual(prefs.cardModeBadgePosition, { edge: 'bottom', offset: 0.95 })
+})
+
+test('desktop layout width persists and can be reset without clearing other preferences', () => {
+  const storage = memoryStorage(JSON.stringify({ selectedDigit: 6, desktopLayoutWidth: 1520 }))
+  const store = createPlayPreferenceStore(storage)
+  assert.equal(store.getSnapshot().desktopLayoutWidth, 1520)
+  store.set('desktopLayoutWidth', 940)
+  assert.equal(createPlayPreferenceStore(storage).getSnapshot().desktopLayoutWidth, 940)
+  store.set('desktopLayoutWidth', DEFAULT_DESKTOP_LAYOUT_WIDTH)
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), { ...DEFAULT_PLAY_PREFERENCES, selectedDigit: 6 })
+  for (const desktopLayoutWidth of [0, -1, 760.5, '1520', Infinity]) {
+    assert.equal(parsePlayPreferences({ desktopLayoutWidth }).desktopLayoutWidth, DEFAULT_DESKTOP_LAYOUT_WIDTH)
+  }
+})
+
+test('both desktop panel widths save and reset independently of the outer width', () => {
+  const storage = memoryStorage(JSON.stringify({ desktopLayoutWidth: 1520 }))
+  const store = createPlayPreferenceStore(storage)
+  const widths = { input: 360, puzzle: 631 }
+  store.set('desktopPanelWidths', widths)
+  const reloaded = createPlayPreferenceStore(storage)
+  assert.deepEqual(reloaded.getSnapshot().desktopPanelWidths, widths)
+  reloaded.set('desktopPanelWidths', DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), {
+    ...DEFAULT_PLAY_PREFERENCES, desktopLayoutWidth: 1520,
+  })
+})
+
+test('the desktop split restores earlier input widths and validates saved pairs', () => {
+  assert.deepEqual(parsePlayPreferences({ desktopInputWidth: 550 }).desktopPanelWidths, { input: 550, puzzle: null })
+  assert.deepEqual(parsePlayPreferences({
+    desktopInputWidth: 550, desktopPanelWidths: { input: DEFAULT_DESKTOP_INPUT_WIDTH, puzzle: null },
+  }).desktopPanelWidths, DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)
+  for (const desktopPanelWidths of [
+    null, { input: 323, puzzle: 600 }, { input: 420, puzzle: 259 }, { input: 420, puzzle: 900 }, { input: '500', puzzle: 400 },
+  ]) {
+    assert.deepEqual(parsePlayPreferences({ desktopPanelWidths }).desktopPanelWidths, DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)
+  }
 })
 
 test('malformed values cannot arm invalid digits, colors, or conflicting modes', () => {

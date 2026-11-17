@@ -5,10 +5,19 @@ use super::{Analysis, Board, CELLS, PositionSnapshot, Technique, coordinates, lo
 
 #[path = "patterns/mod.rs"]
 mod patterns;
+#[cfg(any(feature = "variants", all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))))]
+pub(crate) use patterns::OverlaySearch;
 
 #[path = "proofs.rs"]
 mod proofs;
 pub use proofs::{DeductionMatch, DeductionProof, ProofPattern, deductions, deductions_at};
+
+#[cfg(all(
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+#[path = "hints/technique_counts.rs"]
+pub(crate) mod technique_counts;
 
 #[path = "subsets.rs"]
 mod subsets;
@@ -134,6 +143,13 @@ pub enum LinkSource {
         cells: [[u8; 3]; 4],
         /// Three digits in the impossible core.
         digits: [u8; 3],
+    },
+    /// At least one extra candidate must break this Unique Rectangle.
+    UniqueRectangle {
+        /// Zero-based cell indices in row-major order.
+        corners: [u8; 4],
+        /// The two digits that could swap if no extra candidate were true.
+        digits: [u8; 2],
     },
     /// At least one of the two endpoint digits must occur in this almost locked set.
     AlmostLockedSet(AlmostLockedSetLink),
@@ -711,6 +727,47 @@ pub enum AlignedExclusionReason {
     EmptyCell(usize),
 }
 
+/// One digit's cells before and after checking compatible overlay patterns.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct PatternOverlayDigit {
+    /// Digit used by each pattern in this scope.
+    pub digit: u8,
+    /// Placed copies and live candidate cells before the overlay.
+    pub allowed: Vec<usize>,
+    /// Cells used in at least one pattern compatible with the other scopes.
+    pub supported: Vec<usize>,
+}
+
+/// The house and peer constraints used by a variant Pattern Overlay proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct PatternOverlayGeometry {
+    /// Every required house, listed as its nine zero-based cells.
+    pub houses: Vec<[usize; 9]>,
+    /// Pairs that may not contain the same digit and share no required house.
+    /// These pairs are additional to the exclusions inside the required houses.
+    pub excluded_pairs: Vec<[usize; 2]>,
+}
+
+/// The digit families used to prove one Pattern Overlay deduction.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct PatternOverlayProof {
+    /// Digit placed or removed.
+    pub digit: u8,
+    /// Participating digit families, in digit order.
+    pub scopes: Vec<PatternOverlayDigit>,
+    /// Explicit geometry for variant proofs. The classic rows, columns, and boxes
+    /// are implicit when this field is absent.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub geometry: Option<Box<PatternOverlayGeometry>>,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(
     feature = "wasm-api",
@@ -719,6 +776,8 @@ pub enum AlignedExclusionReason {
 )]
 /// Technique-specific facts that establish a deduction. The hint carries the proved actions separately.
 pub enum HintEvidence {
+    /// A digit can occupy only the cells covered by compatible placement patterns.
+    PatternOverlay(Box<PatternOverlayProof>),
     /// One cell contains a single candidate.
     Cell(usize),
     /// A house determines the placement of a digit.
@@ -1125,6 +1184,9 @@ impl HintEvidence {
             HintEvidence::EmptyRectangle { cells, .. } => cells.len() + 2,
             HintEvidence::Chain { links } => links.len() + 1,
             HintEvidence::Inference { links } => links.len() + 1,
+            HintEvidence::PatternOverlay(proof) => {
+                proof.scopes.iter().map(|scope| scope.allowed.len()).sum()
+            }
             HintEvidence::Coloring { colors, .. } => colors.iter().map(Vec::len).sum(),
             HintEvidence::UniqueRectangle { support, .. } => match support {
                 RectangleSupport::Subset { cells, .. } => 4 + cells.len(),
@@ -1390,12 +1452,14 @@ pub(crate) fn rank_position(
     choices
 }
 
+#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
 fn technique_rank(technique: &Technique) -> (super::Difficulty, u16) {
     (technique.difficulty(), technique.cost())
 }
 
 /// Play hints prefer the cheapest proof that unlocks placements through singles.
 /// This bounded probe does not change rating, attribution, or the solver profile.
+#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
 pub(crate) fn rank_useful_position(
     position: &Position,
     limit: usize,
@@ -1485,6 +1549,7 @@ pub(crate) fn rank_useful_position(
     choices
 }
 
+#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
 fn singles_progress(mut position: Position) -> usize {
     let mut placed = 0;
     while !position.is_solved() {
@@ -1501,6 +1566,7 @@ fn singles_progress(mut position: Position) -> usize {
     placed
 }
 
+#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
 fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
     let mut techniques: Vec<_> = Technique::ALL
         .into_iter()
@@ -1511,7 +1577,7 @@ fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
 }
 
 /// Attribute each action independently. A proof may also affect other candidates.
-#[cfg(feature = "wasm-api")]
+#[cfg(all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
 pub(crate) fn classify_actions(
     board: &Board,
     eliminations: Option<&[u16; CELLS]>,
@@ -1695,6 +1761,7 @@ fn visit_technique(
         technique,
         Technique::FullHouse
             | Technique::HiddenSingle
+            | Technique::HiddenSingleBox
             | Technique::Pointing
             | Technique::Claiming
             | Technique::NakedPair
@@ -1727,7 +1794,10 @@ fn visit_technique(
                     ))?;
                 }
             }
-            Technique::HiddenSingle => {
+            Technique::HiddenSingle | Technique::HiddenSingleBox => {
+                if technique == Technique::HiddenSingleBox && !matches!(house, House::Box(_)) {
+                    continue;
+                }
                 for digit in 1..=9 {
                     let mut positions = positions_for_digit(&cells, masks, digit);
                     if let (Some(cell), None) = (positions.next(), positions.next()) {
@@ -1971,6 +2041,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "variants")]
     #[test]
     fn useful_variant_play_hints_also_prefer_a_single_unlocking_move() {
         use crate::{Difficulty, VariantPuzzle, VariantTechnique};
@@ -2050,18 +2121,18 @@ mod tests {
         let HintChoices::Choices(choices) = hint_choices(&board, None).unwrap() else {
             panic!("expected multiple choices");
         };
-        use Technique::{HiddenSingle, NakedSingle};
+        use Technique::{HiddenSingleBox, NakedSingle};
         let expected = [
+            (HiddenSingleBox, 5, 8),
+            (HiddenSingleBox, 24, 5),
+            (HiddenSingleBox, 38, 6),
+            (HiddenSingleBox, 47, 3),
+            (HiddenSingleBox, 51, 8),
+            (HiddenSingleBox, 64, 8),
+            (HiddenSingleBox, 78, 1),
             (NakedSingle, 40, 5),
             (NakedSingle, 59, 7),
             (NakedSingle, 62, 4),
-            (NakedSingle, 70, 3),
-            (HiddenSingle, 5, 8),
-            (HiddenSingle, 7, 1),
-            (HiddenSingle, 22, 4),
-            (HiddenSingle, 24, 5),
-            (HiddenSingle, 38, 6),
-            (HiddenSingle, 42, 7),
         ];
         let actual: Vec<_> = choices
             .iter()
@@ -2179,17 +2250,16 @@ mod tests {
     #[test]
     fn next_deduction_uses_established_removals_and_reserves_the_answer_for_the_final_stage() {
         let mut snapshot = PositionSnapshot::new(parse_givens(WARMUP).unwrap());
-        let original = next_deduction_at(&snapshot).unwrap().unwrap();
+        let original = next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]).unwrap().unwrap();
         assert_eq!(
             original.deduction.actions,
             [HintAction::Place(Candidate { cell: 40, digit: 5 })]
         );
 
         snapshot.eliminations[2] = digit_bit(1) | digit_bit(2);
-        let stages = next_deduction_at(&snapshot).unwrap().unwrap();
-        let HintChoices::Choices(choices) = hints_at(&snapshot).unwrap() else {
-            panic!("expected multiple choices");
-        };
+        let stages = next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]).unwrap().unwrap();
+        let choices = ranked_hints(&snapshot.values().unwrap(), snapshot.removals(), 10, &[Technique::HiddenSingleBox]).unwrap();
+        assert!(choices.len() >= 2);
         assert_eq!(stages.deduction, choices[0]);
         assert_eq!(stages.technique, Technique::NakedSingle);
         assert_eq!(
@@ -2210,7 +2280,7 @@ mod tests {
         );
         snapshot.eliminations[2] |= digit_bit(4);
         assert_eq!(
-            next_deduction_at(&snapshot),
+            next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]),
             Err(HintError::InvalidEliminations)
         );
     }

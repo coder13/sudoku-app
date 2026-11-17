@@ -1,20 +1,63 @@
+import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, calculatePlayerRating, isRatingAttempt, isRatingEvent, ratingAttemptFor, STARTING_PLAYER_RATING, type RatingEvent } from '../src/sudoku/player-rating.ts'
+import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, calculatePlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION, ratingAttemptFor, STARTING_PLAYER_RATING, type RatingEvent } from '../src/sudoku/player-rating.ts'
 
 function outcome(index: number, settings: Partial<RatingEvent> = {}): RatingEvent {
   return {
     id: `outcome-${index}`, gameId: `puzzle-${index}`, givens: String(index).padStart(81, '0'),
-    at: index, difficulty: 'medium', finish: 'solved', elapsed: 0, viewed: 0, applied: 0, ...settings,
+    at: index, ratingVersion: PLAYER_RATING_VERSION, difficulty: 'medium', finish: 'solved', elapsed: 0, viewed: 0, applied: 0, ...settings,
   }
 }
+
+test('legacy outcomes keep their production rating and new outcomes build on it', () => {
+  const legacy = outcome(1, { ratingVersion: undefined, elapsed: 90 })
+  const migrated = calculatePlayerRating([legacy])
+  assert.equal(migrated.rating, 951)
+  assert.equal(migrated.recommended, 'hard')
+  assert.equal(migrated.results.get(legacy.gameId)?.after, 951)
+
+  const current = outcome(2, { difficulty: 'hard', elapsed: 90, at: 0 })
+  const next = calculatePlayerRating([current, legacy])
+  assert.deepEqual(next.results.get(legacy.gameId), migrated.results.get(legacy.gameId))
+  assert.equal(next.results.get(current.gameId)?.before, 951)
+  assert.equal(next.rating, 981)
+  assert.equal(next.recommended, 'very-hard')
+})
+
+test('a legacy Unfair recommendation carries over to Expert at the same rating', () => {
+  const events = [1, 2].map(index => outcome(index, {
+    ratingVersion: undefined, mode: 'fixed', difficulty: 'unfair', elapsed: 600,
+  }))
+  const migrated = calculatePlayerRating(events)
+  assert.equal(migrated.rating, 1011)
+  assert.equal(migrated.recommended, 'expert')
+  assert.equal(migrated.results.get(events[1].gameId)?.event.difficulty, 'unfair')
+})
+
+test('new attempts and hint evidence use versioned rules while old saves remain valid', () => {
+  const attempt = ratingAttemptFor({ difficulty: 'hard', points: 900, scoringVersion: 11, techniqueOrder: ['xy-wing'] })
+  assert.equal(attempt.ratingVersion, PLAYER_RATING_VERSION)
+  const { ratingVersion: _, ...legacy } = attempt
+  assert.ok(isRatingAttempt(legacy))
+  const oldHints = { ...legacy, requested: ['old'], lastHintAt: 1 }
+  assert.equal(addRatingHints(oldHints, ['first'], false, { position: 'old', at: 2 }).ratingVersion, undefined)
+  const requested = addRatingHints(oldHints, ['first'], false, { position: 'new', at: 3 })
+  assert.equal(requested.ratingVersion, PLAYER_RATING_VERSION)
+  assert.equal(requested.lastHintAt, 3)
+  assert.ok(isRatingEvent(outcome(1, { ratingVersion: undefined })))
+  for (const invalid of [0, 1, 3, '2']) {
+    assert.equal(isRatingEvent({ ...outcome(1), ratingVersion: invalid }), false)
+    assert.equal(isRatingAttempt({ ...attempt, ratingVersion: invalid }), false)
+  }
+})
 
 test('Auto starts at Medium and a fast independent early solve raises the next tier', () => {
   assert.equal(calculatePlayerRating([]).rating, STARTING_PLAYER_RATING)
   assert.equal(calculatePlayerRating([]).recommended, 'medium')
   const fast = outcome(1, { elapsed: 90 })
-  assert.equal(calculatePlayerRating([fast]).recommended, 'hard')
-  assert.equal(calculatePlayerRating([{ ...fast, difficulty: 'easy', mode: 'fixed' }]).recommended, 'hard')
+  assert.equal(calculatePlayerRating([fast]).recommended, 'tricky')
+  assert.equal(calculatePlayerRating([{ ...fast, difficulty: 'easy', mode: 'fixed' }]).recommended, 'tricky')
   const assisted = calculatePlayerRating([{ ...fast, viewed: 1, applied: 1, hintsRequested: 1 }])
   assert.equal(assisted.recommended, 'medium')
   assert.ok(assisted.rating < calculatePlayerRating([fast]).rating)
@@ -73,7 +116,7 @@ test('using Solve all singles to leave Auto Easy preserves rating and resumes at
 test('early Auto solves beyond singles can advance without using the assisted solve time', () => {
   const partial = outcome(1, { singlesAssistance: 'partial', elapsed: 600 })
   const independentDeductions = calculatePlayerRating([partial])
-  assert.equal(independentDeductions.recommended, 'hard')
+  assert.equal(independentDeductions.recommended, 'tricky')
   assert.equal(independentDeductions.results.get(partial.gameId)?.speedBonus, 0)
   assert.equal(calculatePlayerRating([{ ...partial, viewed: 1, applied: 1, hintsRequested: 1 }]).recommended, 'medium')
   assert.equal(calculatePlayerRating([{ ...partial, singlesAssistance: 'all' }]).rating, STARTING_PLAYER_RATING)
@@ -85,7 +128,7 @@ test('with more results Auto advances at most one tier at a time even on the sam
   const firstFast = outcome(5, { elapsed: 90 })
   assert.equal(calculatePlayerRating([...evidence, firstFast]).recommended, 'medium')
 
-  const tiers = ['easy', 'medium', 'hard', 'unfair', 'extreme']
+  const tiers: readonly string[] = DIFFICULTY_LEVELS
   const events = [...evidence]
   const promoted = []
   for (let index = 5; index <= 36; index++) {
@@ -97,12 +140,13 @@ test('with more results Auto advances at most one tier at a time even on the sam
       promoted.push(next)
     }
   }
-  assert.deepEqual(promoted, ['hard', 'unfair', 'extreme'])
+  assert.ok(promoted.length >= 3)
+  assert.deepEqual(promoted, DIFFICULTY_LEVELS.slice(3, 3 + promoted.length))
 })
 
 test('ratings include fixed and older solves, and deduplicate repeat grids across entry points', () => {
   const easy = outcome(1, { difficulty: 'easy', mode: 'fixed', elapsed: 600 })
-  const old = outcome(2, { difficulty: 'unfair', estimated: true, elapsed: 30 })
+  const old = outcome(2, { ratingVersion: undefined, difficulty: 'unfair', estimated: true, elapsed: 30 })
   const early = calculatePlayerRating([easy, old])
   assert.equal(early.count, 2)
   assert.equal(early.recommended, 'medium')
@@ -143,7 +187,7 @@ test('technique analysis lowers rating weight and never promotes Auto difficulty
 
   // Using a scan does not consume one of the four early calibration results.
   const nextFast = outcome(2, { elapsed: 90 })
-  assert.equal(calculatePlayerRating([assistedFast, nextFast]).recommended, 'hard')
+  assert.equal(calculatePlayerRating([assistedFast, nextFast]).recommended, 'tricky')
 
   const failed = outcome(1, { finish: 'too-hard', analysisUsed: true })
   const weaklyWeighted = calculatePlayerRating([failed])

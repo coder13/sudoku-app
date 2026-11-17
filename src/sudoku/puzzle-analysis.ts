@@ -1,9 +1,11 @@
 import type { Candidate, DeductionAction, DeductionMatch, HintChoice, ProofPattern } from './engine'
 
+export const TECHNIQUE_FINDER_TITLE = 'Technique finder'
+
 // Keep each technique in one family. New engine techniques automatically appear
 // in "Other techniques" until a more specific category is added.
 export const ANALYSIS_GROUPS = [
-  { title: 'Singles', techniques: ['full-house', 'naked-single', 'hidden-single'] },
+  { title: 'Singles', techniques: ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single'] },
   { title: 'Locked candidates', techniques: ['pointing', 'claiming'] },
   { title: 'Subsets', techniques: [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',
@@ -30,6 +32,7 @@ export const ANALYSIS_GROUPS = [
     '3d-medusa', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
     'continuous-nice-loop', 'grouped-aic', 'grouped-discontinuous-nice-loop',
     'grouped-continuous-nice-loop', 'firework-aic', 'tridagon-aic',
+    'unique-rectangle-aic', 'unique-rectangle-discontinuous-nice-loop', 'unique-rectangle-continuous-nice-loop',
   ] },
   { title: 'Almost locked sets', techniques: [
     'als-xz', 'als-xy-wing', 'als-chain', 'als-aic',
@@ -39,6 +42,8 @@ export const ANALYSIS_GROUPS = [
   { title: 'Advanced patterns', techniques: [
     'fireworks', 'aligned-pair-exclusion', 'aligned-triplet-exclusion',
     'tridagon', 'exocet', 'senior-exocet', 'double-exocet', 'sk-loop',
+    'pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay',
+    'quadruple-pattern-overlay', 'quintuple-pattern-overlay',
   ] },
   { title: 'Forcing techniques', techniques: [
     'tridagon-forcing-net', 'forcing-chain', 'forcing-net',
@@ -119,22 +124,6 @@ export function analysisGroupsForCatalog(catalog: readonly { id: string }[]): An
   const unknown = catalog.map(({ id }) => id).filter((id) => !used.has(id))
   if (unknown.length) groups.push({ title: 'Other techniques', techniques: unknown })
   return groups
-}
-
-/** Count distinct candidate targets for a technique, regardless of whether
- * its rule places a digit or removes a candidate. Multiple proofs for the
- * same target count only once.
- */
-export function techniqueTargetCount(matches: readonly DeductionMatch[], technique: string): number {
-  const targets = new Set<string>()
-  for (const match of matches) {
-    if (!match.proofs.some((proof) => proof.technique === technique)) continue
-    for (const action of match.actions) {
-      const target = 'place' in action ? action.place : action.eliminate
-      targets.add(`${target.cell}:${target.digit}`)
-    }
-  }
-  return targets.size
 }
 
 export type TechniqueSummary = {

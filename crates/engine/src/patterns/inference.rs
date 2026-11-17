@@ -19,6 +19,7 @@ enum Scope {
     AlsCell,
     Firework,
     Tridagon,
+    UniqueRectangle,
 }
 
 #[derive(Clone, Copy)]
@@ -42,6 +43,13 @@ impl Rule {
             Technique::AlsContinuousNiceLoop => (Shape::Continuous, Scope::Als),
             Technique::FireworkAic => (Shape::Open, Scope::Firework),
             Technique::TridagonAic => (Shape::Open, Scope::Tridagon),
+            Technique::UniqueRectangleAic => (Shape::Open, Scope::UniqueRectangle),
+            Technique::UniqueRectangleDiscontinuousNiceLoop => {
+                (Shape::Discontinuous, Scope::UniqueRectangle)
+            }
+            Technique::UniqueRectangleContinuousNiceLoop => {
+                (Shape::Continuous, Scope::UniqueRectangle)
+            }
             _ => return None,
         };
         Some(Self {
@@ -83,7 +91,11 @@ impl Rule {
     fn uses_special_link(self) -> bool {
         matches!(
             self.scope,
-            Scope::Als | Scope::AlsCell | Scope::Firework | Scope::Tridagon
+            Scope::Als
+                | Scope::AlsCell
+                | Scope::Firework
+                | Scope::Tridagon
+                | Scope::UniqueRectangle
         )
     }
 
@@ -93,6 +105,7 @@ impl Rule {
             Scope::AlsCell => edge.is_als_cell(),
             Scope::Firework => edge.is_firework(),
             Scope::Tridagon => edge.is_tridagon(),
+            Scope::UniqueRectangle => edge.is_unique_rectangle(),
             _ => false,
         }
     }
@@ -108,6 +121,10 @@ impl State {
 
     fn node(self) -> usize {
         self.0 / 4
+    }
+
+    fn literal_index(self) -> usize {
+        self.0 / 2
     }
 
     fn truth(self) -> bool {
@@ -139,24 +156,53 @@ impl PathEdge {
     }
 }
 
+#[derive(Clone, Copy)]
+struct Parent {
+    from: State,
+    neighbor: usize,
+}
+
+enum Bounds {
+    Unrestricted,
+    ReachSpecialLink(Vec<bool>),
+    CloseLoop(Vec<usize>),
+}
+
+impl Bounds {
+    fn permits(&self, target: State, component: usize) -> bool {
+        match self {
+            Self::Unrestricted => true,
+            Self::ReachSpecialLink(reaches) => {
+                target.qualifies() || reaches[target.literal_index()]
+            }
+            Self::CloseLoop(components) => components[target.literal_index()] == component,
+        }
+    }
+}
+
 struct Paths<'a> {
     graph: &'a InferenceGraph,
     rule: Rule,
-    parents: Vec<Option<PathEdge>>,
+    parents: Vec<Option<Parent>>,
     queue: Vec<State>,
-    before_special_link: Option<Vec<bool>>,
+    bounds: Bounds,
 }
 
 impl<'a> Paths<'a> {
     fn new(graph: &'a InferenceGraph, rule: Rule) -> Self {
+        let bounds = if !rule.uses_special_link() {
+            Bounds::Unrestricted
+        } else if rule.shape == Shape::Continuous {
+            Bounds::CloseLoop(graph.loop_components(|edge| rule.qualifies_link(edge)))
+        } else {
+            Bounds::ReachSpecialLink(paths_to_special_link(graph, rule))
+        };
         Self {
             graph,
             rule,
             parents: vec![None; graph.node_count() * 4],
             queue: Vec::new(),
-            before_special_link: rule
-                .uses_special_link()
-                .then(|| paths_to_special_link(graph, rule)),
+            bounds,
         }
     }
 
@@ -165,7 +211,14 @@ impl<'a> Paths<'a> {
         start: State,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
-        if !self.can_qualify(start) || (!start.truth() && !self.has_strong_neighbor(start.node())) {
+        let component = match &self.bounds {
+            Bounds::CloseLoop(components) => components[start.literal_index()],
+            _ => 0,
+        };
+        if component == usize::MAX
+            || !self.bounds.permits(start, component)
+            || (!start.truth() && !self.has_strong_neighbor(start.node()))
+        {
             return ControlFlow::Continue(());
         }
         for state in self.queue.drain(..) {
@@ -182,7 +235,7 @@ impl<'a> Paths<'a> {
             let neighbors = self
                 .graph
                 .neighbors(current.node(), current.next_strength());
-            for &edge in neighbors {
+            for (neighbor, &edge) in neighbors.iter().enumerate() {
                 let next_is_group = edge.to >= self.graph.singles;
                 if next_is_group && self.rule.scope == Scope::Plain {
                     continue;
@@ -196,7 +249,7 @@ impl<'a> Paths<'a> {
                 let target = State::new(edge.to, !current.truth(), qualifies);
                 if target != start
                     && self.parents[target.0].is_none()
-                    && self.can_qualify(target)
+                    && self.bounds.permits(target, component)
                     && (target.truth()
                         || (self.rule.shape == Shape::Discontinuous
                             && target.node() == start.node())
@@ -205,23 +258,15 @@ impl<'a> Paths<'a> {
                         && self.rule.uses_special_link()
                         && self.repeats_literal(start, current, target))
                 {
-                    self.parents[target.0] = Some(PathEdge {
+                    self.parents[target.0] = Some(Parent {
                         from: current,
-                        edge,
+                        neighbor,
                     });
                     self.queue.push(target);
                 }
             }
         }
         ControlFlow::Continue(())
-    }
-
-    fn can_qualify(&self, state: State) -> bool {
-        state.qualifies()
-            || self
-                .before_special_link
-                .as_ref()
-                .is_none_or(|reaches| reaches[state.0 / 2])
     }
 
     fn repeats_literal(&self, start: State, mut current: State, target: State) -> bool {
@@ -308,12 +353,14 @@ impl<'a> Paths<'a> {
             return ControlFlow::Continue(());
         }
         // Type 2 between single-digit endpoints uses two cells that see each other.
-        if !matches!(self.rule.scope, Scope::Als | Scope::AlsCell)
-            && let Some((left, right)) = self
-                .graph
-                .nodes
-                .get(start.node())
-                .zip(self.graph.nodes.get(end.node()))
+        if !matches!(
+            self.rule.scope,
+            Scope::Als | Scope::AlsCell | Scope::UniqueRectangle
+        ) && let Some((left, right)) = self
+            .graph
+            .nodes
+            .get(start.node())
+            .zip(self.graph.nodes.get(end.node()))
             && left.digit != right.digit
         {
             let Some((a, b)) = left.single().zip(right.single()) else {
@@ -336,8 +383,10 @@ impl<'a> Paths<'a> {
     fn path(&self, mut end: State) -> Vec<PathEdge> {
         let mut edges = Vec::new();
         while let Some(parent) = self.parents[end.0] {
-            edges.push(parent);
-            end = parent.from;
+            let from = parent.from;
+            let edge = self.graph.neighbors(from.node(), from.next_strength())[parent.neighbor];
+            edges.push(PathEdge { from, edge });
+            end = from;
         }
         edges.reverse();
         edges

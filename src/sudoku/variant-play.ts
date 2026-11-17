@@ -8,7 +8,8 @@ let playOrder: Promise<string[]> | undefined
 
 export function getVariantPlayOrder() {
   playOrder ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
-    .then(([variant, classic]) => variantTechniqueOrder(variant.defaultOrder, classic.defaultOrder))
+    .then(([variant, classic]) => variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder,
+      Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty]))))
     .catch((error) => {
       playOrder = undefined
       throw error
@@ -34,7 +35,7 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
       const puzzle = reflectVariant(generated.puzzle, (seed % 7) + 1)
       if (seen.has(puzzle.givens)) continue
       const position = { puzzle }
-      const rating = await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder })
+      const rating = await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder: generated.rating.techniqueOrder })
       if (rating.status !== 'stalled' && rating.status.solved === difficulty &&
         await runEngine({ type: 'variant', operation: 'analyze', position }) === 'unique') {
         const solution = await runEngine({ type: 'variant', operation: 'solve', position })

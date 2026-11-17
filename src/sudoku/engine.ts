@@ -1,8 +1,11 @@
 import { withHintPreferences } from './hint-preferences.ts'
 import { withSolverProfile } from './solver-profile.ts'
 
+export type EngineCapabilities = { classic: true; variants: boolean; generation: boolean; teaching: boolean }
+
 export type Analysis = 'conflict' | 'unsolvable' | 'unique' | 'multiple' | 'search-limit'
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'unfair' | 'extreme'
+// 'unfair' is accepted only for historical saves and legacy input.
+export type Difficulty = 'beginner' | 'easy' | 'medium' | 'tricky' | 'hard' | 'very-hard' | 'expert' | 'master' | 'extreme' | 'impossible' | 'unfair'
 type SolverOptions = { techniqueOrder?: readonly string[] }
 type HintOptions = { disabledTechniques?: readonly string[] }
 type CandidatePosition = { values: string; eliminations?: readonly number[] }
@@ -19,10 +22,11 @@ type MatchingOptions = {
   maxAttempts: number
   clues: number | readonly [number, number]
   technique?: TechniqueTarget
+  exclude?: readonly string[]
 } & RatingTarget & SolverOptions
 
 export type GenerationRequest =
-  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget }
+  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget; exclude?: readonly string[] }
   | ({ type: 'generate-constrained'; templates?: readonly string[] } & MatchingOptions)
   | ({ type: 'generate-from-pool' } & MatchingOptions)
   | VariantGenerationRequest
@@ -117,7 +121,10 @@ type VariantRequest = {
 )
 
 export type EngineRequest =
+  | { type: 'capabilities' }
   | VariantRequest
+  | { type: 'canonical-puzzles'; values: readonly string[] }
+  | { type: 'impossible-templates' }
   | { type: 'analyze'; values: string }
   | { type: 'notes'; values: string }
   | { type: 'solve'; values: string }
@@ -132,6 +139,7 @@ export type EngineRequest =
   | ({ type: 'hints'; limit?: number | 'all'; includePatterns?: boolean; preferProgress?: boolean; difficulty?: Difficulty } & CandidatePosition & HintOptions)
   | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
   | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
+  | ({ type: 'technique-count'; technique: string } & CandidatePosition)
   | ({ type: 'prove-rank'; pattern: RankPattern; target: Candidate; nodeBudget: number } & StartingPosition)
   | ({ type: 'discover-rank'; target: Candidate; nodeBudget: number } & StartingPosition)
   | ({ type: 'discover-rank-deductions'; limit?: number; nodeBudget: number; maxNodesPerCandidate: number } & StartingPosition)
@@ -144,6 +152,7 @@ export type EngineRequest =
   | { type: 'lesson-examples' }
   | { type: 'practice-examples'; technique: string; variant?: false }
   | { type: 'practice-examples'; technique: string; variant: true }
+  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string; variant?: boolean }
   | GenerationRequest
   | GenerationCommand
 
@@ -245,6 +254,7 @@ type InferenceLink = {
   to: InferenceNode
   source: CandidateLink['source'] | { firework: number } | { peers: Record<string, never> }
     | { tridagon: { cells: [number, number, number][]; digits: [number, number, number] } }
+    | { 'unique-rectangle': { corners: [number, number, number, number]; digits: [number, number] } }
     | { 'almost-locked-set': AlmostLockedSet }
     | { 'almost-locked-set-cell': { set: AlmostLockedSet; cell: number; blocked: number } }
   strength: CandidateLink['strength']
@@ -288,6 +298,11 @@ type ExocetComponent = { bases: [number, number]; targets: [number, number]; cov
 type ExocetTarget = { cell: number } | { 'conjugate-pair': { digit: number; link: ConjugatePair } }
 type GroupedExocetComponent = Omit<ExocetComponent, 'targets'> & { targets: [ExocetTarget, ExocetTarget] }
 type Evidence =
+  | { 'pattern-overlay': {
+      digit: number
+      scopes: { digit: number; allowed: number[]; supported: number[] }[]
+      geometry?: { houses: number[][]; excludedPairs: [number, number][] }
+    } }
   | { variant: { description: string; reason: string } }
   | { cell: number }
   | { house: House }
@@ -364,7 +379,7 @@ export type DeductionMatch = Pick<Deduction, 'actions'> & {
 }
 
 export type PositionSnapshot = { givens: string; entries: string; eliminations: number[] }
-export type LessonPosition = PositionSnapshot & { candidates: number[] }
+export type LessonPosition = PositionSnapshot & { candidates: number[]; pattern?: ProofPattern }
 
 export type LessonPractice = LessonPosition & { answers: DeductionAction[]; suggestion: DeductionAction }
 export type PracticeExercise = LessonPractice & { deduction: Deduction }
@@ -394,6 +409,7 @@ export type HintChoices = { choices: HintChoice[]; available: number; candidates
 export type HintStages = { technique: string; pattern: ProofPattern; deduction: Deduction }
 export type TechniqueCatalog = {
   defaultOrder: string[]
+  difficultyOrder: string[]
   scoringVersion: number
   techniques: { id: string; aliases: string[]; cost: number; difficulty: Difficulty; requiresUniqueSolution: boolean }[]
 }
@@ -411,7 +427,9 @@ type VariantResult<T extends VariantRequest> =
   Required<VariantPosition>
 
 export type VariantHouse = { row: number } | { column: number } | { region: number }
-  | { diagonal: 'main' | 'anti' } | { extra: number }
+  | { diagonal: 'main' | 'anti' }
+  /** Index into the full puzzle rule list. */
+  | { extra: number }
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]
@@ -449,9 +467,11 @@ export type VariantPracticeExercise = {
 }
 
 export type EngineResult<T extends EngineRequest> =
+  T extends { type: 'capabilities' } ? EngineCapabilities :
   T extends VariantRequest ? VariantResult<T> :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
+  T extends { type: 'canonical-puzzles' | 'impossible-templates' } ? string[] :
   T extends { type: 'solve' } ? string | null :
   T extends { type: 'rate' } ? PuzzleRating :
   T extends { type: 'logical-solve' } ? LogicalSolution :
@@ -463,6 +483,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'hints' } ? HintChoices :
   T extends { type: 'next-deduction' } ? HintStages | null :
   T extends { type: 'deductions' } ? DeductionMatch[] :
+  T extends { type: 'technique-count' } ? number :
   T extends { type: 'prove-rank' } ? RankOutcome :
   T extends { type: 'discover-rank' } ? RankDiscovery :
   T extends { type: 'discover-rank-deductions' } ? RankDiscoveryScan :
@@ -477,6 +498,8 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: GenerationCommand['type'] } ? GenerationProgress<Generated> :
   T extends { type: 'lesson-examples' } ? Record<string, LessonExample> :
   T extends { type: 'practice-examples'; variant: true } ? VariantPracticeExercise[] :
+  T extends { type: 'generate-practice-example'; variant: true } ? VariantPracticeExercise :
+  T extends { type: 'generate-practice-example' } ? PracticeExercise :
   T extends { type: 'practice-examples' } ? PracticeExercise[] : string
 
 export type EnginePayload = { value: EngineResult<EngineRequest> } | { error: string; code?: string }
@@ -533,12 +556,12 @@ function connect(connection: EngineConnection) {
   return instance
 }
 
-export function runEngine<T extends EngineRequest>(request: T, options: { interactive?: boolean } = {}): Promise<EngineResult<T>> {
+export function runEngine<T extends EngineRequest>(request: T, options: { interactive?: boolean; background?: boolean } = {}): Promise<EngineResult<T>> {
   return new Promise((resolve, reject) => {
     // A scan for an unfamiliar move must not hold up hints or candidate updates.
     const connection = options.interactive && request.type === 'deductions' ? techniqueDetailEngine
-      : request.type === 'classify-actions' || request.type === 'deductions' ? techniqueEngine
-      : request.type === 'generate-variant' ? generationEngine : playEngine
+      : options.background || request.type === 'classify-actions' || request.type === 'deductions' || request.type === 'technique-count' ? techniqueEngine
+      : request.type === 'generate-variant' || request.type === 'generate-practice-example' ? generationEngine : playEngine
     connection.worker ??= connect(connection)
     const id = ++requestId
     connection.pending.set(id, { resolve: (value) => resolve(value as EngineResult<T>), reject })

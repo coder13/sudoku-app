@@ -4,6 +4,8 @@ export type EditableShortcutId =
   | 'highlightMode'
   | 'colorMode'
   | 'eraseMode'
+  | 'chainDrawing'
+  | 'newChain'
   | 'actions'
   | 'generateCandidates'
   | 'solveSingles'
@@ -27,6 +29,8 @@ export const DEFAULT_SHORTCUTS: ShortcutPreferences = {
   highlightMode: 'h',
   colorMode: 'c',
   eraseMode: 'e',
+  chainDrawing: 'l',
+  newChain: 'b',
   actions: 'a',
   generateCandidates: 'g',
   solveSingles: 's',
@@ -40,6 +44,8 @@ export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'highlightMode', label: 'Highlight mode', description: 'Select cells while keeping a digit highlighted.', category: 'Input modes' },
   { id: 'colorMode', label: 'Color mode', description: 'Color cells or candidates when colors are enabled.', category: 'Input modes' },
   { id: 'eraseMode', label: 'Erase mode', description: 'Erase cells as you select them.', category: 'Input modes' },
+  { id: 'chainDrawing', label: 'Draw links', description: 'Start or stop drawing links on desktop.', category: 'Input modes' },
+  { id: 'newChain', label: 'New chain', description: 'Start a separate chain while the Chains panel is open.', category: 'Puzzle actions' },
   { id: 'actions', label: 'Open Actions', description: 'Open the menu for common solving actions.', category: 'Puzzle actions' },
   { id: 'generateCandidates', label: 'Generate all candidates', description: 'Add every currently available candidate to empty cells.', category: 'Puzzle actions' },
   { id: 'solveSingles', label: 'Solve all singles', description: 'Place every currently available single.', category: 'Puzzle actions' },
@@ -77,6 +83,14 @@ export function highlightedDigitShortcut(event: Pick<KeyboardEvent, 'altKey' | '
   return Number(/^Digit([1-9])$/.exec(event.code)?.[1]) || null
 }
 
+export function appTextZoomShortcut(event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'isComposing' | 'key' | 'metaKey'>) {
+  if (event.altKey || event.isComposing || !(event.ctrlKey || event.metaKey)) return null
+  if (event.key === '+' || event.key === '=') return 1
+  if (event.key === '-') return -1
+  if (event.key === '0') return 0
+  return null
+}
+
 export function shortcutConflict(shortcuts: ShortcutPreferences, id: EditableShortcutId, key: string) {
   return ids.find((candidate) => candidate !== id && shortcuts[candidate] === key) ?? null
 }
@@ -89,11 +103,17 @@ export function parseShortcutPreferences(value: unknown): ShortcutPreferences {
   if (!value || typeof value !== 'object') return DEFAULT_SHORTCUTS
   const saved = value as Partial<ShortcutPreferences>
   const next = { ...DEFAULT_SHORTCUTS }
+  const savedKeys = ids.map((id) => saved[id])
+  for (const id of ['chainDrawing', 'newChain'] as const) {
+    if (saved[id] !== undefined || !savedKeys.includes(next[id])) continue
+    const reserved = new Set([...Object.values(next), ...savedKeys])
+    next[id] = [...'abcdefghijklmnopqrstuvwxyz'].find((key) => !reserved.has(key)) ?? next[id]
+  }
   for (const id of ids) {
     if (saved[id] !== undefined && !validKey(saved[id])) return DEFAULT_SHORTCUTS
     if (validKey(saved[id])) {
       const conflictsWithUnsavedDefault = ids.some((candidate) => candidate !== id && saved[candidate] === undefined &&
-        DEFAULT_SHORTCUTS[candidate] === saved[id])
+        next[candidate] === saved[id])
       if (!conflictsWithUnsavedDefault) next[id] = saved[id]
     }
   }

@@ -244,6 +244,11 @@ impl<'a> Pattern<'a> {
                 covers,
                 ..
             } => self.fish(*digit, bases, covers),
+            HintEvidence::PatternOverlay(proof) => {
+                for scope in &proof.scopes {
+                    self.mark(scope.allowed.iter().copied(), digit_bit(scope.digit));
+                }
+            }
             HintEvidence::KrakenFish {
                 digit,
                 bases,
@@ -650,6 +655,11 @@ impl<'a> Pattern<'a> {
             LinkSource::Firework(pivot) => {
                 self.houses.extend(House::at(pivot));
                 self.mark([pivot], 0);
+            }
+            LinkSource::UniqueRectangle { corners, digits } => {
+                let corners = corners.map(usize::from);
+                self.mark(corners, mask(digits));
+                self.houses.extend(corners.into_iter().flat_map(House::at));
             }
             LinkSource::Tridagon { cells, digits } => {
                 self.mark(cells.into_iter().flatten().map(usize::from), mask(digits));

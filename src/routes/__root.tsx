@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import { OfflineUpdates } from '../components/OfflineUpdates'
 import { SudokuShell } from '../components/Workspace'
+import { MAX_APP_TEXT_ZOOM, MIN_APP_TEXT_ZOOM } from '../sudoku/app-text-zoom'
 import { APPEARANCE_KEY, DEFAULT_APPEARANCE } from '../sudoku/preferences'
 import { THEME_TOKENS, themeVariables } from '../sudoku/themes'
 import '@fontsource-variable/dm-sans/wght.css'
@@ -15,6 +16,10 @@ const themeBootstrap = `(() => {
     const themes = ${JSON.stringify(THEME_TOKENS)}
     const defaults = ${JSON.stringify(DEFAULT_APPEARANCE)}
     const saved = JSON.parse(localStorage.getItem(${JSON.stringify(APPEARANCE_KEY)}) || 'null') || {}
+    if (Number.isFinite(saved.appTextZoom)) {
+      const zoom = Math.min(${MAX_APP_TEXT_ZOOM}, Math.max(${MIN_APP_TEXT_ZOOM}, Math.round(saved.appTextZoom)))
+      root.style.setProperty('--app-text-scale', zoom / 100)
+    }
     const preference = ['system', 'light', 'dark'].includes(saved.colorMode) ? saved.colorMode : defaults.colorMode
     const mode = preference === 'system'
       ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')

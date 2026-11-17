@@ -15,14 +15,24 @@ type Story = StoryObj<typeof meta>
 export const Placement: Story = {}
 export const CandidateRemoval: Story = { args: { puzzle: lessonExamples['xy-wing'].practice, technique: 'XY-wing' } }
 export const RevealAndReset: Story = {
-  play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Get a hint' }))
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await canvasElement.ownerDocument.fonts.ready
+    const grid = canvas.getByRole('grid')
+    const keypad = canvas.getByRole('group', { name: 'Digit pad' })
+    const walkthrough = canvas.getByRole('region', { name: 'Practice walkthrough' })
+    const layout = () => [grid, keypad, walkthrough].map((element) => [
+      element.offsetLeft, element.offsetTop, element.offsetWidth, element.offsetHeight,
+    ])
+    const initialLayout = layout()
+    await userEvent.click(canvas.getByRole('button', { name: 'Show next step' }))
     await expect(canvas.getByText('Where to look')).toBeVisible()
+    await expect(layout()).toEqual(initialLayout)
     await expect(canvas.queryByRole('button', { name: 'Apply one move' })).not.toBeInTheDocument()
-    await userEvent.click(canvas.getByRole('button', { name: 'Show the first check' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Show next step' }))
     await expect(canvas.getByText('What to check')).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Show solution' }))
     await expect(canvas.getByRole('heading', { name: 'Why this works' })).toBeVisible()
+    await expect(layout()).toEqual(initialLayout)
     await userEvent.click(canvas.getByRole('button', { name: 'Apply one move' }))
     await expect(canvas.getByRole('status')).toHaveTextContent('One possible move.')
     await expect(canvas.getByRole('button', { name: 'Reset puzzle' })).toBeEnabled()

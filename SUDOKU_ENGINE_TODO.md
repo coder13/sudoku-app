@@ -2,6 +2,31 @@
 
 The Rust engine supports ordered logical solving, ratings, ranked hints, and targeted generation. It detects singles, pointing, claiming, naked and hidden subsets through size four, locked pairs and triples, basic, finned, and Sashimi fish through Jellyfish, XY-Wing, XYZ-Wing, WXYZ-Wing, W-Wing, Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, 3D Medusa, X-Chains, and XY-Chains. It also detects plain and grouped Alternating Inference Chains and Nice Loops, Unique Rectangles, Hidden Rectangle, BUG+1, forcing chains and nets, ALS-XZ, ALS-XY-Wing, ALS chains, Sue de Coq, Death Blossom, Junior Exocet, Senior Exocet, Double Exocet, SK Loop, and Multi-Sector Locked Sets. The browser worker exposes these engine functions through WebAssembly. [Engine requirements](README.md#engine-requirements) · [Browser worker](src/sudoku/engine.worker.ts)
 
+See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration status, architecture boundaries, and addition criteria.
+
+## Packaging and release discipline
+
+- [x] Compile variant rules, puzzle generation, and teaching fixtures independently while preserving default behavior.
+- [x] Publish named Wasm profiles and report the compiled capabilities through the public request API.
+- [x] Test every capability combination and compare retained behavior and measured Wasm sizes.
+- [x] Record what reached main and identify the remaining research work without changing the original worktrees.
+- [x] Define how and why to add a rule, technique, policy, or optimization, with evidence and release criteria.
+- [x] Add automated native, feature-matrix, Wasm, app, and Cargo documentation checks for engine changes.
+- [ ] Evaluate narrower expert-detector and variant-family boundaries against actual callers and package savings.
+- [ ] Integrate each remaining research contribution through a focused change against current main.
+
+## App integration
+
+Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
+
+- [x] Create an issue for each planned variant and separate combined-rule and performance work.
+- [x] Add Windoku rendering, accessible rule labels, import, save/reload, and generation recipes for all ten difficulty levels using the existing extra-house engine rule. [Windoku](https://github.com/coder13/sudoku-app/issues/36)
+- [ ] Support every Sudoku Coach rule combination through import, preview, Play, sharing, and saved games. Preserve the full rule list and parameters. [Coach import](https://github.com/coder13/sudoku-app/issues/7) · [Combined rules](https://github.com/coder13/sudoku-app/issues/87)
+- [ ] Complete UI support for each remaining engine rule family before integrating that variant. [Variant queue](https://github.com/coder13/sudoku-app/issues/35)
+- [ ] Audit rule checks, candidate updates, technique searches, ratings, exact solving, and generation. Merge measured improvements to main in focused changes. [Performance](https://github.com/coder13/sudoku-app/issues/88)
+
+The Wasm audit now measures candidates, uniqueness verification, exact solving, rating, hints, and generation. On the fixed Windoku fixture, warmed median/p95 times were 0.017/0.019 ms for candidates, 0.024/0.025 ms for verification, 0.024/0.027 ms for solving, 0.064/0.073 ms for rating, and 0.042/0.045 ms for ten hints. Generation matched 20 of 20 seeds at 0.927/2.413 ms. Run `node --experimental-strip-types scripts/bench-variants.mjs` after building Wasm to repeat the audit on one machine. [Fixtures](crates/engine/benches/fixtures/variants.json)
+
 ## 1. Share a reliable engine contract
 
 - [x] Use one puzzle validation path for ratings, solve traces, hints, and opening analysis. Add a sparse regression case where a logical solve succeeds after exact search reaches its limit.
@@ -25,6 +50,9 @@ Audit complete. Ratings and traces agree on the sparse regression puzzle. The Wa
 - [x] Add simple coloring, 3D Medusa, X-Chains, and XY-Chains.
 - [x] Build shared candidate links for Alternating Inference Chains, grouped chains, and loops. A link records how one candidate affects another.
 - [x] Add Unique Rectangles and BUG+1. Allow these deductions after the engine proves that the puzzle has one solution.
+- [x] Add Pattern Overlay for one through five digits in Classic Sudoku. Find placements and removals from compatible layouts. Verify the published Rule 1 removal of 4 from r2c5 and the Rule 2 removals of 7 from r2c8 and r5c8. Replay three practice positions per size with a separate row search and verify that each multi-digit move needs its full scope. [Worked Pattern Overlay examples](https://www.sudokuwiki.org/Pattern_Overlay)
+- [x] Extend Pattern Overlay through five digits to variants. Include Jigsaw regions, extra houses, and rules that forbid equal digits in a pair of cells. Replay the published removal of 7 from r9c5 in Rust and Wasm. Check layout support independently and verify deductions that require a diagonal or Anti-Knight. [Worked Jigsaw example](https://www.sudokuwiki.org/Pattern_Overlay#Jigsaw_multiple_example)
+- [x] Use Unique Rectangle links in open chains and both Nice Loop forms. Record every extra candidate in the endpoints and mark all four corners as part of the proof. Replay the published placement in r3c5 and both sets of continuous-loop removals. Give each form three practice positions and verify that variant rules are checked against the full swap scope. [Worked Unique Rectangle chains](https://www.sudokuwiki.org/Using_Unique_Rectangles_as_Links_in_Chains)
 - [x] Add WXYZ-Wing, forcing chains, and forcing nets. Record the branches that prove each deduction.
 - [x] Add Firework triples and quadruples. Replay candidate removals inside and outside the named cells with independent rank proofs. Verify that an additional outside candidate breaks the pattern and that a digit can still participate after it leaves the intersection. [Published Fireworks examples](https://www.sudokuwiki.org/Fireworks)
 - [x] Use Firework strong links in open alternating inference chains. Replay each link against the live candidates, including a five-cell endpoint and a weak link that spans two houses. Add three practice positions and verify scoring and replay in Wasm. [Published Firework chain](https://www.reddit.com/r/sudoku/comments/1dgrgfb/til_fireworkstype_links/) · [Monhard line 2201](https://github.com/denis-berthier/Sudoku-classif/blob/main/Monhard-until-2023-08-15-TE23/puzzles.txt#L2201)
@@ -75,7 +103,7 @@ Audit complete. Native hint choices retain the two-move minimum. The worker test
 
 Audit complete. Native, browser, and batch generation share the attempt logic. Pool requests validate before loading the templates. Batch output records the resolved solver order, and malformed rows leave later records usable. The native benchmark matched 20 of 20 seeds at each count from 17 through 19 clues and 15 of 20 at 20 clues, using a 1,001–1,600 point target and up to 208 attempts per seed.
 
-The batch regression generates a unique 21-clue puzzle with Forcing Net as the first move under its selected profile. It rejects the exclusive opening request because Nested Forcing Net and Kraken Fish Type 2 can also make an opening move. [Source template dml50](https://gitlab.com/scilab/forge/sudoku/-/blob/master/collection/hardest.sdm)
+The batch regression generates a unique 21-clue puzzle with Forcing Net as the first move under its selected profile. It rejects the exclusive opening request because Nested Forcing Net, three- and five-digit Pattern Overlay, and Kraken Fish Type 2 can also make an opening move. [Source template dml50](https://gitlab.com/scilab/forge/sudoku/-/blob/master/collection/hardest.sdm)
 
 [HoDoKu targeted creation](https://hodoku.sourceforge.net/en/docs_cre.php) · [HoDoKu batch commands](https://hodoku.sourceforge.net/en/docs_ref.php) · [Tdoku sparse and expert puzzle sets](https://github.com/t-dillon/tdoku/blob/master/benchmarks/README.md#benchmarked-data-sets)
 
@@ -235,6 +263,24 @@ Before adding outside-cell links, the nine `--als-inference-examples` grids solv
 The outside-cell search preserved all 40 previously matched action sets in an audit of 49 HoDoKu positions. All 49 now yield ALS deductions, and the exact solver verified every action. The two passes preserve the earlier proofs when a shorter outside-cell link changes the first path the graph search finds. [HoDoKu regression library](https://hodoku.sourceforge.net/libraries/reglib-1.3.txt) · [Inference search](crates/engine/src/patterns/inference.rs)
 
 With `--depth-three --als-inference`, the outside-cell pass left the same 12 stalled positions, scores, and step counts. The mean of two median rating times rose from 41.4 to 49.9 ms, and the mean of the 95th-percentile times rose from 219.1 to 287.4 ms. Each run timed 25 ratings per grid, with the build order reversed for the second comparison. [Coverage benchmark](crates/engine/benches/coverage.rs)
+
+Continuous ALS Nice Loops now search only strongly connected sets of implications that contain a qualifying ALS link. Each walk records the link index and reads the evidence when it reports a proof. Before-and-after scans matched every action and proof for 11 inference techniques across 307 positions. The exact solver independently checked every reported action. [Inference search](crates/engine/src/patterns/inference.rs) · [Loop components](crates/engine/src/patterns/inference_graph.rs)
+
+In a paired native run on the 12 `--depth-three` grids, enabling `--als-inference` gave a median of 49.9 ms before the change and 46.3 ms after it. The 95th percentile fell from 285.9 to 253.3 ms. The default profile in the same comparison went from 35.3 to 30.9 ms at the median and 162.3 to 158.1 ms at the 95th percentile. Each run rated every grid 25 times. Both profiles reached the same stalled positions, scores, and step counts as before. [Coverage benchmark](crates/engine/benches/coverage.rs)
+
+The Wasm rating API returned identical ratings on the same 12 grids. With ALS enabled, the median fell from 75.4 to 72.1 ms and the 95th percentile fell from 373.1 to 338.8 ms. The default profile stayed near a 52.5 ms median and a 226 ms 95th percentile. Node ran each build eight times per grid and alternated which build ran first.
+
+Unique Rectangle chains found open chains and discontinuous loops on 130 of 220 sampled depth-three grids after singles, locked candidates, and subsets through size four. Continuous loops appeared on 82 of those grids. The sample took every 397th grid starting at line 1. The exact solver checked every reported action. On the SudokuWiki positions, a seven-link loop places 2 in r3c5. Two eight-link continuous loops reproduce all six published removals. [Depth-three collection](https://github.com/denis-berthier/Classifications-of-TE3-Sudokus) · [Worked Unique Rectangle chains](https://www.sudokuwiki.org/Using_Unique_Rectangles_as_Links_in_Chains)
+
+With `--depth-three --unique-rectangle-inference`, four of twelve puzzles took one additional step and removed one more candidate each. All twelve stalled under both profiles. The mean of the two native run medians rose from 31.5 to 32.3 ms, and the mean 95th percentile rose from 154.9 to 160.3 ms. Each run rated each grid 25 times, with the order reversed for the second pair. [Coverage benchmark](crates/engine/benches/coverage.rs)
+
+An exact solver checked every action in 4,490 Pattern Overlay proofs from 144 positions, including the worked examples and archived stalls. Independent row search replayed the 15 exercises by enumerating disjoint layouts and testing the smaller digit sets. [Pattern Overlay checks](crates/engine/src/patterns/overlay.rs)
+
+On the twelve `--depth-three` grids, every puzzle stalled with `--unique-rectangle-inference` alone. Adding `--pattern-overlay` after the rectangle chains solved all twelve. The mean native median rose from 37.9 to 41.4 ms, and the mean 95th percentile was 161.4 ms before and 160.9 ms after. Two paired runs used 25 ratings per grid and reversed profile order for the second run. [Coverage benchmark](crates/engine/benches/coverage.rs)
+
+The Wasm rating API also went from twelve stalls to twelve complete solves on those grids. In Node, the median rose from 52.2 to 60.6 ms and the 95th percentile fell from 231.1 to 220.8 ms. The comparison used eight ratings per grid per profile and alternated which profile ran first.
+
+On the published Jigsaw puzzle, the default profile stalled after 10 steps from the givens. Enabling Pattern Overlay through five digits solved it in 84 steps with a native median rating time of 1.09 ms. From the published worked position, the default profile stalled immediately and the overlay profile solved it in 68 steps with a 0.82 ms median. The benchmark used 40 ratings per position and profile. [Worked Jigsaw example](https://www.sudokuwiki.org/Pattern_Overlay#Jigsaw_multiple_example) · [Variant benchmark](crates/engine/benches/variants.rs)
 
 ## 7. Compare solve paths
 

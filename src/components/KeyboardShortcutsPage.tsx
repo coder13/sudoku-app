@@ -25,9 +25,19 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
     ],
   },
   {
+    title: 'Chain drawing', shortcuts: [
+      { label: 'End the path or stop drawing', description: 'End the current path. If no endpoint is selected, stop drawing.', keys: ['Escape'] },
+      { label: 'Undo a link edit', description: 'Undo the last edit to the selected chain.', keys: ['Ctrl/⌘', 'Z'] },
+      { label: 'Highlight matching candidates', description: 'Highlight the selected digit while you draw links.', keys: ['1–9'] },
+    ],
+  },
+  {
     title: 'History and interface', shortcuts: [
       { label: 'Undo', description: 'Undo the most recent grid change.', keys: ['Ctrl/⌘', 'Z'] },
       { label: 'Redo', description: 'Redo the most recently undone grid change.', keys: ['Ctrl/⌘', 'Shift', 'Z'] },
+      { label: 'Increase app text size', description: 'Enlarge text and digits throughout the app.', keys: ['Ctrl/⌘', '+'] },
+      { label: 'Decrease app text size', description: 'Shrink text and digits throughout the app.', keys: ['Ctrl/⌘', '−'] },
+      { label: 'Reset app text size', description: 'Restore the default app text scale.', keys: ['Ctrl/⌘', '0'] },
       { label: 'Close or cancel', description: 'Close the current menu or cancel a temporary action.', keys: ['Escape'] },
     ],
   },
@@ -39,6 +49,7 @@ export function KeyboardShortcutsPage() {
   const [message, setMessage] = useState('')
 
   function edit(definition: EditableShortcutDefinition, event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.defaultPrevented) return
     event.preventDefault()
     event.stopPropagation()
     if (event.key === 'Escape') {

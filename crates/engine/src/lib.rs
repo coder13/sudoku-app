@@ -1,9 +1,14 @@
-#![doc = include_str!("../README.md")]
+#![cfg_attr(all(feature = "variants", feature = "generation", feature = "teaching"), doc = include_str!("../README.md"))]
+#![cfg_attr(not(all(feature = "variants", feature = "generation", feature = "teaching")), doc = include_str!("../BUILD_FEATURES.md"))]
 
+#[cfg(any(feature = "generation", test))]
 mod generation;
 mod hints;
 mod logical;
+#[cfg(any(feature = "generation", feature = "teaching", test))]
+mod permutation;
 mod position;
+#[cfg(any(feature = "teaching", test))]
 mod practice;
 #[cfg(all(
     feature = "wasm-api",
@@ -12,14 +17,16 @@ mod practice;
 mod protocol;
 mod rank;
 mod technique;
+#[cfg(feature = "variants")]
 mod variant;
 
+#[cfg(any(feature = "generation", test))]
 pub use generation::{
     GeneratedPuzzle, GenerationConflict, GenerationConstraints, GenerationCriteria,
     GenerationRating, GenerationSearch, GenerationStep, TechniqueTargetMode, VerifiedTemplate,
-    builtin_templates, canonical_puzzle, generate_constrained, generate_from_pool,
-    generate_matching, generate_matching_with_mode, start_from_pool, start_matching,
-    start_targeted,
+    accepts_difficulty, builtin_templates, canonical_puzzle, generate_constrained,
+    generate_from_pool, generate_matching, generate_matching_with_mode, impossible_templates,
+    start_from_pool, start_matching, start_targeted,
 };
 pub use hints::{
     AlignedExclusionCase, AlignedExclusionReason, AlmostLockedSet, AlmostLockedSetLink,
@@ -29,8 +36,9 @@ pub use hints::{
     ForcingInference, ForcingLiteral, ForcingScope, GroupedDoubleExocetProof,
     GroupedExocetComponent, Hint, HintAction, HintChoices, HintError, HintEvidence, HintStages,
     House, InferenceLink, InferenceNode, KrakenLink, KrakenLinkReason, LinkSource, LinkStrength,
-    ProofPattern, RectangleSupport, SectorLink, SectorSubset, SkLoopProof, UniquenessSupport,
-    deductions, deductions_at, hint_choices, hints_at, next_deduction, next_deduction_at,
+    PatternOverlayDigit, PatternOverlayGeometry, PatternOverlayProof, ProofPattern,
+    RectangleSupport, SectorLink, SectorSubset, SkLoopProof, UniquenessSupport, deductions,
+    deductions_at, hint_choices, hints_at, next_deduction, next_deduction_at,
     next_enabled_deduction, ranked_hints, technique_deductions, technique_deductions_at,
 };
 pub use logical::{
@@ -41,6 +49,7 @@ pub use logical::{
     solve_position, solve_position_with_rank,
 };
 pub use position::PositionSnapshot;
+#[cfg(any(feature = "teaching", test))]
 pub use practice::{PracticeExample, check_practice_move};
 #[cfg(feature = "cli")]
 pub use protocol::batch::{BatchCommand, run_batch};
@@ -51,20 +60,27 @@ pub use rank::{
     rank_proof_effort_at, replay_rank_proof_at,
 };
 pub use technique::{ProfileError, SolverProfile, Technique};
+#[cfg(feature = "variants")]
 pub use variant::{
-    ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, GeneratedVariant,
-    KillerCage, MarkedPairs, MarkerFamily, OutsideClueKind, Parity, PuzzleRule, RegionLayout,
-    VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION, VariantClueLayout, VariantDeduction,
-    VariantDefinitionError, VariantEvidence, VariantGenerationError, VariantGenerationOptions,
-    VariantHouse, VariantHouseKind, VariantLogicalError, VariantPosition, VariantPositionError,
-    VariantPracticeError, VariantPracticeExercise, VariantPuzzle, VariantRating, VariantReplay,
-    VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError, canonical_variant,
-    start_variant_generation, variant_practice_examples,
+    ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage,
+    MarkedPairs, Parity, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
+    VariantDeduction, VariantDefinitionError, VariantEvidence, VariantHouse, VariantHouseKind,
+    VariantLogicalError, VariantPosition, VariantPositionError, VariantPuzzle, VariantRating,
+    VariantReplay, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
+    canonical_variant,
 };
+#[cfg(all(feature = "variants", any(feature = "generation", test)))]
+pub use variant::{
+    GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
+    VariantGenerationOptions, start_variant_generation,
+};
+#[cfg(all(feature = "variants", any(feature = "teaching", test)))]
+pub use variant::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
 
 const CELLS: usize = 81;
 const DIGITS: u16 = 0x1ff;
 const SEARCH_LIMIT: u32 = 1_000_000;
+#[cfg(any(feature = "generation", test))]
 const DEFAULT_CLUES: usize = 34;
 
 /// A classic 9 × 9 grid in row-major order. Digits are 1–9 and 0 marks an empty cell.
@@ -285,6 +301,7 @@ impl Random {
     }
 }
 
+#[cfg(any(feature = "generation", test))]
 fn fill(board: &mut Board, units: &mut Units, random: &mut Random) -> bool {
     let Some((index, choices)) = units.next_cell(board) else {
         return true;
@@ -308,6 +325,7 @@ fn fill(board: &mut Board, units: &mut Units, random: &mut Random) -> bool {
 }
 
 /// Generate a uniquely solvable puzzle from a seed, aiming for 34 clues.
+#[cfg(any(feature = "generation", test))]
 pub fn generate(seed: u32) -> Board {
     let mut random = Random::from_seed(seed);
     let mut board = filled_board(&mut random);
@@ -317,6 +335,7 @@ pub fn generate(seed: u32) -> Board {
 
 /// A difficulty or exclusive-opening target for [`generate_targeted`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg(any(feature = "generation", test))]
 pub enum GenerationTarget<'a> {
     /// A complete solve at the specified difficulty using the supplied order.
     Difficulty {
@@ -329,6 +348,7 @@ pub enum GenerationTarget<'a> {
     Opening(Technique),
 }
 
+#[cfg(any(feature = "generation", test))]
 impl GenerationTarget<'_> {
     fn matches(self, board: &Board) -> bool {
         match self {
@@ -347,6 +367,7 @@ impl GenerationTarget<'_> {
 }
 
 /// Why a generation request was rejected or failed to produce a match.
+#[cfg(any(feature = "generation", test))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GenerationError {
     /// A clue count lies outside 17–81 or the clue range is reversed.
@@ -361,6 +382,7 @@ pub enum GenerationError {
 
 /// Generate a uniquely solvable puzzle matching the target.
 /// Each attempt starts with a new completed grid and checks its successive clue removals.
+#[cfg(any(feature = "generation", test))]
 pub fn generate_targeted(
     seed: u32,
     target: GenerationTarget<'_>,
@@ -369,12 +391,14 @@ pub fn generate_targeted(
     start_targeted(seed, target, max_attempts)?.finish()
 }
 
+#[cfg(any(feature = "generation", test))]
 fn filled_board(random: &mut Random) -> Board {
     let mut board = [0; CELLS];
     assert!(fill(&mut board, &mut Units::default(), random));
     board
 }
 
+#[cfg(any(feature = "generation", test))]
 fn carve(
     board: &mut Board,
     random: &mut Random,
@@ -442,6 +466,7 @@ mod wasm {
         1
     }
 
+    #[cfg(feature = "generation")]
     #[unsafe(no_mangle)]
     pub extern "C" fn generate_board(seed: u32) {
         BOARD.with(|board| board.set(generate(seed)));
@@ -542,19 +567,27 @@ mod tests {
 
     #[test]
     fn targeted_generation_checks_the_rating_under_the_requested_order() {
-        for (level, order) in [
-            (Difficulty::Medium, Technique::ALL.as_slice()),
-            (Difficulty::Easy, [Technique::FullHouse].as_slice()),
-        ] {
+        for level in [Difficulty::Beginner, Difficulty::Easy, Difficulty::Medium] {
+            let order = level.technique_order();
             let target = GenerationTarget::Difficulty {
                 level,
-                technique_order: order,
+                technique_order: &order,
             };
-            let board = generate_targeted(42, target, 1).unwrap();
+            let board = generate_targeted(42, target, 512).unwrap();
             assert_eq!(analyze(&board), Analysis::Unique);
+            assert!(board.iter().filter(|&&digit| digit != 0).count() <= 40);
             assert_eq!(
-                solve_logically(&board, order).unwrap().status,
+                solve_logically(&board, &order).unwrap().status,
                 SolveStatus::Solved(level)
+            );
+            let lower: Vec<_> = order
+                .iter()
+                .copied()
+                .filter(|t| t.difficulty() < level)
+                .collect();
+            assert_eq!(
+                solve_logically(&board, &lower).unwrap().status,
+                SolveStatus::Stalled
             );
         }
         let stalled = GenerationTarget::Difficulty {

@@ -4,7 +4,9 @@ import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Play, Plus,
   Monitor, Moon, SlidersHorizontal, Sun,
 } from 'lucide-react'
+import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
+import { collectionDownloads } from '../sudoku/collection-downloads'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import {
@@ -14,10 +16,11 @@ import {
   saveNewPuzzlePreference, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
-import { shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
+import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
+import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
 import { NewPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
-import { Presence } from './Presence'
+import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
 import { isSettingsSection, Settings } from './Settings'
@@ -91,7 +94,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [multi, setMulti] = usePlayPreference('multi')
   const [advancedModes, setAdvancedModesState] = useState<AdvancedModes>(DEFAULT_ADVANCED_MODES)
-  const [appearance, setAppearanceState] = useState<AppearancePreferences>(DEFAULT_APPEARANCE)
+  const [appearance, setAppearance] = useState<AppearancePreferences>(DEFAULT_APPEARANCE)
   const [highlighting, setHighlightingState] = useState<HighlightPreferences>(DEFAULT_HIGHLIGHT_PREFERENCES)
   const [errorMode, setErrorModeState] = useState<ErrorMode>(DEFAULT_ERROR_MODE)
   const [cellReferenceStyle, setCellReferenceStyleState] = useState<CellReferenceStyle>(DEFAULT_CELL_REFERENCE_STYLE)
@@ -106,6 +109,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
   const automaticPuzzle = usePuzzleGeneration()
+  const savedAppearance = useRef(appearance)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const worktableActions = useRef<WorktableActions | null>(null)
@@ -115,13 +119,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const game = games.find((item) => item.id === active)
   const mobile = useMobileLayout()
   const workspaceMode = mobile ? 'standard' : preferredWorkspaceMode
+  const desktopStandard = !mobile && workspaceMode === 'standard'
   const advancedShell = workspaceMode === 'advanced' && (playing || learning)
   const activeLeftPanelOpen = learning ? advancedPanels.articles : advancedPanels.left
   const colorModeIndex = COLOR_MODE_ORDER.indexOf(appearance.colorMode)
   const nextColorMode = COLOR_MODE_ORDER[(colorModeIndex + 1) % COLOR_MODE_ORDER.length]
   const ColorModeIcon = appearance.colorMode === 'system' ? Monitor : appearance.colorMode === 'light' ? Sun : Moon
   const close = () => setPanel(null)
-  usePageAppearance(appearance)
+  usePageAppearance(appearance, workspaceReady)
 
   function cycleColorMode() {
     setAppearance({ ...appearance, colorMode: nextColorMode })
@@ -143,9 +148,11 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const disconnect = roomStore.connect()
+    const disconnectDownloads = collectionDownloads.connect()
     const preferences = readPreferences()
     setAdvancedModesState(preferences.advancedModes)
-    setAppearanceState(preferences.appearance)
+    savedAppearance.current = preferences.appearance
+    setAppearance(preferences.appearance)
     setHighlightingState(preferences.highlighting)
     setErrorModeState(preferences.errorMode)
     setCellReferenceStyleState(preferences.cellReferenceStyle)
@@ -157,8 +164,27 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
     setWorkspaceReady(true)
-    return disconnect
+    return () => { disconnect(); disconnectDownloads() }
   }, [])
+  useEffect(() => {
+    if (!workspaceReady || savedAppearance.current === appearance) return
+    savedAppearance.current = appearance
+    saveAppearance(appearance)
+  }, [appearance, workspaceReady])
+  useEffect(() => {
+    if (!workspaceReady) return
+    function zoomText(event: KeyboardEvent) {
+      const direction = appTextZoomShortcut(event)
+      if (direction === null || event.defaultPrevented || !event.cancelable) return
+      event.preventDefault()
+      setAppearance((current) => {
+        const appTextZoom = stepAppTextZoom(current.appTextZoom, direction)
+        return appTextZoom === current.appTextZoom ? current : { ...current, appTextZoom }
+      })
+    }
+    window.addEventListener('keydown', zoomText, true)
+    return () => window.removeEventListener('keydown', zoomText, true)
+  }, [workspaceReady])
   useEffect(() => {
     if (!mobile || panel !== 'new') return
     setPanel(null)
@@ -248,11 +274,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   function setAdvancedModes(next: AdvancedModes) {
     setAdvancedModesState(next)
     saveAdvancedModes(next)
-  }
-
-  function setAppearance(next: AppearancePreferences) {
-    setAppearanceState(next)
-    saveAppearance(next)
   }
 
   function setErrorMode(next: ErrorMode) {
@@ -366,7 +387,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   </div>
 
   return (
-    <div className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}>
+    <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
+      enabled={playing && workspaceReady && desktopStandard}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
           <Link to="/" className="wordmark" onClick={() => setMenuOpen(false)}>
@@ -444,10 +466,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       <PlayContent.Provider value={playing && !workspaceReady ? (
         <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
       ) : playing ? (
-        <main className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace">
+        <main id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace">
           {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}
           {linkError && <p className="workspace-error" role="alert">{linkError}</p>}
-          <div className="workspace">
+          <PlayWorkspace resizable={desktopStandard}>
             {game || !mobile ? (
               <Worktable game={game ?? pendingWorkspaceGame} placeholder={game ? undefined : emptyPuzzleContent} games={games} preferredDifficulty={difficulty}
                 modalOpen={panel !== null || menuOpen || resizeMode || settingsRoute}
@@ -466,14 +488,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
             ) : (
               <section className="surface empty-board">{emptyPuzzleContent}</section>
             )}
-          </div>
+          </PlayWorkspace>
         </main>
       ) : null}>
         {children}
       </PlayContent.Provider>
       </PuzzlesContent.Provider>
 
-      {playing && resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
+      <MotionSurface>{playing && resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
         <span className="resize-session-copy"><strong>Resize input panel</strong><small>Drag the handle or adjust digit size.</small></span>
         <span className="resize-size-controls" role="group" aria-label="Digit size">
           <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
@@ -485,7 +507,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           <button className="button secondary" onClick={cancelResize}>Cancel</button>
           <button className="button primary" onClick={finishResize}>Save</button>
         </span>
-      </div>}
+      </div>}</MotionSurface>
 
       {panel === 'new' && !mobile && <NewPuzzle close={close} difficulty={newPuzzlePreference?.difficulty ?? difficulty} initialVariant={newPuzzlePreference?.variant}
         onDifficultyChange={setDifficulty} onPuzzleStart={rememberNewPuzzle} onCreate={createPuzzle} />}
@@ -502,6 +524,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         workspaceMode={workspaceMode} setWorkspaceMode={mobile ? undefined : setWorkspaceMode}
         draft={game?.source === 'draft'} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}
-    </div>
+    </DesktopPlayLayout>
   )
 }

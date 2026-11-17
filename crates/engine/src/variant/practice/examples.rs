@@ -1,8 +1,64 @@
 use super::{ExampleSeed, seed};
 use crate::{
     ClueDirection, Diagonal, KillerCage, MarkedPairs, Parity as CellParity, PuzzleRule,
-    VariantTechnique,
+    VariantPosition, VariantPuzzle, VariantTechnique, parse_givens,
 };
+
+// Published SudokuWiki Pattern Overlay Jigsaw example, shape 14. The packed
+// position already crossed out 7 in r9c5, so the exercise restores it.
+pub(super) fn pattern_overlay_jigsaw() -> VariantPosition {
+    let givens = parse_givens(
+        "090000000006000030059000810500010003010600070700060000001000356000000100000000020",
+    )
+    .unwrap();
+    let puzzle = VariantPuzzle::jigsaw(
+        givens,
+        [
+            [0, 9, 10, 19, 20, 29, 30, 39, 40],
+            [1, 2, 3, 4, 5, 11, 12, 13, 21],
+            [6, 7, 14, 15, 22, 23, 31, 32, 41],
+            [8, 16, 17, 24, 25, 26, 33, 34, 42],
+            [18, 27, 28, 36, 37, 38, 45, 46, 54],
+            [35, 43, 44, 51, 52, 53, 61, 62, 71],
+            [47, 48, 55, 56, 57, 63, 64, 65, 72],
+            [49, 50, 59, 60, 69, 70, 78, 79, 80],
+            [58, 66, 67, 68, 73, 74, 75, 76, 77],
+        ]
+        .map(|cells| cells.to_vec())
+        .into(),
+    );
+    let entries = parse_givens(
+        "000001000100000000600000000000000000000000000030000001000000000060000000000106000",
+    )
+    .unwrap();
+    let mut eliminations = [0; crate::CELLS];
+    for (cell, mask) in [
+        (4, 4),
+        (6, 18),
+        (14, 64),
+        (15, 18),
+        (22, 4),
+        (40, 2),
+        (41, 256),
+        (42, 256),
+        (50, 16),
+        (63, 256),
+        (65, 16),
+        (66, 256),
+        (67, 4),
+        (68, 404),
+        (72, 256),
+        (74, 80),
+        (76, 16),
+    ] {
+        eliminations[cell] = mask;
+    }
+    VariantPosition {
+        puzzle,
+        entries,
+        eliminations,
+    }
+}
 
 fn cage(sum: u16, cells: &[usize]) -> KillerCage {
     KillerCage {
@@ -221,8 +277,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
         LockedCandidates => [
             seed(
                 "500960002010387006003012478000000627020000384000008500000890043209740005064200710",
-                9,
-                9,
+                32,
+                3,
                 [
                     PuzzleRule::Diagonal {
                         diagonal: Diagonal::Main,
@@ -234,8 +290,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             ),
             seed(
                 "000002501004605020725400006600000108951048000000006050017503900462000300500104000",
-                13,
-                1,
+                31,
+                9,
                 [
                     PuzzleRule::Diagonal {
                         diagonal: Diagonal::Main,
@@ -247,8 +303,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             ),
             seed(
                 "070200698406000000052000400080040700031002000004000000300467820020000145948000076",
-                12,
-                5,
+                32,
+                3,
                 [
                     PuzzleRule::Diagonal {
                         diagonal: Diagonal::Main,

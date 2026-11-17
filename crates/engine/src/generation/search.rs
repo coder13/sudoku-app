@@ -99,8 +99,18 @@ impl<'a, T> GenerationSearch<'a, T> {
         Err(GenerationError::SearchLimit)
     }
 
+    /// Reject matched candidates without resetting the search budget or cursor.
+    pub fn filter(mut self, mut accept: impl FnMut(&T) -> bool + 'a) -> Self
+    where
+        T: 'a,
+    {
+        let mut attempt = self.attempt;
+        self.attempt = Box::new(move |random| attempt(random).filter(&mut accept));
+        self
+    }
+
     #[cfg(all(
-        feature = "wasm-api",
+        feature = "generation", feature = "wasm-api",
         any(target_arch = "wasm32", test, feature = "cli")
     ))]
     pub(crate) fn map<U>(self, mut convert: impl FnMut(T) -> U + 'a) -> GenerationSearch<'a, U>

@@ -112,7 +112,7 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
         "type": "generate-targeted",
         "seed": 42,
         "maxAttempts": 1,
-        "target": { "type": "difficulty", "level": "easy", "techniqueOrder": ["full-house"] },
+        "target": { "type": "difficulty", "level": "beginner", "techniqueOrder": ["full-house", "hidden-single-box"] },
     });
     let exclusive = json!({
         "seed": 42,
@@ -175,10 +175,10 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
         records[5]["result"]["rating"]["status"],
         json!({ "solved": "medium" })
     );
-    assert_eq!(records[6]["techniqueOrder"], json!(["full-house"]));
+    assert_eq!(records[6]["techniqueOrder"], json!(["full-house", "hidden-single-box"]));
     assert_eq!(
         records[6]["result"]["rating"]["techniqueOrder"],
-        json!(["full-house"])
+        json!(["full-house", "hidden-single-box"])
     );
     assert_eq!(
         records[7]["result"],
@@ -197,7 +197,9 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
         [
             Technique::ForcingNet,
             Technique::NestedForcingNet,
-            Technique::KrakenFish2
+            Technique::TriplePatternOverlay,
+            Technique::QuintuplePatternOverlay,
+            Technique::KrakenFish2,
         ]
     );
     let solution = solve(&board).unwrap();

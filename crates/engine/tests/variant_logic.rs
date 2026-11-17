@@ -1,3 +1,5 @@
+#![cfg(all(feature = "variants"))]
+
 use sudoku_app_engine::{
     Analysis, Candidate, ClueDirection, HintAction, KillerCage, MarkedPairs, Parity, PuzzleRule,
     SolveStatus, Technique, VARIANT_SCORING_VERSION, VariantEvidence, VariantHouseKind,
@@ -687,6 +689,7 @@ fn classic_fish_gate_only_the_detectors_that_require_standard_boxes() {
     );
 }
 
+#[cfg(feature = "teaching")]
 #[test]
 fn a_uniqueness_proof_requires_every_extra_rule_to_preserve_the_swap() {
     use sudoku_app_engine::HintEvidence;
@@ -755,6 +758,48 @@ fn a_uniqueness_proof_requires_every_extra_rule_to_preserve_the_swap() {
     );
 }
 
+#[cfg(feature = "teaching")]
+#[test]
+fn variant_rectangle_chains_check_the_corners_of_the_inference_link() {
+    let example = Technique::UniqueRectangleAic.practice_examples()[1];
+    let start = example.position().unwrap();
+    let solved = sudoku_app_engine::solve(&start.values().unwrap()).unwrap();
+    let technique = VariantTechnique::Classic(Technique::UniqueRectangleAic);
+    let mut puzzle = VariantPuzzle::classic(start.givens);
+    let proofs = |puzzle: &VariantPuzzle| {
+        puzzle
+            .compile()
+            .unwrap()
+            .deductions(&start.entries, &start.eliminations, technique)
+            .unwrap()
+    };
+    let uses_rectangle = |proof: &sudoku_app_engine::VariantDeduction| {
+        matches!(&proof.evidence, VariantEvidence::Classic { swap_cells, .. } if swap_cells == &[43, 44, 79, 80])
+            && proof.actions == example.expected_actions
+    };
+    assert!(proofs(&puzzle).iter().any(uses_rectangle));
+
+    let given = start.givens.iter().position(|&digit| digit != 0).unwrap();
+    let parity = if solved[given].is_multiple_of(2) {
+        Parity::Even
+    } else {
+        Parity::Odd
+    };
+    puzzle.rules.push(PuzzleRule::Parity {
+        cells: vec![given],
+        parity,
+    });
+    assert!(proofs(&puzzle).iter().any(uses_rectangle));
+    // Both swap digits 2 and 4 still fit in this corner. The proof's swap
+    // scope makes the detector apply the variant's conservative rule check.
+    puzzle.rules.push(PuzzleRule::Parity {
+        cells: vec![44],
+        parity: Parity::Even,
+    });
+    assert!(!proofs(&puzzle).iter().any(uses_rectangle));
+}
+
+#[cfg(feature = "teaching")]
 #[test]
 fn a_variant_unique_loop_checks_every_cell_that_can_swap() {
     use sudoku_app_engine::HintEvidence;

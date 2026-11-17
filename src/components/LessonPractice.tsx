@@ -1,9 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
-import type { DeductionAction, PracticeExercise } from '../sudoku/engine'
+import { ArrowLeft, X } from 'lucide-react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { DeductionAction } from '../sudoku/engine'
 import { describeHint, describeHintRemovals } from '../sudoku/hints'
 import { cellName, lessonDiagram } from '../sudoku/lesson-diagram'
 import { practiceClueAnnotations, practiceSearch } from '../sudoku/lesson-guidance'
-import { HintCard } from './HintCard'
+import type { PracticeGuide } from '../sudoku/lesson-content'
+import type { LessonExercise } from '../sudoku/lesson-examples'
+import { DeductionExplanation, DeductionOutcome } from './HintCard'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardAnnotations } from './BoardAnnotations'
 
@@ -36,7 +39,9 @@ function retryGuidance(attempt: DeductionAction, answers: readonly DeductionActi
     : `Look for a different candidate to remove from ${address} with ${technique}.`
 }
 
-export function PracticePuzzle({ puzzle, technique, instruction }: { puzzle: PracticeExercise; technique: string; instruction?: string }) {
+export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }: {
+  puzzle: LessonExercise; technique: string; instruction?: string; practiceGuide?: PracticeGuide
+}) {
   const canPlace = puzzle.answers.some((answer) => 'place' in answer)
   const canRemove = puzzle.answers.some((answer) => 'eliminate' in answer)
   const defaultInstruction = canPlace && canRemove ? 'Find one placement or candidate removal.'
@@ -44,34 +49,57 @@ export function PracticePuzzle({ puzzle, technique, instruction }: { puzzle: Pra
   const [result, setResult] = useState<{ actions: DeductionAction[]; revealed: boolean } | null>(null)
   const [guidance, setGuidance] = useState<string>()
   const [step, setStep] = useState<number | null>(null)
-  const hintButton = useRef<HTMLButtonElement>(null)
+  const nextButton = useRef<HTMLButtonElement>(null)
+  const stepBody = useRef<HTMLDivElement>(null)
   const clues = useMemo(() => {
-    const { start, check, follow } = practiceSearch(puzzle)
+    const { start, check, follow } = practiceSearch(puzzle, practiceGuide)
     const checkAnnotations = practiceClueAnnotations(check)
     const stages = [
-      { title: 'Where to look', text: start.text, annotations: practiceClueAnnotations(start), next: 'Show the first check' },
-      { title: 'What to check', text: check.text, annotations: checkAnnotations, next: follow ? 'Show the pattern' : 'Show solution' },
+      { title: 'Where to look', text: start.text, annotations: practiceClueAnnotations(start) },
+      { title: 'What to check', text: check.text, annotations: checkAnnotations },
     ]
-    if (follow) stages.push({ title: 'Follow the pattern', text: follow, next: 'Show solution',
+    if (follow) stages.push({ title: 'Follow the pattern', text: follow,
       annotations: 'forcing' in puzzle.deduction.evidence ? checkAnnotations : lessonDiagram(puzzle, undefined, { showActions: false }).annotations })
     return stages
-  }, [puzzle])
+  }, [puzzle, practiceGuide])
   const clue = step === null ? undefined : clues[step]
   const solution = step === clues.length
   const solutionDiagram = useMemo(() => solution ? lessonDiagram(puzzle) : undefined, [puzzle, solution])
-  const fullHint = solutionDiagram && describeHint(puzzle.deduction, { cellReferenceStyle: 'concise' })
-  const hint = fullHint ? { ...fullHint, title: technique } : clue
-  const guide = hint && step !== null ?
-    <HintCard hint={hint} progress={{ step: step + 1, count: clues.length + 1 }} onClose={() => {
-      setStep(null)
-      requestAnimationFrame(() => hintButton.current?.focus({ preventScroll: true }))
-    }}
-      action={clue ? { label: clue.next, onClick: () => setStep(step + 1) } : undefined}
-      secondaryAction={step > 0 ? { label: 'Previous step', onClick: () => setStep(step - 1) } : undefined}
-      explanation={solutionDiagram && [solutionDiagram.description, ...(solutionDiagram.reasonSteps ? [] : [solutionDiagram.reason])]}
-      explanationSteps={solutionDiagram?.reasonSteps} trace={solutionDiagram?.trace}
-      removals={solution ? describeHintRemovals(puzzle.deduction, { cellReferenceStyle: 'concise' }) : undefined} />
-    : !result && <div><button ref={hintButton} type="button" className="button secondary" onClick={() => setStep(0)}>Get a hint</button></div>
+  useLayoutEffect(() => {
+    if (stepBody.current) stepBody.current.scrollTop = 0
+    if (solution) stepBody.current?.focus({ preventScroll: true })
+  }, [step, solution])
+
+  const guide = (ready: boolean) => <section className="lesson-practice-guide" aria-label="Practice walkthrough">
+    <div className="lesson-practice-guide-bar">
+      <span>{step === null ? 'Walkthrough' : `Step ${step + 1} of ${clues.length + 1}`}</span>
+      <div className="lesson-practice-guide-actions">
+        <button type="button" className="icon-button" aria-label="Previous step" disabled={step === null || step === 0}
+          onClick={() => setStep((step ?? 0) - 1)}><ArrowLeft size={16} aria-hidden="true" /></button>
+        <button ref={nextButton} type="button" className="button secondary" disabled={!ready || solution || Boolean(result)}
+          onClick={() => setStep((step ?? -1) + 1)}>{step === clues.length - 1 ? 'Show solution' : 'Show next step'}</button>
+        <button type="button" className="icon-button borderless" aria-label="Hide steps" disabled={step === null}
+          onClick={() => {
+            setStep(null)
+            requestAnimationFrame(() => nextButton.current?.focus({ preventScroll: true }))
+          }}><X size={16} aria-hidden="true" /></button>
+      </div>
+    </div>
+    <div className="lesson-practice-step" tabIndex={0} role="group" aria-label="Step details" ref={stepBody}>
+      <div aria-live="polite">
+        {clue ? <><h3>{clue.title}</h3><p>{clue.text}</p></>
+          : solution ? <h3>Solution</h3> : <p className="lesson-practice-instruction">{instruction ?? defaultInstruction}</p>}
+      </div>
+      {solutionDiagram && <>
+        <DeductionOutcome removals={describeHintRemovals(puzzle.deduction, { cellReferenceStyle: 'concise' })}
+          text={describeHint(puzzle.deduction, { cellReferenceStyle: 'concise' }).text} />
+        <DeductionExplanation explanation={[solutionDiagram.description, ...(solutionDiagram.reasonSteps ? [] : [
+          (puzzle.variantPuzzle || !solutionDiagram.reason) ? practiceGuide?.reason ?? solutionDiagram.reason : solutionDiagram.reason,
+        ])].filter(Boolean)}
+          explanationSteps={solutionDiagram.reasonSteps} trace={solutionDiagram.trace} />
+      </>}
+    </div>
+  </section>
   const annotations: BoardAnnotations | undefined = result ? {
     cells: new Map(result.actions.map((action) => {
       const { cell } = 'place' in action ? action.place : action.eliminate
@@ -80,14 +108,10 @@ export function PracticePuzzle({ puzzle, technique, instruction }: { puzzle: Pra
   } : solutionDiagram?.annotations ?? clue?.annotations
 
   return <LessonWorkbench puzzle={puzzle} label={`Practice grid for ${technique}`} annotations={annotations}
-    initialPencil={canRemove && !canPlace} instruction={solution ? undefined : instruction ?? defaultInstruction}
+    initialPencil={canRemove && !canPlace}
     preview={solution} guide={guide}
     onEdit={() => { setResult(null); setGuidance(undefined) }}>
     {({ actions, reset, reveal }) => <>
-      {!solution && <p className="lesson-practice-feedback" role="status" data-result={result ? 'correct' : undefined}>
-        {result ? `${result.revealed ? 'One possible move.' : 'Correct.'} ${result.actions.map(actionText).join(' ')}`
-          : guidance ?? (actions.length ? actions.map(actionText).join(' ') : step === null ? 'Select cells. Then use the input tools to try a move.' : '')}
-      </p>}
       <div className="lesson-practice-actions">
         {solution ? <button type="button" className="button secondary" onClick={() => {
           reveal(puzzle.suggestion); setStep(null); setGuidance(undefined); setResult({ actions: [puzzle.suggestion], revealed: true })
@@ -99,6 +123,10 @@ export function PracticePuzzle({ puzzle, technique, instruction }: { puzzle: Pra
             else if (actions.length) { setStep(null); setResult({ actions, revealed: false }) }
           }}>{result ? 'Reset puzzle' : 'Check move'}</button>}
       </div>
+      <p className="lesson-practice-feedback" role="status" data-result={result ? 'correct' : undefined}>
+        {result ? `${result.revealed ? 'One possible move.' : 'Correct.'} ${result.actions.map(actionText).join(' ')}`
+          : guidance ?? actions.map(actionText).join(' ')}
+      </p>
     </>}
   </LessonWorkbench>
 }

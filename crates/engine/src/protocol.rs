@@ -1,29 +1,42 @@
+use std::cell::RefCell;
+#[cfg(feature = "generation")]
+use std::collections::HashMap;
+#[cfg(feature = "generation")]
 use std::{
     borrow::Cow,
-    cell::RefCell,
-    collections::{HashMap, hash_map::Entry},
+    collections::{HashSet, hash_map::Entry},
 };
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+#[cfg(feature = "generation")]
 use super::generation::start_builtin_pool;
+use super::hints::technique_counts::TechniqueCountScan;
 use super::hints::{checked_position, classify_actions, rank_position, rank_useful_position};
 use super::{
-    Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, GeneratedPuzzle,
-    GenerationConflict, GenerationCriteria, GenerationError, GenerationRating, GenerationSearch,
-    GenerationStep, GenerationTarget, Hint, HintAction, HintError, HintStages, PositionSnapshot,
-    ProofPattern, RankDiscovery, RankDiscoveryScan, RankError, RankFallbackOptions, RankOutcome,
-    RankPattern, RankProof, RankScan, SCORING_VERSION, SolverProfile, Technique,
-    TechniqueTargetMode, candidates, check_practice_move, compare_paths, deductions,
-    discover_rank_at, discover_rank_deductions_at, next_enabled_deduction, opening_techniques,
-    parse_givens, prove_rank_at, rank_deductions_at, rank_proof_effort_at, rate_puzzle,
-    replay_rank_proof_at, search_alternate_path, solve_position, solve_position_with_rank,
-    start_matching, start_targeted, technique_deductions_at,
+    Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, Hint, HintAction,
+    HintError, HintStages, PositionSnapshot, ProofPattern, RankDiscovery, RankDiscoveryScan,
+    RankError, RankFallbackOptions, RankOutcome, RankPattern, RankProof, RankScan, SCORING_VERSION,
+    SolverProfile, Technique, candidates, compare_paths, deductions, discover_rank_at,
+    discover_rank_deductions_at, next_enabled_deduction, opening_techniques, parse_givens,
+    prove_rank_at, rank_deductions_at, rank_proof_effort_at, rate_puzzle, replay_rank_proof_at,
+    search_alternate_path, solve_position, solve_position_with_rank,
 };
+#[cfg(feature = "generation")]
+use super::{
+    GeneratedPuzzle, GenerationConflict, GenerationCriteria, GenerationError, GenerationRating,
+    GenerationSearch, GenerationStep, GenerationTarget, TechniqueTargetMode, start_matching,
+    start_targeted,
+};
+#[cfg(feature = "teaching")]
+use super::{Random, technique_deductions_at};
+#[cfg(feature = "teaching")]
+use crate::{check_practice_move, permutation::puzzle_permutation};
 
 #[cfg(feature = "cli")]
 pub(crate) mod batch;
+#[cfg(feature = "variants")]
 mod variant;
 
 #[derive(Deserialize)]
@@ -33,6 +46,14 @@ mod variant;
     rename_all_fields = "camelCase"
 )]
 enum Request {
+    Capabilities,
+    #[cfg(feature = "generation")]
+    CanonicalPuzzles {
+        values: Vec<String>,
+    },
+    #[cfg(feature = "generation")]
+    ImpossibleTemplates,
+    #[cfg(feature = "variants")]
     Variant {
         #[serde(default)]
         operation: variant::Operation,
@@ -81,6 +102,7 @@ enum Request {
         technique: String,
         max_positions: u32,
     },
+    #[cfg(feature = "teaching")]
     PracticePosition {
         values: String,
         entries: Option<String>,
@@ -88,6 +110,7 @@ enum Request {
         technique_order: Option<Vec<String>>,
         technique: String,
     },
+    #[cfg(feature = "teaching")]
     CheckPracticeMove {
         values: String,
         entries: Option<String>,
@@ -117,6 +140,11 @@ enum Request {
         values: String,
         eliminations: Option<Vec<u16>>,
         technique_order: Option<Vec<String>>,
+    },
+    TechniqueCount {
+        values: String,
+        eliminations: Option<Vec<u16>>,
+        technique: String,
     },
     ProveRank {
         values: String,
@@ -172,32 +200,51 @@ enum Request {
         #[serde(default)]
         variant: bool,
     },
+    #[cfg(feature = "teaching")]
     LessonExamples,
+    #[cfg(feature = "teaching")]
     PracticeExamples {
         technique: String,
         #[serde(default)]
         variant: bool,
     },
+    #[cfg(feature = "teaching")]
+    GeneratePracticeExample {
+        technique: String,
+        seed: u32,
+        exclude: String,
+        #[serde(default)]
+        variant: bool,
+    },
+    #[cfg(feature = "generation")]
     GenerateTargeted {
         seed: u32,
         max_attempts: u32,
         target: Target,
+        #[serde(default)]
+        exclude: Vec<String>,
     },
+    #[cfg(feature = "generation")]
     GenerateConstrained {
         #[serde(flatten)]
         options: MatchingRequest,
         #[serde(default)]
         templates: Vec<String>,
     },
+    #[cfg(feature = "generation")]
     GenerateFromPool(MatchingRequest),
+    #[cfg(all(feature = "generation", feature = "variants"))]
     GenerateVariant(Box<variant::GenerationRequest>),
+    #[cfg(feature = "generation")]
     GenerationStart {
         job: u32,
         request: Box<Request>,
     },
+    #[cfg(feature = "generation")]
     GenerationAdvance {
         job: u32,
     },
+    #[cfg(feature = "generation")]
     GenerationCancel {
         job: u32,
     },
@@ -205,6 +252,7 @@ enum Request {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(feature = "generation")]
 struct MatchingRequest {
     seed: u32,
     max_attempts: u32,
@@ -213,6 +261,8 @@ struct MatchingRequest {
     difficulty: Option<Difficulty>,
     technique: Option<TechniqueRequest>,
     technique_order: Option<Vec<String>>,
+    #[serde(default)]
+    exclude: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -232,11 +282,13 @@ struct HintWithPattern<'a> {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
+#[cfg(feature = "generation")]
 enum ClueCount {
     Exact(usize),
     Range([usize; 2]),
 }
 
+#[cfg(feature = "generation")]
 impl ClueCount {
     fn range(self) -> std::ops::RangeInclusive<usize> {
         match self {
@@ -248,6 +300,7 @@ impl ClueCount {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
+#[cfg(feature = "generation")]
 enum TechniqueRequest {
     Id(String),
     WithMode {
@@ -256,6 +309,7 @@ enum TechniqueRequest {
     },
 }
 
+#[cfg(feature = "generation")]
 impl TechniqueRequest {
     fn parts(self) -> (String, TechniqueTargetMode) {
         match self {
@@ -271,6 +325,7 @@ impl TechniqueRequest {
     rename_all = "kebab-case",
     rename_all_fields = "camelCase"
 )]
+#[cfg(feature = "generation")]
 enum Target {
     Difficulty {
         level: Difficulty,
@@ -316,6 +371,7 @@ const INVALID_ELIMINATIONS: (&str, &str) = (
     "invalid-eliminations",
     "The candidate eliminations are invalid.",
 );
+#[cfg(feature = "teaching")]
 const INVALID_LESSON: (&str, &str) = (
     "invalid-lesson",
     "The engine could not find the expected deduction for a technique lesson.",
@@ -323,12 +379,17 @@ const INVALID_LESSON: (&str, &str) = (
 
 #[cfg(any(target_arch = "wasm32", test))]
 pub(crate) fn process(bytes: &[u8]) -> Vec<u8> {
-    let result = serde_json::from_slice(bytes)
+    let result = serde_json::from_slice::<Request>(bytes)
         .map_err(|_| {
-            (
-                "invalid-request",
-                "The Sudoku engine could not read this request.",
-            )
+            // Decode generic JSON only on failure. Normal requests keep one typed parse.
+            serde_json::from_slice::<Value>(bytes)
+                .ok()
+                .and_then(|value| unavailable_capability(&value))
+                .map(unsupported)
+                .unwrap_or((
+                    "invalid-request",
+                    "The Sudoku engine could not read this request.",
+                ))
         })
         .and_then(execute);
     let response = match result {
@@ -437,6 +498,7 @@ fn position_masks(position: &PositionSnapshot) -> ResultValue<[u16; super::CELLS
     Ok(masks)
 }
 
+#[cfg(feature = "teaching")]
 fn position_with_candidates(position: &PositionSnapshot) -> ResultValue {
     let masks = position_masks(position)?;
     let mut data = snapshot_value(position);
@@ -444,6 +506,21 @@ fn position_with_candidates(position: &PositionSnapshot) -> ResultValue {
     Ok(data)
 }
 
+#[cfg(feature = "teaching")]
+fn lesson_position(position: &PositionSnapshot, deduction: &Hint) -> ResultValue {
+    let masks = position_masks(position)?;
+    let mut data = snapshot_value(position);
+    data["candidates"] = json!(masks[..]);
+    data["deduction"] = json!(deduction);
+    data["pattern"] = json!(ProofPattern::from_evidence(
+        &deduction.evidence,
+        deduction.actions[0].candidate(),
+        &masks,
+    ));
+    Ok(data)
+}
+
+#[cfg(feature = "teaching")]
 fn transpose_lesson_position(position: &PositionSnapshot) -> PositionSnapshot {
     // Transpose the grid and rename every digit. The same technique applies in a new orientation.
     let transpose = |cell: usize| cell % 9 * 9 + cell / 9;
@@ -458,6 +535,7 @@ fn transpose_lesson_position(position: &PositionSnapshot) -> PositionSnapshot {
     }
 }
 
+#[cfg(feature = "teaching")]
 fn lesson_examples() -> ResultValue {
     let mut lessons = serde_json::Map::new();
     for technique in Technique::ALL {
@@ -471,32 +549,28 @@ fn lesson_examples() -> ResultValue {
         let practice = transpose_lesson_position(&position);
         let proofs = technique_deductions_at(&practice, technique).map_err(|_| INVALID_LESSON)?;
         let proof = proofs.first().ok_or(INVALID_LESSON)?;
-        let mut lesson = position_with_candidates(&position)?;
-        lesson["deduction"] = json!(deduction);
+        let mut lesson = lesson_position(&position, &deduction)?;
         lesson["practice"] = practice_value(&practice, &proofs, proof)?;
         lessons.insert(technique.id().into(), lesson);
     }
     Ok(Value::Object(lessons))
 }
 
-fn practice_value(
-    position: &PositionSnapshot,
-    proofs: &[Hint],
-    proof: &Hint,
-) -> ResultValue {
+#[cfg(feature = "teaching")]
+fn practice_value(position: &PositionSnapshot, proofs: &[Hint], proof: &Hint) -> ResultValue {
     let mut answers: Vec<_> = proofs
         .iter()
         .flat_map(|proof| proof.actions.iter().copied())
         .collect();
     answers.sort_unstable();
     answers.dedup();
-    let mut drill = position_with_candidates(position)?;
+    let mut drill = lesson_position(position, proof)?;
     drill["answers"] = json!(answers);
     drill["suggestion"] = json!(proof.actions.first().ok_or(INVALID_LESSON)?);
-    drill["deduction"] = json!(proof);
     Ok(drill)
 }
 
+#[cfg(feature = "teaching")]
 fn practice_examples(technique: Technique) -> ResultValue {
     let mut exercises = Vec::new();
     for example in technique.practice_examples() {
@@ -509,6 +583,36 @@ fn practice_examples(technique: Technique) -> ResultValue {
         exercises.push(practice_value(&position, &proofs, expected)?);
     }
     Ok(Value::Array(exercises))
+}
+
+#[cfg(feature = "teaching")]
+fn generate_practice_example(technique: Technique, seed: u32, exclude: Board) -> ResultValue {
+    let mut random = Random::from_seed(seed);
+    let mut examples = technique.practice_examples();
+    random.shuffle(&mut examples);
+    for example in examples.into_iter().cycle().take(6) {
+        let original = example.position().map_err(puzzle_error)?;
+        let (cells, digits) = puzzle_permutation(&mut random);
+        let position = PositionSnapshot {
+            givens: cells.map(|cell| digits[usize::from(original.givens[cell])]),
+            entries: cells.map(|cell| digits[usize::from(original.entries[cell])]),
+            eliminations: cells.map(|cell| {
+                (1..=9).fold(0, |mask, digit| {
+                    let bit = (original.eliminations[cell] >> (digit - 1)) & 1;
+                    mask | (bit << (digits[digit] - 1))
+                })
+            }),
+        };
+        if position.values().map_err(puzzle_error)? == exclude {
+            continue;
+        }
+        // Find the proof again so the answer and its explanation match the new grid.
+        let proofs = technique_deductions_at(&position, technique).map_err(|_| INVALID_LESSON)?;
+        if let Some(proof) = proofs.first() {
+            return practice_value(&position, &proofs, proof);
+        }
+    }
+    Err(INVALID_LESSON)
 }
 
 fn puzzle_error(analysis: Analysis) -> (&'static str, &'static str) {
@@ -524,6 +628,7 @@ fn puzzle_error(analysis: Analysis) -> (&'static str, &'static str) {
     }
 }
 
+#[cfg(feature = "generation")]
 fn generation_error(error: GenerationError) -> (&'static str, &'static str) {
     match error {
         GenerationError::InvalidClueCount => (
@@ -565,6 +670,7 @@ fn generation_error(error: GenerationError) -> (&'static str, &'static str) {
     }
 }
 
+#[cfg(feature = "generation")]
 fn rating_target(
     score: Option<[u32; 2]>,
     difficulty: Option<Difficulty>,
@@ -582,6 +688,7 @@ fn rating_target(
     })
 }
 
+#[cfg(feature = "generation")]
 impl MatchingRequest {
     fn start(
         self,
@@ -618,20 +725,29 @@ impl MatchingRequest {
                 self.max_attempts,
             )
             .map_err(generation_error)?;
-            return Ok((profile, search.map(GenerationOutput::Board)));
+            return Ok((
+                profile,
+                exclude_puzzles(search.map(GenerationOutput::Board), self.exclude)?,
+            ));
         }
         let search = start_builtin_pool(self.seed, &criteria, mode, self.max_attempts)
             .map_err(generation_error)?;
-        Ok((profile, search.map(GenerationOutput::Rated)))
+        Ok((
+            profile,
+            exclude_puzzles(search.map(GenerationOutput::Rated), self.exclude)?,
+        ))
     }
 }
 
+#[cfg(feature = "generation")]
 enum GenerationOutput {
     Board(Board),
     Rated(GeneratedPuzzle),
+    #[cfg(feature = "variants")]
     Variant(Box<crate::GeneratedVariant>),
 }
 
+#[cfg(feature = "generation")]
 impl GenerationOutput {
     fn into_wire(self) -> Value {
         match self {
@@ -639,29 +755,74 @@ impl GenerationOutput {
             Self::Rated(puzzle) => {
                 json!({ "board": grid_string(puzzle.board), "rating": puzzle.rating })
             }
+            #[cfg(feature = "variants")]
             Self::Variant(puzzle) => json!(puzzle),
         }
     }
 }
 
+#[cfg(feature = "generation")]
 type ActiveGeneration = GenerationSearch<'static, GenerationOutput>;
 
 thread_local! {
+    #[cfg(feature = "generation")]
     static GENERATION: RefCell<HashMap<u32, ActiveGeneration>> = RefCell::new(HashMap::new());
+    static TECHNIQUE_COUNTS: RefCell<TechniqueCountScan> = RefCell::default();
+    #[cfg(feature = "generation")]
+    static PUZZLE_KEYS: RefCell<HashMap<Board, Board>> = RefCell::new(HashMap::new());
+}
+
+#[cfg(feature = "generation")]
+fn puzzle_key(board: Board) -> Board {
+    PUZZLE_KEYS.with_borrow_mut(|keys| {
+        if let Some(key) = keys.get(&board) {
+            return *key;
+        }
+        let key = crate::canonical_puzzle(&board);
+        if keys.len() >= 8192 {
+            keys.clear();
+        }
+        keys.insert(board, key);
+        key
+    })
+}
+
+#[cfg(feature = "generation")]
+fn exclude_puzzles(
+    search: ActiveGeneration,
+    exclude: Vec<String>,
+) -> ResultValue<ActiveGeneration> {
+    if exclude.is_empty() {
+        return Ok(search);
+    }
+    let excluded = exclude
+        .iter()
+        .map(|text| board(text).map(puzzle_key))
+        .collect::<Result<HashSet<_>, _>>()?;
+    Ok(search.filter(move |candidate| match candidate {
+        GenerationOutput::Board(board) => !excluded.contains(&puzzle_key(*board)),
+        GenerationOutput::Rated(puzzle) => !excluded.contains(&puzzle_key(puzzle.board)),
+        #[cfg(feature = "variants")]
+        GenerationOutput::Variant(_) => true,
+    }))
 }
 
 #[cfg_attr(not(feature = "cli"), allow(dead_code))]
+#[cfg(feature = "generation")]
 enum GenerationProfile {
     Classic(SolverProfile),
+    #[cfg(feature = "variants")]
     Variant(Vec<crate::VariantTechnique>),
 }
 
+#[cfg(feature = "generation")]
 fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveGeneration)> {
     match request {
         Request::GenerateTargeted {
             seed,
             max_attempts,
             target,
+            exclude,
         } => {
             let (profile, search) = match target {
                 Target::Difficulty {
@@ -689,9 +850,12 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
             };
             Ok((
                 GenerationProfile::Classic(profile),
-                search
-                    .map_err(generation_error)?
-                    .map(GenerationOutput::Board),
+                exclude_puzzles(
+                    search
+                        .map_err(generation_error)?
+                        .map(GenerationOutput::Board),
+                    exclude,
+                )?,
             ))
         }
         Request::GenerateConstrained { options, templates } => options
@@ -700,11 +864,13 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
         Request::GenerateFromPool(options) => options
             .start(None)
             .map(|(profile, search)| (GenerationProfile::Classic(profile), search)),
+        #[cfg(feature = "variants")]
         Request::GenerateVariant(options) => options.start(),
         _ => Err(("invalid-request", "Choose a targeted generation request.")),
     }
 }
 
+#[cfg(feature = "generation")]
 fn generation_update(job: u32, cancel: bool) -> ResultValue {
     GENERATION.with_borrow_mut(|jobs| {
         let search = jobs
@@ -741,6 +907,20 @@ fn trace_value(trace: &super::LogicalSolve) -> Value {
 
 fn execute(request: Request) -> ResultValue<ResponseValue> {
     let result = match request {
+        #[cfg(feature = "generation")]
+        Request::ImpossibleTemplates => Ok(json!(
+            crate::impossible_templates()
+                .iter()
+                .map(|board| grid_string(*board))
+                .collect::<Vec<_>>()
+        )),
+        #[cfg(feature = "generation")]
+        Request::CanonicalPuzzles { values } => values
+            .iter()
+            .map(|text| board(text).map(|board| grid_string(puzzle_key(board))))
+            .collect::<Result<Vec<_>, _>>()
+            .map(|keys| json!(keys)),
+        #[cfg(feature = "variants")]
         Request::Variant {
             operation,
             position,
@@ -879,6 +1059,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 "path": result.path.as_ref().map(trace_value),
             }))
         }
+        #[cfg(feature = "teaching")]
         Request::PracticePosition {
             values,
             entries,
@@ -895,6 +1076,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 None => Ok(Value::Null),
             }
         }
+        #[cfg(feature = "teaching")]
         Request::CheckPracticeMove {
             values,
             entries,
@@ -983,6 +1165,19 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             .map_err(hint_error)?;
             return Ok(ResponseValue::Deductions(results));
         }
+        Request::TechniqueCount {
+            values,
+            eliminations,
+            technique,
+        } => {
+            let board = board(&values)?;
+            let eliminations = elimination_masks(eliminations)?;
+            let technique = Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?;
+            let count = TECHNIQUE_COUNTS
+                .with_borrow_mut(|scan| scan.count(board, eliminations, technique))
+                .map_err(hint_error)?;
+            Ok(json!(count))
+        }
         Request::ProveRank {
             values,
             entries,
@@ -1070,9 +1265,19 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             let techniques = opening_techniques(&board(&values)?).map_err(puzzle_error)?;
             Ok(json!(techniques))
         }
+        Request::Capabilities => Ok(json!({
+            "classic": true,
+            "variants": cfg!(feature = "variants"),
+            "generation": cfg!(feature = "generation"),
+            "teaching": cfg!(feature = "teaching"),
+        })),
+        #[cfg(not(feature = "variants"))]
+        Request::Techniques { variant: true } => Err(unsupported("variants")),
+        #[cfg(feature = "variants")]
         Request::Techniques { variant: true } => Ok(variant::catalog()),
         Request::Techniques { variant: false } => Ok(json!({
             "defaultOrder": Technique::DEFAULT_ORDER,
+            "difficultyOrder": Technique::DIFFICULTY_ORDER,
             "scoringVersion": SCORING_VERSION,
             "techniques": Technique::ALL.into_iter().map(|technique| json!({
                 "id": technique,
@@ -1082,23 +1287,46 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 "requiresUniqueSolution": technique.requires_unique_solution(),
             })).collect::<Vec<_>>(),
         })),
+        #[cfg(feature = "teaching")]
         Request::LessonExamples => lesson_examples(),
+        #[cfg(all(feature = "teaching", feature = "variants"))]
         Request::PracticeExamples {
             technique,
             variant: true,
         } => variant::practice_examples(&technique),
+        #[cfg(feature = "teaching")]
         Request::PracticeExamples {
             technique,
             variant: false,
         } => practice_examples(Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?),
+        #[cfg(all(feature = "teaching", feature = "variants"))]
+        Request::GeneratePracticeExample {
+            technique,
+            seed,
+            exclude,
+            variant: true,
+        } => variant::generate_practice_example(&technique, seed, board(&exclude)?),
+        #[cfg(feature = "teaching")]
+        Request::GeneratePracticeExample {
+            technique,
+            seed,
+            exclude,
+            variant: false,
+        } => generate_practice_example(
+            Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?,
+            seed,
+            board(&exclude)?,
+        ),
+        #[cfg(feature = "generation")]
         request @ (Request::GenerateTargeted { .. }
         | Request::GenerateConstrained { .. }
-        | Request::GenerateFromPool(_)
-        | Request::GenerateVariant(_)) => start_generation(request)?
-            .1
-            .finish()
-            .map(GenerationOutput::into_wire)
-            .map_err(generation_error),
+        | Request::GenerateFromPool(_)) => finish_generation(request),
+        #[cfg(all(feature = "generation", feature = "variants"))]
+        request @ Request::GenerateVariant(_) => finish_generation(request),
+        #[cfg(all(feature = "teaching", not(feature = "variants")))]
+        Request::PracticeExamples { variant: true, .. }
+        | Request::GeneratePracticeExample { variant: true, .. } => Err(unsupported("variants")),
+        #[cfg(feature = "generation")]
         Request::GenerationStart { job, request } => {
             GENERATION.with_borrow_mut(|jobs| match jobs.entry(job) {
                 Entry::Occupied(_) => Err((
@@ -1111,10 +1339,21 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 }
             })
         }
+        #[cfg(feature = "generation")]
         Request::GenerationAdvance { job } => generation_update(job, false),
+        #[cfg(feature = "generation")]
         Request::GenerationCancel { job } => generation_update(job, true),
     };
     result.map(ResponseValue::Json)
+}
+
+#[cfg(feature = "generation")]
+fn finish_generation(request: Request) -> ResultValue {
+    start_generation(request)?
+        .1
+        .finish()
+        .map(GenerationOutput::into_wire)
+        .map_err(generation_error)
 }
 
 #[cfg(test)]
@@ -1129,9 +1368,57 @@ mod tests {
     }
 
     #[test]
+    fn capabilities_match_build_features_and_omitted_operations_preserve_the_solver() {
+        assert_eq!(
+            request(json!({"type":"capabilities"}))["value"],
+            json!({
+                "classic": true,
+                "variants": cfg!(feature = "variants"),
+                "generation": cfg!(feature = "generation"),
+                "teaching": cfg!(feature = "teaching"),
+            })
+        );
+        let solved =
+            "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
+        for (enabled, operation) in [
+            (
+                cfg!(feature = "variants"),
+                json!({"type":"techniques", "variant":true}),
+            ),
+            (
+                cfg!(feature = "generation"),
+                json!({"type":"impossible-templates"}),
+            ),
+            (
+                cfg!(feature = "teaching"),
+                json!({"type":"practice-examples", "technique":"naked-single"}),
+            ),
+        ] {
+            let reply = request(operation);
+            if enabled {
+                assert!(reply.get("value").is_some(), "{reply}");
+            } else {
+                assert_eq!(reply["code"], "unsupported-capability", "{reply}");
+            }
+            assert_eq!(
+                request(json!({"type":"rate", "values":solved}))["value"]["status"],
+                json!({"solved":"beginner"})
+            );
+        }
+        if !cfg!(feature = "generation") {
+            assert_eq!(
+                request(
+                    json!({"type":"generation-start", "job":9, "request":{"type":"generate-variant"}})
+                )["code"],
+                "unsupported-capability"
+            );
+        }
+    }
+
+    #[test]
     fn protocol_distinguishes_a_missing_profile_from_an_empty_profile() {
         let rating = request(json!({"type":"rate", "values":SPARSE}));
-        assert_eq!(rating["value"]["score"]["points"], 766);
+        assert_eq!(rating["value"]["score"]["points"], 846);
         assert_eq!(rating["value"]["status"], json!({"solved":"medium"}));
         assert_eq!(rating["value"]["scoringVersion"], SCORING_VERSION);
         assert_eq!(
@@ -1147,4 +1434,71 @@ mod tests {
             "invalid-grid"
         );
     }
+}
+
+#[cfg_attr(feature = "cli", allow(dead_code))]
+fn unsupported(capability: &str) -> (&'static str, &'static str) {
+    (
+        "unsupported-capability",
+        match capability {
+            "variants" => "This engine build does not include variant rules.",
+            "generation" => "This engine build does not include puzzle generation.",
+            _ => "This engine build does not include teaching fixtures.",
+        },
+    )
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn unavailable_capability(request: &Value) -> Option<&'static str> {
+    let kind = request["type"].as_str()?;
+    if !cfg!(feature = "generation")
+        && matches!(
+            kind,
+            "canonical-puzzles"
+                | "impossible-templates"
+                | "generate-targeted"
+                | "generate-constrained"
+                | "generate-from-pool"
+                | "generate-variant"
+                | "generation-start"
+                | "generation-advance"
+                | "generation-cancel"
+        )
+    {
+        return Some("generation");
+    }
+    if !cfg!(feature = "teaching")
+        && matches!(
+            kind,
+            "lesson-examples"
+                | "practice-examples"
+                | "generate-practice-example"
+                | "practice-position"
+                | "check-practice-move"
+        )
+    {
+        return Some("teaching");
+    }
+    if !cfg!(feature = "teaching")
+        && kind == "variant"
+        && matches!(
+            request["operation"].as_str(),
+            Some("practice-position" | "check-practice-move")
+        )
+    {
+        return Some("teaching");
+    }
+    if !cfg!(feature = "variants")
+        && (matches!(kind, "variant" | "generate-variant")
+            || (matches!(
+                kind,
+                "techniques" | "practice-examples" | "generate-practice-example"
+            ) && request["variant"] == true))
+    {
+        return Some("variants");
+    }
+    if kind == "generation-start" {
+        return unavailable_capability(&request["request"]);
+    }
+    None
 }

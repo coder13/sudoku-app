@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, GripVertical, X } from 'lucide-react'
+import { GripVertical, X } from 'lucide-react'
+import { MotionSurface, usePresentContent } from './Presence'
 import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
@@ -47,7 +48,9 @@ export function MobilePanelLayout(props: Props) {
   const orderRef = useRef(order)
   const latest = useRef(props)
   latest.current = props
-  const visible = order.filter((id) => props.panels[id])
+  const { content: hint, exiting: hintExiting } = usePresentContent(props.panels.hint)
+  const panels = { ...props.panels, hint: hint || undefined }
+  const visible = order.filter((id) => panels[id])
 
   function cancelHold() {
     if (hold.current) window.clearTimeout(hold.current.timer)
@@ -84,7 +87,7 @@ export function MobilePanelLayout(props: Props) {
     const current = drag.current
     if (!current?.moved || !root.current) return
     let nearest: { id: MobilePanelId; rect: DOMRect; distance: number } | undefined
-    for (const panel of root.current.querySelectorAll<HTMLElement>('[data-mobile-panel]')) {
+    for (const panel of root.current.querySelectorAll<HTMLElement>('[data-mobile-panel]:not([inert])')) {
       const id = panel.dataset.mobilePanel as MobilePanelId
       if (id === current.id) continue
       const rect = panel.getBoundingClientRect()
@@ -156,12 +159,6 @@ export function MobilePanelLayout(props: Props) {
       maxScroll: scroller.scrollHeight - scroller.clientHeight, scroller, moved: false, drop: null,
     }
     scrollFrame.current = requestAnimationFrame(scrollWhileDragging)
-  }
-
-  function moveBy(id: MobilePanelId, direction: -1 | 1) {
-    const index = visible.indexOf(id)
-    const target = visible[index + direction]
-    if (target) saveMove(id, { id: target, edge: direction < 0 ? 'before' : 'after' })
   }
 
   function exit() {
@@ -240,7 +237,7 @@ export function MobilePanelLayout(props: Props) {
     finishDrag(false)
   }, [visible.join(',')])
 
-  return <div ref={root} className={`mobile-panel-layout${props.withHint ? ' with-hint' : ''}`}
+  return <div ref={root} className={`mobile-panel-layout${props.withHint || hintExiting ? ' with-hint' : ''}`}
     data-rearranging={props.rearranging || undefined} style={{ '--mobile-secondary-count': visible.length - 1 } as CSSProperties}
     onPointerDownCapture={startHold}
     onContextMenuCapture={(event) => { if (hold.current || props.rearranging) event.preventDefault() }}
@@ -250,21 +247,23 @@ export function MobilePanelLayout(props: Props) {
         event.stopPropagation()
       }
     }}>
-    {props.rearranging && <div className="mobile-panel-toolbar surface" role="region" aria-label="Rearrange cards" data-panel-editor>
+    <MotionSurface>{props.rearranging && <div className="mobile-panel-toolbar surface" role="region" aria-label="Rearrange cards" data-panel-editor>
       <div><strong>Rearrange cards</strong><small id="mobile-panel-instructions">
         {saveFailed ? 'Order saved for this session only.' : 'Drag cards to move them. Changes save automatically.'}
       </small></div>
       <button ref={closeButton} type="button" className="icon-button borderless" aria-label="Finish rearranging cards" onClick={exit}>
         <X size={22} aria-hidden="true" />
       </button>
-    </div>}
+    </div>}</MotionSurface>
     <div className="mobile-panel-space" aria-hidden="true" />
     {visible.map((id, index) => {
-      const panel = props.panels[id]!
+      const panel = panels[id]!
+      const exiting = id === 'hint' && hintExiting
       const moving = dragView?.id === id
       const drop = dragView?.drop?.id === id ? dragView.drop.edge : undefined
       return <Fragment key={id}>
-        <div className="mobile-panel" data-mobile-panel={id} data-first={index === 0 || undefined}
+        <div className={`mobile-panel${id === 'hint' ? ' motion-surface' : ''}`} data-mobile-panel={id} data-first={index === 0 || undefined}
+          data-presence={id === 'hint' ? exiting ? 'exit' : 'open' : undefined} inert={exiting || undefined} aria-hidden={exiting || undefined}
           data-dragging={moving || undefined} data-drop={drop} role="group" aria-label={`${panel.title} card`}
           style={{
             '--mobile-panel-row': index,
@@ -276,20 +275,9 @@ export function MobilePanelLayout(props: Props) {
           {props.rearranging && <div className="mobile-panel-editor" data-panel-editor>
             <button type="button" className="mobile-panel-drag" aria-label={`Move ${panel.title.toLowerCase()} card`}
               aria-describedby="mobile-panel-instructions" onPointerDown={(event) => startDrag(id, event)}
-              onLostPointerCapture={(event) => { if (drag.current?.pointerId === event.pointerId) finishDrag(false) }}
-              onKeyDown={(event) => {
-                if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return
-                event.preventDefault()
-                moveBy(id, event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1)
-              }}>
+              onLostPointerCapture={(event) => { if (drag.current?.pointerId === event.pointerId) finishDrag(false) }}>
               <span><GripVertical size={18} aria-hidden="true" />{panel.title}</span>
             </button>
-            <div className="mobile-panel-move-buttons">
-              <button type="button" className="icon-button" aria-label={`Move ${panel.title.toLowerCase()} card earlier`}
-                disabled={index === 0} onClick={() => moveBy(id, -1)}><ArrowUp size={20} aria-hidden="true" /></button>
-              <button type="button" className="icon-button" aria-label={`Move ${panel.title.toLowerCase()} card later`}
-                disabled={index === visible.length - 1} onClick={() => moveBy(id, 1)}><ArrowDown size={20} aria-hidden="true" /></button>
-            </div>
           </div>}
         </div>
         {index === 0 && visible.length > 1 && <div className="mobile-panel-space mobile-panel-gap" aria-hidden="true" />}

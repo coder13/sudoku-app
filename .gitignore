@@ -2,6 +2,7 @@ node_modules/
 dist/
 target/
 src/sudoku/generated/
+public/collections/
 .env.local
 .DS_Store
 .tanstack/

@@ -1,4 +1,8 @@
-use std::{cell::OnceCell, collections::BTreeMap};
+use std::{
+    cell::{OnceCell, RefCell, RefMut},
+    collections::BTreeMap,
+    ops::ControlFlow,
+};
 
 use super::{
     CompiledVariant, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind,
@@ -7,11 +11,11 @@ use super::{
 use crate::{
     Analysis, Board, CELLS, Candidate, DIGITS, Difficulty, HintAction, HintEvidence, SolveStatus,
     Technique,
-    hints::{DeductionSearch, digit_bit, digits},
+    hints::{Deduction, DeductionSearch, OverlaySearch, digit_bit, digits},
 };
 
 /// Version of the point costs and difficulty thresholds for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 4;
+pub const VARIANT_SCORING_VERSION: u32 = 5;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 
 macro_rules! catalog {
@@ -180,7 +184,7 @@ pub enum VariantEvidence {
     },
     /// A classic proof that applies to the current rules.
     Classic {
-        /// The same proof used by the classic engine.
+        /// Proof expressed in the shared classic and variant hint format.
         proof: Box<HintEvidence>,
         /// Cells where a uniqueness argument can exchange digits.
         ///
@@ -355,12 +359,12 @@ impl VariantPosition {
                     .hardest
                     .map_or(Difficulty::Easy, VariantTechnique::difficulty);
                 rating.status =
-                    SolveStatus::Solved(floor.max(Difficulty::from_score(rating.points)));
+                    SolveStatus::Solved(floor);
                 break;
             }
             let Some(step) = order
                 .iter()
-                .find_map(|&technique| compiled.explain(&position, technique).into_iter().next())
+                .find_map(|&technique| compiled.first_proof(&position, technique))
             else {
                 break;
             };
@@ -407,13 +411,14 @@ impl VariantDeduction {
     }
 }
 
-pub(super) struct ProofPosition {
+pub(super) struct ProofPosition<'a> {
     board: Board,
     pub masks: [u16; CELLS],
     uniqueness: OnceCell<bool>,
+    overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
 }
 
-impl ProofPosition {
+impl ProofPosition<'_> {
     fn domain(&self, cell: usize) -> u16 {
         match self.board[cell] {
             0 => self.masks[cell],
@@ -460,15 +465,33 @@ impl ProofPosition {
     }
 }
 
+fn overlay_proof(step: Deduction) -> VariantDeduction {
+    let crate::Hint {
+        technique,
+        evidence,
+        mut actions,
+    } = step.into();
+    actions.sort_unstable();
+    VariantDeduction {
+        technique: VariantTechnique::Classic(technique),
+        actions,
+        evidence: VariantEvidence::Classic {
+            proof: Box::new(evidence),
+            swap_cells: Vec::new(),
+        },
+    }
+}
+
 impl CompiledVariant {
+    #[cfg(any(feature = "generation", test))]
     pub(super) fn has_exclusive_opening(&self, selected: VariantTechnique) -> bool {
         let Ok(position) = self.proof_position(&[0; CELLS], &[0; CELLS]) else {
             return false;
         };
-        !self.explain(&position, selected).is_empty()
+        self.first_proof(&position, selected).is_some()
             && VariantTechnique::all()
                 .filter(|&technique| technique != selected)
-                .all(|technique| self.explain(&position, technique).is_empty())
+                .all(|technique| self.first_proof(&position, technique).is_none())
     }
 
     /// Check a submitted practice action against every proof of the selected technique.
@@ -536,6 +559,7 @@ impl CompiledVariant {
     }
 
     /// Prefer the easiest enabled move that unlocks singles, within the puzzle's tier.
+    #[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
     pub(crate) fn useful_hints(
         &self,
         entries: &Board,
@@ -622,6 +646,7 @@ impl CompiledVariant {
         Ok(choices)
     }
 
+    #[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
     fn single_progress(&self, mut board: Board, mut removals: [u16; CELLS]) -> usize {
         let mut placed = 0;
         while board.contains(&0) {
@@ -644,7 +669,7 @@ impl CompiledVariant {
         &self,
         entries: &Board,
         eliminations: &[u16; CELLS],
-    ) -> Result<ProofPosition, VariantPositionError> {
+    ) -> Result<ProofPosition<'_>, VariantPositionError> {
         let constrained = self.prepare(entries, eliminations)?;
         let board = constrained.board;
         if board
@@ -658,7 +683,7 @@ impl CompiledVariant {
         Ok(self.house_position(board, eliminations))
     }
 
-    fn house_position(&self, board: Board, eliminations: &[u16; CELLS]) -> ProofPosition {
+    fn house_position(&self, board: Board, eliminations: &[u16; CELLS]) -> ProofPosition<'_> {
         let mut masks = std::array::from_fn(|cell| {
             if board[cell] == 0 {
                 DIGITS & !eliminations[cell]
@@ -683,12 +708,48 @@ impl CompiledVariant {
             board,
             masks,
             uniqueness: OnceCell::new(),
+            overlay: OnceCell::new(),
         }
     }
 
-    pub(super) fn explain(
-        &self,
-        position: &ProofPosition,
+    fn first_proof<'a>(
+        &'a self,
+        position: &ProofPosition<'a>,
+        technique: VariantTechnique,
+    ) -> Option<VariantDeduction> {
+        if let VariantTechnique::Classic(classic) = technique
+            && classic.pattern_overlay_width().is_some()
+        {
+            self.overlay_search(position)
+                .visit(classic, &mut ControlFlow::Break)
+                .break_value()
+                .map(overlay_proof)
+        } else {
+            self.explain(position, technique).into_iter().next()
+        }
+    }
+
+    fn overlay_search<'a, 'p>(
+        &'a self,
+        position: &'p ProofPosition<'a>,
+    ) -> RefMut<'p, OverlaySearch<'a>> {
+        position
+            .overlay
+            .get_or_init(|| {
+                Box::new(RefCell::new(OverlaySearch::for_variant(
+                    &position.board,
+                    &position.masks,
+                    &self.house_masks,
+                    &self.peers,
+                    self.classic_boxes,
+                )))
+            })
+            .borrow_mut()
+    }
+
+    pub(super) fn explain<'a>(
+        &'a self,
+        position: &ProofPosition<'a>,
         technique: VariantTechnique,
     ) -> Vec<VariantDeduction> {
         use VariantTechnique::*;
@@ -823,6 +884,7 @@ impl CompiledVariant {
     /// uniqueness before returning an individual deduction.
     pub fn supports_technique(&self, technique: VariantTechnique) -> bool {
         match technique {
+            VariantTechnique::Classic(classic) if classic.pattern_overlay_width().is_some() => true,
             VariantTechnique::Classic(
                 Technique::XWing | Technique::Swordfish | Technique::Jellyfish,
             ) => true,
@@ -831,9 +893,9 @@ impl CompiledVariant {
         }
     }
 
-    fn classic_proofs(
-        &self,
-        position: &ProofPosition,
+    fn classic_proofs<'a>(
+        &'a self,
+        position: &ProofPosition<'a>,
         technique: Technique,
         proofs: &mut Vec<VariantDeduction>,
     ) {
@@ -841,11 +903,35 @@ impl CompiledVariant {
         if !self.supports_technique(variant) {
             return;
         }
+        if technique.pattern_overlay_width().is_some() {
+            let _ = self.overlay_search(position).visit(technique, &mut |step| {
+                proofs.push(overlay_proof(step));
+                ControlFlow::Continue(())
+            });
+            return;
+        }
         let search = DeductionSearch::new(&position.board, &position.masks);
         for hint in search.hints(technique) {
             let swap_cells = if technique.requires_unique_solution() {
                 let cells = match &hint.evidence {
                     HintEvidence::UniqueRectangle { corners, .. } => corners.to_vec(),
+                    HintEvidence::Inference { links } => {
+                        let mut cells: Vec<_> = links
+                            .iter()
+                            .flat_map(|link| match link.source {
+                                crate::LinkSource::UniqueRectangle { corners, .. } => Some(corners),
+                                _ => None,
+                            })
+                            .flatten()
+                            .map(usize::from)
+                            .collect();
+                        cells.sort_unstable();
+                        cells.dedup();
+                        if cells.is_empty() {
+                            continue;
+                        }
+                        cells
+                    }
                     HintEvidence::UniqueLoop { sides, .. } => {
                         let mut cells: Vec<_> = sides.iter().flatten().copied().collect();
                         cells.sort_unstable();
@@ -886,7 +972,7 @@ impl CompiledVariant {
         }
     }
 
-    fn locked_candidates(&self, position: &ProofPosition, proofs: &mut Vec<VariantDeduction>) {
+    fn locked_candidates(&self, position: &ProofPosition<'_>, proofs: &mut Vec<VariantDeduction>) {
         for (source, &source_mask) in self.houses.iter().zip(&self.house_masks) {
             let mut locations = [0u128; 9];
             for &cell in &source.cells {
@@ -925,7 +1011,7 @@ impl CompiledVariant {
         }
     }
 
-    fn cage_house_sums(&self, position: &ProofPosition, proofs: &mut Vec<VariantDeduction>) {
+    fn cage_house_sums(&self, position: &ProofPosition<'_>, proofs: &mut Vec<VariantDeduction>) {
         let cage_masks: Vec<_> = self
             .cages
             .iter()
@@ -997,7 +1083,7 @@ impl CompiledVariant {
 }
 
 fn cage_proof(
-    position: &ProofPosition,
+    position: &ProofPosition<'_>,
     cells: Vec<usize>,
     domains: Vec<u16>,
     support: &[u16],

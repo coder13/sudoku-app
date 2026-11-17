@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EMPTY, enter, makeGame, paintCandidate, restartGame, STARTER_GAME, undo } from '../src/sudoku/game.ts'
-import { addRatingHints, placementHintKey } from '../src/sudoku/player-rating.ts'
+import { addRatingHints, placementHintKey, PLAYER_RATING_VERSION, ratingAttemptFor, type RatingAttempt, type RatingEvent } from '../src/sudoku/player-rating.ts'
+import { recordAction } from '../src/sudoku/action-history.ts'
 import { createPuzzleSelectionStore, puzzleSelectionKey } from '../src/sudoku/selection-preferences.ts'
+import { puzzleTiming } from '../src/sudoku/puzzle-timing.ts'
 
 class MemoryStorage {
   get length() { return Object.keys(this).length }
@@ -83,6 +85,33 @@ test('the puzzle library hydrates synchronously when the client module reloads',
   }
 })
 
+test('action history survives a reload and corrupt history does not discard the puzzle', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?action-history')
+    const original = makeGame('history', 'History', EMPTY, 'custom')
+    roomStore.add(original)
+    roomStore.update(original.id, (game) => recordAction(game, enter(game, [0], 'value', 3)))
+    const saved = roomStore.getSnapshot().games[0]
+    const reloaded = (await import('../src/sudoku/storage.ts?action-history-reload')).roomStore
+    assert.deepEqual(reloaded.getSnapshot().games[0].actionHistory, JSON.parse(JSON.stringify(saved.actionHistory)))
+    assert.ok(reloaded.getSnapshot().games[0].actionHistory![0].pending)
+    local.setItem('sudoku-app:v1:game:history', JSON.stringify({ ...saved, actionHistory: [null] }))
+    const recovered = (await import('../src/sudoku/storage.ts?action-history-corrupt')).roomStore
+    assert.equal(recovered.getSnapshot().games[0].position.entries[0], '3')
+    assert.equal(recovered.getSnapshot().games[0].actionHistory, undefined)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
 test('rating survives reset, interrupted saves, and deleting or replaying a puzzle', async () => {
   const local = new MemoryStorage()
   Object.defineProperties(globalThis, {
@@ -130,6 +159,59 @@ test('rating survives reset, interrupted saves, and deleting or replaying a puzz
   }
 })
 
+test('an upgrade preserves production rating evidence and records later solves under the new rules', async () => {
+  const local = new MemoryStorage()
+  const prefix = 'sudoku-app:v1:'
+  const outcome: RatingEvent = {
+    id: 'old-outcome', gameId: 'deleted-solve', givens: STARTER_GAME.givens, difficulty: 'medium',
+    at: 1, finish: 'solved', elapsed: 90, viewed: 0, applied: 0,
+  }
+  const oldRecord = JSON.stringify(outcome)
+  local.setItem(prefix + 'rating-result:' + outcome.id, oldRecord)
+  const givens = '034678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const attempt: RatingAttempt = {
+    grade: { difficulty: 'hard', points: 960, scoringVersion: 10, techniqueOrder: ['full-house'] },
+    viewed: ['p0:5', 'p1:3'], applied: [], requested: ['first-position', 'second-position'],
+    priorElapsed: 0, lastHintAt: 2,
+  }
+  const puzzle = { ...makeGame('in-progress', 'A saved puzzle', givens, 'generated'), elapsed: 120,
+    difficulty: 'hard' as const, ratingAttempt: attempt }
+  local.setItem(prefix + 'game:' + puzzle.id, JSON.stringify(puzzle))
+
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?prod-rating-upgrade')
+    const old = roomStore.getSnapshot().playerRating
+    assert.ok(Math.abs(old.rating - 946.9965032228188) < 1e-10)
+    assert.equal(old.recommended, 'medium')
+    assert.equal(old.results.get(outcome.gameId)?.after, 951)
+    assert.equal(old.results.get(puzzle.id)?.event.finish, 'hints')
+
+    roomStore.update(puzzle.id, game => enter(game, [0], 'value', 5))
+    const updated = roomStore.getSnapshot().playerRating
+    assert.equal(updated.count, 2)
+    assert.deepEqual(updated.results.get(outcome.gameId), old.results.get(outcome.gameId))
+    const solved = updated.results.get(puzzle.id)
+    assert.equal(solved?.before, 951)
+    assert.equal(solved?.event.finish, 'solved')
+    assert.equal(solved?.event.difficulty, 'hard')
+    assert.equal(solved?.event.hintsRequested, 2)
+    assert.equal(solved?.event.ratingVersion, PLAYER_RATING_VERSION)
+    assert.equal(local.getItem(prefix + 'rating-result:' + outcome.id), oldRecord)
+
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?prod-rating-upgrade-reload')
+    assert.deepEqual(reloaded.getSnapshot().playerRating, updated)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
 test('saving an imported puzzle for later preserves the selected puzzle', async () => {
   const local = new MemoryStorage()
   const session = new MemoryStorage()
@@ -157,6 +239,38 @@ test('saving an imported puzzle for later preserves the selected puzzle', async 
     assert.equal(reloaded.getSnapshot().active, imported.id)
     assert.equal(reloaded.getSnapshot().games.find(({ id }) => id === imported.id)?.savedForLater, undefined)
   } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('an untimed solve stays untimed in the library and counts toward player rating', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?untimed-test')
+    const givens = '034678912672195348198342567859761423426853791713924856961537284287419635345286179'
+    const game = makeGame('untimed', 'Untimed puzzle', givens, 'generated')
+    const attempt = ratingAttemptFor({ difficulty: 'easy', points: 4, scoringVersion: 10, techniqueOrder: ['full-house'] })
+    roomStore.add({ ...game, difficulty: 'easy', elapsed: 24, started: true, ratingAttempt: attempt })
+    puzzleTiming.set('trackTime', false)
+    roomStore.update(game.id, (current) => enter(current, [0], 'value', 5))
+    const result = roomStore.getSnapshot().playerRating.results.get(game.id)
+    assert.equal(result?.event.finish, 'solved')
+    assert.equal(result?.event.elapsed, 0)
+    assert.equal(result?.speedBonus, 0)
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?untimed-reload')
+    assert.equal(reloaded.getSnapshot().games[0].timeUntracked, true)
+    assert.equal(reloaded.getSnapshot().games[0].elapsed, 0)
+    assert.deepEqual(reloaded.getSnapshot().playerRating.results.get(game.id), result)
+  } finally {
+    puzzleTiming.set('trackTime', true)
     delete (globalThis as { window?: unknown }).window
     delete (globalThis as { localStorage?: unknown }).localStorage
     delete (globalThis as { sessionStorage?: unknown }).sessionStorage

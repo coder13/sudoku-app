@@ -1,18 +1,18 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { X } from 'lucide-react'
-import { usePresence } from './Presence'
+import { exitDelay, usePresence } from './Presence'
 
-export function Modal({ title, onClose, className = '', leading, children, open = true, exitDuration = 150 }: {
+export function Modal({ title, onClose, className = '', leading, children, open = true, motionSpeed = 'standard' }: {
   title: string
   onClose: () => void
   className?: string
   leading?: ReactNode
   children: ReactNode
   open?: boolean
-  exitDuration?: number
+  motionSpeed?: 'standard' | 'overlay'
 }) {
   const [closing, setClosing] = useState(false)
-  const { mounted, exiting } = usePresence(open && !closing, exitDuration)
+  const { mounted, exiting } = usePresence(open && !closing, motionSpeed)
   const dialog = useRef<HTMLDialogElement>(null)
   const closeTimer = useRef<number | null>(null)
   const id = useId()
@@ -27,12 +27,13 @@ export function Modal({ title, onClose, className = '', leading, children, open 
 
   function requestClose() {
     if (exiting) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const delay = exitDelay(motionSpeed)
+    if (!delay) {
       onClose()
       return
     }
     setClosing(true)
-    closeTimer.current = window.setTimeout(onClose, exitDuration)
+    closeTimer.current = window.setTimeout(onClose, delay)
   }
 
   useEffect(() => {

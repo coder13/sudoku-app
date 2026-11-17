@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
-import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
-import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
+import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
+import { jigsawLayout, reflectVariant, variantSeeds } from '../src/sudoku/variant-generation.ts'
+import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantHouseCells, variantHouseMasks } from '../src/sudoku/variants.ts'
 import {
   applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, onlyCandidate, paintCandidate, redo,
   needsInitialCandidates, paintCandidateStroke, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, undo, valuesOf,
@@ -358,4 +359,31 @@ test('a complete displayed candidate grid can drive hidden-single detection', ()
 
   corner[2] = 0
   assert.equal(completeCandidateMasks({ ...game, position: { ...game.position, corner } }), null)
+})
+
+test('Windoku peers, conflicts, and saved games include all four extra regions', () => {
+  const rules = WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells }))
+  const puzzle = { version: 1 as const, givens: '0'.repeat(81), rules }
+  assert.ok(isPlayablePuzzle('windoku', puzzle))
+  assert.deepEqual(Object.keys(variantSeeds.windoku), DIFFICULTY_LEVELS)
+  for (let symmetry = 1; symmetry < 8; symmetry++) {
+    assert.ok(isPlayablePuzzle('windoku', reflectVariant(puzzle, symmetry)))
+  }
+  assert.equal(isPlayablePuzzle('windoku', { ...puzzle, rules: rules.slice(1) }), false)
+  assert.equal(isPlayablePuzzle('windoku', { ...puzzle, rules: [rules[0], rules[0], rules[2], rules[3]] }), false)
+  const game = makeGame('windoku', 'Windoku', puzzle.givens, 'imported')
+  const solution = '418265793362897451579341862645189237893726145721534986286913574937452618154678329'
+  assert.ok(validVariantSave({ id: 'windoku', puzzle, solution }, puzzle.givens))
+  const collision = [...puzzle.givens]
+  collision[10] = collision[30] = '5'
+  assert.equal(conflictsOf(collision.join('')).size, 0)
+  assert.deepEqual([...conflictsOf(collision.join(''), puzzle)].sort((a, b) => a - b), [10, 30])
+  const masks = Array(81).fill(511)
+  for (const cell of WINDOKU_REGIONS[0]) if (cell !== 30) masks[cell] &= ~(1 << 8)
+  const mixed = { ...puzzle, rules: [{ type: 'parity' as const, parity: 'even' as const, cells: [0] }, ...rules] }
+  assert.deepEqual(singleFromCandidates(valuesOf(game), masks, undefined, mixed), [30, 9])
+  assert.deepEqual(variantHouseCells({ extra: 1 }, mixed), WINDOKU_REGIONS[0])
+  assert.deepEqual(variantHouseCells({ extra: 0 }, mixed), [])
+  collision[30] = '0'
+  assert.equal(variantHouseMasks(mixed, collision.join(''))[30] & (1 << 4), 0)
 })

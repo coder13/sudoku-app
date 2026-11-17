@@ -6,16 +6,20 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "node scripts/ensure-wasm.mjs && vite",
+    "dev": "npm run build:collections && node scripts/ensure-wasm.mjs && vite",
     "dev:lessons": "node tools/lesson-editor/server.mjs",
     "build:wasm": "node scripts/build-wasm.mjs",
-    "build": "npm run build:wasm && vite build && node scripts/build-offline.mjs",
-    "check": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:engine-features": "node scripts/check-engine-features.mjs",
+    "test:wasm-profiles": "node scripts/check-wasm-profiles.mjs",
+    "build:collections": "node --experimental-strip-types scripts/build-collections.mjs",
+    "build": "npm run build:collections && npm run build:wasm && vite build && node scripts/build-offline.mjs",
+    "check": "npm run build:collections && tsc --noEmit",
+    "test": "npm run build:collections && node --experimental-strip-types --test tests/*.test.ts",
     "test:wasm": "npm run build:wasm && node --experimental-strip-types --test tests/engine-wasm.mts",
+    "test:collections": "npm run build:collections && node scripts/ensure-wasm.mjs && node --experimental-strip-types --test tests/collections-wasm.mts",
     "start": "vite preview --host 127.0.0.1 --port 8765",
-    "storybook": "node scripts/ensure-wasm.mjs && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook dev -p 6006 --host 127.0.0.1",
-    "build-storybook": "npm run build:wasm && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook build"
+    "storybook": "npm run build:collections && node scripts/ensure-wasm.mjs && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook dev -p 6006 --host 127.0.0.1",
+    "build-storybook": "npm run build:collections && npm run build:wasm && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook build"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.2.0",

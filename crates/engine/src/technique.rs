@@ -100,7 +100,8 @@ impl serde::Serialize for Technique {
 }
 
 catalog! {
-    FullHouse: "full-house", 4, Easy, false, ["Last Digit"];
+    FullHouse: "full-house", 4, Beginner, false, ["Last Digit"];
+    HiddenSingleBox: "hidden-single-box", 14, Beginner, false, ["Hidden Single in a Box"];
     NakedSingle: "naked-single", 4, Easy, false, [];
     HiddenSingle: "hidden-single", 14, Easy, false, [];
     Pointing: "pointing", 50, Medium, false, ["Locked Candidates Type 1"];
@@ -113,48 +114,51 @@ catalog! {
     HiddenTriple: "hidden-triple", 100, Medium, false, [];
     NakedQuadruple: "naked-quadruple", 120, Hard, false, [];
     HiddenQuadruple: "hidden-quadruple", 150, Hard, false, [];
-    XWing: "x-wing", 140, Hard, false, [];
-    Skyscraper: "skyscraper", 130, Hard, false, [];
-    TwoStringKite: "two-string-kite", 150, Hard, false, ["2-String Kite"];
-    EmptyRectangle: "empty-rectangle", 120, Hard, false, [];
+    XWing: "x-wing", 140, Tricky, false, [];
+    Skyscraper: "skyscraper", 130, Tricky, false, [];
+    TwoStringKite: "two-string-kite", 150, Tricky, false, ["2-String Kite"];
+    EmptyRectangle: "empty-rectangle", 120, Tricky, false, [];
     WWing: "w-wing", 150, Hard, false, [];
     XYWing: "xy-wing", 160, Hard, false, ["Y-Wing"];
     XYZWing: "xyz-wing", 180, Hard, false, [];
-    Swordfish: "swordfish", 150, Hard, false, [];
+    Swordfish: "swordfish", 150, Tricky, false, [];
     Jellyfish: "jellyfish", 160, Hard, false, [];
     FinnedXWing: "finned-x-wing", 130, Hard, false, [];
     SashimiXWing: "sashimi-x-wing", 150, Hard, false, [];
-    FinnedSwordfish: "finned-swordfish", 200, Unfair, false, [];
-    SashimiSwordfish: "sashimi-swordfish", 240, Unfair, false, [];
-    FinnedJellyfish: "finned-jellyfish", 250, Unfair, false, [];
-    SashimiJellyfish: "sashimi-jellyfish", 260, Unfair, false, [];
-    SimpleColoring: "simple-coloring", 150, Hard, false, ["Simple Colors", "Simple Colouring"];
-    Medusa: "3d-medusa", 240, Unfair, false, ["3D Medusa"];
-    XChain: "x-chain", 260, Unfair, false, [];
-    XYChain: "xy-chain", 260, Unfair, false, [];
-    Aic: "aic", 280, Unfair, false, ["Alternating Inference Chain"];
-    DiscontinuousNiceLoop: "discontinuous-nice-loop", 280, Unfair, false, [];
-    ContinuousNiceLoop: "continuous-nice-loop", 280, Unfair, false, ["AIC Loop"];
-    GroupedAic: "grouped-aic", 300, Unfair, false, ["Grouped Alternating Inference Chain"];
-    GroupedDiscontinuousNiceLoop: "grouped-discontinuous-nice-loop", 300, Unfair, false, [];
-    GroupedContinuousNiceLoop: "grouped-continuous-nice-loop", 300, Unfair, false, ["Grouped AIC Loop"];
+    FinnedSwordfish: "finned-swordfish", 200, VeryHard, false, [];
+    SashimiSwordfish: "sashimi-swordfish", 240, VeryHard, false, [];
+    FinnedJellyfish: "finned-jellyfish", 250, VeryHard, false, [];
+    SashimiJellyfish: "sashimi-jellyfish", 260, VeryHard, false, [];
+    SimpleColoring: "simple-coloring", 150, VeryHard, false, ["Simple Colors", "Simple Colouring"];
+    Medusa: "3d-medusa", 240, VeryHard, false, ["3D Medusa"];
+    XChain: "x-chain", 260, VeryHard, false, [];
+    XYChain: "xy-chain", 260, VeryHard, false, [];
+    Aic: "aic", 280, Expert, false, ["Alternating Inference Chain"];
+    DiscontinuousNiceLoop: "discontinuous-nice-loop", 280, Expert, false, [];
+    ContinuousNiceLoop: "continuous-nice-loop", 280, Expert, false, ["AIC Loop"];
+    GroupedAic: "grouped-aic", 300, Master, false, ["Grouped Alternating Inference Chain"];
+    GroupedDiscontinuousNiceLoop: "grouped-discontinuous-nice-loop", 300, Master, false, [];
+    GroupedContinuousNiceLoop: "grouped-continuous-nice-loop", 300, Master, false, ["Grouped AIC Loop"];
     UniqueRectangle1: "unique-rectangle-1", 100, Hard, true, ["Uniqueness Test 1"];
     UniqueRectangle2: "unique-rectangle-2", 100, Hard, true, ["Uniqueness Test 2"];
     UniqueRectangle3: "unique-rectangle-3", 100, Hard, true, ["Uniqueness Test 3"];
     UniqueRectangle4: "unique-rectangle-4", 100, Hard, true, ["Uniqueness Test 4"];
     UniqueRectangle5: "unique-rectangle-5", 100, Hard, true, ["Uniqueness Test 5"];
     UniqueRectangle6: "unique-rectangle-6", 100, Hard, true, ["Uniqueness Test 6"];
+    UniqueRectangleAic: "unique-rectangle-aic", 360, Master, true, ["Alternating Inference Chain with a Unique Rectangle"];
+    UniqueRectangleDiscontinuousNiceLoop: "unique-rectangle-discontinuous-nice-loop", 360, Master, true, ["Discontinuous Nice Loop with a Unique Rectangle"];
+    UniqueRectangleContinuousNiceLoop: "unique-rectangle-continuous-nice-loop", 360, Master, true, ["Continuous Nice Loop with a Unique Rectangle"];
     HiddenRectangle: "hidden-rectangle", 100, Hard, true, [];
-    UniqueLoop: "unique-loop", 140, Hard, true, ["Uniqueness Loop"];
+    UniqueLoop: "unique-loop", 140, VeryHard, true, ["Uniqueness Loop"];
     BugPlusOne: "bug-plus-one", 100, Hard, true, ["BUG+1", "Bivalue Universal Grave + 1"];
-    WxyzWing: "wxyz-wing", 220, Unfair, false, [];
-    Fireworks: "fireworks", 240, Unfair, false, ["Triple Firework", "Quadruple Firework"];
-    FireworkWWing: "firework-w-wing", 320, Unfair, false, ["W-Wing Fireworks"];
-    FireworkLWing: "firework-l-wing", 320, Unfair, false, ["L-Wing Fireworks"];
-    FireworkAlsWing: "firework-als-wing", 350, Unfair, false, ["ALS-Wing Fireworks"];
-    FireworkAic: "firework-aic", 360, Unfair, false, ["Firework Alternating Inference Chain"];
-    AlignedPairExclusion: "aligned-pair-exclusion", 310, Unfair, false, [];
-    AlignedTripletExclusion: "aligned-triplet-exclusion", 370, Unfair, false, [];
+    WxyzWing: "wxyz-wing", 220, VeryHard, false, [];
+    Fireworks: "fireworks", 240, Master, false, ["Triple Firework", "Quadruple Firework"];
+    FireworkWWing: "firework-w-wing", 320, Master, false, ["W-Wing Fireworks"];
+    FireworkLWing: "firework-l-wing", 320, Master, false, ["L-Wing Fireworks"];
+    FireworkAlsWing: "firework-als-wing", 350, Master, false, ["ALS-Wing Fireworks"];
+    FireworkAic: "firework-aic", 360, Master, false, ["Firework Alternating Inference Chain"];
+    AlignedPairExclusion: "aligned-pair-exclusion", 310, Master, false, [];
+    AlignedTripletExclusion: "aligned-triplet-exclusion", 370, Extreme, false, [];
     Tridagon: "tridagon", 410, Extreme, false, ["Trivalue Oddagon", "Thor's Hammer"];
     TridagonAic: "tridagon-aic", 540, Extreme, false, ["Tridagon Alternating Inference Chain"];
     TridagonForcingNet: "tridagon-forcing-net", 850, Extreme, false, [];
@@ -162,15 +166,15 @@ catalog! {
     ForcingNet: "forcing-net", 700, Extreme, false, [];
     DynamicForcingNet: "dynamic-forcing-net", 800, Extreme, false, [];
     AdvancedForcingNet: "advanced-forcing-net", 900, Extreme, false, [];
-    NestedForcingNet: "nested-forcing-net", 950, Extreme, false, [];
-    AlsXz: "als-xz", 300, Unfair, false, ["ALS-XZ Rule"];
-    AlsXyWing: "als-xy-wing", 320, Unfair, false, [];
-    AlsChain: "als-chain", 340, Unfair, false, ["ALS-XY-Chain"];
-    AlsAic: "als-aic", 360, Unfair, false, ["Alternating Inference Chain with ALS"];
-    AlsDiscontinuousNiceLoop: "als-discontinuous-nice-loop", 360, Unfair, false, ["Discontinuous Nice Loop with ALS"];
-    AlsContinuousNiceLoop: "als-continuous-nice-loop", 360, Unfair, false, ["Continuous Nice Loop with ALS"];
-    SueDeCoq: "sue-de-coq", 250, Unfair, false, ["Two-Sector Disjoint Subsets"];
-    DeathBlossom: "death-blossom", 360, Unfair, false, [];
+    NestedForcingNet: "nested-forcing-net", 950, Impossible, false, [];
+    AlsXz: "als-xz", 300, Master, false, ["ALS-XZ Rule"];
+    AlsXyWing: "als-xy-wing", 320, Master, false, [];
+    AlsChain: "als-chain", 340, Master, false, ["ALS-XY-Chain"];
+    AlsAic: "als-aic", 360, Master, false, ["Alternating Inference Chain with ALS"];
+    AlsDiscontinuousNiceLoop: "als-discontinuous-nice-loop", 360, Master, false, ["Discontinuous Nice Loop with ALS"];
+    AlsContinuousNiceLoop: "als-continuous-nice-loop", 360, Master, false, ["Continuous Nice Loop with ALS"];
+    SueDeCoq: "sue-de-coq", 250, Master, false, ["Two-Sector Disjoint Subsets"];
+    DeathBlossom: "death-blossom", 360, Master, false, [];
     Exocet: "exocet", 450, Extreme, false, ["Junior Exocet", "JExocet"];
     SeniorExocet: "senior-exocet", 550, Extreme, false, ["SExocet"];
     DoubleExocet: "double-exocet", 600, Extreme, false, ["Double Junior Exocet", "Double JExocet"];
@@ -178,15 +182,31 @@ catalog! {
     MultiSectorLockedSets: "multi-sector-locked-sets", 480, Extreme, false, ["MSLS"];
     FrankenFish: "franken-fish", 420, Extreme, false, [];
     MutantFish: "mutant-fish", 460, Extreme, false, [];
+    PatternOverlay: "pattern-overlay", 500, Impossible, false, ["Template Set", "Template Delete", "Single-Digit Pattern Overlay"];
+    PairwisePatternOverlay: "pairwise-pattern-overlay", 650, Impossible, false, ["Two-Digit Pattern Overlay"];
+    TriplePatternOverlay: "triple-pattern-overlay", 800, Impossible, false, ["Three-Digit Pattern Overlay"];
+    QuadruplePatternOverlay: "quadruple-pattern-overlay", 950, Impossible, false, ["Four-Digit Pattern Overlay"];
+    QuintuplePatternOverlay: "quintuple-pattern-overlay", 1100, Impossible, false, ["Five-Digit Pattern Overlay"];
     KrakenFish1: "kraken-fish-1", 900, Extreme, false, ["Kraken Fish Type 1"];
     KrakenFish2: "kraken-fish-2", 950, Extreme, false, ["Kraken Fish Type 2"];
 }
 
 impl Technique {
-    /// Default solver profile. See [`Self::ALL`] for techniques available in custom profiles.
-    /// Opening analysis and hints use the full catalog.
-    pub const DEFAULT_ORDER: &'static [Self] = &[
+    pub(crate) const fn pattern_overlay_width(self) -> Option<u32> {
+        match self {
+            Self::PatternOverlay => Some(1),
+            Self::PairwisePatternOverlay => Some(2),
+            Self::TriplePatternOverlay => Some(3),
+            Self::QuadruplePatternOverlay => Some(4),
+            Self::QuintuplePatternOverlay => Some(5),
+            _ => None,
+        }
+    }
+
+    /// Canonical difficulty profiles include every supported technique in tier order.
+    pub const DIFFICULTY_ORDER: &'static [Self] = &[
         Self::FullHouse,
+        Self::HiddenSingleBox,
         Self::NakedSingle,
         Self::HiddenSingle,
         Self::LockedPair,
@@ -197,15 +217,15 @@ impl Technique {
         Self::NakedTriple,
         Self::HiddenPair,
         Self::HiddenTriple,
-        Self::NakedQuadruple,
-        Self::HiddenQuadruple,
         Self::XWing,
         Self::Swordfish,
-        Self::Jellyfish,
-        Self::BugPlusOne,
         Self::Skyscraper,
         Self::TwoStringKite,
         Self::EmptyRectangle,
+        Self::NakedQuadruple,
+        Self::HiddenQuadruple,
+        Self::Jellyfish,
+        Self::BugPlusOne,
         Self::WWing,
         Self::XYWing,
         Self::XYZWing,
@@ -226,13 +246,106 @@ impl Technique {
         Self::Medusa,
         Self::XChain,
         Self::XYChain,
+        Self::WxyzWing,
+        Self::UniqueLoop,
         Self::Aic,
         Self::DiscontinuousNiceLoop,
         Self::ContinuousNiceLoop,
         Self::GroupedAic,
         Self::GroupedDiscontinuousNiceLoop,
         Self::GroupedContinuousNiceLoop,
+        Self::SueDeCoq,
+        Self::AlsXz,
+        Self::AlsXyWing,
+        Self::AlsChain,
+        Self::DeathBlossom,
+        Self::UniqueRectangleAic,
+        Self::UniqueRectangleDiscontinuousNiceLoop,
+        Self::UniqueRectangleContinuousNiceLoop,
+        Self::Fireworks,
+        Self::FireworkWWing,
+        Self::FireworkLWing,
+        Self::FireworkAlsWing,
+        Self::FireworkAic,
+        Self::AlignedPairExclusion,
+        Self::AlsAic,
+        Self::AlsDiscontinuousNiceLoop,
+        Self::AlsContinuousNiceLoop,
+        Self::SkLoop,
+        Self::Exocet,
+        Self::MultiSectorLockedSets,
+        Self::ForcingChain,
+        Self::ForcingNet,
+        Self::AlignedTripletExclusion,
+        Self::Tridagon,
+        Self::TridagonAic,
+        Self::TridagonForcingNet,
+        Self::DynamicForcingNet,
+        Self::AdvancedForcingNet,
+        Self::SeniorExocet,
+        Self::DoubleExocet,
+        Self::FrankenFish,
+        Self::MutantFish,
+        Self::KrakenFish1,
+        Self::KrakenFish2,
+        Self::NestedForcingNet,
+        Self::PatternOverlay,
+        Self::PairwisePatternOverlay,
+        Self::TriplePatternOverlay,
+        Self::QuadruplePatternOverlay,
+        Self::QuintuplePatternOverlay,
+    ];
+
+    /// Default analysis profile. Specialist methods remain available explicitly.
+    pub const DEFAULT_ORDER: &'static [Self] = &[
+        Self::FullHouse,
+        Self::HiddenSingleBox,
+        Self::NakedSingle,
+        Self::HiddenSingle,
+        Self::LockedPair,
+        Self::LockedTriple,
+        Self::Pointing,
+        Self::Claiming,
+        Self::NakedPair,
+        Self::NakedTriple,
+        Self::HiddenPair,
+        Self::HiddenTriple,
+        Self::XWing,
+        Self::Swordfish,
+        Self::Skyscraper,
+        Self::TwoStringKite,
+        Self::EmptyRectangle,
+        Self::NakedQuadruple,
+        Self::HiddenQuadruple,
+        Self::Jellyfish,
+        Self::BugPlusOne,
+        Self::WWing,
+        Self::XYWing,
+        Self::XYZWing,
+        Self::UniqueRectangle1,
+        Self::UniqueRectangle2,
+        Self::UniqueRectangle3,
+        Self::UniqueRectangle4,
+        Self::UniqueRectangle5,
+        Self::UniqueRectangle6,
+        Self::HiddenRectangle,
+        Self::FinnedXWing,
+        Self::SashimiXWing,
+        Self::FinnedSwordfish,
+        Self::SashimiSwordfish,
+        Self::FinnedJellyfish,
+        Self::SashimiJellyfish,
+        Self::SimpleColoring,
+        Self::Medusa,
+        Self::XChain,
+        Self::XYChain,
         Self::WxyzWing,
+        Self::Aic,
+        Self::DiscontinuousNiceLoop,
+        Self::ContinuousNiceLoop,
+        Self::GroupedAic,
+        Self::GroupedDiscontinuousNiceLoop,
+        Self::GroupedContinuousNiceLoop,
         Self::SueDeCoq,
         Self::AlsXz,
         Self::AlsXyWing,

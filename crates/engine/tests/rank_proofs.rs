@@ -19,6 +19,7 @@ fn house_digit(house: House, digit: u8) -> RankConstraint {
     HouseDigit { house, digit }
 }
 
+#[cfg(feature = "teaching")]
 #[test]
 fn double_exocet_and_singles_solve_a_grid_the_reference_expert_profile_stalls_on() {
     use Technique::{DoubleExocet, FullHouse, HiddenSingle, NakedSingle};
@@ -540,6 +541,7 @@ fn a_pointing_pattern_can_use_an_at_most_one_cover() {
     }
 }
 
+#[cfg(feature = "teaching")]
 #[test]
 fn specialized_rank_zero_detectors_agree_with_the_mixed_checker() {
     for technique in [Technique::SkLoop, Technique::MultiSectorLockedSets] {

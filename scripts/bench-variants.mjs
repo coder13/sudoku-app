@@ -47,6 +47,10 @@ for (const { name, position: puzzle, template, derivedClues, givens } of fixture
     ? await sample({ type: 'hints', values: puzzle.givens, limit: 10 })
     : await sample({ type: 'variant', position, operation: 'hints', limit: 10 })
 
+  const candidates = await sample({ type: 'variant', position, operation: 'candidates' })
+  const validation = await sample({ type: 'variant', position, operation: 'analyze', maxNodes })
+  const solve = await sample({ type: 'variant', position, operation: 'solve', maxNodes })
+
   const measurements = []
   let matches = 0
   for (let seed = 1; seed <= seeds; seed++) {
@@ -63,5 +67,5 @@ for (const { name, position: puzzle, template, derivedClues, givens } of fixture
       assert.equal(response.code, 'search-limit', JSON.stringify(response))
     }
   }
-  console.log(`${name.padEnd(16)} rate ${rating}  hints ${hints}  generate ${summary(measurements)}  matches ${matches}/${seeds}`)
+  console.log(`${name.padEnd(16)} candidates ${candidates}  verify ${validation}  solve ${solve}  rate ${rating}  hints ${hints}  generate ${summary(measurements)}  matches ${matches}/${seeds}`)
 }

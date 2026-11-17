@@ -1,6 +1,6 @@
 use super::{
-    Candidate, House, PEERS, PatternSearch, bit_indices, cell_bit, cells, house_cells, links,
-    tridagon::GuardianGroup,
+    Candidate, House, PEERS, PatternSearch, bit_indices, cell_bit, cells, guardians::GuardianGroup,
+    house_cells, links,
 };
 use crate::{
     AlmostLockedSetLink, CELLS, DIGITS, InferenceLink, InferenceNode, LinkSource, LinkStrength,
@@ -92,6 +92,10 @@ impl Edge {
 
     pub(super) fn is_tridagon(self) -> bool {
         matches!(self.source, LinkSource::Tridagon { .. })
+    }
+
+    pub(super) fn is_unique_rectangle(self) -> bool {
+        matches!(self.source, LinkSource::UniqueRectangle { .. })
     }
 
     pub(super) fn is_als_cell(self) -> bool {
@@ -244,20 +248,8 @@ impl InferenceGraph {
     pub(super) fn for_tridagons(search: &PatternSearch<'_>) -> Option<Self> {
         let mut extension = None;
         let positions = search.positions_by_digit();
-        super::tridagon::visit_links(search, |endpoints, source| match endpoints {
-            [
-                GuardianGroup::SingleDigit(a, left),
-                GuardianGroup::SingleDigit(b, right),
-            ] => {
-                if let Some(nodes) = useful_endpoints([(a, left), (b, right)], positions) {
-                    extension
-                        .get_or_insert_with(|| Extension::new(search.inference_graph()))
-                        .add_strong(nodes, source);
-                }
-            }
-            endpoints => extension
-                .get_or_insert_with(|| Extension::new(search.inference_graph()))
-                .add_mixed_strong(endpoints, source),
+        super::tridagon::visit_links(search, |groups, source| {
+            add_guardian_link(&mut extension, search, groups, source);
         });
         let mut extension = extension?;
         visit_firework_links(positions, |nodes, source| {
@@ -266,6 +258,17 @@ impl InferenceGraph {
         extension.add_almost_locked_sets(search.als());
         let graph = extension.finish();
         graph.has_strong_link(Edge::is_tridagon).then_some(graph)
+    }
+
+    pub(super) fn for_unique_rectangles(search: &PatternSearch<'_>) -> Option<Self> {
+        let mut extension = None;
+        super::uniqueness::visit_guardian_links(search, |groups, source| {
+            add_guardian_link(&mut extension, search, groups, source);
+        });
+        let graph = extension?.finish();
+        graph
+            .has_strong_link(Edge::is_unique_rectangle)
+            .then_some(graph)
     }
 
     fn sort_edges(&mut self) {
@@ -293,6 +296,77 @@ impl InferenceGraph {
             LinkStrength::Strong => &self.strong[node],
             LinkStrength::Weak => &self.weak[node],
         }
+    }
+
+    // A closed alternating walk can only use literals in the same strongly connected
+    // component. A loop needing a special link must contain that link's implication.
+    pub(super) fn loop_components(&self, qualifies: impl Fn(Edge) -> bool) -> Vec<usize> {
+        let count = self.node_count() * 2;
+        let mut seen = vec![false; count];
+        let mut finished = Vec::with_capacity(count);
+        let mut stack = Vec::new();
+        for root in 0..count {
+            if seen[root] {
+                continue;
+            }
+            seen[root] = true;
+            stack.push((root, 0));
+            while let Some((literal, next_edge)) = stack.last_mut() {
+                let (node, truth) = (*literal / 2, *literal & 1);
+                let strength = if truth == 0 {
+                    LinkStrength::Strong
+                } else {
+                    LinkStrength::Weak
+                };
+                if let Some(edge) = self.neighbors(node, strength).get(*next_edge) {
+                    *next_edge += 1;
+                    let target = edge.to * 2 + (truth ^ 1);
+                    if !seen[target] {
+                        seen[target] = true;
+                        stack.push((target, 0));
+                    }
+                } else {
+                    finished.push(*literal);
+                    stack.pop();
+                }
+            }
+        }
+
+        // Walk incoming implications in reverse finish order to assign components.
+        let mut components = vec![usize::MAX; count];
+        let mut eligible = vec![false; count];
+        let mut pending = Vec::new();
+        for root in finished.into_iter().rev() {
+            if components[root] != usize::MAX {
+                continue;
+            }
+            components[root] = root;
+            pending.push(root);
+            while let Some(literal) = pending.pop() {
+                let (node, truth) = (literal / 2, literal & 1);
+                let strength = if truth == 1 {
+                    LinkStrength::Strong
+                } else {
+                    LinkStrength::Weak
+                };
+                for &edge in self.neighbors(node, strength) {
+                    let prior = edge.to * 2 + (truth ^ 1);
+                    if components[prior] == usize::MAX {
+                        components[prior] = root;
+                        pending.push(prior);
+                    }
+                    if components[prior] == root && qualifies(edge) {
+                        eligible[root] = true;
+                    }
+                }
+            }
+        }
+        for component in &mut components {
+            if !eligible[*component] {
+                *component = usize::MAX;
+            }
+        }
+        components
     }
 
     pub(super) fn has_strong_link(&self, matches: impl Fn(Edge) -> bool) -> bool {
@@ -430,6 +504,31 @@ impl InferenceGraph {
         } else {
             Some((LinkSource::Peers {}, false))
         }
+    }
+}
+
+fn add_guardian_link(
+    extension: &mut Option<Extension>,
+    search: &PatternSearch<'_>,
+    groups: [GuardianGroup; 2],
+    source: LinkSource,
+) {
+    match groups {
+        [
+            GuardianGroup::SingleDigit(a, left),
+            GuardianGroup::SingleDigit(b, right),
+        ] => {
+            if let Some(nodes) =
+                useful_endpoints([(a, left), (b, right)], search.positions_by_digit())
+            {
+                extension
+                    .get_or_insert_with(|| Extension::new(search.inference_graph()))
+                    .add_strong(nodes, source);
+            }
+        }
+        groups => extension
+            .get_or_insert_with(|| Extension::new(search.inference_graph()))
+            .add_mixed_strong(groups, source),
     }
 }
 
@@ -686,6 +785,44 @@ mod tests {
     use super::*;
     use crate::{HintAction, HintEvidence, Technique, candidates};
     use std::ops::ControlFlow;
+
+    #[test]
+    fn loop_components_require_a_return_path_through_the_special_link() {
+        let mut graph = InferenceGraph {
+            nodes: (0..11).map(|cell| Node::new(1, cell_bit(cell))).collect(),
+            singles: 11,
+            mixed: Vec::new(),
+            strong: vec![Vec::new(); 11],
+            weak: vec![Vec::new(); 11],
+            positions: [0; 9],
+        };
+        let special = LinkSource::Firework(0);
+        let weak = LinkSource::Peers {};
+        graph.connect_strong(0, 1, special);
+        graph.connect(1, 2, weak, false);
+        graph.connect_strong(2, 3, LinkSource::Cell(2));
+        graph.connect(3, 0, weak, false);
+        // This branch connects to the loop in just one direction for each sign.
+        graph.connect(1, 4, weak, false);
+        // A special link alone and a loop without one are both ineligible.
+        graph.connect_strong(5, 6, special);
+        graph.connect_strong(7, 8, LinkSource::Cell(7));
+        graph.connect(8, 9, weak, false);
+        graph.connect_strong(9, 10, LinkSource::Cell(9));
+        graph.connect(10, 7, weak, false);
+
+        let components = graph.loop_components(Edge::is_firework);
+        let first = components[0];
+        let second = components[1];
+        assert_ne!(first, second);
+        assert_ne!(first, usize::MAX);
+        assert_ne!(second, usize::MAX);
+        assert_eq!(
+            components[..8],
+            [first, second, second, first, first, second, second, first]
+        );
+        assert_eq!(components[8..], [usize::MAX; 14]);
+    }
 
     #[test]
     fn als_cell_link_requires_every_other_digit_to_be_blocked() {

@@ -75,3 +75,28 @@ test('hint preferences persist independently of solver order and apply only to h
   assert.ok(saveDisabledHintTechniques([], storage))
   assert.deepEqual(readDisabledHintTechniques(storage), [])
 })
+
+test('a solver-only worker rejects generation and keeps validation available', async () => {
+  let loads = 0
+  const handle = createEngineHandler(async () => {
+    loads++
+    return {
+      memory: new WebAssembly.Memory({ initial: 1 }),
+      board_buffer: () => 0,
+      notes_buffer: () => 82,
+      analyze_board: () => 2,
+      fill_notes: () => 1,
+      solve_board: () => 1,
+      request_buffer: () => 128,
+      run_request: () => 0,
+      response_buffer: () => 256,
+    }
+  })
+  assert.deepEqual(await handle({ id: 1, request: { type: 'generate', seed: 17 } }), {
+    id: 1,
+    code: 'unsupported-capability',
+    error: 'This engine build does not include puzzle generation.',
+  })
+  assert.deepEqual(await handle({ id: 2, request: { type: 'analyze', values: STARTER } }), { id: 2, value: 'unique' })
+  assert.equal(loads, 1)
+})

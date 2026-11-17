@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Deduction } from '../src/sudoku/engine.ts'
-import { describeHint, describeHintRemovals, describeSingleHint, moveHintIndex, techniqueLabel } from '../src/sudoku/hints.ts'
+import { describeHint, describeHintRemovals, describeSingleHint, moveHintIndex, moveHintStage, techniqueLabel } from '../src/sudoku/hints.ts'
 
 test('Next wraps the hint list while Previous stops at the first hint', () => {
   assert.equal(moveHintIndex(8, 10, 1), 9)
@@ -10,6 +10,26 @@ test('Next wraps the hint list while Previous stops at the first hint', () => {
   assert.equal(moveHintIndex(9, 10, -1), 8)
   assert.equal(moveHintIndex(0, 1, 1), 0)
   assert.equal(moveHintIndex(0, 0, 1), 0)
+})
+
+test('hint details can move both ways and stop at the first and last level', () => {
+  assert.equal(moveHintStage('technique', -1), 'technique')
+  assert.equal(moveHintStage('technique', 1), 'digits')
+  assert.equal(moveHintStage('digits', 1), 'location')
+  assert.equal(moveHintStage('location', 1), 'explanation')
+  assert.equal(moveHintStage('explanation', 1), 'explanation')
+  assert.equal(moveHintStage('explanation', -1), 'location')
+  assert.equal(moveHintStage('location', -1), 'digits')
+  assert.equal(moveHintStage('digits', -1), 'technique')
+})
+
+test('candidate recovery skips the digit clue in both directions', () => {
+  assert.equal(moveHintStage('technique', -1, true), 'technique')
+  assert.equal(moveHintStage('technique', 1, true), 'location')
+  assert.equal(moveHintStage('location', 1, true), 'explanation')
+  assert.equal(moveHintStage('explanation', 1, true), 'explanation')
+  assert.equal(moveHintStage('explanation', -1, true), 'location')
+  assert.equal(moveHintStage('location', -1, true), 'technique')
 })
 
 test('hint copy uses Sudoku terms and one-based cell coordinates', () => {

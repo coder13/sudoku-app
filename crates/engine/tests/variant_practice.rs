@@ -1,3 +1,5 @@
+#![cfg(all(feature = "variants", feature = "teaching"))]
+
 use std::collections::{BTreeSet, HashSet};
 
 use sudoku_app_engine::{

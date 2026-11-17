@@ -3,6 +3,16 @@ import type { Deduction, Difficulty, HintChoice } from './engine'
 export type PuzzleHint = { title: string; text: string }
 export type HintRemoval = { digit: number; cells: string[] }
 
+const hintStages = ['technique', 'digits', 'location', 'explanation'] as const
+const recoveryStages = ['technique', 'location', 'explanation'] as const
+export type HintStage = typeof hintStages[number]
+
+export function moveHintStage(stage: HintStage, offset: -1 | 1, recovery = false): HintStage {
+  const stages: readonly HintStage[] = recovery ? recoveryStages : hintStages
+  const index = stages.indexOf(stage)
+  return index === -1 ? stage : stages[index + offset] ?? stage
+}
+
 export function moveHintIndex(index: number, count: number, offset: -1 | 1): number {
   if (count < 1) return 0
   return offset === 1 ? (index + 1) % count : Math.max(0, index - 1)
@@ -39,13 +49,22 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'als-continuous-nice-loop': 'ALS continuous Nice Loop',
   'als-xz': 'ALS-XZ',
   'bug-plus-one': 'BUG+1',
+  'death-blossom': 'Death Blossom',
   'empty-rectangle': 'Empty rectangle',
   'grouped-aic': 'Grouped alternating inference chain',
   'multi-sector-locked-sets': 'Multi-sector locked sets',
   'sk-loop': 'SK loop',
   'sue-de-coq': 'Sue de Coq',
+  'pattern-overlay': 'Pattern Overlay',
+  'pairwise-pattern-overlay': 'Two-digit Pattern Overlay',
+  'triple-pattern-overlay': 'Three-digit Pattern Overlay',
+  'quadruple-pattern-overlay': 'Four-digit Pattern Overlay',
+  'quintuple-pattern-overlay': 'Five-digit Pattern Overlay',
+  'unique-rectangle-aic': 'Unique Rectangle alternating inference chain',
+  'unique-rectangle-discontinuous-nice-loop': 'Unique Rectangle discontinuous Nice Loop',
+  'unique-rectangle-continuous-nice-loop': 'Unique Rectangle continuous Nice Loop',
   'w-wing': 'W-wing',
-  'wxyz-wing': 'WXYZ-wing',
+  'wxyz-wing': 'WXYZ-Wing',
   'x-chain': 'X-chain',
   'x-wing': 'X-wing',
   'xy-chain': 'XY-chain',
@@ -65,7 +84,7 @@ export function techniqueLabel(technique: string): string {
 export function cellReference(cell: number, style: CellReferenceStyle, difficulty?: Difficulty) {
   const row = Math.floor(cell / 9) + 1
   const column = cell % 9 + 1
-  const advanced = difficulty === 'hard' || difficulty === 'unfair' || difficulty === 'extreme'
+  const advanced = difficulty !== undefined && ['tricky', 'hard', 'very-hard', 'expert', 'master', 'unfair', 'extreme', 'impossible'].includes(difficulty)
   const concise = style === 'concise' || (style === 'automatic' && advanced)
   return concise ? `r${row}c${column}` : `row ${row}, column ${column}`
 }
