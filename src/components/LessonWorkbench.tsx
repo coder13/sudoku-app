@@ -17,7 +17,7 @@ export type LessonTools = {
   reveal: (action: DeductionAction) => void
 }
 
-export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, instruction, onEdit, children }: {
+export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, instruction, onEdit, preview = false, guide, children }: {
   puzzle: Pick<PositionSnapshot, 'givens' | 'entries'> & { candidates: readonly number[] }
   label: string
   annotations?: BoardAnnotations
@@ -25,6 +25,8 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   instruction?: string
   initialPencil?: boolean
   onEdit?: () => void
+  preview?: boolean
+  guide?: ReactNode
   children?: (tools: LessonTools) => ReactNode
 }) {
   const initial = useMemo(() => makeLessonGame(puzzle), [puzzle])
@@ -62,7 +64,9 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     window.addEventListener('storage', update)
     return () => window.removeEventListener('storage', update)
   }, [])
-  const values = valuesOf(game)
+  const shownGame = preview ? initial : game
+  const interactive = ready && !preview
+  const values = valuesOf(shownGame)
   const errors = useMemo(() => preferences.errorMode === 'all' ? conflictsOf(values) : undefined, [preferences.errorMode, values])
   const mode: Mode = colorMode ? 'color' : pencil
     ? preferences.advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind : 'value'
@@ -80,7 +84,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   function toggleColor() { setColorMode(!colorMode); setPencil(false); setHighlightMode(false); setEraseMode(false) }
   function toggleErase() { setEraseMode(!eraseMode); setPencil(false); setColorMode(false); setHighlightMode(false); setSelected([]) }
 
-  function input(digit: number, inputMode: Mode = mode, cells = selected) {
+  function input(digit: number, inputMode: Mode = mode, cells = selected, toggleValue = false) {
     if (digit > 0) setEraseMode(false)
     if (inputMode === 'color') {
       if (digit > COLORS.length) return
@@ -93,7 +97,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
       setSelectedDigit(selectedDigit === digit || digit === 0 ? null : digit)
       return
     }
-    commit((current) => enter(current, cells, inputMode, digit, { allowMultipleValues: highlightMode }))
+    commit((current) => enter(current, cells, inputMode, digit, { allowMultipleValues: highlightMode, toggleValue }))
   }
 
   function select(cell: number, event: MouseEvent) {
@@ -106,7 +110,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
       commit((current) => enter(current, [cell], 'color', selectedColor)); return
     }
     if (!highlightMode && !selected.length && selectedDigit !== null && game.givens[cell] === '0') {
-      input(selectedDigit, mode, [cell]); return
+      input(selectedDigit, mode, [cell], mode === 'value' && !eraseMode); return
     }
     const given = givenDigitAt(game.givens, cell)
     if (given) setSelectedDigit(given)
@@ -136,7 +140,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   }
 
   function keyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (!ready || event.defaultPrevented || event.altKey || (event.target instanceof HTMLElement
+    if (!interactive || event.defaultPrevented || event.altKey || (event.target instanceof HTMLElement
       && (event.target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(event.target.tagName)))) return
     const shortcut = event.metaKey || event.ctrlKey
     const key = event.key.toLowerCase()
@@ -180,41 +184,43 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
 
   return <div className="lesson-workbench" data-ready={ready} role="group" aria-label={`${label} and input tools`} onKeyDown={keyDown} style={{ '--board-font-scale': preferences.appearance.gridTextScale } as CSSProperties}>
     <div className="lesson-board" style={region ? { '--diagram-columns': region.columns } as CSSProperties : undefined}>
-      <Board givens={puzzle.givens} values={values} position={game.position} region={region} errors={errors}
+      <Board givens={puzzle.givens} values={values} position={shownGame.position} region={region} errors={errors}
         annotations={showAnnotations ? annotations : undefined} showGuides={Boolean(region) || preferences.appearance.showGuides}
-        label={label} selected={selected} active={active} boardRef={board} onCell={ready ? select : undefined}
+        label={label} selected={preview ? [] : selected} active={active} boardRef={board} onCell={interactive ? select : undefined}
         dragSelect={highlightMode}
-        onCellPointerDown={ready && highlightMode ? (cell, event) => {
+        onCellPointerDown={interactive && highlightMode ? (cell, event) => {
           if (event.button !== 0) return
           suppressClick.current = false
           anchor.current = cell
           drag.current = { start: cell, base: selected, additive: multi || event.ctrlKey || event.metaKey }
         } : undefined}
-        onCellPointerMove={ready && highlightMode ? (cell, event) => {
+        onCellPointerMove={interactive && highlightMode ? (cell, event) => {
           const current = drag.current
-          if (!current || !(event.buttons & 1) || cell === current.start) return
+          if (!current || cell === null || !(event.buttons & 1) || cell === current.start) return
           event.preventDefault(); suppressClick.current = true; setActive(cell)
           const rectangle = rectangleSelection(current.start, cell)
           setSelected(current.additive ? [...new Set([...current.base, ...rectangle])] : rectangle)
         } : undefined}
-        highlightedDigit={selectedDigit} highlighting={preferences.highlighting} candidateLayout={preferences.advancedModes.candidateLayout}
-        onCellDoubleClick={ready && preferences.advancedModes.doubleClickSingles && !pencil && !highlightMode &&
+        highlightedDigit={preview ? null : selectedDigit} highlighting={preferences.highlighting}
+        candidateLayout={showAnnotations && annotations?.links?.length ? 'grid' : preferences.advancedModes.candidateLayout}
+        onCellDoubleClick={interactive && preferences.advancedModes.doubleClickSingles && !pencil && !highlightMode &&
           !colorMode && !eraseMode && selectedDigit === null ? (cell) => {
           const digit = onlyCandidate(game.position.center[cell] | game.position.corner[cell])
           if (digit !== null) input(digit, 'value', [cell])
         } : undefined}
-        onPaintCandidate={ready && painting ? (candidate: Candidate) => commit((current) => paintCandidate(current, candidate, selectedColor!)) : undefined} />
+        onPaintCandidate={interactive && painting ? (candidate: Candidate) => commit((current) => paintCandidate(current, candidate, selectedColor!)) : undefined} />
     </div>
     <div className="lesson-workbench-tools" ref={tools}>
       {instruction && <p className="lesson-practice-instruction">{instruction}</p>}
-      <Controls mode={mode} pencil={pencil} togglePencil={togglePencil} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
+      {guide}
+      {!preview && <Controls mode={mode} pencil={pencil} togglePencil={togglePencil} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
         advancedModes={preferences.advancedModes} colorMode={colorMode} colorTarget={colorTarget}
         setColorTarget={(target) => { setColorTarget(target); setSelectedColor(null) }} toggleColorMode={toggleColor}
         highlightMode={highlightMode} toggleHighlightMode={toggleHighlight} eraseMode={eraseMode} toggleEraseMode={toggleErase}
         selectedDigit={colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0} values={values} input={input}
         undo={() => commit(undo)} redo={() => commit(redo)} canUndo={game.past.length > 0} canRedo={game.future.length > 0}
         compact disabled={!ready} draft={false} inputSize={preferences.inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight}
-        beginResize={() => {}} multi={multi} toggleMulti={() => setMulti(!multi)} />
+        beginResize={() => {}} multi={multi} toggleMulti={() => setMulti(!multi)} />}
       {annotations && <button type="button" className="button quiet" aria-pressed={showAnnotations}
         onClick={() => setShowAnnotations(!showAnnotations)}>Explanation highlights</button>}
       {children ? children({ actions, reset, reveal })

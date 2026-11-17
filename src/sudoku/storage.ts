@@ -2,6 +2,7 @@ import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
 import { isDifficulty } from './difficulty.ts'
 import { COLORS, createGameId, isSolved, puzzleIdentity, type Game, type Position } from './game.ts'
+import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent,
   type PlayerRating, type RatingEvent, type RatingFinish,
@@ -397,6 +398,7 @@ export const roomStore = {
       const key = GAME_PREFIX + id
       localStorage.removeItem(legacyKey(key))
       localStorage.removeItem(key)
+      localStorage.removeItem(puzzleSelectionKey(id))
     })
     const outcomeSaved = rememberOutcome(removed && (removed.ratingAttempt?.outcome ?? hintEvidence(removed)))
     const remembered = remember(room.stoppedPlaying ? '' : active)

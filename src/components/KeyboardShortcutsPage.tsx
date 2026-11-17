@@ -12,7 +12,8 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
   {
     title: 'Digits and candidates', shortcuts: [
       { label: 'Enter a digit', description: 'Use the current input mode in selected cells.', keys: ['1–9'] },
-      { label: 'Toggle a candidate', description: 'Add or remove a candidate without changing modes.', keys: ['Ctrl/⌘', '1–9'] },
+      { label: 'Hold for Pencil mode', description: 'Switch from Pen to Pencil while you hold the key.', keys: ['Ctrl/⌘'] },
+      { label: 'Toggle a candidate', description: 'Add or remove a candidate in the current cell or selection.', keys: ['Ctrl/⌘', '1–9'] },
       { label: 'Highlight a digit', description: 'Highlight matching placed digits and candidates without changing modes.', keys: ['Shift', '1–9'] },
       { label: 'Erase selected cells', description: 'Remove placed digits or candidates from selected cells.', keys: ['0', 'Delete', 'Backspace'] },
     ],

@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { EMPTY, enter, makeGame, paintCandidate, restartGame, STARTER_GAME, undo } from '../src/sudoku/game.ts'
 import { addRatingHints, placementHintKey } from '../src/sudoku/player-rating.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
+import { createPuzzleSelectionStore, puzzleSelectionKey } from '../src/sudoku/selection-preferences.ts'
 
 class MemoryStorage {
   get length() { return Object.keys(this).length }
@@ -22,6 +23,29 @@ class MemoryStorage {
 
   clear() { Object.keys(this).forEach((key) => this.removeItem(key)) }
 }
+
+test('deleting a puzzle also deletes its saved cell selection', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?selection-test')
+    for (const id of ['remove', 'keep']) {
+      roomStore.add(makeGame(id, id, EMPTY, 'custom'))
+      createPuzzleSelectionStore(id, 40, local).set('selected', [4])
+    }
+    roomStore.remove('remove')
+    assert.equal(local.getItem(puzzleSelectionKey('remove')), null)
+    assert.notEqual(local.getItem(puzzleSelectionKey('keep')), null)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
 
 test('the puzzle library hydrates synchronously when the client module reloads', async () => {
   const local = new MemoryStorage()

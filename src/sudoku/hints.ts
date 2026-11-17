@@ -3,6 +3,16 @@ import type { Deduction, Difficulty, HintChoice } from './engine'
 export type PuzzleHint = { title: string; text: string }
 export type HintRemoval = { digit: number; cells: string[] }
 
+const hintStages = ['technique', 'digits', 'location', 'explanation'] as const
+const recoveryStages = ['technique', 'location', 'explanation'] as const
+export type HintStage = typeof hintStages[number]
+
+export function moveHintStage(stage: HintStage, offset: -1 | 1, recovery = false): HintStage {
+  const stages: readonly HintStage[] = recovery ? recoveryStages : hintStages
+  const index = stages.indexOf(stage)
+  return index === -1 ? stage : stages[index + offset] ?? stage
+}
+
 export function moveHintIndex(index: number, count: number, offset: -1 | 1): number {
   if (count < 1) return 0
   return offset === 1 ? (index + 1) % count : Math.max(0, index - 1)

@@ -9,7 +9,7 @@ export type CandidateLayout = 'grid' | 'center-corner'
 export type ColorTarget = 'cell' | 'candidate'
 export type ErrorMode = 'all' | 'incorrect' | 'none'
 export type Source = 'starter' | 'generated' | 'imported' | 'custom' | 'draft'
-export type EnterOptions = { allowMultipleValues?: boolean; candidateAction?: 'add' | 'remove' }
+export type EnterOptions = { allowMultipleValues?: boolean; toggleValue?: boolean; candidateAction?: 'add' | 'remove' }
 
 export type Position = {
   entries: string
@@ -261,13 +261,14 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
   } else {
     const editable = selection.filter((i) => game.givens[i] === '0')
     if (mode === 'value') {
-      if (digit && editable.length !== 1 && !options.allowMultipleValues) return game
+      const value = options.toggleValue && editable.length === 1 && entries[editable[0]] === String(digit) ? 0 : digit
+      if (value && editable.length !== 1 && !options.allowMultipleValues) return game
       for (const i of editable) {
-        if (entries[i] !== '0' && entries[i] !== String(digit)) replacedEntry = true
-        entries = entries.slice(0, i) + digit + entries.slice(i + 1)
+        if (entries[i] !== '0' && entries[i] !== String(value)) replacedEntry = true
+        entries = entries.slice(0, i) + value + entries.slice(i + 1)
       }
-      if (digit) {
-        const bit = 1 << (digit - 1)
+      if (value) {
+        const bit = 1 << (value - 1)
         const clearDigit = (mask: number, i: number) => editable.some((cell) =>
           peer(cell, i, game.variant?.puzzle)) ? mask & ~bit : mask
         center = center.map(clearDigit)
