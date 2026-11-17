@@ -49,8 +49,8 @@ function MiniGrid({ values }: { values: string }) {
 function puzzleStatus(game: Game) {
   if (game.source === 'draft') return 'Draft puzzle'
   const rating = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : 'Unrated'
-  if (isSolved(game)) return `${rating} · Solved in ${formatTime(game.elapsed)}`
-  if (game.started) return `${rating} · ${formatTime(game.elapsed)}`
+  if (isSolved(game)) return game.timeUntracked ? `${rating} · Solved` : `${rating} · Solved in ${formatTime(game.elapsed)}`
+  if (game.started) return `${rating} · ${game.timeUntracked ? 'In progress' : formatTime(game.elapsed)}`
   return `${rating} · Not started`
 }
 
@@ -166,10 +166,12 @@ function Statistics({ games }: { games: Game[] }) {
   const { rating, recommended, count } = usePlayerRating()
   const solved = games.filter(isSolved)
   const inProgress = games.filter((game) => game.started && !isSolved(game) && game.source !== 'draft')
-  const totalTime = games.reduce((sum, game) => sum + game.elapsed, 0)
+  const timedGames = games.filter((game) => !game.timeUntracked && game.source !== 'draft' && (game.started || game.elapsed > 0))
+  const totalTime = timedGames.reduce((sum, game) => sum + game.elapsed, 0)
   const difficultyRows = Object.entries(DIFFICULTY_LABELS).map(([difficulty, label]) => {
     const matching = solved.filter((game) => game.difficulty === difficulty)
-    return { difficulty, label, solved: matching.length, best: matching.length ? Math.min(...matching.map((game) => game.elapsed)) : null }
+    const best = matching.reduce((time, game) => game.timeUntracked ? time : Math.min(time, game.elapsed), Infinity)
+    return { difficulty, label, solved: matching.length, best }
   })
   return <section className="main-menu-section" aria-labelledby="statistics-title">
     <header><h2 id="statistics-title">Statistics</h2><p>Your solving history on this device.</p></header>
@@ -178,12 +180,12 @@ function Statistics({ games }: { games: Game[] }) {
       <div><Dices size={18} aria-hidden="true" /><dt>Auto difficulty</dt><dd>{DIFFICULTY_LABELS[recommended]}</dd></div>
       <div><Trophy size={18} aria-hidden="true" /><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
       <div><Grid3X3 size={18} aria-hidden="true" /><dt>In progress</dt><dd>{inProgress.length}</dd></div>
-      <div><Clock3 size={18} aria-hidden="true" /><dt>Total solving time</dt><dd>{formatTime(totalTime)}</dd></div>
+      {timedGames.length > 0 && <div><Clock3 size={18} aria-hidden="true" /><dt>Total solving time</dt><dd>{formatTime(totalTime)}</dd></div>}
       <div><BarChart3 size={18} aria-hidden="true" /><dt>Saved puzzles</dt><dd>{games.filter(isPuzzleSaved).length}</dd></div>
     </dl>
     <div className="difficulty-statistics" role="table" aria-label="Statistics by difficulty">
       <div role="row" className="difficulty-statistics-heading"><span role="columnheader">Difficulty</span><span role="columnheader">Solved</span><span role="columnheader">Best time</span></div>
-      {difficultyRows.map((row) => <div role="row" key={row.difficulty}><strong role="cell">{row.label}</strong><span role="cell">{row.solved}</span><span role="cell">{row.best === null ? '—' : formatTime(row.best)}</span></div>)}
+      {difficultyRows.map((row) => <div role="row" key={row.difficulty}><strong role="cell">{row.label}</strong><span role="cell">{row.solved}</span><span role="cell">{Number.isFinite(row.best) ? formatTime(row.best) : '—'}</span></div>)}
     </div>
     <TechniqueStatistics />
   </section>

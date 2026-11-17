@@ -37,6 +37,7 @@ export type RatingAttempt = {
   analysisUsed?: true
   singlesAssistance?: SinglesAssistance
   priorElapsed: number
+  timeUntracked?: true
   lastHintAt?: number
   mode?: RatingMode
   outcome?: RatingEvent
@@ -117,7 +118,7 @@ export function isRatingEvent(data: unknown): data is RatingEvent {
 
 export function isRatingAttempt(data: unknown): data is RatingAttempt {
   if (!data || typeof data !== 'object') return false
-  const { grade, viewed, applied, requested, analysisUsed, singlesAssistance, priorElapsed, lastHintAt, outcome, mode } = data as RatingAttempt
+  const { grade, viewed, applied, requested, analysisUsed, singlesAssistance, priorElapsed, timeUntracked, lastHintAt, outcome, mode } = data as RatingAttempt
   return Boolean(grade && isDifficulty(grade.difficulty) && Number.isSafeInteger(grade.points) && grade.points >= 0 &&
     Number.isSafeInteger(grade.scoringVersion) && grade.scoringVersion > 0 && Array.isArray(grade.techniqueOrder) &&
     grade.techniqueOrder.length > 0 && grade.techniqueOrder.every((id) => typeof id === 'string') &&
@@ -128,6 +129,7 @@ export function isRatingAttempt(data: unknown): data is RatingAttempt {
     validSinglesAssistance(singlesAssistance) &&
     (lastHintAt === undefined || Number.isSafeInteger(lastHintAt) && lastHintAt >= 0) &&
     Number.isSafeInteger(priorElapsed) && priorElapsed >= 0 &&
+    (timeUntracked === undefined || timeUntracked === true) &&
     validRatingMode(mode, grade.difficulty) &&
     (outcome === undefined || (isRatingEvent(outcome) && outcome.mode === mode)))
 }

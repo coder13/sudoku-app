@@ -51,7 +51,8 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const ratingLabel = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : difficultyLabel
   const solved = games.filter(isSolved)
   const bestTime = solved.reduce((best, puzzle) =>
-    puzzle.difficulty === game.difficulty && puzzle.variant?.id === game.variant?.id ? Math.min(best, puzzle.elapsed) : best, Infinity)
+    !puzzle.timeUntracked && puzzle.difficulty === game.difficulty && puzzle.variant?.id === game.variant?.id
+      ? Math.min(best, puzzle.elapsed) : best, Infinity)
   const canGenerate = !busy && !ratingPending
   const canPlayNext = collectionEntry ? Boolean(collectionNext) && !ratingPending && !loadingNext : canGenerate
   const playNext = useCallback(() => {
@@ -97,7 +98,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
             <p>{game.title}</p>
           </header>
           <dl className="completion-result">
-            <div><dt>Solve time</dt><dd>{formatTime(game.elapsed)}</dd></div>
+            {!game.timeUntracked && <div><dt>Solve time</dt><dd>{formatTime(game.elapsed)}</dd></div>}
             <div>
               <dt>Difficulty</dt>
               <dd>
@@ -113,7 +114,8 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
           </div> : null}
           <dl className="completion-stats">
             <div><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
-            {game.difficulty && <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
+            {!game.timeUntracked && game.difficulty && Number.isFinite(bestTime) &&
+              <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
           </dl>
           <ActionHistoryPanel entries={game.actionHistory} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
         </div>
