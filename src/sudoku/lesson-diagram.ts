@@ -30,10 +30,19 @@ const candidateName = ({ cell, digit }: Candidate) => `${digit} in ${cellName(ce
 const candidatesConflict = (a: Candidate, b: Candidate) =>
   a.cell === b.cell ? a.digit !== b.digit : a.digit === b.digit && peer(a.cell, b.cell)
 const capital = (phrase: string) => phrase[0].toUpperCase() + phrase.slice(1)
-const inferenceName = (node: InferenceNode) => 'candidate' in node
-  ? candidateName(node.candidate)
-  : `${node.group.digit} in ${either.format(node.group.cells.map(cellName))}`
-const boardPoint = (node: InferenceNode) => 'candidate' in node ? node.candidate : node.group
+const inferenceCandidates = (node: InferenceNode): Candidate[] => {
+  if ('candidate' in node) return [node.candidate]
+  if ('group' in node) return node.group.cells.map(cell => ({ cell, digit: node.group.digit }))
+  return node['mixed-group']
+}
+const inferenceName = (node: InferenceNode) => 'group' in node
+  ? `${node.group.digit} in ${either.format(node.group.cells.map(cellName))}`
+  : either.format(inferenceCandidates(node).map(candidateName))
+const boardPoint = (node: InferenceNode) => {
+  if ('candidate' in node) return node.candidate
+  if ('group' in node) return node.group
+  return { candidates: node['mixed-group'] }
+}
 
 function houseName(house: House) {
   if ('row' in house) return `row ${house.row + 1}`
@@ -263,15 +272,29 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       from: boardPoint(from), to: boardPoint(to), dashed: strength === 'weak', color: patternColor,
     }))
     const singles = nodes.flatMap((node) => 'candidate' in node ? [node.candidate] : [])
-    const grouped = nodes.flatMap((node) => 'group' in node
-      ? node.group.cells.map((cell) => ({ cell, digit: node.group.digit })) : [])
+    const grouped = nodes.flatMap(node => 'candidate' in node ? [] : inferenceCandidates(node))
+    const cellLinks = chain.flatMap(({ from, to, source }) => {
+      if (!('almost-locked-set-cell' in source)) return []
+      const evidence = source['almost-locked-set-cell']
+      const { cell, blocked } = evidence
+      const members = [...inferenceCandidates(from), ...inferenceCandidates(to)]
+      const inside = members.find(candidate => candidate.cell !== cell)
+      const forced = members.find(candidate => candidate.cell === cell)
+      return inside && forced ? [{ evidence, inside, forced, blocked: DIGITS.filter(digit => blocked & (1 << (digit - 1))) }] : []
+    })
+    const alternatives = cellLinks.flatMap(({ forced, blocked }) => marks([forced.cell], blocked))
+    const accent = [...grouped, ...alternatives]
     const pattern = {
       candidates: singles, links: path, cells: [...singles, ...grouped].map(({ cell }) => cell),
-      accent: grouped.length ? { candidates: grouped, label: 'Grouped candidates' } : undefined,
+      accent: accent.length ? { candidates: accent, label: alternatives.length ? 'Grouped candidates and outside alternatives' : 'Grouped candidates' } : undefined,
     }
+    const explainCellLink = (link?: typeof cellLinks[number]) => link
+      ? ` If ${link.inside.digit} is absent from the set at ${list.format(link.evidence.set.cells.map(cellName))}, it locks ${list.format(link.blocked.map(String))} into the set and forces ${candidateName(link.forced)}.`
+      : ''
+    const cellNote = explainCellLink(cellLinks[0])
     const firstName = inferenceName(start)
     const second = inferenceName(chain[0].to)
-    const group = nodes.find((node) => 'group' in node)
+    const group = nodes.find(node => !('candidate' in node))
     const groupNote = group ? ` The marked group is true if you place ${inferenceName(group)}.` : ''
     if (technique.includes('discontinuous-')) {
       const assumed = chain[0].strength === 'weak' ? 'true' : 'false'
@@ -279,28 +302,49 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       return {
         ...pattern,
         description: `Start at ${firstName}. Follow the alternating links back to the same candidate.${groupNote}`,
-        reason: `Suppose ${firstName} is ${assumed}. The first link makes ${second} ${other}. By the time you come back, the loop makes ${firstName} ${other}. The starting assumption breaks.`,
+        reason: `Suppose ${firstName} is ${assumed}. The first link makes ${second} ${other}. By the time you come back, the loop makes ${firstName} ${other}. The starting assumption breaks.${cellNote}`,
       }
     }
     if (technique.includes('continuous-')) {
-      const conflictsWithRemoval = (node: InferenceNode) => 'candidate' in node
-        ? candidatesConflict(node.candidate, first)
-        : node.group.cells.every((cell) => candidatesConflict({ cell, digit: node.group.digit }, first))
+      const conflictsWithRemoval = (node: InferenceNode) =>
+        inferenceCandidates(node).every(candidate => candidatesConflict(candidate, first))
       const weak = chain.find(({ strength, from, to }) =>
-        strength === 'weak' && conflictsWithRemoval(from) && conflictsWithRemoval(to))!
+        strength === 'weak' && conflictsWithRemoval(from) && conflictsWithRemoval(to))
+      if (!weak) {
+        const [lock] = chain.flatMap(({ strength, from, to, source }) => {
+          if (strength !== 'strong') return []
+          const outside = 'almost-locked-set-cell' in source ? source['almost-locked-set-cell'] : undefined
+          const set = outside?.set ?? ('almost-locked-set' in source ? source['almost-locked-set'] : undefined)
+          if (!set?.digits.includes(first.digit) || (outside && (outside.blocked & (1 << (first.digit - 1))) !== 0)) return []
+          if ([...inferenceCandidates(from), ...inferenceCandidates(to)].some(({ cell, digit }) =>
+            digit === first.digit && cell !== outside?.cell)) return []
+          const members = marks(set.cells, [first.digit])
+          return members.length && members.every(member => candidatesConflict(member, first)) ? [{ members, outside }] : []
+        })
+        const reason = lock?.outside
+          ? `The loop makes exactly one end of the ALS link true. The set must use ${first.digit} in either case. ${capital(candidateName(first))} conflicts with every place where the set can use it.`
+          : `The loop forces exactly one of the two linked digits into the almost locked set. The set needs every other digit to fill its cells. ${capital(candidateName(first))} conflicts with every place where the set can use ${first.digit}.`
+        const lockingCellNote = lock?.outside ? explainCellLink(cellLinks.find(link => link.evidence === lock.outside)) : cellNote
+        return {
+          ...pattern,
+          accent: lock ? { candidates: [...accent, ...lock.members], label: 'Grouped and locked candidates' } : pattern.accent,
+          description: `Follow the alternating links around the loop, starting at ${firstName}.${groupNote}`,
+          reason: lock ? reason + lockingCellNote : 'The alternating loop makes exactly one end of each link true.',
+        }
+      }
       const left = inferenceName(weak.from)
       const right = inferenceName(weak.to)
       return {
         ...pattern,
         description: `The links alternate all the way around the loop, including at ${firstName}.${groupNote}`,
-        reason: `If you rule out ${left}, the rest of the loop forces ${right}. ${capital(candidateName(first))} conflicts with both. Use the other dashed links to check the remaining removals.`,
+        reason: `If you rule out ${left}, the rest of the loop forces ${right}. ${capital(candidateName(first))} conflicts with both. Use the other dashed links to check the remaining removals.${cellNote}`,
       }
     }
     const last = inferenceName(closing.to)
     return {
       ...pattern,
       description: `The chain starts and ends with a solid link, at ${firstName} and ${last}.${groupNote}`,
-      reason: `If you rule out ${firstName}, the first link forces ${second}. Follow the rest of the chain to force ${last}. Any candidate that conflicts with both ends is ruled out either way.`,
+      reason: `If you rule out ${firstName}, the first link forces ${second}. Follow the rest of the chain to force ${last}. Any candidate that conflicts with both ends is ruled out either way.${cellNote}`,
     }
   }
   if ('coloring' in evidence) {

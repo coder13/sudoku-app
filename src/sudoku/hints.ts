@@ -34,6 +34,9 @@ export const HINT_CANDIDATES_ERROR: PuzzleHint = {
 const TECHNIQUE_LABELS: Record<string, string> = {
   'aic': 'Alternating inference chain',
   'als-chain': 'ALS chain',
+  'als-aic': 'ALS alternating inference chain',
+  'als-discontinuous-nice-loop': 'ALS discontinuous Nice Loop',
+  'als-continuous-nice-loop': 'ALS continuous Nice Loop',
   'als-xz': 'ALS-XZ',
   'bug-plus-one': 'BUG+1',
   'empty-rectangle': 'Empty rectangle',

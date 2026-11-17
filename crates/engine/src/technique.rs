@@ -166,6 +166,9 @@ catalog! {
     AlsXz: "als-xz", 300, Unfair, false, ["ALS-XZ Rule"];
     AlsXyWing: "als-xy-wing", 320, Unfair, false, [];
     AlsChain: "als-chain", 340, Unfair, false, ["ALS-XY-Chain"];
+    AlsAic: "als-aic", 360, Unfair, false, ["Alternating Inference Chain with ALS"];
+    AlsDiscontinuousNiceLoop: "als-discontinuous-nice-loop", 360, Unfair, false, ["Discontinuous Nice Loop with ALS"];
+    AlsContinuousNiceLoop: "als-continuous-nice-loop", 360, Unfair, false, ["Continuous Nice Loop with ALS"];
     SueDeCoq: "sue-de-coq", 250, Unfair, false, ["Two-Sector Disjoint Subsets"];
     DeathBlossom: "death-blossom", 360, Unfair, false, [];
     Exocet: "exocet", 450, Extreme, false, ["Junior Exocet", "JExocet"];

@@ -140,12 +140,18 @@ fn transpose_link_source(source: LinkSource) -> LinkSource {
             cells.sort_unstable_by_key(|triple| crate::coordinates(usize::from(triple[0])).2);
             LinkSource::Tridagon { cells, digits }
         }
-        LinkSource::AlmostLockedSet(set) => {
+        LinkSource::AlmostLockedSet(set) | LinkSource::AlmostLockedSetCell { set, .. } => {
             let digits = set.digits().fold(0, |bits, digit| bits | digit_bit(digit));
-            LinkSource::AlmostLockedSet(crate::AlmostLockedSetLink::new(
-                set.cells().map(transpose),
-                digits,
-            ))
+            let set = crate::AlmostLockedSetLink::new(set.cells().map(transpose), digits);
+            if let LinkSource::AlmostLockedSetCell { cell, blocked, .. } = source {
+                LinkSource::AlmostLockedSetCell {
+                    set,
+                    cell: transpose(usize::from(cell)) as u8,
+                    blocked,
+                }
+            } else {
+                LinkSource::AlmostLockedSet(set)
+            }
         }
         LinkSource::Peers {} => source,
     }
@@ -231,6 +237,11 @@ fn transpose_node(node: &InferenceNode) -> InferenceNode {
             digit: *digit,
             cells: transpose_cells(cells),
         },
+        InferenceNode::MixedGroup(members) => {
+            let mut transposed: Vec<_> = members.iter().copied().map(transpose_candidate).collect();
+            transposed.sort_unstable();
+            InferenceNode::MixedGroup(transposed)
+        }
     }
 }
 

@@ -43,12 +43,12 @@ pub(super) fn visit(
     let column_choices: Vec<_> = axes()
         .filter(|&columns| columns & !all_columns == 0)
         .collect();
-    let mut bound = CoverBound::default();
+    let mut row_covers = RowCovers::default();
     for rows in axes().filter(|&rows| rows & !all_rows == 0) {
         let row_cells = AXIS_MASKS[0][usize::from(rows)];
         let available = active & row_cells;
         let available_columns = columns_with_candidates[usize::from(rows)];
-        bound.select_rows(positions, row_cells);
+        row_covers.select_rows(positions, row_cells);
         for &columns in &column_choices {
             if columns & !available_columns != 0
                 || rows & !rows_with_candidates[usize::from(columns)] != 0
@@ -57,12 +57,14 @@ pub(super) fn visit(
             }
             let core = available & AXIS_MASKS[1][usize::from(columns)];
             let size = core.count_ones();
-            if !(4..=MAX_CORE_CELLS).contains(&size)
-                || bound.exceeds(columns, size + MAX_ATTACHMENTS)
-            {
+            if !(4..=MAX_CORE_CELLS).contains(&size) {
                 continue;
             }
-            scan.visit_core(core, visit)?;
+            if let Some((covers, slots)) =
+                row_covers.within_capacity(columns, size + MAX_ATTACHMENTS, &mut scan.cache)
+            {
+                scan.visit_core(core, covers, slots, visit)?;
+            }
         }
     }
     ControlFlow::Continue(())
@@ -107,24 +109,11 @@ impl Scan<'_> {
     fn visit_core(
         &mut self,
         core: u128,
+        covers: [u32; 9],
+        slots: u32,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         let size = core.count_ones();
-        let required = self.positions.map(|positions| positions & core);
-        let mut slots = required.iter().filter(|&&positions| positions != 0).count() as u32;
-        let mut covers = [0; 9];
-        for (digit, positions) in required
-            .into_iter()
-            .enumerate()
-            .filter(|&(_, positions)| positions != 0)
-        {
-            let houses = self.cache.minimum(positions);
-            covers[digit] = houses;
-            slots += houses.count_ones() - 1;
-            if slots > size + MAX_ATTACHMENTS {
-                return ControlFlow::Continue(());
-            }
-        }
         if slots < size {
             return ControlFlow::Continue(());
         }
@@ -132,7 +121,8 @@ impl Scan<'_> {
         if slots == size {
             // Equal-cost covers for one digit keep the same total capacity. They
             // can explain different eliminations without a product of all choices.
-            for (digit, positions) in required.into_iter().enumerate() {
+            for (digit, &live) in self.positions.iter().enumerate() {
+                let positions = live & core;
                 if positions == 0 {
                     continue;
                 }
@@ -212,53 +202,103 @@ impl Scan<'_> {
     }
 }
 
-struct CoverBound {
-    row_positions: [u128; 9],
-    occupied_columns: [u16; 9],
-    lower_bounds: [[u8; 512]; 9],
+#[derive(Clone, Copy, Default)]
+struct CoverEstimate(u32);
+
+impl CoverEstimate {
+    // The low bits identify the 27 houses when the minimum cover is known.
+    const HOUSE_BITS: u32 = 27;
+    const HOUSE_MASK: u32 = (1 << Self::HOUSE_BITS) - 1;
+
+    fn new(slots: u32, houses: u32) -> Self {
+        Self((slots << Self::HOUSE_BITS) | houses)
+    }
+
+    fn slots(self) -> u32 {
+        self.0 >> Self::HOUSE_BITS
+    }
+
+    fn houses(self) -> u32 {
+        self.0 & Self::HOUSE_MASK
+    }
 }
 
-impl Default for CoverBound {
+struct RowCovers {
+    row_positions: [u128; 9],
+    occupied_columns: [u16; 9],
+    estimates: [[CoverEstimate; 512]; 9],
+}
+
+impl Default for RowCovers {
     fn default() -> Self {
         Self {
             row_positions: [0; 9],
             occupied_columns: [0; 9],
-            lower_bounds: [[0; 512]; 9],
+            estimates: [[CoverEstimate::default(); 512]; 9],
         }
     }
 }
 
-impl CoverBound {
+impl RowCovers {
     fn select_rows(&mut self, positions: &[u128; 9], rows: u128) {
         self.row_positions = positions.map(|digit| digit & rows);
         self.occupied_columns = self.row_positions.map(occupied_columns);
-        self.lower_bounds.fill([0; 512]);
+        self.estimates.fill([CoverEstimate::default(); 512]);
     }
 
-    // Rectangles that differ only in empty columns share the same per-digit bound.
-    fn exceeds(&mut self, columns: u16, capacity: u32) -> bool {
-        let mut count = 0;
-        for (digit, &occupied) in self.occupied_columns.iter().enumerate() {
-            let key = usize::from(columns & occupied);
+    // Rectangles that differ only in empty columns share the same per-digit cover.
+    fn within_capacity(
+        &mut self,
+        columns: u16,
+        capacity: u32,
+        cache: &mut CoverCache,
+    ) -> Option<([u32; 9], u32)> {
+        let keys = self
+            .occupied_columns
+            .map(|occupied| usize::from(columns & occupied));
+        // Check the combined lower bound before searching for any new exact covers.
+        let mut slots = 0;
+        for (digit, &key) in keys.iter().enumerate() {
             if key == 0 {
                 continue;
             }
-            let entry = &mut self.lower_bounds[digit][key];
-            if *entry == 0 {
+            let entry = &mut self.estimates[digit][key];
+            if entry.slots() == 0 {
                 let mut positions = self.row_positions[digit] & AXIS_MASKS[1][key];
+                let mut lower = 0;
                 // No two selected candidates share a house, so each needs a slot.
                 while positions != 0 {
                     let cell = positions.trailing_zeros() as usize;
                     positions &= !(PEERS[cell] | cell_bit(cell));
-                    *entry += 1;
+                    lower += 1;
                 }
+                *entry = CoverEstimate::new(lower, 0);
             }
-            count += u32::from(*entry);
-            if count > capacity {
-                return true;
+            slots += entry.slots();
+            if slots > capacity {
+                return None;
             }
         }
-        false
+        let mut covers = [0; 9];
+        for (digit, &key) in keys.iter().enumerate() {
+            if key == 0 {
+                continue;
+            }
+            let entry = &mut self.estimates[digit][key];
+            let mut houses = entry.houses();
+            if houses == 0 {
+                houses = cache.minimum(self.row_positions[digit] & AXIS_MASKS[1][key]);
+                let exact = houses.count_ones();
+                slots += exact - entry.slots();
+                // Later rectangles can use the exact count to reject a cover sooner.
+                *entry = CoverEstimate::new(exact, houses);
+                if slots > capacity {
+                    return None;
+                }
+            }
+            covers[digit] = houses;
+        }
+        Some((covers, slots))
     }
 }
 
@@ -362,7 +402,7 @@ mod tests {
     use crate::{Candidate, Hint, HintAction};
 
     #[test]
-    fn cover_bound_reuses_empty_columns_and_resets_when_rows_change() {
+    fn row_covers_reuse_empty_columns_and_reset_when_rows_change() {
         for cell in 0..crate::CELLS {
             assert_eq!(occupied_columns(cell_bit(cell)), 1 << (cell % 9));
         }
@@ -370,14 +410,44 @@ mod tests {
         positions[0] = cell_bit(0) | cell_bit(3) | cell_bit(6) | cell_bit(30) | cell_bit(78);
         positions[2] = cell_bit(8);
         let columns = (1 << 0) | (1 << 3) | (1 << 6) | (1 << 8);
-        let mut bound = CoverBound::default();
-        bound.select_rows(&positions, AXIS_MASKS[0][usize::from(DIGITS)]);
-        assert!(bound.exceeds(columns, 3));
-        assert!(!bound.exceeds(columns | (1 << 1), 4));
+        let mut row_covers = RowCovers::default();
+        let mut cache = CoverCache::default();
+        row_covers.select_rows(&positions, AXIS_MASKS[0][usize::from(DIGITS)]);
+        assert!(row_covers.within_capacity(columns, 3, &mut cache).is_none());
+        let covers = row_covers.within_capacity(columns, 4, &mut cache).unwrap();
+        assert_eq!(covers.1, 4);
+        assert_eq!(
+            row_covers.within_capacity(columns | (1 << 1), 4, &mut cache),
+            Some(covers)
+        );
         // The same column key can have a different bound for a smaller row selection.
-        bound.select_rows(&positions, AXIS_MASKS[0][(1 << 0) | (1 << 3)]);
-        assert!(!bound.exceeds(columns, 3));
-        assert!(bound.exceeds(columns, 2));
+        row_covers.select_rows(&positions, AXIS_MASKS[0][(1 << 0) | (1 << 3)]);
+        assert_eq!(
+            row_covers
+                .within_capacity(columns, 3, &mut cache)
+                .unwrap()
+                .1,
+            3
+        );
+        assert!(row_covers.within_capacity(columns, 2, &mut cache).is_none());
+    }
+
+    #[test]
+    fn capacity_uses_exact_houses_when_one_candidate_sees_all_the_others() {
+        let mut positions = [0; 9];
+        positions[0] = cell_bit(0) | cell_bit(3) | cell_bit(6) | cell_bit(27);
+        let mut row_covers = RowCovers::default();
+        row_covers.select_rows(&positions, AXIS_MASKS[0][(1 << 0) | (1 << 3)]);
+        let columns = (1 << 0) | (1 << 3) | (1 << 6);
+        let mut cache = CoverCache::default();
+        assert!(row_covers.within_capacity(columns, 1, &mut cache).is_none());
+        let (houses, slots) = row_covers.within_capacity(columns, 2, &mut cache).unwrap();
+        assert_eq!(slots, 2);
+        assert_eq!(houses[0].count_ones(), 2);
+        let covered = house_indices(houses[0])
+            .map(|index| house_cells(rank_zero::HOUSES[index]))
+            .fold(0, |all, house| all | house);
+        assert_eq!(positions[0] & !covered, 0);
     }
 
     #[test]
@@ -404,7 +474,12 @@ mod tests {
                 unreported: *positions,
                 cache: CoverCache::default(),
             };
-            scan.visit_core(core, &mut ControlFlow::Break)
+            let mut row_covers = RowCovers::default();
+            row_covers.select_rows(positions, AXIS_MASKS[0][(1 << 0) | (1 << 3) | (1 << 4)]);
+            let (covers, slots) = row_covers
+                .within_capacity((1 << 0) | (1 << 3), 4 + MAX_ATTACHMENTS, &mut scan.cache)
+                .unwrap();
+            scan.visit_core(core, covers, slots, &mut ControlFlow::Break)
                 .break_value()
                 .map(Hint::from)
         };

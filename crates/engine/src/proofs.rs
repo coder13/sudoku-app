@@ -319,14 +319,19 @@ impl<'a> Pattern<'a> {
                     self.source(link.source);
                     match (link.source, self.masks) {
                         (LinkSource::Peers {}, _) => {
-                            for &first in link.from.cells() {
-                                for &second in link.to.cells() {
-                                    self.shared_houses(first, second);
+                            for first in link.from.candidates() {
+                                for second in link.to.candidates() {
+                                    if first.digit == second.digit {
+                                        self.shared_houses(first.cell, second.cell);
+                                    }
                                 }
                             }
                         }
                         (LinkSource::Firework(pivot), Some(masks)) => {
-                            let bit = digit_bit(link.from.digit());
+                            let bit = link
+                                .from
+                                .candidates()
+                                .fold(0, |bits, candidate| bits | digit_bit(candidate.digit));
                             self.firework_arms(pivot, bit, masks);
                         }
                         _ => {}
@@ -652,7 +657,7 @@ impl<'a> Pattern<'a> {
                     self.houses.insert(House::at(usize::from(triple[0]))[2]);
                 }
             }
-            LinkSource::AlmostLockedSet(set) => {
+            LinkSource::AlmostLockedSet(set) | LinkSource::AlmostLockedSetCell { set, .. } => {
                 self.mark(set.cells(), mask(set.digits()));
                 if let Some(first) = set.cells().next() {
                     self.houses.extend(
@@ -660,6 +665,15 @@ impl<'a> Pattern<'a> {
                             set.cells().all(|cell| House::at(cell).contains(house))
                         }),
                     );
+                }
+                if let LinkSource::AlmostLockedSetCell { cell, blocked, .. } = source {
+                    let outside = usize::from(cell);
+                    self.mark([outside], blocked);
+                    if let Some(masks) = self.masks {
+                        for inside in set.cells().filter(|&cell| masks[cell] & blocked != 0) {
+                            self.shared_houses(inside, outside);
+                        }
+                    }
                 }
             }
             LinkSource::Peers {} => {}
@@ -735,7 +749,9 @@ impl<'a> Pattern<'a> {
     }
 
     fn proposition(&mut self, node: &InferenceNode) {
-        self.mark(node.cells().iter().copied(), digit_bit(node.digit()));
+        for candidate in node.candidates() {
+            self.candidate(candidate);
+        }
     }
 
     fn mark(&mut self, cells: impl IntoIterator<Item = usize>, mask: u16) {

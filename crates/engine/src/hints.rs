@@ -137,6 +137,15 @@ pub enum LinkSource {
     },
     /// At least one of the two endpoint digits must occur in this almost locked set.
     AlmostLockedSet(AlmostLockedSetLink),
+    /// Without the set's endpoint digit, the ALS locks enough digits to force the outside endpoint.
+    AlmostLockedSetCell {
+        /// Set whose remaining digits become locked.
+        set: AlmostLockedSetLink,
+        /// Outside cell forced by the lock.
+        cell: u8,
+        /// Candidate mask removed from the outside cell when the set's endpoint is false.
+        blocked: u16,
+    },
     /// Every candidate in one endpoint conflicts with every candidate in the other.
     Peers {},
 }
@@ -231,21 +240,23 @@ pub enum InferenceNode {
         /// Possible cells for the digit.
         cells: Vec<usize>,
     },
+    /// At least one of these candidates is true. The candidates can use different digits.
+    MixedGroup(Vec<Candidate>),
 }
 
 impl InferenceNode {
-    pub(crate) fn digit(&self) -> u8 {
-        match self {
-            Self::Candidate(candidate) => candidate.digit,
-            Self::Group { digit, .. } => *digit,
-        }
-    }
-
-    pub(crate) fn cells(&self) -> &[usize] {
-        match self {
-            Self::Candidate(candidate) => std::slice::from_ref(&candidate.cell),
-            Self::Group { cells, .. } => cells,
-        }
+    /// Individual candidates that can make this proposition true.
+    pub fn candidates(&self) -> impl Iterator<Item = Candidate> + '_ {
+        let (members, group) = match self {
+            Self::Candidate(candidate) => (std::slice::from_ref(candidate), None),
+            Self::Group { digit, cells } => (&[][..], Some((*digit, cells))),
+            Self::MixedGroup(members) => (members.as_slice(), None),
+        };
+        members.iter().copied().chain(
+            group.into_iter().flat_map(|(digit, cells)| {
+                cells.iter().map(move |&cell| Candidate { cell, digit })
+            }),
+        )
     }
 }
 
@@ -1352,9 +1363,14 @@ pub(crate) fn rank_position(
         return Vec::new();
     }
     let search = DeductionSearch::new(position.board(), position.masks());
-    let techniques = ordered_hint_techniques(disabled_techniques);
+    let mut techniques: Vec<_> = Technique::ALL
+        .into_iter()
+        .filter(|technique| !disabled_techniques.contains(technique))
+        .collect();
+    let rank = |technique: &Technique| (technique.difficulty(), technique.cost());
+    techniques.sort_by_key(rank);
     let mut choices: Vec<Hint> = Vec::new();
-    for tier in techniques.chunk_by(|left, right| technique_rank(left) == technique_rank(right)) {
+    for tier in techniques.chunk_by(|left, right| rank(left) == rank(right)) {
         let mut hints: Vec<_> = tier
             .iter()
             .flat_map(|&technique| search.hints(technique))
