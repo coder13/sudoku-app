@@ -22,8 +22,8 @@ function loadCatalog() {
 }
 
 function AnalysisTable({
-  groups, results, solved,
-}: { groups: readonly AnalysisGroup[]; results: Readonly<Record<string, ScanResult>>; solved: boolean }) {
+  groups, results, solved, onSelectTechnique,
+}: { groups: readonly AnalysisGroup[]; results: Readonly<Record<string, ScanResult>>; solved: boolean; onSelectTechnique?: (technique: string) => void }) {
   return (
     <table className="analysis-table" aria-label="Available candidates by technique">
       <thead>
@@ -39,7 +39,15 @@ function AnalysisTable({
             const count = solved ? 0 : result && 'count' in result ? result.count : null
             return (
               <tr key={technique} className="analysis-data-row">
-                <th scope="row">{techniqueLabel(technique)}</th>
+                <th scope="row">
+                  {onSelectTechnique && !solved
+                    ? <button type="button" className="analysis-technique-link"
+                        onClick={() => onSelectTechnique(technique)}
+                        disabled={count === 0 || Boolean(result && 'error' in result)}>
+                        {techniqueLabel(technique)}
+                      </button>
+                    : techniqueLabel(technique)}
+                </th>
                 <td className={count === 0 ? 'analysis-zero' : undefined}>
                   {count !== null ? count
                     : result && 'error' in result
@@ -61,7 +69,9 @@ function AnalysisTable({
  * result appears immediately, and obsolete positions never queue 72 jobs.
  * The game worker stays free for input, hints, and candidate updates.
  */
-export function PuzzleAnalysisContents({ game, active = true }: { game: Game; active?: boolean }) {
+export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique }: {
+  game: Game; active?: boolean; onSelectTechnique?: (technique: string) => void
+}) {
   const values = valuesOf(game)
   const solved = isSolved(game)
   const eliminationMasks = useMemo(() => hintEliminations(values, completeCandidateMasks(game), game.position.eliminations),
@@ -153,7 +163,7 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
           Hide techniques with 0 candidates
         </label>
         {visibleGroups.length
-          ? <AnalysisTable groups={visibleGroups} results={results} solved={solved} />
+          ? <AnalysisTable groups={visibleGroups} results={results} solved={solved} onSelectTechnique={onSelectTechnique} />
           : <p className="analysis-empty" role="status">No techniques with candidates.</p>}
         {!solved && completed === total && Object.values(results).some((result) => 'error' in result) &&
           <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Retry failed scans</button>}
@@ -162,7 +172,9 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
   )
 }
 
-export function PuzzleAnalysisCard({ game, close }: { game: Game; close: () => void }) {
+export function PuzzleAnalysisCard({ game, close, onSelectTechnique }: {
+  game: Game; close: () => void; onSelectTechnique?: (technique: string) => void
+}) {
   return (
     <section className="surface puzzle-analysis-card" aria-label="Available techniques">
       <div className="puzzle-analysis-card-heading">
@@ -171,16 +183,18 @@ export function PuzzleAnalysisCard({ game, close }: { game: Game; close: () => v
           title="Close card"><X size={18} /></button>
       </div>
       <div className="puzzle-analysis-card-body">
-        <PuzzleAnalysisContents game={game} />
+        <PuzzleAnalysisContents game={game} onSelectTechnique={onSelectTechnique} />
       </div>
     </section>
   )
 }
 
-export function PuzzleAnalysis({ game, close }: { game: Game; close: () => void }) {
+export function PuzzleAnalysis({ game, close, onSelectTechnique }: {
+  game: Game; close: () => void; onSelectTechnique?: (technique: string) => void
+}) {
   return (
     <Modal title="Available techniques" onClose={close} className="puzzle-analysis-dialog">
-      <PuzzleAnalysisContents game={game} />
+      <PuzzleAnalysisContents game={game} onSelectTechnique={onSelectTechnique} />
     </Modal>
   )
 }
