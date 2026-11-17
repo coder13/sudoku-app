@@ -40,7 +40,7 @@ import { useGridClickAway } from './useGridClickAway'
 import { Modal } from './Modal'
 import { usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
-import { PuzzleAnalysis, PuzzleAnalysisCard, PuzzleAnalysisContents } from './PuzzleAnalysis'
+import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 
@@ -208,6 +208,7 @@ export function Worktable({
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const [analysisCardOpen, setAnalysisCardOpen] = useState(false)
+  const [desktopInsightTab, setDesktopInsightTab] = useState<'solution' | 'techniques'>('techniques')
   const [focusAnalysisRequest, setFocusAnalysisRequest] = useState(0)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -220,12 +221,16 @@ export function Worktable({
     values: string; eliminations?: number[]; variant?: Game['variant']; masks: number[] | null; failed?: boolean
   }>()
   useEffect(() => {
-    try { setAnalysisCardOpen(localStorage.getItem(ANALYSIS_CARD_KEY) === 'true') }
-    catch { /* The card is still usable without persistent storage. */ }
+    try {
+      const pinned = localStorage.getItem(ANALYSIS_CARD_KEY) === 'true'
+      setAnalysisCardOpen(pinned)
+      if (pinned) setDesktopInsightTab('techniques')
+    } catch { /* The card is still usable without persistent storage. */ }
   }, [])
 
   function setPinnedAnalysis(open: boolean) {
     setAnalysisCardOpen(open)
+    setDesktopInsightTab(open ? 'techniques' : 'solution')
     try { localStorage.setItem(ANALYSIS_CARD_KEY, String(open)) }
     catch { /* Remember the choice for this session. */ }
   }
@@ -319,7 +324,12 @@ export function Worktable({
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
   const { mounted: puzzleMenuMounted, exiting: puzzleMenuExiting } = usePresence(puzzleMenuOpen)
-  const previewing = desktop && !draft && solutionPathRevealed && solutionPath !== null
+  const openSolutionTab = desktop && !draft && solutionPathRevealed && solutionPath !== null
+  const openTechniqueTab = desktop && !draft && !variant && analysisCardOpen
+  const activeDesktopTab: 'solution' | 'techniques' = desktopInsightTab === 'solution' && openSolutionTab
+    ? 'solution' : desktopInsightTab === 'techniques' && openTechniqueTab
+      ? 'techniques' : openTechniqueTab ? 'techniques' : 'solution'
+  const previewing = openSolutionTab && (advancedWorkspace || activeDesktopTab === 'solution')
   const disabled = Boolean(placeholder) || previewing || game.paused
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const chainsVisible = advancedWorkspace && showRightPanel && desktopChainsVisible
@@ -402,6 +412,7 @@ export function Worktable({
     hintReturnFocus.current = false
     setSolutionPath(null)
     setSolutionPathRevealed(false)
+    setDesktopInsightTab(analysisCardOpen ? 'techniques' : 'solution')
     setSolutionStep(0)
     setSolutionHintOpen(false)
     setSolvedView('results')
@@ -1212,6 +1223,7 @@ export function Worktable({
   async function showSolutionPath(force = false) {
     if (!desktop || draft || busy) return
     setPuzzleMenuOpen(false)
+    if (!advancedWorkspace) setDesktopInsightTab('solution')
     setSolutionPathRevealed(true)
     if (solutionPath && !force) return
     setSolutionStep(0)
@@ -1237,6 +1249,7 @@ export function Worktable({
 
   function closeSolutionPath() {
     setSolutionPathRevealed(false)
+    if (analysisCardOpen) setDesktopInsightTab('techniques')
     setSolutionHintOpen(false)
     setPuzzleMenuOpen(false)
     puzzleMenuButtonRef.current?.focus({ preventScroll: true })
@@ -1328,15 +1341,15 @@ export function Worktable({
       onOpenRightPanel()
       setFocusAnalysisRequest((request) => request + 1)
     } else if (desktop) {
-      setPinnedAnalysis(!analysisCardOpen)
+      setPinnedAnalysis(true)
     } else {
       setAnalysisOpen(true)
     }
   }
 
   const analysisAction = !draft && !solved && !variant && (
-    <button onClick={showAnalysis} aria-pressed={desktop && !advancedWorkspace ? analysisCardOpen : undefined}>
-      <ListFilter size={17} /> {desktop && !advancedWorkspace && analysisCardOpen ? 'Hide available techniques' : 'Available techniques'}
+    <button onClick={showAnalysis}>
+      <ListFilter size={17} /> Available techniques
     </button>
   )
   const commonSolvingMenuItems = <>
@@ -1624,8 +1637,39 @@ export function Worktable({
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">
               {inputPanel}
-              {analysisCardOpen && !draft && !variant && <PuzzleAnalysisCard game={game} close={() => setPinnedAnalysis(false)} onSelectTechnique={showTechniqueHints} />}
-              {hintPanel}{solutionPathPanel}
+              {hintPanel}
+              {(openSolutionTab || openTechniqueTab) && <section className="desktop-insight-panel" aria-label="Puzzle insights">
+                <div className="desktop-insight-toolbar">
+                  <div className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
+                    onKeyDown={(event) => {
+                      if (!openSolutionTab || !openTechniqueTab || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return
+                      event.preventDefault()
+                      const next = activeDesktopTab === 'solution' ? 'techniques' : 'solution'
+                      setDesktopInsightTab(next)
+                      event.currentTarget.querySelector<HTMLButtonElement>(`[data-insight-tab="${next}"]`)?.focus()
+                    }}>
+                    {openSolutionTab && <button type="button" role="tab" data-insight-tab="solution"
+                      id="desktop-insight-tab-solution" aria-controls="desktop-insight-content"
+                      aria-selected={activeDesktopTab === 'solution'} tabIndex={activeDesktopTab === 'solution' ? 0 : -1}
+                      onClick={() => setDesktopInsightTab('solution')}>Solution</button>}
+                    {openTechniqueTab && <button type="button" role="tab" data-insight-tab="techniques"
+                      id="desktop-insight-tab-techniques" aria-controls="desktop-insight-content"
+                      aria-selected={activeDesktopTab === 'techniques'} tabIndex={activeDesktopTab === 'techniques' ? 0 : -1}
+                      onClick={() => setDesktopInsightTab('techniques')}>Available techniques</button>}
+                  </div>
+                  <button type="button" className="icon-button borderless desktop-insight-close"
+                    aria-label={`Close ${activeDesktopTab === 'solution' ? 'solution' : 'available techniques'} tab`}
+                    onClick={() => activeDesktopTab === 'solution' ? closeSolutionPath() : setPinnedAnalysis(false)}>
+                    <X size={18} aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="desktop-insight-body" id="desktop-insight-content" role="tabpanel"
+                  aria-labelledby={`desktop-insight-tab-${activeDesktopTab}`}>
+                  {activeDesktopTab === 'techniques'
+                    ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
+                    : solutionPathPanel}
+                </div>
+              </section>}
             </div></>
           : <>{puzzlePanel}{mobileResults
             ? <div className="workspace-controls mobile-completion">{completionPanel}</div>
