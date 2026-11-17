@@ -118,9 +118,18 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-overview-difficulty { color: var(--muted); font-size: 13px; font-weight: 600; }
 .lesson-article {
   display: grid;
-  gap: var(--space-16);
+  gap: var(--space-24);
   font-size: 16px;
   line-height: 1.65;
+}
+.lesson-explanation { display: grid; gap: var(--space-12); }
+.lesson-explanation > h2 { font-size: 21px; line-height: 1.3; }
+.lesson-explanation > .article-subheading { font-size: clamp(18px, 2.5cqw, 21px); }
+.lesson-explanation > h2 + .article-subheading { margin-top: 0; }
+.lesson-alternate-names, .lesson-heading .lesson-alternate-names { color: var(--muted); font-size: 14px; }
+.article-subheading + .lesson-alternate-names { margin-top: calc(-1 * var(--space-8)); }
+.lesson-worked-examples, .lesson-article h2, .lesson-example-notes {
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-20));
 }
 .article-subheading {
   margin-top: 17px;
@@ -147,6 +156,8 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-board .board-candidate::after { width: 1.25em; }
 .lesson-board .board-links { overflow: hidden; }
 .lesson-diagram figcaption { display: grid; gap: var(--space-8); font-size: 14px; line-height: 1.5; }
+.lesson-example-notes { display: grid; gap: var(--space-6); }
+.lesson-example-notes h3 { font-size: 15px; }
 .lesson-proof summary { color: var(--dark-purple); font-weight: 700; cursor: pointer; }
 .lesson-proof > div { margin-top: var(--space-8); }
 .lesson-proof ol { margin: 7px 0; padding-inline-start: 1.5em; }
@@ -158,6 +169,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 }
 .lesson-practice-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-8) var(--space-16); }
 .lesson-practice-heading h2 { font-size: 21px; line-height: 1.3; }
+.lesson-trainer-title { color: var(--muted); font-size: 14px; }
 .lesson-practice-heading-actions { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); min-width: 0; }
 .lesson-example-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
 .lesson-example-controls .button { min-height: 44px; padding-inline: var(--space-8); font-size: 13px; }
@@ -238,7 +250,9 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 
 @media (max-width: 960px) {
   .learn-page { grid-template-columns: minmax(0, 1fr); gap: var(--space-14); padding-top: var(--space-8); }
-  .article-subheading { scroll-margin-top: calc(var(--topbar-height) + 76px); }
+  .article-subheading, .lesson-worked-examples, .lesson-article h2, .lesson-example-notes {
+    scroll-margin-top: calc(var(--topbar-height) + 76px);
+  }
   .learn-navigation {
     z-index: 10;
     top: var(--topbar-height);

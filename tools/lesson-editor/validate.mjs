@@ -46,12 +46,14 @@ function checkLesson(lesson, original, examples) {
   const context = lesson?.title || original.title
   requireValue(lesson?.id === original.id && isText(lesson.title) && isText(lesson.summary),
     `Enter a title and subtitle for ${context}.`)
+  requireValue(lesson.aliases === undefined || isTextList(lesson.aliases),
+    `Enter a list of alternate names for ${context}.`)
   requireValue(Array.isArray(lesson.blocks) && Array.isArray(lesson.references) &&
     lesson.references.every(validLink) && (lesson.credits === undefined || (Array.isArray(lesson.credits) &&
     lesson.credits.every(validLink))) && isOptionalText(lesson.referencesTitle) && isOptionalText(lesson.creditsPrefix),
   `Enter link labels and Learn paths or complete web URLs for ${context}.`)
 
-  const headings = new Set()
+  const headings = new Set(['explanation', 'examples', 'worked-example', 'trainer'])
   const drills = []
   for (const [index, block] of lesson.blocks.entries()) {
     const label = `Block ${index + 1} in ${context}`
@@ -70,6 +72,13 @@ function checkLesson(lesson, original, examples) {
       case 'diagram':
         requireValue(examples.includes(block.example) && validCrop(block.region) && validDiagramCopy(block.copy),
           `${label} needs a verified example, a crop within the board, and nonempty caption text.`)
+        if (block.notes !== undefined) {
+          const { id, title, paragraphs } = block.notes ?? {}
+          requireValue(isTextList(paragraphs) && isOptionalText(title) &&
+            (id === undefined || (isSlug(id) && !headings.has(id))),
+          `${label} needs notes with text and a unique anchor.`)
+          if (id) headings.add(id)
+        }
         break
       case 'practice':
         requireValue(Array.isArray(block.drills) && block.drills.length > 0 &&

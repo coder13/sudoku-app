@@ -45,13 +45,19 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
   }
   function diagram(figure, block) {
     const caption = figure.querySelector('figcaption')
-    const [description, reason, outcome] = caption.children
+    const outcome = caption.querySelector('.lesson-outcomes')
     const override = (element, label, key) => field(element, label, (value) => {
       block.copy ??= {}
       block.copy[key] = value
     })
-    override(description, 'Diagram caption', 'description')
-    override(reason, 'Diagram explanation', 'reason')
+    override(caption.querySelector('.lesson-diagram-summary'), 'Diagram caption', 'description')
+    override(caption.querySelector('.lesson-diagram-reason'), 'Diagram explanation', 'reason')
+    const notes = caption.querySelector('.lesson-example-notes')
+    if (notes) {
+      if (block.notes.title) property(notes.querySelector('h3'), 'Example notes heading', block.notes, 'title')
+      notes.querySelectorAll('p').forEach((element, index) =>
+        property(element, 'Example notes', block.notes.paragraphs, index))
+    }
     const outcomeNodes = outcome.matches('ul') ? Array.from(outcome.children) : [outcome]
     const results = outcomeNodes.map((element) => element.textContent)
     outcomeNodes.forEach((element, index) => field(element, 'Diagram result', (value) => {
@@ -96,19 +102,17 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
   property(header.querySelector('.learn-breadcrumbs h1'), 'Breadcrumb label', lesson ?? content.overview, 'title')
   if (lesson) {
     property(header.querySelector('p'), 'Article subtitle', lesson, 'summary')
-    const children = Array.from(article.querySelector('.lesson-article').children)
-    for (const block of lesson.blocks) {
-      const element = children.shift()
-      if (!element) throw new Error('The preview has fewer blocks than the current article.')
+    for (const [index, block] of lesson.blocks.entries()) {
+      const elements = Array.from(article.querySelectorAll(`[data-lesson-block="${index}"]`))
+      const [element] = elements
+      if (!element) throw new Error(`The preview is missing block ${index + 1}.`)
       blockNodes.set(block, element)
-      const elements = [element]
       const firstField = fields.length
       switch (block.type) {
         case 'heading':
           property(element, 'Section heading', block, 'title')
           break
         case 'text':
-          elements.push(...children.splice(0, block.paragraphs.length - 1))
           elements.forEach((paragraph, index) => property(paragraph, 'Paragraph', block.paragraphs, index))
           break
         case 'list':
@@ -118,7 +122,10 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
           diagram(element, block)
           break
         case 'practice': {
-          property(element.querySelector('h2'), 'Practice heading', block, 'title')
+          field(element.querySelector('.lesson-trainer-title'), 'Trainer subtitle', (value) => {
+            if (value) block.title = value
+            else delete block.title
+          })
           if (block.drills.length === 1) {
             property(element.querySelector('.lesson-practice-instruction'), 'Practice instruction', block, 'instruction')
           }

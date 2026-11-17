@@ -53,12 +53,19 @@ async function saveExample(key: string, value: unknown) {
   } catch { /* Keep the current session usable when browser storage is unavailable. */ }
 }
 
-export function readWorkedExampleNumber(technique: string) {
-  return readExample<number>(`${technique}:selected`)
+export async function readWorkedExampleNumber(article: string, technique: string, authoredCount: number, variant: boolean) {
+  const position = await readExample<number>(`${article}:${technique}:position`)
+  if (position !== undefined) return position
+
+  const legacy = await readExample<number>(`${technique}:selected`)
+  if (!legacy) return 0
+  // The old variant browser put the authored board second.
+  if (variant && legacy === 2) return 0
+  return authoredCount + (variant && legacy > 2 ? legacy - 2 : legacy - 1)
 }
 
-export function saveWorkedExampleNumber(technique: string, number: number) {
-  return saveExample(`${technique}:selected`, number)
+export function saveWorkedExampleNumber(article: string, technique: string, number: number) {
+  return saveExample(`${article}:${technique}:position`, number)
 }
 
 export function workedExampleSeed(technique: string, number: number) {
@@ -82,8 +89,10 @@ export async function loadWorkedExample(technique: string, number: number, initi
       examples = [...exercises.slice(2), ...exercises.slice(0, 2)].map(exercise => forDisplay(variantLessonExercise(exercise)))
       await saveExample(key, examples)
     }
-    if (!examples[number - 1]) throw new Error('Example unavailable')
-    return { example: examples[number - 1], last: examples.length }
+    const otherExamples = [examples[0], ...examples.slice(2)]
+    const example = otherExamples[number - 1]
+    if (!example) throw new Error('Example unavailable')
+    return { example, last: otherExamples.length }
   }
 
   const key = `${technique}:example:${number}`

@@ -14,17 +14,19 @@ type DiagramCopy = {
   proofTitle?: string
   trace?: { assumption: string; steps: string[]; conclusion: string }[]
 }
+type ExampleNotes = { id?: string; title?: string; paragraphs: string[] }
 export type LessonBlock =
   | { type: 'text'; paragraphs: string[] }
   | { type: 'heading'; id: string; title: string }
   | { type: 'list'; items: string[] }
-  | { type: 'diagram'; example: string; region?: BoardRegion; copy?: DiagramCopy }
+  | { type: 'diagram'; example: string; region?: BoardRegion; copy?: DiagramCopy; notes?: ExampleNotes }
   | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string; guide?: PracticeGuide }
 
 export type LessonArticle = {
   id: string
   title: string
   summary: string
+  aliases?: string[]
   blocks: LessonBlock[]
   references: Reference[]
   referencesTitle?: string

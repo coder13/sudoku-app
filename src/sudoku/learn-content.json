@@ -91,7 +91,7 @@
       {
         "type": "text",
         "paragraphs": [
-          "Place the 3. A cell with just one candidate gives you a naked single. This can also happen later, after another move lets you cross out a candidate."
+          "A cell with just one candidate gives you a naked single. This can also happen later, after another move lets you cross out a candidate."
         ]
       },
       {
@@ -229,7 +229,15 @@
             {
               "label": "Sudoku Snake",
               "href": "https://www.sudokusnake.com/nakedsingles.php"
+            },
+            {
+              "label": "Krazydad",
+              "href": "https://krazydad.com/sudokustrategy/"
             }
+          ],
+          "aliases": [
+            "Sole Candidate",
+            "Singleton"
           ]
         },
         {
@@ -294,7 +302,14 @@
             {
               "label": "Sudoku Snake",
               "href": "https://www.sudokusnake.com/hiddensingles.php"
+            },
+            {
+              "label": "Krazydad",
+              "href": "https://krazydad.com/sudokustrategy/"
             }
+          ],
+          "aliases": [
+            "Unique Candidate"
           ]
         }
       ]
@@ -1201,21 +1216,17 @@
             },
             {
               "type": "diagram",
-              "example": "als-xz"
-            },
-            {
-              "type": "heading",
-              "id": "als-xz-example",
-              "title": "The shared digits in this example"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "The column set contains R3C7 and R5C7, with digits 1, 3, and 4. The row set contains R2C4, R2C5, R2C7, and R2C9.",
-                "The row set has five candidate digits: 1, 3, 4, 5, and 9. Both sets therefore have one more candidate digit than cells.",
-                "The candidates for 3 in both sets share column 7. If you place 3 in one set, it rules out 3 in the other. At least one set must fill its cells with its other digits, including 1.",
-                "R2C8 sees every 1 candidate in both sets. It therefore loses candidate 1."
-              ]
+              "example": "als-xz",
+              "notes": {
+                "id": "als-xz-example",
+                "title": "The shared digits in this example",
+                "paragraphs": [
+                  "The column set contains R3C7 and R5C7, with digits 1, 3, and 4. The row set contains R2C4, R2C5, R2C7, and R2C9.",
+                  "The row set has five candidate digits: 1, 3, 4, 5, and 9. Both sets therefore have one more candidate digit than cells.",
+                  "The candidates for 3 in both sets share column 7. If you place 3 in one set, it rules out 3 in the other. At least one set must fill its cells with its other digits, including 1.",
+                  "R2C8 sees every 1 candidate in both sets. It therefore loses candidate 1."
+                ]
+              }
             },
             {
               "type": "heading",
@@ -1299,11 +1310,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "death-blossom",
               "copy": {
@@ -1353,11 +1359,6 @@
                 "Find two or three empty cells where a box and a line overlap. Look for extra digits beyond the number of cells in that intersection.",
                 "Find a set in the rest of the line and a set in the rest of the box. Check that their digit groups are disjoint."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -1415,18 +1416,18 @@
             {
               "type": "text",
               "paragraphs": [
-                "In the example, the middle cell, or pivot, has 1 and 2. Look for two cells that see it. One has only 1 and 3 and the other has only 2 and 3. Those two cells are the wings."
+                "The middle cell is called the pivot. The two outside cells are the wings. Check each wing against the pivot separately. They can see it through different houses."
               ]
             },
             {
               "type": "diagram",
-              "example": "xy-wing"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "A 1 in the pivot leaves the 1 and 3 wing with 3. A 2 leaves the other wing with 3. Erase 3 anywhere that sees both wings. Check each wing against the pivot separately. They can see it through different houses."
-              ]
+              "example": "xy-wing",
+              "notes": {
+                "paragraphs": [
+                  "The pivot has 1 and 2. One wing has only 1 and 3. The other has only 2 and 3.",
+                  "A 1 in the pivot leaves the 1 and 3 wing with 3. A 2 leaves the other wing with 3. Erase 3 anywhere that sees both wings."
+                ]
+              }
             },
             {
               "type": "practice",
@@ -1477,20 +1478,14 @@
               ]
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "The pivot in the figure has 2, 8, and 9. The wings see the pivot and have only 2 and 8, or 8 and 9. If the pivot is 2 or 9, one wing must be 8. The pivot can also be 8."
-              ]
-            },
-            {
               "type": "diagram",
-              "example": "xyz-wing"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Erase 8 from a cell that sees all three. R6C5 sees the wing in R2C5 through column 5, and sees the pivot and the other wing through the middle box."
-              ]
+              "example": "xyz-wing",
+              "notes": {
+                "paragraphs": [
+                  "The pivot has 2, 8, and 9. The wings see the pivot and have only 2 and 8, or 8 and 9. If the pivot is 2 or 9, one wing must be 8. The pivot can also be 8.",
+                  "Erase 8 from a cell that sees all three. R6C5 sees the wing in R2C5 through column 5, and sees the pivot and the other wing through the middle box."
+                ]
+              }
             },
             {
               "type": "practice",
@@ -1543,18 +1538,18 @@
             {
               "type": "text",
               "paragraphs": [
-                "In the figure, both wings have 5 and 7. Column 2 has just two places for 7, and each of those places sees a different wing. Placing 7 in either spot leaves only 5 in the wing that spot sees."
+                "Either end of the link rules out the linked digit in one wing. That wing must use the other digit. You can remove the other digit from any cell that sees both wings. Try forming the link with either of the two digits."
               ]
             },
             {
               "type": "diagram",
-              "example": "w-wing"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Erase 5 in any cell that sees both wings. If you find a house with two places for 5 instead, use that link to look for a removal of 7."
-              ]
+              "example": "w-wing",
+              "notes": {
+                "paragraphs": [
+                  "Both wings have 5 and 7. Column 2 has just two places for 7, and each of those places sees a different wing. Placing 7 in either spot leaves only 5 in the wing that spot sees.",
+                  "Erase 5 in any cell that sees both wings."
+                ]
+              }
             },
             {
               "type": "practice",
@@ -1610,7 +1605,16 @@
             },
             {
               "type": "diagram",
-              "example": "wxyz-wing"
+              "example": "wxyz-wing",
+              "notes": {
+                "id": "wxyz-als-example",
+                "title": "Read this example as ALS-XZ",
+                "paragraphs": [
+                  "R4C3, R4C4, and R4C6 form one set with candidates 1, 2, 5, and 9. R6C1 forms the other set with candidates 1 and 9.",
+                  "The two candidates for 1 share box 4, so at least one set must leave out 1. That set needs all its remaining digits, including 9.",
+                  "Putting 9 in R4C2 would rule out 9 in both sets. That is why you can remove it."
+                ]
+              }
             },
             {
               "type": "heading",
@@ -1632,19 +1636,6 @@
               "type": "text",
               "paragraphs": [
                 "An almost locked set (ALS) has one more candidate digit than cells. Its cells share a row, column, or box. Some WXYZ-Wings can be split into two such sets, which gives an ALS-XZ proof."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "wxyz-als-example",
-              "title": "Read this example as ALS-XZ"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "R4C3, R4C4, and R4C6 form one set with candidates 1, 2, 5, and 9. R6C1 forms the other set with candidates 1 and 9.",
-                "The two candidates for 1 share box 4, so at least one set must leave out 1. That set needs all its remaining digits, including 9.",
-                "Putting 9 in R4C2 would rule out 9 in both sets. That is why you can remove it."
               ]
             },
             {
@@ -1673,7 +1664,10 @@
               "href": "https://www.sudokuwiki.org/WXYZ_Wing"
             }
           ],
-          "referencesTitle": "Related lessons and references"
+          "referencesTitle": "Related lessons and references",
+          "aliases": [
+            "Bent Quad"
+          ]
         }
       ]
     },
@@ -2048,6 +2042,9 @@
               "label": "SudokuWiki grouped AIC",
               "href": "https://www.sudokuwiki.org/AIC_with_Groups"
             }
+          ],
+          "aliases": [
+            "AIC"
           ]
         },
         {
@@ -2188,11 +2185,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "als-aic",
               "copy": {
@@ -2240,11 +2232,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "als-discontinuous-nice-loop",
               "copy": {
@@ -2290,11 +2277,6 @@
                 "Start with a strong link supplied by an almost locked set. Trace alternating weak and strong links until the path returns to its first node.",
                 "Check that the first and last links have different strengths. On a weak link, find outside candidates that conflict with both ends."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -2617,11 +2599,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "unique-loop",
               "copy": {
@@ -2667,11 +2644,6 @@
                 "In a puzzle with one solution, find a rectangle that spans two boxes and shares a pair of digits in all four corners.",
                 "Collect the extra candidates that can break the swap. The two ends of the rectangle link must cover every such choice."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -2721,11 +2693,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "unique-rectangle-discontinuous-nice-loop",
               "copy": {
@@ -2771,11 +2738,6 @@
                 "Find a rectangle whose extra candidates give an at-least-one link. Close an alternating path that crosses this link.",
                 "Check the strengths where the last link meets the first. If the loop still alternates there, inspect each weak link for a shared conflict."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -2920,11 +2882,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "tridagon-forcing-net",
               "copy": {
@@ -2970,11 +2927,6 @@
                 "Choose a candidate whose placement changes several nearby cells. Mark each removal it forces before continuing.",
                 "After each change, count the remaining candidates in the affected cells and houses. A new two-choice link can appear during the branch."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3028,11 +2980,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "advanced-forcing-net",
               "copy": {
@@ -3078,11 +3025,6 @@
                 "Trace an outer branch until direct deductions stop. In that branch, find a cell or house with a short list of remaining choices.",
                 "Follow each inner choice separately. Carry a step back to the outer branch only when the inner proof establishes it there."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3138,11 +3080,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "fireworks",
               "copy": {
@@ -3188,11 +3125,6 @@
                 "Find two digits that share the same Firework pivot. Look for two outside cells that each contain only those two digits.",
                 "Check that each bivalue cell covers one outside arm for the other digit. The same target must also see every wing copy of its own digit."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3242,11 +3174,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "firework-l-wing",
               "copy": {
@@ -3294,11 +3221,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "firework-als-wing",
               "copy": {
@@ -3344,11 +3266,6 @@
                 "Look for a Firework pivot and two wings. Find two groups of candidates such that at least one group must provide the required Firework digit.",
                 "Use that at-least-one guarantee as a strong link. Look for ordinary weak links that can connect the groups to the rest of a chain."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3404,11 +3321,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "aligned-pair-exclusion",
               "copy": {
@@ -3454,11 +3366,6 @@
                 "Choose three cells whose placements can affect the same constrained neighbors. Fix a candidate in one cell and list the choices in the other two.",
                 "Test each combination for a repeated digit in a house or a nearby cell left with no candidates."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3508,11 +3415,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "tridagon",
               "copy": {
@@ -3553,11 +3455,6 @@
                 "Find a Tridagon with multiple guardian candidates. Try dividing the guardians into two groups that together cover all the extra candidates.",
                 "Find weak links to the groups. To rule out a group, a candidate must conflict with every guardian in it."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3607,11 +3504,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "sk-loop",
               "copy": {
@@ -3652,11 +3544,6 @@
                 "Find a group of cells whose candidates fit into a small collection of house-and-digit slots. Include nearby cells that use only those same slots.",
                 "Count the cells and the slots. Check every candidate in the set against at least one slot, and make sure each slot can hold only one placement."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3712,11 +3599,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "exocet",
               "copy": {
@@ -3757,11 +3639,6 @@
                 "Start with a base pair in one box. Follow its cross-lines to a target beyond the base band or stack.",
                 "Check the covers for each base digit across all three lines. If two cells act as one target, check the strong link that gives the group a single role."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3809,11 +3686,6 @@
                 "Find two Exocet patterns that use the same cross-lines. Write down the possible base and target assignments for each.",
                 "Pair the assignments and check them together. Reject any pairing that repeats a digit in a house or makes the shared cross-lines impossible to fill."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3873,11 +3745,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "franken-fish",
               "copy": {
@@ -3927,11 +3794,6 @@
                 "Choose one digit and look for a fish whose bases or covers mix rows and columns. The bases or covers can also include boxes.",
                 "Count how many bases and covers each candidate belongs to. Check uncovered and overlapping base spots before accepting a removal."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3985,11 +3847,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "kraken-fish-1",
               "copy": {
@@ -4039,11 +3896,6 @@
                 "Choose a line or cover involved in a finned fish. List the required fish-digit placements that remain possible, along with the fins that can break the fish.",
                 "Follow each listed placement through its chain. Look for a candidate that every branch rules out. It can be a different digit."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4103,11 +3955,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "pattern-overlay",
               "copy": {
@@ -4153,11 +4000,6 @@
                 "Pick two digits whose candidate layouts often use the same cells. Find the valid full layouts for each digit separately.",
                 "Pair the layouts and reject pairs that share a cell. Check whether each candidate is part of at least one surviving pair."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4207,11 +4049,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "triple-pattern-overlay",
               "copy": {
@@ -4259,11 +4096,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "quadruple-pattern-overlay",
               "copy": {
@@ -4309,11 +4141,6 @@
                 "Choose five digits with tightly constrained layouts. Discard choices ruled out by the smaller groups before joining all five.",
                 "Check that the full layouts use disjoint cells. A candidate needs at least one valid combination that contains it."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4369,11 +4196,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "parity",
               "copy": {
@@ -4414,11 +4236,6 @@
                 "Start at a placed digit near a box corner. Check the cells one row and one column away.",
                 "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4463,11 +4280,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "anti-knight",
               "copy": {
@@ -4508,11 +4320,6 @@
                 "Start with a placed digit. Check its neighbors above, below, left, and right.",
                 "Look for candidates one less or one more than that digit. For 1, check only 2. For 9, check only 8."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4557,11 +4364,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "inequality",
               "copy": {
@@ -4602,11 +4404,6 @@
                 "Find a group of cells marked to have the same digit. Compare the candidates at matching positions.",
                 "If one cell has a placed digit, check that digit in all its copies. Otherwise, find the digits common to every candidate list."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4651,11 +4448,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "kropki",
               "copy": {
@@ -4696,11 +4488,6 @@
                 "Find an X or V between two cells. Start with the pair that has a placed digit or the shorter candidate lists.",
                 "Subtract each candidate in the first cell from the marked sum. Check whether the result fits in the second cell."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4751,11 +4538,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "palindrome",
               "copy": {
@@ -4803,11 +4585,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "between",
               "copy": {
@@ -4848,11 +4625,6 @@
                 "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
                 "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4897,11 +4669,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "whispers",
               "copy": {
@@ -4942,11 +4709,6 @@
                 "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
                 "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4991,11 +4753,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "arrow",
               "copy": {
@@ -5038,11 +4795,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "renban",
               "copy": {
@@ -5083,11 +4835,6 @@
                 "Trace the line and split it at each region boundary. If the puzzle groups repeat visits by region, combine those visits.",
                 "Start with a short segment. List its possible totals and keep only totals that every segment can reach."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -5135,11 +4882,6 @@
                 "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
                 "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -5195,11 +4937,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "little-killer",
               "copy": {
@@ -5242,11 +4979,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "skyscrapers",
               "copy": {
@@ -5287,11 +5019,6 @@
                 "Find candidate positions for 1 and 9 in the clued line. The clue counts only the digits between those two positions.",
                 "Try a pair of endpoints and add the possible middle digits. A zero clue means the 1 and 9 touch."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -5339,11 +5066,6 @@
                 "Start at the edge cell nearest the clue. If that cell is 3, add the first three digits, including the 3.",
                 "Try each edge candidate. Check whether a prefix of that length can reach the total without repeating a digit."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
