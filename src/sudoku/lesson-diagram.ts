@@ -35,9 +35,9 @@ const inferenceCandidates = (node: InferenceNode): Candidate[] => {
   if ('group' in node) return node.group.cells.map(cell => ({ cell, digit: node.group.digit }))
   return node['mixed-group']
 }
-const inferenceName = (node: InferenceNode) => 'group' in node
-  ? `${node.group.digit} in ${either.format(node.group.cells.map(cellName))}`
-  : either.format(inferenceCandidates(node).map(candidateName))
+const inferenceName = (node: InferenceNode, nameCell = cellName) => 'group' in node
+  ? `${node.group.digit} in ${either.format(node.group.cells.map(nameCell))}`
+  : either.format(inferenceCandidates(node).map(({ digit, cell }) => `${digit} in ${nameCell(cell)}`))
 const boardPoint = (node: InferenceNode) => {
   if ('candidate' in node) return node.candidate
   if ('group' in node) return node.group
@@ -58,7 +58,36 @@ function houseCells(house: House) {
   })
 }
 
-export function hintLocation({ evidence, pattern }: HintChoice, style: CellReferenceStyle, difficulty?: Difficulty) {
+export function aicEndpoints(hint?: Deduction) {
+  if (!hint || (hint.technique !== 'aic' && !hint.technique.endsWith('-aic')) || !('inference' in hint.evidence)) return
+  const { links } = hint.evidence.inference
+  if (links.length) return [links[0].from, links[links.length - 1].to] as const
+}
+
+export function hintLocation(hint: HintChoice, style: CellReferenceStyle, difficulty?: Difficulty) {
+  const endpoints = aicEndpoints(hint)
+  if (endpoints) {
+    const [start, end] = endpoints
+    const cells = new Map<number, CellAnnotation>()
+    const candidates = new Map<number, Map<number, CandidateAnnotation>>()
+    const mark = (node: InferenceNode, label: string, color: string) => {
+      for (const { cell, digit } of inferenceCandidates(node)) {
+        cells.set(cell, { fill: 'var(--lesson-pattern-fill)' })
+        const marks = candidates.get(cell) ?? new Map<number, CandidateAnnotation>()
+        const previous = marks.get(digit)
+        marks.set(digit, previous ? { ...previous, label: 'chain start and end' } : { color, label })
+        candidates.set(cell, marks)
+      }
+    }
+    mark(start, 'chain start', patternColor)
+    mark(end, 'chain end', accentColor)
+    const nameCell = (cell: number) => cellReference(cell, style, difficulty)
+    const text = `Chain starts at ${inferenceName(start, nameCell)}. It ends at ${inferenceName(end, nameCell)}.`
+    const annotations: BoardAnnotations = { cells, candidates }
+    return { text, annotations }
+  }
+
+  const { evidence, pattern } = hint
   if (!pattern) return
   const focus = 'house' in evidence ? [] : pattern.cells
   const cells = new Map<number, CellAnnotation>()

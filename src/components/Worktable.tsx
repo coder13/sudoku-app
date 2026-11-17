@@ -13,7 +13,7 @@ import {
 } from '../sudoku/game'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
-import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
+import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
 import { techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
@@ -120,6 +120,11 @@ const nextHintReveal = {
   digits: { stage: 'location', label: 'Show location' },
   location: { stage: 'explanation', label: 'Show explanation' },
 } satisfies Record<Exclude<HintStage, 'explanation'>, { stage: HintStage; label: string }>
+
+function initialHintStage(hint: HintChoice | undefined, fromTechniqueList: boolean): HintStage {
+  if (!fromTechniqueList) return 'technique'
+  return aicEndpoints(hint) ? 'location' : 'explanation'
+}
 
 type HintState = {
   position: HintPosition
@@ -310,6 +315,17 @@ export function Worktable({
   const hintCandidates = visibleHint?.candidates
   const locationClue = useMemo(() => deduction && hintStage === 'location'
     ? hintLocation(deduction, cellReferenceStyle, hintDifficulty) : undefined, [deduction, hintStage, cellReferenceStyle, hintDifficulty])
+  const endpointMarks = locationClue?.annotations.candidates
+  const hintBoardPosition = useMemo(() => {
+    if (!endpointMarks) return game.position
+    const corner = [...game.position.corner]
+    for (const [cell, marks] of endpointMarks) {
+      for (const digit of marks.keys()) {
+        if (!hasCandidate(game.position.center[cell], digit)) corner[cell] |= 1 << (digit - 1)
+      }
+    }
+    return { ...game.position, corner }
+  }, [endpointMarks, game.position])
   const hintDiagram = useMemo(() => {
     if (!fullHint || !deduction || !hintCandidates) return undefined
     return lessonDiagram({ deduction, candidates: hintCandidates }, deduction.pattern)
@@ -325,7 +341,8 @@ export function Worktable({
     : fullHint ? describeHint(deduction, { difficulty: hintDifficulty, cellReferenceStyle })
     : {
       title: techniqueLabel(deduction.technique),
-      text: hintStage === 'technique' ? '' : [describeHintDigits(deduction), locationClue?.text].filter(Boolean).join(' '),
+      text: hintStage === 'technique' ? '' : endpointMarks ? locationClue.text
+        : [describeHintDigits(deduction), locationClue?.text].filter(Boolean).join(' '),
     }
   const showResults = solved && solvedView === 'results'
   const showDifficulty = solved && solvedView === 'difficulty'
@@ -1200,7 +1217,7 @@ export function Worktable({
       if (!candidates) throw new Error('Missing candidates for the selected technique.')
       const choices = techniqueHintsFromMatches(matches, technique)
       result = {
-        position, choices, candidates, index: 0, stage: 'explanation', fromTechniqueList: true,
+        position, choices, candidates, index: 0, stage: initialHintStage(choices[0], true), fromTechniqueList: true,
         ...(choices.length ? {} : { error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' } }),
       }
     } catch (error) {
@@ -1220,7 +1237,7 @@ export function Worktable({
     setHint((current) => {
       if (!current || !current.choices.length) return current
       const index = moveHintIndex(current.index, current.choices.length, offset)
-      return { ...current, index, stage: current.fromTechniqueList ? 'explanation' : 'technique' }
+      return { ...current, index, stage: initialHintStage(current.choices[index], current.fromTechniqueList ?? false) }
     })
   }
 
@@ -1324,10 +1341,11 @@ export function Worktable({
     : visibleHint && !recovery ? deduction?.technique : undefined
   const hintLesson = hintTechnique ? lessonRoutes.get(hintTechnique) : undefined
   const reveal = hintStage && hintStage !== 'explanation' ? nextHintReveal[hintStage] : undefined
+  const revealLabel = hintStage === 'digits' && aicEndpoints(deduction) ? 'Show endpoints' : reveal?.label
   const hintAction = solutionHintPanel ? undefined
     : recovery ? fullHint ? { label: 'Restore candidate', onClick: applyCandidateRecovery }
       : { label: hintStage === 'technique' ? 'Show cell' : 'Show explanation', onClick: revealCandidateRecovery }
-    : deduction && hintCandidates ? reveal ? { label: reveal.label, onClick: revealHint } : { label: 'Apply hint', onClick: applyHint }
+    : deduction && hintCandidates ? revealLabel ? { label: revealLabel, onClick: revealHint } : { label: 'Apply hint', onClick: applyHint }
     : undefined
   const explanation = solutionHintPanel ? stepDiagram : hintDiagram
   const revealedDeduction = solutionHintPanel ? replayedSolutionStep?.deduction : fullHint && !recovery ? deduction : undefined
@@ -1485,7 +1503,7 @@ export function Worktable({
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
-    <Board variantPuzzle={variant?.puzzle} givens={game.givens} values={values} position={game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board variantPuzzle={variant?.puzzle} givens={game.givens} values={values} position={hintBoardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations}
       label={variant ? `${VARIANTS[variant.id].name} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
