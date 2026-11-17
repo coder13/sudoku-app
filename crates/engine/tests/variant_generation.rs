@@ -250,8 +250,14 @@ fn generation_combines_score_and_configured_first_move() {
     assert_eq!(trace.steps[0].technique, VariantTechnique::NakedSingle);
     assert_eq!(trace.rating.points, 4);
     assert_eq!(trace.rating.technique_order, options.technique_order);
-    options.rating = Some(GenerationRating::Difficulty(Difficulty::Easy));
-    assert_eq!(generate(options.clone()).1, output);
+    let mut difficulty_target = options.clone();
+    difficulty_target.rating = Some(GenerationRating::Difficulty(Difficulty::Easy));
+    difficulty_target.max_attempts = 1;
+    let mut search = start_variant_generation(difficulty_target).unwrap();
+    assert_eq!(
+        search.advance(),
+        Some(GenerationStep::Exhausted { attempts: 1 })
+    );
     options.technique_order.reverse();
     options.max_attempts = 1;
     let mut search = start_variant_generation(options).unwrap();
