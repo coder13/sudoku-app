@@ -25,9 +25,11 @@ These puzzle permissions are separate from the app's code.
 ### Download flow
 
 A fresh install has zero downloaded collection puzzles. The collection card and
-its difficulty choices show the available counts and puzzle data sizes. Players
-can enter any whole number from one to the remaining count at their difficulty,
-or choose all remaining puzzles. The size changes before they press Download.
+its difficulty choices show the available counts and puzzle data sizes. The
+Download button opens a dialog. Players can enter any whole number from one to
+the remaining count at their difficulty, or choose all remaining puzzles. The
+dialog shows the size for the selected count. The page lists downloaded puzzles
+in one column.
 Transfer sizes can vary because of compression and connection overhead.
 
 The app fetches only the selected missing grids, with at most four requests at

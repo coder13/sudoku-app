@@ -12,6 +12,7 @@ import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { isSolved, type Game } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
 import { Board } from './Board'
+import { Modal } from './Modal'
 
 const route = getRouteApi('/puzzles/collections')
 const statusLabels = { unplayed: 'Not started', 'in-progress': 'In progress', solved: 'Solved' }
@@ -19,16 +20,21 @@ const dataSize = (puzzles: readonly CollectionPuzzleInfo[]) => formatCollectionB
 
 function DownloadPuzzles({ collection, puzzles, games }: { collection: PuzzleCollection; puzzles: readonly CollectionPuzzleInfo[]; games: Game[] }) {
   const id = useId()
-  const [quantity, setQuantity] = useState(String(Math.min(10, puzzles.length)))
+  const [open, setOpen] = useState(false)
+  const [quantity, setQuantity] = useState('')
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const controller = useRef<AbortController | null>(null)
   useEffect(() => () => controller.current?.abort(), [])
-  useEffect(() => { setQuantity(String(Math.min(10, puzzles.length))) }, [puzzles.length])
   const count = Number(quantity)
-  const valid = quantity.trim() !== '' && Number.isSafeInteger(count) && count >= 1 && count <= puzzles.length
+  const valid = Number.isSafeInteger(count) && count >= 1 && count <= puzzles.length
   const selected = valid ? puzzles.slice(0, count) : []
+
+  function close() {
+    controller.current?.abort()
+    setOpen(false)
+  }
 
   async function download() {
     if (!valid || controller.current) return
@@ -40,37 +46,44 @@ function DownloadPuzzles({ collection, puzzles, games }: { collection: PuzzleCol
       const added = await collectionDownloads.download(collection, selected, {
         games, signal: current.signal, onProgress: (done, total) => setProgress({ done, total }),
       })
-      setMessage(`${added} ${added === 1 ? 'puzzle is' : 'puzzles are'} ready for offline play.`)
+      setMessage(added === 0 ? 'These puzzles are already available offline.'
+        : `${added} ${added === 1 ? 'puzzle is' : 'puzzles are'} ready for offline play.`)
+      setOpen(false)
     } catch (reason) {
-      if (current.signal.aborted) setMessage('Download canceled. No new puzzles were saved.')
-      else setError(reason instanceof Error ? reason.message : 'The download failed. Try again.')
+      if (!current.signal.aborted) setError(reason instanceof Error ? reason.message : 'The download failed. Try again.')
     } finally {
       controller.current = null
       setProgress(null)
     }
   }
 
-  return <div className="collection-download">
-    {puzzles.length > 0 ? <form onSubmit={event => { event.preventDefault(); void download() }} aria-labelledby={`${id}-title`}>
-      <div><h3 id={`${id}-title`}>Download puzzles</h3>
-        <p className="collection-note">{puzzles.length} available · {dataSize(puzzles)} of puzzle data</p></div>
-      <div className="collection-download-controls">
-        <label htmlFor={`${id}-count`}>Number of puzzles
+  return <div className="collection-download-action">
+    {puzzles.length > 0 && <button type="button" className="button secondary" aria-haspopup="dialog" disabled={!!progress} onClick={() => {
+      setQuantity(String(Math.min(10, puzzles.length)))
+      setError('')
+      setOpen(true)
+    }}>Download</button>}
+    <span className="sr-only" role="status">{message}</span>
+    {open && <Modal title="Download puzzles" onClose={close}>
+      <form className="dialog-form" onSubmit={event => { event.preventDefault(); void download() }}>
+        <label htmlFor={`${id}-count`}>Number of puzzles ({puzzles.length} available)</label>
+        <div className="collection-download-quantity">
           <input id={`${id}-count`} type="number" inputMode="numeric" min={1} max={puzzles.length} step={1}
-            value={quantity} disabled={!!progress} onChange={event => setQuantity(event.target.value)} />
-        </label>
-        <button type="button" className="button secondary" disabled={!!progress} onClick={() => setQuantity(String(puzzles.length))}>All {puzzles.length}</button>
-        <button type="submit" className="button primary" disabled={!valid || !!progress}>
-          <Download size={17} aria-hidden="true" /> {progress ? `Downloading ${progress.done} of ${progress.total}…` : 'Download'}
-        </button>
-        {progress && <button type="button" className="button secondary" onClick={() => controller.current?.abort()}>Cancel</button>}
-      </div>
-      <p className="collection-download-size" aria-live="polite">{valid ? `${count} ${count === 1 ? 'puzzle' : 'puzzles'} · ${dataSize(selected)} of puzzle data`
-        : `Choose a whole number from 1 to ${puzzles.length}.`}</p>
-      <p className="collection-note">Download while online, then play offline. Transfer sizes can vary.</p>
-    </form> : <p className="collection-note">All puzzles here are available offline.</p>}
-    {message && <p role="status" className="dialog-status">{message}</p>}
-    {error && <p role="alert" className="form-error">{error}</p>}
+            value={quantity} disabled={!!progress} autoFocus onChange={event => setQuantity(event.target.value)} />
+          {puzzles.length > 1 && <button type="button" className="button secondary" disabled={!!progress}
+            onClick={() => setQuantity(String(puzzles.length))}>All {puzzles.length}</button>}
+        </div>
+        <p aria-live="polite">{progress ? `Downloading ${progress.done} of ${progress.total}…`
+          : valid ? `${dataSize(selected)} of puzzle data for offline play` : `Choose a whole number from 1 to ${puzzles.length}.`}</p>
+        {error && <p role="alert" className="form-error">{error}</p>}
+        <div className="dialog-actions">
+          <button type="button" className="button secondary" onClick={close}>Cancel</button>
+          <button type="submit" className="button primary" disabled={!valid || !!progress}>
+            <Download size={17} aria-hidden="true" /> Download
+          </button>
+        </div>
+      </form>
+    </Modal>}
   </div>
 }
 
@@ -202,7 +215,10 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
 
   return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
     <Link className="collection-back" to="/puzzles/collections" search={{ collection: collection.id }}><ChevronLeft size={16} aria-hidden="true" /> Change difficulty</Link>
-    <header><h2 id={`${id}-title`}>{DIFFICULTY_LABELS[difficulty]} puzzles</h2><p>{collection.title} · {downloaded.length} available offline</p></header>
+    <header className="collection-list-header">
+      <div><h2 id={`${id}-title`}>{DIFFICULTY_LABELS[difficulty]} puzzles</h2><p>{collection.title} · {downloaded.length} available offline</p></div>
+      <DownloadPuzzles collection={collection} puzzles={remaining} games={games} />
+    </header>
     {downloaded.length > 0 && <div className="collection-summary">
       <div><strong>{progress.solved} of {downloaded.length} solved</strong>
         <progress value={progress.solved} max={downloaded.length} aria-label={`${DIFFICULTY_LABELS[difficulty]} downloaded puzzles completion`} /></div>
@@ -210,7 +226,6 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
         <Play size={16} aria-hidden="true" /> {collectionPuzzleStatus(next, games) === 'in-progress' ? 'Continue collection' : 'Play next puzzle'}
       </button> : <span className="collection-complete"><Check size={18} aria-hidden="true" /> {remaining.length ? 'Downloaded puzzles complete' : 'Difficulty complete'}</span>}
     </div>}
-    <DownloadPuzzles collection={collection} puzzles={remaining} games={games} />
     {message && <p role="status" className="dialog-status">{message}</p>}
     {downloaded.length > 0 && <div className="collection-filters">
       <label>Progress<select value={search.status ?? ''} onChange={event => {
@@ -225,11 +240,9 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
       {puzzles.map(puzzle => {
         const status = collectionPuzzleStatus(puzzle, games)
         const existing = findCollectionGame(puzzle, games)
-        const number = all.indexOf(puzzle) + 1
         return <li key={puzzle.id}>
           <Link to="/puzzles/collections" search={{ ...groupSearch, puzzle: puzzle.id }}>
-            <span className="collection-puzzle-number">{String(number).padStart(2, '0')}</span>
-            <span className="collection-puzzle-copy"><strong>{puzzle.title}</strong><small>{difficultyLabel(puzzle)} · {existing?.savedForLater ? 'Saved for later' : statusLabels[status]}</small></span>
+            <span className="collection-puzzle-copy"><strong>{puzzle.title}</strong><small>{existing?.savedForLater ? 'Saved for later' : statusLabels[status]}</small></span>
             {status === 'solved' ? <Check size={18} aria-hidden="true" /> : <ChevronRight size={18} aria-hidden="true" />}
           </Link>
         </li>
