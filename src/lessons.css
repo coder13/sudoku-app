@@ -76,32 +76,61 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   box-shadow: inset 3px 0 var(--selected-border);
   font-weight: 730;
 }
-.lesson-overview, .technique-lesson { display: grid; gap: var(--space-24); max-width: 810px; }
-.lesson-heading { display: grid; gap: var(--space-8); }
-.lesson-heading p { color: var(--muted); line-height: 1.55; font-size: calc(clamp(16px, 2vw, 19px) * var(--app-text-scale)); }
-.learn-page a:not(.button, .lesson-overview-link, .learn-nav-link) { color: var(--dark-purple); text-underline-offset: .2em; }
+.lesson-overview, .technique-lesson { display: grid; gap: var(--space-24); max-width: 810px; min-width: 0; }
+.lesson-heading { display: grid; gap: var(--space-8); min-width: 0; }
+.technique-lesson > .lesson-heading { padding-block-end: var(--space-16); border-block-end: 1px solid var(--border); }
+.learn-page :where(a:not(.button, .lesson-overview-link, .learn-nav-link)) { color: var(--dark-purple); text-underline-offset: .2em; }
 .learn-breadcrumbs ol {
   display: flex;
-  align-items: start;
-  gap: var(--space-8);
+  align-items: center;
+  gap: var(--space-6);
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   line-height: 1.4;
 }
-.learn-breadcrumbs li { display: flex; align-items: baseline; gap: var(--space-8); min-width: 0; }
-.learn-breadcrumbs svg { flex: none; align-self: start; margin-top: var(--space-6); color: var(--muted); }
-.learn-breadcrumbs a { padding-block: 3px; font-weight: 650; overflow-wrap: anywhere; }
-.learn-breadcrumbs h1 { padding-block: 3px; font: inherit; font-weight: 750; overflow-wrap: anywhere; }
+.learn-breadcrumbs li { display: flex; align-items: center; gap: var(--space-6); }
+.learn-breadcrumbs svg, .learn-breadcrumbs a { color: var(--muted); }
+.learn-breadcrumbs a { padding-block: var(--space-4); text-decoration: none; }
+.learn-breadcrumbs a:hover, .learn-breadcrumbs a:focus-visible { color: var(--dark-purple); text-decoration: underline; }
+.lesson-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-12); min-width: 0; }
+.lesson-title { font-size: clamp(1.75rem, 1.65rem + 1.4cqw, 2.375rem); font-weight: 720; line-height: 1.12; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.lesson-summary { max-width: 62ch; color: var(--muted); font-size: 1.0625rem; line-height: 1.5; font-weight: 400; }
+.lesson-metadata { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-8) var(--space-20); margin-block-start: var(--space-6); }
+.lesson-metadata:empty { display: none; }
+.lesson-tag-group { display: flex; align-items: baseline; gap: var(--space-8); min-width: 0; max-width: 100%; }
+.lesson-tag-label { flex: none; max-width: 35%; color: var(--muted); font-size: 0.8125rem; line-height: 1.4; overflow-wrap: anywhere; }
+.lesson-tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-6); min-width: 0; margin: 0; padding: 0; list-style: none; }
+.lesson-tags li { display: flex; min-width: 0; max-width: 100%; }
+.lesson-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: var(--space-4) var(--space-10);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.lesson-difficulty-chip { background: var(--selected-bg); color: var(--dark-purple); font-weight: 650; }
+.lesson-alias-chip { background: var(--surface-muted); color: var(--muted); }
+.lesson-prerequisite-link {
+  gap: var(--space-6);
+  min-height: 28px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--dark-purple);
+  font-weight: 550;
+  text-decoration: none;
+}
+.lesson-prerequisite-link:hover, .lesson-prerequisite-link:focus-visible { border-color: var(--selected-border); background: var(--selected-bg); }
 .lesson-overview { gap: clamp(var(--space-28), 5cqw, 44px); }
-.lesson-overview .lesson-heading p { max-width: 64ch; }
 .lesson-overview-section { display: grid; gap: var(--space-10); font-size: 1rem; line-height: 1.65; }
-.lesson-overview-section > .article-subheading { margin-top: 0; }
 .lesson-overview-level > :is(h3, summary) { font-size: 1rem; font-weight: 730; }
 .lesson-overview-level > summary { cursor: pointer; }
 .lesson-overview-family > h4 { margin-block-start: var(--space-8); font-size: 0.875rem; color: var(--muted); }
-.lesson-heading .lesson-overview-basics { font-size: 0.875rem; }
+.lesson-overview-basics { max-width: 64ch; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
 .lesson-overview-links {
   display: grid;
   width: min(100%, 64ch);
@@ -130,27 +159,26 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-article {
   display: grid;
   gap: var(--space-24);
+  min-width: 0;
   font-size: 1rem;
-  line-height: 1.65;
+  line-height: 1.6;
 }
-.lesson-explanation { display: grid; gap: var(--space-12); }
-.lesson-explanation > h2 { font-size: 1.3125rem; line-height: 1.3; }
-.lesson-explanation > .article-subheading { font-size: calc(clamp(18px, 2.5cqw, 21px) * var(--app-text-scale)); }
-.lesson-explanation > h2 + .article-subheading { margin-top: 0; }
-.lesson-alternate-names, .lesson-heading .lesson-alternate-names { color: var(--muted); font-size: 0.875rem; }
-.article-subheading + .lesson-alternate-names { margin-top: calc(-1 * var(--space-8)); }
-.lesson-worked-examples, .lesson-article h2, .lesson-example-notes {
+.lesson-explanation { display: grid; min-width: 0; }
+.lesson-explanation > :not(:first-child) { margin-block-start: var(--space-12); }
+.lesson-explanation > .article-subheading:not(:first-child) { margin-block-start: var(--space-24); }
+.lesson-explanation > .article-subheading + * { margin-block-start: var(--space-8); }
+.lesson-explanation, .lesson-worked-examples, .lesson-article h2, .lesson-example-notes {
   scroll-margin-top: calc(var(--topbar-height) + var(--space-20));
 }
-.article-subheading {
-  margin-top: 17px;
-  font-size: calc(clamp(20px, 3cqw, 27px) * var(--app-text-scale));
-  line-height: 1.22;
+.article-subheading, .lesson-practice-heading h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 1.1rem + .7cqw, 1.5rem);
+  font-weight: 650;
+  line-height: 1.3;
   letter-spacing: -.025em;
-  scroll-margin-top: calc(var(--topbar-height) + var(--space-20));
 }
-.article-paragraph, .article-list { max-width: 68ch; }
-.article-list { display: grid; gap: 7px; margin: 0; padding-inline-start: 1.35em; }
+.article-paragraph, .article-list { max-width: 66ch; }
+.article-list { display: grid; gap: var(--space-6); margin: 0; padding-inline-start: 1.35em; }
 .lesson-table-scroll { max-width: 100%; overflow-x: auto; }
 .lesson-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .lesson-table caption { padding-bottom: var(--space-8); text-align: left; font-weight: 700; }
@@ -166,7 +194,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-diagram {
   display: grid;
   gap: var(--space-12);
-  margin: var(--space-4) 0 var(--space-6);
+  margin: 0;
   padding: clamp(var(--space-12), 3cqw, var(--space-20));
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -186,12 +214,10 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-proof ol { margin: 7px 0; padding-inline-start: 1.5em; }
 .lesson-practice, .lesson-worked-examples {
   display: grid;
-  gap: 15px;
-  margin-block: var(--space-8);
-  padding: clamp(var(--space-12), 3cqw, 21px);
+  gap: var(--space-16);
+  padding: clamp(var(--space-12), 3cqw, var(--space-20));
 }
 .lesson-practice-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-8) var(--space-16); }
-.lesson-practice-heading h2 { font-size: 1.3125rem; line-height: 1.3; }
 .lesson-trainer-title { color: var(--muted); font-size: 0.875rem; }
 .lesson-practice-heading-actions { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); min-width: 0; }
 .lesson-example-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
@@ -200,6 +226,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-example-controls > span { font-size: 0.875rem; font-variant-numeric: tabular-nums; }
 @media (pointer: coarse) {
   .lesson-example-controls .button { min-height: 44px; }
+  .lesson-prerequisite-link { min-height: 40px; }
 }
 .lesson-new-example { min-height: 44px; }
 .lesson-new-example-error { font-size: 0.875rem; color: var(--muted); }

@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { LearnBreadcrumbs } from '../components/LearnBreadcrumbs'
+import { LearnHeading } from '../components/LearnHeading'
 import { TechniqueLesson } from '../components/TechniqueLesson'
 import { lessonRoutes } from '../sudoku/lessons'
 
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/learn/$technique')({
     return lesson ? { meta: [{ title: `${lesson.title} | Sudoku` }, { name: 'description', content: lesson.summary }] } : {}
   },
   component: LessonPage,
-  notFoundComponent: () => <LearnBreadcrumbs current="Technique unavailable" />,
+  notFoundComponent: () => <LearnHeading title="Technique unavailable" />,
 })
 
 export function LessonPage() {

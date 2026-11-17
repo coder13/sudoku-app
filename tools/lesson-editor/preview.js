@@ -99,9 +99,9 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
   }
 
   const header = article.querySelector('.lesson-heading')
-  property(header.querySelector('.learn-breadcrumbs h1'), 'Breadcrumb label', lesson ?? content.overview, 'title')
+  property(header.querySelector('.lesson-title'), 'Page title', lesson ?? content.overview, 'title')
   if (lesson) {
-    property(header.querySelector('p'), 'Article subtitle', lesson, 'summary')
+    property(header.querySelector('.lesson-summary'), 'Article summary', lesson, 'summary')
     for (const [index, block] of lesson.blocks.entries()) {
       const elements = Array.from(article.querySelectorAll(`[data-lesson-block="${index}"]`))
       const [element] = elements
@@ -158,7 +158,7 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
       property(element, 'Credit label', lesson.credits[index], 'label'))
   } else {
     const { overview, groups } = content
-    property(header.querySelector('p'), 'Introduction', overview, 'intro')
+    property(header.querySelector('.lesson-summary'), 'Introduction', overview, 'intro')
     property(header.querySelector('.lesson-overview-basics > span'), 'Fundamentals link introduction', overview, 'fundamentalsNote')
     const difficulty = article.querySelector('[data-lesson-difficulty]')
     property(difficulty.querySelector('h2'), 'Difficulty heading', overview, 'difficultyTitle')
