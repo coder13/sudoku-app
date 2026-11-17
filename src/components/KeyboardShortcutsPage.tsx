@@ -25,6 +25,15 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
     ],
   },
   {
+    title: 'Chain drawing', shortcuts: [
+      { label: 'Move between candidates', description: 'Move focus when the grid is in drawing mode.', keys: ['Arrow keys'] },
+      { label: 'Select a candidate', description: 'Select an endpoint or add a link to the focused candidate.', keys: ['Enter or Space'] },
+      { label: 'End the path or stop drawing', description: 'End the current path. If no endpoint is selected, stop drawing.', keys: ['Escape'] },
+      { label: 'Undo a link edit', description: 'Undo the last edit to the selected chain.', keys: ['Ctrl/⌘', 'Z'] },
+      { label: 'Highlight matching candidates', description: 'Highlight the selected digit while you draw links.', keys: ['1–9'] },
+    ],
+  },
+  {
     title: 'History and interface', shortcuts: [
       { label: 'Undo', description: 'Undo the most recent grid change.', keys: ['Ctrl/⌘', 'Z'] },
       { label: 'Redo', description: 'Redo the most recently undone grid change.', keys: ['Ctrl/⌘', 'Shift', 'Z'] },

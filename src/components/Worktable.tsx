@@ -227,6 +227,7 @@ export function Worktable({
   const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
   const [standardChainsOpen, setStandardChainsOpen] = useState(false)
+  const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
   const [pencil, setPencil] = usePlayPreference('pencil')
@@ -472,6 +473,7 @@ export function Worktable({
     setSolutionPath(null)
     setSolutionPathRevealed(false)
     setStandardChainsOpen(false)
+    setStartDrawingOnOpen(false)
     setDesktopInsightTab(analysisCardOpen ? 'techniques' : 'solution')
     setSolutionStep(0)
     setSolutionHintOpen(false)
@@ -644,6 +646,16 @@ export function Worktable({
 
     return () => { current = false }
   }, [draft, solved, values, variant, variantEliminations])
+
+  useLayoutEffect(() => {
+    if (!startDrawingOnOpen || !chainsVisible || !currentNotes) return
+    setStartDrawingOnOpen(false)
+    if (chainGraph && !sketch.drawing) sketch.toggle()
+  }, [startDrawingOnOpen, chainsVisible, currentNotes, chainGraph, sketch])
+
+  useLayoutEffect(() => {
+    if (chainsVisible) return () => setStartDrawingOnOpen(false)
+  }, [chainsVisible])
 
   useLayoutEffect(() => {
     if (!sketch.drawing) return
@@ -823,6 +835,11 @@ export function Worktable({
 
   function toggleChainHighlight(digit: number) {
     setChainHighlightDigit((current) => digit === 0 || current === digit ? null : digit)
+  }
+
+  function stopDrawingAndFocusGrid() {
+    sketch.stop()
+    requestAnimationFrame(() => boardRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus({ preventScroll: true }))
   }
 
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected) {
@@ -1069,8 +1086,28 @@ export function Worktable({
       if (event.key === 'Shift') setCandidatePreviewCell(null)
       if (event.key === 'Tab' || event.key === 'Enter' || event.key === ' ' || ARROWS[event.key]) setPointerFocusedCell(null)
       const target = event.target
-      if (event.defaultPrevented || rearranging || game.paused || previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
+      if (event.defaultPrevented || rearranging || game.paused || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
+      if (desktop && !draft && !solved && !placeholder && shortcutMatches(event, shortcuts, 'chainDrawing')) {
+        event.preventDefault()
+        if (event.repeat) return
+        if (sketch.drawing) stopDrawingAndFocusGrid()
+        else if (chainGraph) sketch.toggle()
+        else if (!chainsVisible || previewing) {
+          setStartDrawingOnOpen(true)
+          showChains()
+        } else if (!currentNotes) setStartDrawingOnOpen((open) => !open)
+        return
+      }
+      if (previewing) return
+      if (chainGraph && shortcutMatches(event, shortcuts, 'newChain')) {
+        event.preventDefault()
+        if (event.repeat) return
+        sketch.addSketch()
+        if (!sketch.drawing) sketch.toggle()
+        else boardRef.current?.querySelector<HTMLElement>('.chain-candidate[tabindex="0"]')?.focus({ preventScroll: true })
+        return
+      }
       if (event.key === 'Control' || event.key === 'Meta') {
         if (canActivateTemporaryPencil) setPencilModifier(true)
         return
@@ -1081,10 +1118,8 @@ export function Worktable({
       if (sketch.drawing) {
         if (key === 'escape') {
           event.preventDefault()
-          if (sketch.pending === null) {
-            sketch.stop()
-            requestAnimationFrame(() => boardRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus({ preventScroll: true }))
-          } else sketch.endPath()
+          if (sketch.pending === null) stopDrawingAndFocusGrid()
+          else sketch.endPath()
         } else if (shortcut && key === 'z' && !event.shiftKey) {
           event.preventDefault()
           if (sketch.canUndo) sketch.undo()
@@ -1536,7 +1571,7 @@ export function Worktable({
     : currentNotes?.failed ? 'The candidates did not load.'
     : currentNotes?.masks === null ? 'Resolve the grid conflicts to draw links.'
     : 'Loading candidates…'
-  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} unavailable={chainUnavailable} inspection={chainInspection}
+  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection}
     digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: setChainHighlightDigit } : undefined} />
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
@@ -1593,6 +1628,11 @@ export function Worktable({
     }
   }
 
+  const solutionAction = desktop && !draft && !variant && (
+    <button onClick={() => { void showSolutionPath() }} disabled={busy} aria-label="Open solution panel">
+      <ListOrdered size={17} /> Solution
+    </button>
+  )
   const analysisAction = !draft && !solved && !variant && (
     <button onClick={showAnalysis}>
       <ListFilter size={17} /> Available techniques
@@ -1623,14 +1663,13 @@ export function Worktable({
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
-    {!draft && !variant && desktop && <>
-      <button onClick={() => { void showSolutionPath() }} disabled={busy} aria-label="Open solution panel">
-        <ListOrdered size={17} /> Solution
-      </button>
+    {(solutionAction || analysisAction || chainsAction) && <>
+      <div className="app-menu-separator" role="separator" />
+      {solutionAction}
       {analysisAction}
+      {chainsAction}
+      <div className="app-menu-separator" role="separator" />
     </>}
-    {chainsAction}
-    {mobile && analysisAction}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle

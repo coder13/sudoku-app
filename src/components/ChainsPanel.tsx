@@ -4,6 +4,7 @@ import { chainCandidate } from '../sudoku/chains'
 import { DIGITS } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
 import { cellName, deductionResults } from '../sudoku/lesson-diagram'
+import { shortcutLabel, type ShortcutPreferences } from '../sudoku/shortcuts'
 import type { BoardLink } from './BoardAnnotations'
 import { CHAIN_COLORS, chainColor, type useChainSketch } from './useChainSketch'
 
@@ -11,6 +12,7 @@ type ChainInspection = { deduction: Deduction; links: readonly BoardLink[]; expl
 type Props = {
   sketch: ReturnType<typeof useChainSketch>
   onApply: (actions: readonly DeductionAction[]) => void
+  shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'newChain'>
   digitHighlight?: { digit: number | null; onChange: (digit: number | null) => void }
   unavailable?: string
   inspection?: ChainInspection
@@ -29,7 +31,7 @@ function LinkLegend() {
   </div>
 }
 
-export function ChainsPanel({ sketch, onApply, digitHighlight, unavailable, inspection }: Props) {
+export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavailable, inspection }: Props) {
   if (inspection) {
     const { deduction, links, explanation } = inspection
     return <section className="chains-panel" aria-label="Chains">
@@ -48,6 +50,9 @@ export function ChainsPanel({ sketch, onApply, digitHighlight, unavailable, insp
 
   const { active } = sketch
   const medusa = active.type === 'medusa'
+  const drawLabel = sketch.drawing ? 'Done drawing' : 'Draw links'
+  const drawKey = shortcutLabel(shortcuts.chainDrawing)
+  const newKey = shortcutLabel(shortcuts.newChain)
   return <section className="chains-panel" aria-label="Chains">
     {unavailable ? <p role="status">{unavailable}</p> : <>
       <div className="chain-picker">
@@ -59,7 +64,9 @@ export function ChainsPanel({ sketch, onApply, digitHighlight, unavailable, insp
             </option>)}
           </select>
         </label>
-        <button type="button" className="button secondary" onClick={sketch.addSketch}><Plus size={15} /> New chain</button>
+        <button type="button" className="button secondary" title={`New chain (${newKey})`} aria-keyshortcuts={newKey} onClick={sketch.addSketch}>
+          <Plus size={15} /> New chain
+        </button>
         <button type="button" className="icon-button borderless" aria-label="Delete chain" title="Delete chain"
           disabled={sketch.sketches.length === 1 && !sketch.hasLinks} onClick={sketch.deleteSketch}>
           <Trash2 size={16} aria-hidden="true" />
@@ -102,11 +109,14 @@ export function ChainsPanel({ sketch, onApply, digitHighlight, unavailable, insp
         </label>}
       </div>
       <div className="chain-toolbar">
-        <button type="button" className={`button ${sketch.drawing ? 'secondary' : 'primary'}`} onClick={sketch.toggle}>
-          <Link2 size={15} aria-hidden="true" /> {sketch.drawing ? 'Done drawing' : 'Draw links'}
+        <button type="button" className={`button ${sketch.drawing ? 'secondary' : 'primary'}`}
+          title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={sketch.toggle}>
+          <Link2 size={15} aria-hidden="true" /> {drawLabel}
         </button>
-        <button type="button" className="button secondary" disabled={!sketch.drawing || sketch.pending === null} onClick={sketch.endPath}>End path</button>
-        <button type="button" className="icon-button borderless" aria-label="Undo edit" title="Undo edit"
+        <button type="button" className="button secondary" disabled={!sketch.drawing || sketch.pending === null}
+          title="End path (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</button>
+        <button type="button" className="icon-button borderless" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
+          aria-keyshortcuts="Control+Z Meta+Z"
           disabled={!sketch.canUndo} onClick={sketch.undo}>
           <Undo2 size={16} aria-hidden="true" />
         </button>
