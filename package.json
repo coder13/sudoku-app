@@ -23,6 +23,7 @@
     "@tanstack/react-start": "^1.169.5",
     "dockview-react": "^8.9.0",
     "lucide-react": "^0.468.0",
+    "lz-string": "^1.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

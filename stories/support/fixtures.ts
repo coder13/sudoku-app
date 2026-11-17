@@ -1,6 +1,5 @@
 import type { LessonExample } from '../../src/sudoku/engine'
 import examples from '../../src/sudoku/generated/lesson-examples.json?raw'
-import { parsePuzzle } from '../../src/sudoku/formats'
 import { EMPTY, enter, fillEntries, makeGame, STARTER_GAME, type Game } from '../../src/sudoku/game'
 import { learnFundamentals, lessonRoutes, type LessonBlock } from '../../src/sudoku/lessons'
 
@@ -23,10 +22,6 @@ export const solved = {
 }
 export const quicker = { ...solved, id: 'best', title: 'Saturday warm-up', elapsed: 312 }
 export const conflictDraft = fillEntries(draft, '11' + EMPTY.slice(2))
-
-export async function importExample(input: string) {
-  parsePuzzle(input)
-}
 
 export const singlesLesson = lessonRoutes.get('naked-single')!
 export const fishLesson = lessonRoutes.get('finned-x-wing')!

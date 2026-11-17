@@ -24,6 +24,7 @@ function prerenderPages() {
   return [
     '/',
     '/puzzles',
+    '/import',
     '/puzzles/browse',
     '/puzzles/new',
     '/puzzles/statistics',

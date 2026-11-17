@@ -105,3 +105,36 @@ test('rating survives reset, interrupted saves, and deleting or replaying a puzz
     delete (globalThis as { sessionStorage?: unknown }).sessionStorage
   }
 })
+
+test('saving an imported puzzle for later preserves the selected puzzle', async () => {
+  const local = new MemoryStorage()
+  const session = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: session, configurable: true },
+  })
+
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?import-test')
+    const active = makeGame('current-game', 'Current puzzle', STARTER_GAME.givens, 'custom')
+    roomStore.add(active)
+    const imported = makeGame('imported-game', 'Imported puzzle', EMPTY, 'imported')
+    roomStore.add({ ...imported, savedForLater: true })
+    assert.equal(roomStore.getSnapshot().active, active.id)
+    assert.equal(local.getItem('sudoku-app:v1:active'), active.id)
+    assert.equal(session.getItem('sudoku-app:v1:active'), active.id)
+    assert.equal(roomStore.getSnapshot().games.find(({ id }) => id === imported.id)?.savedForLater, true)
+
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?import-reload')
+    assert.equal(reloaded.getSnapshot().active, active.id)
+    assert.equal(reloaded.getSnapshot().games.find(({ id }) => id === imported.id)?.savedForLater, true)
+    reloaded.select(imported.id)
+    assert.equal(reloaded.getSnapshot().active, imported.id)
+    assert.equal(reloaded.getSnapshot().games.find(({ id }) => id === imported.id)?.savedForLater, undefined)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
