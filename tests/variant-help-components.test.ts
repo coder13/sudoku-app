@@ -3,7 +3,7 @@ import { after, before, test } from 'node:test'
 import { createElement, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
-import { makeGame } from '../src/sudoku/game.ts'
+import { isSolved, makeGame } from '../src/sudoku/game.ts'
 import { VARIANTS, type PlayableVariant } from '../src/sudoku/variants.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 
@@ -51,9 +51,12 @@ test('mobile solutions render a read-only Jigsaw preview, explanation, and navig
   assert.match(html, /aria-label="Close dialog"/)
 })
 
-function worktableTree(id: PlayableVariant | 'classic', workspaceMode: 'standard' | 'advanced') {
+function worktableTree(id: PlayableVariant | 'classic', workspaceMode: 'standard' | 'advanced', solved = false) {
+  const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
   const game = { ...makeGame('help-controls', 'Puzzle', STARTER, 'generated'), difficulty: 'medium' as const, score: 100 }
-  if (id !== 'classic') Object.assign(game, { variant: { id, puzzle: { givens: STARTER }, solution: '0'.repeat(81) } })
+  if (solved) game.position.entries = [...solution].map((digit, cell) => STARTER[cell] === '0' ? digit : '0').join('')
+  if (id !== 'classic') Object.assign(game, { variant: { id, puzzle: { givens: STARTER }, solution } })
+  assert.equal(isSolved(game), solved)
   let tree: ReactNode
   function Capture() {
     tree = Worktable({
@@ -83,6 +86,8 @@ for (const id of Object.keys(VARIANTS) as (PlayableVariant | 'classic')[]) {
       assert.ok(standard.some(({ props }) => props['data-insight-tab'] === 'solution'))
       assert.ok(standard.some(({ props }) => props['data-insight-tab'] === 'techniques'))
       assert.ok(standard.some(({ type }) => typeof type === 'function' && type.name === 'PuzzleAnalysisContents'))
+      const completed = worktableTree(id, 'standard', true)
+      assert.ok(completed.some(({ props }) => props['data-insight-tab'] === 'techniques'), 'An open finder stays visible after completion')
       for (const mode of ['standard', 'advanced'] as const) {
         const tree = worktableTree(id, mode)
         assert.ok(tree.some(({ type, props }) => type === 'button' && renderToStaticMarkup(createElement('span', null, props.children as ReactNode)).includes('View hint')))

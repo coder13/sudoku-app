@@ -362,7 +362,7 @@ export function Worktable({
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
   const { mounted: puzzleMenuMounted, exiting: puzzleMenuExiting } = usePresence(puzzleMenuOpen)
   const openInsightTabs = desktop && !advancedWorkspace && !placeholder && !draft
-    ? desktopInsightTabs.filter(({ id }) => desktopViews.open.includes(id) && (id === 'solution' || !solved))
+    ? desktopInsightTabs.filter(({ id }) => desktopViews.open.includes(id) && (id !== 'chains' || !solved))
     : []
   const activeDesktopTab = openInsightTabs.find(({ id }) => id === desktopViews.active) ??
     openInsightTabs.find(({ id }) => id === 'techniques') ?? openInsightTabs[0]
