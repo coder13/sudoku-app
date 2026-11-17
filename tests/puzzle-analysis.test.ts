@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import type { DeductionAction, DeductionMatch } from '../src/sudoku/engine.ts'
-import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, summarizeDeductions, summarizeGroup, techniqueTargetCount } from '../src/sudoku/puzzle-analysis.ts'
+import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueTargetCount } from '../src/sudoku/puzzle-analysis.ts'
 
 function match(actions: DeductionAction[], techniques: string[]): DeductionMatch {
   const affectedCandidates = actions.map((action) => 'place' in action ? action.place : action.eliminate)
@@ -72,4 +72,29 @@ test('candidate target counts include both placements and removals without doubl
   assert.equal(techniqueTargetCount(moves, 'forcing-chain'), 3)
   assert.equal(techniqueTargetCount(moves, 'aic'), 3)
   assert.equal(techniqueTargetCount(moves, 'xy-wing'), 0)
+})
+
+test('hide-zero filter retains pending techniques and scan failures', () => {
+  const groups = [
+    { title: 'Singles', techniques: ['naked-single', 'hidden-single'] },
+    { title: 'Fish', techniques: ['x-wing', 'swordfish'] },
+    { title: 'Wings', techniques: ['xy-wing'] },
+  ]
+  const results = {
+    'naked-single': { count: 3 },
+    'hidden-single': { count: 0 },
+    'x-wing': { count: 0 },
+    'swordfish': { error: 'Scan unavailable' },
+  }
+  assert.deepEqual(filterAnalysisGroups(groups, results, false), groups)
+  assert.deepEqual(filterAnalysisGroups(groups, results, true), [
+    { title: 'Singles', techniques: ['naked-single'] },
+    { title: 'Fish', techniques: ['swordfish'] },
+    { title: 'Wings', techniques: ['xy-wing'] },
+  ])
+  assert.deepEqual(filterAnalysisGroups(groups, results, true, true), [])
+  assert.deepEqual(filterAnalysisGroups(groups, {
+    'naked-single': { count: 0 }, 'hidden-single': { count: 0 },
+    'x-wing': { count: 0 }, 'swordfish': { count: 0 }, 'xy-wing': { count: 0 },
+  }, true), [])
 })
