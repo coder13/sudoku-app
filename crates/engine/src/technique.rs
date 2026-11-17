@@ -144,6 +144,9 @@ catalog! {
     UniqueRectangle4: "unique-rectangle-4", 100, Hard, true, ["Uniqueness Test 4"];
     UniqueRectangle5: "unique-rectangle-5", 100, Hard, true, ["Uniqueness Test 5"];
     UniqueRectangle6: "unique-rectangle-6", 100, Hard, true, ["Uniqueness Test 6"];
+    UniqueRectangleAic: "unique-rectangle-aic", 360, Unfair, true, ["Alternating Inference Chain with a Unique Rectangle"];
+    UniqueRectangleDiscontinuousNiceLoop: "unique-rectangle-discontinuous-nice-loop", 360, Unfair, true, ["Discontinuous Nice Loop with a Unique Rectangle"];
+    UniqueRectangleContinuousNiceLoop: "unique-rectangle-continuous-nice-loop", 360, Unfair, true, ["Continuous Nice Loop with a Unique Rectangle"];
     HiddenRectangle: "hidden-rectangle", 100, Hard, true, [];
     UniqueLoop: "unique-loop", 140, Hard, true, ["Uniqueness Loop"];
     BugPlusOne: "bug-plus-one", 100, Hard, true, ["BUG+1", "Bivalue Universal Grave + 1"];
@@ -178,11 +181,27 @@ catalog! {
     MultiSectorLockedSets: "multi-sector-locked-sets", 480, Extreme, false, ["MSLS"];
     FrankenFish: "franken-fish", 420, Extreme, false, [];
     MutantFish: "mutant-fish", 460, Extreme, false, [];
+    PatternOverlay: "pattern-overlay", 500, Extreme, false, ["Template Set", "Template Delete", "Single-Digit Pattern Overlay"];
+    PairwisePatternOverlay: "pairwise-pattern-overlay", 650, Extreme, false, ["Two-Digit Pattern Overlay"];
+    TriplePatternOverlay: "triple-pattern-overlay", 800, Extreme, false, ["Three-Digit Pattern Overlay"];
+    QuadruplePatternOverlay: "quadruple-pattern-overlay", 950, Extreme, false, ["Four-Digit Pattern Overlay"];
+    QuintuplePatternOverlay: "quintuple-pattern-overlay", 1100, Extreme, false, ["Five-Digit Pattern Overlay"];
     KrakenFish1: "kraken-fish-1", 900, Extreme, false, ["Kraken Fish Type 1"];
     KrakenFish2: "kraken-fish-2", 950, Extreme, false, ["Kraken Fish Type 2"];
 }
 
 impl Technique {
+    pub(crate) const fn pattern_overlay_width(self) -> Option<u32> {
+        match self {
+            Self::PatternOverlay => Some(1),
+            Self::PairwisePatternOverlay => Some(2),
+            Self::TriplePatternOverlay => Some(3),
+            Self::QuadruplePatternOverlay => Some(4),
+            Self::QuintuplePatternOverlay => Some(5),
+            _ => None,
+        }
+    }
+
     /// Default solver profile. See [`Self::ALL`] for techniques available in custom profiles.
     /// Opening analysis and hints use the full catalog.
     pub const DEFAULT_ORDER: &'static [Self] = &[

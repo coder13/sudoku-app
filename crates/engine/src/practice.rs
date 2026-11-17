@@ -6,6 +6,10 @@ use super::{
 
 #[path = "practice/examples.rs"]
 mod examples;
+#[path = "practice/pattern_overlay.rs"]
+mod pattern_overlay;
+#[path = "practice/rectangle_chains.rs"]
+mod rectangle_chains;
 
 /// Find a proof of the submitted placement or removal using the requested technique.
 /// A single action from a deduction with several effects is sufficient.
@@ -1223,6 +1227,11 @@ impl Technique {
             Self::XChain => return X_CHAIN,
             Self::XYChain => return XY_CHAIN,
             Self::Medusa => return MEDUSA,
+            Self::UniqueRectangleAic => return rectangle_chains::AIC[0],
+            Self::UniqueRectangleDiscontinuousNiceLoop => {
+                return rectangle_chains::DISCONTINUOUS[0];
+            }
+            Self::UniqueRectangleContinuousNiceLoop => return rectangle_chains::CONTINUOUS[0],
             Self::Aic => return AIC,
             Self::ContinuousNiceLoop => return CONTINUOUS_NICE_LOOP,
             Self::DiscontinuousNiceLoop => return DISCONTINUOUS_NICE_LOOP,
@@ -1269,6 +1278,11 @@ impl Technique {
             Self::MultiSectorLockedSets => return MULTI_SECTOR_LOCKED_SETS,
             Self::FrankenFish => return FRANKEN_FISH,
             Self::MutantFish => return MUTANT_FISH,
+            Self::PatternOverlay => return pattern_overlay::SINGLE[0],
+            Self::PairwisePatternOverlay => return pattern_overlay::PAIRWISE[0],
+            Self::TriplePatternOverlay => return pattern_overlay::TRIPLE[0],
+            Self::QuadruplePatternOverlay => return pattern_overlay::QUADRUPLE[0],
+            Self::QuintuplePatternOverlay => return pattern_overlay::QUINTUPLE[0],
             Self::KrakenFish1 => return KRAKEN_FISH_1,
             Self::KrakenFish2 => return KRAKEN_FISH_2,
         };
@@ -2590,6 +2604,108 @@ mod tests {
         assert_eq!(sites, endpoint.candidates().collect::<Vec<_>>());
     }
 
+    #[test]
+    fn unique_rectangle_chains_replay_their_guardian_links() {
+        use LinkStrength::{Strong, Weak};
+        use Technique::{
+            UniqueRectangleAic, UniqueRectangleContinuousNiceLoop,
+            UniqueRectangleDiscontinuousNiceLoop,
+        };
+
+        let grouped = rectangle_chains::AIC[1];
+        let published_loop = rectangle_chains::CONTINUOUS[0];
+        let alternate_loop = PracticeExample {
+            expected_actions: const { &[remove(62, 9), remove(72, 9), remove(73, 5)] },
+            ..published_loop
+        };
+        let checks = [
+            (UniqueRectangleAic, grouped, [43, 44, 79, 80], [2, 4], 3),
+            (
+                UniqueRectangleDiscontinuousNiceLoop,
+                rectangle_chains::DISCONTINUOUS[0],
+                [28, 34, 46, 52],
+                [6, 7],
+                7,
+            ),
+            (
+                UniqueRectangleContinuousNiceLoop,
+                published_loop,
+                [30, 32, 57, 59],
+                [4, 5],
+                8,
+            ),
+            (
+                UniqueRectangleContinuousNiceLoop,
+                alternate_loop,
+                [30, 32, 57, 59],
+                [4, 5],
+                8,
+            ),
+        ];
+        for (technique, example, corners, digits, length) in checks {
+            let position = example.position().unwrap();
+            let solution = crate::VerifiedTemplate::verify(position.givens).unwrap();
+            let mut masks = candidates(&position.values().unwrap()).unwrap();
+            for (mask, removed) in masks.iter_mut().zip(position.eliminations) {
+                *mask &= !removed;
+            }
+            let proof = technique_deductions_at(&position, technique)
+                .unwrap()
+                .into_iter()
+                .find_map(|hint| {
+                    let HintEvidence::Inference { links } = hint.evidence else {
+                        return None;
+                    };
+                    (hint.actions == example.expected_actions
+                        && links.len() == length
+                        && links.iter().any(|link| {
+                            link.source == LinkSource::UniqueRectangle { corners, digits }
+                        }))
+                    .then_some(links)
+                })
+                .expect("the reference step uses its rectangle link");
+            for step in &proof {
+                assert_link_is_valid(step, &masks);
+            }
+            for adjacent in proof.windows(2) {
+                assert_eq!(adjacent[0].to, adjacent[1].from);
+                assert_ne!(adjacent[0].strength, adjacent[1].strength);
+            }
+            let first = &proof[0];
+            let last = proof.last().unwrap();
+            assert_eq!(first.strength, Strong);
+            assert_eq!(first.from == last.to, technique != UniqueRectangleAic);
+            assert_eq!(
+                last.strength,
+                if technique == UniqueRectangleContinuousNiceLoop {
+                    Weak
+                } else {
+                    Strong
+                }
+            );
+            for &action in example.expected_actions {
+                let target = action.candidate();
+                let conflicts = |node: &InferenceNode| {
+                    node.candidates()
+                        .all(|candidate| candidates_conflict(candidate, target))
+                };
+                assert_eq!(
+                    solution.solution()[target.cell] == target.digit,
+                    matches!(action, HintAction::Place(_))
+                );
+                match technique {
+                    UniqueRectangleAic => assert!(conflicts(&first.from) && conflicts(&last.to)),
+                    UniqueRectangleDiscontinuousNiceLoop => {
+                        assert_eq!(first.from, InferenceNode::Candidate(target))
+                    }
+                    _ => assert!(proof.iter().any(|step| step.strength == Weak
+                        && conflicts(&step.from)
+                        && conflicts(&step.to))),
+                }
+            }
+        }
+    }
+
     fn assert_link_is_valid(link: &InferenceLink, masks: &[u16; CELLS]) {
         let from: Vec<_> = link.from.candidates().collect();
         let to: Vec<_> = link.to.candidates().collect();
@@ -2712,6 +2828,33 @@ mod tests {
                     }
                 }
                 return;
+            }
+            LinkSource::UniqueRectangle { corners, digits } => {
+                assert_eq!(link.strength, LinkStrength::Strong);
+                let [a, b, c, d] = corners.map(usize::from);
+                assert!(a < b && a < c && b < d && c < d);
+                assert_eq!(a / 9, b / 9);
+                assert_eq!(c / 9, d / 9);
+                assert_eq!(a % 9, c % 9);
+                assert_eq!(b % 9, d % 9);
+                let boxes = [a, b, c, d].map(|cell| House::at(cell)[2]);
+                assert_eq!(
+                    boxes
+                        .into_iter()
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .len(),
+                    2
+                );
+                let pair = digit_bit(digits[0]) | digit_bit(digits[1]);
+                [a, b, c, d]
+                    .into_iter()
+                    .flat_map(|cell| {
+                        assert_eq!(masks[cell] & pair, pair);
+                        (1..=9)
+                            .filter(move |&digit| masks[cell] & !pair & digit_bit(digit) != 0)
+                            .map(move |digit| Candidate { cell, digit })
+                    })
+                    .collect()
             }
             LinkSource::Peers {} => {
                 assert_eq!(link.strength, LinkStrength::Weak);

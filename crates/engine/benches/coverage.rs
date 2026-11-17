@@ -468,6 +468,8 @@ fn main() {
     let aligned_examples = args.iter().any(|arg| arg == "--aligned-examples");
     let aligned = args.iter().any(|arg| arg == "--aligned-exclusion");
     let als_inference = args.iter().any(|arg| arg == "--als-inference");
+    let rectangle_inference = args.iter().any(|arg| arg == "--unique-rectangle-inference");
+    let pattern_overlay = args.iter().any(|arg| arg == "--pattern-overlay");
     let als_inference_examples = args.iter().any(|arg| arg == "--als-inference-examples");
     let complex_fish = args.iter().any(|arg| arg == "--complex-fish");
     let kraken = args.iter().any(|arg| arg == "--kraken");
@@ -543,6 +545,16 @@ fn main() {
         .unwrap();
     if als_inference {
         order.splice(before_forcing..before_forcing, ALS_INFERENCE);
+    }
+    if rectangle_inference {
+        order.splice(
+            before_forcing..before_forcing,
+            [
+                Technique::UniqueRectangleAic,
+                Technique::UniqueRectangleDiscontinuousNiceLoop,
+                Technique::UniqueRectangleContinuousNiceLoop,
+            ],
+        );
     }
     if senior_exocet && !senior_first {
         order.insert(before_forcing, Technique::SeniorExocet);
@@ -620,6 +632,22 @@ fn main() {
     if firework_als_wing {
         order.insert(0, Technique::FireworkAlsWing);
     }
+    if pattern_overlay {
+        let before_forcing = order
+            .iter()
+            .position(|&technique| technique == Technique::ForcingChain)
+            .unwrap();
+        order.splice(
+            before_forcing..before_forcing,
+            [
+                Technique::PatternOverlay,
+                Technique::PairwisePatternOverlay,
+                Technique::TriplePatternOverlay,
+                Technique::QuadruplePatternOverlay,
+                Technique::QuintuplePatternOverlay,
+            ],
+        );
+    }
     let label = if nested {
         "Default order plus Dynamic and Nested Forcing Nets"
     } else if dynamic {
@@ -650,6 +678,12 @@ fn main() {
     }
     if als_inference {
         eprintln!("ALS chains and Nice Loops before forcing");
+    }
+    if pattern_overlay {
+        eprintln!("Pattern Overlay through five digits before forcing");
+    }
+    if rectangle_inference {
+        eprintln!("Unique Rectangle chains and Nice Loops before forcing");
     }
     if firework_aic {
         eprintln!("Firework chains before forcing");

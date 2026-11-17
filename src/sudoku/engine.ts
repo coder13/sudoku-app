@@ -246,6 +246,7 @@ type InferenceLink = {
   to: InferenceNode
   source: CandidateLink['source'] | { firework: number } | { peers: Record<string, never> }
     | { tridagon: { cells: [number, number, number][]; digits: [number, number, number] } }
+    | { 'unique-rectangle': { corners: [number, number, number, number]; digits: [number, number] } }
     | { 'almost-locked-set': AlmostLockedSet }
     | { 'almost-locked-set-cell': { set: AlmostLockedSet; cell: number; blocked: number } }
   strength: CandidateLink['strength']
@@ -289,6 +290,11 @@ type ExocetComponent = { bases: [number, number]; targets: [number, number]; cov
 type ExocetTarget = { cell: number } | { 'conjugate-pair': { digit: number; link: ConjugatePair } }
 type GroupedExocetComponent = Omit<ExocetComponent, 'targets'> & { targets: [ExocetTarget, ExocetTarget] }
 type Evidence =
+  | { 'pattern-overlay': {
+      digit: number
+      scopes: { digit: number; allowed: number[]; supported: number[] }[]
+      geometry?: { houses: number[][]; excludedPairs: [number, number][] }
+    } }
   | { variant: { description: string; reason: string } }
   | { cell: number }
   | { house: House }

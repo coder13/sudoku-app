@@ -32,6 +32,7 @@ pub enum VariantPracticeError {
 /// Load three distinct exercises for a variant technique.
 ///
 /// Classic techniques reuse the classic exercises in structured positions.
+/// Pattern Overlay also includes a worked Jigsaw exercise.
 /// The candidate masks retain the candidates that the target technique can
 /// remove. Submit an action to [`crate::CompiledVariant::check_practice_move`]
 /// to check it using the same detector and rule set.
@@ -51,6 +52,14 @@ pub fn variant_practice_examples(
             .iter()
             .enumerate()
             .map(|(index, example)| {
+                if index == 0 && classic == Technique::PatternOverlay {
+                    return exercise(
+                        index,
+                        examples::pattern_overlay_jigsaw(),
+                        technique,
+                        HintAction::Eliminate(Candidate { cell: 76, digit: 7 }),
+                    );
+                }
                 let snapshot = example
                     .position()
                     .map_err(|_| VariantPracticeError::InvalidPosition(index))?;

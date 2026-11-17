@@ -1,4 +1,7 @@
-use std::{cell::OnceCell, ops::ControlFlow};
+use std::{
+    cell::{OnceCell, RefCell},
+    ops::ControlFlow,
+};
 
 use super::{
     Candidate, ConjugatePair, Deduction, DeductionActions, HintAction, HintEvidence, House,
@@ -15,11 +18,14 @@ mod exocet;
 mod fireworks;
 mod fish;
 mod forcing;
+mod guardians;
 mod inference;
 mod inference_graph;
 mod kraken;
 mod links;
 mod multi_sector;
+mod overlay;
+pub(crate) use overlay::OverlaySearch;
 mod rank_zero;
 mod single_digit;
 mod sk_loop;
@@ -41,8 +47,10 @@ pub(super) struct PatternSearch<'a> {
     als_cell_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
     firework_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
     tridagon_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
+    rectangle_inference: OnceCell<Option<Box<inference_graph::InferenceGraph>>>,
     rectangles: OnceCell<Vec<uniqueness::Rectangle>>,
     complex_fish_targets: OnceCell<[u128; 9]>,
+    overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
     kraken: OnceCell<Box<kraken::Search>>,
     forcing: OnceCell<forcing::ForcingGraph>,
     als: OnceCell<als::AlsSearch>,
@@ -62,8 +70,10 @@ impl<'a> PatternSearch<'a> {
             als_cell_inference: OnceCell::new(),
             firework_inference: OnceCell::new(),
             tridagon_inference: OnceCell::new(),
+            rectangle_inference: OnceCell::new(),
             rectangles: OnceCell::new(),
             complex_fish_targets: OnceCell::new(),
+            overlay: OnceCell::new(),
             kraken: OnceCell::new(),
             forcing: OnceCell::new(),
             als: OnceCell::new(),
@@ -119,6 +129,14 @@ impl<'a> PatternSearch<'a> {
                     .tridagon_inference
                     .get_or_init(|| {
                         inference_graph::InferenceGraph::for_tridagons(self).map(Box::new)
+                    })
+                    .as_deref(),
+                Technique::UniqueRectangleAic
+                | Technique::UniqueRectangleDiscontinuousNiceLoop
+                | Technique::UniqueRectangleContinuousNiceLoop => self
+                    .rectangle_inference
+                    .get_or_init(|| {
+                        inference_graph::InferenceGraph::for_unique_rectangles(self).map(Box::new)
                     })
                     .as_deref(),
                 _ => Some(self.inference_graph()),
@@ -193,6 +211,16 @@ impl<'a> PatternSearch<'a> {
                 technique,
                 visit,
             ),
+            technique if technique.pattern_overlay_width().is_some() => self
+                .overlay
+                .get_or_init(|| {
+                    Box::new(RefCell::new(OverlaySearch::new(
+                        self.board,
+                        *self.positions_by_digit(),
+                    )))
+                })
+                .borrow_mut()
+                .visit(technique, visit),
             Technique::KrakenFish1 | Technique::KrakenFish2 => {
                 if self.masks.iter().all(|&mask| mask == crate::DIGITS) {
                     return ControlFlow::Continue(());
@@ -229,15 +257,8 @@ impl<'a> PatternSearch<'a> {
     }
 
     fn positions_by_digit(&self) -> &[u128; 9] {
-        self.positions.get_or_init(|| {
-            let mut positions = [0; 9];
-            for (cell, &mask) in self.masks.iter().enumerate() {
-                for digit in bit_indices(mask) {
-                    positions[digit] |= cell_bit(cell);
-                }
-            }
-            positions
-        })
+        self.positions
+            .get_or_init(|| candidate_positions(self.masks))
     }
 
     fn bivalue_cells(&self) -> u128 {
@@ -265,6 +286,16 @@ impl<'a> PatternSearch<'a> {
             })
         })
     }
+}
+
+fn candidate_positions(masks: &[u16; CELLS]) -> [u128; 9] {
+    let mut positions = [0; 9];
+    for (cell, &mask) in masks.iter().enumerate() {
+        for digit in bit_indices(mask) {
+            positions[digit] |= cell_bit(cell);
+        }
+    }
+    positions
 }
 
 const fn cell_bit(cell: usize) -> u128 {

@@ -30,6 +30,7 @@ export const ANALYSIS_GROUPS = [
     '3d-medusa', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
     'continuous-nice-loop', 'grouped-aic', 'grouped-discontinuous-nice-loop',
     'grouped-continuous-nice-loop', 'firework-aic', 'tridagon-aic',
+    'unique-rectangle-aic', 'unique-rectangle-discontinuous-nice-loop', 'unique-rectangle-continuous-nice-loop',
   ] },
   { title: 'Almost locked sets', techniques: [
     'als-xz', 'als-xy-wing', 'als-chain', 'als-aic',
@@ -39,6 +40,8 @@ export const ANALYSIS_GROUPS = [
   { title: 'Advanced patterns', techniques: [
     'fireworks', 'aligned-pair-exclusion', 'aligned-triplet-exclusion',
     'tridagon', 'exocet', 'senior-exocet', 'double-exocet', 'sk-loop',
+    'pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay',
+    'quadruple-pattern-overlay', 'quintuple-pattern-overlay',
   ] },
   { title: 'Forcing techniques', techniques: [
     'tridagon-forcing-net', 'forcing-chain', 'forcing-net',

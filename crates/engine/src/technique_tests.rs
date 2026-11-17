@@ -140,6 +140,11 @@ fn transpose_link_source(source: LinkSource) -> LinkSource {
             cells.sort_unstable_by_key(|triple| crate::coordinates(usize::from(triple[0])).2);
             LinkSource::Tridagon { cells, digits }
         }
+        LinkSource::UniqueRectangle { corners, digits } => {
+            let mut corners = corners.map(|cell| transpose(usize::from(cell)) as u8);
+            corners.sort_unstable();
+            LinkSource::UniqueRectangle { corners, digits }
+        }
         LinkSource::AlmostLockedSet(set) | LinkSource::AlmostLockedSetCell { set, .. } => {
             let digits = set.digits().fold(0, |bits, digit| bits | digit_bit(digit));
             let set = crate::AlmostLockedSetLink::new(set.cells().map(transpose), digits);
@@ -325,6 +330,45 @@ fn transpose_hint(hint: &Hint) -> Hint {
                 covers: transpose_houses(covers),
                 fins,
             }
+        }
+        HintEvidence::PatternOverlay(proof) => {
+            HintEvidence::PatternOverlay(Box::new(crate::PatternOverlayProof {
+                digit: proof.digit,
+                geometry: proof.geometry.as_ref().map(|geometry| {
+                    let houses = geometry
+                        .houses
+                        .iter()
+                        .map(|house| {
+                            let mut house = house.map(transpose);
+                            house.sort_unstable();
+                            house
+                        })
+                        .collect();
+                    let mut excluded_pairs: Vec<_> = geometry
+                        .excluded_pairs
+                        .iter()
+                        .map(|pair| {
+                            let mut pair = pair.map(transpose);
+                            pair.sort_unstable();
+                            pair
+                        })
+                        .collect();
+                    excluded_pairs.sort_unstable();
+                    Box::new(crate::PatternOverlayGeometry {
+                        houses,
+                        excluded_pairs,
+                    })
+                }),
+                scopes: proof
+                    .scopes
+                    .iter()
+                    .map(|scope| crate::PatternOverlayDigit {
+                        digit: scope.digit,
+                        allowed: transpose_cells(&scope.allowed),
+                        supported: transpose_cells(&scope.supported),
+                    })
+                    .collect(),
+            }))
         }
         HintEvidence::KrakenFish {
             digit,

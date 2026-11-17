@@ -1,10 +1,10 @@
+use super::guardians::{GuardianGroup, visit_partitions};
 use super::{
     Candidate, ControlFlow, Deduction, DeductionActions, HintAction, HintEvidence, PEERS,
-    PatternSearch, Technique, bit_indices, cell_bit, cells, digits, forcing::GuardianSearch,
+    PatternSearch, Technique, bit_indices, cell_bit, digits, forcing::GuardianSearch,
     report_eliminations,
 };
 use crate::{DIGITS, ForcingBranch, LinkSource};
-use std::collections::BTreeSet;
 
 // The three even permutations precede the three odd permutations.
 const PERMUTATIONS: [[usize; 3]; 6] = [
@@ -233,12 +233,6 @@ fn visit_patterns(
     ControlFlow::Continue(())
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub(super) enum GuardianGroup {
-    SingleDigit(u8, u128),
-    Mixed(Vec<Candidate>),
-}
-
 pub(super) fn visit_links(
     search: &PatternSearch<'_>,
     mut visit: impl FnMut([GuardianGroup; 2], LinkSource),
@@ -265,7 +259,7 @@ pub(super) fn visit_links(
         if digits.count_ones() > 2 {
             if can_cover_other_digits(&positions, digits) {
                 pattern.guardians.sort_unstable();
-                visit_mixed_partitions(&pattern.guardians, search.positions_by_digit(), |groups| {
+                visit_partitions(&pattern.guardians, search.positions_by_digit(), |groups| {
                     visit(groups, source);
                 });
             }
@@ -323,71 +317,6 @@ fn can_cover_other_digits(positions: &[u128; 9], digits: u16) -> bool {
     false
 }
 
-fn visit_mixed_partitions(
-    guardians: &[Candidate],
-    positions: &[u128; 9],
-    mut visit: impl FnMut([GuardianGroup; 2]),
-) {
-    let mut coverage = [0u64; crate::CELLS * 9];
-    for (index, guardian) in guardians.iter().enumerate() {
-        for (digit, &live) in positions.iter().enumerate() {
-            let conflicts = if digit + 1 == usize::from(guardian.digit) {
-                PEERS[guardian.cell]
-            } else {
-                cell_bit(guardian.cell)
-            };
-            for cell in cells(live & conflicts) {
-                coverage[cell * 9 + digit] |= 1 << index;
-            }
-        }
-    }
-    let mut witnesses: Vec<_> = coverage.into_iter().filter(|&set| set != 0).collect();
-    witnesses.sort_unstable();
-    witnesses.dedup();
-    let all = (1u64 << guardians.len()) - 1;
-    let mut partitions = BTreeSet::new();
-    for &left in witnesses.iter().filter(|&&set| set & 1 != 0) {
-        for &right in witnesses.iter().filter(|&&set| left | set == all) {
-            // Put the first guardian on the left to avoid reversing a partition.
-            let required = (all ^ right) | 1;
-            let shared = left & right & !1;
-            let mut flexible = shared;
-            loop {
-                let first = required | flexible;
-                if first != all && partitions.insert(first) {
-                    visit([
-                        guardian_group(guardians, first),
-                        guardian_group(guardians, all ^ first),
-                    ]);
-                }
-                if flexible == 0 {
-                    break;
-                }
-                flexible = (flexible - 1) & shared;
-            }
-        }
-    }
-}
-
-fn guardian_group(guardians: &[Candidate], selected: u64) -> GuardianGroup {
-    let members: Vec<_> = guardians
-        .iter()
-        .enumerate()
-        .filter_map(|(i, &candidate)| (selected & (1 << i) != 0).then_some(candidate))
-        .collect();
-    let digit = members[0].digit;
-    if members.iter().all(|member| member.digit == digit) {
-        GuardianGroup::SingleDigit(
-            digit,
-            members
-                .into_iter()
-                .fold(0, |all, member| all | cell_bit(member.cell)),
-        )
-    } else {
-        GuardianGroup::Mixed(members)
-    }
-}
-
 #[cfg(test)]
 pub(super) fn has_pattern(search: &PatternSearch<'_>) -> bool {
     let mut found = false;
@@ -439,6 +368,7 @@ fn conflicts(a: Candidate, b: Candidate) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
 
     #[test]
     fn mixed_partitions_match_exhaustive_candidate_conflicts() {
@@ -478,7 +408,7 @@ mod tests {
         assert!(expected.contains(&0b00011));
 
         let mut actual = BTreeSet::new();
-        visit_mixed_partitions(&guardians, &positions, |[first, _]| {
+        visit_partitions(&guardians, &positions, |[first, _]| {
             let first = guardians
                 .iter()
                 .enumerate()
