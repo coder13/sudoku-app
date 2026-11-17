@@ -68,6 +68,7 @@ pub(super) enum Operation {
     #[default]
     Normalize,
     Candidates,
+    SolveSingles,
     Analyze,
     Solve,
     Hints,
@@ -83,6 +84,8 @@ pub(super) enum Operation {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Options {
+    displayed_candidates: Option<Vec<u16>>,
+    collection: Option<u32>,
     max_nodes: Option<u32>,
     seed: Option<u32>,
     technique_order: Option<Vec<String>>,
@@ -234,7 +237,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         Some(_)
             if matches!(
                 operation,
-                Operation::Analyze | Operation::Solve | Operation::Candidates
+                Operation::Analyze | Operation::Solve | Operation::Candidates | Operation::SolveSingles
             ) =>
         {
             return Err((
@@ -276,7 +279,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         }
         _ => {}
     }
-    let compiled = position.puzzle.compile().map_err(definition_error)?;
+    let compiled = compiled_puzzle(&position.puzzle)?;
     Ok(match operation {
         Operation::Normalize => json!(position),
         Operation::Candidates => json!(
@@ -285,6 +288,25 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
                 .map_err(position_error)?
                 .as_slice()
         ),
+        Operation::SolveSingles => {
+            let allowed = super::play_masks(options.displayed_candidates, None)?;
+            let mut values = *entries;
+            loop {
+                let mut masks = compiled.candidates(&values, eliminations).map_err(position_error)?;
+                for (mask, allowed) in masks.iter_mut().zip(allowed.iter()) {
+                    *mask &= allowed;
+                }
+                let Some((cell, digit)) = crate::next_single(&masks, compiled.houses().iter().map(|house| house.cells)) else {
+                    for (value, &given) in values.iter_mut().zip(compiled.givens()) {
+                        if given != 0 {
+                            *value = given;
+                        }
+                    }
+                    break json!(grid_string(values));
+                };
+                values[cell] = digit;
+            }
+        }
         Operation::Analyze => {
             let analysis = compiled
                 .analyze(entries, eliminations, budget)
@@ -316,7 +338,13 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             } else {
                 compiled.ranked_hints(entries, eliminations, &enabled, limit)
             };
-            json!(hints.map_err(position_error)?)
+            let hints = hints.map_err(position_error)?;
+            if let Some(id) = options.collection {
+                let cached = super::hint_pages::Choices::Variant(hints);
+                json!(super::hint_pages::start(id, cached)?)
+            } else {
+                json!(hints)
+            }
         }
         #[cfg(feature = "teaching")]
         Operation::CheckPracticeMove => {
@@ -331,6 +359,25 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             )
         }
         _ => unreachable!("rating and trace operations compile the puzzle internally"),
+    })
+}
+
+// Each worker owns one compiled definition. Entries, removals and visibility
+// stay per request. A different definition replaces the cached topology.
+fn compiled_puzzle(puzzle: &crate::VariantPuzzle) -> ResultValue<std::rc::Rc<crate::CompiledVariant>> {
+    use std::{cell::RefCell, rc::Rc};
+    thread_local! {
+        static CACHE: RefCell<Option<(crate::VariantPuzzle, Rc<crate::CompiledVariant>)>> = const { RefCell::new(None) };
+    }
+    CACHE.with_borrow_mut(|cache| {
+        if let Some((previous, compiled)) = cache {
+            if previous == puzzle {
+                return Ok(Rc::clone(compiled));
+            }
+        }
+        let compiled = Rc::new(puzzle.compile().map_err(definition_error)?);
+        *cache = Some((puzzle.clone(), Rc::clone(&compiled)));
+        Ok(compiled)
     })
 }
 

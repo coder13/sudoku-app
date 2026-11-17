@@ -1,0 +1,294 @@
+
+> test:engine-features
+> node scripts/check-engine-features.mjs
+
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 2.36s
+Checking wasm-api
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.154
+   Compiling serde v1.0.229
+    Checking memchr v2.8.3
+    Checking itoa v1.0.19
+   Compiling syn v3.0.10
+   Compiling serde_derive v1.0.229
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 6.01s
+   Compiling itoa v1.0.19
+   Compiling memchr v2.8.3
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling serde v1.0.229
+   Compiling serde_json v1.0.154
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 4.90s
+     Running tests/build_contract.rs (target/debug/deps/build_contract-076bcf04a8345062)
+
+running 1 test
+test every_build_validates_solves_rates_and_finds_sound_hint_choices ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 5.68s
+     Running unittests src/lib.rs (target/debug/deps/sudoku_app_engine-cf1c25507b2f7674)
+
+running 1 test
+test protocol::tests::capabilities_match_build_features_and_omitted_operations_preserve_the_solver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.00s
+
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 2.10s
+Checking wasm-api, variants
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 2.70s
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 3.85s
+     Running tests/build_contract.rs (target/debug/deps/build_contract-896cf22f15ff161e)
+
+running 1 test
+test every_build_validates_solves_rates_and_finds_sound_hint_choices ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 6.64s
+     Running unittests src/lib.rs (target/debug/deps/sudoku_app_engine-8c49482720446916)
+
+running 1 test
+test protocol::tests::capabilities_match_build_features_and_omitted_operations_preserve_the_solver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 146 filtered out; finished in 0.00s
+
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 3.31s
+Checking wasm-api, generation
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 2.79s
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 5.32s
+     Running tests/build_contract.rs (target/debug/deps/build_contract-b788fd6ad220b660)
+
+running 1 test
+test every_build_validates_solves_rates_and_finds_sound_hint_choices ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 6.43s
+     Running unittests src/lib.rs (target/debug/deps/sudoku_app_engine-484e5655221d37ab)
+
+running 1 test
+test protocol::tests::capabilities_match_build_features_and_omitted_operations_preserve_the_solver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.01s
+
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 2.59s
+Checking wasm-api, variants, generation
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 3.64s
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 4.40s
+     Running tests/build_contract.rs (target/debug/deps/build_contract-268711d01e600d93)
+
+running 1 test
+test every_build_validates_solves_rates_and_finds_sound_hint_choices ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 9.17s
+     Running unittests src/lib.rs (target/debug/deps/sudoku_app_engine-cb8630e611f87747)
+
+running 1 test
+test protocol::tests::capabilities_match_build_features_and_omitted_operations_preserve_the_solver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 146 filtered out; finished in 0.01s
+
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+warning: function `puzzle_permutation` is never used
+ --> crates/engine/src/permutation.rs:3:15
+  |
+3 | pub(crate) fn puzzle_permutation(random: &mut Random) -> ([usize; CELLS], [u8; 10]) {
+  |               ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `axis_order` is never used
+  --> crates/engine/src/permutation.rs:20:4
+   |
+20 | fn axis_order(random: &mut Random) -> [usize; 9] {
+   |    ^^^^^^^^^^
+
+warning: `sudoku-app-engine` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized] target(s) in 4.41s
+Checking wasm-api, teaching
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+warning: function `puzzle_permutation` is never used
+ --> crates/engine/src/permutation.rs:3:15
+  |
+3 | pub(crate) fn puzzle_permutation(random: &mut Random) -> ([usize; CELLS], [u8; 10]) {
+  |               ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `axis_order` is never used
+  --> crates/engine/src/permutation.rs:20:4
+   |
+20 | fn axis_order(random: &mut Random) -> [usize; 9] {
+   |    ^^^^^^^^^^
+
+warning: `sudoku-app-engine` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized] target(s) in 3.70s
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+warning: function `puzzle_permutation` is never used
+ --> crates/engine/src/permutation.rs:3:15
+  |
+3 | pub(crate) fn puzzle_permutation(random: &mut Random) -> ([usize; CELLS], [u8; 10]) {
+  |               ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `axis_order` is never used
+  --> crates/engine/src/permutation.rs:20:4
+   |
+20 | fn axis_order(random: &mut Random) -> [usize; 9] {
+   |    ^^^^^^^^^^
+
+warning: `sudoku-app-engine` (lib) generated 2 warnings
+    Finished `test` profile [unoptimized] target(s) in 4.74s
+     Running tests/build_contract.rs (target/debug/deps/build_contract-8720dee2b9968373)
+
+running 1 test
+test every_build_validates_solves_rates_and_finds_sound_hint_choices ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 7.51s
+     Running unittests src/lib.rs (target/debug/deps/sudoku_app_engine-7abb98177c4a0192)
+
+running 1 test
+test protocol::tests::capabilities_match_build_features_and_omitted_operations_preserve_the_solver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.01s
+
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+warning: function `puzzle_permutation` is never used
+ --> crates/engine/src/permutation.rs:3:15
+  |
+3 | pub(crate) fn puzzle_permutation(random: &mut Random) -> ([usize; CELLS], [u8; 10]) {
+  |               ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `axis_order` is never used
+  --> crates/engine/src/permutation.rs:20:4
+   |
+20 | fn axis_order(random: &mut Random) -> [usize; 9] {
+   |    ^^^^^^^^^^
+
+warning: `sudoku-app-engine` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized] target(s) in 4.44s
+Checking wasm-api, variants, teaching
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+warning: function `puzzle_permutation` is never used
+ --> crates/engine/src/permutation.rs:3:15
+  |
+3 | pub(crate) fn puzzle_permutation(random: &mut Random) -> ([usize; CELLS], [u8; 10]) {
+  |               ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `axis_order` is never used
+  --> crates/engine/src/permutation.rs:20:4
+   |
+20 | fn axis_order(random: &mut Random) -> [usize; 9] {
+   |    ^^^^^^^^^^
+
+warning: `sudoku-app-engine` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized] target(s) in 6.51s
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+warning: function `puzzle_permutation` is never used
+ --> crates/engine/src/permutation.rs:3:15
+  |
+3 | pub(crate) fn puzzle_permutation(random: &mut Random) -> ([usize; CELLS], [u8; 10]) {
+  |               ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `axis_order` is never used
+  --> crates/engine/src/permutation.rs:20:4
+   |
+20 | fn axis_order(random: &mut Random) -> [usize; 9] {
+   |    ^^^^^^^^^^
+
+warning: `sudoku-app-engine` (lib) generated 2 warnings
+    Finished `test` profile [unoptimized] target(s) in 6.05s
+     Running tests/build_contract.rs (target/debug/deps/build_contract-9824c48821f1508d)
+
+running 1 test
+test every_build_validates_solves_rates_and_finds_sound_hint_choices ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 19.53s
+     Running unittests src/lib.rs (target/debug/deps/sudoku_app_engine-72ccf7e6a10fe696)
+
+running 1 test
+test protocol::tests::capabilities_match_build_features_and_omitted_operations_preserve_the_solver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 146 filtered out; finished in 0.01s
+
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 4.29s
+Checking wasm-api, generation, teaching
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 3.23s
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 3.80s
+     Running tests/build_contract.rs (target/debug/deps/build_contract-e4fdf8c716452548)
+
+running 1 test
+test every_build_validates_solves_rates_and_finds_sound_hint_choices ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 12.03s
+     Running unittests src/lib.rs (target/debug/deps/sudoku_app_engine-62377e5c97b33d7d)
+
+running 1 test
+test protocol::tests::capabilities_match_build_features_and_omitted_operations_preserve_the_solver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.02s
+
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 20.38s
+Checking wasm-api, variants, generation, teaching
+    Checking sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `dev` profile [unoptimized] target(s) in 25.25s
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 11.08s
+     Running tests/build_contract.rs (target/debug/deps/build_contract-dc40451e93afa100)
+
+running 1 test
+test every_build_validates_solves_rates_and_finds_sound_hint_choices ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling sudoku-app-engine v0.1.0 (/Users/cailyn/projects/sudoku-app/crates/engine)
+    Finished `test` profile [unoptimized] target(s) in 16.47s
+     Running unittests src/lib.rs (target/debug/deps/sudoku_app_engine-e82016c274d053df)
+
+running 1 test
+test protocol::tests::capabilities_match_build_features_and_omitted_operations_preserve_the_solver ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 146 filtered out; finished in 0.02s

@@ -48,6 +48,7 @@ export function HighlightSettings({ highlighting, setHighlighting }: {
   highlighting: HighlightPreferences
   setHighlighting: (highlighting: HighlightPreferences) => void
 }) {
+  const candidateStyleGroup = useId()
   return (
     <div className="settings-section mobile-title-duplicate">
       <h3>Highlighting</h3>
@@ -75,7 +76,7 @@ export function HighlightSettings({ highlighting, setHighlighting }: {
           <legend>Candidate highlight style</legend>
           {candidateStyles.map((style) => (
             <label key={style.id}>
-              <input type="radio" name="candidate-highlight-style" value={style.id}
+              <input type="radio" name={candidateStyleGroup} value={style.id}
                 checked={highlighting.candidateStyle === style.id}
                 onChange={() => setHighlighting({ ...highlighting, candidateStyle: style.id })} />
               <span><strong>{style.label}</strong><small>{style.description}</small></span>
@@ -224,6 +225,7 @@ export function AppearanceSettings({ appearance, setAppearance, inputSize, setIn
   workspaceMode: WorkspaceMode
   setWorkspaceMode?: (mode: WorkspaceMode) => void
 }) {
+  const workspaceModeGroup = useId()
   return (
     <div className="appearance-flat-settings">
       {setWorkspaceMode && <div className="settings-section workspace-mode-settings">
@@ -232,12 +234,12 @@ export function AppearanceSettings({ appearance, setAppearance, inputSize, setIn
         <fieldset className="workspace-mode-options">
           <legend className="sr-only">Workspace mode</legend>
           <label>
-            <input type="radio" name="workspace-mode" value="standard" checked={workspaceMode === 'standard'}
+            <input type="radio" name={workspaceModeGroup} value="standard" checked={workspaceMode === 'standard'}
               onChange={() => setWorkspaceMode('standard')} />
             <span><strong>Standard</strong><small>Keep the puzzle and input controls in a fixed, uncluttered layout.</small></span>
           </label>
           <label>
-            <input type="radio" name="workspace-mode" value="advanced" checked={workspaceMode === 'advanced'}
+            <input type="radio" name={workspaceModeGroup} value="advanced" checked={workspaceMode === 'advanced'}
               onChange={() => setWorkspaceMode('advanced')} />
             <span><strong>Advanced</strong><small>Use a full desktop workspace with named, movable, resizable panels and additional puzzle data.</small></span>
           </label>
@@ -291,6 +293,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
   cellReferenceStyle: CellReferenceStyle
   setCellReferenceStyle: (style: CellReferenceStyle) => void
 }) {
+  const candidateLayoutGroup = useId()
   const cellReferenceGroup = useId()
   if (section === 'input') {
     return (
@@ -300,12 +303,12 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
           <fieldset>
             <legend>Candidate layout</legend>
             <label>
-              <input type="radio" name="candidate-layout" value="grid" checked={advancedModes.candidateLayout === 'grid'}
+              <input type="radio" name={candidateLayoutGroup} value="grid" checked={advancedModes.candidateLayout === 'grid'}
                 onChange={() => setAdvancedModes({ ...advancedModes, candidateLayout: 'grid' })} />
               <span><strong>Grid</strong><small>Use fixed positions in a 3×3 grid.</small></span>
             </label>
             <label>
-              <input type="radio" name="candidate-layout" value="center-corner" checked={advancedModes.candidateLayout === 'center-corner'}
+              <input type="radio" name={candidateLayoutGroup} value="center-corner" checked={advancedModes.candidateLayout === 'center-corner'}
                 onChange={() => setAdvancedModes({ ...advancedModes, candidateLayout: 'center-corner' })} />
               <span><strong>Center and corner</strong><small>Place candidates in cell centers or corners.</small></span>
             </label>

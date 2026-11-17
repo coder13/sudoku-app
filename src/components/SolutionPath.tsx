@@ -1,8 +1,9 @@
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import type { LogicalSolution, MoveAvailability } from '../sudoku/engine'
 import { techniqueLabel } from '../sudoku/hints'
 import { deductionResults } from '../sudoku/lesson-diagram'
+import { Modal } from './Modal'
 
 export type SolutionPathState =
   | { status: 'loading' }
@@ -17,6 +18,19 @@ type Props = {
   onClose: () => void
   onReveal?: () => void
   embedded?: boolean
+}
+
+/** Keep the read-only preview and walkthrough together on a small screen. */
+export function SolutionDialog({ grid, explanation, ...props }: Props & {
+  grid: ReactNode; explanation: { title: string; text: string } | null
+}) {
+  return <Modal title="Solution" className="mobile-solution-dialog" onClose={props.onClose}>
+    {grid}
+    {explanation && <div className="mobile-solution-explanation">
+      <h3>{explanation.title}</h3><p>{explanation.text}</p>
+    </div>}
+    <SolutionPath {...props} embedded />
+  </Modal>
 }
 
 function bottleneckLabel(availability?: MoveAvailability) {

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
 import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import { jigsawLayout, reflectVariant, variantSeeds } from '../src/sudoku/variant-generation.ts'
-import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantHouseCells, variantHouseMasks } from '../src/sudoku/variants.ts'
+import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantHouseCells, variantHouseMasks, variantHouseName } from '../src/sudoku/variants.ts'
 import {
   applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, onlyCandidate, paintCandidate, redo,
   needsInitialCandidates, paintCandidateStroke, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, undo, valuesOf,
@@ -383,6 +383,7 @@ test('Windoku peers, conflicts, and saved games include all four extra regions',
   const mixed = { ...puzzle, rules: [{ type: 'parity' as const, parity: 'even' as const, cells: [0] }, ...rules] }
   assert.deepEqual(singleFromCandidates(valuesOf(game), masks, undefined, mixed), [30, 9])
   assert.deepEqual(variantHouseCells({ extra: 1 }, mixed), WINDOKU_REGIONS[0])
+  assert.equal(variantHouseName({ extra: 1 }, mixed), 'extra region 1')
   assert.deepEqual(variantHouseCells({ extra: 0 }, mixed), [])
   collision[30] = '0'
   assert.equal(variantHouseMasks(mixed, collision.join(''))[30] & (1 << 4), 0)

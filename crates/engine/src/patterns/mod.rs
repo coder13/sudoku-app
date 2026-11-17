@@ -36,6 +36,7 @@ mod uniqueness;
 mod wings;
 
 pub(super) struct PatternSearch<'a> {
+    pub(super) verified_solution: Option<&'a Board>,
     board: &'a Board,
     masks: &'a [u16; CELLS],
     positions: OnceCell<[u128; 9]>,
@@ -59,6 +60,7 @@ pub(super) struct PatternSearch<'a> {
 impl<'a> PatternSearch<'a> {
     pub(super) fn new(board: &'a Board, masks: &'a [u16; CELLS]) -> Self {
         Self {
+            verified_solution: None,
             board,
             masks,
             positions: OnceCell::new(),
@@ -188,7 +190,7 @@ impl<'a> PatternSearch<'a> {
             | Technique::NestedForcingNet => self
                 .forcing
                 .get_or_init(|| forcing::ForcingGraph::new(self.masks, self.positions_by_digit()))
-                .visit(technique, visit),
+                .visit(technique, self.verified_solution, visit),
             Technique::AlsXz
             | Technique::AlsXyWing
             | Technique::AlsChain

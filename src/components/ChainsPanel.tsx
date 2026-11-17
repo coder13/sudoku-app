@@ -149,7 +149,8 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
   return <section className="chains-panel" aria-label="Chains">
     {unavailable ? <p role="status">{unavailable}</p> : <>
       <div className="chain-panel-tools">
-        <button type="button" className="button secondary" title={`New chain (${newKey})`} aria-keyshortcuts={newKey} onClick={sketch.addSketch}>
+        <button type="button" className="button secondary" title={`New chain (${newKey})`} aria-keyshortcuts={newKey}
+          disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
           <Plus size={15} aria-hidden="true" /> New chain
         </button>
         {digitHighlight && <label>

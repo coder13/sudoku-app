@@ -65,7 +65,7 @@ If you have more than one saved puzzle, open Puzzle options and choose Switch pu
 
 The share menu copies a link to this app, an 81-character string, a nine-line grid, a HoDoKu library line, or a link for Sudoku Exchange or sudoku.coach. Import detects puzzle codes, links, and single-puzzle text files. It shows a board preview before you save or start the puzzle. On mobile, import and preview use a full page. On localhost, sharing defaults to a Sudoku Exchange link so anyone with the link can open the puzzle.
 
-Variant puzzles use an app link that carries the givens and rules. Classic share formats carry the givens. Import also accepts Sudoku Coach `SCv7_32` codes and direct links, short Sudoku Exchange grids, f-puzzles exports, and SudokuPad links that contain an SCF or f-puzzles code. The app reports rules it cannot play. When you import a Sudoku Coach Current State code or a HoDoKu library line, you get the starting puzzle. Your progress stays in your browser.
+Variant puzzles use an app link that carries the givens and rules. Classic share formats carry the givens. Import also accepts Sudoku Coach `SCv7_32` codes and direct links, short Sudoku Exchange grids, f-puzzles exports, and SudokuPad links that contain an SCF or f-puzzles code. Imported puzzles can combine Jigsaw regions, Killer cages, either diagonal, extra regions, Anti-Knight, thermometers, arrows, and Kropki dots. White and black dots keep separate negative-rule settings. Preview and Play explain every active rule. Mixed puzzles retain their full definitions when saved or shared; after completion, choose another puzzle from the puzzle chooser. The app reports rules it cannot play. When you import a Sudoku Coach Current State code or a HoDoKu library line, you get the starting puzzle. Your progress stays in your browser.
 
 ### Player rating and Auto difficulty
 
@@ -150,9 +150,15 @@ Send the practice position, target technique ID, and a proposed placement or rem
 
 Sudoku Coach informed the lesson and practice flow. HoDoKu shows how a solver can reveal a move in stages. SudokuWiki and Sudopedia give alternate names and rule definitions. Hodoku Revisited shows how a walkthrough can keep the reason and the answer on the same board. [Sudoku Coach techniques](https://sudoku.coach/en/learn/technique-overview) · [HoDoKu hints and practice](https://hodoku.dev/docs_play) · [SudokuWiki strategy families](https://www.sudokuwiki.org/Strategy_Families) · [Sudopedia technique index](https://sudopedia.sudocue.net/index.php?title=Solving_technique) · [Hodoku Revisited hints](https://hodokurevisited.com/manual/hints.html)
 
+The play screen fills singles with one `solve-singles` request. Classic and variant requests accept optional `displayedCandidates` masks and respect saved candidate removals.
+
+For an exhaustive hint list, pass a numeric `collection` ID with the hints request. The response includes the first page and the total in `available`. Send `hint-page` with the same ID and a zero-based `index` to get the page containing that hint. Its `offset` gives the first index on the page. Each worker keeps one collection until another replaces it or the caller sends `release-hints`.
+
 ### Generation and training
 
 The generator must accept a requested difficulty or opening technique. A puzzle that targets a difficulty must receive a complete rating at that difficulty under the chosen solver configuration. In either case, the generator must make sure that the puzzle has exactly one solution.
+
+For `generate-targeted` and `generate-constrained`, set `includeRating` to `true` to receive `{ board, rating }`. The default response is the grid string. When a search checks the difficulty, the rating describes the accepted solve path.
 
 The `generate-constrained` request accepts an exact clue count or an inclusive `[min, max]` range in `clues`. It can combine those bounds with a `difficulty` or an inclusive `score` range and a technique target. Pass a technique ID in `technique` to find it anywhere in the configured solve path, or pass an object with `id` and `mode`. The modes are `anywhere`, `first` for the first step of the configured path, and `exclusive-opening` for the only technique that can act on the givens. A difficulty or score target requires the configured solver to finish the puzzle.
 

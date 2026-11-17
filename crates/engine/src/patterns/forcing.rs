@@ -63,10 +63,11 @@ impl ForcingGraph {
     pub(super) fn visit(
         &self,
         technique: Technique,
+        verified_solution: Option<&crate::Board>,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         if technique == Technique::NestedForcingNet {
-            return self.visit_nested(visit);
+            return self.visit_nested(verified_solution, visit);
         }
         if technique == Technique::AdvancedForcingNet && self.available.len() == CANDIDATE_COUNT {
             return ControlFlow::Continue(());
@@ -144,11 +145,21 @@ impl ForcingGraph {
 
     fn visit_nested(
         &self,
+        verified_solution: Option<&crate::Board>,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         let mut branch = BranchSearch::new(self, Mode::Dynamic);
         for &id in &self.available {
             for assumption in [id * 2 + 1, id * 2] {
+                // A known completion witnesses every assumption it satisfies.
+                // Only its opposite can produce a contradiction. That branch
+                // must still prove both sides of an inner split.
+                if verified_solution.is_some_and(|solution| {
+                    let target = candidate(id);
+                    (solution[target.cell] == target.digit) == (assumption % 2 == 1)
+                }) {
+                    continue;
+                }
                 if branch.run(assumption).is_some() {
                     continue;
                 }

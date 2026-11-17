@@ -1,0 +1,11 @@
+✔ real engine matches a group of manual removals from the pre-removal board (31.333542ms)
+✔ removing a solution candidate has no matching technique (354.98925ms)
+✔ variant attribution uses the saved board and runs outside the play worker (8.818083ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 521.135125

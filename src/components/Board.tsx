@@ -82,7 +82,7 @@ export function Board({
     ((position?.corner[cell] ?? 0) | (usesDigitSlots(cell) ? position?.center[cell] ?? 0 : 0))
   const centerMask = (cell: number) => usesDigitSlots(cell) ? 0 : position?.center[cell] ?? 0
   let tabCandidate: CandidateSlot | undefined
-  if (onPaintCandidate) {
+  if (candidateAction) {
     if (candidateFocus && playableCell(candidateFocus.cell) &&
       hasCandidate((candidateFocus.slotted ? gridMask : centerMask)(candidateFocus.cell), candidateFocus.digit)) {
       tabCandidate = candidateFocus
@@ -132,7 +132,7 @@ export function Board({
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={label}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
-          onKeyDown={onPaintCandidate && navigateCandidates}
+          onKeyDown={candidateAction && navigateCandidates}
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {rows.map((row) => (
@@ -173,7 +173,7 @@ export function Board({
                 const candidateHighlightStyle = candidateMatches && highlighting.matchingCandidates ? highlighting.candidateStyle : undefined
                 const candidateCountMatches = !value && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
                 const cellStyle = cellAnnotation && {
-                  backgroundColor: error ? undefined : cellAnnotation.fill,
+                  '--cell-fill': error ? undefined : cellAnnotation.fill,
                   color: error ? undefined : cellAnnotation.ink,
                   '--annotation-outline': cellAnnotation.outline,
                 } as CSSProperties
@@ -240,9 +240,10 @@ export function Board({
                       })}
                       onPointerLeave={onCandidateHover && (() => onCandidateHover(null))}
                       onMouseDown={onPaintCandidate ? undefined : (event) => event.preventDefault()}
-                      onFocus={onPaintCandidate && (() => setCandidateFocus({ ...candidate, slotted }))}
-                      onClick={(event) => {
-                        if (onPaintCandidate || event.detail > 0) candidateAction(candidate)
+                      onFocus={() => setCandidateFocus({ ...candidate, slotted })}
+                      onClick={() => {
+                        setCandidateFocus({ ...candidate, slotted })
+                        candidateAction(candidate)
                       }}>
                       <span className={['candidate-glyph', colorClass, onPaintCandidate && highlightClass].filter(Boolean).join(' ')}>{digit}</span>
                     </button>

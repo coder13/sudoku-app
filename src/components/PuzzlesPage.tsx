@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type Componen
 import { getRouteApi, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
 import {
-  DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference,
+  DIFFICULTY_LABELS, formatPuzzleRating, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
@@ -11,7 +11,7 @@ import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId, type PuzzleVariantId } from '../sudoku/variants'
 import { StopPlaying } from './PuzzleDialogs'
 import { useMobileLayout } from './mobile-layout'
 import { MobileNewPuzzle, type MobileNewPuzzleScreen } from './MobileNewPuzzle'
@@ -61,7 +61,7 @@ function PuzzleLibrary({ games, active, select, manage }: {
   const title = useId()
   const activePuzzles = games.filter((game) => !isSolved(game) && !game.savedForLater)
   const saved = games.filter((game) => !isSolved(game) && game.savedForLater)
-  const variantOrder = Object.keys(VARIANTS) as VariantId[]
+  const variantOrder: PuzzleVariantId[] = [...Object.keys(VARIANTS) as VariantId[], 'mixed']
   const difficultyOrder = [...Object.keys(DIFFICULTY_LABELS), 'unrated']
   const solved = games.filter(isSolved).sort((left, right) => {
     const leftVariant = left.variant?.id ?? 'classic'
@@ -71,7 +71,7 @@ function PuzzleLibrary({ games, active, select, manage }: {
       right.created - left.created || left.title.localeCompare(right.title)
   })
   const solvedGroups = solved.reduce<Array<{
-    key: string; variant: VariantId; difficulty: Game['difficulty']; games: Game[]
+    key: string; variant: PuzzleVariantId; difficulty: Game['difficulty']; games: Game[]
   }>>((groups, game) => {
     const variant = game.variant?.id ?? 'classic'
     const key = `${variant}:${game.difficulty ?? 'unrated'}`
@@ -112,7 +112,7 @@ function PuzzleLibrary({ games, active, select, manage }: {
       <h3 id={`${title}-solved`}>Solved puzzles</h3>
       {solvedGroups.length > 0 ? solvedGroups.map((group) => <section className="solved-puzzle-group" key={group.key}
         aria-labelledby={`${title}-${group.key}`}>
-        <h4 id={`${title}-${group.key}`}>{VARIANTS[group.variant].name} · {group.difficulty ? DIFFICULTY_LABELS[group.difficulty] : 'Unrated'}</h4>
+        <h4 id={`${title}-${group.key}`}>{group.variant === 'mixed' ? 'Mixed rules' : VARIANTS[group.variant].name} · {group.difficulty ? DIFFICULTY_LABELS[group.difficulty] : 'Unrated'}</h4>
         {list(group.games)}
       </section>) : <p className="main-menu-empty">You haven’t solved any puzzles yet.</p>}
     </section>
@@ -159,10 +159,10 @@ function Statistics({ games }: { games: Game[] }) {
   const inProgress = games.filter((game) => game.started && !isSolved(game) && game.source !== 'draft')
   const timedGames = games.filter((game) => !game.timeUntracked && game.source !== 'draft' && (game.started || game.elapsed > 0))
   const totalTime = timedGames.reduce((sum, game) => sum + game.elapsed, 0)
-  const difficultyRows = Object.entries(DIFFICULTY_LABELS).map(([difficulty, label]) => {
+  const difficultyRows = statisticsDifficulties(solved.map((game) => game.difficulty)).map((difficulty) => {
     const matching = solved.filter((game) => game.difficulty === difficulty)
     const best = matching.reduce((time, game) => game.timeUntracked ? time : Math.min(time, game.elapsed), Infinity)
-    return { difficulty, label, solved: matching.length, best }
+    return { difficulty, label: DIFFICULTY_LABELS[difficulty], solved: matching.length, best }
   })
   return <section className="main-menu-section" aria-labelledby="statistics-title">
     <header><h2 id="statistics-title">Statistics</h2><p>Your solving history on this device.</p></header>
