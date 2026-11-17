@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { VariantRule } from '../sudoku/engine'
-import { extraRegionName } from '../sudoku/variants'
+import { extraRegionName, quadrupleCells } from '../sudoku/variants'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
@@ -8,7 +8,12 @@ const center = (cell: number) => [x(cell) + 0.5, y(cell) + 0.5] as const
 const pairKey = (a: number, b: number) => Math.min(a, b) * 81 + Math.max(a, b)
 const points = (cells: readonly number[]) => cells.map((cell) => center(cell).join(',')).join(' ')
 
-function Cage({ cells, sum }: { cells: readonly number[]; sum: number }) {
+/** Reserve the circle at the caption cell's top-left intersection. */
+export function cageLabelInset(cell: number, rules: readonly VariantRule[]) {
+  return rules.some(rule => rule.type === 'quadruple' && rule.topLeft + 10 === cell) ? .34 : .1
+}
+
+function Cage({ cells, sum, captionInset }: { cells: readonly number[]; sum: number; captionInset: number }) {
   const edge = 0.075
   const members = new Set(cells)
   const corner = Math.min(...cells)
@@ -25,7 +30,7 @@ function Cage({ cells, sum }: { cells: readonly number[]; sum: number }) {
       const y1 = row + (top ? edge : 0)
       const y2 = row + 1 - (bottom ? edge : 0)
       const segments = [
-        top && `M${cell === corner ? col + (sum < 10 ? .27 : .4) : x1},${y1}H${x2}`,
+        top && `M${cell === corner ? col + captionInset + (sum < 10 ? .17 : .3) : x1},${y1}H${x2}`,
         right && `M${x2},${y1}V${y2}`,
         bottom && `M${x2},${y2}H${x1}`,
         left && `M${x1},${y2}V${y1}`,
@@ -70,6 +75,9 @@ function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly 
 
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const marker = useId()
+  // Keep foreground circle symbols above lines and cage edges in either source order.
+  const drawingOrder = rules.map((rule, index) => ({ rule, index }))
+    .sort((a, b) => Number(a.rule.type === 'quadruple') - Number(b.rule.type === 'quadruple'))
   const dots = new Map<number, number>()
   for (const rule of rules) {
     if (rule.type !== 'kropki') continue
@@ -87,15 +95,27 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         <path className="variant-arrow-head" d="M.08 .08L.9 .5L.08 .92" />
       </marker>
     </defs>}
-    {rules.map((rule, index) => {
+    {drawingOrder.map(({ rule, index }) => {
       switch (rule.type) {
+        case 'quadruple': {
+          const cx = x(rule.topLeft) + 1
+          const cy = y(rule.topLeft) + 1
+          const count = rule.digits.length
+          return <g key={index} className="variant-quadruple">
+            <circle cx={cx} cy={cy} r=".265" />
+            {rule.digits.map((digit, i) => <text key={i}
+              x={cx + (count === 1 || count === 3 && i === 2 ? 0 : i % 2 ? .105 : -.105)}
+              y={cy + (count <= 2 ? 0 : Math.floor(i / 2) ? .105 : -.105)}>{digit}</text>)}
+          </g>
+        }
         case 'diagonal':
           return <line key={index} className="variant-diagonal" x1={rule.diagonal === 'main' ? 0 : 9} y1="0"
             x2={rule.diagonal === 'main' ? 9 : 0} y2="9" />
         case 'extra-house':
           return <ExtraRegion key={index} cells={rule.cells} />
         case 'killer-cages':
-          return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} {...cage} />)}</g>
+          return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} {...cage}
+            captionInset={cageLabelInset(Math.min(...cage.cells), rules)} />)}</g>
         case 'thermometer':
           return <g key={index} className="variant-thermometer">
             <polyline points={points(rule.cells)} />
@@ -124,6 +144,10 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
   const labels: string[][] = Array.from({ length: 81 }, () => [])
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
+      case 'quadruple':
+        for (const cell of quadrupleCells(rule.topLeft)) labels[cell].push(
+          `Quadruple ${rule.digits.join(', ')}, circle touching ${reference(rule.topLeft)} and its three neighbors; repeated digits need separate cells`)
+        break
       case 'diagonal': {
         const main = rule.diagonal === 'main'
         for (let i = 0; i < 9; i++) {

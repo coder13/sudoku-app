@@ -1,8 +1,11 @@
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
 use super::VariantPosition;
 use super::{
-    ClueDirection, MarkedPairs, PuzzleRule, RegionLayout, VariantDefinitionError,
-    VariantPuzzle,
+    ClueDirection, MarkedPairs, PuzzleRule, RegionLayout, VariantDefinitionError, VariantPuzzle,
 };
 use crate::CELLS;
 
@@ -82,7 +85,11 @@ impl SquareTransform {
         9 * row + column
     }
 
-    #[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+    #[cfg(all(
+        feature = "teaching",
+        feature = "wasm-api",
+        any(target_arch = "wasm32", test, feature = "cli")
+    ))]
     pub fn position(self, position: &mut VariantPosition) {
         self.puzzle(&mut position.puzzle);
         position.entries = self.grid(position.entries);
@@ -158,6 +165,12 @@ impl SquareTransform {
                     self.unordered(&mut cage.cells);
                 }
                 cages.sort_unstable();
+            }
+            Quadruple { top_left, digits } => {
+                let mut cells = super::quadruple::cells(*top_left).expect("validated Quadruple");
+                self.unordered(&mut cells);
+                *top_left = cells[0];
+                digits.sort_unstable();
             }
             Clone { groups } => {
                 for group in &mut *groups {

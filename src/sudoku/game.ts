@@ -1,6 +1,6 @@
 import { STARTER } from './formats.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
-import { isVariantId, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
+import { isPuzzleVariantId, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
 import type { CollectionReference } from './collection-reference.ts'
@@ -117,7 +117,7 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & { variant?: Pick<Var
 // Keep the engine's established field order so existing generated-puzzle keys
 // stay stable, while object insertion order in imported JSON cannot create a replay.
 const puzzleFieldOrder = ['type', 'version', 'givens', 'regions', 'rules', 'diagonal', 'cages', 'coverGrid',
-  'consecutive', 'ratioTwo', 'circle', 'cells', 'sum', 'pairs', 'negative']
+  'consecutive', 'ratioTwo', 'circle', 'cells', 'sum', 'pairs', 'negative', 'topLeft', 'digits']
 
 function orderedPuzzleFields(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(orderedPuzzleFields)
@@ -135,7 +135,7 @@ function orderedPuzzleFields(value: unknown): unknown {
 export function normalizePuzzleIdentity(identity: string): string {
   const separator = identity.indexOf(':')
   const variant = identity.slice(0, separator)
-  if (separator < 0 || (!isVariantId(variant) && variant !== 'mixed') || variant === 'classic') return identity
+  if (separator < 0 || !isPuzzleVariantId(variant) || variant === 'classic') return identity
   try {
     const puzzle: unknown = JSON.parse(identity.slice(separator + 1))
     if (puzzle && typeof puzzle === 'object' && !Array.isArray(puzzle)) {

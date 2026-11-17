@@ -373,6 +373,16 @@ assert_eq!(
 );
 ```
 
+A `quadruple` rule uses `topLeft` for the upper-left cell of four cells around an internal grid intersection. Its `digits` array contains one to four printed occurrences. Repeated digits require separate cells. Rows, columns, and the selected regions still forbid repeats within their houses. A repeated clue can cross region borders.
+
+```json
+{"type":"quadruple","topLeft":21,"digits":[2,2,6]}
+```
+
+The exact solver enforces every occurrence even when the logical profile omits `quadruple`. The Quadruple technique costs 27 points at the Medium tier. Locked Candidates can also use a circle that requires a digit in a particular house. Its `locked-digit` evidence records the original rule indices, clue cells, input domains, target house, and confined digit. [`VariantClueScope`] identifies the source clue. The app uses this evidence for hints and trace replay.
+
+Generation accepts `{"type":"quadruple","topLeft":21,"clueSize":3}` in `derivedClues`. It samples distinct surrounding cells from a completion and retains repeated digits. Rule-dependency and opening targets use the `quadruple` identifier. Imported app puzzles can use the rule before calibrated New puzzle presets exist.
+
 With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via Serde. A `variant` worker request takes the position, operation, and optional `maxNodes` for exact search. `normalize` validates the definition and returns a complete position record. `candidates` returns 81 candidate masks. `analyze` distinguishes conflicts, impossible puzzles, uniqueness, multiple solutions, and search limits. `solve` returns one completion or an error. Unsupported rule IDs and format versions have distinct error codes.
 
 ```json
@@ -434,7 +444,7 @@ Use `replay-step` with a zero-based `stepIndex` to get the position before and a
 
 Use [`variant_practice_examples`] to load three exercises for a technique. In Wasm or `batch-variant`, send `practice-examples` with `variant: true` and the technique ID. Send `techniques` with `variant: true` to read the variant catalog, point costs, and default order. Each exercise includes its rules, the position before the move, the candidate masks, valid actions, and a suggested action with its proof.
 
-The engine uses scoring version 4 for variants. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. House sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
+The engine uses scoring version 6 for variants. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. House sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
 
 The variant technique tiers use costs through 26 points for Easy and through 68 for Medium. Cage Combinations and Arrow also start at Easy because they apply the basic rules of Killer and Arrow Sudoku. Higher costs start at Hard. Total points do not raise the difficulty. A complete path uses its hardest technique tier, and generation checks the requested tier and the lower-tier profile. A stalled path reports a partial total and keeps the selected rule set, technique order, and scoring version.
 

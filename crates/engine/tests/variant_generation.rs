@@ -449,3 +449,61 @@ fn invalid_exhausted_and_cancelled_searches_are_distinct() {
         Err(VariantGenerationError::InvalidLayout(0))
     ));
 }
+
+#[test]
+fn derived_quadruples_are_required_and_supply_the_requested_opening() {
+    let technique = VariantTechnique::Quadruple;
+    let template = VariantPuzzle::classic(EMPTY);
+    let mut options = VariantGenerationOptions::new(49, template.clone(), 0..=0);
+    options.derived_clues = (0..72)
+        .filter(|cell| cell % 9 != 8)
+        .map(|top_left| VariantClueLayout::Quadruple {
+            top_left,
+            clue_size: 4,
+        })
+        .collect();
+    options.variant_clues = Some(64..=64);
+    options.max_attempts = 1;
+    options.required_rule = Some(technique.id().into());
+    options.technique = Some((technique, TechniqueTargetMode::First));
+    let (_, generated) = generate(options.clone());
+    let points = generated.rating.points;
+    options.rating = Some(GenerationRating::Score(points..=points));
+    assert_eq!(generate(options).1, generated);
+    assert_eq!(generated.puzzle.givens, EMPTY);
+    assert_eq!(generated.givens, 0);
+    assert_eq!(generated.variant_clues, 64);
+    let mut repeated = false;
+    for rule in &generated.puzzle.rules {
+        let PuzzleRule::Quadruple { top_left, digits } = rule else {
+            panic!("expected a derived Quadruple")
+        };
+        let mut expected = [*top_left, top_left + 1, top_left + 9, top_left + 10]
+            .map(|cell| generated.solution[cell]);
+        expected.sort_unstable();
+        assert_eq!(digits.as_slice(), expected);
+        repeated |= expected.windows(2).any(|pair| pair[0] == pair[1]);
+    }
+    assert!(repeated);
+    assert_eq!(
+        template
+            .compile()
+            .unwrap()
+            .analyze(&EMPTY, &NO_REMOVALS, 10_000),
+        Ok(Analysis::Multiple)
+    );
+    let compiled = generated.puzzle.compile().unwrap();
+    assert_eq!(
+        compiled.analyze(&EMPTY, &NO_REMOVALS, 10_000),
+        Ok(Analysis::Unique)
+    );
+    assert_eq!(
+        compiled.solve(&EMPTY, &NO_REMOVALS, 10_000),
+        Ok(generated.solution)
+    );
+    let trace = VariantPosition::new(generated.puzzle)
+        .solve_logically(VariantTechnique::DEFAULT_ORDER)
+        .unwrap();
+    assert_eq!(trace.steps[0].technique, technique);
+    assert_eq!(trace.rating, generated.rating);
+}

@@ -72,6 +72,35 @@ fn cage(sum: u16, cells: &[usize]) -> KillerCage {
 pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     use VariantTechnique::*;
     match technique {
+        Quadruple => [
+            seed(
+                "403591602260008109000006030009207308034015700070080090720030915501070080340050060",
+                47,
+                5,
+                [PuzzleRule::Quadruple {
+                    top_left: 47,
+                    digits: vec![2, 4, 6, 8],
+                }],
+            ),
+            seed(
+                "403001672260340109900020000100067008034900726602000090000004905590670483040050067",
+                19,
+                5,
+                [PuzzleRule::Quadruple {
+                    top_left: 19,
+                    digits: vec![1, 5],
+                }],
+            ),
+            seed(
+                "403501002007348100000006004109007308804005720670483000026030910501600083300000207",
+                21,
+                2,
+                [PuzzleRule::Quadruple {
+                    top_left: 21,
+                    digits: vec![2, 2, 6],
+                }],
+            ),
+        ],
         Parity => [
             seed(
                 "041000700000104200587062100078603000023057609900281004300700025792000000005029060",

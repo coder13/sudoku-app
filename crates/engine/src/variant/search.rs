@@ -22,7 +22,7 @@ pub(super) struct SearchPosition {
 impl CompiledVariant {
     /// Combine the givens and placed digits and compute legal candidate masks.
     ///
-    /// Cages, cell-pair relations, and lines narrow the domains until they stabilize.
+    /// Cages, cell-pair relations, lines, and Quadruples narrow the domains until they stabilize.
     /// Supplied removal masks apply as additional restrictions. Filled cells have
     /// mask zero. Empty cells can have no candidates when the rules conflict.
     pub fn candidates(
@@ -180,6 +180,18 @@ impl CompiledVariant {
                 }
             }
         }
+        for clue in &self.quadruples {
+            let domains = clue.cells.map(|cell| {
+                if board[cell] == 0 {
+                    DIGITS
+                } else {
+                    digit_bit(board[cell])
+                }
+            });
+            if !clue.has_assignment(domains) {
+                return Err(VariantPositionError::Puzzle(Analysis::Conflict));
+            }
+        }
         let mut position = SearchPosition { board, masks };
         self.restrict_domains(&mut position);
         Ok(position)
@@ -254,6 +266,18 @@ impl CompiledVariant {
                 let mut support = [0; CELLS];
                 line.support(line_domains, &mut support[..len]);
                 for (&cell, &mask) in line.cells.iter().zip(&support) {
+                    if position.board[cell] == 0 && position.masks[cell] != mask {
+                        position.masks[cell] = mask;
+                        changed = true;
+                    }
+                }
+            }
+            for clue in &self.quadruples {
+                let domains = clue.cells.map(|cell| match position.board[cell] {
+                    0 => position.masks[cell],
+                    digit => digit_bit(digit),
+                });
+                for (cell, mask) in clue.cells.into_iter().zip(clue.support(domains)) {
                     if position.board[cell] == 0 && position.masks[cell] != mask {
                         position.masks[cell] = mask;
                         changed = true;

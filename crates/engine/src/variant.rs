@@ -9,6 +9,7 @@ mod logical;
 mod pairs;
 #[cfg(any(feature = "teaching", test))]
 mod practice;
+mod quadruple;
 mod search;
 mod symmetry;
 mod visibility;
@@ -22,14 +23,19 @@ pub use generation::{
 };
 use lines::LineConstraint;
 pub use logical::{
-    VARIANT_SCORING_VERSION, VariantDeduction, VariantEvidence, VariantLogicalError, VariantRating,
-    VariantReplay, VariantTechnique, VariantTrace,
+    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence,
+    VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, PairConstraint, ParityClue};
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+pub(crate) use practice::generate_practice_example;
 #[cfg(any(feature = "teaching", test))]
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
-pub(crate) use practice::generate_practice_example;
+use quadruple::Quadruple;
 pub use search::VariantPositionError;
 pub use symmetry::canonical_variant;
 pub use visibility::{VariantVisibility, VariantVisibilityError};
@@ -207,6 +213,13 @@ rules! {
         /// Require all cells to belong to a cage.
         #[cfg_attr(feature = "wasm-api", serde(default))]
         cover_grid: bool,
+    }
+    /// Require the printed digit occurrences in the four cells touching a circle.
+    Quadruple => "quadruple" {
+        /// Top-left cell index of the four-cell area.
+        top_left: usize,
+        /// One to four required digit occurrences, in any order.
+        digits: Vec<u8>,
     }
     /// Restrict cells to odd or even digits.
     Parity => "parity" {
@@ -474,6 +487,7 @@ impl VariantPuzzle {
             allowed_digits: [DIGITS; CELLS],
             pairs: Vec::new(),
             lines: Vec::new(),
+            quadruples: Vec::new(),
             pair_clues: Vec::new(),
             parity_clues: Vec::new(),
             extra_rule_cells: 0,
@@ -530,6 +544,11 @@ impl VariantPuzzle {
                         return Err(VariantDefinitionError::IncompleteCages);
                     }
                 }
+                PuzzleRule::Quadruple { top_left, digits } => {
+                    let clue =
+                        Quadruple::compile(&compiled, index, *top_left, digits, enforce_regions)?;
+                    compiled.quadruples.push(clue);
+                }
                 PuzzleRule::Arrow { .. }
                 | PuzzleRule::Renban { .. }
                 | PuzzleRule::Between { .. }
@@ -563,6 +582,12 @@ impl VariantPuzzle {
             .chain(
                 compiled
                     .pair_clues
+                    .iter()
+                    .map(|clue| cell_mask(&clue.cells).unwrap()),
+            )
+            .chain(
+                compiled
+                    .quadruples
                     .iter()
                     .map(|clue| cell_mask(&clue.cells).unwrap()),
             )
@@ -680,6 +705,7 @@ pub struct CompiledVariant {
     allowed_digits: [u16; CELLS],
     pairs: Vec<PairConstraint>,
     lines: Vec<LineConstraint>,
+    quadruples: Vec<Quadruple>,
     pair_clues: Vec<PairClue>,
     parity_clues: Vec<ParityClue>,
     extra_rule_cells: u128,
@@ -695,6 +721,13 @@ struct CompiledCage {
 }
 
 impl CompiledVariant {
+    fn are_primary_peers(&self, first: usize, second: usize, enforce_regions: bool) -> bool {
+        first != second
+            && (first / 9 == second / 9
+                || first % 9 == second % 9
+                || enforce_regions && self.memberships[first][2] == self.memberships[second][2])
+    }
+
     /// Original givens of the compiled puzzle.
     pub fn givens(&self) -> &Board {
         &self.givens

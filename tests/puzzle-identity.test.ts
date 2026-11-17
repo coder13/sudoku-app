@@ -24,6 +24,7 @@ const variants: Pick<VariantGame, 'id' | 'puzzle'>[] = [
   { id: 'arrow', puzzle: puzzle({ rules: [{ type: 'arrow', circle: 0, cells: [9, 10] }] }) },
   { id: 'kropki', puzzle: puzzle({ rules: [{ type: 'kropki', consecutive: { pairs: [[0, 1]], negative: false },
     ratioTwo: { pairs: [[9, 10]], negative: false } }] }) },
+  { id: 'quadruple', puzzle: puzzle({ rules: [{ type: 'quadruple', topLeft: 21, digits: [2, 2, 6] }] }) },
   { id: 'mixed', puzzle: puzzle({ rules: [{ type: 'diagonal', diagonal: 'main' },
     { type: 'killer-cages', cages: [{ cells: [0, 1], sum: 3 }] }] }) },
 ]

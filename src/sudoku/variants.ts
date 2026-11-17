@@ -41,19 +41,41 @@ export const VARIANTS = {
   },
 } as const
 
+// Playable imported variants can be released before generation recipes exist.
+export const PUZZLE_VARIANTS = {
+  ...VARIANTS,
+  quadruple: {
+    name: 'Quadruple',
+    rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
+  },
+} as const
+
+export function quadrupleCells(topLeft: number): readonly number[] {
+  return [topLeft, topLeft + 1, topLeft + 9, topLeft + 10]
+}
+
 export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
   Array.from({ length: 9 }, (_, index) => start + Math.floor(index / 3) * 9 + index % 3))
 
 export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>
-export type PuzzleVariantId = VariantId | 'mixed'
-export type VariantGame = { id: PlayableVariant | 'mixed'; puzzle: VariantPuzzle; solution: string }
+export type PuzzleVariantId = keyof typeof PUZZLE_VARIANTS | 'mixed'
+export type VariantGame = { id: Exclude<PuzzleVariantId, 'classic'>; puzzle: VariantPuzzle; solution: string }
 
 export function isVariantId(value: unknown): value is VariantId {
   return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
 }
 
 // Offer only levels with recipes verified under the current technique rules.
+export function isPuzzleVariantId(value: unknown): value is PuzzleVariantId {
+  return value === 'mixed' || typeof value === 'string' && Object.hasOwn(PUZZLE_VARIANTS, value)
+}
+
+/** Return a recipe only for variants with calibrated generation support. */
+export function generationVariant(variant?: Pick<VariantGame, 'id'>): PlayableVariant | undefined {
+  return variant && isVariantId(variant.id) ? variant.id : undefined
+}
+
 export function variantDifficulties(variant?: VariantId): readonly DifficultyPreference[] {
   if (!variant || variant === 'classic') return DIFFICULTY_OPTIONS
   return DIFFICULTY_OPTIONS.filter((level) => Object.hasOwn(seedBank[variant], level))
@@ -173,6 +195,9 @@ function validJigsawRegions(regions: unknown): boolean {
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
   switch (rule.type) {
+    case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
+      Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
+      rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
     case 'anti-knight': return true
     case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
     case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
@@ -201,11 +226,11 @@ export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
         rule.type === 'extra-house' && rule.cells.length === 9 && region.every(cell => rule.cells.includes(cell))))
       ? 'windoku' : 'mixed'
   }
-  return isVariantId(first) && rules.every(rule => rule.type === first) ? first : 'mixed'
+  return isPuzzleVariantId(first) && rules.every(rule => rule.type === first) ? first : 'mixed'
 }
 
 export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is VariantPuzzle {
-  if ((id !== 'mixed' && (!isVariantId(id) || id === 'classic')) ||
+  if ((!isPuzzleVariantId(id) || id === 'classic') ||
     !puzzle || typeof puzzle !== 'object') return false
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
@@ -224,12 +249,13 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   thermometer: VARIANTS.thermometer.name,
   arrow: VARIANTS.arrow.name,
   kropki: VARIANTS.kropki.name,
+  quadruple: PUZZLE_VARIANTS.quadruple.name,
 }
 
 /** Describe the active puzzle independently of its generation recipe. */
 export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle'>): string {
   if (!variant) return VARIANTS.classic.name
-  if (variant.id !== 'mixed') return VARIANTS[variant.id].name
+  if (variant.id !== 'mixed') return PUZZLE_VARIANTS[variant.id].name
   const { rules, regions } = variant.puzzle
   const names = [
     ...(regions?.type === 'jigsaw' ? [VARIANTS.jigsaw.name] : []),
@@ -243,6 +269,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'quadruple':
+        descriptions.push(PUZZLE_VARIANTS.quadruple.rule)
+        break
       case 'diagonal':
         descriptions.push(`The ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal must also contain the digits 1–9 once each.`)
         break
