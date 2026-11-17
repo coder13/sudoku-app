@@ -6,7 +6,7 @@ import { techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
 import { analysisGroupsForCatalog, filterAnalysisGroups, TECHNIQUE_FINDER_TITLE, type AnalysisCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
-import { cachedTechniqueCounts, scanTechnique, techniqueScanKey } from '../sudoku/technique-scan'
+import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../sudoku/technique-scan'
 import { Modal } from './Modal'
 
 const SCAN_DELAY_MS = 100
@@ -139,6 +139,8 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
     if (missing.length < techniques.length) recordAssistance()
     if (missing.length === 0) return
 
+    const scan = watchTechniqueScan(values, eliminationMasks)
+
     function showResult(technique: string, result: AnalysisCount) {
       setScan((previous) => previous?.key === snapshotKey
         ? { key: snapshotKey, results: { ...previous.results, [technique]: result } }
@@ -150,7 +152,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
         for (const technique of missing) {
           if (!current) return
           try {
-            const count = await scanTechnique(values, eliminationMasks, technique)
+            const count = await scan.count(technique)
             if (!current) return
             showResult(technique, { count })
             recordAssistance()
@@ -162,7 +164,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
         }
       })()
     }, SCAN_DELAY_MS)
-    return () => { current = false; window.clearTimeout(timer) }
+    return () => { current = false; window.clearTimeout(timer); scan.close() }
   }, [active, solved, catalog, techniques, snapshotKey, values, game.id, retry])
 
   const results = scan?.key === snapshotKey ? scan.results : cachedTechniqueCounts(snapshotKey)

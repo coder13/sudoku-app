@@ -17,10 +17,9 @@ export async function generateClassic(difficulty: Difficulty, seed: number, prog
     ?? generationFocus(difficulty, seed)
   if (focus) {
     try {
-      const board = await runEngine({
-        type: 'generate-constrained', seed, maxAttempts: 32, clues: [24, 36], difficulty, technique: focus, techniqueOrder, exclude: previousPuzzles,
+      const { board, rating } = await runEngine({
+        type: 'generate-constrained', includeRating: true, seed, maxAttempts: 32, clues: [24, 36], difficulty, technique: focus, techniqueOrder, exclude: previousPuzzles,
       })
-      const rating = await runEngine({ type: 'rate', values: board, techniqueOrder })
       if (rating.status !== 'stalled' && rating.status.solved === difficulty && rating.score.counts[focus]) {
         return { board, rating, canonical: rating }
       }
@@ -41,10 +40,9 @@ export async function generateClassic(difficulty: Difficulty, seed: number, prog
       const clues = clueCount(unseen[(seed >>> 0) % unseen.length])
       const templates = unseen.filter(board => clueCount(board) === clues)
       try {
-        const board = await runEngine({
-          type: 'generate-constrained', seed, maxAttempts: 128, clues, difficulty, techniqueOrder, templates, exclude: previousPuzzles,
+        const { board, rating } = await runEngine({
+          type: 'generate-constrained', includeRating: true, seed, maxAttempts: 128, clues, difficulty, techniqueOrder, templates, exclude: previousPuzzles,
         })
-        const rating = await runEngine({ type: 'rate', values: board, techniqueOrder })
         if (rating.status !== 'stalled' && rating.status.solved === difficulty) return { board, rating, canonical: rating }
       } catch (error) {
         if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
@@ -52,11 +50,10 @@ export async function generateClassic(difficulty: Difficulty, seed: number, prog
     }
   }
   try {
-    const board = await runEngine({
-      type: 'generate-targeted', seed, maxAttempts,
+    const { board, rating } = await runEngine({
+      type: 'generate-targeted', includeRating: true, seed, maxAttempts,
       target: { type: 'difficulty', level: difficulty, techniqueOrder }, exclude: previousPuzzles,
     })
-    const rating = await runEngine({ type: 'rate', values: board, techniqueOrder })
     if (rating.status !== 'stalled' && rating.status.solved === difficulty) return { board, rating, canonical: rating }
   } catch (error) {
     if (!(error instanceof EngineError && error.code === 'search-limit')) throw error

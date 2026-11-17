@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import type { DeductionAction, DeductionMatch, EngineRequest, EngineResponse, HintChoice } from '../src/sudoku/engine.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueHintsFromMatches } from '../src/sudoku/puzzle-analysis.ts'
-import { cachedTechniqueCounts, scanTechnique, techniqueScanKey } from '../src/sudoku/technique-scan.ts'
+import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../src/sudoku/technique-scan.ts'
 
 function match(actions: DeductionAction[], techniques: string[]): DeductionMatch {
   const affectedCandidates = actions.map((action) => 'place' in action ? action.place : action.eliminate)
@@ -71,6 +71,7 @@ test('the technique finder caches zero counts, separates edits, and retries fail
   class TestWorker {
     onmessage?: (event: { data: EngineResponse }) => void
 
+    terminate() {}
     postMessage({ id, request }: { id: number; request: EngineRequest }) {
       assert.equal(request.type, 'technique-count')
       requests++
@@ -86,21 +87,25 @@ test('the technique finder caches zero counts, separates edits, and retries fail
     else Reflect.deleteProperty(globalThis, 'Worker')
   })
 
-  const original = scanTechnique(STARTER, undefined, 'pointing')
-  assert.equal(scanTechnique(STARTER, undefined, 'pointing'), original)
+  const first = watchTechniqueScan(STARTER)
+  t.after(first.close)
+  const original = first.count('pointing')
+  assert.equal(first.count('pointing'), original)
   assert.equal(await original, 0)
-  assert.equal(await scanTechnique(STARTER, undefined, 'pointing'), 0)
+  assert.equal(await first.count('pointing'), 0)
   assert.equal(requests, 1)
 
   const eliminations = Array<number>(81).fill(0)
   eliminations[2] = 1
+  const edited = watchTechniqueScan(STARTER, eliminations)
+  t.after(edited.close)
   failNext = true
-  await assert.rejects(scanTechnique(STARTER, eliminations, 'pointing'), /Scan failed/)
+  await assert.rejects(edited.count('pointing'), /Scan failed/)
   const editedKey = techniqueScanKey(STARTER, eliminations)
   assert.equal(cachedTechniqueCounts(editedKey).pointing, undefined)
-  assert.equal(await scanTechnique(STARTER, eliminations, 'pointing'), 1)
+  assert.equal(await edited.count('pointing'), 1)
   assert.deepEqual(cachedTechniqueCounts(editedKey).pointing, { count: 1 })
-  assert.equal(await scanTechnique(STARTER, undefined, 'pointing'), 0)
+  assert.equal(await first.count('pointing'), 0)
   assert.equal(requests, 3)
 })
 

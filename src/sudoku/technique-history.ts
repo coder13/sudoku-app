@@ -144,7 +144,7 @@ async function classifyVariantActions(game: Game, variant: VariantGame, actions:
   const hints = await runEngine({
     type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations },
     techniqueOrder: await getVariantPlayOrder(), limit: 64,
-  })
+  }, { background: true })
   const byAction = new Map<string, string>()
   for (const hint of hints) {
     for (const action of hint.actions) {
