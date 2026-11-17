@@ -1520,14 +1520,9 @@ export function Worktable({
     <section className="advanced-spoiler-panel" aria-label="Solution">
       <span className="advanced-spoiler-icon" aria-hidden="true"><ListOrdered size={21} /></span>
       <div><h2>Solution</h2><p>The solving steps stay hidden until you choose to reveal them.</p></div>
-      <div className="advanced-solution-actions">
-        <button className="button primary" disabled={busy || draft || game.paused} onClick={() => { void showSolutionPath() }}>
-          <Eye size={17} /> Reveal solution
-        </button>
-        {!variant && !draft && <button className="button secondary" onClick={showAnalysis}>
-          <ListFilter size={17} /> Available techniques
-        </button>}
-      </div>
+      <button className="button primary" disabled={busy || draft || game.paused} onClick={() => { void showSolutionPath() }}>
+        <Eye size={17} /> Reveal solution
+      </button>
     </section>
   )
   const clueCount = [...givens].filter((digit) => digit !== '0').length
