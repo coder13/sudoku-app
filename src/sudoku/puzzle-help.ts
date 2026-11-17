@@ -1,4 +1,4 @@
-import { runEngine, type HintChoices, type TechniqueCatalog } from './engine.ts'
+import { EngineError, runEngine, type HintChoices, type TechniqueCatalog } from './engine.ts'
 import { completeCandidateMasks, hintEliminations, valuesOf, type Game } from './game.ts'
 import { techniqueHintsFromMatches } from './puzzle-analysis.ts'
 import { variantHintChoice, variantSolutionPath } from './variant-hints.ts'
@@ -6,6 +6,21 @@ import { getVariantPlayOrder, variantHintOrder, variantPosition } from './varian
 import { variantHouseMasks } from './variants.ts'
 
 const catalogs = new Map<boolean, Promise<TechniqueCatalog>>()
+
+/** Imported and generated variant games retain their verified unique completion. */
+export function variantHintProblem(game: Pick<Game, 'variant'>, values: string, eliminations?: readonly number[]) {
+  const solution = game.variant?.solution
+  if (!solution) return undefined
+  for (let cell = 0; cell < 81; cell++) {
+    if (values[cell] !== '0' && values[cell] !== solution[cell]) return 'conflict' as const
+  }
+  if (eliminations) {
+    for (let cell = 0; cell < 81; cell++) {
+      if (values[cell] === '0' && (eliminations[cell] & (1 << (Number(solution[cell]) - 1)))) return 'invalid-eliminations' as const
+    }
+  }
+  return undefined
+}
 
 export function puzzleTechniqueCatalog(variant: boolean) {
   let request = catalogs.get(variant)
@@ -23,6 +38,9 @@ export function puzzleTechniqueCatalog(variant: boolean) {
 export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?: string, collection?: number): Promise<HintChoices & { offset?: number }> {
   const values = valuesOf(game)
   const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations)
+  const problem = variantHintProblem(game, values, eliminations)
+  if (problem) throw new EngineError(problem === 'conflict'
+    ? 'The placed digits conflict with this puzzle’s solution.' : 'A required candidate is missing.', problem)
   if (game.variant) {
     const { variant } = game
     const request = {
