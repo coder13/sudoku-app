@@ -65,7 +65,11 @@ If you have more than one saved puzzle, open Puzzle options and choose Switch pu
 
 The share menu copies a link to this app, an 81-character string, a nine-line grid, a HoDoKu library line, or a link for Sudoku Exchange or sudoku.coach. Import detects puzzle codes, links, and single-puzzle text files. It shows a board preview before you save or start the puzzle. On mobile, import and preview use a full page. On localhost, sharing defaults to a Sudoku Exchange link so anyone with the link can open the puzzle.
 
-Variant puzzles use an app link that carries the givens and rules. Classic share formats carry the givens. Import also accepts Sudoku Coach `SCv7_32` codes and direct links, short Sudoku Exchange grids, f-puzzles exports, and SudokuPad links that contain an SCF or f-puzzles code. Imported puzzles can combine Jigsaw regions, Killer cages, either diagonal, extra regions, Anti-Knight, thermometers, arrows, and Kropki dots. White and black dots keep separate negative-rule settings. Preview and Play explain every active rule. Mixed puzzles retain their full definitions when saved or shared; after completion, choose another puzzle from the puzzle chooser. The app reports rules it cannot play. When you import a Sudoku Coach Current State code or a HoDoKu library line, you get the starting puzzle. Your progress stays in your browser.
+Variant puzzles use an app link that carries the givens and rules. Classic share formats carry the givens. Import also accepts Sudoku Coach `SCv7_32` codes and direct links, short Sudoku Exchange grids, f-puzzles exports, and SudokuPad links that contain an SCF or f-puzzles code.
+
+Imported puzzles can combine Jigsaw regions, Killer cages, either diagonal, extra regions, Anti-Knight, Anti-King, Non-Consecutive, thermometers, arrows, Kropki dots, Quadruple circles and Odd/Even markers. White and black dots keep separate negative-rule settings. Coach Non-Consecutive puzzles preserve their white-dot exceptions. Quadruple, Odd/Even, Anti-King and Non-Consecutive are available through import while their New puzzle recipes are being calibrated.
+
+Preview and Play explain every active rule. Mixed puzzles retain their full definitions when saved or shared; after completion, choose another puzzle from the puzzle chooser. The app reports rules it cannot play. When you import a Sudoku Coach Current State code or a HoDoKu library line, you get the starting puzzle. Your progress stays in your browser.
 
 ### Player rating and Auto difficulty
 

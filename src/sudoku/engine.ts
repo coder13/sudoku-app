@@ -46,7 +46,8 @@ export type VariantRule =
   | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
   | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
   | { type: 'clone'; groups: readonly (readonly number[])[] }
-  | { type: 'anti-knight' | 'anti-king' | 'non-consecutive' }
+  | { type: 'anti-knight' | 'anti-king' }
+  | { type: 'non-consecutive'; except?: readonly (readonly [number, number])[] }
   | { type: 'inequality'; less: number; greater: number }
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }

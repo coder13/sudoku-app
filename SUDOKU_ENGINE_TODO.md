@@ -35,6 +35,22 @@ The Wasm audit now measures candidates, uniqueness verification, exact solving, 
 
 The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
+### Non-Consecutive integration in progress
+
+This stage is isolated on `codex/sudoku-nonconsecutive-integration` and includes main at `cda93a3`. [Non-Consecutive issue](https://github.com/coder13/sudoku-app/issues/44)
+
+- [x] Verify Philip Newman's published Literally No One puzzle and completion against the rendered PDFs. Independently prove its 21-given puzzle is unique with the rule and has multiple completions without it.
+- [x] Add explicit exempt edges to the native Non-Consecutive rule. Preserve omitted-field JSON, the eight-point technique and ordinary rule behavior. Check candidates, positive dots, malformed geometry, all grid symmetries and wire roundtrips with five public-API tests.
+- [x] Preserve real Coach exports for a 9 × 9 Nonconsecutive/white-dot puzzle and an unsupported 6 × 6 puzzle. Inspect the source compiler's difference-marker exceptions.
+- [x] Add complete app import, rule descriptions, candidate cleanup, conflict feedback and specific explanations, including mixed white-dot exceptions and every grid symmetry.
+- [x] Verify shared/save data, help, Finder, proof paging, solution replay, practice and rendered mobile/desktop components. Preserve all 2,048 family selections: 1,536 compatible fixed-clue samples pass and 512 samples with knight conflicts reject. These counts do not establish general feasibility of family combinations.
+- [x] Pass 258 native tests including doctests, 379 app tests, 227 Wasm tests, TypeScript, the production/offline build, all 16 native capability combinations, four Wasm profiles and strict full/reduced Cargo documentation.
+- [x] Verify three independently counted 30-given generated puzzles that need Non-Consecutive, plus a mixed white-dot template that retains all exceptions.
+- [x] Measure candidates, validation, solving, rating, ordinary/exhaustive hints and generation. Preserve retained responses and complete nested proofs on eleven fixtures against main. The published puzzle rates at 0.345/0.431 ms; the two-given Coach path remains stalled at 2,516.019/2,526.339 ms. [Methods and limits](tests/fixtures/README.md#non-consecutive-sources-and-app-coverage)
+- [ ] Add Non-Consecutive locked and multi-candidate deductions. The real two-given Coach fixture imports with its exact completion, while the current logical path stalls. Track proof, scoring, training and performance work separately in [issue 111](https://github.com/coder13/sudoku-app/issues/111).
+- [ ] Pass CI and merge the app-ready variant in its own focused PR.
+- [ ] Review live viewport behavior and calibrate generation recipes before offering Non-Consecutive in New puzzle.
+
 ### Quadruple integration merged
 
 This stage reached main at `fc4142f` through [PR 104](https://github.com/coder13/sudoku-app/pull/104). The reviewed worktree remains available on `codex/sudoku-quadruple-integration`. [Quadruple issue](https://github.com/coder13/sudoku-app/issues/37)
@@ -97,13 +113,13 @@ This stage reached main at `3e0bfec` through [PR 108](https://github.com/coder13
 
 ### Consistent cell references in hints and solutions
 
-This repair is isolated on `codex/sudoku-proof-cell-references` from main at `3e0bfec`. [Display issue](https://github.com/coder13/sudoku-app/issues/109)
+This repair reached main at `cda93a3` through [PR 110](https://github.com/coder13/sudoku-app/pull/110). The reviewed worktree remains available on `codex/sudoku-proof-cell-references`. [Display issue](https://github.com/coder13/sudoku-app/issues/109)
 
 - [x] Apply Concise, Verbose and Automatic to complete Classic and variant explanations, reason steps, forcing traces, solution lists and the solution chain inspector. Use each technique's difficulty for Automatic.
 - [x] Preserve typed variant deduction and puzzle context for display formatting without scanning again or rewriting arbitrary prose. Keep existing lesson defaults and legacy opaque text.
 - [x] Check all 224 shipped diagram/practice proofs for unchanged geometry and evidence and the expected naming changes. Cover serialized variant context, rendered hint cards, desktop/mobile solution lists and every chain-inspection point form.
 - [x] Pass TypeScript, 368 app tests, 220 Wasm tests and the production/offline build. Verify the Wasm artifact remains byte-for-byte identical to main.
-- [ ] Pass CI and merge the focused repair.
+- [x] Pass CI's native release suite, feature matrix, four Wasm profiles, app/Wasm contracts, strict Cargo docs and deployment checks; merge the focused repair in [PR 110](https://github.com/coder13/sudoku-app/pull/110).
 
 ## 1. Share a reliable engine contract
 

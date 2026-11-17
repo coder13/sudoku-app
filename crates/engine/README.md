@@ -410,7 +410,7 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `diagonal`, `extra-house` | Use `diagonal` with `main` or `anti`, or supply nine distinct `cells` for an extra house. |
 | `killer-cages` | Each cage specifies `cells` and `sum`. Set `coverGrid` to true if the cages must cover the full grid. |
 | `parity`, `clone` | Set `parity` to `odd` or `even` for the listed `cells`. In Clone Sudoku, each list in `groups` shares one digit. |
-| `anti-knight`, `anti-king`, `non-consecutive` | Each applies to the entire grid. Non-Consecutive applies to orthogonally adjacent cells. |
+| `anti-knight`, `anti-king`, `non-consecutive` | Each applies to the entire grid. Non-Consecutive applies to orthogonally adjacent cells; its optional `except` list exempts specified edge-sharing pairs. |
 | `inequality` | Supply the `less` and `greater` cell indices. |
 | `kropki`, `xv` | Use `consecutive` and `ratioTwo` for Kropki dots, or `five` and `ten` for XV markers. |
 | `thermometer`, `whispers`, `palindrome` | Supply `cells` in line order. Start a Thermometer at the bulb. Set `minDifference` for Whispers. |
@@ -419,6 +419,8 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `sandwich`, `x-sum`, `skyscrapers`, `little-killer` | Supply `cells` from the clue toward the far edge in the declared `direction`. Use `count` for Skyscrapers and `sum` for the other clues. |
 
 Each marker type accepts a list of adjacent `pairs` and an optional `negative` flag. With that flag, an adjacent pair without any marker from the same family cannot use the specified relationship. The default is false. A Kropki pair with digits 1 and 2 can carry either dot. [WPF Kropki rules](https://gp.worldpuzzle.org/sites/default/files/Puzzles/2020/2020_SudokuRound4.pdf)
+
+A Non-Consecutive exception removes only that rule's restriction on an edge. It does not require a difference of one or disable row, column, or region uniqueness. For a white dot exception, include both `{"type":"non-consecutive","except":[[0,1]]}` and a Kropki rule whose `consecutive.pairs` contains `[0,1]`. Native definitions always use the explicit list. Coach imports derive that list from its difference markers, whose pairs its global rule exempts. Empty or omitted lists retain the original global behavior. Rust callers use `PuzzleRule::NonConsecutive { except: vec![] }` for the ordinary rule.
 
 Outside clues use the compass directions `north`, `east`, `south`, and `west` for rows and columns. Use `north-east`, `south-east`, `south-west`, or `north-west` for Little Killer diagonals. A Little Killer diagonal can repeat digits where its other rules permit them. [Sudoku U constraint reference](https://www.sudoku-u.org/constraints)
 

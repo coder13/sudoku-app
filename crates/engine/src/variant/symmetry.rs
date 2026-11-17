@@ -178,7 +178,14 @@ impl SquareTransform {
                 }
                 groups.sort_unstable();
             }
-            AntiKnight {} | AntiKing {} | NonConsecutive {} => {}
+            AntiKnight {} | AntiKing {} => {}
+            NonConsecutive { except } => {
+                for cells in &mut *except {
+                    self.unordered(cells);
+                }
+                except.sort_unstable();
+                except.dedup();
+            }
             Inequality { less, greater } => {
                 *less = self.cell(*less);
                 *greater = self.cell(*greater);

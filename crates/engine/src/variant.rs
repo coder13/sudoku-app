@@ -237,8 +237,13 @@ rules! {
     AntiKnight => "anti-knight" {}
     /// A chess king's move cannot connect equal digits.
     AntiKing => "anti-king" {}
-    /// Orthogonally adjacent digits cannot differ by one.
-    NonConsecutive => "non-consecutive" {}
+    /// Orthogonally adjacent digits cannot differ by one, except on listed edges.
+    NonConsecutive => "non-consecutive" {
+        /// Exempt unordered edge-sharing pairs. An exception does not require consecutive digits.
+        /// Use an additional Kropki rule to require a white dot's difference of one.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Vec::is_empty"))]
+        except: Vec<[usize; 2]>,
+    }
     /// Require the digit in one cell to be less than the digit in another.
     Inequality => "inequality" {
         /// Cell with the smaller digit.
@@ -452,7 +457,7 @@ impl VariantPuzzle {
             rules: vec![
                 PuzzleRule::AntiKnight {},
                 PuzzleRule::AntiKing {},
-                PuzzleRule::NonConsecutive {},
+                PuzzleRule::NonConsecutive { except: vec![] },
             ],
             ..Self::classic(givens)
         }
