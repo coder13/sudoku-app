@@ -56,14 +56,12 @@ test('WXYZ-Wing explains the restricted digits, required digit, and exact target
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.deepEqual(diagram.reasonSteps, [
-    'The 1 candidates at R9C3 and R9C7 share row 9. So 1 can fill at most one highlighted cell.',
-    'The 5 candidates at R4C7, R8C7, and R9C7 share column 7. So 5 can fill at most one highlighted cell.',
-    'The 9 candidates at R8C7 and R9C7 share column 7. So 9 can fill at most one highlighted cell.',
-    'The other three digits can fill at most three cells. There are four cells to fill, so at least one must contain 8.',
-    '8 must therefore appear in R4C7 or R9C3.',
-    'R4C3 sees R4C7 through row 4 and R9C3 through column 3. It therefore cannot contain 8.',
+    'Only 8 can fill more than one of the four cells. The 1 candidates share row 9. The 5 candidates share column 7. The 9 candidates share column 7.',
+    'The other three digits can fill at most three cells. At least one of the four cells must take 8.',
+    'At least one of R4C7 and R9C3 must take 8. Putting 8 in R4C3 would block all of those spots.',
   ])
   assert.doesNotMatch(diagram.reason, /fourth cell|exactly one.*8/)
+  assert.equal(diagram.accentLabel, 'Required digit')
   assert.deepEqual(diagram.results, ['Remove 8 from R4C3.'])
 })
 
@@ -73,14 +71,56 @@ test('WXYZ-Wing handles all four restricted digits without inventing an unrestri
   candidates[3] = mask(2, 3)
   candidates[30] = mask(3, 4)
   candidates[27] = mask(1, 4)
+  candidates[28] = mask(4, 5)
   candidates[54] = mask(1, 5)
   const deduction: Deduction = {
-    technique: 'wxyz-wing', actions: [{ eliminate: { cell: 54, digit: 1 } }],
+    technique: 'wxyz-wing', actions: [{ eliminate: { cell: 54, digit: 1 } }, { eliminate: { cell: 28, digit: 4 } }],
     evidence: { 'wxyz-wing': { cells: [0, 3, 27, 30], digits: [1, 2, 3, 4], unrestricted: null } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.equal(diagram.reasonSteps?.[4], 'All four digits can fill at most one cell each. The four cells must therefore contain each digit exactly once.')
-  assert.ok(diagram.reason.includes('1 must therefore appear in R1C1 or R4C1.'))
+  assert.equal(diagram.reasonSteps?.[1], 'Four cells need four digits, so each digit must appear once.')
+  assert.match(diagram.reason, /At least one of R1C1 and R4C1 must take 1/)
+  assert.match(diagram.reason, /At least one of R4C1 and R4C4 must take 4/)
   assert.doesNotMatch(diagram.reason, /null|undefined|other three/)
   assert.equal(diagram.accentLabel, undefined)
+})
+
+test('Doubly linked ALS-XZ explains a removal supported by only one of the two sets', () => {
+  const candidates = Array(81).fill(0)
+  candidates[0] = mask(1, 2, 3)
+  candidates[1] = mask(2, 3)
+  candidates[3] = mask(1, 4)
+  candidates[4] = mask(2, 4)
+  candidates[6] = mask(1, 5)
+  candidates[10] = mask(3, 5)
+  candidates[13] = mask(3, 4)
+  const deduction: Deduction = {
+    technique: 'als-xz', actions: [{ eliminate: { cell: 6, digit: 1 } }, { eliminate: { cell: 10, digit: 3 } }],
+    evidence: { 'als-xz': { sets: [
+      { cells: [0, 1], digits: [1, 2, 3] }, { cells: [3, 4, 13], digits: [1, 2, 3, 4] },
+    ], links: [1, 2] } },
+  }
+  const diagram = lessonDiagram({ deduction, candidates })
+  assert.match(diagram.reason, /One set must skip 1 and the other must skip 2/)
+  assert.match(diagram.reason, /At least one of R1C1 and R1C4 must take 1/)
+  assert.match(diagram.reason, /At least one of R1C1 and R1C2 must take 3\. Putting 3 in R2C2/)
+})
+
+test('ALS-XY-Wing names the middle set and the digit passed to the last set', () => {
+  const candidates = Array(81).fill(0)
+  candidates[0] = mask(1, 8)
+  candidates[3] = mask(1, 2)
+  candidates[12] = mask(2, 8)
+  candidates[9] = mask(7, 8)
+  const deduction: Deduction = {
+    technique: 'als-xy-wing', actions: [{ eliminate: { cell: 9, digit: 8 } }],
+    evidence: { 'als-chain': { sets: [
+      { cells: [0], digits: [1, 8] }, { cells: [3], digits: [1, 2] }, { cells: [12], digits: [2, 8] },
+    ], links: [1, 2] } },
+  }
+  const diagram = lessonDiagram({ deduction, candidates })
+  assert.match(diagram.reason, /If it skips 8, it must use 1/)
+  assert.match(diagram.reason, /rules out 1 in set 2 \(R1C4\)\. This set must use 2/)
+  assert.match(diagram.reason, /rules out 2 in set 3 \(R2C4\)\. This set must use 8/)
+  assert.match(diagram.reason, /At least one of R1C1 and R2C4 must take 8/)
 })

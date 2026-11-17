@@ -136,8 +136,8 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     const { cells, digits: values } = evidence['wxyz-wing']
     return {
       start: { cells: cells.slice(0, 1), text: `Read the candidates in ${cellName(cells[0])}. Look for nearby cells that reuse them.` },
-      check: { cells, candidates: marks(cells, values), text: `Compare ${names(cells)}. Can all four cells fit within the same four digits?` },
-      follow: 'For each digit, check whether all its copies in the four cells see one another. At least three digits must pass this check.',
+      check: { cells, candidates: marks(cells, values), text: `Look at ${names(cells)}. Count the different candidate digits across all four cells.` },
+      follow: 'For each digit, check whether any two of its candidates can both be placed. If only one digit can repeat, what happens without it?',
     }
   }
   if ('als-xz' in evidence || 'als-chain' in evidence) {
@@ -145,10 +145,12 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     const [a, b] = sets
     return {
       start: { cells: a.cells, text: `Start at ${names(a.cells)}. Count the distinct candidate digits. There must be one more digit than cells.` },
-      check: { cells: [...a.cells, ...b.cells], candidates: marks([...a.cells, ...b.cells], [links[0]]),
-        text: `Compare that set with ${names(b.cells)}. Does every ${links[0]} in one set see every ${links[0]} in the other?` },
+      check: { cells: [...a.cells, ...b.cells], candidates: marks([...a.cells, ...b.cells], sets.length === 2 ? links : [links[0]]),
+        text: `Compare that set with ${names(b.cells)}. Can the two sets both use ${sets.length === 2 && links.length === 2 ? 'either marked digit' : links[0]}?` },
       follow: sets.length === 2
-        ? 'The two sets cannot both use the linked digit. Look for another digit shared by the sets and an outside candidate that sees all its copies.'
+        ? links.length === 2
+          ? 'Each set must skip a different linked digit. Which digits does that force into the sets?'
+          : 'One set must skip the linked digit and use all its other digits. Which of those digits also appears in the other set?'
         : `Trace the sets in order through the links for ${links.join(', ')}. Then look for a shared digit at the two ends and a candidate that sees all its copies there.`,
     }
   }
