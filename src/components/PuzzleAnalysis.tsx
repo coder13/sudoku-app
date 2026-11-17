@@ -143,15 +143,11 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
 
   return (
     <div className="puzzle-analysis-content">
-      {!catalog && !catalogError && <p className="dialog-status" role="status">Loading techniques…</p>}
       {catalogError && <div role="alert" className="analysis-error">
         <p>{catalogError}</p>
         <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Try again</button>
       </div>}
       {catalog && <>
-        {!solved && completed < total && <p className="dialog-status analysis-update-status" role="status">
-          Scanned {completed} of {total} techniques…
-        </p>}
         <label className="analysis-zero-filter">
           <input type="checkbox" checked={hideZero} onChange={(event) => setHideZero(event.target.checked)} />
           Hide techniques with 0 candidates
