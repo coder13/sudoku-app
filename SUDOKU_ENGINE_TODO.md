@@ -21,6 +21,7 @@ Track app-ready variants individually in [the integration issue](https://github.
 
 - [x] Restore Solution and Technique Finder access for every built-in variant, including Jigsaw, in both desktop workspaces. Share the current-position hint path and preserve all regions, rules, entries, and removals. Keep variant scans on a background worker with separate interactive proof requests and rule-specific caches. [Hint and solution parity](https://github.com/coder13/sudoku-app/issues/97)
 - [x] Add mobile solution walkthroughs with a read-only grid, explanations, and step navigation. Cover rendered controls and the app help services for all 56 offered variant/difficulty combinations, progressed Jigsaw region proofs, combined rules, preferences, and complete solution replay.
+- [x] Integrate the performance changes from [PR 100](https://github.com/coder13/sudoku-app/pull/100). Preserve paged exhaustive hints for Classic and variants, per-position scan sharing and cancellation, independent history/generation workers, and batched singles. Test page boundaries, proof ordering, completed-count caching, and cancellation without interrupting other help.
 
 - [x] Create an issue for each planned variant and separate combined-rule and performance work.
 - [x] Add Windoku rendering, accessible rule labels, import, save/reload, and generation recipes for all ten difficulty levels using the existing extra-house engine rule. [Windoku](https://github.com/coder13/sudoku-app/issues/36)

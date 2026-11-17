@@ -26,8 +26,8 @@ type MatchingOptions = {
 } & RatingTarget & SolverOptions
 
 export type GenerationRequest =
-  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget; exclude?: readonly string[] }
-  | ({ type: 'generate-constrained'; templates?: readonly string[] } & MatchingOptions)
+  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget; includeRating?: boolean; exclude?: readonly string[] }
+  | ({ type: 'generate-constrained'; includeRating?: boolean; templates?: readonly string[] } & MatchingOptions)
   | ({ type: 'generate-from-pool' } & MatchingOptions)
   | VariantGenerationRequest
 
@@ -107,11 +107,12 @@ type VariantRequest = {
   position: VariantPosition
 } & (
   | { operation: 'candidates' }
+  | { operation: 'solve-singles'; displayedCandidates?: readonly number[] }
   | { operation: 'analyze'; maxNodes?: number }
   | { operation: 'solve'; maxNodes?: number; seed?: number }
   | ({ visibility?: VariantVisibility } & (
     | { operation?: 'normalize' }
-    | { operation: 'hints'; techniqueOrder?: readonly string[]; limit?: number; preferProgress?: boolean; difficulty?: Difficulty }
+    | { operation: 'hints'; collection?: number; techniqueOrder?: readonly string[]; limit?: number; preferProgress?: boolean; difficulty?: Difficulty }
     | { operation: 'rate'; techniqueOrder?: readonly string[] }
     | { operation: 'trace'; techniqueOrder?: readonly string[] }
     | { operation: 'replay-step'; techniqueOrder?: readonly string[]; stepIndex: number }
@@ -128,6 +129,7 @@ export type EngineRequest =
   | { type: 'analyze'; values: string }
   | { type: 'notes'; values: string }
   | { type: 'solve'; values: string }
+  | ({ type: 'solve-singles'; displayedCandidates?: readonly number[] } & CandidatePosition)
   | { type: 'generate'; seed: number }
   | ({ type: 'rate'; values: string } & SolverOptions)
   | ({ type: 'logical-solve'; includePositions?: boolean; includeStepDetails?: boolean; includeMoveAvailability?: boolean } & StartingPosition & SolverOptions)
@@ -136,7 +138,9 @@ export type EngineRequest =
   | ({ type: 'alternate-solve-path'; technique: string; maxPositions: number } & StartingPosition & SolverOptions)
   | ({ type: 'practice-position'; technique: string } & StartingPosition & SolverOptions)
   | ({ type: 'check-practice-move'; technique: string; action: DeductionAction } & StartingPosition)
-  | ({ type: 'hints'; limit?: number | 'all'; includePatterns?: boolean; preferProgress?: boolean; difficulty?: Difficulty } & CandidatePosition & HintOptions)
+  | ({ type: 'hints'; collection?: number; limit?: number | 'all'; includePatterns?: boolean; preferProgress?: boolean; difficulty?: Difficulty } & CandidatePosition & HintOptions)
+  | { type: 'hint-page'; collection: number; index: number; variant?: boolean }
+  | { type: 'release-hints'; collection: number }
   | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
   | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
   | ({ type: 'technique-count'; technique: string } & CandidatePosition)
@@ -405,6 +409,7 @@ export type AlternatePath =
   | { status: 'no-path' | 'inconclusive'; positionsSearched: number; path: null }
 export type ReplayedStep = { before: SolvePosition; deduction: Deduction; after: SolvePosition }
 export type HintChoice = Deduction & { pattern?: ProofPattern }
+type HintPage<T> = { choices: T[]; available: number; offset: number; candidates?: number[] }
 export type HintChoices = { choices: HintChoice[]; available: number; candidates?: number[] }
 export type HintStages = { technique: string; pattern: ProofPattern; deduction: Deduction }
 export type TechniqueCatalog = {
@@ -416,8 +421,9 @@ export type TechniqueCatalog = {
 
 type VariantResult<T extends VariantRequest> =
   T extends { operation: 'analyze' } ? Analysis :
-  T extends { operation: 'solve' } ? string :
+  T extends { operation: 'solve' | 'solve-singles' } ? string :
   T extends { operation: 'candidates' } ? number[] :
+  T extends { operation: 'hints'; collection: number } ? HintPage<VariantDeduction> :
   T extends { operation: 'hints' } ? VariantDeduction[] :
   T extends { operation: 'rate' } ? VariantRating :
   T extends { operation: 'trace' } ? VariantTrace :
@@ -480,6 +486,10 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'alternate-solve-path' } ? AlternatePath :
   T extends { type: 'practice-position' } ? LessonPosition | null :
   T extends { type: 'check-practice-move' } ? Deduction | null :
+  T extends { type: 'release-hints' } ? null :
+  T extends { type: 'hint-page'; variant: true } ? HintPage<VariantDeduction> :
+  T extends { type: 'hint-page' } ? HintPage<HintChoice> :
+  T extends { type: 'hints'; collection: number } ? HintPage<HintChoice> :
   T extends { type: 'hints' } ? HintChoices :
   T extends { type: 'next-deduction' } ? HintStages | null :
   T extends { type: 'deductions' } ? DeductionMatch[] :
@@ -493,6 +503,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'classify-actions' } ? (string | null)[] :
   T extends { type: 'opening-techniques' } ? string[] :
   T extends { type: 'techniques' } ? TechniqueCatalog :
+  T extends { type: 'generate-targeted' | 'generate-constrained'; includeRating: true } ? GeneratedPuzzle :
   T extends { type: 'generate-from-pool' } ? GeneratedPuzzle :
   T extends { type: 'generate-variant' } ? GeneratedVariant :
   T extends { type: GenerationCommand['type'] } ? GenerationProgress<Generated> :
@@ -532,6 +543,7 @@ type EngineConnection = {
 }
 const playEngine: EngineConnection = { pending: new Map() }
 const generationEngine: EngineConnection = { pending: new Map() }
+const historyEngine: EngineConnection = { pending: new Map() }
 const techniqueEngine: EngineConnection = { pending: new Map() }
 const techniqueDetailEngine: EngineConnection = { pending: new Map() }
 let requestId = 0
@@ -548,20 +560,76 @@ function connect(connection: EngineConnection) {
     else request.resolve(data.value)
   }
   instance.onerror = () => {
-    instance.terminate()
-    connection.worker = undefined
-    for (const request of pending.values()) request.reject(new Error('The Sudoku engine could not start. Try again.'))
-    pending.clear()
+    if (connection.worker === instance) closeConnection(connection, new Error('The Sudoku engine could not start. Try again.'))
   }
   return instance
 }
 
-export function runEngine<T extends EngineRequest>(request: T, options: { interactive?: boolean; background?: boolean } = {}): Promise<EngineResult<T>> {
+function closeConnection(connection: EngineConnection, error: Error) {
+  connection.worker?.terminate()
+  connection.worker = undefined
+  for (const request of connection.pending.values()) request.reject(error)
+  connection.pending.clear()
+}
+
+type WorkerOptions = { interactive?: boolean; background?: boolean }
+
+function connectionFor(request: EngineRequest, options: WorkerOptions) {
+  switch (request.type) {
+    case 'generate':
+    case 'generate-constrained':
+    case 'generate-targeted':
+    case 'generate-from-pool':
+    case 'generate-variant':
+    case 'generate-practice-example':
+    case 'generation-start':
+    case 'generation-advance':
+    case 'generation-cancel':
+    case 'impossible-templates':
+    case 'canonical-puzzles':
+      return generationEngine
+    case 'technique-count': return techniqueEngine
+    case 'deductions': return options.interactive ? techniqueDetailEngine : historyEngine
+    case 'classify-actions': return historyEngine
+    default: return options.interactive ? techniqueDetailEngine : options.background ? historyEngine : playEngine
+  }
+}
+
+export function runEngine<T extends EngineRequest>(request: T, options: WorkerOptions = {}): Promise<EngineResult<T>> {
+  return sendRequest(connectionFor(request, options), request)
+}
+
+// Each visible board owns its synchronous Wasm work. Closing it interrupts even
+// an in-flight forcing search without cancelling another board or action history.
+let idleCountConnection: EngineConnection | undefined
+
+export function createCountWorker(values: string, eliminations: readonly number[] | undefined, position?: VariantPosition) {
+  let connection: EngineConnection | undefined
+  return {
+    count(technique: string) {
+      if (!connection) {
+        connection = idleCountConnection ?? { pending: new Map() }
+        idleCountConnection = undefined
+      }
+      if (!position) return sendRequest(connection, { type: 'technique-count', values, eliminations, technique })
+      return sendRequest(connection, { type: 'variant', operation: 'hints',
+        position: { ...position, eliminations }, techniqueOrder: [technique], limit: 0xffff_ffff,
+      }).then((hints) => new Set(hints.flatMap(({ actions }) => actions.map((action) => {
+        const { cell, digit } = 'place' in action ? action.place : action.eliminate
+        return `${'place' in action ? 'p' : 'e'}:${cell}:${digit}`
+      }))).size)
+    },
+    close() {
+      if (!connection) return
+      if (!connection.pending.size && !idleCountConnection) idleCountConnection = connection
+      else closeConnection(connection, new DOMException('Technique scan closed.', 'AbortError'))
+      connection = undefined
+    },
+  }
+}
+
+function sendRequest<T extends EngineRequest>(connection: EngineConnection, request: T): Promise<EngineResult<T>> {
   return new Promise((resolve, reject) => {
-    // A scan for an unfamiliar move must not hold up hints or candidate updates.
-    const connection = options.interactive ? techniqueDetailEngine
-      : options.background || request.type === 'classify-actions' || request.type === 'deductions' || request.type === 'technique-count' ? techniqueEngine
-      : request.type === 'generate-variant' || request.type === 'generate-practice-example' ? generationEngine : playEngine
     connection.worker ??= connect(connection)
     const id = ++requestId
     connection.pending.set(id, { resolve: (value) => resolve(value as EngineResult<T>), reject })

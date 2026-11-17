@@ -358,43 +358,36 @@ impl RatingTally {
 }
 
 #[cfg(any(feature = "generation", test))]
-pub(crate) fn matches_generation_path(
+pub(crate) fn match_generation_path(
     board: &Board,
     technique_order: &[Technique],
     rating: Option<&GenerationRating>,
     technique: Option<(Technique, TechniqueTargetMode)>,
-) -> bool {
+) -> Option<crate::generation::MatchedPath> {
+    use crate::generation::MatchedPath;
     if matches!(rating, Some(GenerationRating::Difficulty(_)))
         && board.iter().filter(|&&digit| digit != 0).count() > 40
     {
-        return false;
+        return None;
     }
-    let ordered;
-    let technique_order = if let Some(GenerationRating::Difficulty(level)) = rating {
-        ordered = level.technique_order().into_iter()
-            .filter(|t| technique_order.contains(t)).collect::<Vec<_>>();
-        ordered.as_slice()
-    } else {
-        technique_order
-    };
     let mut quality = quality::GenerationQuality::default();
     let mut pending = match technique {
         Some((opening, TechniqueTargetMode::ExclusiveOpening)) => {
             if !has_exclusive_opener(board, opening) {
-                return false;
+                return None;
             }
             None
         }
         path_target => path_target,
     };
     if rating.is_none() && pending.is_none() {
-        return true;
+        return Some(MatchedPath::Unrated);
     }
     // Match the public solver's uniqueness checks and deduction order on sparse boards.
     let Ok(position) = Position::new(board) else {
-        return false;
+        return None;
     };
-    let mut total = Tally::default();
+    let mut tally = RatingTally::default();
     let Ok(position) = follow_path(position, technique_order, |step| {
         if let Some((target, mode)) = pending {
             if step.technique == target {
@@ -404,31 +397,31 @@ pub(crate) fn matches_generation_path(
             }
         }
         if rating.is_some() {
-            total.record(step.technique);
+            tally.record(step.technique);
             quality.record(step.technique);
         }
         match rating {
-            Some(GenerationRating::Score(range)) => total.points <= *range.end(),
-            Some(GenerationRating::Difficulty(level)) => total.difficulty() <= *level,
+            Some(GenerationRating::Score(range)) => tally.total.points <= *range.end(),
+            Some(GenerationRating::Difficulty(level)) => tally.total.difficulty() <= *level,
             None => pending.is_some(),
         }
     }) else {
-        return false;
+        return None;
     };
     let matched = pending.is_none()
         && rating.is_none_or(|target| {
             position.is_solved()
                 && match target {
-                    GenerationRating::Score(range) => range.contains(&total.points),
-                    GenerationRating::Difficulty(level) => total.difficulty() == *level,
+                    GenerationRating::Score(range) => range.contains(&tally.total.points),
+                    GenerationRating::Difficulty(level) => tally.total.difficulty() == *level,
                 }
         });
     if !matched {
-        return false;
+        return None;
     }
     if let Some(GenerationRating::Difficulty(level)) = rating {
         if !quality.accepts(*level) {
-            return false;
+            return None;
         }
         // A different deduction order can reveal an easier route. Reject a
         // candidate if any checked lower-tier profile completes it.
@@ -437,14 +430,18 @@ pub(crate) fn matches_generation_path(
                 continue;
             }
             let Ok(result) = follow_path(Position::known_unique(board), &lower, |_| true) else {
-                return false;
+                return None;
             };
             if result.is_solved() {
-                return false;
+                return None;
             }
         }
     }
-    true
+    Some(if rating.is_some() {
+        MatchedPath::Rated(tally.finish(true, technique_order))
+    } else {
+        MatchedPath::Unrated
+    })
 }
 
 fn follow_path(
@@ -607,8 +604,8 @@ mod tests {
         let rating = rate_puzzle(&board, &Difficulty::Hard.technique_order()).unwrap();
         assert_eq!(rating.status, SolveStatus::Solved(Difficulty::Hard));
         assert_eq!(rate_puzzle(&board, &Difficulty::Tricky.technique_order()).unwrap().status, SolveStatus::Stalled);
-        assert!(!matches_generation_path(&board, Technique::DEFAULT_ORDER,
-            Some(&GenerationRating::Difficulty(Difficulty::Extreme)), None));
+        assert!(match_generation_path(&board, &Difficulty::Extreme.technique_order(),
+            Some(&GenerationRating::Difficulty(Difficulty::Extreme)), None).is_none());
     }
 
     #[test]

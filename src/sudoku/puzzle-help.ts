@@ -20,21 +20,27 @@ export function puzzleTechniqueCatalog(variant: boolean) {
 }
 
 /** Use the player's current digits and removals, retaining the full rule set. */
-export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?: string): Promise<HintChoices> {
+export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?: string, collection?: number): Promise<HintChoices & { offset?: number }> {
   const values = valuesOf(game)
   const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations)
   if (game.variant) {
     const { variant } = game
-    const found = await runEngine({
+    const request = {
       type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations },
       techniqueOrder: technique ? [technique] : await variantHintOrder(),
       limit: technique || limit === 'all' ? 0xffff_ffff : limit,
       preferProgress: !technique, difficulty: game.difficulty ?? 'medium',
-    }, { interactive: Boolean(technique) })
+    } as const
+    const candidates = variantHouseMasks(variant.puzzle, values, eliminations)
+    if (collection !== undefined) {
+      const first = await runEngine({ ...request, collection })
+      return { ...first, choices: first.choices.map((hint) => variantHintChoice(hint, variant.puzzle)), candidates }
+    }
+    const found = await runEngine(request, { interactive: Boolean(technique) })
     return { choices: found.map((hint) => variantHintChoice(hint, variant.puzzle)), available: found.length,
-      candidates: variantHouseMasks(variant.puzzle, values, eliminations) }
+      candidates }
   }
-  if (!technique) return runEngine({ type: 'hints', values, eliminations, limit, includePatterns: true,
+  if (!technique) return runEngine({ type: 'hints', values, eliminations, limit, collection, includePatterns: true,
     preferProgress: true, difficulty: game.difficulty ?? 'medium' })
   const [matches, { candidates }] = await Promise.all([
     runEngine({ type: 'deductions', values, eliminations, techniqueOrder: [technique] }, { interactive: true }),
@@ -42,6 +48,13 @@ export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?
   ])
   const choices = techniqueHintsFromMatches(matches, technique)
   return { choices, available: choices.length, candidates }
+}
+
+/** Pages stay on the foreground worker that owns the exhaustive collection. */
+export async function puzzleHintPage(variant: Game['variant'], collection: number, index: number) {
+  if (!variant) return runEngine({ type: 'hint-page', collection, index })
+  const page = await runEngine({ type: 'hint-page', collection, index, variant: true })
+  return { ...page, choices: page.choices.map(hint => variantHintChoice(hint, variant.puzzle)) }
 }
 
 /** Solution walkthroughs start at the givens, without changing the saved game. */

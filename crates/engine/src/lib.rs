@@ -80,6 +80,7 @@ pub use variant::{VariantPracticeError, VariantPracticeExercise, variant_practic
 const CELLS: usize = 81;
 const DIGITS: u16 = 0x1ff;
 const SEARCH_LIMIT: u32 = 1_000_000;
+const EXACT_PROBE_NODES: u32 = 256;
 #[cfg(any(feature = "generation", test))]
 const DEFAULT_CLUES: usize = 34;
 
@@ -186,7 +187,17 @@ pub fn parse_givens(text: &str) -> Option<Board> {
 
 /// Validate a grid and classify its number of solutions using bounded exact search.
 pub fn analyze(board: &Board) -> Analysis {
-    analyze_with_budget(board, SEARCH_LIMIT)
+    // Most grids finish in the first probe. Forced placements preserve every
+    // completion and make the remaining budget useful on sparse grids.
+    match analyze_with_budget(board, EXACT_PROBE_NODES) {
+        Analysis::SearchLimit => {
+            let reduced = classic_singles(*board, &[DIGITS; CELLS]);
+            reduced.map_or(Analysis::Unsolvable, |grid| {
+                analyze_with_budget(&grid, SEARCH_LIMIT - EXACT_PROBE_NODES)
+            })
+        }
+        result => result,
+    }
 }
 
 fn analyze_with_budget(board: &Board, mut budget: u32) -> Analysis {
@@ -234,7 +245,16 @@ fn count_solutions(
 pub fn solve(board: &Board) -> Option<Board> {
     let mut units = Units::from_board(board)?;
     let mut work = *board;
-    let mut budget = SEARCH_LIMIT;
+    let mut budget = EXACT_PROBE_NODES;
+    if solve_one(&mut work, &mut units, &mut budget) {
+        return Some(work);
+    }
+    if budget != 0 {
+        return None;
+    }
+    work = classic_singles(*board, &[DIGITS; CELLS])?;
+    units = Units::from_board(&work)?;
+    budget = SEARCH_LIMIT - EXACT_PROBE_NODES;
     solve_one(&mut work, &mut units, &mut budget).then_some(work)
 }
 
@@ -274,6 +294,46 @@ pub fn candidates(board: &Board) -> Option<[u16; CELLS]> {
             0
         }
     }))
+}
+
+// Masks must be zero for filled cells and exclude digits already in each house.
+// Choose naked singles first, then hidden singles in house and digit order.
+fn next_single(
+    masks: &[u16; CELLS],
+    houses: impl Iterator<Item = [usize; 9]>,
+) -> Option<(usize, u8)> {
+    if let Some(cell) = masks.iter().position(|mask| mask.is_power_of_two()) {
+        return Some((cell, masks[cell].trailing_zeros() as u8 + 1));
+    }
+    for house in houses {
+        let mut seen = 0;
+        let mut repeated = 0;
+        for cell in house {
+            repeated |= seen & masks[cell];
+            seen |= masks[cell];
+        }
+        let singles = seen & !repeated;
+        if singles != 0 {
+            let offset = singles.trailing_zeros();
+            let cell = house.into_iter().find(|&cell| masks[cell] & (1 << offset) != 0)?;
+            return Some((cell, offset as u8 + 1));
+        }
+    }
+    None
+}
+
+fn classic_singles(mut board: Board, allowed: &[u16; CELLS]) -> Option<Board> {
+    let mut units = Units::from_board(&board)?;
+    loop {
+        let masks = std::array::from_fn(|cell| {
+            if board[cell] == 0 { units.available(cell) & allowed[cell] } else { 0 }
+        });
+        let Some((cell, digit)) = next_single(&masks, House::all().map(House::cells)) else {
+            return Some(board);
+        };
+        board[cell] = digit;
+        units.toggle(cell, 1 << (digit - 1));
+    }
 }
 
 struct Random(u32);
@@ -350,18 +410,19 @@ pub enum GenerationTarget<'a> {
 
 #[cfg(any(feature = "generation", test))]
 impl GenerationTarget<'_> {
-    fn matches(self, board: &Board) -> bool {
+    fn match_path(self, board: &Board) -> Option<generation::MatchedPath> {
         match self {
             Self::Difficulty {
                 level,
                 technique_order,
-            } => logical::matches_generation_path(
+            } => logical::match_generation_path(
                 board,
                 technique_order,
                 Some(&GenerationRating::Difficulty(level)),
                 None,
             ),
-            Self::Opening(technique) => logical::has_exclusive_opener(board, technique),
+            Self::Opening(technique) => logical::has_exclusive_opener(board, technique)
+                .then_some(generation::MatchedPath::Unrated),
         }
     }
 }
@@ -533,6 +594,15 @@ mod tests {
     }
 
     #[test]
+    fn validation_resolves_sparse_puzzles_with_forced_singles() {
+        let board = parse_givens("345000000000200010000000000020100000000004500600000007800750000000060040000000300").unwrap();
+        assert_eq!(analyze(&board), Analysis::Unique);
+        let answer = solve(&board).unwrap();
+        assert!(!answer.contains(&0));
+        assert_eq!(analyze(&answer), Analysis::Unique);
+    }
+
+    #[test]
     fn returns_legal_candidates_only_for_empty_cells() {
         let board = parse_givens(WARMUP).unwrap();
         let masks = candidates(&board).unwrap();
@@ -618,7 +688,7 @@ mod tests {
         ] {
             assert!(openers.contains(&technique));
         }
-        assert!(!target.matches(&board));
+        assert!(target.match_path(&board).is_none());
         assert_eq!(
             generate_targeted(795_642_738, target, 1),
             Err(GenerationError::SearchLimit)

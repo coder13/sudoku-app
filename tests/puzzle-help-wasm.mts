@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { runEngine, type Difficulty, type HintChoice } from '../src/sudoku/engine.ts'
+import { runEngine, type Difficulty, type HintChoice, type VariantPosition } from '../src/sudoku/engine.ts'
 import { applyDeduction, hintEliminations, completeCandidateMasks, makeGame, valuesOf } from '../src/sudoku/game.ts'
-import { puzzleHints, puzzleSolution, puzzleTechniqueCatalog } from '../src/sudoku/puzzle-help.ts'
+import { puzzleHintPage, puzzleHints, puzzleSolution, puzzleTechniqueCatalog } from '../src/sudoku/puzzle-help.ts'
 import { saveDisabledHintTechniques } from '../src/sudoku/hint-preferences.ts'
-import { scanTechnique, techniqueScanKey, cachedTechniqueCounts } from '../src/sudoku/technique-scan.ts'
+import { watchTechniqueScan, techniqueScanKey, cachedTechniqueCounts } from '../src/sudoku/technique-scan.ts'
 import { getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -13,6 +13,12 @@ import { mixedFixtures } from './helpers/mixed-fixtures.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 
 useWasmWorker()
+
+async function countTechnique(values: string, eliminations: readonly number[] | undefined, technique: string, position?: VariantPosition) {
+  const scan = watchTechniqueScan(values, eliminations, position)
+  try { return await scan.count(technique) }
+  finally { scan.close() }
+}
 
 function targets(hints: readonly HintChoice[]) {
   return new Set(hints.flatMap(({ actions }) => actions.map(action => {
@@ -67,7 +73,7 @@ test('app hints, technique selection, and complete solutions work for every offe
       assert.ok(selected.choices.length)
       assert.ok(selected.choices.every(hint => hint.technique === technique))
       const removals = hintEliminations(valuesOf(game), completeCandidateMasks(game), game.position.eliminations)
-      const count = await scanTechnique(valuesOf(game), removals, technique, variantPosition(game.variant, game.position))
+      const count = await countTechnique(valuesOf(game), removals, technique, variantPosition(game.variant, game.position))
       assert.equal(count, targets(selected.choices))
       assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(valuesOf(game), removals, puzzle))[technique], { count })
       assert.equal(JSON.stringify(game), saved, 'Viewing hints and solutions must not edit the game')
@@ -143,12 +149,42 @@ test('every technique row in the Jigsaw finder can be scanned and inspected agai
     variant: { id: 'jigsaw' as const, puzzle, solution } }
   const removals = hintEliminations(valuesOf(game), completeCandidateMasks(game), game.position.eliminations)
   for (const { id } of (await puzzleTechniqueCatalog(true)).techniques) {
-    const count = await scanTechnique(valuesOf(game), removals, id, variantPosition(game.variant, game.position))
+    const count = await countTechnique(valuesOf(game), removals, id, variantPosition(game.variant, game.position))
     const selected = await puzzleHints(game, 'all', id)
     assert.equal(count, targets(selected.choices), id)
     for (const hint of selected.choices) for (const action of hint.actions) {
       if ('place' in action) assert.equal(solution[action.place.cell], String(action.place.digit), id)
       else assert.notEqual(solution[action.eliminate.cell], String(action.eliminate.digit), id)
     }
+  }
+})
+
+test('integrated Classic and Jigsaw help pages preserve every proof and release the foreground collection', async () => {
+  const { puzzle, solution } = await runEngine(variantGenerationRequest(
+    'jigsaw', 'medium', variantSeeds.jigsaw.medium![0], await getVariantPlayOrder(),
+  ))
+  const games = [makeGame('paged-classic', 'Classic', STARTER, 'starter'),
+    { ...makeGame('paged-jigsaw', 'Jigsaw', puzzle.givens, 'generated'), variant: { id: 'jigsaw' as const, puzzle, solution } }]
+  for (const [index, game] of games.entries()) {
+    const full = await puzzleHints(game, 'all')
+    assert.ok(full.choices.length > 8, 'Exercise a page boundary for each grid type')
+    const collection = 500 + index
+    const first = await puzzleHints(game, 'all', undefined, collection)
+    assert.equal(first.available, full.available)
+    assert.equal(first.choices.length, 8)
+    assert.deepEqual(first.candidates, full.candidates)
+    const choices = [...first.choices]
+    // An ordinary hint request must not discard the exhaustive collection.
+    await puzzleHints(game)
+    while (choices.length < full.available) {
+      const page = await puzzleHintPage(game.variant, collection, choices.length)
+      assert.equal(page.offset, choices.length)
+      assert.equal(page.candidates, undefined)
+      choices.push(...page.choices)
+    }
+    assert.deepEqual(choices, full.choices)
+    assert.deepEqual((await puzzleHintPage(game.variant, collection, 1)).choices, first.choices)
+    await runEngine({ type: 'release-hints', collection })
+    await assert.rejects(puzzleHintPage(game.variant, collection, 0), { code: 'expired-hints' })
   }
 })
