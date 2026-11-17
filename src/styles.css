@@ -1788,10 +1788,10 @@ svg { flex-shrink: 0; }
 .analysis-technique-link:focus-visible { outline: 2px solid var(--selected-border); outline-offset: 3px; border-radius: 2px; }
 .analysis-technique-link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
 
-.analysis-table .analysis-data-row td { font-weight: 680; font-variant-numeric: tabular-nums; }
+.analysis-table .analysis-data-row td { vertical-align: middle; font-weight: 680; font-variant-numeric: tabular-nums; }
 .analysis-table .analysis-data-row .analysis-zero { color: var(--muted); font-weight: 450; }
 
-.analysis-pending { display: inline-flex; justify-content: flex-end; align-items: center; min-height: 18px; color: var(--muted); }
+.analysis-pending { display: flex; justify-content: flex-end; align-items: center; height: 1lh; color: var(--muted); }
 .analysis-spinner { animation: analysis-spin 950ms linear infinite; }
 .analysis-failed { color: var(--muted); font-size: 11px; font-weight: 500; }
 @keyframes analysis-spin { to { transform: rotate(360deg); } }
