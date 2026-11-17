@@ -2,7 +2,7 @@ import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
-import { COLORS, createGameId, isSolved, markSolveUntimed, puzzleIdentity, type Game, type Position } from './game.ts'
+import { COLORS, createGameId, isSolved, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
@@ -84,7 +84,7 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (attempt !== undefined && (value.source === 'draft' || !isRatingAttempt(attempt) ||
         (attempt.outcome && (attempt.outcome.gameId !== id || attempt.outcome.givens !== value.givens ||
           attempt.outcome.difficulty !== attempt.grade.difficulty ||
-          (attempt.outcome.puzzleKey ?? attempt.outcome.givens) !== puzzleIdentity(value))))) delete value.ratingAttempt
+          normalizePuzzleIdentity(attempt.outcome.puzzleKey ?? attempt.outcome.givens) !== puzzleIdentity(value))))) delete value.ratingAttempt
       return value
     }
   } catch {
@@ -104,17 +104,22 @@ function persist(write: () => void): boolean {
 function readRatingEvent(id: string) {
   try {
     const event: unknown = JSON.parse(localStorage.getItem(RATING_PREFIX + id) ?? 'null')
-    if (isRatingEvent(event) && event.id === id) return event
+    if (isRatingEvent(event) && event.id === id) return normalizedRatingEvent(event)
   } catch { /* Ignore a malformed result. */ }
 }
 
 function rememberOutcome(event: RatingEvent | undefined) {
   if (event === undefined || (ratingEvents.has(event.id) && !unsavedRatingEvents.has(event.id))) return true
-  ratingEvents.set(event.id, event)
+  ratingEvents.set(event.id, normalizedRatingEvent(event))
   const saved = persist(() => localStorage.setItem(RATING_PREFIX + event.id, JSON.stringify(event)))
   if (saved) unsavedRatingEvents.delete(event.id)
   else unsavedRatingEvents.add(event.id)
   return saved
+}
+
+function normalizedRatingEvent(event: RatingEvent): RatingEvent {
+  const puzzleKey = event.puzzleKey && normalizePuzzleIdentity(event.puzzleKey)
+  return puzzleKey && puzzleKey !== event.puzzleKey ? { ...event, puzzleKey } : event
 }
 
 function ratingElapsed(game: Game, attempt: RatingAttempt) {
@@ -214,7 +219,10 @@ function seenPuzzle(game: Game) {
   if (room.games.some((item) => item.source !== 'draft' && item.id !== game.id && puzzleIdentity(item) === identity)) return true
   try {
     const previous = localStorage.getItem(SEEN_PREFIX + identity)
-    return previous !== null && previous !== game.id
+    if (previous !== null && previous !== game.id) return true
+    // Read historical insertion-order keys without rewriting stored evidence.
+    return Object.keys(localStorage).some((key) => key.startsWith(SEEN_PREFIX) &&
+      normalizePuzzleIdentity(key.slice(SEEN_PREFIX.length)) === identity && localStorage.getItem(key) !== game.id)
   } catch { return false }
 }
 
@@ -271,9 +279,8 @@ function hydrate() {
     })
     const games = storedGames.filter((game) => game.source !== 'starter' && game.id !== BUILT_IN_STARTER_ID)
 
-    if (!readSaved(localStorage, READY)) {
-      localStorage.setItem(READY, '1')
-    }
+    const initialized = Boolean(readSaved(localStorage, READY)) ||
+      persist(() => localStorage.setItem(READY, '1'))
     let last = readSaved(localStorage, ACTIVE)
     try {
       migrateStorage(sessionStorage)
@@ -289,7 +296,7 @@ function hydrate() {
       active: last === '' ? null : sorted.find((game) => game.id === last && !game.savedForLater)?.id ??
         sorted.find((game) => !game.savedForLater)?.id ?? null,
       stoppedPlaying: last === '',
-      storageAvailable: migrated && removedStarter && outcomesSaved,
+      storageAvailable: migrated && removedStarter && initialized && outcomesSaved,
       playerRating: playerRatingFor(sorted),
     })
   } catch {

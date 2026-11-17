@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DEFAULT_DIFFICULTY, DIFFICULTY_LEVELS, currentDifficulty, difficultyIndex, formatPuzzleRating } from '../src/sudoku/difficulty.ts'
+import { DEFAULT_DIFFICULTY, DIFFICULTY_LEVELS, currentDifficulty, difficultyIndex, formatPuzzleRating, statisticsDifficulties } from '../src/sudoku/difficulty.ts'
 
 test('puzzle ratings place the score beside the difficulty', () => {
   assert.equal(formatPuzzleRating('unfair', 1000), 'Unfair (1000)')
@@ -21,6 +21,12 @@ test('ten selectable levels start new players at Medium and preserve historical 
   assert.equal(variantDifficulty('classic', 'unfair'), 'expert')
   assert.equal(formatPuzzleRating('unfair', 1800), 'Unfair (1800)')
   assert.equal(variantDifficulty('classic', 'auto'), 'auto')
+})
+
+test('statistics show current levels and only include historical Unfair results when present', () => {
+  assert.deepEqual(statisticsDifficulties([]), DIFFICULTY_LEVELS)
+  assert.deepEqual(statisticsDifficulties(['easy', 'hard', null, undefined]), DIFFICULTY_LEVELS)
+  assert.deepEqual(statisticsDifficulties(['unfair', 'easy', 'unfair']), [...DIFFICULTY_LEVELS, 'unfair'])
 })
 
 test('variant choices only offer verified recipes and clamp saved choices', () => {

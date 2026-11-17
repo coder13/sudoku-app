@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type Componen
 import { getRouteApi, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, Dices, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
 import {
-  DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference,
+  DIFFICULTY_LABELS, formatPuzzleRating, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
@@ -159,10 +159,10 @@ function Statistics({ games }: { games: Game[] }) {
   const inProgress = games.filter((game) => game.started && !isSolved(game) && game.source !== 'draft')
   const timedGames = games.filter((game) => !game.timeUntracked && game.source !== 'draft' && (game.started || game.elapsed > 0))
   const totalTime = timedGames.reduce((sum, game) => sum + game.elapsed, 0)
-  const difficultyRows = Object.entries(DIFFICULTY_LABELS).map(([difficulty, label]) => {
+  const difficultyRows = statisticsDifficulties(solved.map((game) => game.difficulty)).map((difficulty) => {
     const matching = solved.filter((game) => game.difficulty === difficulty)
     const best = matching.reduce((time, game) => game.timeUntracked ? time : Math.min(time, game.elapsed), Infinity)
-    return { difficulty, label, solved: matching.length, best }
+    return { difficulty, label: DIFFICULTY_LABELS[difficulty], solved: matching.length, best }
   })
   return <section className="main-menu-section" aria-labelledby="statistics-title">
     <header><h2 id="statistics-title">Statistics</h2><p>Your solving history on this device.</p></header>

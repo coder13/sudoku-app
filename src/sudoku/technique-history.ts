@@ -1,5 +1,5 @@
 import { runEngine, type DeductionAction } from './engine'
-import { puzzleIdentity, valuesOf, type Game } from './game'
+import { normalizePuzzleIdentity, puzzleIdentity, valuesOf, type Game } from './game'
 import { getVariantPlayOrder, variantPosition } from './variant-play'
 import type { VariantGame } from './variants'
 import {
@@ -57,11 +57,31 @@ async function readPuzzle(givens: string): Promise<PuzzleTechniqueHistory | unde
   try {
     const db = await openHistory()
     return await new Promise((resolve, reject) => {
-      const request = db.transaction(PUZZLES).objectStore(PUZZLES).get(givens)
-      request.onsuccess = () => resolve(request.result as PuzzleTechniqueHistory | undefined)
-      request.onerror = () => reject(request.error)
+      findHistoryPuzzle(db.transaction(PUZZLES).objectStore(PUZZLES), givens, resolve, reject)
     })
   } catch { return undefined }
+}
+
+function findHistoryPuzzle(store: IDBObjectStore, identity: string,
+  found: (puzzle: PuzzleTechniqueHistory | undefined) => void, failed: (error: unknown) => void) {
+  const request = store.get(identity)
+  request.onsuccess = () => {
+    if (request.result || !identity.includes(':')) {
+      found(request.result as PuzzleTechniqueHistory | undefined)
+      return
+    }
+    // Only older variants with another JSON field order need the cursor fallback.
+    const scan = store.openCursor()
+    scan.onsuccess = () => {
+      const cursor = scan.result
+      if (!cursor) found(undefined)
+      else if (typeof cursor.key === 'string' && normalizePuzzleIdentity(cursor.key) === identity) {
+        found(cursor.value as PuzzleTechniqueHistory)
+      } else cursor.continue()
+    }
+    scan.onerror = () => failed(scan.error)
+  }
+  request.onerror = () => failed(request.error)
 }
 
 function historyChannel() {
@@ -77,13 +97,12 @@ async function updateHistory(givens: string, update: (puzzle: PuzzleTechniqueHis
     const changed = await new Promise<boolean>((resolve, reject) => {
       const transaction = db.transaction(PUZZLES, 'readwrite')
       const store = transaction.objectStore(PUZZLES)
-      const request = store.get(givens)
       let changed = false
-      request.onsuccess = () => {
-        const puzzle: PuzzleTechniqueHistory = request.result ?? { givens, actions: {} }
+      findHistoryPuzzle(store, givens, (existing) => {
+        const puzzle: PuzzleTechniqueHistory = existing ?? { givens, actions: {} }
         changed = update(puzzle)
         if (changed) store.put(puzzle)
-      }
+      }, reject)
       transaction.oncomplete = () => resolve(changed)
       transaction.onabort = () => reject(transaction.error)
     })

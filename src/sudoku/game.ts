@@ -1,6 +1,6 @@
 import { STARTER } from './formats.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
-import { variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
+import { isVariantId, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
 import type { CollectionReference } from './collection-reference.ts'
@@ -103,8 +103,39 @@ export function isPuzzleSaved(game: Game): boolean {
   return game.savedForLater || (game.saved ?? game.source === 'custom')
 }
 
-export function puzzleIdentity(game: Pick<Game, 'givens' | 'variant'>): string {
-  return game.variant ? `${game.variant.id}:${JSON.stringify(game.variant.puzzle)}` : game.givens
+export function puzzleIdentity(game: Pick<Game, 'givens'> & { variant?: Pick<VariantGame, 'id' | 'puzzle'> }): string {
+  return game.variant ? `${game.variant.id}:${JSON.stringify(orderedPuzzleFields(game.variant.puzzle))}` : game.givens
+}
+
+// Keep the engine's established field order so existing generated-puzzle keys
+// stay stable, while object insertion order in imported JSON cannot create a replay.
+const puzzleFieldOrder = ['type', 'version', 'givens', 'regions', 'rules', 'diagonal', 'cages', 'coverGrid',
+  'consecutive', 'ratioTwo', 'circle', 'cells', 'sum', 'pairs', 'negative']
+
+function orderedPuzzleFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(orderedPuzzleFields)
+  if (!value || typeof value !== 'object') return value
+  const fields = Object.entries(value).sort(([left], [right]) => {
+    const rank = (key: string) => {
+      const index = puzzleFieldOrder.indexOf(key)
+      return index < 0 ? puzzleFieldOrder.length : index
+    }
+    return rank(left) - rank(right) || (left < right ? -1 : left > right ? 1 : 0)
+  })
+  return Object.fromEntries(fields.map(([key, item]) => [key, orderedPuzzleFields(item)]))
+}
+
+export function normalizePuzzleIdentity(identity: string): string {
+  const separator = identity.indexOf(':')
+  const variant = identity.slice(0, separator)
+  if (separator < 0 || (!isVariantId(variant) && variant !== 'mixed') || variant === 'classic') return identity
+  try {
+    const puzzle: unknown = JSON.parse(identity.slice(separator + 1))
+    if (puzzle && typeof puzzle === 'object' && !Array.isArray(puzzle)) {
+      return identity.slice(0, separator + 1) + JSON.stringify(orderedPuzzleFields(puzzle))
+    }
+  } catch { /* An unrecognized historical key remains unchanged. */ }
+  return identity
 }
 
 export const STARTER_GAME = makeGame('warmup', 'The Warm-up', STARTER, 'starter', 0)
