@@ -81,13 +81,19 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
     return () => { current = false; window.clearTimeout(timer) }
   }, [active, solved, game.id, values, eliminationKey, snapshotKey, retry])
 
-  if (solved) return <p className="analysis-empty">Puzzle solved.</p>
-  const findings = active && scan?.key === snapshotKey ? scan.findings : null
+  const currentFindings = active && scan?.key === snapshotKey ? scan.findings : null
+  // Keep the existing table visible while a new position is scanned. Never show
+  // a previous puzzle's counts or present old counts as current.
+  const pendingFindings = active && scan?.key.startsWith(`${game.id}:`) ? scan.findings : null
+  const findings = solved ? [] : currentFindings ?? pendingFindings
+  const updating = !solved && !currentFindings
   const failure = active && error?.key === snapshotKey ? error.message : null
 
   return (
-    <div className="puzzle-analysis-content">
-      {!findings && !failure && <p className="dialog-status" role="status">Updating candidate counts…</p>}
+    <div className="puzzle-analysis-content" aria-busy={updating && !failure}>
+      {updating && !failure && <p className="dialog-status analysis-update-status" role="status">
+        {findings ? 'Updating counts…' : 'Checking available techniques…'}
+      </p>}
       {failure && <div role="alert" className="analysis-error">
         <p>{failure}</p>
         <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Try again</button>
