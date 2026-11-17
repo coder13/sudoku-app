@@ -16,6 +16,7 @@ import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/hi
 import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
+import { techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
@@ -127,6 +128,7 @@ type HintState = {
   error?: PuzzleHint
   recovery?: CandidateRecovery
   reviewingRemoval?: boolean
+  fromTechniqueList?: boolean
 }
 
 function matchesHintPosition(game: Game, position: HintPosition) {
@@ -256,6 +258,7 @@ export function Worktable({
   const suppressCellClick = useRef(false)
   const pendingDoubleClickSingle = useRef<{ index: number; digit: number; game: Game } | null>(null)
   const pathRequest = useRef(0)
+  const techniqueHintRequest = useRef(0)
   const values = useMemo(() => valuesOf(game), [game.givens, game.position.entries])
   const { center, corner, eliminations } = game.position
   const displayedCandidates = useMemo(() => completeCandidateMasks(game), [values, center, corner])
@@ -583,6 +586,7 @@ export function Worktable({
   }, [paintingCandidates])
 
   useEffect(() => {
+    techniqueHintRequest.current++
     setHint(null)
     setHintRevealed(false)
   }, [hintPosition])
@@ -1106,11 +1110,57 @@ export function Worktable({
     if (current && matchesHintPosition(current, hintPosition)) setHint(result)
   }
 
+  async function showTechniqueHints(technique: string) {
+    if (busy || solved || draft || variant) return
+    // Mobile must close its modal before the hint and highlighted grid can be used.
+    setAnalysisOpen(false)
+    setPuzzleMenuOpen(false)
+    setActionsOpen(false)
+    if (sketch.drawing) sketch.stop()
+    if (mobile) hintReturnFocus.current = true
+    if (advancedWorkspace) {
+      if (!showBottomPanel) onOpenHintPanel()
+      setFocusHintRequest((request) => request + 1)
+    }
+    const request = ++techniqueHintRequest.current
+    const position = hintPosition
+    const removals = hintEliminations(values, displayedCandidates, eliminations)
+    setHint(null)
+    setHintRevealed(true)
+    setBusy(true)
+    let result: HintState
+    try {
+      // The selected proof runs on a separate worker, so it can bypass the
+      // 72 background scans. A zero-limit hint call gives the exact masks.
+      const [matches, { candidates }] = await Promise.all([
+        runEngine({ type: 'deductions', values, eliminations: removals, techniqueOrder: [technique] },
+          { interactive: true }),
+        runEngine({ type: 'hints', values, eliminations: removals, includePatterns: true, limit: 0 }),
+      ])
+      if (!candidates) throw new Error('Missing candidates for the selected technique.')
+      const choices = techniqueHintsFromMatches(matches, technique)
+      result = {
+        position, choices, candidates, index: 0, stage: 'explanation', fromTechniqueList: true,
+        ...(choices.length ? {} : { error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' } }),
+      }
+    } catch (error) {
+      result = {
+        position, choices: [], index: 0, stage: 'explanation',
+        error: error instanceof EngineError && error.code === 'invalid-eliminations'
+          ? HINT_CANDIDATES_ERROR : HINT_ERROR,
+      }
+    } finally {
+      setBusy(false)
+    }
+    const latest = roomStore.getSnapshot().games.find((item) => item.id === id)
+    if (request === techniqueHintRequest.current && latest && matchesHintPosition(latest, position)) setHint(result)
+  }
+
   function moveHint(offset: -1 | 1) {
     setHint((current) => {
       if (!current || !current.choices.length) return current
       const index = moveHintIndex(current.index, current.choices.length, offset)
-      return { ...current, index, stage: 'technique' }
+      return { ...current, index, stage: current.fromTechniqueList ? 'explanation' : 'technique' }
     })
   }
 
@@ -1565,7 +1615,7 @@ export function Worktable({
         ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel} chains={chainsPanel} cellColors={cellColorsPanel}
           hint={advancedHintPanel} solutionPath={advancedSolutionPathPanel}
           techniques={!draft && !variant
-            ? <PuzzleAnalysisContents game={game} />
+            ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
             : <p className="analysis-empty">Available for classic Sudoku puzzles.</p>}
           details={detailsPanel} browser={browserPanel} showLeft={showLeftPanel} showRight={showRightPanel} showBottom={showBottomPanel}
           focusHintRequest={focusHintRequest} focusAnalysisRequest={focusAnalysisRequest}
@@ -1574,7 +1624,7 @@ export function Worktable({
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">
               {inputPanel}
-              {analysisCardOpen && !draft && !variant && <PuzzleAnalysisCard game={game} close={() => setPinnedAnalysis(false)} />}
+              {analysisCardOpen && !draft && !variant && <PuzzleAnalysisCard game={game} close={() => setPinnedAnalysis(false)} onSelectTechnique={showTechniqueHints} />}
               {hintPanel}{solutionPathPanel}
             </div></>
           : <>{puzzlePanel}{mobileResults
@@ -1590,7 +1640,7 @@ export function Worktable({
           <p>{VARIANTS[variant.id].rule}</p>
         </div>
       </Modal>}
-      {analysisOpen && mobile && !draft && !solved && !variant && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} />}
+      {analysisOpen && mobile && !draft && !solved && !variant && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} onSelectTechnique={showTechniqueHints} />}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       {changePuzzleOpen && <Modal title="Change puzzle" onClose={() => setChangePuzzleOpen(false)}>
         <div className="stop-puzzle-options">
