@@ -5,6 +5,7 @@ import type { FoundationVisualId } from './foundation-visuals'
 type Reference = { label: string; href: string }
 export type Drill = { example: string; title: string }
 export type ConceptQuestion = { prompt: string; options: string[]; answer: number; explanation: string }
+export type PracticeGuide = { start: string; check: string; follow?: string; reason?: string }
 type DiagramCopy = {
   description?: string
   reason?: string
@@ -24,7 +25,7 @@ export type LessonBlock =
   | { type: 'concept-check'; title: string; questions: ConceptQuestion[] }
   | { type: 'foundation-visual'; visual: FoundationVisualId }
   | { type: 'diagram'; example: string; region?: BoardRegion; copy?: DiagramCopy }
-  | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string }
+  | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string; guide?: PracticeGuide }
 
 export type LessonArticle = {
   kind?: 'foundation' | 'technique'

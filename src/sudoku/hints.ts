@@ -49,6 +49,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'als-continuous-nice-loop': 'ALS continuous Nice Loop',
   'als-xz': 'ALS-XZ',
   'bug-plus-one': 'BUG+1',
+  'death-blossom': 'Death Blossom',
   'empty-rectangle': 'Empty rectangle',
   'grouped-aic': 'Grouped alternating inference chain',
   'multi-sector-locked-sets': 'Multi-sector locked sets',

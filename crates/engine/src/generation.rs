@@ -10,9 +10,17 @@ mod search;
 mod templates;
 pub use canonical::canonical_puzzle;
 pub use search::{GenerationSearch, GenerationStep};
-pub use templates::{VerifiedTemplate, builtin_templates};
+pub use templates::{VerifiedTemplate, builtin_templates, impossible_templates};
 
 const MIN_CLUES: usize = 17;
+
+/// Check the normal-play quality floor and all configured lower-tier orders.
+/// This does not prove that no unimplemented or alternate human route exists.
+pub fn accepts_difficulty(board: &Board, level: Difficulty) -> bool {
+    logical::matches_generation_path(
+        board, &level.technique_order(), Some(&GenerationRating::Difficulty(level)), None,
+    )
+}
 
 /// Criteria for an exact clue count and optional point range.
 #[derive(Clone, Debug, Eq, PartialEq)]

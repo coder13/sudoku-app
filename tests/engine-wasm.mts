@@ -9,7 +9,8 @@ import { STARTER } from '../src/sudoku/formats.ts'
 import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
 import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
 import { practiceClueAnnotations, practiceSearch } from '../src/sudoku/lesson-guidance.ts'
-import { articles } from '../src/sudoku/lessons.ts'
+import { lessonExample, variantLessonExercise, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
+import { articles, lessonRoutes } from '../src/sudoku/lessons.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { generatePlayableVariant, playCandidates } from '../src/sudoku/variant-play.ts'
@@ -36,6 +37,30 @@ function engineRequests() {
   }
   return { raw, run }
 }
+
+test('technique counts match full deductions before and after a candidate edit', async () => {
+  const { raw, run } = engineRequests()
+  const values = STARTER
+  const techniques = ['hidden-single', 'pointing', 'aic', 'pattern-overlay', 'pairwise-pattern-overlay',
+    'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
+  const edited = Array<number>(81).fill(0)
+  edited[2] = 1 // Remove 1 from r1c3. Its solution digit is 4.
+
+  for (const eliminations of [undefined, edited, undefined]) {
+    for (const technique of techniques) {
+      const matches = await run({ type: 'deductions', values, eliminations, techniqueOrder: [technique] })
+      const targets = new Set(matches.filter(({ proofs }) => proofs.some((proof) => proof.technique === technique))
+        .flatMap(({ affectedCandidates }) => affectedCandidates.map(({ cell, digit }) => `${cell}:${digit}`)))
+      assert.equal(await run({ type: 'technique-count', values, eliminations, technique }), targets.size, technique)
+    }
+  }
+
+  const invalid = edited.slice()
+  invalid[2] = 1 << 3
+  const result = await raw({ type: 'technique-count', values, eliminations: invalid, technique: 'hidden-single' })
+  assert.ok('error' in result)
+  assert.equal(result.code, 'invalid-eliminations')
+})
 
 test('rank requests find and replay a pointing removal with a shared budget', async () => {
   const { run } = engineRequests()
@@ -1177,16 +1202,24 @@ test('lesson examples preserve the candidates and deduction for each technique',
   assert.deepEqual(lessons['hidden-quadruple'].practice.eliminations, transposed)
 })
 
-test('every Learn article gives a starting scan and every drill can preview its own proof', async () => {
+test('every hint technique links to a Learn article with a starting scan and a working drill', async () => {
   const { run } = engineRequests()
-  const examples = await run({ type: 'lesson-examples' })
+  const examples: Record<string, EngineLessonExample> = await run({ type: 'lesson-examples' })
+  const { techniques } = await run({ type: 'techniques', variant: true })
+  for (const { id } of techniques) {
+    assert.ok(lessonRoutes.has(id), id)
+    if (examples[id]) continue
+    const [diagram, practice] = await run({ type: 'practice-examples', variant: true, technique: id })
+    examples[id] = { ...diagram, practice }
+  }
   for (const article of articles) {
     assert.ok(article.blocks.some((block) => block.type === 'heading' && block.id === 'where-to-start'), article.id)
     for (const block of article.blocks) {
+      if (block.type === 'diagram') assert.ok(lessonDiagram(lessonExample(examples[block.example])).results.length, block.example)
       if (block.type !== 'practice') continue
       for (const { example } of block.drills) {
-        const { practice } = examples[example]
-        const { start, check, follow } = practiceSearch(practice)
+        const { practice } = lessonExample(examples[example])
+        const { start, check, follow } = practiceSearch(practice, block.guide)
         for (const clue of [start, check]) {
           assert.ok(clue.text, example)
           const annotations = practiceClueAnnotations(clue)
@@ -1205,12 +1238,13 @@ test('every Learn article gives a starting scan and every drill can preview its 
   }
 })
 
-test('each Learn drill generates a different grid with a verified walkthrough for its technique', async () => {
+test('each Classic Learn drill generates a different grid with a verified walkthrough for its technique', async () => {
   const { run } = engineRequests()
   const examples = await run({ type: 'lesson-examples' })
   const drills = new Set(articles.flatMap(article => article.blocks.flatMap(block =>
     block.type === 'practice' ? block.drills.map(({ example }) => example) : [])))
   for (const technique of drills) {
+    if (!examples[technique]) continue
     let exclude = lessonValues(examples[technique].practice)
     for (let repeat = 0; repeat < 2; repeat++) {
       const generated = await run({ type: 'generate-practice-example', technique, seed: 27, exclude })
@@ -1228,6 +1262,25 @@ test('each Learn drill generates a different grid with a verified walkthrough fo
       assert.ok(start.text && check.text, technique)
       assert.ok(lessonDiagram(generated).results.length, technique)
       exclude = values
+    }
+  }
+})
+
+test('variant Learn drills offer distinct boards with checkable moves and rule clues', async () => {
+  const { run } = engineRequests()
+  const classic = await run({ type: 'lesson-examples' })
+  const { techniques } = await run({ type: 'techniques', variant: true })
+  for (const { id } of techniques.filter(({ id }) => !classic[id] && id !== 'locked-candidates')) {
+    const exercises = await run({ type: 'practice-examples', variant: true, technique: id })
+    const drills = exercises.map(variantLessonExercise)
+    assert.equal(new Set(drills.map(lessonValues)).size, 3, id)
+    for (const [index, drill] of drills.entries()) {
+      assert.ok(drill.variantPuzzle?.rules?.length, id)
+      assert.equal(drill.deduction.technique, id)
+      assert.ok(lessonDiagram(drill).results.length, id)
+      const proof = await run({ type: 'variant', operation: 'check-practice-move', position: exercises[index].position,
+        technique: id, action: drill.suggestion })
+      assert.equal(proof?.technique, id)
     }
   }
 })
@@ -1347,6 +1400,46 @@ test('the built-in pool returns rated sparse and expert puzzles', async () => {
   assert.deepEqual(expert.rating, await run({ type: 'rate', values: expert.board, techniqueOrder: expert.rating.techniqueOrder }))
 })
 
+test('classic generation excludes equivalent saved puzzles on every search route', async () => {
+  const { run, raw } = engineRequests()
+  const bank = await run({ type: 'impossible-templates' })
+  assert.equal(bank.length, 768)
+  assert.equal(new Set(bank).size, bank.length)
+  assert.deepEqual(await run({ type: 'canonical-puzzles', values: [] }), [])
+  const invalid = await raw({ type: 'canonical-puzzles', values: [TEMPLATE, '0'] })
+  assert.ok('code' in invalid && invalid.code === 'invalid-grid')
+  const renamed = [...TEMPLATE].map(digit => digit === '0' ? '0' : String(10 - Number(digit))).join('')
+  const transposed = Array.from({ length: 81 }, (_, cell) => TEMPLATE[cell % 9 * 9 + Math.floor(cell / 9)]).join('')
+  const [key, renamedKey, transposedKey, otherKey] = await run({
+    type: 'canonical-puzzles', values: [TEMPLATE, renamed, transposed, STARTER],
+  })
+  assert.equal(key, renamedKey)
+  assert.equal(key, transposedKey)
+  assert.notEqual(key, otherKey)
+
+  // Every transformed draw from this one-template search is the same puzzle.
+  const fixed = { type: 'generate-constrained', seed: 42, maxAttempts: 3,
+    clues: TEMPLATE.replaceAll('0', '').length, templates: [TEMPLATE] } as const
+  const allowed = await run(fixed)
+  assert.deepEqual(await run({ type: 'canonical-puzzles', values: [allowed] }), [key])
+  const exhausted = await raw({ ...fixed, exclude: [transposed] })
+  assert.ok('code' in exhausted && exhausted.code === 'search-limit')
+
+  const targeted = { type: 'generate-targeted', seed: 42, maxAttempts: 512,
+    target: { type: 'difficulty', level: 'medium' } } as const
+  const first = await run(targeted)
+  const next = await run({ ...targeted, exclude: [first] })
+  const keys = await run({ type: 'canonical-puzzles', values: [first, next] })
+  assert.notEqual(keys[0], keys[1])
+
+  const pool = { type: 'generate-from-pool', seed: 42, maxAttempts: 256,
+    clues: [17, 40], difficulty: 'medium' } as const
+  const pooled = await run(pool)
+  const another = await run({ ...pool, exclude: [pooled.board] })
+  const poolKeys = await run({ type: 'canonical-puzzles', values: [pooled.board, another.board] })
+  assert.notEqual(poolKeys[0], poolKeys[1])
+})
+
 test('the browser client reports attempts and cancels one active search independently', async (t) => {
   const { raw, run } = engineRequests()
   const sent: EngineRequest[] = []
@@ -1445,11 +1538,22 @@ test('the browser client reports attempts and cancels one active search independ
     if (difficultyIndex(level) >= difficultyIndex('medium')) {
       const reasoning = Object.entries(rating.score.counts).filter(([id]) =>
         difficultyIndex(catalog.techniques.find(t => t.id === id)!.difficulty) >= difficultyIndex('medium'))
-      assert.ok(reasoning.reduce((sum, [, count]) => sum + count, 0) >= 2, level)
+      assert.ok(reasoning.reduce((sum, [, count]) => sum + count, 0) >= 4, level)
+      if (level === 'medium') assert.ok(reasoning.length >= 2)
     }
   }
   assert.deepEqual((await generateClassic('medium', 43, [])).rating.status, { solved: 'medium' })
   assert.deepEqual((await generateClassic('impossible', 43)).rating.status, { solved: 'impossible' })
+
+  for (const difficulty of ['medium', 'impossible'] as const) {
+    const first = await generateClassic(difficulty, 42)
+    const next = await generateClassic(difficulty, 42, undefined, [first.board])
+    const keys = await run({ type: 'canonical-puzzles', values: [first.board, next.board] })
+    assert.notEqual(keys[0], keys[1], `${difficulty} must honor saved history`)
+  }
+  const bank = await run({ type: 'impossible-templates' })
+  const lastUnseen = await generateClassic('impossible', 42, undefined, bank.slice(0, -1))
+  assert.deepEqual(await run({ type: 'canonical-puzzles', values: [lastUnseen.board] }), [bank.at(-1)])
 
 })
 

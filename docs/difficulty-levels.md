@@ -33,15 +33,20 @@ A difficulty-targeted candidate must:
 
 1. Have exactly one solution.
 2. Finish using the requested profile, with a trace whose hardest technique has the requested tier.
-3. Resist the canonical profile containing every supported lower-tier technique.
+3. Resist three profiles containing every supported lower-tier technique: canonical order, reversed order within each tier, and a half-rotation within each tier. Identical profiles are checked once.
 4. Pass the same acceptance rules on every generation route, including templates and Auto.
-5. Keep enough puzzle left to solve. The initial implementation rejects more than 40 givens. Classic Medium and higher also require at least two productive non-single moves in the trace.
+5. Keep enough puzzle left to solve. Reject more than 40 givens. Classic Medium and higher require at least four productive non-single deductions in the trace. Medium also needs at least two technique types and two stretches of eliminations separated by a placement.
+6. Avoid structures in the player's saved classic puzzle history. Digit renaming, transposition, and valid row, column, band, and stack permutations count as the same puzzle.
 
-The last rule is a conservative starting floor, not a claim that two moves guarantee an interesting puzzle. Future calibration should measure repeated patterns, useful progress between discoveries, and the length and structure of proofs. One elegant breakthrough can be worthwhile. Puzzles should not be made repetitive merely to meet a count.
+These are internal acceptance floors, not difficulty scores or user settings. Four deductions alone do not guarantee an interesting puzzle. The stricter Medium rule addresses the thin solves found in the 599-per-level audit. Harder modes can still center on one difficult breakthrough supported by simpler deductions. Beginner and Easy intentionally use singles only.
 
-Fresh generation has a bounded search and can fall back to the verified template bank. Impossible also uses the existing Nested Forcing Net practice fixtures as template candidates. Every transformed board must pass the same acceptance checks; the source fixture does not determine its grade. This initial top-tier supply is small and needs expansion.
+Fresh generation has a bounded search and can fall back to the verified template bank. Tricky and Very Hard first try a seed-selected technique for 32 attempts, then fall back to the normal search. This broadens the technique mix without promising equal frequencies or weakening acceptance. Auto may use the player's technique progress for this focus.
 
-The lower-tier check follows the canonical deduction order. Its failure means that this implemented profile stalled. It is not an exhaustive proof that no human can find an easier route. Keep this distinction in any user-facing claim about a technique being required. The existing alternate-path API can strengthen certification for a curated bank; an inconclusive search must remain inconclusive.
+Impossible uses a larger, separately certified bank of distinct canonical structures; see `crates/engine/data/README.md` for provenance and rebuilding. It removes saved structures before searching, preserves each candidate's clue count, and checks every transformed board again. Source ratings never determine the app's grade. The bank is finite, and deleting saved games removes their duplicate protection.
+
+The lower-tier checks explore three greedy orders. They reject all 15 known lower-tier counterexamples from the first audit, but are not an exhaustive proof that no human can find an easier route. Keep this distinction in any user-facing claim about a technique being required. The existing alternate-path API can strengthen certification for a curated bank; an inconclusive search must remain inconclusive.
+
+This changes generation acceptance, not the technique grading scale. Classic scoring stays at version 11, and historical ratings are unchanged. Audit quality-policy version 2 records the new floors separately.
 
 An attempt limit returns a search-limit result. It must not silently substitute an easier puzzle with the requested label. Impossible currently uses the implemented computer-oriented logical methods; an arbitrary solver timeout is never upgraded into a rating.
 

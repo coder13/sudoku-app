@@ -1,13 +1,14 @@
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, hash_map::Entry},
+    collections::{HashMap, HashSet, hash_map::Entry},
 };
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::generation::{puzzle_permutation, start_builtin_pool};
+use super::hints::technique_counts::TechniqueCountScan;
 use super::hints::{checked_position, classify_actions, rank_position, rank_useful_position};
 use super::{
     Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, GeneratedPuzzle,
@@ -33,6 +34,8 @@ mod variant;
     rename_all_fields = "camelCase"
 )]
 enum Request {
+    CanonicalPuzzles { values: Vec<String> },
+    ImpossibleTemplates,
     Variant {
         #[serde(default)]
         operation: variant::Operation,
@@ -118,6 +121,11 @@ enum Request {
         eliminations: Option<Vec<u16>>,
         technique_order: Option<Vec<String>>,
     },
+    TechniqueCount {
+        values: String,
+        eliminations: Option<Vec<u16>>,
+        technique: String,
+    },
     ProveRank {
         values: String,
         entries: Option<String>,
@@ -187,6 +195,8 @@ enum Request {
         seed: u32,
         max_attempts: u32,
         target: Target,
+        #[serde(default)]
+        exclude: Vec<String>,
     },
     GenerateConstrained {
         #[serde(flatten)]
@@ -218,6 +228,8 @@ struct MatchingRequest {
     difficulty: Option<Difficulty>,
     technique: Option<TechniqueRequest>,
     technique_order: Option<Vec<String>>,
+    #[serde(default)]
+    exclude: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -449,6 +461,19 @@ fn position_with_candidates(position: &PositionSnapshot) -> ResultValue {
     Ok(data)
 }
 
+fn lesson_position(position: &PositionSnapshot, deduction: &Hint) -> ResultValue {
+    let masks = position_masks(position)?;
+    let mut data = snapshot_value(position);
+    data["candidates"] = json!(masks[..]);
+    data["deduction"] = json!(deduction);
+    data["pattern"] = json!(ProofPattern::from_evidence(
+        &deduction.evidence,
+        deduction.actions[0].candidate(),
+        &masks,
+    ));
+    Ok(data)
+}
+
 fn transpose_lesson_position(position: &PositionSnapshot) -> PositionSnapshot {
     // Transpose the grid and rename every digit. The same technique applies in a new orientation.
     let transpose = |cell: usize| cell % 9 * 9 + cell / 9;
@@ -476,8 +501,7 @@ fn lesson_examples() -> ResultValue {
         let practice = transpose_lesson_position(&position);
         let proofs = technique_deductions_at(&practice, technique).map_err(|_| INVALID_LESSON)?;
         let proof = proofs.first().ok_or(INVALID_LESSON)?;
-        let mut lesson = position_with_candidates(&position)?;
-        lesson["deduction"] = json!(deduction);
+        let mut lesson = lesson_position(&position, &deduction)?;
         lesson["practice"] = practice_value(&practice, &proofs, proof)?;
         lessons.insert(technique.id().into(), lesson);
     }
@@ -495,10 +519,9 @@ fn practice_value(
         .collect();
     answers.sort_unstable();
     answers.dedup();
-    let mut drill = position_with_candidates(position)?;
+    let mut drill = lesson_position(position, proof)?;
     drill["answers"] = json!(answers);
     drill["suggestion"] = json!(proof.actions.first().ok_or(INVALID_LESSON)?);
-    drill["deduction"] = json!(proof);
     Ok(drill)
 }
 
@@ -652,11 +675,11 @@ impl MatchingRequest {
                 self.max_attempts,
             )
             .map_err(generation_error)?;
-            return Ok((profile, search.map(GenerationOutput::Board)));
+            return Ok((profile, exclude_puzzles(search.map(GenerationOutput::Board), self.exclude)?));
         }
         let search = start_builtin_pool(self.seed, &criteria, mode, self.max_attempts)
             .map_err(generation_error)?;
-        Ok((profile, search.map(GenerationOutput::Rated)))
+        Ok((profile, exclude_puzzles(search.map(GenerationOutput::Rated), self.exclude)?))
     }
 }
 
@@ -682,6 +705,29 @@ type ActiveGeneration = GenerationSearch<'static, GenerationOutput>;
 
 thread_local! {
     static GENERATION: RefCell<HashMap<u32, ActiveGeneration>> = RefCell::new(HashMap::new());
+    static TECHNIQUE_COUNTS: RefCell<TechniqueCountScan> = RefCell::default();
+    static PUZZLE_KEYS: RefCell<HashMap<Board, Board>> = RefCell::new(HashMap::new());
+}
+
+fn puzzle_key(board: Board) -> Board {
+    PUZZLE_KEYS.with_borrow_mut(|keys| {
+        if let Some(key) = keys.get(&board) { return *key; }
+        let key = crate::canonical_puzzle(&board);
+        if keys.len() >= 8192 { keys.clear(); }
+        keys.insert(board, key);
+        key
+    })
+}
+
+fn exclude_puzzles(search: ActiveGeneration, exclude: Vec<String>) -> ResultValue<ActiveGeneration> {
+    if exclude.is_empty() { return Ok(search); }
+    let excluded = exclude.iter().map(|text| board(text).map(puzzle_key))
+        .collect::<Result<HashSet<_>, _>>()?;
+    Ok(search.filter(move |candidate| match candidate {
+        GenerationOutput::Board(board) => !excluded.contains(&puzzle_key(*board)),
+        GenerationOutput::Rated(puzzle) => !excluded.contains(&puzzle_key(puzzle.board)),
+        GenerationOutput::Variant(_) => true,
+    }))
 }
 
 #[cfg_attr(not(feature = "cli"), allow(dead_code))]
@@ -696,6 +742,7 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
             seed,
             max_attempts,
             target,
+            exclude,
         } => {
             let (profile, search) = match target {
                 Target::Difficulty {
@@ -723,9 +770,9 @@ fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveG
             };
             Ok((
                 GenerationProfile::Classic(profile),
-                search
+                exclude_puzzles(search
                     .map_err(generation_error)?
-                    .map(GenerationOutput::Board),
+                    .map(GenerationOutput::Board), exclude)?,
             ))
         }
         Request::GenerateConstrained { options, templates } => options
@@ -775,6 +822,11 @@ fn trace_value(trace: &super::LogicalSolve) -> Value {
 
 fn execute(request: Request) -> ResultValue<ResponseValue> {
     let result = match request {
+        Request::ImpossibleTemplates => Ok(json!(crate::impossible_templates().iter()
+            .map(|board| grid_string(*board)).collect::<Vec<_>>())),
+        Request::CanonicalPuzzles { values } => values.iter()
+            .map(|text| board(text).map(|board| grid_string(puzzle_key(board))))
+            .collect::<Result<Vec<_>, _>>().map(|keys| json!(keys)),
         Request::Variant {
             operation,
             position,
@@ -1017,6 +1069,19 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             .map_err(hint_error)?;
             return Ok(ResponseValue::Deductions(results));
         }
+        Request::TechniqueCount {
+            values,
+            eliminations,
+            technique,
+        } => {
+            let board = board(&values)?;
+            let eliminations = elimination_masks(eliminations)?;
+            let technique = Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?;
+            let count = TECHNIQUE_COUNTS
+                .with_borrow_mut(|scan| scan.count(board, eliminations, technique))
+                .map_err(hint_error)?;
+            Ok(json!(count))
+        }
         Request::ProveRank {
             values,
             entries,
@@ -1175,7 +1240,7 @@ mod tests {
     #[test]
     fn protocol_distinguishes_a_missing_profile_from_an_empty_profile() {
         let rating = request(json!({"type":"rate", "values":SPARSE}));
-        assert_eq!(rating["value"]["score"]["points"], 766);
+        assert_eq!(rating["value"]["score"]["points"], 846);
         assert_eq!(rating["value"]["status"], json!({"solved":"medium"}));
         assert_eq!(rating["value"]["scoringVersion"], SCORING_VERSION);
         assert_eq!(

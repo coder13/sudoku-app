@@ -14,7 +14,7 @@ function latestModified(path) {
     latestModified(resolve(path, entry.name))))
 }
 
-const sources = ['Cargo.lock', 'Cargo.toml', 'crates/engine'].map((path) => resolve(path))
+const sources = ['Cargo.lock', 'Cargo.toml', 'crates/engine', 'scripts/build-wasm.mjs'].map((path) => resolve(path))
 const generatedIsCurrent = outputs.every(existsSync) &&
   Math.min(...outputs.map((path) => statSync(path).mtimeMs)) >= Math.max(...sources.map(latestModified))
 

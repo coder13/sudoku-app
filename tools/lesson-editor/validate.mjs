@@ -10,8 +10,10 @@ const isOptionalText = (value) => value === undefined || isText(value)
 const isSlug = (value) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
 
 function validLink(link) {
-  return isText(link?.label) && isText(link.href) &&
-    (/^\/learn\/[a-z0-9-]+$/.test(link.href) || /^https?:\/\//i.test(link.href) && URL.canParse(link.href))
+  return isText(link?.label) && isText(link.href) && (
+    /^\/learn\/[a-z0-9-]+(?:#[a-z0-9-]+)?$/i.test(link.href) ||
+    (/^https?:\/\//i.test(link.href) && URL.canParse(link.href))
+  )
 }
 
 function validCrop(crop) {
@@ -38,7 +40,7 @@ function checkLesson(lesson, original, examples) {
   requireValue(Array.isArray(lesson.blocks) && Array.isArray(lesson.references) &&
     lesson.references.every(validLink) && (lesson.credits === undefined || (Array.isArray(lesson.credits) &&
     lesson.credits.every(validLink))) && isOptionalText(lesson.referencesTitle) && isOptionalText(lesson.creditsPrefix),
-  `Enter link labels and complete http or https URLs for ${context}.`)
+  `Enter link labels and Learn paths or complete web URLs for ${context}.`)
 
   const headings = new Set()
   const drills = []

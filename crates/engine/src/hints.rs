@@ -11,6 +11,13 @@ pub(crate) use patterns::OverlaySearch;
 mod proofs;
 pub use proofs::{DeductionMatch, DeductionProof, ProofPattern, deductions, deductions_at};
 
+#[cfg(all(
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+#[path = "hints/technique_counts.rs"]
+pub(crate) mod technique_counts;
+
 #[path = "subsets.rs"]
 mod subsets;
 

@@ -14,6 +14,7 @@ pub use paths::{
     search_alternate_path,
 };
 mod rank_fallback;
+mod quality;
 pub use rank_fallback::{
     RankFallbackOptions, RankSolve, RankSolveReplay, RankSolveSearch, RankSolveStatus,
     RankSolveStep, solve_position_with_rank,
@@ -373,7 +374,7 @@ pub(crate) fn matches_generation_path(
     } else {
         technique_order
     };
-    let mut reasoning_moves = 0;
+    let mut quality = quality::GenerationQuality::default();
     let mut pending = match technique {
         Some((opening, TechniqueTargetMode::ExclusiveOpening)) => {
             if !has_exclusive_opener(board, opening) {
@@ -401,9 +402,7 @@ pub(crate) fn matches_generation_path(
         }
         if rating.is_some() {
             total.record(step.technique);
-            if step.technique.difficulty() >= Difficulty::Medium {
-                reasoning_moves += 1;
-            }
+            quality.record(step.technique);
         }
         match rating {
             Some(GenerationRating::Score(range)) => total.points <= *range.end(),
@@ -425,14 +424,15 @@ pub(crate) fn matches_generation_path(
         return false;
     }
     if let Some(GenerationRating::Difficulty(level)) = rating {
-        // One quality floor for every normal difficulty request. Never turn a
-        // nearly completed grid into a full puzzle or accept a token advanced move.
-        if *level >= Difficulty::Medium && reasoning_moves < 2 {
+        if !quality.accepts(*level) {
             return false;
         }
-        let lower = Technique::DIFFICULTY_ORDER.iter().copied()
-            .filter(|t| t.difficulty() < *level).collect::<Vec<_>>();
-        if !lower.is_empty() {
+        // A different deduction order can reveal an easier route. Reject a
+        // candidate if any checked lower-tier profile completes it.
+        for lower in quality::lower_tier_orders(*level) {
+            if lower.is_empty() {
+                continue;
+            }
             let Ok(result) = follow_path(Position::known_unique(board), &lower, |_| true) else {
                 return false;
             };
@@ -535,7 +535,7 @@ mod tests {
         let normal = solve_logically(&board, &Technique::ALL).unwrap();
         assert_eq!(normal.board, solve(&board).unwrap());
         assert_eq!(normal.steps.len(), 51);
-        assert_eq!(normal.score.points, normal.score.counts.iter().map(|(t, count)| u32::from(t.cost()) * count).sum());
+        assert_eq!(normal.score.points, normal.score.counts.iter().map(|(t, count)| u32::from(t.cost()) * count).sum::<u32>());
         assert_eq!(normal.status, SolveStatus::Solved(Difficulty::Beginner));
         assert_eq!(normal.technique_order, Technique::ALL);
         assert_eq!(normal.scoring_version, SCORING_VERSION);

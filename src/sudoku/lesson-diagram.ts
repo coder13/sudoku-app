@@ -567,7 +567,8 @@ export function deductionResults(actions: readonly DeductionAction[]) {
   return results
 }
 
-export function lessonDiagram({ deduction, candidates }: Pick<LessonExample, 'deduction' | 'candidates'>, proof?: ProofPattern, { showActions = true } = {}) {
+export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }: Pick<LessonExample, 'deduction' | 'candidates' | 'pattern'>,
+  proof = lessonPattern, { showActions = true } = {}) {
   const pattern: Pattern | undefined = 'variant' in deduction.evidence
     ? proof && { ...proof, ...deduction.evidence.variant }
     : describePattern(deduction, candidates) ?? (proof && { ...proof, description: '', reason: '' })
@@ -604,7 +605,7 @@ export function lessonDiagram({ deduction, candidates }: Pick<LessonExample, 'de
   const annotations: BoardAnnotations = { cells, candidates: candidateMarks, links: pattern.links }
   const { description, reason, reasonSteps, mainLabel = 'Pattern candidate', accent, trace } = pattern
   const focus = [...candidateMarks.keys(), ...('house' in deduction.evidence ? houseCells(deduction.evidence.house) : [])]
-  return { annotations, region: enclosingRegion(focus), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
+  return { annotations, region: enclosingRegion(focus.length ? focus : [...cells.keys()]), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
 }
 
 function enclosingRegion(cells: number[]): BoardRegion {

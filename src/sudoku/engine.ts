@@ -20,10 +20,11 @@ type MatchingOptions = {
   maxAttempts: number
   clues: number | readonly [number, number]
   technique?: TechniqueTarget
+  exclude?: readonly string[]
 } & RatingTarget & SolverOptions
 
 export type GenerationRequest =
-  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget }
+  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget; exclude?: readonly string[] }
   | ({ type: 'generate-constrained'; templates?: readonly string[] } & MatchingOptions)
   | ({ type: 'generate-from-pool' } & MatchingOptions)
   | VariantGenerationRequest
@@ -119,6 +120,8 @@ type VariantRequest = {
 
 export type EngineRequest =
   | VariantRequest
+  | { type: 'canonical-puzzles'; values: readonly string[] }
+  | { type: 'impossible-templates' }
   | { type: 'analyze'; values: string }
   | { type: 'notes'; values: string }
   | { type: 'solve'; values: string }
@@ -133,6 +136,7 @@ export type EngineRequest =
   | ({ type: 'hints'; limit?: number | 'all'; includePatterns?: boolean; preferProgress?: boolean; difficulty?: Difficulty } & CandidatePosition & HintOptions)
   | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
   | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
+  | ({ type: 'technique-count'; technique: string } & CandidatePosition)
   | ({ type: 'prove-rank'; pattern: RankPattern; target: Candidate; nodeBudget: number } & StartingPosition)
   | ({ type: 'discover-rank'; target: Candidate; nodeBudget: number } & StartingPosition)
   | ({ type: 'discover-rank-deductions'; limit?: number; nodeBudget: number; maxNodesPerCandidate: number } & StartingPosition)
@@ -372,7 +376,7 @@ export type DeductionMatch = Pick<Deduction, 'actions'> & {
 }
 
 export type PositionSnapshot = { givens: string; entries: string; eliminations: number[] }
-export type LessonPosition = PositionSnapshot & { candidates: number[] }
+export type LessonPosition = PositionSnapshot & { candidates: number[]; pattern?: ProofPattern }
 
 export type LessonPractice = LessonPosition & { answers: DeductionAction[]; suggestion: DeductionAction }
 export type PracticeExercise = LessonPractice & { deduction: Deduction }
@@ -461,6 +465,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends VariantRequest ? VariantResult<T> :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
+  T extends { type: 'canonical-puzzles' | 'impossible-templates' } ? string[] :
   T extends { type: 'solve' } ? string | null :
   T extends { type: 'rate' } ? PuzzleRating :
   T extends { type: 'logical-solve' } ? LogicalSolution :
@@ -472,6 +477,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'hints' } ? HintChoices :
   T extends { type: 'next-deduction' } ? HintStages | null :
   T extends { type: 'deductions' } ? DeductionMatch[] :
+  T extends { type: 'technique-count' } ? number :
   T extends { type: 'prove-rank' } ? RankOutcome :
   T extends { type: 'discover-rank' } ? RankDiscovery :
   T extends { type: 'discover-rank-deductions' } ? RankDiscoveryScan :
@@ -547,7 +553,7 @@ export function runEngine<T extends EngineRequest>(request: T, options: { intera
   return new Promise((resolve, reject) => {
     // A scan for an unfamiliar move must not hold up hints or candidate updates.
     const connection = options.interactive && request.type === 'deductions' ? techniqueDetailEngine
-      : options.background || request.type === 'classify-actions' || request.type === 'deductions' ? techniqueEngine
+      : options.background || request.type === 'classify-actions' || request.type === 'deductions' || request.type === 'technique-count' ? techniqueEngine
       : request.type === 'generate-variant' || request.type === 'generate-practice-example' ? generationEngine : playEngine
     connection.worker ??= connect(connection)
     const id = ++requestId

@@ -126,12 +126,14 @@ def proof_sizes(evidence):
     return links, assumptions, inferences, depth
 
 
-def describe(record, levels, uniqueness):
+def describe(record, levels, uniqueness, quality_version=1):
     steps = record["steps"]
     tier = TIERS.index(record["tier"])
     non_singles = [index for index,step in enumerate(steps) if step["technique"] not in SINGLES]
     target = [index for index,step in enumerate(steps) if levels[step["technique"]] == record["tier"]]
     target_counts = collections.Counter(steps[index]["technique"] for index in target)
+    technique_count = len({steps[index]["technique"] for index in non_singles})
+    stretches = sum(index == 0 or steps[index-1]["technique"] in SINGLES for index in non_singles)
     trailing = len(steps)-1-non_singles[-1] if non_singles else len(steps)
     leading = non_singles[0] if non_singles else len(steps)
     errors = replay_errors(record)
@@ -141,8 +143,11 @@ def describe(record, levels, uniqueness):
         errors.append("rating does not match requested tier")
     if tier and record["lower"]["rating"]["status"] != "stalled":
         errors.append("lower canonical profile completed")
-    if record["givens"] > 40 or (tier >= 2 and len(non_singles) < 2):
+    minimum = 4 if quality_version >= 2 else 2
+    if record["givens"] > 40 or (tier >= 2 and len(non_singles) < minimum):
         errors.append("quality floor failed")
+    if quality_version >= 2 and tier == 2 and (technique_count < 2 or stretches < 2):
+        errors.append("Medium variety or repeated discovery floor failed")
     if uniqueness is not None and (uniqueness["count"] != 1 or uniqueness["exhausted"] or uniqueness["solution"] != record["solution"]):
         errors.append("independent uniqueness check failed or was inconclusive")
     sizes = [proof_sizes(step["evidence"]) for step in steps]
@@ -161,7 +166,8 @@ def describe(record, levels, uniqueness):
     return {
         "tier":record["tier"],"index":record["index"],"seed":record["seed"],"puzzle":record["puzzle"],"canonical":record["canonical"],
         "givens":record["givens"],"steps":len(steps),"nonSingleSteps":len(non_singles),"targetTierSteps":len(target),
-        "targetTechniques":";".join(sorted(target_counts)),"nonSingleTechniqueCount":len({steps[i]["technique"] for i in non_singles}),
+        "targetTechniques":";".join(sorted(target_counts)),"nonSingleTechniqueCount":technique_count,
+        "eliminationStretches":stretches,"qualityVersion":quality_version,
         "initialSingles":leading,"finalSingles":trailing,"firstTargetStep":target[0] if target else None,
         "emptyAtFirstTarget":record["positions"][target[0]]["empty"] if target else None,
         "emptyAtLastNonSingle":record["positions"][non_singles[-1]+1]["empty"] if non_singles else None,
@@ -190,7 +196,7 @@ def summarize(rows, calls, levels):
         for row in sample:
             target_moves.update(row["targetCounts"])
         structures = collections.Counter(row["canonical"] for row in sample)
-        metrics = ["givens","nonSingleSteps","targetTierSteps","nonSingleTechniqueCount","initialSingles","finalSingles","initialEasyChoices","maxProofLinks","maxProofAssumptions","maxForcingInferences","maxBranchDepth","maxTargetProofLinks","maxTargetProofAssumptions","maxTargetForcingInferences","maxTargetBranchDepth","generationMs","analysisMs","attempts"]
+        metrics = ["givens","nonSingleSteps","targetTierSteps","nonSingleTechniqueCount","eliminationStretches","initialSingles","finalSingles","initialEasyChoices","maxProofLinks","maxProofAssumptions","maxForcingInferences","maxBranchDepth","maxTargetProofLinks","maxTargetProofAssumptions","maxTargetForcingInferences","maxTargetBranchDepth","generationMs","analysisMs","attempts"]
         by_tier[tier] = {
             "sample":len(sample),"generationCalls":calls[tier],"failedCalls":calls[tier]-len(sample),
             "passed":sum(row["check"]=="pass" for row in sample),"distinctGrids":len({row["puzzle"] for row in sample}),
@@ -209,6 +215,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input",type=pathlib.Path)
     parser.add_argument("--verify",action="store_true")
+    parser.add_argument("--quality-version",type=int,choices=[1,2],default=1,
+                        help="Use 1 for the original audit, 2 for the stronger generation rules")
     parser.add_argument("--tiers",nargs="*",default=TIERS)
     args=parser.parse_args()
     levels=json.loads((ROOT/"src/sudoku/generated/lesson-difficulties.json").read_text())
@@ -233,7 +241,7 @@ def main():
                     output.write(json.dumps(check,separators=(",",":"))+"\n")
                     output.flush()
                     checks[record["puzzle"]]=check
-                row=describe(record,levels,check)
+                row=describe(record,levels,check,args.quality_version)
                 alternate=alternatives.get((row["tier"],row["index"]),{"results":[]})
                 solved=[result for result in alternate["results"] if result["rating"]["status"]!="stalled"]
                 row["alternateOrdersChecked"]=len(alternate["results"])

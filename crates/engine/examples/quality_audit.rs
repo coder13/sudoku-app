@@ -29,16 +29,28 @@ fn finish<T>(mut search: GenerationSearch<'_, T>) -> (Option<T>, u32) {
 fn generate(level: Difficulty, seed: u32) -> (Option<Board>, Vec<Value>) {
     let order = level.technique_order();
     let mut routes = Vec::new();
-    if level == Difficulty::Impossible {
-        let mut templates = Vec::new();
-        for example in Technique::NestedForcingNet.practice_examples() {
-            let board = parse_givens(example.givens).unwrap();
-            if !templates.contains(&board) { templates.push(board); }
-        }
+    let focus: &[Technique] = match level {
+        Difficulty::Tricky => &[Technique::XWing, Technique::Swordfish, Technique::Skyscraper, Technique::TwoStringKite, Technique::EmptyRectangle],
+        Difficulty::VeryHard => &[Technique::FinnedSwordfish, Technique::SimpleColoring, Technique::Medusa, Technique::XChain, Technique::XYChain, Technique::WxyzWing],
+        _ => &[],
+    };
+    if !focus.is_empty() {
         let start = Instant::now();
-        let criteria = GenerationCriteria { clues: 17..=30, rating: Some(GenerationRating::Difficulty(level)), technique: None, technique_order: &order };
+        let technique = focus[(seed >> 8) as usize % focus.len()];
+        let criteria = GenerationCriteria { clues: 24..=36, rating: Some(GenerationRating::Difficulty(level)), technique: Some(technique), technique_order: &order };
+        let (board, attempts) = finish(start_matching(seed, &criteria, TechniqueTargetMode::Anywhere, Cow::Borrowed(&[]), 32).unwrap());
+        routes.push(json!({"route":"focused","focus":technique,"attempts":attempts,"matched":board.is_some(),"ms":start.elapsed().as_secs_f64()*1000.0}));
+        if board.is_some() { return (board, routes); }
+    }
+    if level == Difficulty::Impossible {
+        let bank = impossible_templates();
+        let count_clues = |board: &Board| board.iter().filter(|&&digit| digit != 0).count();
+        let clues = count_clues(&bank[seed as usize % bank.len()]);
+        let templates = bank.iter().copied().filter(|board| count_clues(board) == clues).collect();
+        let start = Instant::now();
+        let criteria = GenerationCriteria { clues: clues..=clues, rating: Some(GenerationRating::Difficulty(level)), technique: None, technique_order: &order };
         let (board, attempts) = finish(start_matching(seed, &criteria, TechniqueTargetMode::Anywhere, Cow::Owned(templates), 128).unwrap());
-        routes.push(json!({"route":"impossible-fixtures","attempts":attempts,"matched":board.is_some(),"ms":start.elapsed().as_secs_f64()*1000.0}));
+        routes.push(json!({"route":"impossible-bank","attempts":attempts,"matched":board.is_some(),"ms":start.elapsed().as_secs_f64()*1000.0}));
         if board.is_some() { return (board, routes); }
     }
     let start = Instant::now();

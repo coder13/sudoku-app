@@ -42,3 +42,7 @@ required-features = ["wasm-api"]
 [[example]]
 name = "quality_recheck"
 required-features = ["wasm-api"]
+
+[[example]]
+name = "certify_bank"
+required-features = ["wasm-api"]

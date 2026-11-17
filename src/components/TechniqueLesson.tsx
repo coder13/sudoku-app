@@ -3,10 +3,11 @@ import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { lessonDifficultyLabels } from '../sudoku/lesson-difficulties'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
-import { Fragment, useEffect, useId, useRef, useState } from 'react'
-import { runEngine, type LessonExample, type PracticeExercise } from '../sudoku/engine'
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { runEngine, type LessonExample } from '../sudoku/engine'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
+import { lessonExample, variantLessonExercise, type EngineLessonExample, type LessonExercise } from '../sudoku/lesson-examples'
 import { articles, lessonRoutes, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardRegion } from './BoardAnnotations'
@@ -16,15 +17,15 @@ import { SelectControl } from './SelectControl'
 import { ConceptCheck } from './ConceptCheck'
 import { FoundationVisual } from './FoundationVisual'
 
-const lessonExamples = JSON.parse(examplesJson) as Record<string, LessonExample>
+const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
 
 export function Diagram({ example, crop, copy }: {
-  example: LessonExample
+  example: LessonExample & Pick<LessonExercise, 'variantPuzzle'>
   crop?: BoardRegion
   copy?: Extract<LessonBlock, { type: 'diagram' }>['copy']
 }) {
   const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
-  const view = crop ?? region
+  const view = crop ?? (example.variantPuzzle ? undefined : region)
   const results = copy?.results ?? defaultResults
   const trace = copy?.trace ?? defaultTrace
   const strong = annotations.links?.some((link) => !link.dashed)
@@ -62,10 +63,11 @@ export function Diagram({ example, crop, copy }: {
 export function Practice({ block, variant }: { block: Extract<LessonBlock, { type: 'practice' }>; variant: string }) {
   const { drills, title, selectLabel } = block
   const [chosen, setChosen] = useState(() => drills.find(({ example }) => example === variant) ?? drills[0])
-  const [generated, setGenerated] = useState<PracticeExercise | null>(null)
+  const [generated, setGenerated] = useState<LessonExercise | null>(null)
   const [generation, setGeneration] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const generationId = useRef(0)
-  const puzzle = generated ?? lessonExamples[chosen.example].practice
+  const initial = useMemo(() => lessonExample(lessonExamples[chosen.example]).practice, [chosen.example])
+  const puzzle = generated ?? initial
   const grid = lessonValues(puzzle)
   const heading = useId()
 
@@ -73,8 +75,15 @@ export function Practice({ block, variant }: { block: Extract<LessonBlock, { typ
     const id = ++generationId.current
     setGeneration('loading')
     try {
-      const seed = crypto.getRandomValues(new Uint32Array(1))[0]
-      const example = await runEngine({ type: 'generate-practice-example', technique: chosen.example, seed, exclude: grid })
+      let example: LessonExercise
+      if (initial.variantPuzzle) {
+        const exercises = await runEngine({ type: 'practice-examples', technique: chosen.example, variant: true }, { background: true })
+        const current = exercises.findIndex(({ position }) => lessonValues({ givens: position.puzzle.givens, entries: position.entries }) === grid)
+        example = variantLessonExercise(exercises[(current + 1) % exercises.length])
+      } else {
+        const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+        example = await runEngine({ type: 'generate-practice-example', technique: chosen.example, seed, exclude: grid })
+      }
       if (id !== generationId.current) return
       setGenerated(example)
       setGeneration('ready')
@@ -112,7 +121,7 @@ export function Practice({ block, variant }: { block: Extract<LessonBlock, { typ
         {generation === 'loading' ? 'Generating example…' : generation === 'ready' ? 'New example ready.'
           : generation === 'error' ? 'Could not generate an example. Try again.' : ''}
       </p>
-      <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction} />
+    <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction} practiceGuide={block.guide} />
     </section>
   )
 }
@@ -129,7 +138,7 @@ export function Block({ block, variant }: { block: LessonBlock; variant: string 
     </table></div>
     case 'concept-check': return <ConceptCheck block={block} />
     case 'foundation-visual': return <FoundationVisual visual={block.visual} />
-    case 'diagram': return <Diagram example={lessonExamples[block.example]} crop={block.region} copy={block.copy} />
+    case 'diagram': return <Diagram example={lessonExample(lessonExamples[block.example])} crop={block.region} copy={block.copy} />
     case 'practice': return <Practice block={block} variant={variant} />
   }
 }

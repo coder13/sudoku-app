@@ -12,8 +12,8 @@ const bytes = readFileSync(resolve(target, 'wasm32-unknown-unknown/release/sudok
 const { instance } = await WebAssembly.instantiate(bytes)
 const engine = instance.exports
 
-function request(type) {
-  const input = new TextEncoder().encode(JSON.stringify({ type }))
+function request(type, options = {}) {
+  const input = new TextEncoder().encode(JSON.stringify({ type, ...options }))
   const address = engine.request_buffer(input.length)
   new Uint8Array(engine.memory.buffer, address, input.length).set(input)
   const length = engine.run_request()
@@ -24,7 +24,13 @@ function request(type) {
 }
 
 const examples = request('lesson-examples')
-const { techniques } = request('techniques')
+const { techniques } = request('techniques', { variant: true })
+for (const { id } of techniques) {
+  if (examples[id]) continue
+  const [diagram, practice] = request('practice-examples', { variant: true, technique: id })
+  if (!diagram || !practice) throw new Error(`Missing variant lesson examples for ${id}.`)
+  examples[id] = { ...diagram, practice }
+}
 const difficulties = Object.fromEntries(techniques.map(({ id, difficulty }) => [id, difficulty]))
 
 mkdirSync('src/sudoku/generated', { recursive: true })

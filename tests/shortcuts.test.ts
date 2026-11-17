@@ -19,6 +19,14 @@ test('older saved shortcuts gain the Generate all candidates default without cre
   assert.deepEqual(parseShortcutPreferences({ ...olderPreferences, digitMode: 'g' }), DEFAULT_SHORTCUTS)
 })
 
+test('the new Chains shortcuts preserve keys already assigned by the user', () => {
+  const { chainDrawing: _draw, newChain: _new, ...olderPreferences } = DEFAULT_SHORTCUTS
+  const shortcuts = parseShortcutPreferences({ ...olderPreferences, digitMode: 'l', pencilMode: 'b' })
+  assert.equal(shortcuts.digitMode, 'l')
+  assert.equal(shortcuts.pencilMode, 'b')
+  assert.equal(new Set(Object.values(shortcuts)).size, EDITABLE_SHORTCUTS.length)
+})
+
 test('invalid or conflicting saved shortcuts fall back to defaults', () => {
   assert.equal(parseShortcutPreferences({ digitMode: '1' }), DEFAULT_SHORTCUTS)
   assert.equal(parseShortcutPreferences({ digitMode: DEFAULT_SHORTCUTS.pencilMode }), DEFAULT_SHORTCUTS)

@@ -51,7 +51,8 @@ export function usePuzzleGeneration() {
         onGenerated?.()
         return
       }
-      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, auto ? await techniqueHistory.readProgress() : undefined)
+      const previousPuzzles = roomStore.getSnapshot().games.filter(game => !game.variant).map(game => game.givens)
+      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, auto ? await techniqueHistory.readProgress() : undefined, previousPuzzles)
       if (!mounted.current) return
       const game = makeGame(createGameId(), nextPuzzleTitle(), givens, 'generated')
       if (auto) game.generatedWithAuto = true

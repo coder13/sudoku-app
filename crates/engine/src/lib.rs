@@ -17,8 +17,8 @@ mod variant;
 pub use generation::{
     GeneratedPuzzle, GenerationConflict, GenerationConstraints, GenerationCriteria,
     GenerationRating, GenerationSearch, GenerationStep, TechniqueTargetMode, VerifiedTemplate,
-    builtin_templates, canonical_puzzle, generate_constrained, generate_from_pool,
-    generate_matching, generate_matching_with_mode, start_from_pool, start_matching,
+    accepts_difficulty, builtin_templates, canonical_puzzle, generate_constrained, generate_from_pool,
+    generate_matching, generate_matching_with_mode, impossible_templates, start_from_pool, start_matching,
     start_targeted,
 };
 pub use hints::{
@@ -549,7 +549,7 @@ mod tests {
                 level,
                 technique_order: &order,
             };
-            let board = generate_targeted(42, target, 32).unwrap();
+            let board = generate_targeted(42, target, 512).unwrap();
             assert_eq!(analyze(&board), Analysis::Unique);
             assert!(board.iter().filter(|&&digit| digit != 0).count() <= 40);
             assert_eq!(solve_logically(&board, &order).unwrap().status, SolveStatus::Solved(level));
