@@ -214,6 +214,7 @@ export function Board({
                     const pending = selectedCandidate?.cell === index && selectedCandidate.digit === digit
                     const linkTarget = isLinkTarget?.(candidate)
                     const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],
+                      digit === focusDigit && candidateHighlightStyle && 'highlighted',
                       linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
                     return <button type="button" key={digit} className={`candidate-button ${onPaintCandidate ? 'paint-candidate' : 'chain-candidate'}`} style={style}
                       aria-label={candidateLabel} data-link-target={linkTarget || undefined}
@@ -224,7 +225,7 @@ export function Board({
                       })}
                       onPointerLeave={onCandidateHover && (() => onCandidateHover(null))}
                       onFocus={() => setCandidateFocus({ ...candidate, slotted })} onClick={() => candidateAction(candidate)}>
-                      {color ? <span className={colorClass}>{digit}</span> : digit}
+                      <span className={[colorClass, highlightClass].filter(Boolean).join(' ') || undefined}>{digit}</span>
                     </button>
                   }
                   return <span key={digit} className={color ? `${colorClass}${highlightClass ? ` ${highlightClass}` : ''}` : highlightClass}

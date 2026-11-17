@@ -452,6 +452,13 @@ svg { flex-shrink: 0; }
 .color-shade-label { color: var(--muted); font-size: 11px; }
 .color-shade-switch { width: 100%; min-height: 40px; }
 .cell-color-palette .color-pair-help { min-height: 0; font-size: 12px; }
+.color-link-tools { display: grid; gap: var(--space-6); }
+.color-link-label { font-size: 12px; font-weight: 650; }
+.color-highlight-digits { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 3px; }
+.color-highlight-digits .button { min-width: 0; min-height: 36px; padding: 0; }
+.color-highlight-digits .button[aria-pressed="true"] { background: var(--selected-bg); border-color: var(--selected-border); color: var(--dark-purple); }
+.color-strong-links { width: 100%; min-height: 40px; }
+.cell-color-palette .color-link-message { min-height: 2.8em; font-size: 12px; }
 .cell-color-swatch {
   min-width: 0;
   min-height: 40px;

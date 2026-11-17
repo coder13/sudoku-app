@@ -1,5 +1,5 @@
-import { ArrowUpDown, Check, Eraser } from 'lucide-react'
-import { alternateColorShade, COLORS, COLOR_FAMILIES, type ColorTarget } from '../sudoku/game'
+import { ArrowUpDown, Check, Eraser, Link2 } from 'lucide-react'
+import { alternateColorShade, COLORS, COLOR_FAMILIES, DIGITS, type ColorTarget } from '../sudoku/game'
 
 type Props = {
   target: ColorTarget
@@ -10,6 +10,11 @@ type Props = {
   onColor: (color: number) => void
   onStop: () => void
   onClear: () => void
+  highlightedDigit: number | null
+  onHighlightDigit: (digit: number | null) => void
+  canColorStrongLinks: boolean
+  strongLinkMessage: string
+  onColorStrongLinks: () => void
 }
 
 export function ColorTargetPicker({ target, disabled, onTarget }: Pick<Props, 'target' | 'disabled' | 'onTarget'>) {
@@ -46,7 +51,8 @@ export function ColorSwatches({ brush, disabled, onColor }: Pick<Props, 'brush' 
   </div>
 }
 
-export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onStop, onClear }: Props) {
+export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onStop, onClear,
+  highlightedDigit, onHighlightDigit, canColorStrongLinks, strongLinkMessage, onColorStrongLinks }: Props) {
   const subject = target === 'cell' ? 'cells' : 'candidates'
   const instructions = disabled ? 'Coloring is available while playing.'
     : brush === null ? target === 'cell'
@@ -57,6 +63,17 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
   return (
     <section className="cell-color-palette" aria-label="Coloring">
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
+      {target === 'candidate' && <div className="color-link-tools">
+        <span className="color-link-label">Highlight number</span>
+        <div className="color-highlight-digits" role="group" aria-label="Highlight candidates while coloring">
+          {DIGITS.map((digit) => <button type="button" key={digit} className="button secondary"
+            aria-label={`Highlight ${digit}`} aria-pressed={highlightedDigit === digit} disabled={disabled}
+            onClick={() => onHighlightDigit(highlightedDigit === digit ? null : digit)}>{digit}</button>)}
+        </div>
+        <button type="button" className="button secondary color-strong-links" disabled={disabled || !canColorStrongLinks}
+          onClick={onColorStrongLinks}><Link2 size={16} aria-hidden="true" /> Color strong links</button>
+        <p className="color-link-message" aria-live="polite">{strongLinkMessage}</p>
+      </div>}
       <p aria-live="polite">{instructions}</p>
       <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} />
       <p className="color-pair-help">Use light and dark shades of one color to mark the two sides of a strong link.</p>

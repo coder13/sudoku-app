@@ -8,12 +8,12 @@ import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
-  COLORS, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
+  COLORS, COLOR_FAMILIES, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
+  formatTime, hasCandidate, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
-import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
+import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
 import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
@@ -22,6 +22,7 @@ import type { AdvancedModes, AppearancePreferences, HighlightPreferences, Worksp
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
+import { findStrongLinkGroups, strongLinkColorMarks } from '../sudoku/strong-link-colors'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
@@ -298,6 +299,7 @@ export function Worktable({
   const pathRequest = useRef(0)
   const techniqueHintRequest = useRef(0)
   const values = useMemo(() => valuesOf(game), [game.givens, game.position.entries])
+  const coloringDigit = activeHighlightDigit(values, selected, active, selectedDigit)
   const { center, corner, eliminations } = game.position
   const displayedCandidates = useMemo(() => completeCandidateMasks(game), [values, center, corner])
   const hintPosition = useMemo(() => ({ gameId: game.id, values, center, corner, eliminations }),
@@ -403,6 +405,24 @@ export function Worktable({
   const candidateBrush = colorTarget === 'candidate' && !cellColorsDisabled && !sketch.drawing && !hintAnnotations && !mobileHintOpen
     ? colorMode ? selectedColor : brush : null
   const paintingCandidates = candidateBrush !== null
+  const colorLinkMasks = useMemo(() => {
+    if (!masks || !displayedCandidates) return null
+    const result = masks.map((mask, cell) => values[cell] === '0'
+      ? mask & displayedCandidates[cell] & ~(eliminations?.[cell] ?? 0) : 0)
+    return result.some((mask, cell) => values[cell] === '0' && !mask) ? null : result
+  }, [masks, displayedCandidates, values, eliminations])
+  const colorLinks = useMemo(() => colorsVisible && colorLinkMasks && coloringDigit
+    ? findStrongLinkGroups(colorLinkMasks, coloringDigit, variant?.puzzle) : { groups: [], conflictingGroups: 0 },
+  [colorsVisible, colorLinkMasks, coloringDigit, variant])
+  const canColorStrongLinks = colorLinks.groups.length > 0 && colorLinks.groups.length <= COLOR_FAMILIES.length && !colorLinks.conflictingGroups
+  const strongLinkMessage = !coloringDigit ? 'Highlight a number to find its strong links.'
+    : !displayedCandidates ? 'Generate candidates in every empty cell first.'
+    : masks === undefined ? 'Loading candidates…'
+    : !colorLinkMasks ? 'Check the grid and candidates before coloring links.'
+    : colorLinks.conflictingGroups ? 'These links cannot use alternating shades. Check the candidates.'
+    : colorLinks.groups.length > COLOR_FAMILIES.length ? 'There are more groups than color pairs. Color these groups manually.'
+    : colorLinks.groups.length ? `${colorLinks.groups.reduce((count, group) => count + group.links, 0)} strong links for ${coloringDigit}. Each connected group gets its own color.`
+    : `No strong links for ${coloringDigit}.`
   const canActivateTemporaryPencil = !pencil && !highlightMode && !colorMode && !eraseMode &&
     !disabled && !draft && !solved && !sketch.drawing && brush === null && !modalOpen && !mobileHintOpen &&
     !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !changePuzzleOpen && !variantRulesOpen && !analysisOpen
@@ -817,6 +837,10 @@ export function Worktable({
   }
 
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected) {
+    if (brush !== null && colorTarget === 'candidate' && inputMode === 'value') {
+      highlightColorDigit(digit === 0 || digit === coloringDigit ? null : digit)
+      return
+    }
     setColorBrush(null)
     if (inputMode === 'color') {
       if (digit > COLORS.length) return
@@ -869,11 +893,44 @@ export function Worktable({
     setHintRevealed(false)
     setColorMode(false)
     setEraseMode(false)
-    setHighlightMode(false)
     setPencil(false)
-    setSelectedDigit(null)
+    setSelectedDigit(coloringDigit)
     setSelectedColor(color)
     setColorBrush(color)
+  }
+
+  function highlightColorDigit(digit: number | null) {
+    setSelected([])
+    setHighlightCandidatePairs(false)
+    setSelectedDigit(digit)
+  }
+
+  function toggleHighlightMode() {
+    if (brush !== null && colorTarget === 'candidate') {
+      setHighlightMode((current) => !current)
+      return
+    }
+    setColorBrush(null)
+    setEraseMode(false)
+    setPencil(false)
+    setColorMode(false)
+    setHighlightMode((current) => !current)
+  }
+
+  function colorStrongLinks() {
+    if (!canPaint || !canColorStrongLinks) return
+    const firstColor = brush && brush > 0 ? brush : selectedColor && selectedColor > 0 ? selectedColor : 1
+    const marks = strongLinkColorMarks(colorLinks.groups, firstColor)
+    if (sketch.drawing) sketch.stop()
+    setHintRevealed(false)
+    setColorTarget('candidate')
+    setColorMode(false)
+    setEraseMode(false)
+    setPencil(false)
+    highlightColorDigit(coloringDigit)
+    setSelectedColor(firstColor)
+    setColorBrush(firstColor)
+    edit((current) => current.position === game.position ? paintCandidates(current, marks) : current)
   }
 
   function clearColors() {
@@ -1123,7 +1180,9 @@ export function Worktable({
         event.preventDefault()
         if (colorTarget === 'candidate' && (paintingCandidates || colorMode) && event.repeat) return
         const digit = Number(key)
-        if (brush !== null && !colorMode) {
+        if (brush !== null && colorTarget === 'candidate') {
+          highlightColorDigit(digit === coloringDigit ? null : digit)
+        } else if (brush !== null && !colorMode) {
           if (digit <= COLORS.length) chooseColor(digit)
         } else input(digit)
       } else if (!shortcut && (key === 'delete' || key === 'backspace' || key === '0')) {
@@ -1157,11 +1216,7 @@ export function Worktable({
         setPencil((current) => !current)
       } else if (!draft && shortcutMatches(event, shortcuts, 'highlightMode')) {
         event.preventDefault()
-        setColorBrush(null)
-        setEraseMode(false)
-        setPencil(false)
-        setColorMode(false)
-        setHighlightMode((current) => !current)
+        toggleHighlightMode()
       } else if (!draft && shortcutMatches(event, shortcuts, 'colorMode') && (desktop || advancedModes.colorsEnabled)) {
         event.preventDefault()
         if (desktop) { showColors(); return }
@@ -1505,6 +1560,8 @@ export function Worktable({
   const cellColorsPanel = (
     <CellColorPalette target={colorTarget} onTarget={changeColorTarget} brush={brush}
       hasColors={colorTarget === 'cell' ? game.position.colors.some(Boolean) : Boolean(game.position.candidateColors)}
+      highlightedDigit={coloringDigit} onHighlightDigit={highlightColorDigit}
+      canColorStrongLinks={canColorStrongLinks} strongLinkMessage={strongLinkMessage} onColorStrongLinks={colorStrongLinks}
       disabled={cellColorsDisabled} onColor={chooseColor} onStop={() => setColorBrush(null)} onClear={clearColors} />
   )
   const chainUnavailable = chainGraph ? undefined
@@ -1787,9 +1844,7 @@ export function Worktable({
             setColorBrush(null); setEraseMode(false); setPencil(false); setHighlightMode(false); setColorMode((current) => !current)
           }}
           onOpenColors={desktop ? showColors : undefined} colorsActive={brush !== null}
-          highlightMode={highlightMode} toggleHighlightMode={() => {
-            setColorBrush(null); setEraseMode(false); setPencil(false); setColorMode(false); setHighlightMode((current) => !current)
-          }}
+          highlightMode={highlightMode} toggleHighlightMode={toggleHighlightMode}
           eraseMode={eraseMode} toggleEraseMode={() => {
             setColorBrush(null); setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
           }}
