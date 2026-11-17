@@ -91,7 +91,10 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
     if (!active || solved || !catalog) return
     let current = true
     const timer = window.setTimeout(() => {
-      const techniques = groups.flatMap(({ techniques }) => techniques)
+      // Prefer inexpensive deductions first so long-running forcing and Kraken
+      // searches never delay the basic counts.
+      const techniques = [...catalog.techniques].sort((left, right) => left.cost - right.cost)
+        .map(({ id }) => id)
       setScan({ key: snapshotKey, results: {} })
       let recorded = false
       void (async () => {
