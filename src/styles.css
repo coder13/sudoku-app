@@ -751,7 +751,8 @@ svg { flex-shrink: 0; }
 .sudoku-grid.drag-select { touch-action: none; }
 .grid-row { display: grid; grid-template-columns: repeat(var(--board-columns, 9), minmax(0, 1fr)); min-height: 0; }
 .cell {
-  background: var(--cell-base-bg, var(--board-bg));
+  --cell-fill: var(--cell-base-bg, var(--board-bg));
+  background: var(--cell-fill);
   border: 0;
   border-right: 1px solid var(--cell-grid-line, var(--grid-line));
   border-bottom: 1px solid var(--cell-grid-line, var(--grid-line));
@@ -774,24 +775,24 @@ svg { flex-shrink: 0; }
 .cell[data-region-bottom] { border-bottom: 3px solid var(--grid-strong); }
 .cell:last-child { border-right: 0; }
 .grid-row:last-child .cell { border-bottom: 0; }
-.cell.given { background: var(--cell-base-bg, var(--given-bg)); color: var(--board-ink); font-weight: 800; }
+.cell.given { --cell-fill: var(--cell-base-bg, var(--given-bg)); color: var(--board-ink); font-weight: 800; }
 .cell.entry { color: var(--entry-ink); }
-.cell.peer { background: var(--peer-bg); }
-.cell.candidate-count-match { background: var(--candidate-count-bg); }
-.cell.matching { background: var(--matching-digit-bg); }
-.cell.candidate-highlight-cell { background: var(--matching-bg); }
+.cell.peer { --cell-fill: var(--peer-bg); }
+.cell.candidate-count-match { --cell-fill: var(--candidate-count-bg); }
+.cell.matching { --cell-fill: var(--matching-digit-bg); }
+.cell.candidate-highlight-cell { --cell-fill: var(--matching-bg); }
 .cell.candidate-highlight-outline { box-shadow: inset 0 0 0 2px var(--board-selected-border); }
-.cell.colored { background: var(--tone); }
+.cell.colored { --cell-fill: var(--tone); }
 :root[data-color-mode="dark"]:not([data-theme="andoku"]) .cell.colored:not(.conflict) {
   --board-ink: #201a23;
   --entry-ink: #24375a;
   --candidate-ink: #3b3242;
 }
 .cell-coloring .cell { cursor: crosshair; }
-.cell.conflict { background: var(--danger-bg); color: var(--danger-ink); }
-.cell.selected { background: var(--board-selected-bg); box-shadow: inset 0 0 0 2px var(--board-selected-border); }
-.cell.selected.colored { background: var(--tone); }
-.cell.selected.conflict { background: var(--danger-bg); box-shadow: inset 0 0 0 2px #b74560; }
+.cell.conflict { --cell-fill: var(--danger-bg); color: var(--danger-ink); }
+.cell.selected { --cell-fill: var(--board-selected-bg); box-shadow: inset 0 0 0 2px var(--board-selected-border); }
+.cell.selected.colored { --cell-fill: var(--tone); }
+.cell.selected.conflict { --cell-fill: var(--danger-bg); box-shadow: inset 0 0 0 2px #b74560; }
 .cell[data-highlight]::after {
   content: '';
   position: absolute;
@@ -929,13 +930,22 @@ svg { flex-shrink: 0; }
 }
 .puzzle .candidate-marks [data-mark="ring"]::after { width: min(1.35em, calc(100cqmin / 3)); }
 [data-mark="strike"] { text-decoration: line-through 1.5px; }
-.board-body:has(> .board-links) .cell:focus-visible:has([data-mark="strike"]) {
+.board-body:has(> .board-links) .cell:focus-visible {
   z-index: auto;
 }
-.board-body:has(> .board-links) :is(.candidate-marks, .center-marks):has(> [data-mark="strike"]) {
+.board-body:has(> .board-links) .cell > :is(.cell-value, .candidate-marks, .center-marks, .variant-cage-total) {
   z-index: 4;
 }
+/* Use the cell color to clear a small gap in links around each digit. */
+.board-body:has(> .board-links) :is(.cell-value, .candidate-marks > *, .variant-cage-total) {
+  -webkit-text-stroke: .24em var(--cell-fill);
+  paint-order: stroke fill;
+}
+.board-body:has(> .board-links) .candidate-marks :is(.candidate-color, .candidate-match-spotlight) {
+  -webkit-text-stroke-color: var(--tone, var(--matching-bg));
+}
 .board-body:has(> .board-links) :is(.candidate-marks, .center-marks) > [data-mark="strike"] {
+  -webkit-text-stroke: 0;
   padding-inline: .18em;
   border-radius: 2px;
   background: var(--board-bg);

@@ -144,7 +144,7 @@ export function Board({
                 const candidateHighlightStyle = candidateMatches && highlighting.matchingCandidates ? highlighting.candidateStyle : undefined
                 const candidateCountMatches = !value && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
                 const cellStyle = cellAnnotation && {
-                  backgroundColor: error ? undefined : cellAnnotation.fill,
+                  '--cell-fill': error ? undefined : cellAnnotation.fill,
                   color: error ? undefined : cellAnnotation.ink,
                   '--annotation-outline': cellAnnotation.outline,
                 } as CSSProperties
@@ -226,7 +226,7 @@ export function Board({
                     onClick={onCell && ((event) => onCell(index, event))}
                     onDoubleClick={onCellDoubleClick && ((event) => onCellDoubleClick(index, event))}>
                     {cageTotal !== undefined && <span className="variant-cage-total" aria-hidden="true">{cageTotal}</span>}
-                    {value ? <span aria-hidden="true">{value}</span> : (
+                    {value ? <span className="cell-value" aria-hidden="true">{value}</span> : (
                       <>
                         {gridCandidates.length > 0 && (
                           <span className="candidate-marks" aria-hidden={candidateAction ? undefined : true}>{gridCandidates.map((digit) => renderCandidate(digit, true))}</span>
