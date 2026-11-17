@@ -9,6 +9,7 @@ import { analysisGroupsForCatalog, filterAnalysisGroups, techniqueTargetCount, t
 import { Modal } from './Modal'
 
 const SCAN_DELAY_MS = 180
+const HIDE_ZERO_KEY = 'sudoku-app:v1:hide-zero-techniques'
 
 type ScanResult = { count: number } | { error: string }
 type ScanProgress = { key: string; results: Record<string, ScanResult> }
@@ -85,6 +86,17 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
   const [hideZero, setHideZero] = useState(false)
 
   useEffect(() => {
+    try { setHideZero(localStorage.getItem(HIDE_ZERO_KEY) === 'true') }
+    catch { /* The filter still works when storage is unavailable. */ }
+  }, [])
+
+  function changeHideZero(checked: boolean) {
+    setHideZero(checked)
+    try { localStorage.setItem(HIDE_ZERO_KEY, String(checked)) }
+    catch { /* Keep the preference for this session. */ }
+  }
+
+  useEffect(() => {
     if (!active) return
     let current = true
     setCatalogError(null)
@@ -159,7 +171,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
       </div>}
       {catalog && <>
         <label className="analysis-zero-filter">
-          <input type="checkbox" checked={hideZero} onChange={(event) => setHideZero(event.target.checked)} />
+          <input type="checkbox" checked={hideZero} onChange={(event) => changeHideZero(event.target.checked)} />
           Hide techniques with 0 candidates
         </label>
         {visibleGroups.length
