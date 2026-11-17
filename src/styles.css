@@ -1047,7 +1047,7 @@ svg { flex-shrink: 0; }
   line-height: .9;
   padding: .04em .06em;
 }
-.cell [data-candidate-preview] { color: var(--dark-purple); }
+.cell [data-candidate-preview] { color: var(--dark-purple); opacity: .5; }
 .cell [data-candidate-preview="remove"] { text-decoration: line-through; }
 .candidate-marks [data-mark], .center-marks [data-mark] { color: var(--annotation-color); position: relative; }
 .chain-sketch {
