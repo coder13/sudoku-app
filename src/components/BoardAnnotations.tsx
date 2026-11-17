@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { boardLinkEndpoints, type BoardPoint } from '../sudoku/board-link-geometry'
+import { boardLinkRoutes, type BoardPoint } from '../sudoku/board-link-geometry'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 
 export type BoardRegion = { row: number; column: number; rows: number; columns: number }
@@ -28,15 +28,11 @@ export function BoardLinks({ links, region }: { links?: readonly BoardLink[]; re
   const viewBox = region ? `${region.column * CELL} ${region.row * CELL} ${region.columns * CELL} ${region.rows * CELL}` : '0 0 90 90'
   const counts = new Map<string, number>()
   const items: BoardMark[] = []
-  for (const { from, to, color, dashed, arrow } of links ?? []) {
-    const endpoints = boardLinkEndpoints(from, to)
-    if (!endpoints) continue
-    const { start, end } = endpoints
-    const length = Math.hypot(end.x - start.x, end.y - start.y)
-    if (length === 0) continue
-    const dx = (end.x - start.x) / length
-    const dy = (end.y - start.y) / length
-    const gap = Math.min(1.4, length / 4)
+  const routes = boardLinkRoutes(links ?? [])
+  for (const [index, { color, dashed, arrow }] of (links ?? []).entries()) {
+    const points = routes[index]
+    if (points.length < 2) continue
+    const [start, end] = [points[0], points[points.length - 1]]
     const shape = [start.x, start.y, end.x, end.y, Number(Boolean(dashed)), Number(Boolean(arrow))].join('_')
     const count = counts.get(shape) ?? 0
     counts.set(shape, count + 1)
@@ -47,9 +43,8 @@ export function BoardLinks({ links, region }: { links?: readonly BoardLink[]; re
         markerUnits="userSpaceOnUse" orient="auto">
         <path d="M 0 0 L 2.5 1.25 L 0 2.5 Z" fill={color} />
       </marker>}
-      <line x1={start.x + dx * gap} y1={start.y + dy * gap}
-        x2={end.x - dx * gap} y2={end.y - dy * gap}
-        stroke={color} strokeWidth=".45" strokeLinecap="round"
+      <polyline points={points.map(({ x, y }) => `${x},${y}`).join(' ')} fill="none"
+        stroke={color} strokeWidth=".45" strokeLinecap="round" strokeLinejoin="round"
         strokeDasharray={dashed ? '1 .9' : undefined} markerEnd={arrow ? `url(#${marker})` : undefined} />
     </g>)
   }

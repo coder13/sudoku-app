@@ -1,3 +1,7 @@
+type Point = { x: number; y: number }
+type Segment = { start: Point; end: Point; trimStart: boolean; trimEnd: boolean }
+const LINK_LANE_SPACING = 3.6
+
 export type BoardPoint = { cell: number; digit?: number } | { cells: readonly number[]; digit: number }
   | { candidates: readonly { cell: number; digit: number }[] }
 
@@ -22,4 +26,77 @@ export function boardLinkEndpoints(from: BoardPoint, to: BoardPoint) {
     if (distance < shortest) { start = a; end = b; shortest = distance }
   }
   return { start, end }
+}
+
+function trim(start: Point, end: Point): Point {
+  const length = Math.hypot(end.x - start.x, end.y - start.y)
+  const fraction = length ? Math.min(1.4 / length, .25) : 0
+  return { x: start.x + (end.x - start.x) * fraction, y: start.y + (end.y - start.y) * fraction }
+}
+
+function overlaps([start, end]: Point[], [otherStart, otherEnd]: Point[]) {
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  const length = Math.hypot(dx, dy)
+  if (!length) return false
+  const project = ({ x, y }: Point) => ({
+    along: (dx * (x - start.x) + dy * (y - start.y)) / length,
+    across: (dx * (y - start.y) - dy * (x - start.x)) / length,
+  })
+  const a = project(otherStart)
+  const b = project(otherEnd)
+  return Math.abs(a.across) < .01 && Math.abs(b.across) < .01
+    && Math.min(length, Math.max(a.along, b.along)) - Math.max(0, Math.min(a.along, b.along)) > .9
+}
+
+function laneOffsets(segments: Segment[]) {
+  const straight = segments.map(segment => route(segment, 0))
+  const conflicts = straight.map((segment, index) => straight.flatMap((other, i) =>
+    i !== index && overlaps(segment, other) ? [i] : []))
+  const lanes = segments.map(() => -1)
+  const offsets = new Map<Segment, number>()
+  for (const [index] of segments.entries()) {
+    if (lanes[index] >= 0) continue
+    const group = [index]
+    lanes[index] = 0
+    let lastLane = 0
+    for (const member of group) {
+      for (const neighbor of conflicts[member]) {
+        if (lanes[neighbor] >= 0) continue
+        const occupied = new Set(conflicts[neighbor].map(i => lanes[i]))
+        let lane = 0
+        while (occupied.has(lane)) lane++
+        lanes[neighbor] = lane
+        lastLane = Math.max(lastLane, lane)
+        group.push(neighbor)
+      }
+    }
+    for (const member of group) {
+      offsets.set(segments[member], (lanes[member] - lastLane / 2) * LINK_LANE_SPACING)
+    }
+  }
+  return offsets
+}
+
+function route({ start, end, trimStart, trimEnd }: Segment, lane: number): Point[] {
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  const length = Math.hypot(dx, dy)
+  if (!lane || !length) return [trimStart ? trim(start, end) : start, trimEnd ? trim(end, start) : end]
+  const lead = Math.min(3, length / 4)
+  const offset = (dx < 0 || (dx === 0 && dy < 0) ? -lane : lane) / length
+  const startBend = { x: start.x + dx / length * lead - dy * offset, y: start.y + dy / length * lead + dx * offset }
+  const endBend = { x: end.x - dx / length * lead - dy * offset, y: end.y - dy / length * lead + dx * offset }
+  return [trimStart ? trim(start, startBend) : start, startBend, endBend, trimEnd ? trim(end, endBend) : end]
+}
+
+export function boardLinkRoutes(links: readonly { from: BoardPoint; to: BoardPoint }[]): Point[][] {
+  const segments = links.map(({ from, to }) => {
+    const endpoints = boardLinkEndpoints(from, to)
+    if (!endpoints || (endpoints.start.x === endpoints.end.x && endpoints.start.y === endpoints.end.y)) return undefined
+    return { ...endpoints, trimStart: true, trimEnd: true }
+  })
+  const valid = segments.filter((segment): segment is Segment => Boolean(segment))
+  const offsets = laneOffsets(valid)
+  return segments.map(segment => segment ? route(segment, offsets.get(segment) ?? 0) : [])
 }
