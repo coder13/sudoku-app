@@ -6,6 +6,7 @@ import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sud
 import { regionMembership } from '../sudoku/variants'
 import { VariantClues, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
+import { BoardMarks, type BoardMark } from './BoardMarks'
 
 type Props = {
   descriptionId?: string
@@ -43,6 +44,7 @@ type Props = {
 }
 
 type CandidateSlot = Candidate & { slotted: boolean }
+const NO_MARKS: BoardMark[] = []
 
 export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY }: { clientX: number; clientY: number }) {
   const cell = grid?.ownerDocument.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('[data-cell]')
@@ -61,6 +63,9 @@ export function Board({
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules) : undefined, [variantRules])
   const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
     ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
+  const variantClues = useMemo(() => variantRules?.length
+    ? [<div className="board-variant-clues" key={JSON.stringify(variantRules)}><VariantClues rules={variantRules} /></div>]
+    : NO_MARKS, [variantRules])
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const focusDigit = activeHighlightDigit(values, selected, active, highlightedDigit)
   const candidateAction = onPaintCandidate ?? onCandidate
@@ -96,6 +101,7 @@ export function Board({
     const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
     if (!keys.includes(event.key) || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return
     const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('.candidate-button')]
+      .filter((button) => !button.closest('[inert]'))
     if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault()
       buttons.at(event.key === 'Home' ? 0 : -1)?.focus()
@@ -121,8 +127,8 @@ export function Board({
 
   return (
     <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}`} style={size}>
-      {showGuides && <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>}
-      {showGuides && <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>}
+      <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
+      <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={label}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
@@ -223,7 +229,7 @@ export function Board({
                     const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],
                       onCandidate && candidateHighlightStyle && digit === focusDigit && 'highlighted',
                       linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
-                    const classes = ['candidate-button', onPaintCandidate ? 'paint-candidate' : 'chain-candidate', onCandidate && highlightClass]
+                    const classes = ['board-candidate', 'candidate-button', onPaintCandidate ? 'paint-candidate' : 'chain-candidate', onCandidate && highlightClass]
                       .filter(Boolean).join(' ')
                     return <button type="button" key={digit} className={classes} style={style}
                       aria-label={candidateLabel} data-link-target={linkTarget || undefined}
@@ -238,18 +244,26 @@ export function Board({
                       onClick={(event) => {
                         if (onPaintCandidate || event.detail > 0) candidateAction(candidate)
                       }}>
-                      {color ? <span className={colorClass}>{digit}</span> : digit}
+                      <span className={`candidate-glyph ${colorClass}`}>{digit}</span>
                     </button>
                   }
-                  return <span key={digit} className={color ? `${colorClass}${highlightClass ? ` ${highlightClass}` : ''}` : highlightClass}
+                  return <span key={digit} className={['board-candidate', colorClass, highlightClass].filter(Boolean).join(' ')}
                     style={style} data-mark={annotation && (annotation.mark ?? 'ring')} data-candidate-preview={previewEdit}>{digit}</span>
                 }
+
+                const gridItems = !value && visibleGridCandidates.length
+                  ? visibleGridCandidates.map((digit) => renderCandidate(digit, true)) : NO_MARKS
+                const centerKey = visibleCenterCandidates.join('')
+                const cellItems = value ? [<span className="cell-value" key={value} aria-hidden="true">{value}</span>]
+                  : centerKey ? [<span className="center-marks" key={`center-${centerKey}`} aria-hidden={candidateAction ? undefined : true}>
+                    {visibleCenterCandidates.map((digit) => renderCandidate(digit, false))}
+                  </span>] : NO_MARKS
 
                 return (
                   <Cell role="gridcell" key={col} data-cell={index} className={classes} style={cellStyle} aria-label={label}
                     data-pointer-focused={pointerFocusedCell === index || undefined}
                     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
-                    data-highlight={Boolean(cellAnnotation?.outline) || undefined} data-box-edge={!regionsAt && col % 3 === 0 || undefined}
+                    data-box-edge={!regionsAt && col % 3 === 0 || undefined}
                     data-region-right={regionsAt && col < 9 && regionAtCell !== regionsAt[index + 1] || undefined}
                     data-region-bottom={regionsAt && row < 9 && regionAtCell !== regionsAt[index + 9] || undefined}
                     data-alternate-box={!regionsAt && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
@@ -258,25 +272,19 @@ export function Board({
                     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
                     onClick={onCell && ((event) => onCell(index, event))}
                     onDoubleClick={onCellDoubleClick && ((event) => onCellDoubleClick(index, event))}>
-                    {cageTotal !== undefined && <span className="variant-cage-total" aria-hidden="true">{cageTotal}</span>}
-                    {value ? <span aria-hidden="true">{value}</span> : (
-                      <>
-                        {visibleGridCandidates.length > 0 && (
-                          <span className="candidate-marks" aria-hidden={candidateAction ? undefined : true}>{visibleGridCandidates.map((digit) => renderCandidate(digit, true))}</span>
-                        )}
-                        {visibleCenterCandidates.length > 0 && (
-                          <span className="center-marks" aria-hidden={candidateAction ? undefined : true}>{visibleCenterCandidates.map((digit) => renderCandidate(digit, false))}</span>
-                        )}
-                      </>
-                    )}
+                    <BoardMarks items={gridItems} group={<span className="candidate-marks" aria-hidden={candidateAction ? undefined : true} />} />
+                    <BoardMarks items={cageTotal === undefined ? cellItems : [
+                      <span className="variant-cage-total" key={`cage-${cageTotal}`} aria-hidden="true">{cageTotal}</span>,
+                      ...cellItems,
+                    ]} />
                   </Cell>
                 )
               })}
             </div>
           ))}
         </div>
-        {variantRules && <VariantClues rules={variantRules} />}
-        {!!annotations?.links?.length && <BoardLinks links={annotations.links} region={region} />}
+        <BoardMarks items={variantClues} />
+        <BoardLinks links={annotations?.links} region={region} />
       </div>
     </div>
   )
