@@ -306,6 +306,7 @@ export function Worktable({
   const candidateMode = advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
   const solved = isSolved(game)
   const mobileHintOpen = mobile && hintRevealed && !draft && !solved
+  const showMobileHintCard = mobileHintOpen || rearranging
   const hint = hintState?.position === hintPosition ? hintState : null
   const visibleHint = hintRevealed ? hint : null
   const hintLoading = hintRevealed && busy && !visibleHint
@@ -1876,7 +1877,7 @@ export function Worktable({
                 </div>
               </section>}
             </div></>
-          : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={mobileHintOpen && !mobileResults}
+          : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
             blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisOpen ||
               dialogResult !== null || changePuzzleOpen || resetOpen || cancelDraftOpen}
             onRearrangingChange={(active) => {
@@ -1890,7 +1891,11 @@ export function Worktable({
             }}
             panels={{
               puzzle: { title: 'Puzzle', content: puzzlePanel },
-              hint: mobileHintOpen && !mobileResults ? { title: 'Hint', content: hintPanel } : undefined,
+              hint: showMobileHintCard ? { title: 'Hint', content: hintPanel || (
+                <div className="hint-dock workspace-controls mobile-hint-panel">
+                  <HintCard hint={{ title: 'Puzzle hints', text: 'Hints will appear here.' }} onClose={() => {}} />
+                </div>
+              ) } : undefined,
               input: !mobileResults ? { title: 'Keypad', content: inputPanel } : undefined,
               completion: mobileResults ? { title: 'Results', content: <div className="workspace-controls mobile-completion">{completionPanel}</div> } : undefined,
             }} />}

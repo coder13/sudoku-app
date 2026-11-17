@@ -2406,8 +2406,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     font-size: 14px;
     font-weight: 700;
   }
-  .mobile-panel-move-buttons { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
-  .mobile-panel-move-buttons .icon-button { width: 44px; min-height: 44px; background: var(--surface); }
   .mobile-panel[data-dragging] { z-index: 64; pointer-events: none; }
   .mobile-panel[data-dragging] .mobile-panel-editor { outline-style: solid; box-shadow: 0 8px 24px #0003; }
   .mobile-panel[data-drop]::after {
