@@ -493,7 +493,7 @@ svg { flex-shrink: 0; }
 .color-shade-label { color: var(--muted); font-size: 0.6875rem; }
 .color-shade-switch { width: 100%; min-height: 40px; }
 .cell-color-palette .color-pair-help { min-height: 0; font-size: 0.75rem; }
-.color-link-tools { display: grid; gap: var(--space-6); }
+.color-link-tools { display: grid; gap: var(--space-6); border-top: 1px solid var(--border); padding-top: var(--space-12); }
 .color-strong-links { width: 100%; min-height: 40px; }
 .cell-color-palette .color-link-message { min-height: 2.8em; font-size: 0.75rem; }
 .cell-color-swatch {

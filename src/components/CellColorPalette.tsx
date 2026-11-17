@@ -66,12 +66,6 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
   return (
     <section className="cell-color-palette" aria-label="Coloring">
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
-      <div className="color-link-tools">
-        <button type="button" className="button secondary color-strong-links" disabled={disabled || !canColorStrongLinks}
-          title="Follow every strong link for the highlighted number, alternating light and dark shades."
-          onClick={onColorStrongLinks}><Link2 size={16} aria-hidden="true" /> Auto-color strong links</button>
-        <p className="color-link-message" aria-live="polite">{strongLinkMessage}</p>
-      </div>
       <p aria-live="polite">{instructions}</p>
       <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} onSwitchShade={onSwitchShade} />
       <p className="color-pair-help">Use light and dark shades of one color to mark the two sides of a strong link.</p>
@@ -82,6 +76,12 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
           onClick={onClear}>Clear {target} colors</button>
         {brush !== null && <button type="button" className="button secondary" title="Stop coloring (Esc)"
           aria-label="Stop coloring" aria-keyshortcuts="Escape" onClick={onStop}>Done</button>}
+      </div>
+      <div className="color-link-tools">
+        <p className="color-link-message" aria-live="polite">{strongLinkMessage}</p>
+        <button type="button" className="button secondary color-strong-links" disabled={disabled || !canColorStrongLinks}
+          title="Follow every strong link for the highlighted number, alternating light and dark shades."
+          onClick={onColorStrongLinks}><Link2 size={16} aria-hidden="true" /> Auto-color strong links</button>
       </div>
     </section>
   )
