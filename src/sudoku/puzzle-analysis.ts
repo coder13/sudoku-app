@@ -1,26 +1,83 @@
 import type { Candidate, DeductionMatch } from './engine'
 
-// Keep the quick scan bounded to common, local patterns. Deep chain and forcing
-// searches can be expensive and should not block ordinary play.
+// Keep each technique in one family. New engine techniques automatically appear
+// in "Other techniques" until a more specific category is added.
 export const ANALYSIS_GROUPS = [
-  { title: 'Singles', kind: 'placements', techniques: ['full-house', 'naked-single', 'hidden-single'] },
-  { title: 'Locked candidates', kind: 'removals', techniques: ['pointing', 'claiming'] },
-  { title: 'Subsets', kind: 'removals', techniques: [
+  { title: 'Singles', techniques: ['full-house', 'naked-single', 'hidden-single'] },
+  { title: 'Locked candidates', techniques: ['pointing', 'claiming'] },
+  { title: 'Subsets', techniques: [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',
     'hidden-triple', 'naked-quadruple', 'hidden-quadruple',
   ] },
-  { title: 'Wings', kind: 'removals', techniques: ['w-wing', 'xy-wing', 'xyz-wing', 'wxyz-wing'] },
-  { title: 'Fish', kind: 'removals', techniques: [
+  { title: 'Wings', techniques: ['w-wing', 'xy-wing', 'xyz-wing', 'wxyz-wing'] },
+  { title: 'Fish', techniques: [
     'x-wing', 'swordfish', 'jellyfish', 'finned-x-wing', 'sashimi-x-wing',
-    'finned-swordfish', 'sashimi-swordfish',
+    'finned-swordfish', 'sashimi-swordfish', 'finned-jellyfish', 'sashimi-jellyfish',
+    'franken-fish', 'mutant-fish', 'kraken-fish-1', 'kraken-fish-2',
   ] },
-  { title: 'Single-digit patterns', kind: 'removals', techniques: [
+  { title: 'Single-digit patterns', techniques: [
     'skyscraper', 'two-string-kite', 'empty-rectangle', 'simple-coloring',
   ] },
-  { title: 'Uniqueness', kind: 'placements', techniques: ['bug-plus-one'] },
+  { title: 'Uniqueness', techniques: [
+    'bug-plus-one', 'unique-rectangle-1', 'unique-rectangle-2', 'unique-rectangle-3',
+    'unique-rectangle-4', 'unique-rectangle-5', 'unique-rectangle-6',
+    'hidden-rectangle', 'unique-loop',
+  ] },
+  { title: 'Chains and coloring', techniques: [
+    '3d-medusa', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
+    'continuous-nice-loop', 'grouped-aic', 'grouped-discontinuous-nice-loop',
+    'grouped-continuous-nice-loop',
+  ] },
+  { title: 'Almost locked sets', techniques: [
+    'als-xz', 'als-xy-wing', 'als-chain', 'sue-de-coq',
+    'death-blossom', 'multi-sector-locked-sets',
+  ] },
+  { title: 'Advanced patterns', techniques: [
+    'fireworks', 'aligned-pair-exclusion', 'aligned-triplet-exclusion',
+    'tridagon', 'exocet', 'senior-exocet', 'double-exocet', 'sk-loop',
+  ] },
+  { title: 'Forcing techniques', techniques: [
+    'tridagon-forcing-net', 'forcing-chain', 'forcing-net',
+    'dynamic-forcing-net', 'advanced-forcing-net', 'nested-forcing-net',
+  ] },
 ] as const
 
-export const ANALYSIS_TECHNIQUES: string[] = ANALYSIS_GROUPS.flatMap(({ techniques }) => [...techniques])
+export const ANALYSIS_TECHNIQUES = ANALYSIS_GROUPS.flatMap(({ techniques }) => [...techniques])
+
+export type AnalysisGroup = { title: string; techniques: string[] }
+
+/** Use the engine catalog, not the display list, as the source of truth.
+ * Any future detector without a hand-picked family is still included.
+ */
+export function analysisGroupsForCatalog(catalog: readonly { id: string }[]): AnalysisGroup[] {
+  const available = new Set(catalog.map(({ id }) => id))
+  const used = new Set<string>()
+  const groups: AnalysisGroup[] = []
+  for (const group of ANALYSIS_GROUPS) {
+    const techniques = group.techniques.filter((id) => available.has(id) && !used.has(id))
+    for (const id of techniques) used.add(id)
+    if (techniques.length) groups.push({ title: group.title, techniques })
+  }
+  const unknown = catalog.map(({ id }) => id).filter((id) => !used.has(id))
+  if (unknown.length) groups.push({ title: 'Other techniques', techniques: unknown })
+  return groups
+}
+
+/** Count distinct candidate targets for a technique, regardless of whether
+ * its rule places a digit or removes a candidate. Multiple proofs for the
+ * same target count only once.
+ */
+export function techniqueTargetCount(matches: readonly DeductionMatch[], technique: string): number {
+  const targets = new Set<string>()
+  for (const match of matches) {
+    if (!match.proofs.some((proof) => proof.technique === technique)) continue
+    for (const action of match.actions) {
+      const target = 'place' in action ? action.place : action.eliminate
+      targets.add(`${target.cell}:${target.digit}`)
+    }
+  }
+  return targets.size
+}
 
 export type TechniqueSummary = {
   technique: string
