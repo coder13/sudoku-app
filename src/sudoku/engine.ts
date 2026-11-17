@@ -424,7 +424,9 @@ type VariantResult<T extends VariantRequest> =
   Required<VariantPosition>
 
 export type VariantHouse = { row: number } | { column: number } | { region: number }
-  | { diagonal: 'main' | 'anti' } | { extra: number }
+  | { diagonal: 'main' | 'anti' }
+  /** Index into the full puzzle rule list. */
+  | { extra: number }
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]

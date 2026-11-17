@@ -356,5 +356,32 @@
       {"seed":55617927,"maxGivens":19,"dotCount":10},
       {"seed":209999259,"maxGivens":18,"dotCount":10}
     ]
+  },
+  "windoku": {
+    "easy": [
+      {"seed":1,"maxGivens":36},
+      {"seed":2,"maxGivens":36},
+      {"seed":3,"maxGivens":36}
+    ],
+    "medium": [
+      {"seed":1,"maxGivens":34},
+      {"seed":2,"maxGivens":34},
+      {"seed":3,"maxGivens":34}
+    ],
+    "hard": [
+      {"seed":1,"maxGivens":31},
+      {"seed":4,"maxGivens":31},
+      {"seed":6,"maxGivens":31}
+    ],
+    "unfair": [
+      {"seed":3,"maxGivens":30},
+      {"seed":10,"maxGivens":30},
+      {"seed":22,"maxGivens":30}
+    ],
+    "extreme": [
+      {"seed":3,"maxGivens":29},
+      {"seed":7,"maxGivens":29},
+      {"seed":8,"maxGivens":29}
+    ]
   }
 }

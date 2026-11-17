@@ -38,6 +38,24 @@ function Cage({ cells, sum }: { cells: readonly number[]; sum: number }) {
   </>
 }
 
+function ExtraRegion({ cells }: { cells: readonly number[] }) {
+  const members = new Set(cells)
+  const edge = cells.flatMap((cell) => {
+    const column = x(cell)
+    const row = y(cell)
+    return [
+      !members.has(cell - 9) && `M${column},${row}h1`,
+      (column === 8 || !members.has(cell + 1)) && `M${column + 1},${row}v1`,
+      !members.has(cell + 9) && `M${column},${row + 1}h1`,
+      (column === 0 || !members.has(cell - 1)) && `M${column},${row}v1`,
+    ].filter(Boolean)
+  }).join(' ')
+  return <g className="variant-extra-region">
+    {cells.map((cell) => <rect key={cell} x={x(cell)} y={y(cell)} width="1" height="1" />)}
+    <path d={edge} />
+  </g>
+}
+
 function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly number[]; marker: string }) {
   const [cx, cy] = center(circle)
   const [nx, ny] = center(cells[0])
@@ -63,6 +81,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         case 'diagonal':
           return <line key={index} className="variant-diagonal" x1={rule.diagonal === 'main' ? 0 : 9} y1="0"
             x2={rule.diagonal === 'main' ? 9 : 0} y2="9" />
+        case 'extra-house':
+          return <ExtraRegion key={index} cells={rule.cells} />
         case 'killer-cages':
           return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} {...cage} />)}</g>
         case 'thermometer':
@@ -91,7 +111,7 @@ const reference = (cell: number) => `row ${y(cell) + 1}, column ${x(cell) + 1}`
 
 export function variantCellLabels(rules: readonly VariantRule[]) {
   const labels: string[][] = Array.from({ length: 81 }, () => [])
-  for (const rule of rules) {
+  for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
       case 'diagonal': {
         const main = rule.diagonal === 'main'
@@ -100,6 +120,9 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
         }
         break
       }
+      case 'extra-house':
+        for (const cell of rule.cells) labels[cell].push(`extra region ${index + 1}, digits 1–9 once each`)
+        break
       case 'killer-cages':
         for (const { cells, sum } of rule.cages) {
           const corner = reference(Math.min(...cells))
