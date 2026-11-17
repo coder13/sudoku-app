@@ -342,8 +342,8 @@ svg { flex-shrink: 0; }
 .dock-solution-panel .solution-path { width: 100%; height: 100%; flex: 1; }
 .dock-analysis-panel { min-width: 0; padding: 10px 12px; }
 .dock-analysis-panel .analysis-table { font-size: 12px; }
-.dock-analysis-panel .analysis-table th:last-child,
-.dock-analysis-panel .analysis-table td:last-child { width: 80px; }
+.dock-analysis-panel .analysis-table thead th:last-child,
+.dock-analysis-panel .analysis-table .analysis-data-row td:last-child { width: 80px; }
 .dock-details-panel { padding: 12px 14px; }
 .cell-color-palette { display: grid; gap: 12px; padding: 12px 14px; }
 .cell-color-palette p { min-height: 2.8em; color: var(--muted); font-size: 13px; line-height: 1.4; }
@@ -1724,6 +1724,17 @@ svg { flex-shrink: 0; }
   }
 }
 .puzzle-analysis-content { display: grid; gap: 10px; }
+.analysis-zero-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+.analysis-zero-filter input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--dark-purple); }
+.analysis-empty { color: var(--muted); font-size: 13px; }
 .analysis-table {
   width: 100%;
   border-collapse: collapse;
@@ -1739,11 +1750,13 @@ svg { flex-shrink: 0; }
   font-size: 12px;
   font-weight: 650;
 }
-.analysis-table th:last-child, .analysis-table td:last-child {
+.analysis-table thead th:last-child,
+.analysis-table .analysis-data-row td:last-child {
   width: 104px;
   text-align: right;
 }
 .analysis-table .analysis-section-row th {
+  text-align: left;
   padding: 12px 10px 6px;
   color: var(--ink);
   font-size: 13px;
