@@ -591,7 +591,7 @@ function connectionFor(request: EngineRequest, options: WorkerOptions) {
     case 'technique-count': return techniqueEngine
     case 'deductions': return options.interactive ? techniqueDetailEngine : historyEngine
     case 'classify-actions': return historyEngine
-    default: return options.background ? historyEngine : playEngine
+    default: return options.interactive ? techniqueDetailEngine : options.background ? historyEngine : playEngine
   }
 }
 
@@ -603,7 +603,7 @@ export function runEngine<T extends EngineRequest>(request: T, options: WorkerOp
 // an in-flight forcing search without cancelling another board or action history.
 let idleCountConnection: EngineConnection | undefined
 
-export function createCountWorker(values: string, eliminations: readonly number[] | undefined) {
+export function createCountWorker(values: string, eliminations: readonly number[] | undefined, position?: VariantPosition) {
   let connection: EngineConnection | undefined
   return {
     count(technique: string) {
@@ -611,7 +611,13 @@ export function createCountWorker(values: string, eliminations: readonly number[
         connection = idleCountConnection ?? { pending: new Map() }
         idleCountConnection = undefined
       }
-      return sendRequest(connection, { type: 'technique-count', values, eliminations, technique })
+      if (!position) return sendRequest(connection, { type: 'technique-count', values, eliminations, technique })
+      return sendRequest(connection, { type: 'variant', operation: 'hints',
+        position: { ...position, eliminations }, techniqueOrder: [technique], limit: 0xffff_ffff,
+      }).then((hints) => new Set(hints.flatMap(({ actions }) => actions.map((action) => {
+        const { cell, digit } = 'place' in action ? action.place : action.eliminate
+        return `${'place' in action ? 'p' : 'e'}:${cell}:${digit}`
+      }))).size)
     },
     close() {
       if (!connection) return

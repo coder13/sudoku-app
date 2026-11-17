@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
-import { runEngine, type TechniqueCatalog } from '../sudoku/engine'
+import type { TechniqueCatalog } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
 import { analysisGroupsForCatalog, filterAnalysisGroups, TECHNIQUE_FINDER_TITLE, type AnalysisCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
 import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../sudoku/technique-scan'
+import { puzzleTechniqueCatalog } from '../sudoku/puzzle-help'
+import { variantPosition } from '../sudoku/variant-play'
 import { Modal } from './Modal'
 
 const SCAN_DELAY_MS = 100
@@ -14,14 +16,6 @@ const HIDE_ZERO_KEY = 'sudoku-app:v1:hide-zero-techniques'
 
 type ScanResults = Readonly<Record<string, AnalysisCount>>
 type ScanProgress = { key: string; results: ScanResults }
-
-let catalogRequest: Promise<TechniqueCatalog> | undefined
-function loadCatalog() {
-  return catalogRequest ??= runEngine({ type: 'techniques' }).catch((error: unknown) => {
-    catalogRequest = undefined
-    throw error
-  })
-}
 
 function AnalysisTable({
   groups, results, solved, onSelectTechnique,
@@ -78,7 +72,8 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
   const solved = isSolved(game)
   const eliminationMasks = useMemo(() => hintEliminations(values, completeCandidateMasks(game), game.position.eliminations),
     [values, game.position.center, game.position.corner, game.position.eliminations])
-  const snapshotKey = techniqueScanKey(values, eliminationMasks)
+  const variant = Boolean(game.variant)
+  const snapshotKey = techniqueScanKey(values, eliminationMasks, game.variant?.puzzle)
   const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
@@ -100,13 +95,14 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
     if (!active) return
     let current = true
     setCatalogError(null)
-    void loadCatalog().then((found) => {
+    setCatalog(null)
+    void puzzleTechniqueCatalog(variant).then((found) => {
       if (current) setCatalog(found)
     }).catch((reason: unknown) => {
       if (current) setCatalogError(reason instanceof Error ? reason.message : 'Could not load techniques.')
     })
     return () => { current = false }
-  }, [active, retry])
+  }, [active, variant, retry])
 
   const groups = useMemo(() => analysisGroupsForCatalog(catalog?.techniques ?? []), [catalog])
   const techniques = useMemo(() => [...(catalog?.techniques ?? [])]
@@ -124,11 +120,11 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
       if (recorded) return
       recorded = true
       roomStore.update(game.id, (latest) => {
-        if (latest.source === 'draft' || latest.variant || isSolved(latest)) return latest
+        if (latest.source === 'draft' || isSolved(latest)) return latest
         const latestValues = valuesOf(latest)
         if (latestValues !== values) return latest
         const masks = hintEliminations(latestValues, completeCandidateMasks(latest), latest.position.eliminations)
-        if (techniqueScanKey(latestValues, masks) !== snapshotKey) return latest
+        if (techniqueScanKey(latestValues, masks, latest.variant?.puzzle) !== snapshotKey) return latest
         const attempt = latest.ratingAttempt
         const ratingAttempt = attempt && addAnalysisAssistance(attempt)
         return latest.analysisUsed && ratingAttempt === attempt ? latest
@@ -139,7 +135,8 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
     if (missing.length < techniques.length) recordAssistance()
     if (missing.length === 0) return
 
-    const scan = watchTechniqueScan(values, eliminationMasks)
+    const scan = watchTechniqueScan(values, eliminationMasks,
+      game.variant ? variantPosition(game.variant, game.position) : undefined)
 
     function showResult(technique: string, result: AnalysisCount) {
       setScan((previous) => previous?.key === snapshotKey

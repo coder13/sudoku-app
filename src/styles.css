@@ -2156,6 +2156,12 @@ svg { flex-shrink: 0; }
 .dialog-heading h2 { font-size: 1.4375rem; letter-spacing: -.037em; }
 
 .dialog.puzzle-analysis-dialog { width: min(540px, calc(100vw - 28px)); }
+.dialog.mobile-solution-dialog { width: min(540px, calc(100vw - 20px)); max-height: calc(100dvh - 20px); }
+.mobile-solution-dialog .board-frame { width: min(100%, 360px); margin-inline: auto; }
+.mobile-solution-dialog .solution-path { display: flex; margin-top: var(--space-14); }
+.mobile-solution-dialog .solution-path-steps { height: clamp(112px, 32dvh, 300px); flex: none; }
+.mobile-solution-explanation { margin-top: var(--space-14); font-size: 0.875rem; line-height: 1.5; }
+.mobile-solution-explanation h3 { margin-bottom: var(--space-4); font-size: 1rem; }
 .puzzle-analysis-card {
   display: flex;
   flex-direction: column;

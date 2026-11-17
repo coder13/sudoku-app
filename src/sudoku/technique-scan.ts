@@ -1,4 +1,4 @@
-import { createCountWorker } from './engine.ts'
+import { createCountWorker, type VariantPosition, type VariantPuzzle } from './engine.ts'
 
 const MAX_CACHED_POSITIONS = 24
 type TechniqueCounts = Readonly<Record<string, { count: number }>>
@@ -7,17 +7,17 @@ const cachedCounts = new Map<string, TechniqueCounts>()
 type Scan = { observers: number; pending: Map<string, Promise<number>>; worker: ReturnType<typeof createCountWorker> }
 const scans = new Map<string, Scan>()
 
-export function techniqueScanKey(values: string, eliminations?: readonly number[]) {
-  return `${values}:${eliminations?.join(',') ?? ''}`
+export function techniqueScanKey(values: string, eliminations?: readonly number[], puzzle?: VariantPuzzle) {
+  return `${values}:${eliminations?.join(',') ?? ''}:${puzzle ? JSON.stringify(puzzle) : 'classic'}`
 }
 
 export function cachedTechniqueCounts(key: string): TechniqueCounts {
   return cachedCounts.get(key) ?? emptyCounts
 }
 
-export function watchTechniqueScan(values: string, eliminations?: readonly number[]) {
-  const key = techniqueScanKey(values, eliminations)
-  const scan = scans.get(key) ?? { observers: 0, pending: new Map<string, Promise<number>>(), worker: createCountWorker(values, eliminations) }
+export function watchTechniqueScan(values: string, eliminations?: readonly number[], position?: VariantPosition) {
+  const key = techniqueScanKey(values, eliminations, position?.puzzle)
+  const scan = scans.get(key) ?? { observers: 0, pending: new Map<string, Promise<number>>(), worker: createCountWorker(values, eliminations, position) }
   scans.set(key, scan)
   scan.observers++
   let closed = false
