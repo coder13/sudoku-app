@@ -639,7 +639,6 @@ export function Worktable({
     if (!sketch.drawing) return
     setColorBrush(null)
     setChainHighlightDigit(selectedDigit)
-    boardRef.current?.querySelector<HTMLElement>('.chain-candidate[tabindex="0"]')?.focus({ preventScroll: true })
   }, [sketch.drawing])
 
   useLayoutEffect(() => {
@@ -1083,7 +1082,6 @@ export function Worktable({
         if (event.repeat) return
         sketch.addSketch()
         if (!sketch.drawing) sketch.toggle()
-        else boardRef.current?.querySelector<HTMLElement>('.chain-candidate[tabindex="0"]')?.focus({ preventScroll: true })
         return
       }
       if (event.key === 'Control' || event.key === 'Meta') {

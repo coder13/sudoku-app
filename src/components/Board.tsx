@@ -75,13 +75,13 @@ export function Board({
     ((position?.corner[cell] ?? 0) | (layout === 'grid' ? position?.center[cell] ?? 0 : 0))
   const centerMask = (cell: number) => layout === 'center-corner' ? position?.center[cell] ?? 0 : 0
   let tabCandidate: CandidateSlot | undefined
-  if (candidateAction) {
+  if (onPaintCandidate) {
     if (candidateFocus && playableCell(candidateFocus.cell) &&
       hasCandidate((candidateFocus.slotted ? gridMask : centerMask)(candidateFocus.cell), candidateFocus.digit)) {
       tabCandidate = candidateFocus
     } else {
       const hasCandidates = (cell: number) => playableCell(cell) && (gridMask(cell) || centerMask(cell))
-      const cell = onPaintCandidate && hasCandidates(active) ? active : Array.from(values).findIndex((_, index) => hasCandidates(index))
+      const cell = hasCandidates(active) ? active : Array.from(values).findIndex((_, index) => hasCandidates(index))
       if (cell !== -1) {
         const slotted = Boolean(gridMask(cell))
         tabCandidate = { cell, digit: marksOf((slotted ? gridMask : centerMask)(cell))[0], slotted }
@@ -124,7 +124,7 @@ export function Board({
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={label}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
-          onKeyDown={candidateAction && navigateCandidates}
+          onKeyDown={onPaintCandidate && navigateCandidates}
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {rows.map((row) => (
@@ -226,7 +226,11 @@ export function Board({
                         if (event.pointerType !== 'touch') onCandidateHover(candidate)
                       })}
                       onPointerLeave={onCandidateHover && (() => onCandidateHover(null))}
-                      onFocus={() => setCandidateFocus({ ...candidate, slotted })} onClick={() => candidateAction(candidate)}>
+                      onMouseDown={onPaintCandidate ? undefined : (event) => event.preventDefault()}
+                      onFocus={onPaintCandidate && (() => setCandidateFocus({ ...candidate, slotted }))}
+                      onClick={(event) => {
+                        if (onPaintCandidate || event.detail > 0) candidateAction(candidate)
+                      }}>
                       {color ? <span className={colorClass}>{digit}</span> : digit}
                     </button>
                   }
