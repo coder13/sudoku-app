@@ -10,7 +10,7 @@ export const MIN_DESKTOP_PUZZLE_WIDTH = 260
 
 type DesktopPanelWidths = { input: number; puzzle: number | null }
 const DEFAULT_DESKTOP_PANEL_WIDTHS: DesktopPanelWidths = { input: DEFAULT_DESKTOP_INPUT_WIDTH, puzzle: null }
-const DESKTOP_VIEW_IDS = ['solution', 'techniques', 'chains'] as const
+const DESKTOP_VIEW_IDS = ['solution', 'techniques', 'chains', 'colors'] as const
 export type DesktopPuzzleView = typeof DESKTOP_VIEW_IDS[number]
 type DesktopViewPreferences = { open: DesktopPuzzleView[]; active: DesktopPuzzleView | null }
 
@@ -116,7 +116,8 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     desktopLayoutWidth: inRange(saved.desktopLayoutWidth, MIN_DESKTOP_LAYOUT_WIDTH, Number.MAX_SAFE_INTEGER)
       ? saved.desktopLayoutWidth : DEFAULT_DESKTOP_LAYOUT_WIDTH,
     desktopPanelWidths: parseDesktopPanelWidths(saved.desktopPanelWidths, saved.desktopInputWidth),
-    desktopViews: parseDesktopViews(saved.desktopViews),
+    desktopViews: parseDesktopViews(saved.desktopViews ??
+      (saved.colorsPanelOpen === true ? { open: ['colors'], active: 'colors' } : undefined)),
   }
 }
 
@@ -136,7 +137,9 @@ export function createPlayPreferenceStore(storage?: PreferenceStorage) {
     const saved = readSavedPreferences(target)
     current = parsePlayPreferences(saved)
     if (saved?.desktopViews === undefined && target.getItem(LEGACY_TECHNIQUES_KEY) === 'true') {
-      current.desktopViews = { open: ['techniques'], active: 'techniques' }
+      current.desktopViews = {
+        open: ['techniques', ...current.desktopViews.open], active: current.desktopViews.active ?? 'techniques',
+      }
     }
   } catch { /* Defaults also work during server rendering or with blocked storage. */ }
   const listeners = new Set<() => void>()

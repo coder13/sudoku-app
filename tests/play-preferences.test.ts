@@ -104,6 +104,17 @@ test('saved desktop views ignore unknown names and closed active views', () => {
   assert.deepEqual(preferences.desktopViews, { open: ['chains'], active: 'chains' })
 })
 
+test('the earlier Colors panel preference joins saved views without reopening a closed panel', () => {
+  const storage = memoryStorage(JSON.stringify({ colorsPanelOpen: true, colorBrush: 12 }))
+  storage.setItem('sudoku-app:v1:techniques-card-open', 'true')
+  const store = createPlayPreferenceStore(storage)
+  assert.deepEqual(store.getSnapshot().desktopViews, { open: ['techniques', 'colors'], active: 'colors' })
+  store.set('desktopViews', { open: ['chains'], active: 'chains' })
+  const reloaded = createPlayPreferenceStore(storage).getSnapshot()
+  assert.deepEqual(reloaded.desktopViews, { open: ['chains'], active: 'chains' })
+  assert.equal(reloaded.colorBrush, 12)
+})
+
 test('the mode badge position survives reloads and other play setting changes', () => {
   const storage = memoryStorage(JSON.stringify({ pencil: true }))
   const store = createPlayPreferenceStore(storage)
@@ -177,7 +188,7 @@ test('malformed values cannot arm invalid digits, colors, or conflicting modes',
   }
   const saved = parsePlayPreferences({
     pencil: true, highlightMode: true, colorMode: true, eraseMode: true,
-    candidateKind: 'invalid', colorTarget: 'invalid', selectedColor: 7, colorBrush: -1,
+    candidateKind: 'invalid', colorTarget: 'invalid', selectedColor: 13, colorBrush: -1,
     multi: 'true', highlightCandidatePairs: 1, puzzleBrowserView: 'invalid', selectedDigit: 8,
   })
   assert.deepEqual(saved, { ...DEFAULT_PLAY_PREFERENCES, eraseMode: true, selectedDigit: 8 })

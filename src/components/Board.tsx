@@ -227,7 +227,7 @@ export function Board({
                     const pending = selectedCandidate?.cell === index && selectedCandidate.digit === digit
                     const linkTarget = isLinkTarget?.(candidate)
                     const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],
-                      onCandidate && candidateHighlightStyle && digit === focusDigit && 'highlighted',
+                      digit === focusDigit && candidateHighlightStyle && 'highlighted',
                       linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
                     const classes = ['board-candidate', 'candidate-button', onPaintCandidate ? 'paint-candidate' : 'chain-candidate', onCandidate && highlightClass]
                       .filter(Boolean).join(' ')
@@ -245,7 +245,7 @@ export function Board({
                         setCandidateFocus({ ...candidate, slotted })
                         candidateAction(candidate)
                       }}>
-                      <span className={`candidate-glyph ${colorClass}`}>{digit}</span>
+                      <span className={['candidate-glyph', colorClass, onPaintCandidate && highlightClass].filter(Boolean).join(' ')}>{digit}</span>
                     </button>
                   }
                   return <span key={digit} className={['board-candidate', colorClass, highlightClass].filter(Boolean).join(' ')}

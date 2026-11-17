@@ -3,6 +3,7 @@ export type EditableShortcutId =
   | 'pencilMode'
   | 'highlightMode'
   | 'colorMode'
+  | 'switchColorShade'
   | 'eraseMode'
   | 'chainDrawing'
   | 'newChain'
@@ -28,6 +29,7 @@ export const DEFAULT_SHORTCUTS: ShortcutPreferences = {
   pencilMode: 'p',
   highlightMode: 'h',
   colorMode: 'c',
+  switchColorShade: 'x',
   eraseMode: 'e',
   chainDrawing: 'l',
   newChain: 'b',
@@ -43,6 +45,7 @@ export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'pencilMode', label: 'Pencil mode', description: 'Add or remove candidates in selected cells.', category: 'Input modes' },
   { id: 'highlightMode', label: 'Highlight mode', description: 'Select cells while keeping a digit highlighted.', category: 'Input modes' },
   { id: 'colorMode', label: 'Color mode', description: 'Color cells or candidates when colors are enabled.', category: 'Input modes' },
+  { id: 'switchColorShade', label: 'Switch color shade', description: 'Switch the active brush between light and dark shades of the same color.', category: 'Puzzle actions' },
   { id: 'eraseMode', label: 'Erase mode', description: 'Erase cells as you select them.', category: 'Input modes' },
   { id: 'chainDrawing', label: 'Draw links', description: 'Start or stop drawing links on desktop.', category: 'Input modes' },
   { id: 'newChain', label: 'New chain', description: 'Start a separate chain while the Chains panel is open.', category: 'Puzzle actions' },
@@ -104,7 +107,7 @@ export function parseShortcutPreferences(value: unknown): ShortcutPreferences {
   const saved = value as Partial<ShortcutPreferences>
   const next = { ...DEFAULT_SHORTCUTS }
   const savedKeys = ids.map((id) => saved[id])
-  for (const id of ['chainDrawing', 'newChain'] as const) {
+  for (const id of ['chainDrawing', 'newChain', 'switchColorShade'] as const) {
     if (saved[id] !== undefined || !savedKeys.includes(next[id])) continue
     const reserved = new Set([...Object.values(next), ...savedKeys])
     next[id] = [...'abcdefghijklmnopqrstuvwxyz'].find((key) => !reserved.has(key)) ?? next[id]
