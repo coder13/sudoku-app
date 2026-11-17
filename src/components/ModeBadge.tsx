@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { Delete, Highlighter, Palette, Pen, Pencil } from 'lucide-react'
-import { GRID_MODE_BADGE_EDGES, type GridModeBadgePosition } from '../sudoku/play-preferences'
+import { MODE_BADGE_EDGES, type ModeBadgePosition } from '../sudoku/play-preferences'
 
 const MODES = {
   pen: { label: 'Pen', Icon: Pen },
@@ -17,22 +17,22 @@ type BadgeDrag = {
   grabX: number
   grabY: number
   length: number
-  initialEdge: GridModeBadgePosition['edge']
-  lastPosition?: GridModeBadgePosition
+  initialEdge: ModeBadgePosition['edge']
+  lastPosition?: ModeBadgePosition
 }
 
-export function GridModeBadge({ mode, descriptionId, gridRef, position, onPosition, onCycleMode }: {
+export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, onCycleMode }: {
   mode: keyof typeof MODES
   descriptionId: string
-  gridRef: RefObject<HTMLDivElement | null>
-  position: GridModeBadgePosition
-  onPosition: (position: GridModeBadgePosition) => void
+  cardRef: RefObject<HTMLElement | null>
+  position: ModeBadgePosition
+  onPosition: (position: ModeBadgePosition) => void
   onCycleMode: () => void
 }) {
   const { label, Icon } = MODES[mode]
   const drag = useRef<BadgeDrag | null>(null)
   const suppressClick = useRef(false)
-  const [dragPosition, setDragPosition] = useState<GridModeBadgePosition | null>(null)
+  const [dragPosition, setDragPosition] = useState<ModeBadgePosition | null>(null)
   const displayedPosition = dragPosition ?? position
 
   function startDrag(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -54,29 +54,29 @@ export function GridModeBadge({ mode, descriptionId, gridRef, position, onPositi
     function positionAtPointer(event: PointerEvent, pointer: BadgeDrag) {
       if (!suppressClick.current && Math.hypot(event.clientX - pointer.startX, event.clientY - pointer.startY) < 5) return
       suppressClick.current = true
-      const grid = gridRef.current?.getBoundingClientRect()
-      if (!grid?.width || !grid.height) return
+      const card = cardRef.current?.getBoundingClientRect()
+      if (!card?.width || !card.height) return
       const x = event.clientX - pointer.grabX
       const y = event.clientY - pointer.grabY
-      const xOutside = Math.max(grid.left - x, 0, x - grid.right)
-      const yOutside = Math.max(grid.top - y, 0, y - grid.bottom)
+      const xOutside = Math.max(card.left - x, 0, x - card.right)
+      const yOutside = Math.max(card.top - y, 0, y - card.bottom)
       const distance = {
-        top: Math.hypot(xOutside, y - grid.top),
-        right: Math.hypot(x - grid.right, yOutside),
-        bottom: Math.hypot(xOutside, y - grid.bottom),
-        left: Math.hypot(x - grid.left, yOutside),
+        top: Math.hypot(xOutside, y - card.top),
+        right: Math.hypot(x - card.right, yOutside),
+        bottom: Math.hypot(xOutside, y - card.bottom),
+        left: Math.hypot(x - card.left, yOutside),
       }
       // Keep the current edge when two edges meet at the same nearest corner.
-      const edge = GRID_MODE_BADGE_EDGES.reduce((nearest, edge) => distance[edge] < distance[nearest] ? edge : nearest,
+      const edge = MODE_BADGE_EDGES.reduce((nearest, edge) => distance[edge] < distance[nearest] ? edge : nearest,
         pointer.lastPosition?.edge ?? pointer.initialEdge)
       const horizontal = edge === 'top' || edge === 'bottom'
-      const along = horizontal ? x - grid.left : y - grid.top
-      const length = horizontal ? grid.width : grid.height
+      const along = horizontal ? x - card.left : y - card.top
+      const length = horizontal ? card.width : card.height
       const offset = Math.max(0, Math.min(1, (along - pointer.length / 2) / length))
       return { edge, offset }
     }
 
-    function finishDrag(position?: GridModeBadgePosition) {
+    function finishDrag(position?: ModeBadgePosition) {
       drag.current = null
       if (position) onPosition(position)
       setDragPosition(null)
@@ -120,7 +120,7 @@ export function GridModeBadge({ mode, descriptionId, gridRef, position, onPositi
       window.removeEventListener('pointercancel', endDrag, true)
       window.removeEventListener('blur', finishInterruptedDrag)
     }
-  }, [gridRef, onPosition])
+  }, [cardRef, onPosition])
 
   function clickBadge(event: MouseEvent<HTMLButtonElement>) {
     if (event.detail > 0 && suppressClick.current) return
@@ -132,17 +132,17 @@ export function GridModeBadge({ mode, descriptionId, gridRef, position, onPositi
     if (!step) return
     event.preventDefault()
     event.stopPropagation()
-    const index = GRID_MODE_BADGE_EDGES.indexOf(position.edge)
+    const index = MODE_BADGE_EDGES.indexOf(position.edge)
     const clockwiseOffset = index < 2 ? position.offset : 1 - position.offset
-    const next = (index + clockwiseOffset + step + GRID_MODE_BADGE_EDGES.length) % GRID_MODE_BADGE_EDGES.length
+    const next = (index + clockwiseOffset + step + MODE_BADGE_EDGES.length) % MODE_BADGE_EDGES.length
     const nextIndex = Math.floor(next)
     const offset = next - nextIndex
-    onPosition({ edge: GRID_MODE_BADGE_EDGES[nextIndex], offset: nextIndex < 2 ? offset : 1 - offset })
+    onPosition({ edge: MODE_BADGE_EDGES[nextIndex], offset: nextIndex < 2 ? offset : 1 - offset })
   }
 
   return <>
-    <button type="button" className="board-mode-tab" data-edge={displayedPosition.edge} data-no-panel-hold
-      aria-label="Cycle input mode" aria-description="Drag or use the left and right arrow keys to move the icon around the grid."
+    <button type="button" className="puzzle-mode-tab" data-edge={displayedPosition.edge} data-no-panel-hold
+      aria-label="Cycle input mode" aria-description="Drag or use the left and right arrow keys to move the icon around the puzzle card."
       style={{ '--mode-offset': `${displayedPosition.offset * 100}%` } as CSSProperties}
       onPointerDown={startDrag} onDragStart={(event) => event.preventDefault()}
       onClick={clickBadge} onKeyDown={moveWithKeyboard}>

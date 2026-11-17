@@ -1,21 +1,95 @@
 import { type CSSProperties, type PointerEvent, type ReactNode, useLayoutEffect, useRef, useState } from 'react'
-import { DEFAULT_DESKTOP_LAYOUT_WIDTH, MIN_DESKTOP_LAYOUT_WIDTH } from '../sudoku/play-preferences'
+import {
+  DEFAULT_DESKTOP_INPUT_WIDTH, DEFAULT_DESKTOP_LAYOUT_WIDTH, DEFAULT_PLAY_PREFERENCES,
+  MIN_DESKTOP_INPUT_WIDTH, MIN_DESKTOP_LAYOUT_WIDTH, MIN_DESKTOP_PUZZLE_WIDTH,
+} from '../sudoku/play-preferences'
 import { usePlayPreference } from './usePlayPreference'
 
 const EDGE_GUTTER = 12
 const KEYBOARD_STEP = 24
 
-type WidthDrag = { pointerId: number; startX: number; startWidth: number; direction: -1 | 1 }
+type WidthDrag = { pointerId: number; startX: number; startWidth: number; multiplier: number }
+
+function clampWidth(width: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, Math.round(width)))
+}
+
+function PlayResizeHandle({ edge, width, min, max, onPreview, onSave, onReset }: {
+  edge?: 'left' | 'right'
+  width: number
+  min: number
+  max: number
+  onPreview: (width: number | null) => void
+  onSave: (width: number) => void
+  onReset: () => void
+}) {
+  const drag = useRef<WidthDrag | null>(null)
+  const direction = edge === 'right' ? 1 : -1
+
+  function widthAtPointer(current: WidthDrag, x: number) {
+    return clampWidth(current.startWidth + current.multiplier * (x - current.startX), min, max)
+  }
+
+  function startDrag(event: PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || !event.isPrimary || drag.current) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    const scale = Number(getComputedStyle(event.currentTarget).getPropertyValue('--desktop-layout-scale')) || 1
+    // Outer edges move in pairs. The divider moves within the scaled Play area.
+    const multiplier = edge ? 2 * direction : direction / scale
+    drag.current = { pointerId: event.pointerId, startX: event.clientX, startWidth: width, multiplier }
+    onPreview(width)
+  }
+
+  function previewWidth(event: PointerEvent<HTMLDivElement>) {
+    const current = drag.current
+    if (current?.pointerId === event.pointerId) onPreview(widthAtPointer(current, event.clientX))
+  }
+
+  function finishDrag(event: PointerEvent<HTMLDivElement>, commit: boolean) {
+    const current = drag.current
+    if (!current || current.pointerId !== event.pointerId) return
+    drag.current = null
+    onPreview(null)
+    if (commit) {
+      const nextWidth = widthAtPointer(current, event.clientX)
+      if (nextWidth !== current.startWidth) onSave(nextWidth)
+    }
+  }
+
+  return <div className={edge ? 'desktop-layout-edge' : 'desktop-layout-divider'} data-edge={edge}
+    role="separator" tabIndex={0} aria-orientation="vertical"
+    aria-label={edge ? `Resize play layout from the ${edge}` : 'Resize puzzle and digit input panels'}
+    aria-controls={edge ? 'sudoku-workspace' : 'standard-digit-input'}
+    aria-valuemin={min} aria-valuemax={max} aria-valuenow={width} aria-valuetext={`${width} pixels`}
+    onPointerDown={startDrag} onPointerMove={previewWidth} onPointerUp={(event) => finishDrag(event, true)}
+    onPointerCancel={(event) => finishDrag(event, false)} onLostPointerCapture={(event) => finishDrag(event, false)}
+    onContextMenu={(event) => {
+      event.preventDefault()
+      drag.current = null
+      onPreview(null)
+      onReset()
+    }}
+    onKeyDown={(event) => {
+      if (event.key === 'Home') {
+        event.preventDefault()
+        onReset()
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault()
+        const step = event.key === 'ArrowLeft' ? -KEYBOARD_STEP : KEYBOARD_STEP
+        const nextWidth = clampWidth(width + direction * step, min, max)
+        if (nextWidth !== width) onSave(nextWidth)
+      }
+    }} />
+}
 
 export function DesktopPlayLayout({ enabled, className, children }: { enabled: boolean; className: string; children: ReactNode }) {
   const [savedWidth, saveWidth] = usePlayPreference('desktopLayoutWidth')
   const [viewportWidth, setViewportWidth] = useState(DEFAULT_DESKTOP_LAYOUT_WIDTH + 2 * EDGE_GUTTER)
   const [draggedWidth, setDraggedWidth] = useState<number | null>(null)
-  const drag = useRef<WidthDrag | null>(null)
 
   useLayoutEffect(() => {
     if (!enabled) {
-      drag.current = null
       setDraggedWidth(null)
       return
     }
@@ -26,30 +100,7 @@ export function DesktopPlayLayout({ enabled, className, children }: { enabled: b
   }, [enabled])
 
   const maxWidth = Math.max(MIN_DESKTOP_LAYOUT_WIDTH, viewportWidth - 2 * EDGE_GUTTER)
-  const clampWidth = (width: number) => Math.min(maxWidth, Math.max(MIN_DESKTOP_LAYOUT_WIDTH, Math.round(width)))
-  const width = clampWidth(draggedWidth ?? savedWidth)
-
-  function widthAtPointer(current: WidthDrag, x: number) {
-    // The opposite edge moves by the same distance to keep the page centered.
-    return clampWidth(current.startWidth + 2 * current.direction * (x - current.startX))
-  }
-
-  function previewWidth(event: PointerEvent<HTMLDivElement>) {
-    const current = drag.current
-    if (current?.pointerId === event.pointerId) setDraggedWidth(widthAtPointer(current, event.clientX))
-  }
-
-  function finishDrag(event: PointerEvent<HTMLDivElement>, commit: boolean) {
-    const current = drag.current
-    if (!current || current.pointerId !== event.pointerId) return
-    drag.current = null
-    setDraggedWidth(null)
-    if (commit) {
-      const nextWidth = widthAtPointer(current, event.clientX)
-      if (nextWidth !== current.startWidth) saveWidth(nextWidth)
-    }
-  }
-
+  const width = clampWidth(draggedWidth ?? savedWidth, MIN_DESKTOP_LAYOUT_WIDTH, maxWidth)
   const layoutStyle = enabled ? {
     '--desktop-layout-base-width': `${DEFAULT_DESKTOP_LAYOUT_WIDTH}px`,
     '--desktop-layout-width': `${width}px`,
@@ -60,39 +111,64 @@ export function DesktopPlayLayout({ enabled, className, children }: { enabled: b
     data-layout-resizing={enabled && draggedWidth !== null ? '' : undefined}>
     {children}
     {enabled && <div className="desktop-layout-edges">
-      {(['left', 'right'] as const).map((edge) => {
-        const direction = edge === 'left' ? -1 : 1
-        return <div key={edge} className="desktop-layout-edge" data-edge={edge}
-          role="separator" tabIndex={0} aria-label={`Resize play layout from the ${edge}`} aria-orientation="vertical"
-          aria-controls="sudoku-workspace" aria-valuemin={MIN_DESKTOP_LAYOUT_WIDTH} aria-valuemax={maxWidth}
-          aria-valuenow={width} aria-valuetext={`${width} pixels`}
-          onPointerDown={(event) => {
-            if (event.button !== 0 || !event.isPrimary || drag.current) return
-            event.preventDefault()
-            event.currentTarget.setPointerCapture(event.pointerId)
-            drag.current = { pointerId: event.pointerId, startX: event.clientX, startWidth: width, direction }
-            setDraggedWidth(width)
-          }}
-          onPointerMove={previewWidth} onPointerUp={(event) => finishDrag(event, true)}
-          onPointerCancel={(event) => finishDrag(event, false)} onLostPointerCapture={(event) => finishDrag(event, false)}
-          onContextMenu={(event) => {
-            event.preventDefault()
-            drag.current = null
-            setDraggedWidth(null)
-            saveWidth(DEFAULT_DESKTOP_LAYOUT_WIDTH)
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Home') {
-              event.preventDefault()
-              saveWidth(DEFAULT_DESKTOP_LAYOUT_WIDTH)
-            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-              event.preventDefault()
-              const step = event.key === 'ArrowLeft' ? -KEYBOARD_STEP : KEYBOARD_STEP
-              const nextWidth = clampWidth(width + direction * step)
-              if (nextWidth !== width) saveWidth(nextWidth)
-            }
-          }} />
-      })}
+      {(['left', 'right'] as const).map((edge) => <PlayResizeHandle key={edge} edge={edge} width={width}
+        min={MIN_DESKTOP_LAYOUT_WIDTH} max={maxWidth} onPreview={setDraggedWidth} onSave={saveWidth}
+        onReset={() => saveWidth(DEFAULT_DESKTOP_LAYOUT_WIDTH)} />)}
     </div>}
+  </div>
+}
+
+export function PlayWorkspace({ resizable, children }: { resizable: boolean; children: ReactNode }) {
+  const workspaceRef = useRef<HTMLDivElement>(null)
+  const [savedWidths, saveWidths] = usePlayPreference('desktopPanelWidths')
+  const [draggedWidth, setDraggedWidth] = useState<number | null>(null)
+  const [maxWidth, setMaxWidth] = useState(DEFAULT_DESKTOP_INPUT_WIDTH)
+
+  useLayoutEffect(() => {
+    const workspace = workspaceRef.current
+    if (!resizable || !workspace) {
+      setDraggedWidth(null)
+      return
+    }
+    const gap = parseFloat(getComputedStyle(workspace).columnGap)
+    const puzzle = workspace.querySelector('.standard-puzzle-stack .puzzle')
+    const inputStack = workspace.querySelector('.standard-input-stack')
+    const input = inputStack?.querySelector('.controls')
+    const measure = () => {
+      setMaxWidth(Math.max(MIN_DESKTOP_INPUT_WIDTH, workspace.clientWidth - gap - MIN_DESKTOP_PUZZLE_WIDTH))
+      if (puzzle && input && inputStack) {
+        const scale = Number(getComputedStyle(workspace).getPropertyValue('--desktop-layout-scale')) || 1
+        const midpoint = (puzzle.getBoundingClientRect().right + input.getBoundingClientRect().left) / 2
+        const offset = (midpoint - inputStack.getBoundingClientRect().left) / scale
+        workspace.style.setProperty('--play-divider-offset', `${offset}px`)
+      }
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(workspace)
+    if (puzzle) observer.observe(puzzle, { box: 'border-box' })
+    if (input) observer.observe(input, { box: 'border-box' })
+    return () => observer.disconnect()
+  }, [resizable])
+
+  const width = clampWidth(draggedWidth ?? savedWidths.input, MIN_DESKTOP_INPUT_WIDTH, maxWidth)
+  const savedColumnsWidth = savedWidths.puzzle === null ? null : savedWidths.puzzle + savedWidths.input
+  const style = resizable ? {
+    '--play-input-default-width': `${DEFAULT_DESKTOP_INPUT_WIDTH}px`,
+    '--play-input-width': `${width}px`,
+    '--play-input-scale': width / DEFAULT_DESKTOP_INPUT_WIDTH,
+    '--saved-play-columns-width': savedColumnsWidth === null ? undefined : `${savedColumnsWidth}px`,
+  } as CSSProperties : undefined
+
+  function saveSplit(input: number) {
+    saveWidths({ input, puzzle: maxWidth + MIN_DESKTOP_PUZZLE_WIDTH - input })
+  }
+
+  return <div className="workspace" ref={workspaceRef} style={style}
+    data-layout-resizing={resizable && draggedWidth !== null ? '' : undefined}>
+    {children}
+    {resizable && <PlayResizeHandle width={width} min={MIN_DESKTOP_INPUT_WIDTH} max={maxWidth}
+      onPreview={setDraggedWidth} onSave={saveSplit}
+      onReset={() => saveWidths(DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)} />}
   </div>
 }

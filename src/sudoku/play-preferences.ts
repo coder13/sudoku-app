@@ -1,9 +1,15 @@
 import { COLORS, type ColorTarget } from './game.ts'
 
-export const GRID_MODE_BADGE_EDGES = ['top', 'right', 'bottom', 'left'] as const
-export type GridModeBadgePosition = { edge: typeof GRID_MODE_BADGE_EDGES[number]; offset: number }
+export const MODE_BADGE_EDGES = ['top', 'right', 'bottom', 'left'] as const
+export type ModeBadgePosition = { edge: typeof MODE_BADGE_EDGES[number]; offset: number }
 export const DEFAULT_DESKTOP_LAYOUT_WIDTH = 1128
 export const MIN_DESKTOP_LAYOUT_WIDTH = 760
+export const DEFAULT_DESKTOP_INPUT_WIDTH = 420
+export const MIN_DESKTOP_INPUT_WIDTH = 324
+export const MIN_DESKTOP_PUZZLE_WIDTH = 260
+
+type DesktopPanelWidths = { input: number; puzzle: number | null }
+const DEFAULT_DESKTOP_PANEL_WIDTHS: DesktopPanelWidths = { input: DEFAULT_DESKTOP_INPUT_WIDTH, puzzle: null }
 
 export type PlayPreferences = {
   pencil: boolean
@@ -18,8 +24,9 @@ export type PlayPreferences = {
   highlightCandidatePairs: boolean
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
-  modeBadgePosition: GridModeBadgePosition
+  cardModeBadgePosition: ModeBadgePosition
   desktopLayoutWidth: number
+  desktopPanelWidths: DesktopPanelWidths
 }
 
 // Keep this key independent of the app build and service-worker cache version.
@@ -37,8 +44,9 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   highlightCandidatePairs: false,
   multi: false,
   puzzleBrowserView: 'active',
-  modeBadgePosition: { edge: 'bottom', offset: 0.05 },
+  cardModeBadgePosition: { edge: 'bottom', offset: 0.95 },
   desktopLayoutWidth: DEFAULT_DESKTOP_LAYOUT_WIDTH,
+  desktopPanelWidths: DEFAULT_DESKTOP_PANEL_WIDTHS,
 }
 const INPUT_MODE_KEYS = ['eraseMode', 'colorMode', 'highlightMode', 'pencil'] as const
 
@@ -46,13 +54,27 @@ function inRange(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max
 }
 
-function parseModeBadgePosition(value: unknown): GridModeBadgePosition {
+function parseModeBadgePosition(value: unknown): ModeBadgePosition {
   if (value && typeof value === 'object' && 'edge' in value && 'offset' in value) {
-    const edge = GRID_MODE_BADGE_EDGES.find((edge) => edge === value.edge)
+    const edge = MODE_BADGE_EDGES.find((edge) => edge === value.edge)
     const offset = value.offset
     if (edge && typeof offset === 'number' && Number.isFinite(offset) && offset >= 0 && offset <= 1) return { edge, offset }
   }
-  return DEFAULT_PLAY_PREFERENCES.modeBadgePosition
+  return DEFAULT_PLAY_PREFERENCES.cardModeBadgePosition
+}
+
+function parseDesktopPanelWidths(value: unknown, legacyInputWidth: unknown): DesktopPanelWidths {
+  const maxInputWidth = DEFAULT_DESKTOP_LAYOUT_WIDTH - MIN_DESKTOP_PUZZLE_WIDTH
+  if (value && typeof value === 'object' && 'input' in value && 'puzzle' in value
+    && inRange(value.input, MIN_DESKTOP_INPUT_WIDTH, maxInputWidth)) {
+    if (value.puzzle === null || inRange(value.puzzle, MIN_DESKTOP_PUZZLE_WIDTH, DEFAULT_DESKTOP_LAYOUT_WIDTH - value.input)) {
+      return { input: value.input, puzzle: value.puzzle }
+    }
+  }
+  if (value === undefined && inRange(legacyInputWidth, MIN_DESKTOP_INPUT_WIDTH, maxInputWidth)) {
+    return { input: legacyInputWidth, puzzle: null }
+  }
+  return DEFAULT_DESKTOP_PANEL_WIDTHS
 }
 
 export function parsePlayPreferences(value: unknown): PlayPreferences {
@@ -74,9 +96,10 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',
-    modeBadgePosition: parseModeBadgePosition(saved.modeBadgePosition),
+    cardModeBadgePosition: parseModeBadgePosition(saved.cardModeBadgePosition),
     desktopLayoutWidth: inRange(saved.desktopLayoutWidth, MIN_DESKTOP_LAYOUT_WIDTH, Number.MAX_SAFE_INTEGER)
       ? saved.desktopLayoutWidth : DEFAULT_DESKTOP_LAYOUT_WIDTH,
+    desktopPanelWidths: parseDesktopPanelWidths(saved.desktopPanelWidths, saved.desktopInputWidth),
   }
 }
 
