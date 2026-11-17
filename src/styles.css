@@ -817,7 +817,7 @@ svg { flex-shrink: 0; }
 }
 .board-mode-tab:is([data-edge="left"], [data-edge="right"]) {
   inset-block-start: clamp(0px, var(--mode-offset), calc(100% - var(--space-28)));
-  inline-size: var(--space-16);
+  inline-size: var(--space-18);
   block-size: var(--space-28);
 }
 .board-mode-tab:is([data-edge="left"], [data-edge="right"]) svg { width: 12px; height: 12px; }

@@ -1627,7 +1627,14 @@ export function Worktable({
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? gridModeId : undefined}
       modeBadge={badgeMode && <GridModeBadge mode={badgeMode} descriptionId={gridModeId} gridRef={boardRef}
-        position={modeBadgePosition} onPosition={setModeBadgePosition} />}
+        position={modeBadgePosition} onPosition={setModeBadgePosition} onCycleMode={() => {
+          setColorBrush(null)
+          setEraseMode(false)
+          setColorMode(false)
+          setPencilModifier(false)
+          setPencil(badgeMode === 'pen')
+          setHighlightMode(badgeMode === 'pencil')
+        }} />}
       label={variant ? `${VARIANTS[variant.id].name} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}

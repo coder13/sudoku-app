@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
+import { useRef, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react'
 import { Delete, Highlighter, Palette, Pen, Pencil } from 'lucide-react'
 
 const MODES = {
@@ -14,28 +14,37 @@ const EDGES = ['top', 'right', 'bottom', 'left'] as const
 export type GridModeBadgePosition = { edge: typeof EDGES[number]; offset: number }
 export const DEFAULT_GRID_MODE_BADGE_POSITION: GridModeBadgePosition = { edge: 'bottom', offset: 0.05 }
 
-export function GridModeBadge({ mode, descriptionId, gridRef, position, onPosition }: {
+export function GridModeBadge({ mode, descriptionId, gridRef, position, onPosition, onCycleMode }: {
   mode: keyof typeof MODES
   descriptionId: string
   gridRef: RefObject<HTMLDivElement | null>
   position: GridModeBadgePosition
   onPosition: (position: GridModeBadgePosition) => void
+  onCycleMode: () => void
 }) {
   const { label, Icon } = MODES[mode]
-  const drag = useRef<{ id: number; x: number; y: number } | null>(null)
+  const drag = useRef<{ id: number; x: number; y: number; startX: number; startY: number } | null>(null)
+  const suppressClick = useRef(false)
 
   function startDrag(event: PointerEvent<HTMLButtonElement>) {
     if (!event.isPrimary || event.button !== 0) return
     event.stopPropagation()
     const badge = event.currentTarget.getBoundingClientRect()
-    drag.current = { id: event.pointerId, x: event.clientX - badge.x - badge.width / 2, y: event.clientY - badge.y - badge.height / 2 }
+    suppressClick.current = false
+    drag.current = {
+      id: event.pointerId, startX: event.clientX, startY: event.clientY,
+      x: event.clientX - badge.x - badge.width / 2, y: event.clientY - badge.y - badge.height / 2,
+    }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   function moveDrag(event: PointerEvent<HTMLButtonElement>) {
     const pointer = drag.current
+    if (!pointer || pointer.id !== event.pointerId) return
+    if (!suppressClick.current && Math.hypot(event.clientX - pointer.startX, event.clientY - pointer.startY) < 5) return
+    suppressClick.current = true
     const grid = gridRef.current?.getBoundingClientRect()
-    if (!pointer || pointer.id !== event.pointerId || !grid?.width || !grid.height) return
+    if (!grid?.width || !grid.height) return
     const x = event.clientX - pointer.x
     const y = event.clientY - pointer.y
     const xOutside = Math.max(grid.left - x, 0, x - grid.right)
@@ -57,7 +66,15 @@ export function GridModeBadge({ mode, descriptionId, gridRef, position, onPositi
   }
 
   function endDrag(event: PointerEvent<HTMLButtonElement>) {
-    if (drag.current?.id === event.pointerId) drag.current = null
+    if (drag.current?.id !== event.pointerId) return
+    if (event.type === 'pointerup') moveDrag(event)
+    if (event.type === 'pointercancel') suppressClick.current = true
+    drag.current = null
+  }
+
+  function clickBadge(event: MouseEvent<HTMLButtonElement>) {
+    if (event.detail > 0 && suppressClick.current) return
+    onCycleMode()
   }
 
   function moveWithKeyboard(event: KeyboardEvent<HTMLButtonElement>) {
@@ -75,10 +92,10 @@ export function GridModeBadge({ mode, descriptionId, gridRef, position, onPositi
 
   return <>
     <button type="button" className="board-mode-tab" data-edge={position.edge} data-no-panel-hold
-      aria-label="Move mode icon" aria-description="Use the left and right arrow keys to move it around the grid."
+      aria-label="Cycle input mode" aria-description="Drag or use the left and right arrow keys to move the icon around the grid."
       style={{ '--mode-offset': `${position.offset * 100}%` } as CSSProperties}
       onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag}
-      onPointerCancel={endDrag} onLostPointerCapture={endDrag} onKeyDown={moveWithKeyboard}>
+      onPointerCancel={endDrag} onLostPointerCapture={endDrag} onClick={clickBadge} onKeyDown={moveWithKeyboard}>
       <Icon size={15} aria-hidden="true" />
     </button>
     <span className="sr-only" id={descriptionId} role="status">{label} mode</span>
