@@ -1,7 +1,7 @@
 {
   "diagram-key": {
-    "title": "The markings you will see",
-    "note": "This is a key to our diagrams, not a solving proof. Row and column labels give each cell its address.",
+    "title": "Reading the marks",
+    "note": "Use the row and column labels to find a cell. This diagram shows how the app marks each step.",
     "key": [
       "pattern",
       "accent",
@@ -10,8 +10,8 @@
     ],
     "steps": [
       {
-        "title": "Small digits are candidates",
-        "description": "R2C4 means row 2, column 4. Candidate 5 sits in the center of its nine small slots. A ring draws your attention to a candidate.",
+        "title": "Find a candidate",
+        "description": "R2C4 means row 2, column 4. The small 5 in the center is one possible digit. The ring marks it for this step.",
         "marks": [
           {
             "cell": 12,
@@ -21,8 +21,8 @@
         ]
       },
       {
-        "title": "Rings identify roles",
-        "description": "Blue marks the main pattern. Amber separates a second group or role. Neither color means that the candidate is definitely true.",
+        "title": "Compare the groups",
+        "description": "Blue marks the first group and amber marks the second. Both are still possibilities.",
         "marks": [
           {
             "cell": 12,
@@ -37,8 +37,8 @@
         ]
       },
       {
-        "title": "Read the result separately",
-        "description": "A red strike marks a removal. A green ring marks a proved placement. In a hypothetical branch, removals stay conditional until the proof is complete.",
+        "title": "Read the result",
+        "description": "A red strike marks a removal and a green ring marks a placement. During a trial, both apply only to that trial.",
         "marks": [
           {
             "cell": 12,
@@ -92,8 +92,8 @@
     }
   },
   "candidate-elimination": {
-    "title": "From candidates to a placement",
-    "note": "A schematic part of row 3. These three cells show all their candidates. Other cells are omitted.",
+    "title": "A pair leaves one choice",
+    "note": "These three cells in row 3 show their full candidate lists.",
     "key": [
       "pattern",
       "removal",
@@ -101,8 +101,8 @@
     ],
     "steps": [
       {
-        "title": "Two cells reserve two digits",
-        "description": "R3C4 and R3C5 each contain only 2 and 8. They share a row, so one must contain 2 and the other must contain 8.",
+        "title": "Find the pair",
+        "description": "R3C4 and R3C5 each allow only 2 and 8. Because they share row 3, they must hold one of each.",
         "marks": [
           {
             "cell": 21,
@@ -127,8 +127,8 @@
         ]
       },
       {
-        "title": "Remove both digits from the target",
-        "description": "The pair uses both digits somewhere in those two cells. Remove 2 and 8 from R3C6, even though the order of the pair is unknown.",
+        "title": "Remove 2 and 8 from R3C6",
+        "description": "The pair supplies both digits to row 3. Its order makes no difference to R3C6.",
         "marks": [
           {
             "cell": 21,
@@ -163,8 +163,8 @@
         ]
       },
       {
-        "title": "The remaining candidate is certain",
-        "description": "Only 5 remains in R3C6. The green ring marks the placement that follows from the red removals.",
+        "title": "Place 5",
+        "description": "After those two removals, only 5 remains in R3C6.",
         "marks": [
           {
             "cell": 21,
@@ -227,8 +227,8 @@
     }
   },
   "weak-link": {
-    "title": "Dashed line: at most one is true",
-    "note": "Only the 5s in row 4 are shown. A is R4C2. B is R4C5. A third place remains at R4C8.",
+    "title": "A dashed link rules out a pair of placements",
+    "note": "In row 4, A is R4C2 and B is R4C5. A third possible 5 is in R4C8.",
     "key": [
       "pattern",
       "accent",
@@ -238,8 +238,8 @@
     ],
     "steps": [
       {
-        "title": "A and B cannot both be 5",
-        "description": "The dashed line records a conflict. It does not promise that either endpoint contains 5.",
+        "title": "At most one end is true",
+        "description": "A and B share row 4, so they cannot both be 5. Both can be false if the 5 goes in R4C8.",
         "marks": [
           {
             "cell": 28,
@@ -278,8 +278,8 @@
         ]
       },
       {
-        "title": "If A is true, B is false",
-        "description": "Suppose R4C2 is 5. The row then rules out every other 5, including B. The arrow shows this direction of reasoning.",
+        "title": "Suppose A is 5",
+        "description": "A 5 in R4C2 rules out 5 in R4C5 and R4C8. The arrow points from the assumption toward its consequence.",
         "marks": [
           {
             "cell": 28,
@@ -327,8 +327,8 @@
         ]
       },
       {
-        "title": "If A is false, B is still unknown",
-        "description": "Removing A leaves B and R4C8. Either can still contain 5. A weak link cannot turn a false endpoint into a true endpoint.",
+        "title": "Suppose A loses 5",
+        "description": "Row 4 still has two places for 5, R4C5 and R4C8. Removing A leaves B undecided.",
         "marks": [
           {
             "cell": 31,
@@ -390,8 +390,8 @@
     }
   },
   "strong-link": {
-    "title": "Solid line: at least one is true",
-    "note": "In this separate example, R4C2 and R4C8 are the only places for 5 in the entire row.",
+    "title": "A solid link needs at least one true end",
+    "note": "This time row 4 has exactly two possible places for 5, R4C2 and R4C8.",
     "key": [
       "pattern",
       "strong",
@@ -401,8 +401,8 @@
     ],
     "steps": [
       {
-        "title": "The row must contain a 5",
-        "description": "A solid line records a strong link. At least one endpoint must be true. Here the row also prevents both from being true.",
+        "title": "Find both places",
+        "description": "Row 4 must contain 5, so at least one end of the solid link is true. The row also prevents both from being true.",
         "marks": [
           {
             "cell": 28,
@@ -436,8 +436,8 @@
         ]
       },
       {
-        "title": "If A is false, B is true",
-        "description": "Suppose R4C2 cannot be 5. The solid link forces 5 into R4C8. This is the implication that a strong link supplies.",
+        "title": "Suppose A loses 5",
+        "description": "If R4C2 cannot be 5, row 4 forces 5 into R4C8.",
         "marks": [
           {
             "cell": 34,
@@ -480,8 +480,8 @@
         ]
       },
       {
-        "title": "The same pair can supply a weak link",
-        "description": "If R4C2 is 5, R4C8 cannot be 5. We draw this use as a dashed line. The drawing shows the property used, not a different pair.",
+        "title": "Use the same pair in the other direction",
+        "description": "If R4C2 is 5, row 4 rules out 5 in R4C8. The dashed link shows this conflict.",
         "marks": [
           {
             "cell": 28,
@@ -540,8 +540,8 @@
     }
   },
   "wing-cases": {
-    "title": "Two cases, one removal",
-    "note": "The pivot is R1C1. Wing A is R1C4. Wing B is R4C1. Only these cells and the target show candidates.",
+    "title": "Both pivot choices rule out 9",
+    "note": "R1C1 is the pivot. Its wings are A at R1C4 and B at R4C1. The target is R4C4.",
     "key": [
       "pattern",
       "accent",
@@ -551,8 +551,8 @@
     ],
     "steps": [
       {
-        "title": "Start with the pivot {2, 6}",
-        "description": "The pivot has exactly two choices. The dashed links show the shared candidates that cannot both be true.",
+        "title": "Read the pivot",
+        "description": "R1C1 allows only 2 or 6. Its 2 sees the 2 in wing A along row 1. Its 6 sees the 6 in wing B down column 1.",
         "marks": [
           {
             "cell": 0,
@@ -613,8 +613,8 @@
         ]
       },
       {
-        "title": "Case 1: the pivot is 2",
-        "description": "Wing A loses 2 and must be 9. The target R4C4 sees A through column 4, so it loses 9 in this case.",
+        "title": "Suppose the pivot is 2",
+        "description": "Row 1 rules out 2 in A, so A must be 9. Column 4 then rules out 9 in R4C4.",
         "marks": [
           {
             "cell": 0,
@@ -697,8 +697,8 @@
         ]
       },
       {
-        "title": "Case 2: the pivot is 6",
-        "description": "Wing B loses 6 and must be 9. The target sees B through row 4, so it also loses 9 in this case.",
+        "title": "Suppose the pivot is 6",
+        "description": "Column 1 rules out 6 in B, so B must be 9. Row 4 then rules out 9 in R4C4.",
         "marks": [
           {
             "cell": 0,
@@ -781,8 +781,8 @@
         ]
       },
       {
-        "title": "Keep only the common result",
-        "description": "Both cases remove 9 from R4C4. That removal is now proved, and the target must be 5. The pivot remains undecided.",
+        "title": "Use the result of both cases",
+        "description": "Both choices remove 9 from R4C4, leaving 5. You can place that 5 while R1C1 still has two choices.",
         "marks": [
           {
             "cell": 0,
@@ -883,13 +883,13 @@
     }
   },
   "uniqueness-swap": {
-    "title": "A swap that preserves every house",
-    "note": "These four cells are empty in the original puzzle. The large digits show two hypothetical fillings, not givens.",
+    "title": "Two ways to fill four cells",
+    "note": "All four cells began empty. The large digits show possible completions.",
     "key": [],
     "steps": [
       {
-        "title": "First filling",
-        "description": "Each affected row, column, and box contains one 1 and one 7. The four cells occupy exactly two boxes.",
+        "title": "Fill the first diagonal with 1",
+        "description": "Each of the two rows, two columns, and two boxes now has one 1 and one 7 in these cells.",
         "filled": {
           "1": 1,
           "2": 7,
@@ -898,8 +898,8 @@
         }
       },
       {
-        "title": "Swap every 1 and 7",
-        "description": "The same houses still contain the same digits. If the first filling completes a classic puzzle, the swapped filling gives a second solution.",
+        "title": "Exchange the 1s and 7s",
+        "description": "Each house still contains the same two digits. If the first arrangement solves the classic puzzle, the second solves it too.",
         "filled": {
           "1": 7,
           "2": 1,
@@ -934,8 +934,8 @@
     }
   },
   "chain-walk": {
-    "title": "Read a chain one link at a time",
-    "note": "Only selected 5s are shown. Rows 1 and 4 each have exactly the two marked places for 5. Other digits are omitted.",
+    "title": "Trace four possible 5s",
+    "note": "Rows 1 and 4 each have only two places for 5. The diagram shows the 5s used in the proof.",
     "key": [
       "pattern",
       "accent",
@@ -946,8 +946,8 @@
     ],
     "steps": [
       {
-        "title": "Match the path to the notation",
-        "description": "A is R1C1, B is R1C5, C is R4C5, and D is R4C2. Follow A = B - C = D on the board.",
+        "title": "Read the four ends",
+        "description": "A is R1C1, B is R1C5, C is R4C5, and D is R4C2. The path reads A = B - C = D.",
         "marks": [
           {
             "cell": 0,
@@ -1019,8 +1019,8 @@
         ]
       },
       {
-        "title": "Assume A is false",
-        "description": "Temporarily rule out 5 at R1C1. This is an assumption to test, not a removal you can keep yet.",
+        "title": "Suppose A is false",
+        "description": "For this trial, suppose R1C1 cannot be 5. Leave the pencil mark on your own board.",
         "marks": [
           {
             "cell": 4,
@@ -1098,8 +1098,8 @@
         ]
       },
       {
-        "title": "Strong: false leads to true",
-        "description": "Row 1 has only A and B for 5. With A false, B must be true. The solid line matches the equals sign.",
+        "title": "Row 1 forces B",
+        "description": "Only A and B can supply row 1 with 5. Without A, B must be 5.",
         "marks": [
           {
             "cell": 4,
@@ -1180,8 +1180,8 @@
         ]
       },
       {
-        "title": "Weak: true leads to false",
-        "description": "B and C share column 5. With B true, C must be false. The dashed line matches the minus sign.",
+        "title": "Column 5 rules out C",
+        "description": "If R1C5 is 5, R4C5 cannot also be 5 in column 5.",
         "marks": [
           {
             "cell": 4,
@@ -1263,8 +1263,8 @@
         ]
       },
       {
-        "title": "Strong: false leads to true again",
-        "description": "Row 4 has only C and D for 5. With C false, D must be true. The chain proves that A false forces D true.",
+        "title": "Row 4 forces D",
+        "description": "Without 5 in R4C5, the only place for 5 in row 4 is R4C2. Ruling out A forces D.",
         "marks": [
           {
             "cell": 4,
@@ -1347,8 +1347,8 @@
         ]
       },
       {
-        "title": "Now make a real removal",
-        "description": "A or D must be true. R2C2 sees A through box 1 and D through column 2. It cannot be 5 in either case.",
+        "title": "Remove 5 from R2C2",
+        "description": "A or D must be 5. R2C2 sees A in box 1 and D in column 2, so either one rules out its 5.",
         "marks": [
           {
             "cell": 0,
@@ -1482,8 +1482,8 @@
     }
   },
   "cell-link": {
-    "title": "A link can stay inside one cell",
-    "note": "R6C4 contains exactly two candidates: 2 and 7. Its small digits are separate statements in a chain.",
+    "title": "A chain can switch digits inside a cell",
+    "note": "R6C4 allows only 2 and 7. Each candidate is a separate end of the link.",
     "key": [
       "pattern",
       "strong",
@@ -1494,7 +1494,7 @@
     "steps": [
       {
         "title": "Read (2=7)r6c4",
-        "description": "The solid line joins two candidates inside R6C4. The equals sign means at least one is true, not that 2 equals 7.",
+        "description": "The equals sign marks a strong link inside R6C4. At least one of its two candidates must be true.",
         "marks": [
           {
             "cell": 48,
@@ -1526,8 +1526,8 @@
         ]
       },
       {
-        "title": "Switch digits through the cell",
-        "description": "If 2 is false, 7 must be true. This lets a chain change digits while staying at the same cell.",
+        "title": "Suppose 2 is false",
+        "description": "With 2 gone, R6C4 must be 7. The chain can continue from 7.",
         "marks": [
           {
             "cell": 48,
@@ -1566,8 +1566,8 @@
         ]
       },
       {
-        "title": "Use the weak property when needed",
-        "description": "The cell cannot contain both digits. A dashed link can instead carry the implication from 2 true to 7 false.",
+        "title": "Suppose 2 is true",
+        "description": "R6C4 has room for one digit. If it is 2, it cannot also be 7. A dashed line shows that weak link.",
         "marks": [
           {
             "cell": 48,
@@ -1620,16 +1620,16 @@
     }
   },
   "als-count": {
-    "title": "Two cells, three distinct digits",
-    "note": "R6C4 and R6C5 share a row. All their candidates are shown. Each exclusion below is a separate hypothetical case.",
+    "title": "Two cells with three possible digits",
+    "note": "R6C4 and R6C5 share row 6. Compare three separate trials, one for each missing digit.",
     "key": [
       "pattern",
       "removal"
     ],
     "steps": [
       {
-        "title": "One extra digit makes an ALS",
-        "description": "The cells offer {1, 4, 8}. Two cells need two different digits, so exactly one of those three digits is absent.",
+        "title": "Count 1, 4, and 8 once each",
+        "description": "These two cells must use two different digits from {1, 4, 8}. Exactly one digit is absent from the pair.",
         "marks": [
           {
             "cell": 48,
@@ -1659,8 +1659,8 @@
         ]
       },
       {
-        "title": "Suppose the set loses 1",
-        "description": "R6C4 must be 4. R6C5 then loses 4 and must be 8. The two remaining digits are locked into the set.",
+        "title": "Suppose both cells lose 1",
+        "description": "R6C4 must be 4. Row 6 then rules out 4 in R6C5, leaving 8.",
         "marks": [
           {
             "cell": 48,
@@ -1690,8 +1690,8 @@
         ]
       },
       {
-        "title": "Suppose the set loses 4",
-        "description": "Remove every 4 from the set. R6C4 must be 1 and R6C5 must be 8. Losing only one copy of 4 would not be enough.",
+        "title": "Suppose both cells lose 4",
+        "description": "R6C4 must be 1 and R6C5 must be 8. Both possible 4s must disappear for this case.",
         "marks": [
           {
             "cell": 48,
@@ -1721,8 +1721,8 @@
         ]
       },
       {
-        "title": "Suppose the set loses 8",
-        "description": "R6C5 must be 4, which forces R6C4 to be 1. The count alone does not tell us which of these cases is real.",
+        "title": "Suppose both cells lose 8",
+        "description": "R6C5 must be 4, so R6C4 must be 1. The original lists allow all three trials.",
         "marks": [
           {
             "cell": 48,
@@ -1770,8 +1770,8 @@
     }
   },
   "grouped-link": {
-    "title": "Several candidates, one endpoint",
-    "note": "Only the 5s in row 3 are shown. The two amber rings form G: 5 is in R3C1 or R3C2.",
+    "title": "Two places count as one end of a link",
+    "note": "In row 3, G means that R3C1 or R3C2 contains 5. Amber marks both places.",
     "key": [
       "pattern",
       "accent",
@@ -1780,8 +1780,8 @@
     ],
     "steps": [
       {
-        "title": "Read the whole group",
-        "description": "The solid line connects near the right amber candidate. Both amber candidates form its endpoint. In (5)r3c12, the group means 5 in row 3, column 1 or 2.",
+        "title": "Read (5)r3c12",
+        "description": "The solid link ends at the whole amber group. The notation gives one digit, one row, and two possible columns.",
         "marks": [
           {
             "cell": 18,
@@ -1823,8 +1823,8 @@
         ]
       },
       {
-        "title": "One false member does not make G false",
-        "description": "Suppose R3C1 loses 5. R3C2 can still satisfy G, so R3C8 is not forced.",
+        "title": "Rule out one member",
+        "description": "If R3C1 loses 5, the group still has R3C2. Row 3 does not yet force 5 into R3C8.",
         "marks": [
           {
             "cell": 19,
@@ -1871,8 +1871,8 @@
         ]
       },
       {
-        "title": "Every member must be false",
-        "description": "If both amber candidates lose 5, the group is false. The strong link then forces 5 into R3C8.",
+        "title": "Rule out both members",
+        "description": "If neither amber cell can be 5, row 3 has just one place left. R3C8 must be 5.",
         "marks": [
           {
             "cell": 25,
@@ -1938,8 +1938,8 @@
     }
   },
   "rcc-link": {
-    "title": "A weak link between two sets",
-    "note": "Blue is ALS A: {1, 4, 6} in two cells. Amber is ALS B: {2, 6, 7} in two cells. All their candidates are shown.",
+    "title": "A digit that cannot appear in both sets",
+    "note": "Blue marks two cells with {1, 4, 6} between them. Amber marks two cells with {2, 6, 7}.",
     "key": [
       "pattern",
       "accent",
@@ -1948,8 +1948,8 @@
     ],
     "steps": [
       {
-        "title": "Every possible 6 in A sees every 6 in B",
-        "description": "All three 6s share row 8. The dashed line joins the group of blue 6s to the amber 6. Both sets cannot use 6.",
+        "title": "Find every 6 in row 8",
+        "description": "The three possible 6s all share row 8. A 6 in either set rules out every 6 in the other.",
         "marks": [
           {
             "cell": 63,
@@ -2014,8 +2014,8 @@
         ]
       },
       {
-        "title": "If B uses 6, A loses every 6",
-        "description": "Suppose R8C5 is 6. Both blue 6s disappear, leaving 1 and 4 locked in ALS A. The link must reach the whole group.",
+        "title": "Suppose R8C5 is 6",
+        "description": "Row 8 rules out both blue 6s. The two blue cells must now use 1 and 4.",
         "marks": [
           {
             "cell": 63,
@@ -2081,8 +2081,8 @@
         ]
       },
       {
-        "title": "The weak link also allows neither",
-        "description": "If neither set uses 6, A contains 1 and 4 while B contains 7 and 2. The RCC alone does not force a 6.",
+        "title": "Suppose neither set uses 6",
+        "description": "Blue must use 1 and 4. Amber must use 2 and 7. This also satisfies the weak link.",
         "marks": [
           {
             "cell": 63,
@@ -2149,8 +2149,8 @@
         ]
       },
       {
-        "title": "One unseen occurrence breaks the link",
-        "description": "Change the example by adding 6 at R9C6. Neither blue 6 sees this new occurrence. The sets still share 6, but it is no longer an RCC.",
+        "title": "Add a possible 6 in R9C6",
+        "description": "The blue 6s cannot see this new amber 6. Both sets can now use 6 without a conflict between those places.",
         "candidates": {
           "63": [
             1,
@@ -2250,8 +2250,8 @@
     }
   },
   "contradiction": {
-    "title": "A branch must fail for a specific reason",
-    "note": "All candidates of these four cells are shown. Each step after the assumption remains conditional until a contradiction is proved.",
+    "title": "A trial that puts two 2s in column 1",
+    "note": "The four cells show all their candidates. Keep the trial moves separate from the original grid.",
     "key": [
       "pattern",
       "weak",
@@ -2261,8 +2261,8 @@
     ],
     "steps": [
       {
-        "title": "Start with a statement to test",
-        "description": "We will test whether R1C1 can be 2. The other three cells each have two candidates.",
+        "title": "Pick the candidate to test",
+        "description": "Can R1C1 be 2? The other three cells each have just two choices.",
         "marks": [
           {
             "cell": 0,
@@ -2308,8 +2308,8 @@
         "links": []
       },
       {
-        "title": "Assume R1C1 is 2",
-        "description": "R1C4 sees the assumed 2 across row 1. It loses 2 and must be 5.",
+        "title": "Suppose R1C1 is 2",
+        "description": "Row 1 rules out 2 in R1C4. Its only remaining candidate is 5.",
         "marks": [
           {
             "cell": 0,
@@ -2372,8 +2372,8 @@
         ]
       },
       {
-        "title": "Follow both forced consequences",
-        "description": "R4C4 loses 5 and becomes 8. R4C1 then loses 8 and becomes 2. Both deductions depend on the original assumption.",
+        "title": "Follow the two forced cells",
+        "description": "Column 4 rules out 5 in R4C4, leaving 8. Row 4 then rules out 8 in R4C1, leaving 2.",
         "marks": [
           {
             "cell": 0,
@@ -2462,8 +2462,8 @@
         ]
       },
       {
-        "title": "The contradiction: two 2s in column 1",
-        "description": "R1C1 and R4C1 cannot both contain 2. The dashed closing link shows the conflict. This branch breaks a Sudoku rule.",
+        "title": "Find the conflict",
+        "description": "The trial puts 2 in both R1C1 and R4C1. Column 1 allows only one 2.",
         "marks": [
           {
             "cell": 3,
@@ -2562,8 +2562,8 @@
         ]
       },
       {
-        "title": "Discard the assumption and its temporary consequences",
-        "description": "R1C1 cannot be 2, so it must be 9. Restore the other cells before continuing from the original board.",
+        "title": "Return to the original grid",
+        "description": "Remove 2 from R1C1. Its only remaining digit is 9. The other moves depended on the failed trial.",
         "marks": [
           {
             "cell": 3,
@@ -2638,13 +2638,13 @@
     }
   },
   "nested-branches": {
-    "title": "A conclusion stays inside its branch",
-    "note": "This is a logic map. Each arrow stands for a proved sequence of deductions, not a direct Sudoku link.",
+    "title": "A trial inside another trial",
+    "note": "Each arrow stands for a sequence of moves. Read the inner branches before returning to the outer choice.",
     "key": [],
     "steps": [
       {
-        "title": "Both inner cases prove C under A",
-        "description": "The nested cards keep B and not-B inside the A branch. Their common result proves C only while A is assumed.",
+        "title": "Keep the outer assumption",
+        "description": "Suppose A is true. Whether B is true or false, C follows. You can use C in the A branch.",
         "branches": [
           {
             "assumption": "Assume A is true",
@@ -2667,8 +2667,8 @@
         ]
       },
       {
-        "title": "Every outer case must reach the same result",
-        "description": "If a separate proof also reaches C when A is false, both outer cases agree. Only then can C be kept on the original board.",
+        "title": "Compare both outer cases",
+        "description": "Now suppose A is false. If this case also forces C, you can use C on the original grid.",
         "branches": [
           {
             "assumption": "Assume A is true",
@@ -2698,8 +2698,8 @@
     ]
   },
   "seeing-cells": {
-    "title": "Trace the three houses of R2C2",
-    "note": "The large 5 is a placement. The small 5s are marks to check against that placement.",
+    "title": "Which cells see the 5?",
+    "note": "The large 5 is a placed digit. Each small 5 is a candidate.",
     "region": {
       "row": 1,
       "column": 1,
@@ -2726,15 +2726,15 @@
     ],
     "steps": [
       {
-        "title": "Start with the placed 5",
-        "description": "R2C2 is 5. Follow its row, column, and box to find peers.",
+        "title": "Start in R2C2",
+        "description": "R2C2 contains 5. Find the other cells in its row, its column, and its box.",
         "filled": {
           "10": 5
         }
       },
       {
-        "title": "Follow row 2",
-        "description": "R2C4 shares row 2 with the placed 5. That row cannot contain another 5.",
+        "title": "Look across row 2",
+        "description": "R2C4 shares row 2 with R2C2, so remove 5 from R2C4.",
         "filled": {
           "10": 5
         },
@@ -2747,8 +2747,8 @@
         ]
       },
       {
-        "title": "Follow column 2",
-        "description": "R4C2 shares column 2 with the placed 5. Its 5 is also ruled out.",
+        "title": "Look down column 2",
+        "description": "R4C2 shares column 2 with R2C2, so remove 5 from R4C2.",
         "filled": {
           "10": 5
         },
@@ -2766,8 +2766,8 @@
         ]
       },
       {
-        "title": "Follow box 1",
-        "description": "R3C3 shares box 1 with the placed 5. R4C4 shares no house, so this placement leaves its 5 alone.",
+        "title": "Look inside box 1",
+        "description": "R3C3 shares box 1 with R2C2 and loses 5. R4C4 shares no house with R2C2, so keep its candidate.",
         "filled": {
           "10": 5
         },
@@ -2797,8 +2797,8 @@
     ]
   },
   "subset-count": {
-    "title": "Three cells need three digits",
-    "note": "All candidates are shown in the four marked cells. The cells are in row 4.",
+    "title": "Three cells reserve three digits",
+    "note": "The four marked cells show their complete candidate lists in row 4.",
     "region": {
       "row": 3,
       "column": 0,
@@ -2831,8 +2831,8 @@
     ],
     "steps": [
       {
-        "title": "Choose three cells",
-        "description": "R4C1, R4C2, and R4C4 must each contain one digit. Every digit in their lists is 2, 4, or 7.",
+        "title": "Read the three blue cells",
+        "description": "The lists in R4C1, R4C2, and R4C4 contain just three different digits, 2, 4, and 7.",
         "marks": [
           {
             "cell": 27,
@@ -2871,8 +2871,8 @@
         ]
       },
       {
-        "title": "Reserve all three digits",
-        "description": "A digit cannot repeat within row 4. The three blue cells therefore use 2, 4, and 7 in some order.",
+        "title": "Use the row rule",
+        "description": "Row 4 cannot repeat a digit. Its three blue cells must use one 2, one 4, and one 7.",
         "marks": [
           {
             "cell": 27,
@@ -2910,8 +2910,8 @@
         ]
       },
       {
-        "title": "Remove those digits from peers",
-        "description": "R4C6 cannot contain 2 or 7 because the blue cells use those digits. That leaves 1 as its only candidate.",
+        "title": "Look at R4C6",
+        "description": "The three blue cells supply the 2 and the 7 for row 4. Remove both from R4C6. Only 1 remains.",
         "marks": [
           {
             "cell": 27,
@@ -2963,8 +2963,8 @@
     ]
   },
   "fish-count": {
-    "title": "Three rows share three columns",
-    "note": "The diagram shows every candidate 5 in rows 3, 5, and 7, plus the target in row 4. Other digits are outside this example.",
+    "title": "Three rows need three columns",
+    "note": "The rings show every possible 5 in rows 3, 5, and 7. The candidate to test is in row 4.",
     "region": {
       "row": 2,
       "column": 2,
@@ -3001,8 +3001,8 @@
     ],
     "steps": [
       {
-        "title": "Count the base rows",
-        "description": "Rows 3, 5, and 7 each need a 5. The blue rings show all their possible places.",
+        "title": "Count the rows",
+        "description": "Each of the three marked rows needs its own 5.",
         "marks": [
           {
             "cell": 20,
@@ -3040,8 +3040,8 @@
         ]
       },
       {
-        "title": "Count the cover columns",
-        "description": "All six blue candidates sit in columns 3, 4, and 7. Three rows need three different columns, so they use all three.",
+        "title": "Count the columns",
+        "description": "The six possible places all lie in columns 3, 4, and 7. Each of the three rows must use a different one.",
         "marks": [
           {
             "cell": 20,
@@ -3084,8 +3084,8 @@
         ]
       },
       {
-        "title": "Reserve column 4 for a base row",
-        "description": "R4C4 sits outside the base rows. If you place 5 there, the three base rows have only columns 3 and 7 left.",
+        "title": "Test 5 in R4C4",
+        "description": "A 5 here uses column 4. That leaves only columns 3 and 7 for the three marked rows. Remove 5 from R4C4.",
         "marks": [
           {
             "cell": 20,
@@ -3130,8 +3130,8 @@
     ]
   },
   "coloring-states": {
-    "title": "Two colors, two possible states",
-    "note": "Only the relevant 5s are shown. Each solid line joins the only two places for 5 in its row or column.",
+    "title": "Two colors for the possible 5s",
+    "note": "Each solid line joins the only two possible 5s in a row or column.",
     "region": {
       "row": 1,
       "column": 1,
@@ -3163,8 +3163,8 @@
     ],
     "steps": [
       {
-        "title": "Give the row pair two colors",
-        "description": "In row 2, exactly one of R2C2 and R2C5 contains 5. Mark one blue and the other amber.",
+        "title": "Color the pair in row 2",
+        "description": "Exactly one of R2C2 and R2C5 is 5. Color one blue and the other amber.",
         "marks": [
           {
             "cell": 10,
@@ -3193,8 +3193,8 @@
         ]
       },
       {
-        "title": "Keep alternating along the pairs",
-        "description": "Column 5 links R2C5 to R4C5, so R4C5 is blue. Row 4 then makes R4C3 amber.",
+        "title": "Continue from R2C5",
+        "description": "Column 5 makes R4C5 blue. Row 4 then makes R4C3 amber.",
         "marks": [
           {
             "cell": 10,
@@ -3261,8 +3261,8 @@
         ]
       },
       {
-        "title": "Suppose blue is true",
-        "description": "R2C2 rules out 5 from R3C3 through box 1. Both amber candidates are false in this case.",
+        "title": "Try blue",
+        "description": "R2C2 would contain 5. Box 1 then rules out 5 in R3C3.",
         "marks": [
           {
             "cell": 10,
@@ -3334,8 +3334,8 @@
         ]
       },
       {
-        "title": "Suppose amber is true",
-        "description": "R4C3 rules out 5 from R3C3 through column 3. Both blue candidates are false in this case.",
+        "title": "Try amber",
+        "description": "R4C3 would contain 5. Column 3 then rules out 5 in R3C3.",
         "marks": [
           {
             "cell": 13,
@@ -3407,8 +3407,8 @@
         ]
       },
       {
-        "title": "Keep only the common removal",
-        "description": "One color must be true. Both cases rule out 5 from R3C3, so you can remove that candidate.",
+        "title": "Remove 5 from R3C3",
+        "description": "One color must be true. Each color rules out the same 5 in R3C3.",
         "marks": [
           {
             "cell": 10,
@@ -3478,8 +3478,8 @@
     ]
   },
   "loop-matching-links": {
-    "title": "Return through the same type of link",
-    "note": "The first three steps use one setup. The last two use a different setup. Only the relevant 5s are shown.",
+    "title": "Two matching links at the join",
+    "note": "The first three steps show a weak-link join. The last two use a different grid with a strong-link join.",
     "region": {
       "row": 1,
       "column": 0,
@@ -3508,8 +3508,8 @@
     ],
     "steps": [
       {
-        "title": "Two weak links meet at A",
-        "description": "A is R3C2. Row 2 needs one of B at R2C1 and C at R2C3. A sees both through box 1.",
+        "title": "Find the two weak links",
+        "description": "A is the 5 in R3C2. Row 2 needs a 5 in B at R2C1 or C at R2C3. A sees both in box 1.",
         "marks": [
           {
             "cell": 19,
@@ -3580,8 +3580,8 @@
         ]
       },
       {
-        "title": "Try A true",
-        "description": "A true makes B false. The solid link forces C true. The closing dashed link then makes A false.",
+        "title": "Suppose A is true",
+        "description": "A rules out B. Row 2 then forces C. C rules out A in box 1.",
         "marks": [
           {
             "cell": 19,
@@ -3654,8 +3654,8 @@
         ]
       },
       {
-        "title": "Remove A",
-        "description": "The chain made A both true and false. The assumption that A is true must fail. Remove 5 from R3C2.",
+        "title": "Remove the 5 at A",
+        "description": "The trial both uses and rules out 5 in R3C2. Remove that 5.",
         "marks": [
           {
             "cell": 9,
@@ -3722,8 +3722,8 @@
         ]
       },
       {
-        "title": "New setup with two strong links at A",
-        "description": "A is now R2C2. It has a strong link to B in row 2 and to C in column 2. B and C share box 1.",
+        "title": "Find the two strong links",
+        "description": "A is now R2C2. Row 2 links it to B. Column 2 links it to C. B and C see each other in box 1.",
         "candidates": {
           "10": [
             5
@@ -3805,8 +3805,8 @@
         ]
       },
       {
-        "title": "Try A false",
-        "description": "A false forces B true, which rules out C in box 1. The closing solid link forces A true. That conflict proves A must be true.",
+        "title": "Suppose A is false",
+        "description": "Row 2 forces B, which rules out C in box 1. Column 2 then forces A. This contradiction proves that A must be 5.",
         "candidates": {
           "10": [
             5
@@ -3892,8 +3892,8 @@
     ]
   },
   "loop-alternating-links": {
-    "title": "Read around the other side of a weak link",
-    "note": "R4C1 and R4C2 each have {2, 7}. Each cell supplies a solid link. The two dashed links come from row 4.",
+    "title": "A loop with alternating links at every cell",
+    "note": "R4C1 and R4C2 both allow only 2 and 7. Look at the links inside the cells and along row 4.",
     "region": {
       "row": 3,
       "column": 0,
@@ -3924,8 +3924,8 @@
     ],
     "steps": [
       {
-        "title": "Find the weak link between the 7s",
-        "description": "These two 7s see each other. The dashed link alone says that at most one can be true.",
+        "title": "Choose the weak link between the 7s",
+        "description": "The two cells share row 4, so at most one of the two 7s is true.",
         "marks": [
           {
             "cell": 27,
@@ -4016,8 +4016,8 @@
         ]
       },
       {
-        "title": "Follow the rest of the loop",
-        "description": "If R4C1 is not 7, it must be 2. R4C2 then cannot be 2, so it must be 7.",
+        "title": "Go around the other way",
+        "description": "If R4C1 loses 7, it must be 2. Row 4 rules out 2 in R4C2, so R4C2 must be 7.",
         "marks": [
           {
             "cell": 27,
@@ -4096,8 +4096,8 @@
         ]
       },
       {
-        "title": "Remove a candidate that sees both 7s",
-        "description": "At least one of the linked 7s is true. Both see R4C4 through row 4, so R4C4 cannot be 7.",
+        "title": "Remove 7 from R4C4",
+        "description": "One end of the link must contain 7. Either end supplies row 4 with its 7, so R4C4 cannot be 7.",
         "marks": [
           {
             "cell": 27,
@@ -4194,8 +4194,8 @@
     ]
   },
   "als-link": {
-    "title": "A strong link between two digit groups",
-    "note": "The same two cells appear in every step. The equals sign describes the statements about the whole set.",
+    "title": "A strong link between two digits in a set",
+    "note": "R6C4 and R6C5 have three digits between them. The link refers to the two cells together.",
     "region": {
       "row": 5,
       "column": 3,
@@ -4219,8 +4219,8 @@
     ],
     "steps": [
       {
-        "title": "Find every copy of each digit",
-        "description": "The blue group asks if the set contains 1. The amber group asks if either cell contains 4.",
+        "title": "Locate the 1 and both 4s",
+        "description": "Blue marks the possible 1. Amber marks both places where the set can use 4.",
         "marks": [
           {
             "cell": 48,
@@ -4245,8 +4245,8 @@
         ]
       },
       {
-        "title": "Suppose 1 is absent",
-        "description": "R6C4 must contain 4. R6C5 then contains 8. The amber statement is true in this case.",
+        "title": "Suppose the set misses 1",
+        "description": "R6C4 must be 4, so R6C5 must be 8. The set uses 4.",
         "marks": [
           {
             "cell": 48,
@@ -4275,8 +4275,8 @@
         ]
       },
       {
-        "title": "Suppose 4 is absent",
-        "description": "Both amber candidates must go. R6C4 must contain 1 and R6C5 must contain 8.",
+        "title": "Suppose the set misses 4",
+        "description": "Remove 4 from both cells in this trial. R6C4 must be 1 and R6C5 must be 8.",
         "marks": [
           {
             "cell": 48,
@@ -4305,8 +4305,8 @@
         ]
       },
       {
-        "title": "Both can appear together",
-        "description": "The cells can contain 1 and 4, with no 8. This option satisfies the strong link because both digit statements are true.",
+        "title": "Try 1 and 4 together",
+        "description": "R6C4 can be 1 while R6C5 is 4. Both ends of this strong link can be true.",
         "marks": [
           {
             "cell": 48,
@@ -4332,7 +4332,7 @@
   },
   "placement-capacity": {
     "title": "Four cells need four slots",
-    "note": "The blue cells are the selected group. The diagram shows all their candidates and one target at R1C5.",
+    "note": "The blue cells show all their candidates. R1C5 is outside the group.",
     "region": {
       "row": 0,
       "column": 0,
@@ -4368,8 +4368,8 @@
     ],
     "steps": [
       {
-        "title": "Cover each candidate",
-        "description": "The four blue cells need a digit each. Every candidate in those cells belongs to at least one of these four slots.",
+        "title": "Count the slots",
+        "description": "Every candidate in the four blue cells uses at least one of the four listed slots. Each slot can supply only one cell.",
         "marks": [
           {
             "cell": 0,
@@ -4420,8 +4420,8 @@
         ]
       },
       {
-        "title": "Check the overlap at R1C1",
-        "description": "If R1C1 is 1, it uses both the row 1 and column 1 slots for 1. Only two slots remain for three cells.",
+        "title": "Try 1 in R1C1",
+        "description": "This 1 uses both the row 1 slot and the column 1 slot. Only two slots remain for three blue cells.",
         "marks": [
           {
             "cell": 0,
@@ -4469,8 +4469,8 @@
         ]
       },
       {
-        "title": "Check a candidate outside the group",
-        "description": "If R1C5 is 1, it uses one of the four slots. Only three slots remain for the four blue cells.",
+        "title": "Try 1 in R1C5",
+        "description": "This outside placement uses a slot in row 1. The four blue cells then have only three slots left.",
         "marks": [
           {
             "cell": 0,
@@ -4525,8 +4525,8 @@
     ]
   },
   "complete-digit-layouts": {
-    "title": "Every layout needs the last column",
-    "note": "Six 5s are already placed outside the crop. Only rows 1 to 3 and columns 2, 5, and 8 need a 5.",
+    "title": "Two ways to finish placing the 5s",
+    "note": "Six 5s are outside the diagram. Rows 1, 2, and 3 still need 5s, as do columns 2, 5, and 8.",
     "region": {
       "row": 0,
       "column": 1,
@@ -4561,8 +4561,8 @@
     ],
     "steps": [
       {
-        "title": "List the remaining places for 5",
-        "description": "Each of the three rows needs a 5. Each of the three columns and each box in the top band also needs one.",
+        "title": "Mark the remaining places",
+        "description": "Each of the three rows needs one 5. Each of the three boxes across the top also needs one.",
         "marks": [
           {
             "cell": 1,
@@ -4603,7 +4603,7 @@
       },
       {
         "title": "Try 5 in R3C5",
-        "description": "That choice leaves only column 2 for the 5s in both row 1 and row 2. They cannot both use it.",
+        "description": "Rows 1 and 2 then both need column 2 for their 5. A column cannot contain two 5s.",
         "marks": [
           {
             "cell": 22,
@@ -4637,8 +4637,8 @@
         ]
       },
       {
-        "title": "One layout uses R1C2 and R2C5",
-        "description": "Together with R3C8, this gives the three rows, columns, and boxes one 5 each.",
+        "title": "Put 5 in R1C2 and R2C5",
+        "description": "A 5 in R3C8 completes the layout. Each row, column, and box has one 5.",
         "marks": [
           {
             "cell": 1,
@@ -4661,8 +4661,8 @@
         ]
       },
       {
-        "title": "The other layout swaps rows 1 and 2",
-        "description": "R1C5 and R2C2 also fit with R3C8. The two layouts keep the same 5 in row 3.",
+        "title": "Put 5 in R1C5 and R2C2",
+        "description": "R3C8 completes this layout too. The 5s in rows 1 and 2 use different columns than before.",
         "marks": [
           {
             "cell": 4,
@@ -4685,8 +4685,8 @@
         ]
       },
       {
-        "title": "Place the 5 shared by both layouts",
-        "description": "Every layout uses R3C8. R3C5 appears in none of them.",
+        "title": "Compare both layouts",
+        "description": "Both put 5 in R3C8, so place it there. Neither puts 5 in R3C5, so remove that candidate.",
         "marks": [
           {
             "cell": 1,

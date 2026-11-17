@@ -31,14 +31,14 @@ export function isCellReferenceStyle(value: unknown): value is CellReferenceStyl
 }
 
 export const NO_HINT: PuzzleHint = {
-  title: 'No hint available', text: 'No supported logical step is available for the current grid.',
+  title: 'No hint available', text: 'The solver found no logical move with the current settings and candidates.',
 }
 export const HINT_ERROR: PuzzleHint = {
-  title: 'Hint unavailable', text: 'Resolve any conflicts in the grid, then try again.',
+  title: 'Hint unavailable', text: 'Check the grid for conflicting digits, then try the hint again.',
 }
 export const HINT_CANDIDATES_ERROR: PuzzleHint = {
   title: 'Review your candidates',
-  text: 'The current candidates rule out the solution. Restore any candidates you removed by mistake, or generate all candidates again.',
+  text: 'A digit the solution needs is missing from your candidates. Add the missing mark or fill in all candidates again.',
 }
 
 const TECHNIQUE_LABELS: Record<string, string> = {
@@ -115,22 +115,22 @@ export function describeHint(deduction: Deduction, {
 }: { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle } = {}): PuzzleHint {
   const title = techniqueLabel(deduction.technique)
   const action = deduction.actions[0]
-  if (!action) return { title, text: 'Study the current grid for this technique.' }
+  if (!action) return { title, text: 'Look for this technique in the current grid.' }
 
   const location = (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
   if ('place' in action) {
     const { cell, digit } = action.place
-    return { title, text: `Place digit ${digit} in ${location(cell)}.` }
+    return { title, text: `Place ${digit} in ${location(cell)}.` }
   }
 
   const text = describeHintRemovals(deduction, { difficulty, cellReferenceStyle }).map(({ digit, cells }) =>
-    `Remove digit ${digit} from the candidates in ${locationList.format(cells)}.`).join(' ')
+    `Remove ${digit} from ${locationList.format(cells)}.`).join(' ')
   return { title, text }
 }
 
 export function describeSingleHint([cell, digit]: [number, number], style: CellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE): PuzzleHint {
   return {
     title: 'Single',
-    text: `Place digit ${digit} in ${cellReference(cell, style, 'easy')}.`,
+    text: `Place ${digit} in ${cellReference(cell, style, 'easy')}.`,
   }
 }

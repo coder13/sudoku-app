@@ -89,7 +89,7 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
     mark(start, 'chain start', patternColor)
     mark(end, 'chain end', accentColor)
     const nameCell = (cell: number) => cellReference(cell, style, difficulty)
-    const text = `Chain starts at ${inferenceName(start, nameCell)}. It ends at ${inferenceName(end, nameCell)}.`
+    const text = `Start at ${inferenceName(start, nameCell)}. The other end is ${inferenceName(end, nameCell)}.`
     const annotations: BoardAnnotations = { cells, candidates }
     return { text, annotations }
   }
@@ -136,8 +136,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const target = cellName(evidence.cell)
     return {
       cells: [evidence.cell], candidates: [first],
-      description: `Only ${first.digit} is left in ${target}.`,
-      reason: 'The digits placed in its three houses rule out the rest.',
+      description: `Only ${first.digit} remains in ${target}.`,
+      reason: 'Every other candidate in this cell is already ruled out.',
     }
   }
   if ('house' in evidence) {
@@ -146,10 +146,10 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const fullHouse = technique === 'full-house'
     return {
       houses: [evidence.house], cells: [first.cell], candidates: [first],
-      description: fullHouse ? `${target} is the only gap in ${group}.` : `Look for ${first.digit} in ${group}. Only ${target} shows it as a candidate.`,
+      description: fullHouse ? `${target} is the only empty cell in ${group}.` : `Only ${target} can hold ${first.digit} in ${group}.`,
       reason: fullHouse
         ? `The other eight cells contain every digit except ${first.digit}.`
-        : `${capital(group)} still needs a ${first.digit}, so it has to go in ${target}.`,
+        : `${capital(group)} needs one ${first.digit}. No other cell there allows it.`,
     }
   }
   if ('intersection' in evidence) {
@@ -157,8 +157,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const digit = first.digit
     return {
       houses: [source], otherHouses: [target], cells, candidates: marks(cells, [first.digit]),
-      description: `In ${houseName(source)}, ${list.format(cells.map(cellName))} are the only places for ${digit}. Those cells all lie in ${houseName(target)}.`,
-      reason: `Either placement gives ${houseName(target)} its ${digit}. Cross out ${digit} from the rest of ${houseName(target)}.`,
+      description: `Every possible ${digit} in ${houseName(source)} lies in ${houseName(target)}. The shared places are ${list.format(cells.map(cellName))}.`,
+      reason: `One of those cells must be ${digit}. That supplies ${houseName(target)} with its ${digit}, so remove it elsewhere in that house.`,
     }
   }
   if ('pair' in evidence || 'subset' in evidence) {
@@ -172,8 +172,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       ? `In ${groups}, ${cellNames} are the only places for ${digitNames}.`
       : `${cellNames} have only ${digitNames} between them.`
     const reason = hidden
-      ? `Those ${cells.length} digits must go in those cells. Erase the other candidates in them.`
-      : `The cells share ${groups}, so each must contain a different digit. Erase those digits from the other cells in ${groups}.`
+      ? `Those ${cells.length} digits need all ${cells.length} cells. Remove the other candidates inside the set.`
+      : `These cells share ${groups}. They must use all ${cells.length} digits, one per cell. Remove those digits elsewhere in ${groups}.`
     return { houses: [house], otherHouses: lockedIn ? [lockedIn] : [], cells, candidates: marks(cells, digits), description, reason }
   }
   if ('x-wing' in evidence) {
@@ -185,7 +185,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       houses: bases, otherHouses: covers, cells: corners.flat(), candidates: marks(corners.flat(), [digit]),
       links: [link(a, b, digit), link(c, d, digit), link(a, c, digit, true), link(b, d, digit, true)],
       description: `The only places for ${digit} in ${list.format(bases.map(houseName))} lie in ${list.format(covers.map(houseName))}.`,
-      reason: `If ${cellName(a)} is ${digit}, the other ${digit} goes in ${cellName(d)}. If ${cellName(b)} is ${digit}, the other goes in ${cellName(c)}. Both arrangements use up the ${digit}s in ${list.format(covers.map(houseName))}.`,
+      reason: `If ${cellName(a)} is ${digit}, the other ${digit} goes in ${cellName(d)}. If ${cellName(b)} is ${digit}, the other goes in ${cellName(c)}. Either arrangement supplies ${list.format(covers.map(houseName))} with one ${digit} each.`,
     }
   }
   if ('complex-fish' in evidence) {
@@ -196,8 +196,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     return {
       houses: bases, otherHouses: covers, cells: candidates.map(({ cell }) => cell), candidates,
       accent: fins.length ? { candidates: marks(fins, [digit]), label: 'Fin candidate' } : undefined,
-      description: `For digit ${digit}, compare the ${bases.length} base houses (${baseNames}) with the ${covers.length} cover houses (${coverNames}).`,
-      reason: `Count a placement once for each selected house it belongs to. Each crossed-out candidate counts toward more covers than bases.${fins.length ? ' Each target sees every fin, so placing a target rules out all candidates that could balance the counts.' : ' Every other candidate counts toward at least as many covers as bases, so placing a target would make the totals unequal.'}`,
+      description: `For ${digit}, the bases are ${baseNames}. The covers are ${coverNames}.`,
+      reason: `Each base needs one copy, and each cover has room for one. A crossed-out digit uses more covers than it fills bases.${fins.length ? ' Each target sees every fin. Placing it removes every chance to balance that count.' : ' No other candidate can fill the extra base that this leaves.'}`,
     }
   }
   if ('fish' in evidence) {
@@ -213,11 +213,11 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     })
     const single = singleBase && candidates.find(({ cell }) => houseCells(singleBase).includes(cell))
     const description = fins.length
-      ? `In ${baseNames}, the only ${digit}s outside ${coverNames} are the fins at ${list.format(fins.map(cellName))}.${single && singleBase ? ` Set those fins aside and ${cellName(single.cell)} is the only place left for ${digit} in ${houseName(singleBase)}.` : ''}`
+      ? `In ${baseNames}, the extra candidates for ${digit} outside ${coverNames} are the fins at ${list.format(fins.map(cellName))}.${single && singleBase ? ` Set those fins aside and ${cellName(single.cell)} is the only place left for ${digit} in ${houseName(singleBase)}.` : ''}`
       : `In ${baseNames}, every candidate for ${digit} lies in ${coverNames}.`
     const reason = fins.length
-      ? `If ${digit} goes in a fin, every crossed-out ${digit} sees it in the same box. If ${digit} goes in none of the fins, the ${baseType} use up the ${digit}s in ${coverNames} and rule out the same candidates.`
-      : `The ${baseType} need ${bases.length} copies of ${digit}, each in a different crossing line. Those lines can get their ${digit}s only from the starting ${baseType}.`
+      ? `If any fin is ${digit}, its box rules out the marked removals. If none is ${digit}, the base ${baseType} need every cover and rule out those same candidates.`
+      : `The ${baseType} need ${bases.length} copies of ${digit}, each in a different crossing line. Each crossing line must get its ${digit} from one of the base ${baseType}.`
     return {
       houses: bases, otherHouses: covers, cells: [...candidates.map(({ cell }) => cell), ...fins], candidates,
       accent: fins.length ? { candidates: marks(fins, [digit]), label: 'Fin candidate' } : undefined, description, reason,
@@ -230,8 +230,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     return {
       houses: links.map(({ house }) => house), cells, candidates: marks(cells, [digit]),
       links: [...links.map(({ cells: [a, b] }) => link(a, b, digit)), link(bridge[0], bridge[1], digit, true)],
-      description: `${capital(list.format(links.map(({ house }) => houseName(house))))} each have two places for ${digit}. The dashed link joins ${cellName(bridge[0])} and ${cellName(bridge[1])}, which see each other.`,
-      reason: `If ${cellName(outer[0])} loses ${digit}, ${digit} must go in ${cellName(bridge[0])}. This rules out ${digit} in ${cellName(bridge[1])} and forces it into ${cellName(outer[1])}. ${cellName(first.cell)} sees both far ends.`,
+      description: `${capital(list.format(links.map(({ house }) => houseName(house))))} each have two places for ${digit}. The dashed link joins ${cellName(bridge[0])} and ${cellName(bridge[1])} in ${houseName(sharedHouse(bridge)!)}.`,
+      reason: `If ${cellName(outer[0])} loses ${digit}, ${digit} must go in ${cellName(bridge[0])}. This rules out ${digit} in ${cellName(bridge[1])} and forces it into ${cellName(outer[1])}. Either far end rules out ${digit} in ${cellName(first.cell)}.`,
     }
   }
   if ('empty-rectangle' in evidence) {
@@ -248,7 +248,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       houses: [{ box }, pair.house], cells: [...cells, a, b], candidates: marks([...cells, a, b], [digit]),
       links: [link(a, b, digit), link(near, closest, digit, true, true)],
       description: `In box ${box + 1}, ${digit} can go only on row ${row + 1} or column ${column + 1}. Placing ${digit} in ${cellName(near)} rules it out in ${list.format(blocked.map(cellName))} along the arrow.`,
-      reason: `If ${cellName(far)} is ${digit}, ${cellName(first.cell)} loses it. If ${cellName(near)} is ${digit}, the ${digit} in box ${box + 1} must go on ${otherArm}. ${cellName(first.cell)} loses ${digit} in that case too.`,
+      reason: `If ${cellName(far)} is ${digit}, ${cellName(first.cell)} loses it. If ${cellName(near)} is ${digit}, box ${box + 1} needs its ${digit} in ${otherArm}. That line also rules out ${digit} in ${cellName(first.cell)}.`,
     }
   }
   if ('wing' in evidence) {
@@ -258,7 +258,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     return {
       cells, candidates: marks(cells, [x, y, z]),
       links: [link(pivot, a, x, true), link(pivot, b, y, true)],
-      description: `${cellName(pivot)} shares ${x} with ${cellName(a)} and ${y} with ${cellName(b)}. The two wing cells share ${z}.`,
+      description: `${cellName(pivot)} shares ${x} with ${cellName(a)} and ${y} with ${cellName(b)}. Both wings also allow ${z}.`,
       reason: technique === 'xyz-wing'
         ? `${why} The pivot can also be ${z}. ${cellName(first.cell)} sees all three cells.`
         : `${why} ${cellName(first.cell)} sees both wings.`,
@@ -294,7 +294,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       cells, candidates: marks(cells, restricted),
       mainLabel: 'Digits that cannot repeat',
       accent: unrestricted === null ? undefined : { candidates: marks(cells, [unrestricted]), label: 'Digit the wing must use' },
-      description: `The four highlighted cells have only four candidate digits between them. They are ${list.format(digits.map(String))}.`,
+      description: `The four wing cells have just four possible digits between them, ${list.format(digits.map(String))}.`,
       ...explainSteps([
         [...limits, 'If you place one of these digits in a wing cell, it rules out the same digit in the other wing cells.'].join(' '),
         ...blocked,
@@ -311,7 +311,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     return {
       candidates, cells: candidates.map(({ cell }) => cell), links,
       description: `Follow the links from ${candidateName(start)} to ${candidateName(end)}.`,
-      reason: `Cross out ${candidateName(start)} for the sake of the proof. The first solid link forces ${candidateName(chain[0].to)}. Alternate placing and crossing out the next candidate until you reach ${candidateName(end)}, which must be placed. ${cellName(first.cell)} sees both ends.`,
+      reason: `Suppose ${cellName(start.cell)} cannot be ${start.digit}. The first strong link forces ${candidateName(chain[0].to)}. The alternating links then force ${candidateName(end)}. Either end rules out ${candidateName(first)}.`,
     }
   }
   if ('inference' in evidence) {
@@ -344,7 +344,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     })
     const setNames = (cells: number[]) => list.format(cells.map(cellName))
     const alsSteps = [...new Set([
-      ...alsLinks.map(({ set, digits: [a, b] }) => `The set at ${setNames(set.cells)} can skip only one digit. It must use ${a} or ${b}.`),
+      ...alsLinks.map(({ set, digits: [a, b] }) => `The set at ${setNames(set.cells)} can omit only one digit. At least one of ${a} and ${b} must appear there.`),
       ...cellLinks.map(({ evidence, inside, forced, blocked }) =>
         `If the set at ${setNames(evidence.set.cells)} skips ${inside.digit}, it must use ${list.format(blocked.map(String))}. That forces ${candidateName(forced)}.`),
     ])]
@@ -357,14 +357,14 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const firstName = inferenceName(start)
     const second = inferenceName(chain[0].to)
     const group = nodes.find(node => !('candidate' in node))
-    const groupNote = group ? ` The marked group is true if you place ${inferenceName(group)}.` : ''
+    const groupNote = group ? ` Read the marked group as “${inferenceName(group)}.”` : ''
     if (technique.includes('discontinuous-')) {
       const assumed = chain[0].strength === 'weak' ? 'true' : 'false'
       const other = assumed === 'true' ? 'false' : 'true'
       return {
         ...pattern,
         description: `Start at ${firstName}. Follow the alternating links back to the same candidate.${groupNote}`,
-        ...explainInference(`Suppose ${firstName} is ${assumed}. The first link makes ${second} ${other}. By the time you come back, the loop makes ${firstName} ${other}. The starting assumption breaks.`),
+        ...explainInference(`Suppose ${firstName} is ${assumed}. The first link makes ${second} ${other}. By the time you come back, the loop makes ${firstName} ${other}. The starting candidate must be ${other}.`),
       }
     }
     if (technique.includes('continuous-')) {
@@ -383,7 +383,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
           const members = marks(set.cells, [first.digit])
           return members.length && members.every(member => candidatesConflict(member, first)) ? [{ members, set, outside }] : []
         })
-        const reason = !lock ? 'The alternating loop makes exactly one end of each link true.'
+        const reason = !lock ? 'Exactly one end of each link in this loop must be true.'
           : lock.outside
             ? `Exactly one end of the link at ${setNames(lock.set.cells)} is true. Either way, the set loses one other candidate digit. The set must use ${first.digit} in either case.`
             : `The loop puts exactly one of the two linked digits in the set at ${setNames(lock.set.cells)}. The set must use every other digit, including ${first.digit}.`
@@ -399,14 +399,14 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       return {
         ...pattern,
         description: `The links alternate all the way around the loop, including at ${firstName}.${groupNote}`,
-        ...explainInference(`If you rule out ${left}, the rest of the loop forces ${right}. ${capital(candidateName(first))} conflicts with both. Use the other dashed links to check the remaining removals.`),
+        ...explainInference(`If you rule out ${left}, the rest of the loop forces ${right}. ${capital(candidateName(first))} conflicts with both. Check each other removal against the weak link it blocks.`),
       }
     }
     const last = inferenceName(closing.to)
     return {
       ...pattern,
       description: `The chain starts and ends with a solid link, at ${firstName} and ${last}.${groupNote}`,
-      ...explainInference(`If you rule out ${firstName}, the first link forces ${second}. Follow the rest of the chain to force ${last}. Any candidate that conflicts with both ends is ruled out either way.`),
+      ...explainInference(`If you rule out ${firstName}, the first link forces ${second}. Follow the rest of the chain to force ${last}. At least one end must be true. Remove any candidate that conflicts with both ends.`),
     }
   }
   if ('coloring' in evidence) {
@@ -419,21 +419,21 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       const a = blue.find((candidate) => candidatesConflict(candidate, first))
       const b = amber.find((candidate) => candidatesConflict(candidate, first))
       explanation = a && b
-        ? `If you place the blue candidates, ${candidateName(a)} rules out ${candidateName(first)}. If you place the amber candidates, ${candidateName(b)} rules it out.`
+        ? `In the blue case, ${candidateName(a)} rules out ${candidateName(first)}. In the amber case, ${candidateName(b)} rules it out.`
         : `${capital(candidateName(first))} conflicts with a candidate of each color. One of those colors must be placed.`
     } else if ('same-color-conflict' in reason) {
       const [a, b] = reason['same-color-conflict']
-      explanation = `The ${group(a)} candidates include ${candidateName(a)} and ${candidateName(b)}. Placing both would break a rule, so cross out every ${group(a)} candidate in this set.`
+      explanation = `The ${group(a)} candidates include ${candidateName(a)} and ${candidateName(b)}. The two conflict ${a.cell === b.cell ? 'in the same cell' : `in ${houseName(sharedHouse([a.cell, b.cell])!)}`}. Remove every ${group(a)} candidate in this connected set.`
     } else if ('emptied-cell' in reason) {
-      explanation = `Placing the ${group(first)} candidates leaves ${cellName(reason['emptied-cell'])} with no digit. Erase that color.`
+      explanation = `Placing the ${group(first)} candidates leaves ${cellName(reason['emptied-cell'])} with no digit. Remove that color throughout this connected set.`
     } else {
       const { house, digit } = reason['emptied-house']
-      explanation = `Placing the ${group(first)} candidates leaves ${houseName(house)} with no place for ${digit}. Erase that color.`
+      explanation = `Placing the ${group(first)} candidates leaves ${houseName(house)} with no place for ${digit}. Remove that color throughout this connected set.`
     }
     return {
       candidates: blue, mainLabel, accent, cells: [...blue, ...amber].map(({ cell }) => cell),
       links: links.map(({ from, to }) => ({ from, to, color: patternColor })),
-      description: 'Each solid link joins two candidates of opposite colors. If you place one, the other is ruled out.',
+      description: 'Exactly one candidate on each colored link is true. Within this connected set, either all blue candidates or all amber candidates are true.',
       reason: explanation,
     }
   }
@@ -442,7 +442,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     return {
       cells: [cell], houses, candidates: marks([cell], digits),
       description: `${cellName(cell)} is the only empty cell with three candidates. ${first.digit} occurs three times in each of its three houses.`,
-      reason: `Erase ${first.digit} from ${cellName(cell)} in your head. Every empty cell would have two choices and the grid would fit the pattern that allows a swap. Since the puzzle has one solution, that ${first.digit} has to stay.`,
+      reason: `Suppose ${cellName(cell)} loses ${first.digit}. Each empty cell then has two choices. Every missing digit has two places in each house that needs it. Swapping the choices gives a second solution. This puzzle has one solution, so the cell needs ${first.digit}.`,
     }
   }
   if ('forcing' in evidence) {
@@ -455,16 +455,20 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       const effects = [assumption, ...steps.map(({ effect }) => effect)]
       let conclusion = `This choice also ${'place' in firstAction ? 'forces' : 'rules out'} ${candidateName(first)}.`
       if (conflict && 'opposite' in conflict) {
-        conclusion = `The steps both force and rule out ${candidateName(effects[conflict.opposite[0]].candidate)}.`
+        conclusion = `This trial both forces and rules out ${candidateName(effects[conflict.opposite[0]].candidate)}.`
       } else if (conflict && 'exhausted' in conflict) {
         const { scope } = conflict.exhausted
         if (typeof scope === 'object') {
-          if ('cell' in scope) conclusion = `${cellName(scope.cell)} has no candidate left.`
+          if ('cell' in scope) conclusion = `This trial leaves ${cellName(scope.cell)} without a candidate.`
           if ('house' in scope) conclusion = `There is no place for ${scope.house.digit} in ${houseName(scope.house.house)}.`
         }
       }
+      if (conflict && 'cases' in conflict) {
+        const inner = conflict.cases.map(({ branch }) => statement(branch.assumption))
+        conclusion = `The two inner cases are “${inner[0]}” and “${inner[1]}.” Both lead to a conflict, so the starting assumption is impossible.`
+      }
       return {
-        assumption: `Assume ${statement(assumption)}.`,
+        assumption: `Suppose ${statement(assumption)}.`,
         steps: steps.map(({ effect, causes }) => `${capital(statement(effect))} (from ${list.format(causes.map((index) => index === 0 ? 'the assumption' : `step ${index}`))}).`),
         conclusion,
       }
@@ -482,7 +486,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
   if ('unique-rectangle' in evidence) {
     const { corners, digits, support } = evidence['unique-rectangle']
     const pair = list.format(digits.map(String))
-    const description = `${list.format(corners.map(cellName))} form a rectangle in two boxes. Each corner has candidates ${pair}.`
+    const description = `${list.format(corners.map(cellName))} form a rectangle in two boxes. If all four corners use only ${pair}, swapping those digits gives a second solution.`
     if ('extra-candidates' in support) {
       const extras = support['extra-candidates']
       const reason = technique === 'unique-rectangle-1'
@@ -524,7 +528,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const pattern = {
       cells, candidates: sets.flatMap(({ cells, digits }) => marks(cells, digits)),
       mainLabel: 'Set candidate',
-      description: 'Each set fits in one row, column, or box. Placing a digit in one cell rules it out in the rest of that set. Each set has one more candidate digit than cells, so it leaves out exactly one digit.',
+      description: 'Each set shares one house, so its cells need different digits. Each set has one extra candidate digit and must use all the others.',
     }
     if (sets.length === 2) {
       const setup = `Set 1 is at ${setLocation(0)}. Set 2 is at ${setLocation(1)}.`
@@ -565,7 +569,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       cells: [stem, ...petals.flatMap(({ set }) => set.cells)],
       candidates: petals.flatMap(({ set }) => marks(set.cells, set.digits)),
       accent: { candidates: marks([stem], stemDigits), label: 'Starting cell candidate' },
-      description: `Start at ${cellName(stem)}. Each choice there blocks one digit in a set with one extra candidate digit. That set must use all its remaining digits.`,
+      description: `The stem is ${cellName(stem)}. Each of its candidates rules out one digit throughout its own petal. That petal then needs all its other digits.`,
       ...explainSteps([
         ...petals.map(({ digit, set }) => `If ${cellName(stem)} is ${digit}, that rules out ${digit} in the set at ${list.format(set.cells.map(cellName))}. That set must use ${first.digit}.`),
         explainRemoval(first, petals.flatMap(({ set }) => marks(set.cells, [first.digit]))),
@@ -577,8 +581,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     return {
       houses: [line.house, block.house], cells: [...intersection, ...line.cells, ...block.cells],
       candidates: [...marks(intersection, digits), ...marks(line.cells, line.digits), ...marks(block.cells, block.digits)],
-      description: `${list.format(intersection.map(cellName))} lie in both ${houseName(line.house)} and ${houseName(block.house)}. The sets to either side need different digits from those cells' candidates.`,
-      reason: 'The two side sets use up all the spare digits from the intersection. Every remaining digit must go in the intersection itself. That locks the crossed-out digits into the highlighted cells of their respective houses.',
+      description: `${list.format(intersection.map(cellName))} lie in both ${houseName(line.house)} and ${houseName(block.house)}. The set in ${houseName(line.house)} allows ${list.format(line.digits.map(String))}. The set in ${houseName(block.house)} allows ${list.format(block.digits.map(String))}.`,
+      reason: 'Each side set uses different digits from the overlap. Together they account for all the spare choices. The highlighted cells must supply the line digits to the line and the box digits to the box.',
     }
   }
   if ('exocet' in evidence) {
@@ -587,8 +591,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     return {
       houses: crossLines, cells: [...bases, ...targets], candidates: marks(bases, digits),
       accent: { candidates: marks(targets, digits), label: 'Target candidate' },
-      description: `Every digit placed at ${list.format(bases.map(cellName))} must also occur in all three cross-lines (${list.format(crossLines.map(houseName))}). Cells that see both bases lose that digit. The remaining places outside ${list.format(targets.map(cellName))} fit in at most two houses.`,
-      reason: 'Each base digit therefore needs one of the two target cells. Check the assignments where both base digits can fit on all three lines. A crossed-out candidate either never appears in those assignments or would block a copy required by every assignment.',
+      description: `Each digit in the base pair at ${list.format(bases.map(cellName))} must appear on all three crossing lines, ${list.format(crossLines.map(houseName))}. Cells that see both bases lose that digit. The remaining places outside ${list.format(targets.map(cellName))} fit in at most two houses.`,
+      reason: 'At most two copies fit outside the targets. Each base digit needs a third copy in a target. A crossed-out candidate cannot occur with any valid arrangement of the two base digits.',
     }
   }
   if ('sk-loop' in evidence || 'multi-sector-locked-sets' in evidence) {
@@ -599,8 +603,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     const linkDetails = list.format(links.map(({ house, digits }) => `${digits.join(', ')} in ${houseName(house)}`))
     return {
       cells, houses: links.map(({ house }) => house), candidates: marks(cells, DIGITS),
-      description: `Count one slot for each linked digit in its house (${linkDetails}). There are ${cells.length} slots for the ${cells.length} highlighted cells, and every candidate in those cells uses at least one slot.`,
-      reason: 'The highlighted cells must fill every slot. An outside candidate that uses a slot, or a candidate inside that uses two slots, would leave a cell without one.',
+      description: `Each digit in a linked house supplies one slot. The slots are ${linkDetails}. All ${cells.length} highlighted cells need a slot, and there are exactly ${cells.length}.`,
+      reason: 'The group needs every slot. An outside candidate that uses one leaves too few for the group. An inside candidate that uses two also leaves too few.',
     }
   }
   if (!('w-wing' in evidence)) return undefined
@@ -637,11 +641,111 @@ export function deductionResults(actions: readonly DeductionAction[]) {
   return results
 }
 
+// These proofs already include the cells and candidates to mark on the board.
+function explainProof({ evidence, actions, technique }: Deduction) {
+  const names = (cells: readonly number[]) => list.format(cells.map(cellName))
+  const digits = (values: readonly number[]) => list.format(values.map(String))
+  const houses = (groups: readonly House[]) => list.format(groups.map(houseName))
+  const action = actions[0]
+  const target = 'place' in action ? action.place : action.eliminate
+  if ('aligned-exclusion' in evidence) {
+    const { cases, cells } = evidence['aligned-exclusion']
+    const targetIndex = cells.indexOf(target.cell)
+    const trial = cases.find(c => c.digits[targetIndex] === target.digit)
+    const description = `Suppose ${cellName(target.cell)} is ${target.digit}. Try the choices in ${names(cells.filter(c => c !== target.cell))}.`
+    let example = ''
+    if (trial) {
+      const values = cells.map((cell, i) => `${cellName(cell)} = ${trial.digits[i]}`)
+      const problem = 'empty-cell' in trial.reason ? `${cellName(trial.reason['empty-cell'])} loses its last candidate`
+        : `${names(trial.reason['repeated-digit'])} repeat a digit in ${houseName(sharedHouse(trial.reason['repeated-digit'])!)}`
+      example = `For example, with ${list.format(values)}, ${problem}. `
+    }
+    return { description, reason: `${example}Every combination with ${candidateName(target)} breaks a rule.` }
+  }
+  if ('pattern-overlay' in evidence) {
+    const { scopes, geometry } = evidence['pattern-overlay']
+    const description = scopes.length === 1 ? `Trace all nine copies of ${scopes[0].digit}.`
+      : `Compare the complete layouts for ${digits(scopes.map(scope => scope.digit))}. Each cell can hold only one digit.`
+    const units = geometry ? 'each required house' : 'each row, column, and box'
+    const outcome = 'place' in action ? `Every possible arrangement puts ${candidateName(target)}.`
+      : `No possible arrangement includes ${candidateName(target)}.`
+    return { description, reason: `Each layout puts its digit once in ${units}. ${outcome}` }
+  }
+  if ('unique-loop' in evidence) {
+    const { digits: pair, sides, support } = evidence['unique-loop']
+    const description = `The ${sides[0].length + sides[1].length} cells of the loop share ${digits(pair)}. Using only those digits allows a swap and a second solution.`
+    let reason: string
+    if ('extra-candidates' in support) {
+      const extras = support['extra-candidates']
+      reason = extras.length === 1
+        ? `Only ${candidateName(extras[0])} can prevent the swap. That cell cannot use either loop digit.`
+        : `One of the extra candidates must be true. The possible extras are ${list.format(extras.map(c => candidateName(c)))}.`
+    } else if ('strong-links' in support) {
+      const { digit, houses: linked } = support['strong-links']
+      reason = `Only the two cells with extras can supply ${digit} in ${houseName(linked[0])}. One needs ${digit}, so the other must use an extra to prevent the swap.`
+    } else if ('hidden-subset' in support) {
+      const { cells, digits: locked, house } = support['hidden-subset']
+      reason = `The loop needs an extra digit. In ${houseName(house)}, that reserves ${names(cells)} for digits from ${digits(locked)}. Remove their other candidates.`
+    } else {
+      const { cells, digits: locked } = support.subset
+      reason = `At least one loop cell must use an extra digit. Count those cells as one slot alongside ${names(cells)}. These slots need ${digits(locked)}.`
+    }
+    return { description, reason }
+  }
+  if ('tridagon' in evidence) {
+    const { digits: core, guardians, branches } = evidence.tridagon
+    const description = `The twelve marked cells cannot all use just ${digits(core)}. At least one extra candidate must be true.`
+    const reason = branches.length ? `The guardian trials ${'place' in action ? 'force' : 'rule out'} ${candidateName(target)}.`
+      : guardians.length === 1 ? `The only extra candidate is ${candidateName(guardians[0])}. It must be true.`
+        : `The extra candidates are ${list.format(guardians.map(c => candidateName(c)))}. The target conflicts with all of them.`
+    return { description, reason }
+  }
+  if ('kraken-fish' in evidence) {
+    const { digit, bases, covers } = evidence['kraken-fish']
+    const description = `For ${digit}, the bases are ${houses(bases)}. The covers are ${houses(covers)}.`
+    const reason = technique === 'kraken-fish-1'
+      ? `Without the fins, the fish rules out ${candidateName(target)}. Each true fin starts a chain that rules it out too.`
+      : `At least one of the fish placements or fins must be true. Every one starts a chain that rules out ${candidateName(target)}.`
+    return { description, reason }
+  }
+  if ('firework' in evidence) {
+    const { pivots, wings } = evidence.firework
+    const description = pivots.map(p => `Each of ${digits(p.digits)} must appear at ${cellName(p.cell)} or in a wing.`).join(' ')
+    return { description, reason: `The wings are ${names(wings)}. Together the pivots and wings need all their places for the Firework digits.` }
+  }
+  if ('firework-w-wing' in evidence) {
+    const { pivot, bivalue, digits: pair } = evidence['firework-w-wing']
+    return { description: `${names(bivalue)} each allow only ${digits(pair)}.`,
+      reason: `If ${cellName(target.cell)} is ${target.digit}, both cells must use the other digit. Both Firework digits then lose their wing places and need ${cellName(pivot)}.` }
+  }
+  if ('firework-l-wing' in evidence) {
+    const { pivot, link, linked_digit: digit, wings } = evidence['firework-l-wing']
+    return { description: `${capital(houseName(link.house))} has just two places for ${digit}, ${names(link.cells)}.`,
+      reason: `If ${cellName(target.cell)} is ${target.digit}, the link forces ${digit} into the other wing. Neither ${cellName(wings[0])} nor ${cellName(wings[1])} can then supply a Firework digit. Both Firework digits then need the pivot at ${cellName(pivot)}.` }
+  }
+  if ('firework-als-wing' in evidence) {
+    const { bivalue, pivots, digits: pair } = evidence['firework-als-wing']
+    return { description: `${cellName(bivalue)} allows only ${digits(pair)}. Its digit blocks every wing place for that digit in both Fireworks.`,
+      reason: `Both pivots, ${names(pivots)}, must use that digit. The other digit needs a wing in each Firework. Neither choice allows the crossed-out candidates.` }
+  }
+  if ('grouped-exocet' in evidence) {
+    const { bases, crossLines } = evidence['grouped-exocet']
+    return { description: `Trace the digits from ${names(bases)} across ${houses(crossLines)}.`,
+      reason: 'Each base digit needs three copies on those lines. At most two fit outside the targets, so at least one target place must hold it.' }
+  }
+  if ('double-exocet' in evidence || 'grouped-double-exocet' in evidence) {
+    const { components: [a, b], crossLines } = 'double-exocet' in evidence ? evidence['double-exocet'] : evidence['grouped-double-exocet']
+    return { description: `The bases at ${names(a.bases)} and the bases at ${names(b.bases)} both use ${houses(crossLines)}.`,
+      reason: 'Both base pairs must fit their targets on the same crossing lines. No way to fill both patterns supports a crossed-out candidate.' }
+  }
+}
+
+
 export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }: Pick<LessonExample, 'deduction' | 'candidates' | 'pattern'>,
   proof = lessonPattern, { showActions = true } = {}) {
   const pattern: Pattern | undefined = 'variant' in deduction.evidence
     ? proof && { ...proof, ...deduction.evidence.variant }
-    : describePattern(deduction, candidates) ?? (proof && { ...proof, description: '', reason: '' })
+    : describePattern(deduction, candidates) ?? (proof && { ...proof, description: '', reason: '', ...explainProof(deduction) })
   if (!pattern) throw new Error(`Missing diagram for ${deduction.technique}`)
   const cells = new Map<number, CellAnnotation>()
   const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()

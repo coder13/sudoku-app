@@ -1216,7 +1216,12 @@ test('every hint technique links to a Learn article with a starting scan and a w
   for (const article of articles) {
     assert.ok(article.blocks.some((block) => block.type === 'heading' && block.id === 'where-to-start'), article.id)
     for (const block of article.blocks) {
-      if (block.type === 'diagram') assert.ok(lessonDiagram(lessonExample(examples[block.example])).results.length, block.example)
+      if (block.type === 'diagram') {
+        const diagram = lessonDiagram(lessonExample(examples[block.example]))
+        assert.ok(diagram.results.length, block.example)
+        assert.ok(diagram.description.trim(), block.example)
+        assert.ok(diagram.reason.trim(), block.example)
+      }
       if (block.type !== 'practice') continue
       for (const { example } of block.drills) {
         const { practice } = lessonExample(examples[example])
