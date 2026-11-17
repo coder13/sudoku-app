@@ -1,4 +1,4 @@
-import { Link, useMatch, useNavigate } from '@tanstack/react-router'
+import { Link, useMatch, useNavigate, useRouterState } from '@tanstack/react-router'
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Play, Plus,
@@ -22,6 +22,7 @@ import type { PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
 import { isSettingsSection, Settings } from './Settings'
+import { StartupPuzzle } from './StartupPuzzle'
 import { usePageAppearance } from './usePageAppearance'
 import { usePuzzleGeneration } from './usePuzzleGeneration'
 import { Worktable, type WorktableActions } from './Worktable'
@@ -78,6 +79,8 @@ const pendingWorkspaceGame = { ...makeGame('pending-workspace', 'New puzzle', EM
   paused: true, difficulty: 'easy' as const, score: 0 }
 
 export function SudokuShell({ children }: { children: ReactNode }) {
+  const href = useRouterState({ select: (state) => state.location.href })
+  const initialHref = useRef(href)
   const settingsRoute = Boolean(useMatch({ from: '/settings', shouldThrow: false }))
   const playRoute = Boolean(useMatch({ from: '/', shouldThrow: false }))
   const playing = playRoute || settingsRoute
@@ -121,7 +124,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const nextColorMode = COLOR_MODE_ORDER[(colorModeIndex + 1) % COLOR_MODE_ORDER.length]
   const ColorModeIcon = appearance.colorMode === 'system' ? Monitor : appearance.colorMode === 'light' ? Sun : Moon
   const close = () => setPanel(null)
-  usePageAppearance(appearance)
+  usePageAppearance(appearance, workspaceReady)
 
   function cycleColorMode() {
     setAppearance({ ...appearance, colorMode: nextColorMode })
@@ -366,7 +369,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   </div>
 
   return (
-    <div className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}>
+    <div className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
+      data-initial-page={href === initialHref.current || undefined}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
           <Link to="/" className="wordmark" onClick={() => setMenuOpen(false)}>
@@ -441,14 +445,13 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       <PuzzlesContent.Provider value={{
         games, active, difficulty, setDifficulty, newPuzzlePreference, rememberNewPuzzle, preferencesReady: workspaceReady, onCreatePuzzle: createPuzzle,
       }}>
-      <PlayContent.Provider value={playing && !workspaceReady ? (
-        <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
-      ) : playing ? (
+      <PlayContent.Provider value={playing ? (
         <main className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace">
           {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}
           {linkError && <p className="workspace-error" role="alert">{linkError}</p>}
           <div className="workspace">
-            {game || !mobile ? (
+            {playRoute && (!workspaceReady || workspaceMode === 'advanced') && <StartupPuzzle />}
+            {workspaceReady && (game || !mobile ? (
               <Worktable game={game ?? pendingWorkspaceGame} placeholder={game ? undefined : emptyPuzzleContent} games={games} preferredDifficulty={difficulty}
                 modalOpen={panel !== null || menuOpen || resizeMode || settingsRoute}
                 advancedModes={advancedModes} appearance={appearance} highlighting={highlighting}
@@ -465,7 +468,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onStopPlaying={() => setPanel('stop')} />
             ) : (
               <section className="surface empty-board">{emptyPuzzleContent}</section>
-            )}
+            ))}
           </div>
         </main>
       ) : null}>

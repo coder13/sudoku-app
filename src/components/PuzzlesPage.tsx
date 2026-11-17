@@ -223,18 +223,20 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
   const section: Section | null = routeId === sectionRoutes.puzzles ? 'puzzles'
     : routeId === sectionRoutes.new ? 'new'
       : routeId === sectionRoutes.statistics ? 'statistics' : null
-  const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
-  const mobileNewPuzzle = mobile && section === 'new'
-  const screen = mobileNewPuzzle && preferencesReady
+  const routeSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
+  // A prerendered page is also served for direct links with search parameters.
+  const newPuzzleSearch = preferencesReady ? routeSearch : undefined
+  const screen = section === 'new'
     ? newPuzzleSearch?.step ?? (newPuzzlePreference ? 'start' : 'variant')
     : undefined
+  const mobileScreen = mobile ? screen : undefined
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference?.variant ?? 'classic'
-  const backToVariant = screen === 'difficulty' && (!newPuzzlePreference || newPuzzlePreference.variant !== variant)
-  const backToStart = newPuzzlePreference && (screen === 'variant' || screen === 'difficulty')
+  const backToVariant = mobileScreen === 'difficulty' && (!newPuzzlePreference || newPuzzlePreference.variant !== variant)
+  const backToStart = newPuzzlePreference && (mobileScreen === 'variant' || mobileScreen === 'difficulty')
 
   useEffect(() => {
-    if (screen) heading.current?.focus({ preventScroll: true })
-  }, [screen, variant])
+    if (mobileScreen) heading.current?.focus({ preventScroll: true })
+  }, [mobileScreen, variant])
 
   function play() {
     void navigate({ to: '/' })
@@ -252,7 +254,7 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
 
   function content(current: Section) {
     if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} select={selectPuzzle} manage={setManagingId} />
-    if (current === 'new') return preferencesReady && <NewPuzzleSection difficulty={difficulty}
+    if (current === 'new') return <NewPuzzleSection difficulty={difficulty}
       remembered={newPuzzlePreference} save={savePuzzlePreference} done={play} />
     return <Statistics games={games} />
   }
@@ -273,19 +275,19 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
         : backToStart ? <Link to="/puzzles/new" search={{}} replace
           className="icon-button puzzles-back" aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
           : section && <Link to="/puzzles" className="icon-button puzzles-back" aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}
-      <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{screen ? newPuzzleTitle[screen] : sectionItem?.label ?? 'Puzzles'}</h1>
+      <h1 id="puzzles-page-title" ref={heading} tabIndex={mobileScreen ? -1 : undefined}>{mobileScreen ? newPuzzleTitle[mobileScreen] : sectionItem?.label ?? 'Puzzles'}</h1>
     </header>
-    {!mobileNewPuzzle && <div className="main-menu-desktop">
+    <div className="main-menu-desktop">
       <nav className="main-menu-tabs" aria-label="Puzzles sections">
         {sections.map((item) => { const Icon = item.icon; return <Link key={item.id} to={sectionRoutes[item.id]}><Icon size={18} />{item.label}</Link> })}
       </nav>
       <div className="main-menu-panel motion-screen" key={section ?? 'overview'}>{section ? content(section) : <section className="puzzles-overview"><h2>Puzzles</h2><p>Continue solving, start a new puzzle, or review your statistics.</p>{navigation}</section>}</div>
-    </div>}
-    {(section !== 'new' || mobileNewPuzzle) && <div className="main-menu-mobile motion-screen" key={`mobile-${screen ?? section ?? 'overview'}`}>
-      {mobileNewPuzzle ? screen && <MobileNewPuzzle screen={screen} variant={variant} remembered={newPuzzlePreference}
+    </div>
+    <div className="main-menu-mobile motion-screen" key={`mobile-${screen ?? section ?? 'overview'}`}>
+      {screen ? <MobileNewPuzzle screen={screen} variant={variant} remembered={newPuzzlePreference}
         remember={rememberNewPuzzle} done={(preference) => { setDifficulty(preference.difficulty); play() }} onCreate={onCreatePuzzle} />
         : section ? content(section) : navigation}
-    </div>}
+    </div>
     <Outlet />
     {section === 'puzzles' && managing && <StopPlaying game={managing} close={() => setManagingId(null)} />}
   </main>

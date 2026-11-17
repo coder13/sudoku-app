@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AppearancePreferences } from '../sudoku/preferences'
 import { applyTheme } from '../sudoku/themes'
 
-export function usePageAppearance(appearance: AppearancePreferences) {
+export function usePageAppearance(appearance: AppearancePreferences, preferencesReady: boolean) {
   const [systemDark, setSystemDark] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   const colorMode = appearance.colorMode === 'system' ? (systemDark ? 'dark' : 'light') : appearance.colorMode
   const activeTheme = colorMode === 'dark' ? appearance.darkTheme : appearance.lightTheme
@@ -15,6 +15,7 @@ export function usePageAppearance(appearance: AppearancePreferences) {
     return () => query.removeEventListener('change', update)
   }, [])
   useEffect(() => {
+    if (!preferencesReady) return
     const root = document.documentElement
     root.dataset.colorMode = colorMode
     root.dataset.theme = activeTheme
@@ -24,5 +25,5 @@ export function usePageAppearance(appearance: AppearancePreferences) {
     const background = styles.getPropertyValue('--status-bar-bg').trim() || styles.getPropertyValue('--page-bg').trim()
     const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
     if (themeColor && background) themeColor.content = background
-  }, [activeTheme, colorMode])
+  }, [activeTheme, colorMode, preferencesReady])
 }

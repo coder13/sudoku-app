@@ -34,6 +34,7 @@ function prerenderPages() {
     '/settings/highlighting',
     '/settings/solving',
     '/settings/hints',
+    '/shortcuts',
     '/learn',
     ...[...lessonRoutes.keys()].map((id) => `/learn/${id}`),
   ].map((path) => ({ path }))
