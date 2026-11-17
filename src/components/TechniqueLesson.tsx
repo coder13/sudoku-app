@@ -14,6 +14,7 @@ import { LearnBreadcrumbs } from './LearnBreadcrumbs'
 import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
 import { ConceptCheck } from './ConceptCheck'
+import { FoundationVisual } from './FoundationVisual'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, LessonExample>
 
@@ -127,6 +128,7 @@ export function Block({ block, variant }: { block: LessonBlock; variant: string 
       <tbody>{block.rows.map((row, index) => <tr key={index}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody>
     </table></div>
     case 'concept-check': return <ConceptCheck block={block} />
+    case 'foundation-visual': return <FoundationVisual visual={block.visual} />
     case 'diagram': return <Diagram example={lessonExamples[block.example]} crop={block.region} copy={block.copy} />
     case 'practice': return <Practice block={block} variant={variant} />
   }

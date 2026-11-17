@@ -69,6 +69,22 @@ Beginner has a dedicated box Hidden Single lesson and detector. The existing `hi
 
 Foundation pages teach concepts before the techniques that require them. They have worked examples, tables, and short questions with explanations and a New example control. They do not introduce new generator techniques or change a puzzle's grade.
 
+Every foundation includes a visual walkthrough. Fundamentals introduces candidate slots, cell addresses, and the diagram key before its first solving example. The link lessons introduce solid and dashed lines. Chain lessons connect those lines to written notation and show each implication in order.
+
+| Mark | Meaning |
+| --- | --- |
+| Blue ring | Candidate in the main pattern |
+| Amber ring | Candidate in another group or role, not a truth value |
+| Red strike | Candidate ruled out; conditional while inside an assumption |
+| Green ring | Proved placement |
+| Solid line, `=` | Strong link: at least one endpoint is true |
+| Dashed line, `-` | Weak link: at most one endpoint is true |
+| Arrow | Direction of an implication; line style still gives its strength |
+
+The walkthroughs reuse `Board` and `BoardLinks`, including the same candidate slots and theme colors as later diagrams. Schematic examples state which candidates are omitted. Each conditional step names its assumption. Final steps restore unrelated branch marks and keep only proved results. Nested proof cards show which conclusions remain inside an outer assumption.
+
+Definitions live in `src/sudoku/foundation-visuals.json`. The lesson editor can insert and select these walkthroughs. Tests check link rules, visible endpoints, and final deductions across all possible fillings of the small examples. Captions reserve the height of the longest step, so the controls and surrounding article stay in place.
+
 | Level | Foundation pages | First uses |
 | --- | --- | --- |
 | Medium | Candidates and eliminations | Locked Candidates and subsets |

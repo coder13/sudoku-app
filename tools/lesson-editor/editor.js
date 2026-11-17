@@ -15,6 +15,7 @@ let content
 let saved
 let revision
 let examples
+let foundationVisuals
 let pageId = ''
 let activeBlock
 let preview
@@ -210,7 +211,7 @@ const input = (value, set, props = {}) => node('input', {
 })
 const panel = (title, ...children) => node('section', { className: 'panel' }, node('h2', {}, title), ...children)
 const buttons = (...items) => node('div', { className: 'inline-controls' }, ...items)
-const kinds = { text: 'Paragraph', heading: 'Heading', list: 'List', table: 'Table', 'concept-check': 'Concept check', diagram: 'Diagram', practice: 'Practice puzzle' }
+const kinds = { text: 'Paragraph', heading: 'Heading', list: 'List', table: 'Table', 'concept-check': 'Concept check', 'foundation-visual': 'Foundation visual', diagram: 'Diagram', practice: 'Practice puzzle' }
 
 function chooseBlock(block, scroll = false) {
   if (activeBlock !== block) {
@@ -240,13 +241,14 @@ function insertBlock(lesson, type) {
     { prompt: 'Second question', options: ['First answer', 'Second answer'], answer: 1, explanation: 'Why the second answer is correct.' },
   ] })
   if (type === 'diagram') block.example = lesson.blocks.find((item) => item.type === 'diagram')?.example ?? examples[0]
+  if (type === 'foundation-visual') block.visual = 'diagram-key'
   lesson.blocks.splice(lesson.blocks.indexOf(activeBlock) + 1, 0, block)
   changeBlock(block)
   chooseBlock(block)
 }
 
 function blockName(block) {
-  return block.title ?? block.caption ?? block.paragraphs?.[0] ?? block.items?.[0] ?? block.example ?? kinds[block.type]
+  return block.title ?? block.caption ?? block.paragraphs?.[0] ?? block.items?.[0] ?? block.example ?? foundationVisuals?.[block.visual] ?? kinds[block.type]
 }
 
 function structure(lesson) {
@@ -324,6 +326,11 @@ function blockDetails(lesson) {
     controls.push(field('Heading text', input(block.title, (value) => { block.title = value })))
   }
   if (block.type === 'diagram') controls.push(...diagramControls(block))
+  if (block.type === 'foundation-visual') {
+    const visual = node('select', {}, ...Object.entries(foundationVisuals).map(([id, title]) => new Option(title, id, false, id === block.visual)))
+    visual.onchange = () => { block.visual = visual.value; changeBlock(block) }
+    controls.push(field('Visual walkthrough', visual), node('p', {}, 'Diagram steps and proofs are maintained in src/sudoku/foundation-visuals.json.'))
+  }
   if (block.type === 'table') {
     controls.push(field('Caption', input(block.caption, (value) => { block.caption = value })))
     block.columns.forEach((value, index) => controls.push(field(`Column ${index + 1}`, input(value, (value) => { block.columns[index] = value }))))
@@ -422,6 +429,7 @@ try {
   content = data.content
   revision = data.revision
   examples = data.examples
+  foundationVisuals = data.foundationVisuals
   saved = structuredClone(content)
   updatePicker()
   renderInspector()

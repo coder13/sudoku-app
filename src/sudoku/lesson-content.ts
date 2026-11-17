@@ -1,5 +1,6 @@
 import type { CurrentDifficulty } from './difficulty.ts'
 import type { BoardRegion } from '../components/BoardAnnotations'
+import type { FoundationVisualId } from './foundation-visuals'
 
 type Reference = { label: string; href: string }
 export type Drill = { example: string; title: string }
@@ -21,6 +22,7 @@ export type LessonBlock =
   | { type: 'list'; items: string[] }
   | { type: 'table'; caption: string; columns: string[]; rows: string[][] }
   | { type: 'concept-check'; title: string; questions: ConceptQuestion[] }
+  | { type: 'foundation-visual'; visual: FoundationVisualId }
   | { type: 'diagram'; example: string; region?: BoardRegion; copy?: DiagramCopy }
   | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string }
 

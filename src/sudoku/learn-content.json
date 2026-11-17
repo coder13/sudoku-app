@@ -78,6 +78,21 @@
         ]
       },
       {
+        "type": "heading",
+        "id": "reading-diagrams",
+        "title": "Read the visual language"
+      },
+      {
+        "type": "text",
+        "paragraphs": [
+          "The same markings appear in our lessons and hints. Learn their shapes and labels before you use the colors to follow a proof."
+        ]
+      },
+      {
+        "type": "foundation-visual",
+        "visual": "diagram-key"
+      },
+      {
         "type": "diagram",
         "example": "naked-single",
         "region": {
@@ -446,6 +461,10 @@
                   "Every valid completion must put 8 there."
                 ]
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "candidate-elimination"
             },
             {
               "type": "heading",
@@ -873,6 +892,13 @@
               ]
             },
             {
+              "type": "text",
+              "paragraphs": [
+                "Our diagrams use solid lines for strong links and dashed lines for weak links. An arrow shows the direction of one implication.",
+                "Rings identify the linked candidates. Colors separate roles, not true and false. Each example states its temporary assumption before any conditional removal."
+              ]
+            },
+            {
               "type": "heading",
               "id": "weak-links",
               "title": "Weak: the two statements cannot both be true"
@@ -885,6 +911,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "weak-link"
+            },
+            {
               "type": "heading",
               "id": "strong-links",
               "title": "Strong: the two statements cannot both be false"
@@ -895,6 +925,10 @@
                 "If A is false, B must be true. If R4C2 and R4C8 are the only places for 5 in row 4, removing one forces the other.",
                 "This pair also has a weak link: the row cannot contain both 5s. A cell with exactly two candidates also has both properties. This is a dual link."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "strong-link"
             },
             {
               "type": "table",
@@ -1488,6 +1522,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "wing-cases"
+            },
+            {
               "type": "heading",
               "id": "check-all-targets",
               "title": "Check the target in every case"
@@ -1898,6 +1936,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "uniqueness-swap"
+            },
+            {
               "type": "heading",
               "id": "limits",
               "title": "Know when this argument applies"
@@ -2268,6 +2310,10 @@
               "paragraphs": [
                 "Give four candidate statements the names A, B, C, and D. Suppose their links are strong, weak, strong in that order."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "chain-walk"
             },
             {
               "type": "table",
@@ -2691,6 +2737,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "als-count"
+            },
+            {
               "type": "table",
               "caption": "Remove a digit from the whole set",
               "columns": [
@@ -2951,6 +3001,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "cell-link"
+            },
+            {
               "type": "heading",
               "id": "read-the-implications",
               "title": "Read the implications, not just the symbols"
@@ -2962,6 +3016,10 @@
                 "The equals sign here marks a strong link. It does not say the two candidates have equal values. A dash marks a conflict.",
                 "A dual link can supply either property. The symbol records the property used at that point in the chain."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "chain-walk"
             },
             {
               "type": "heading",
@@ -3239,6 +3297,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "grouped-link"
+            },
+            {
               "type": "table",
               "caption": "A group in a link",
               "columns": [
@@ -3495,6 +3557,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "rcc-link"
+            },
+            {
               "type": "table",
               "caption": "Check all occurrences",
               "columns": [
@@ -3749,6 +3815,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "contradiction"
+            },
+            {
               "type": "table",
               "caption": "Two ways to prove a result",
               "columns": [
@@ -3955,6 +4025,10 @@
                 "Suppose you are testing A. Inside that branch, both B and not-B force C. This proves C under A, not C on the original board.",
                 "To remove the outer assumption, show that A fails or that every outer case gives the same result."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "nested-branches"
             },
             {
               "type": "table",
