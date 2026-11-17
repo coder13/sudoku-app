@@ -26,12 +26,15 @@
   --topbar-height: 71px;
   --hint-card-width: 430px;
   --board-frame-limit: min(529px, max(240px, calc(100dvh - 240px)));
-  --board-motion: 200ms var(--motion-move);
   --puzzle-padding-inline: var(--space-12);
+  --motion-fast-duration: 110ms;
+  --motion-standard-duration: 150ms;
   --motion-move: cubic-bezier(.4, 0, .2, 1);
   --motion-enter: cubic-bezier(0, 0, .2, 1);
   --motion-exit: cubic-bezier(.4, 0, 1, 1);
   --motion-spring: cubic-bezier(.16, 1, .3, 1);
+  --board-mark-motion: var(--motion-fast-duration) var(--motion-move);
+  --board-shape-motion: var(--motion-standard-duration) var(--motion-move);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -774,7 +777,7 @@ svg { flex-shrink: 0; }
   grid-area: 1 / 1;
   min-width: 0;
   opacity: 1;
-  transition: opacity var(--board-motion);
+  transition: opacity var(--board-shape-motion);
 }
 .puzzle-pause-layer { z-index: 1; opacity: 0; pointer-events: none; }
 .puzzle-play-layers[data-paused="true"] .puzzle-live-layer { opacity: 0; pointer-events: none; }
@@ -936,7 +939,7 @@ svg { flex-shrink: 0; }
   grid-template-areas: ". columns" "rows board";
   width: var(--board-frame-width);
   margin: 0 auto;
-  transition: grid-template-columns var(--board-motion), grid-template-rows var(--board-motion);
+  transition: grid-template-columns var(--board-shape-motion), grid-template-rows var(--board-shape-motion);
 }
 .board-frame.guides-hidden { --board-guide-width: 0px; --board-guide-height: 0px; }
 .col-labels, .row-labels {
@@ -946,7 +949,7 @@ svg { flex-shrink: 0; }
   font-size: calc(11px * var(--board-font-scale, 1));
   font-weight: 720;
   text-align: center;
-  transition: color var(--board-motion), opacity var(--board-motion);
+  transition: color var(--board-mark-motion), opacity var(--board-mark-motion);
 }
 .guides-hidden > :is(.col-labels, .row-labels) { opacity: 0; }
 .col-labels { grid-area: columns; grid-template-columns: repeat(var(--board-columns, 9), 1fr); align-items: start; }
@@ -963,7 +966,7 @@ svg { flex-shrink: 0; }
   user-select: none;
   touch-action: manipulation;
   background: var(--board-bg);
-  transition: background-color var(--board-motion), border-color var(--board-motion);
+  transition: background-color var(--board-mark-motion), border-color var(--board-mark-motion);
 }
 .puzzle-mode-tab {
   --mode-tab-length: var(--space-28);
@@ -1035,7 +1038,7 @@ svg { flex-shrink: 0; }
   line-height: 1;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  transition: background-color var(--board-motion), border-color var(--board-motion), color var(--board-motion), box-shadow var(--board-motion);
+  transition: background-color var(--board-mark-motion), border-color var(--board-mark-motion), color var(--board-mark-motion), box-shadow var(--board-mark-motion);
 }
 .cell[data-box-edge] { border-right: 2px solid var(--grid-strong); }
 .grid-row[data-box-edge] .cell { border-bottom: 2px solid var(--grid-strong); }
@@ -1068,7 +1071,7 @@ svg { flex-shrink: 0; }
   inset: 0;
   pointer-events: none;
   box-shadow: inset 0 0 0 2px var(--annotation-outline, transparent);
-  transition: box-shadow var(--board-motion);
+  transition: box-shadow var(--board-shape-motion);
 }
 .cell:focus-visible { z-index: 1; outline-offset: -4px; }
 .cell[data-pointer-focused]:focus-visible { outline: none; }
@@ -1079,9 +1082,12 @@ svg { flex-shrink: 0; }
 .color-5 { --tone: #cce1fc; }
 .color-6 { --tone: #e3d2fa; }
 
-.cell-value, .center-marks { grid-area: 1 / 1; }
-:is(.cell-value, .center-marks, .variant-cage-total, .board-variant-clues, .board-links > g) {
-  transition: opacity var(--board-motion);
+.cell-value, .center-marks {
+  grid-area: 1 / 1;
+  transition: opacity var(--board-mark-motion);
+}
+:is(.variant-cage-total, .board-variant-clues, .board-links > g) {
+  transition: opacity var(--board-shape-motion);
 }
 .candidate-marks {
   position: absolute;
@@ -1126,15 +1132,16 @@ svg { flex-shrink: 0; }
 .board-candidate {
   position: relative;
   opacity: var(--board-mark-opacity, 1);
-  transition: opacity var(--board-motion), color var(--board-motion), background-color var(--board-motion), box-shadow var(--board-motion);
+  transition: opacity var(--candidate-fade-motion, var(--board-mark-motion)), color var(--board-mark-motion),
+    background-color var(--board-mark-motion), box-shadow var(--board-mark-motion);
 }
-.candidate-glyph { transition: color var(--board-motion), background-color var(--board-motion), box-shadow var(--board-motion); }
+.candidate-glyph { transition: color var(--board-mark-motion), background-color var(--board-mark-motion), box-shadow var(--board-mark-motion); }
 .cell [data-candidate-preview] { color: var(--dark-purple); --board-mark-opacity: .5; }
 [data-board-fade="exit"] { opacity: 0; pointer-events: none; }
 @starting-style {
   [data-board-fade="enter"] { opacity: 0; }
 }
-.board-candidate[data-mark] { color: var(--annotation-color); }
+.board-candidate[data-mark] { --candidate-fade-motion: var(--board-shape-motion); color: var(--annotation-color); }
 :is(.puzzle-stage, .chains-panel) {
   --chain-blue: #214b9c;
   --chain-orange: #a44b15;
@@ -1228,7 +1235,7 @@ svg { flex-shrink: 0; }
   translate: -50% -50%;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--board-motion);
+  transition: opacity var(--board-shape-motion);
 }
 .board-candidate::after {
   width: 1.35em;
@@ -1250,8 +1257,8 @@ svg { flex-shrink: 0; }
   pointer-events: none;
   z-index: 2;
 }
-.board-links line { transition: stroke var(--board-motion); }
-.board-links marker path { transition: fill var(--board-motion); }
+.board-links line { transition: stroke var(--board-shape-motion); }
+.board-links marker path { transition: fill var(--board-shape-motion); }
 .draft-tip { display: flex; align-items: center; justify-content: center; gap: var(--space-8); width: calc(var(--board-frame-width) - var(--board-guide-width)); margin: var(--space-18) auto 0; translate: var(--board-guide-offset) 0; color: var(--muted); font-size: 13px; }
 
 .workspace-controls { grid-area: controls; display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }

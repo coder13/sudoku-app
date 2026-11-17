@@ -1,9 +1,12 @@
-import { cloneElement, useEffect, useRef, useState, type ReactElement } from 'react'
+import { cloneElement, useEffect, useRef, useState, type ReactElement, type TransitionEvent } from 'react'
+
+const EXIT_CLEANUP_FALLBACK_MS = 250
 
 type FadeProps = {
   'data-board-fade'?: 'enter' | 'exit'
   'aria-hidden'?: boolean
   inert?: boolean
+  onTransitionEnd?: (event: TransitionEvent) => void
 }
 
 export type BoardMark = ReactElement<FadeProps>
@@ -37,11 +40,11 @@ export function BoardMarks({ items, group }: { items: BoardMark[]; group?: React
     }
     for (const item of exiting) {
       if (timers.current.has(item)) continue
-      // Leave a frame or two for the browser to start the 200 ms CSS transition.
+      // Clean up even when the browser skips an opacity transition.
       timers.current.set(item, window.setTimeout(() => {
         timers.current.delete(item)
         setExiting((current) => current.filter((mark) => mark !== item))
-      }, 250))
+      }, EXIT_CLEANUP_FALLBACK_MS))
     }
   }, [exiting])
 
@@ -54,7 +57,15 @@ export function BoardMarks({ items, group }: { items: BoardMark[]; group?: React
   }, [])
 
   const marks = [
-    ...exiting.map((item) => cloneElement(item, { 'data-board-fade': 'exit', 'aria-hidden': true, inert: true })),
+    ...exiting.map((item) => cloneElement(item, {
+      'data-board-fade': 'exit',
+      'aria-hidden': true,
+      inert: true,
+      onTransitionEnd: (event) => {
+        if (event.target !== event.currentTarget || event.pseudoElement || event.propertyName !== 'opacity') return
+        setExiting((current) => current.filter((mark) => mark !== item))
+      },
+    })),
     ...items.map((item) => cloneElement(item, { 'data-board-fade': entering.has(item.key) ? 'enter' : undefined })),
   ]
   return group && marks.length ? cloneElement(group, undefined, marks) : marks
