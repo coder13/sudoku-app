@@ -4,7 +4,12 @@ import { formatTime, type Game } from '../sudoku/game'
 import { cellReference, techniqueLabel, type CellReferenceStyle } from '../sudoku/hints'
 
 function actionTitle(entry: ActionHistoryEntry) {
-  const labels = { undo: 'Undo', redo: 'Redo', candidates: 'Filled candidates', singles: 'Filled singles', hint: 'Applied hint', recovery: 'Restored candidate' }
+  if (entry.kind === 'singles') {
+    const count = entry.changes.filter((change) => change.kind === 'entry' && change.after > 0).length
+    return `Filled ${count} single${count === 1 ? '' : 's'}`
+  }
+  if (entry.technique) return techniqueLabel(entry.technique)
+  const labels = { undo: 'Undo', redo: 'Redo', candidates: 'Filled candidates', hint: 'Applied hint', recovery: 'Restored candidate' }
   if (entry.kind !== 'edit') return labels[entry.kind]
   const placements = entry.changes.filter((change) => change.kind === 'entry')
   if (placements.length) {
@@ -27,6 +32,14 @@ function changeDetails(changes: readonly ActionChange[], style: CellReferenceSty
   return [...cells].map(([cell, edits]) => `${cellReference(cell, style, difficulty ?? undefined)}: ${edits.join(', ')}`).join(' · ')
 }
 
+function actionDetails(entry: ActionHistoryEntry, style: CellReferenceStyle, difficulty: Game['difficulty']) {
+  if (entry.kind === 'candidates') return null
+  if (entry.kind !== 'singles') return changeDetails(entry.changes, style, difficulty)
+  const singles = entry.changes.filter((change) => change.kind === 'entry' && change.after > 0)
+  const details = changeDetails(singles.slice(0, 3), style, difficulty)
+  return singles.length > 3 ? `${details} · and ${singles.length - 3} more` : details
+}
+
 export function ActionHistoryPanel({ entries = [], cellReferenceStyle = 'concise', difficulty }: {
   entries?: readonly ActionHistoryEntry[]
   cellReferenceStyle?: CellReferenceStyle
@@ -40,17 +53,19 @@ export function ActionHistoryPanel({ entries = [], cellReferenceStyle = 'concise
     </summary>
     <div className="completion-techniques-panel">
       {entries.length === 0 ? <p>No actions were recorded for this solve.</p>
-        : <ol aria-label="Solve actions">{entries.map((entry, index) => <li key={entry.id}>
-          <div className="action-history-heading">
-            <strong><span className="action-history-number">{index + 1}.</span> {actionTitle(entry)}</strong>
-            <span className="action-history-time" aria-label={`Solve time ${formatTime(entry.elapsed)}`}>{formatTime(entry.elapsed)}</span>
-          </div>
-          {entry.pending ? <small>Matching technique…</small>
-            : entry.matchFailed ? <small>Technique check unavailable</small>
-            : entry.technique ? <small className="action-history-technique">{entry.kind === 'hint' ? 'Hint' : 'Matches'}: {techniqueLabel(entry.technique)}</small>
+        : <ol aria-label="Solve actions">{entries.map((entry, index) => {
+          const details = actionDetails(entry, cellReferenceStyle, difficulty)
+          return <li key={entry.id}>
+            <div className="action-history-heading">
+              <strong className={entry.technique ? 'action-history-technique' : undefined}><span className="action-history-number">{index + 1}.</span> {actionTitle(entry)}</strong>
+              <span className="action-history-time" aria-label={`Solve time ${formatTime(entry.elapsed)}`}>{formatTime(entry.elapsed)}</span>
+            </div>
+            {entry.pending ? <small>Matching technique…</small>
+              : entry.matchFailed ? <small>Technique check unavailable</small>
               : entry.technique === null ? <small>No matching technique</small> : null}
-          {entry.changes.length > 0 && <small className="action-history-changes">{changeDetails(entry.changes, cellReferenceStyle, difficulty)}</small>}
-        </li>)}</ol>}
+            {details && <small className="action-history-changes">{details}</small>}
+          </li>
+        })}</ol>}
     </div>
   </details>
 }
