@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
-import type { DeductionAction, DeductionMatch } from '../src/sudoku/engine.ts'
-import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueTargetCount } from '../src/sudoku/puzzle-analysis.ts'
+import type { DeductionAction, DeductionMatch, HintChoice } from '../src/sudoku/engine.ts'
+import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueHintsFromMatches, techniqueTargetCount } from '../src/sudoku/puzzle-analysis.ts'
 
 function match(actions: DeductionAction[], techniques: string[]): DeductionMatch {
   const affectedCandidates = actions.map((action) => 'place' in action ? action.place : action.eliminate)
@@ -97,4 +97,35 @@ test('hide-zero filter retains pending techniques and scan failures', () => {
     'naked-single': { count: 0 }, 'hidden-single': { count: 0 },
     'x-wing': { count: 0 }, 'swordfish': { count: 0 }, 'xy-wing': { count: 0 },
   }, true), [])
+})
+
+test('technique hint navigation groups all eliminations from one pointing pattern', () => {
+  const first: HintChoice['evidence'] = {
+    intersection: { source: { box: 0 }, target: { row: 0 }, cells: [0, 1] },
+  }
+  const second: HintChoice['evidence'] = {
+    intersection: { source: { box: 1 }, target: { row: 1 }, cells: [12, 13] },
+  }
+  function withEvidence(actions: DeductionAction[], evidence: HintChoice['evidence']): DeductionMatch {
+    const found = match(actions, ['pointing'])
+    return { ...found, proofs: found.proofs.map((proof) => ({ ...proof, evidence })) }
+  }
+  const matches = [
+    withEvidence([{ eliminate: { cell: 3, digit: 2 } }], first),
+    withEvidence([{ eliminate: { cell: 4, digit: 2 } }], first),
+    withEvidence([{ eliminate: { cell: 3, digit: 2 } }], first),
+    withEvidence([{ eliminate: { cell: 17, digit: 5 } }], second),
+    match([{ place: { cell: 34, digit: 8 } }], ['naked-single']),
+  ]
+  const hints = techniqueHintsFromMatches(matches, 'pointing')
+  assert.equal(hints.length, 2)
+  assert.equal(hints[0].technique, 'pointing')
+  assert.deepEqual(hints[0].evidence, first)
+  assert.deepEqual(hints[0].actions, [
+    { eliminate: { cell: 3, digit: 2 } },
+    { eliminate: { cell: 4, digit: 2 } },
+  ])
+  assert.deepEqual(hints[1].evidence, second)
+  assert.deepEqual(hints[1].actions, [{ eliminate: { cell: 17, digit: 5 } }])
+  assert.deepEqual(techniqueHintsFromMatches(matches, 'xy-wing'), [])
 })
