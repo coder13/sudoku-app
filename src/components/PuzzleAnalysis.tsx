@@ -5,7 +5,7 @@ import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game
 import { techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
-import { analysisGroupsForCatalog, techniqueTargetCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
+import { analysisGroupsForCatalog, filterAnalysisGroups, techniqueTargetCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
 import { Modal } from './Modal'
 
 const SCAN_DELAY_MS = 180
@@ -72,6 +72,7 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
   const [retry, setRetry] = useState(0)
+  const [hideZero, setHideZero] = useState(false)
 
   useEffect(() => {
     if (!active) return
@@ -138,6 +139,7 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
   const results = scan?.key === snapshotKey ? scan.results : {}
   const completed = Object.keys(results).length
   const total = groups.reduce((count, group) => count + group.techniques.length, 0)
+  const visibleGroups = filterAnalysisGroups(groups, results, hideZero, solved)
 
   return (
     <div className="puzzle-analysis-content">
@@ -150,7 +152,13 @@ export function PuzzleAnalysisContents({ game, active = true }: { game: Game; ac
         {!solved && completed < total && <p className="dialog-status analysis-update-status" role="status">
           Scanned {completed} of {total} techniques…
         </p>}
-        <AnalysisTable groups={groups} results={results} solved={solved} />
+        <label className="analysis-zero-filter">
+          <input type="checkbox" checked={hideZero} onChange={(event) => setHideZero(event.target.checked)} />
+          Hide techniques with 0 candidates
+        </label>
+        {visibleGroups.length
+          ? <AnalysisTable groups={visibleGroups} results={results} solved={solved} />
+          : <p className="analysis-empty" role="status">No techniques with candidates.</p>}
         {!solved && completed === total && Object.values(results).some((result) => 'error' in result) &&
           <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Retry failed scans</button>}
       </>}
