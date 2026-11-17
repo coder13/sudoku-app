@@ -204,7 +204,7 @@ test('mixed imports preserve interleaved rule indices and explain every rule fam
     { type: 'extra-house', cells: [...WINDOKU_REGIONS[0].slice(1), WINDOKU_REGIONS[0][1]] },
     { type: 'thermometer', cells: [0, 81] },
     { type: 'arrow', circle: 4, cells: [4] },
-    { type: 'parity', parity: 'even', cells: [0] },
+    { type: 'parity', parity: 'neither', cells: [0] },
   ]) assert.equal(isPlayablePuzzle('mixed', { ...imported.variant.puzzle, rules: [...imported.variant.puzzle.rules!, invalid] }), false)
 })
 

@@ -34,6 +34,11 @@ function hasData(value: unknown) {
   return value !== undefined && value !== null && value !== false && value !== ''
 }
 
+const CLUE_STYLING = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
+function unsupportedClueStyling(settings: unknown) {
+  return hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !CLUE_STYLING.has(key)))
+}
+
 function standardRegion(cell: number) {
   return Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)
 }
@@ -139,8 +144,19 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
-    if (constraint.type === 'quadruple') {
+    if (!['region', 'difference', 'ratio', 'odd', 'even'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (constraint.type === 'odd' || constraint.type === 'even') {
+      if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
+      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
+      const cells: number[] = []
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Odd/Even cell.')
+        }
+        cells.push(segment.cells[0])
+      }
+      rules.push({ type: 'parity', cells, parity: constraint.type })
+    } else if (constraint.type === 'quadruple') {
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
           !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'digits') ||
@@ -187,9 +203,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
         ? { type: 'kropki', consecutive: marks }
         : { type: 'kropki', ratioTwo: marks })
     } else if (constraint.type === 'region') {
-      const styling = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
-      if (hasData(constraint.settings) && (!record(constraint.settings) ||
-        Object.keys(constraint.settings).some((key) => !styling.has(key)))) {
+      if (unsupportedClueStyling(constraint.settings)) {
         throw new Error('This Sudoku Coach extra region uses unsupported settings.')
       }
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no extra regions.')

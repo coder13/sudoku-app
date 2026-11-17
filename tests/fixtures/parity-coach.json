@@ -1,0 +1,79 @@
+{
+  "source": "https://sudoku.coach/js/jCfXtZs-1776367508519.js",
+  "retrieved": "2026-11-17",
+  "description": "Unmodified Odd and Even rule-help examples embedded in the public Coach serializer.",
+  "examples": [
+    {
+      "coach": "SCv7_32_f2e7qjhh1r13037shfjgp2829dbfg093t883b5j5l56qnl1086abvloh08328f7ptrmbnaq0gn9ob7o8o4digi5ssg6s4t9g81ucev2i50in55mearg09gap0fp5ht85iqac1g466jhvmom4d7l9mksb6mb3h8r0a6hbcplutbgqvqjvqmgsf23gko7rsraopp6dp0u17blouli7vf2f2ldjtk9buiio",
+      "data": {
+        "gridSize": 3,
+        "regions": [],
+        "givenConstraints": [
+          {
+            "id": 10,
+            "type": "odd",
+            "segments": [
+              {
+                "cells": [
+                  1
+                ],
+                "parameters": {}
+              },
+              {
+                "cells": [
+                  4
+                ],
+                "parameters": {}
+              },
+              {
+                "cells": [
+                  3
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          }
+        ],
+        "userDigits": "010350000",
+        "acid": 10
+      }
+    },
+    {
+      "coach": "SCv7_32_f2e7qjhr1r13035thfjgoadd32pc438oa63qhd9c9dmqg7430h8ut3h30g64gu7ivfceu590s7ss83s4q0th095ukg6e2f1q42v62egoai4ppd5h0ls8dk3p0ttdvr04q0me0813lnsbcj5o5hmunr672oiqta188qa5lnan3nvalvdf7ar1glaeuj0tf33icjh1c33usu3rrdth7ponltdc9tp62imi",
+      "data": {
+        "gridSize": 3,
+        "regions": [],
+        "givenConstraints": [
+          {
+            "id": 10,
+            "type": "even",
+            "segments": [
+              {
+                "cells": [
+                  1
+                ],
+                "parameters": {}
+              },
+              {
+                "cells": [
+                  4
+                ],
+                "parameters": {}
+              },
+              {
+                "cells": [
+                  3
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          }
+        ],
+        "userDigits": "020460000",
+        "acid": 10
+      }
+    }
+  ]
+}

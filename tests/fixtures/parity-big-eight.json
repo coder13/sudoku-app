@@ -1,0 +1,48 @@
+{
+  "title": "Big Eight \u2014 Even/Odd Sudoku by Thomas Snyder",
+  "source": "https://www.gmpuzzles.com/blog/2023/03/even-odd-sudoku-by-thomas-snyder-2/",
+  "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2023/230328-EvenOddSudoku-BigEight.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2023/230328-EvenOddSudoku-BigEight-soln.pdf",
+  "puzzle": {
+    "version": 1,
+    "givens": "030601020100000004000000000200000009000000000700000003000000000600000007050704060",
+    "rules": [
+      {
+        "type": "parity",
+        "cells": [
+          11,
+          12,
+          13,
+          19,
+          28,
+          38,
+          40,
+          42,
+          52,
+          61,
+          67,
+          68,
+          69
+        ],
+        "parity": "odd"
+      },
+      {
+        "type": "parity",
+        "cells": [
+          14,
+          15,
+          25,
+          34,
+          39,
+          41,
+          46,
+          55,
+          65,
+          66
+        ],
+        "parity": "even"
+      }
+    ]
+  },
+  "solution": "438691725129578634576243981215367849893412576764985213387156492642839157951724368"
+}

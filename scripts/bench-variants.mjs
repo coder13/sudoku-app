@@ -8,6 +8,7 @@ const fixtures = JSON.parse(await readFile(new URL('../crates/engine/benches/fix
 const mixed = JSON.parse(await readFile(new URL('../tests/fixtures/mixed-puzzles.json', import.meta.url), 'utf8'))
 const combined = JSON.parse(await readFile(new URL('../tests/fixtures/combined-families.json', import.meta.url), 'utf8'))
 const quadruple = JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-clover.json', import.meta.url), 'utf8'))
+const parity = JSON.parse(await readFile(new URL('../tests/fixtures/parity-big-eight.json', import.meta.url), 'utf8'))
 fixtures.push({
   name: 'x-killer', position: mixed['x-killer'].puzzle,
   template: { version: 1, givens: '0'.repeat(81), rules: [
@@ -19,6 +20,11 @@ fixtures.push({
   template: { version: 1, givens: '0'.repeat(81) },
   derivedClues: Array.from({ length: 64 }, (_, i) => ({ type: 'quadruple', topLeft: Math.floor(i / 8) * 9 + i % 8, clueSize: 4 })),
   givens: 0,
+}, {
+  name: 'parity', position: parity.puzzle,
+  template: { version: 1, givens: '0'.repeat(81) },
+  derivedClues: [{ type: 'parity', cells: Array.from({ length: 81 }, (_, cell) => cell) }],
+  givens: 30,
 })
 const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
 const { instance } = await WebAssembly.instantiate(bytes)
@@ -97,10 +103,12 @@ const classicCatalog = await request({ type: 'techniques' })
 const variantCatalog = await request({ type: 'techniques', variant: true })
 const appOrder = variantTechniqueOrder(variantCatalog.defaultOrder, classicCatalog.difficultyOrder,
   Object.fromEntries([...classicCatalog.techniques, ...variantCatalog.techniques].map(technique => [technique.id, technique.difficulty])))
-const appHints = { type: 'variant', operation: 'hints', position: { puzzle: quadruple.puzzle },
-  techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium' }
-const appRate = await sample({ type: 'variant', operation: 'rate', position: appHints.position, techniqueOrder: appOrder })
-const topTen = await sample({ ...appHints, limit: 10 })
-const exhaustive = await sample({ ...appHints, limit: 0xffff_ffff, collection: 100 }, 10)
-const firstPage = await request({ ...appHints, limit: 0xffff_ffff, collection: 100 })
-console.log(`quadruple app    rate ${appRate}, ten hints ${topTen} (${samples} samples); exhaustive first page ${exhaustive} (10 samples), ${firstPage.available} choices, ${firstPage.choices.length} transferred`)
+for (const [name, fixture] of [['quadruple', quadruple], ['parity', parity]]) {
+  const appHints = { type: 'variant', operation: 'hints', position: { puzzle: fixture.puzzle },
+    techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium' }
+  const appRate = await sample({ type: 'variant', operation: 'rate', position: appHints.position, techniqueOrder: appOrder })
+  const topTen = await sample({ ...appHints, limit: 10 })
+  const exhaustive = await sample({ ...appHints, limit: 0xffff_ffff, collection: 100 }, 10)
+  const firstPage = await request({ ...appHints, limit: 0xffff_ffff, collection: 100 })
+  console.log(`${name} app    rate ${appRate}, ten hints ${topTen} (${samples} samples); exhaustive first page ${exhaustive} (10 samples), ${firstPage.available} choices, ${firstPage.choices.length} transferred`)
+}

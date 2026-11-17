@@ -53,6 +53,21 @@ This stage reached main at `fc4142f` through [PR 104](https://github.com/coder13
 - [ ] Calibrate difficulty recipes before offering Quadruple in New puzzle. Native generation is available; app presets remain unavailable.
 - [ ] Review Quadruple in a live mobile viewport when browser tooling is available. Rendered component coverage does not establish live viewport fidelity.
 
+### Odd/Even integration in progress
+
+This stage is isolated on `codex/sudoku-parity-integration` from main at `44e734f`. [Odd/Even issue](https://github.com/coder13/sudoku-app/issues/41)
+
+- [x] Reuse the existing native parity rules, deductions, practice fixtures and derived generation without changing the engine or scoring version. The rebuilt app Wasm is byte-for-byte identical.
+- [x] Verify Thomas Snyder's published Big Eight puzzle, its 16 givens and 23 markers against the puzzle and solution PDFs. Prove uniqueness and marker dependency with a separate counter.
+- [x] Decode Coach's odd/even single-cell segments, retain their order in grouped native rules, and reject unknown semantics. Keep the official 3 × 3 rule illustrations as source fixtures; test their unchanged constraint payloads in a 9 × 9 envelope.
+- [x] Draw odd circles and even squares below other clues in desktop/mobile grids. Add cell labels, specific hint explanations, and marker guidance to the existing lesson and practice exercises.
+- [x] Check candidates, conflicts, rule-cache isolation, disabled deductions, multiple hints, paged proofs, Technique Finder counts, full solution replay, sharing, save/reload, history and the completion chooser. Add parity to all 512 subsets of the nine previously rendered families.
+- [x] Measure candidates, verification, solving, rating, ordinary and exhaustive hints, and native generation. Match 20/20 generation seeds; independently check givens, marker counts and required-rule dependency on three generated puzzles. [Evidence and timing limits](tests/fixtures/README.md#oddeven-sources-and-app-coverage)
+- [x] Pass 352 app tests, 214 Wasm tests, TypeScript, the production/offline build and the generated lesson page checks.
+- [ ] Finish CI and merge the complete app integration as one focused change.
+- [ ] Review the live desktop/mobile player flow when browser tooling is available. Rendered component and production-page checks cover the available automated paths.
+- [ ] Calibrate difficulty recipes before offering Odd/Even in New puzzle. Native generation is available; app presets remain unavailable.
+
 ## 1. Share a reliable engine contract
 
 - [x] Use one puzzle validation path for ratings, solve traces, hints, and opening analysis. Add a sparse regression case where a logical solve succeeds after exact search reaches its limit.

@@ -59,6 +59,17 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
     case 'constraint': {
       cells = evidence.cells
       switch (technique) {
+        case 'parity': {
+          const rule = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'parity')
+          if (rule?.type === 'parity') {
+            const location = cellReference(cells[0], 'concise')
+            description = rule.parity === 'odd'
+              ? `${location} has an odd circle, so it can contain only 1, 3, 5, 7, or 9.`
+              : `${location} has an even square, so it can contain only 2, 4, 6, or 8.`
+            reason = `Remove ${focus.map(({ digit }) => digit).join(', ')} from ${location}; ${rule.parity === 'odd' ? 'even' : 'odd'} digits cannot satisfy this marker.`
+          } else description = 'The odd or even marker restricts the highlighted cell.'
+          break
+        }
         case 'quadruple': {
           const printed = evidence.rules.flatMap(index => {
             const rule = puzzle.rules?.[index]
@@ -93,7 +104,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         }
         default: description = 'The marked rule restricts the highlighted cells.'
       }
-      reason = 'None of the valid digit combinations for these cells can use the crossed-out candidates.'
+      reason ||= 'None of the valid digit combinations for these cells can use the crossed-out candidates.'
       break
     }
   }

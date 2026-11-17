@@ -3078,6 +3078,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-board .board-links { z-index: 3; }
 .variant-extra-region rect { fill: var(--board-selected-border); opacity: .1; }
 .variant-extra-region path { fill: none; stroke: var(--board-selected-border); stroke-opacity: .4; stroke-width: .025; }
+.variant-parity { fill: var(--board-ink); fill-opacity: .13; stroke: var(--board-ink); stroke-opacity: .4; stroke-width: .022; }
 .variant-diagonal { stroke: var(--board-selected-border); opacity: .26; stroke-width: .032; }
 .variant-preview .variant-diagonal { opacity: .65; stroke-width: .2; }
 .variant-cage-edge { fill: none; stroke: var(--board-ink); opacity: .52; stroke-width: .022; stroke-dasharray: .067 .049; }

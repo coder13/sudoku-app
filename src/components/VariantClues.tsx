@@ -75,9 +75,10 @@ function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly 
 
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const marker = useId()
-  // Keep foreground circle symbols above lines and cage edges in either source order.
+  // Cell markers sit behind lines; intersection circles remain above cage edges.
+  const layer = (rule: VariantRule) => rule.type === 'parity' ? -1 : rule.type === 'quadruple' ? 1 : 0
   const drawingOrder = rules.map((rule, index) => ({ rule, index }))
-    .sort((a, b) => Number(a.rule.type === 'quadruple') - Number(b.rule.type === 'quadruple'))
+    .sort((a, b) => layer(a.rule) - layer(b.rule))
   const dots = new Map<number, number>()
   for (const rule of rules) {
     if (rule.type !== 'kropki') continue
@@ -97,6 +98,12 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
     </defs>}
     {drawingOrder.map(({ rule, index }) => {
       switch (rule.type) {
+        case 'parity':
+          return <g key={index} className={`variant-parity variant-parity-${rule.parity}`}>
+            {rule.cells.map(cell => rule.parity === 'odd'
+              ? <circle key={cell} cx={center(cell)[0]} cy={center(cell)[1]} r=".36" />
+              : <rect key={cell} x={x(cell) + .14} y={y(cell) + .14} width=".72" height=".72" />)}
+          </g>
         case 'quadruple': {
           const cx = x(rule.topLeft) + 1
           const cy = y(rule.topLeft) + 1
@@ -144,6 +151,11 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
   const labels: string[][] = Array.from({ length: 81 }, () => [])
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
+      case 'parity':
+        for (const cell of rule.cells) labels[cell].push(rule.parity === 'odd'
+          ? 'odd circle, digit must be 1, 3, 5, 7, or 9'
+          : 'even square, digit must be 2, 4, 6, or 8')
+        break
       case 'quadruple':
         for (const cell of quadrupleCells(rule.topLeft)) labels[cell].push(
           `Quadruple ${rule.digits.join(', ')}, circle touching ${reference(rule.topLeft)} and its three neighbors; repeated digits need separate cells`)

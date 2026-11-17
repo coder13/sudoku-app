@@ -44,6 +44,10 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
+  parity: {
+    name: 'Odd/Even',
+    rule: 'Cells with a circle contain an odd digit (1, 3, 5, 7, or 9). Cells with a square contain an even digit (2, 4, 6, or 8). Unmarked cells allow either.',
+  },
   quadruple: {
     name: 'Quadruple',
     rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
@@ -195,6 +199,7 @@ function validJigsawRegions(regions: unknown): boolean {
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
   switch (rule.type) {
+    case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
     case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
@@ -250,6 +255,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   arrow: VARIANTS.arrow.name,
   kropki: VARIANTS.kropki.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
+  parity: PUZZLE_VARIANTS.parity.name,
 }
 
 /** Describe the active puzzle independently of its generation recipe. */
@@ -269,6 +275,11 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'parity':
+        descriptions.push(rule.parity === 'odd'
+          ? 'Cells with a circle contain an odd digit: 1, 3, 5, 7, or 9.'
+          : 'Cells with a square contain an even digit: 2, 4, 6, or 8.')
+        break
       case 'quadruple':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)
         break
