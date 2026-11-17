@@ -929,6 +929,9 @@ svg { flex-shrink: 0; }
 }
 .puzzle .candidate-marks [data-mark="ring"]::after { width: min(1.35em, calc(100cqmin / 3)); }
 [data-mark="strike"] { text-decoration: line-through 1.5px; }
+.board-body:has(> .board-links) .cell:focus-visible:has([data-mark="strike"]) {
+  z-index: auto;
+}
 .board-body:has(> .board-links) :is(.candidate-marks, .center-marks):has(> [data-mark="strike"]) {
   z-index: 4;
 }
