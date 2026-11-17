@@ -35,7 +35,7 @@ fn completion_pruning_keeps_all_twelve_nested_forcing_proofs_on_ai_escargot() {
         "Pruning must preserve every action and its complete proof"
     );
     let answer = compiled
-        .solve(&[0; CELLS], &[0; CELLS], UNIQUENESS_PROBE_NODES)
+        .solve(&[0; CELLS], &[0; CELLS], COMPLETION_PROBE_NODES)
         .unwrap();
     for action in actual.iter().flat_map(|proof| &proof.actions) {
         let candidate = action.candidate();

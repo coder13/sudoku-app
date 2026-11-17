@@ -78,6 +78,32 @@ test('the actual mobile puzzle panel renders every published circle and accessib
   assert.match(html, /aria-label="[^"]*Quadruple 5, 7, 9/)
 })
 
+test('Killer totals and their border gaps leave room for every Quadruple circle size in either rule order', () => {
+  const cage: VariantRule = { type: 'killer-cages', cages: [{ cells: [12, 13], sum: 12 }] }
+  for (const digits of [[1], [1, 2], [2, 2, 6], [1, 2, 3, 4]]) {
+    const quad: VariantRule = { type: 'quadruple', topLeft: 2, digits }
+    for (const rules of [[cage, quad], [quad, cage]]) {
+      const board = capture(Board, { givens: '0'.repeat(81), values: '0'.repeat(81), variantPuzzle: { version: 1, givens: '0'.repeat(81), rules } })
+      const total = board.find(({ props }) => props.className === 'variant-cage-total')!
+      const start = Number.parseFloat((total.props.style as { insetInlineStart: string }).insetInlineStart) / 100
+      assert.ok(start > .28, 'The total must start beyond the circle and its stroke')
+      assert.ok(start + .3 < .925, 'A two-digit total must fit inside the cage cell')
+      const clueTree = capture(VariantClues, { rules })
+      const cageComponent = clueTree.find(({ type }) => typeof type === 'function' && type.name === 'Cage')!
+      const circle = clueTree.find(({ props }) => props.className === 'variant-quadruple')!
+      assert.ok(clueTree.indexOf(circle) > clueTree.indexOf(cageComponent), 'Circle symbols must paint above cage edges in either source order')
+      const edges = capture(cageComponent.type as Component, cageComponent.props)
+      const top = String(edges.find(({ type }) => type === 'path')!.props.d)
+      const gapEnd = Number(/^M([^,]+)/.exec(top)![1]) - 3
+      assert.ok(Math.abs(gapEnd - (start + .3)) < 1e-9, 'The border gap must match the moved total')
+    }
+  }
+  const plain = capture(Board, { givens: '0'.repeat(81), values: '0'.repeat(81),
+    variantPuzzle: { version: 1, givens: '0'.repeat(81), rules: [cage] } })
+  const total = plain.find(({ props }) => props.className === 'variant-cage-total')!
+  assert.equal((total.props.style as { insetInlineStart: string }).insetInlineStart, '10%')
+})
+
 test('the real share dialog exports the complete starting definition without player progress', async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { hostname: 'example.test', origin: 'https://example.test' } } })

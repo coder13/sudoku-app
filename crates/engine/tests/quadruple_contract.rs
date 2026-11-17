@@ -211,7 +211,7 @@ fn published_clover_puzzle_needs_its_circles_and_replays_sound_steps() {
         compiled.analyze(&EMPTY, &NO_REMOVALS, 100_000),
         Ok(Analysis::Unique)
     );
-    assert_eq!(compiled.solve(&EMPTY, &NO_REMOVALS, 100_000), Ok(expected));
+    assert_eq!(compiled.solve(&EMPTY, &NO_REMOVALS, 512), Ok(expected));
     assert_eq!(
         VariantPuzzle::classic(puzzle.givens)
             .compile()

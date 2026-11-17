@@ -4,7 +4,7 @@ import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type Candi
 import { activeHighlightDigit } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import { regionMembership } from '../sudoku/variants'
-import { VariantClues, variantCellLabels } from './VariantClues'
+import { VariantClues, cageLabelInset, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 
@@ -275,7 +275,8 @@ export function Board({
                     onDoubleClick={onCellDoubleClick && ((event) => onCellDoubleClick(index, event))}>
                     <BoardMarks items={gridItems} group={<span className="candidate-marks" aria-hidden={candidateAction ? undefined : true} />} />
                     <BoardMarks items={cageTotal === undefined ? cellItems : [
-                      <span className="variant-cage-total" key={`cage-${cageTotal}`} aria-hidden="true">{cageTotal}</span>,
+                      <span className="variant-cage-total" key={`cage-${cageTotal}`} aria-hidden="true"
+                        style={variantRules ? { insetInlineStart: `${cageLabelInset(index, variantRules) * 100}%` } : undefined}>{cageTotal}</span>,
                       ...cellItems,
                     ]} />
                   </Cell>

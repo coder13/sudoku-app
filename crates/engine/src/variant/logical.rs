@@ -21,6 +21,7 @@ mod tests;
 /// Version of the point costs and difficulty thresholds for structured puzzles.
 pub const VARIANT_SCORING_VERSION: u32 = 6;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
+const COMPLETION_PROBE_NODES: u32 = 512;
 
 macro_rules! catalog {
     ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
@@ -968,7 +969,7 @@ impl CompiledVariant {
                 let eliminations = std::array::from_fn(|cell| {
                     if position.board[cell] == 0 { DIGITS & !position.masks[cell] } else { 0 }
                 });
-                self.solve(&position.board, &eliminations, UNIQUENESS_PROBE_NODES).ok()
+                self.solve(&position.board, &eliminations, COMPLETION_PROBE_NODES).ok()
             })
             .flatten();
         let search = DeductionSearch::with_verified_solution(

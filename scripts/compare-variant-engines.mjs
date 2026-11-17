@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
+import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const paths = process.argv.slice(2)
 assert.equal(paths.length, 2, 'Usage: node --experimental-strip-types scripts/compare-variant-engines.mjs before.wasm after.wasm')
@@ -31,6 +32,9 @@ const fixtures = JSON.parse(await readFile(new URL('../crates/engine/benches/fix
 const mixed = JSON.parse(await readFile(new URL('../tests/fixtures/mixed-puzzles.json', import.meta.url), 'utf8'))
 const combined = JSON.parse(await readFile(new URL('../tests/fixtures/combined-families.json', import.meta.url), 'utf8'))
 fixtures.push({ name: 'x-killer', position: mixed['x-killer'].puzzle }, { name: 'all-families', position: combined.puzzle })
+const quad = oldCatalog.techniques.some(technique => technique.id === 'quadruple')
+  ? JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-clover.json', import.meta.url), 'utf8')) : undefined
+if (quad) fixtures.push({ name: 'quadruple', position: quad.puzzle })
 // A new catalog version is expected. All other retained result fields must agree.
 const behavior = value => JSON.parse(JSON.stringify(value, (key, item) => key === 'scoringVersion' ? undefined : item))
 const summarize = values => {
@@ -60,4 +64,19 @@ for (const fixture of fixtures) {
   }
   console.log(fixture.name, result)
 }
-console.log('Retained catalogs, candidates, statuses, completions, ratings, hints, and full traces agree on all seven fixtures.')
+console.log(`Retained catalogs, candidates, statuses, completions, ratings, hints, and full traces agree on all ${fixtures.length} fixtures.`)
+if (quad) {
+  const classic = await before.request({ type: 'techniques' })
+  const appOrder = variantTechniqueOrder(oldCatalog.defaultOrder, classic.difficultyOrder,
+    Object.fromEntries([...classic.techniques, ...oldCatalog.techniques].map(technique => [technique.id, technique.difficulty])))
+  const request = { type: 'variant', operation: 'hints', position: { puzzle: quad.puzzle },
+    techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium', limit: 0xffff_ffff, collection: 100 }
+  assert.deepEqual(await after.request(request), await before.request(request), 'exhaustive first page changed')
+  const times = [[], []]
+  for (let i = 0; i < 12; i++) for (const index of i % 2 ? [1, 0] : [0, 1]) {
+    const start = performance.now()
+    await [before, after][index].request(request)
+    if (i >= 2) times[index].push(performance.now() - start)
+  }
+  console.log(`Quadruple exhaustive app hints, 2 warmups and 10 alternating samples: ${summarize(times[0])} -> ${summarize(times[1])} ms`)
+}

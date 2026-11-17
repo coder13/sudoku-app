@@ -43,10 +43,12 @@ This stage is isolated on `codex/sudoku-quadruple-integration`. [Quadruple issue
 - [x] Verify Clover's five-given puzzle with an independent counter and store real Coach exports, including a repeated-digit circle with Diagonal and Killer rules.
 - [x] Test Quadruple with every subset of the eight existing rendered families through the app's Wasm import service.
 - [x] Add accessible circle labels, a Quadruple lesson, and three practice positions. Verify desktop preview, Play, hint text, move history, reload, and a checked practice removal.
-- [ ] Finish mobile, sharing, and completion browser checks after the interrupted browser session.
-- [x] Pass the full optimized native suite (246 tests including doctests), Wasm suite (138 tests), app suite (306 tests), strict full/reduced Cargo documentation, TypeScript check, and production build against main at `e0e4b69`.
+- [x] Verify the actual mobile panel's complete clue geometry and labels, shared starting definition, and completion action through rendered components. Reserve space for Killer totals beside a circle and paint circles above cage edges in either rule order. Live mobile viewport review remains a separate follow-up after the interrupted browser session.
+- [x] Pass the full optimized native suite (248 tests including doctests), Wasm suite (208 tests), app suite (328 tests), strict full/reduced Cargo documentation, TypeScript check, and production build against main at `562243f`.
 - [x] Check all 16 native feature combinations and pass the capability/omitted-operation contracts for each Wasm API combination.
-- [ ] Finish the four Wasm build-profile checks and repeat the paired performance baseline on the final integration artifact. Refresh integration checks after the built-in hint and solution repair reaches main.
+- [x] Pass the four Wasm build-profile checks and preserve the main-branch hint paging, scan cancellation, position validation, and batched singles behavior.
+- [x] Use a bounded completion witness to prune variant Nested Forcing Net assumptions. Preserve every per-technique proof on the Quadruple fixture and all twelve AI Escargot nested proofs. Keep the original search when the 512-node probe finds no completion.
+- [x] Record the paired performance baseline on the final integration artifact. Retained responses match on seven legacy fixtures; the witness comparison also checks Quadruple. Exhaustive app hints fall from about 2.51 s to 1.61 s with the same proofs. The added app Wasm costs 20.3 KiB gzip. [Method, timings, and limits](tests/fixtures/README.md#profiling-exhaustive-variant-hints)
 - [ ] Merge the complete app flow. Keep New puzzle generation presets unavailable until their difficulty recipes pass calibration.
 
 ## 1. Share a reliable engine contract

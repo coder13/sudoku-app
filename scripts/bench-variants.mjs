@@ -99,7 +99,8 @@ const appOrder = variantTechniqueOrder(variantCatalog.defaultOrder, classicCatal
   Object.fromEntries([...classicCatalog.techniques, ...variantCatalog.techniques].map(technique => [technique.id, technique.difficulty])))
 const appHints = { type: 'variant', operation: 'hints', position: { puzzle: quadruple.puzzle },
   techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium' }
+const appRate = await sample({ type: 'variant', operation: 'rate', position: appHints.position, techniqueOrder: appOrder })
 const topTen = await sample({ ...appHints, limit: 10 })
 const exhaustive = await sample({ ...appHints, limit: 0xffff_ffff, collection: 100 }, 10)
 const firstPage = await request({ ...appHints, limit: 0xffff_ffff, collection: 100 })
-console.log(`quadruple app    ten hints ${topTen} (${samples} samples); exhaustive first page ${exhaustive} (10 samples), ${firstPage.available} choices, ${firstPage.choices.length} transferred`)
+console.log(`quadruple app    rate ${appRate}, ten hints ${topTen} (${samples} samples); exhaustive first page ${exhaustive} (10 samples), ${firstPage.available} choices, ${firstPage.choices.length} transferred`)

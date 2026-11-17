@@ -26,8 +26,9 @@ for (const technique of order) {
   const times = []
   for (let sample = 0; sample < 5; sample++) {
     const start = performance.now()
-    assert.deepEqual(await request(query), proofs[technique])
+    const result = await request(query)
     times.push(performance.now() - start)
+    assert.deepEqual(result, proofs[technique])
   }
   times.sort((a, b) => a - b)
   findings.push({ technique, medianMs: Number(times[2].toFixed(3)), choices: proofs[technique].length })
