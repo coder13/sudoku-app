@@ -165,7 +165,7 @@ export function Controls(props: Props) {
                 const digitLabel = `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
                 return (
                   <button type="button" key={digit}
-                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && props.mode === 'value' && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
+                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && !colors && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
                     aria-label={colors ? COLORS[digit - 1] : digitLabel}
                     aria-keyshortcuts={colors ? `${digit}` : `Shift+${digit} F${digit}`}
                     aria-pressed={armed} disabled={props.disabled}
