@@ -43,6 +43,8 @@ import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckR
 import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
+import { usePlayPreference } from './usePlayPreference'
+import { usePuzzleSelection } from './usePuzzleSelection'
 
 const ANALYSIS_CARD_KEY = 'sudoku-app:v1:techniques-card-open'
 
@@ -201,19 +203,18 @@ export function Worktable({
   setPuzzleBrowserView: (view: PuzzleBrowserView) => void
 }) {
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
-  const [active, setActive] = useState(start)
-  const [selected, setSelected] = useState<number[]>([])
-  const [selectedDigit, setSelectedDigit] = useState<number | null>(null)
-  const [selectedColor, setSelectedColor] = useState<number | null>(null)
-  const [colorTarget, setColorTarget] = useState<ColorTarget>('cell')
-  const [colorBrush, setColorBrush] = useState<number | null>(null)
+  const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
+  const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
+  const [selectedColor, setSelectedColor] = usePlayPreference('selectedColor')
+  const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
+  const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
-  const [highlightCandidatePairs, setHighlightCandidatePairs] = useState(false)
-  const [highlightMode, setHighlightMode] = useState(false)
-  const [pencil, setPencil] = useState(false)
-  const [candidateKind, setCandidateKind] = useState<'center' | 'corner'>('corner')
-  const [colorMode, setColorMode] = useState(false)
-  const [eraseMode, setEraseMode] = useState(false)
+  const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
+  const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
+  const [pencil, setPencil] = usePlayPreference('pencil')
+  const [candidateKind, setCandidateKind] = usePlayPreference('candidateKind')
+  const [colorMode, setColorMode] = usePlayPreference('colorMode')
+  const [eraseMode, setEraseMode] = usePlayPreference('eraseMode')
   const [solution, setSolution] = useState<string | null>(null)
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
@@ -261,7 +262,6 @@ export function Worktable({
   const [solvedView, setSolvedView] = useState<'results' | 'grid' | 'difficulty'>('results')
   const [ratingFailed, setRatingFailed] = useState(false)
   const [singlesCheck, setSinglesCheck] = useState<{ givens: string; variant: Game['variant']; needsMore: boolean }>()
-  const anchor = useRef(start)
   const boardRef = useRef<HTMLDivElement>(null)
   const restoreCellFocus = useRef<number | null>(null)
   const puzzlePanelRef = useRef<HTMLDivElement>(null)
@@ -410,13 +410,6 @@ export function Worktable({
   }, [givens, id, variant])
 
   useLayoutEffect(() => {
-    const nextActive = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
-    setActive(nextActive)
-    anchor.current = nextActive
-    setSelected([])
-    setColorBrush(null)
-    setSelectedColor(null)
-    setHighlightCandidatePairs(false)
     setDialogResult(null)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -698,10 +691,6 @@ export function Worktable({
   }, [advancedModes.colorsEnabled])
 
   useEffect(() => {
-    if (!canPaint) setColorBrush(null)
-  }, [canPaint])
-
-  useEffect(() => {
     let current = true
     setSolution(variant?.solution ?? null)
     if (!draft && !variant) {
@@ -849,9 +838,9 @@ export function Worktable({
     }
     if (givenDigit) setSelectedDigit(givenDigit)
     else if (!highlightMode) setSelectedDigit(null)
-    if (event.shiftKey && selected.length) setSelected(rectangleSelection(anchor.current, index))
+    if (event.shiftKey && selected.length) setSelected(rectangleSelection(anchor, index))
     else {
-      anchor.current = index
+      setAnchor(index)
       setSelected((current) => (multi || event.metaKey || event.ctrlKey)
         ? current.includes(index) ? current.filter((item) => item !== index) : [...current, index]
         : current.length === 1 && current[0] === index ? [] : [index])
@@ -869,7 +858,7 @@ export function Worktable({
     const digit = pending.digit
     event.preventDefault()
     setActive(index)
-    anchor.current = index
+    setAnchor(index)
     setSelected([index])
     enterFromInput([index], digit, 'value')
   }
@@ -915,7 +904,7 @@ export function Worktable({
       }
       stroke.previous = index
       setActive(index)
-      anchor.current = index
+      setAnchor(index)
       roomStore.update(game.id, (current) => paintCandidateStroke(
         current, stroke.initial, [...stroke.cells], stroke.mode, stroke.digit, stroke.action,
       ))
@@ -928,7 +917,7 @@ export function Worktable({
     drag.moved = true
     const dragged = rectangleSelection(drag.start, index)
     setActive(index)
-    anchor.current = drag.start
+    setAnchor(drag.start)
     setSelected(drag.additive ? [...new Set([...drag.base, ...dragged])] : dragged)
   }
 
@@ -985,9 +974,9 @@ export function Worktable({
         const givenDigit = givenDigitAt(game.givens, next)
         if (givenDigit) setSelectedDigit(givenDigit)
         else if (!highlightMode) setSelectedDigit(null)
-        if (event.shiftKey) setSelected(rectangleSelection(anchor.current, next))
+        if (event.shiftKey) setSelected(rectangleSelection(anchor, next))
         else {
-          anchor.current = next
+          setAnchor(next)
           setSelected([next])
         }
         boardRef.current?.querySelector<HTMLElement>(`[data-cell="${next}"]`)?.focus({ preventScroll: true })
