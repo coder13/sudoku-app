@@ -34,9 +34,11 @@ function PlayResizeHandle({ edge, width, min, max, onPreview, onSave, onReset }:
     if (event.button !== 0 || !event.isPrimary || drag.current) return
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
-    const scale = Number(getComputedStyle(event.currentTarget).getPropertyValue('--desktop-layout-scale')) || 1
+    const style = getComputedStyle(event.currentTarget)
+    const scale = Number(style.getPropertyValue('--desktop-layout-scale')) || 1
+    const contentWidth = parseFloat(style.getPropertyValue('--desktop-layout-content-width')) || DEFAULT_DESKTOP_LAYOUT_WIDTH
     // Outer edges move in pairs. The divider moves within the scaled Play area.
-    const multiplier = edge ? 2 * direction : direction / scale
+    const multiplier = edge ? 2 * direction * DEFAULT_DESKTOP_LAYOUT_WIDTH / contentWidth : direction / scale
     drag.current = { pointerId: event.pointerId, startX: event.clientX, startWidth: width, multiplier }
     onPreview(width)
   }
@@ -135,6 +137,9 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     const inputStack = workspace.querySelector('.standard-input-stack')
     const input = inputStack?.querySelector('.controls')
     const measure = () => {
+      const page = workspace.closest<HTMLElement>('.standard-workspace-page')
+      const layout = page?.closest<HTMLElement>('.desktop-play-resizable')
+      if (page && layout) layout.style.setProperty('--desktop-layout-content-width', `${page.offsetWidth}px`)
       setMaxWidth(Math.max(MIN_DESKTOP_INPUT_WIDTH, workspace.clientWidth - gap - MIN_DESKTOP_PUZZLE_WIDTH))
       if (puzzle && input && inputStack) {
         const scale = Number(getComputedStyle(workspace).getPropertyValue('--desktop-layout-scale')) || 1

@@ -1,0 +1,1976 @@
+{
+  "startedAt": "2026-11-17T18:49:26.101Z",
+  "completedAt": "2026-11-17T18:49:46.947Z",
+  "baseCommit": "07eae53e9143670e2e036d33413ba84aae3df42b",
+  "wasmSha256": "b3155357f4cfd0ad7d40cddb5ef9703470febe265f9c47ff99aec3e5d0965bcb",
+  "profile": {
+    "profile": "app",
+    "features": [
+      "wasm-api",
+      "variants",
+      "generation",
+      "teaching"
+    ],
+    "capabilities": {
+      "classic": true,
+      "generation": true,
+      "teaching": true,
+      "variants": true
+    }
+  },
+  "seeds": [
+    0,
+    1
+  ],
+  "withHistory": false,
+  "choices": [
+    {
+      "variant": "classic",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "master"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "classic",
+      "difficulty": "impossible"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "master"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "master"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "impossible"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "master"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "master"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "master"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "master"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "easy"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "medium"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "master"
+    }
+  ],
+  "unsupportedChoices": [
+    {
+      "variant": "killer-cages",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "tricky"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "impossible"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "impossible"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "hard"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "very-hard"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "expert"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "master"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "impossible"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "impossible"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "impossible"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "impossible"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "beginner"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "extreme"
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "impossible"
+    }
+  ],
+  "results": [
+    {
+      "variant": "classic",
+      "difficulty": "beginner",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 34,
+      "puzzleHash": "bfaee3767b29227167c26b35b68ceb573ebbca0db9c748e74c9dfd9d4c4788be",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 15
+    },
+    {
+      "variant": "classic",
+      "difficulty": "beginner",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 36,
+      "puzzleHash": "f9120bc76ebf951e50dfa52379b94de5990dd0b8c638823b8eb2c4c66eec8f35",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "classic",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 29,
+      "puzzleHash": "9fc5277bed98523d1ccda4316f205c25e4ae0ddea4ec4ca8a338556ac5170c1b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "classic",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 34,
+      "puzzleHash": "86ecc400f283a11fc811fdafa2719913e139c38b380cb61a872f5a5ca68f228b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "classic",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 25,
+      "puzzleHash": "4a874507d8b082b72bf69951eab456c4f9a837f00e7039080ff57ccd15a53d08",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 109
+    },
+    {
+      "variant": "classic",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 28,
+      "puzzleHash": "86fbd14155870b5feb737bdcb089d6d79b7bc194fd22f345c9dd125687731852",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 45
+    },
+    {
+      "variant": "classic",
+      "difficulty": "tricky",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "5f21540648b97367c17b2189bfd087f95092331adb74baba16121dfbb51cc779",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 139
+    },
+    {
+      "variant": "classic",
+      "difficulty": "tricky",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 28,
+      "puzzleHash": "1bae44e5802d1176f0cceaa8da5cb758871abb4daf07321f33d8395c15ab8795",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 65
+    },
+    {
+      "variant": "classic",
+      "difficulty": "hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 34,
+      "puzzleHash": "80dc21f011bc9729c928886f18ed5f6f33d14a31b788815bfe38c0d58d78de46",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 5
+    },
+    {
+      "variant": "classic",
+      "difficulty": "hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 28,
+      "puzzleHash": "a33d20254c37f1f7739a427e756e6c07d9b049e3d41e6aff170018f8aa91d5be",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 4
+    },
+    {
+      "variant": "classic",
+      "difficulty": "very-hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 28,
+      "puzzleHash": "016859a7840385a64c4b105336362eb3de1fd3134ee9072b5ac04026a322057a",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 69
+    },
+    {
+      "variant": "classic",
+      "difficulty": "very-hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "5e31ae297949e9bc13493fd2711ced6a983363c9ec3b71e6b1205d78cb826dcb",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 57
+    },
+    {
+      "variant": "classic",
+      "difficulty": "expert",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "d4ee5551516d0c83734c4a25f7bc78636162eb33d7dbd4fc4c2da9912b29141d",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 13
+    },
+    {
+      "variant": "classic",
+      "difficulty": "expert",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 26,
+      "puzzleHash": "488c96cd75c27dfc736398d4df45f7499bf5e21f35baecbd7101b5b3a08bf358",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 10
+    },
+    {
+      "variant": "classic",
+      "difficulty": "master",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "8d21cd7ae765924a41fb375b940c03e286aa4b54a95bfb29c3a1adcc3f9c9aed",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 26
+    },
+    {
+      "variant": "classic",
+      "difficulty": "master",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "8212b3c78c190e0171bc17ba17074e86800772e711e6de11c1d77008db63f7b0",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 517
+    },
+    {
+      "variant": "classic",
+      "difficulty": "extreme",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 26,
+      "puzzleHash": "85212e6507fb8441058737703a53eabe64ab046286a35fa3ac357a4b41036678",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 549
+    },
+    {
+      "variant": "classic",
+      "difficulty": "extreme",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 25,
+      "puzzleHash": "3750a4c046cd9f705618ea8ae53d80a77f4d0e93b46db7f86297ef70a086233f",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 1196
+    },
+    {
+      "variant": "classic",
+      "difficulty": "impossible",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "5fa6adf4fc571923b24cc42a99aff3addd19d6195730bb5b58b26505bff219f1",
+      "hintsChecked": 16,
+      "hintModesChecked": 2,
+      "milliseconds": 7615
+    },
+    {
+      "variant": "classic",
+      "difficulty": "impossible",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 26,
+      "puzzleHash": "e2f838396ab265430379f9b00032e7a9b6eeeff7c8206a518ac1fcde8a998934",
+      "hintsChecked": 10,
+      "hintModesChecked": 2,
+      "milliseconds": 2438
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 28,
+      "puzzleHash": "641b382cf54d9abf7a9e882054118188a42adf85fe232b8037a0c10edd411072",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 19
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "17d7d1d48195a97685a837e68fafae320c6054b1ce15b2032334d4e55f0faea5",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 4
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 16,
+      "puzzleHash": "ceb490fd454b2c3d52e2769704d6f8e14c9fe9219a1e4da9936eb7d59fc0c4e8",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 13
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 12,
+      "puzzleHash": "22f8b43b1bac1cfc5e15987be97ebef8525400db37f6255a92ac35daea845130",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 14
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 14,
+      "puzzleHash": "926908e97b9df23a1159aa7b9f8b7816728943ea0ecd85a0572385f0e7815cf9",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 13
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 14,
+      "puzzleHash": "926908e97b9df23a1159aa7b9f8b7816728943ea0ecd85a0572385f0e7815cf9",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 11
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "very-hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "ec01ccae59a162643a8fd090a29b3bc497944309e56840c837ff31ba532813a4",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 12
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "very-hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 16,
+      "puzzleHash": "015a3e4ce1818160217c77f76ebbc1edd2529e4a27bc55dab12716f65a4e2645",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 10
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "master",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 16,
+      "puzzleHash": "b3351b7b1ed4e364661db68451f6d282b680109625d86dbe3ca2817eefa3dff5",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 19
+    },
+    {
+      "variant": "killer-cages",
+      "difficulty": "master",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 16,
+      "puzzleHash": "b3351b7b1ed4e364661db68451f6d282b680109625d86dbe3ca2817eefa3dff5",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 16
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "beginner",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 40,
+      "puzzleHash": "651ce9ccafe630edc7628df09e38d214b1ad748fe97cdcd9ae35462d4d3a94f9",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "beginner",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 40,
+      "puzzleHash": "280e9ea9dd243e04ae013534e53ab2ad8f8793937f43c63839264142ea2665a5",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 1
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 33,
+      "puzzleHash": "70fec6948a469170a05b15273dc336a50179fe11f62668befb267c10216d6644",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 33,
+      "puzzleHash": "393c54d5296b3b5bb0a8d05e9efef2e92ea45357201777ffe0c71a2ce2f1134e",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "66e767d79d10c6313f035f9b2ab5c4e15edd4f11c26de7cc5cb6faf3923209cb",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 61
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "66e767d79d10c6313f035f9b2ab5c4e15edd4f11c26de7cc5cb6faf3923209cb",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "tricky",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 22,
+      "puzzleHash": "2055755fbe253e5ef97fda727b83e4ba40c9c351ad7223d82d98b6be901584b4",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 67
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "tricky",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "402c3eac704680a27c6cc732d4b0f8ed56c0e7cbc8fbe9a04fc13e56e4bce2f9",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 7
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "ee4d1876e15fae4e2c9f71362fee1a515956fc30bab13cd181763c70a87a1ae6",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 61
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 19,
+      "puzzleHash": "d97f3bec6a58cd45f25672d859613807e975dd02af908a825cfe9b023c586f8c",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 10
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "very-hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "448e561d615c0c15fdef9961768d20c9205f651af3eb23aac624f0acdceb9e30",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 5
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "very-hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 25,
+      "puzzleHash": "fbc003a839f9cff58546f67f0cf88e7f949e12fbc0b7ec5c310ebcbd35aa49c4",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 7
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "expert",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "d72488a566e1bd5598e530b4ce04b9ec1180a584ca7b625286674d2690da094a",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 18
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "expert",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 19,
+      "puzzleHash": "be1428aa3e1bcdcffd6bbb4cc68449fd67a6e081655d9bc1aabf3d68e6ae6fdc",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 13
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "master",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "c875de4ec3b9ba4067d4d06c0ff078c224944cf306b3f3e552da1ff934bc8bbb",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 78
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "master",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "dc08dad27abec396290dc109a73fa7a2a5cbbbfb77985c46c91ec75b3af06b6d",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 13
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "extreme",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 22,
+      "puzzleHash": "2034758ac2f524e38b2faa757772471d887e132972f3df874409033580fdedd4",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 223
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "extreme",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 18,
+      "puzzleHash": "a44a019a42c694ca423af22785137854a371d0a4fd5777784fd117a7ac294d30",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 696
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "impossible",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "7a274034f9d2d736025022f0e60de66df4217675e6644960632d7e1d8c6460b8",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 377
+    },
+    {
+      "variant": "windoku",
+      "difficulty": "impossible",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 18,
+      "puzzleHash": "71513f8c6458d2dea2ca56a073353aadee322409e46cc1cc2b3cb3cb395e9082",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 472
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 25,
+      "puzzleHash": "bfb4e1576cdff33df66c0c630c9a366c55cceba240c9d41c856d0343453639b2",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 28,
+      "puzzleHash": "6ea5238dec1be432c94a1f2c501b146b581fef0c73f88b68d78619e57ea4e3f2",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "6759c860a76225a70352bf3961e3c66cc59d7b1221e35155c4fe1988ce2b9464",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 26,
+      "puzzleHash": "b5c155b4e18a4c08194abc17e2ba26a38a8dc885bcba86cb1dde35e6d06c8028",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 10
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "tricky",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "9adf2a51f2da3253e64dc0b2542ffbe6db1cf4c46da09947b87c3ac062135a19",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 19
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "tricky",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 22,
+      "puzzleHash": "1ff32b6d73304eb9f82bc30ab747e54dd1dccfd14c0248b9fc906da0987340d1",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 11
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "0ab9920dc37622c272a4e5a08a831eff8ab7230653252ae8ad44e1e8c2f63e7d",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 20
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "2b9ea91135437756538641abcd67229ba2e2bc0aa3ac6527454c5d5de394e9a3",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 11
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "very-hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "0bd0f20263152acc38509931346ed8e26bffd58e2a3d2266c9074e03220ec6f4",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 23
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "very-hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "f2cafeee9f3ee276f66ae932d21161447ad3a039abf7b4e506b3cc1fb9b7e10b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 11
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "expert",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "a8083f46b4746ba68662f249a2661058e6f7aafb86ad9eede6a7084ca7341728",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 6
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "expert",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "c07c4211d68588b6f347078d071d89c96ff0c9d44ea8979a18d48e1ed524c6fc",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 16
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "master",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "634f17bf5a3acebe980f13390665c58b8b6aff7e9160c5b2d2453a1749285f88",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 69
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "master",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "c9b4ef8200a1978ec249ab4957ba9dc2a04aa0df57a5c25548e1b92910b535b9",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 66
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "extreme",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "a7ea89113f86327c76e1bee30e2f4c2acd3f66c2c3cb02cb786a3c78342f99af",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 176
+    },
+    {
+      "variant": "diagonal",
+      "difficulty": "extreme",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "774107f32976b842cb4834ba7590cf537067abf1d76a8434a7a211fa34cd3e92",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 280
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 34,
+      "puzzleHash": "4f2e9d93dce2deb311ac7be9513ff906cefe36785ddeece62c31197223a83483",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 34,
+      "puzzleHash": "40cda9640f3ddbac25a49c9ce9bb6e7cc5c3437fd4bbfa86357190ad2fe4cbfd",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 7
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 26,
+      "puzzleHash": "655cf69aad2c351157036078e163282ed01164741650adbbd17fb3cfbd66bfb8",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 5
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "4869acb0204f7deb47f8dd457acff0973e15855076fa1e47680c77f4b9a3bc2a",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "tricky",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "0bafeb9081b88380ab6e193acbff609485710ac54ac5008fa9d607ea023a2d6b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 9
+    },
+    {
+      "variant": "jigsaw",
+      "difficulty": "tricky",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 26,
+      "puzzleHash": "06745f681e2097941b8be5b441cd6dff4ab3352f7c21c3b5ff3b958586616fdd",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 22
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 29,
+      "puzzleHash": "bdbcb3be6360d15b47f53515bdec39403f7a20960c0659e5e7f36ee610d1b91b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 29,
+      "puzzleHash": "98b3bfe41e9e1b37ea0f2ab005dbbebdcf6641057e62475b1cbda42de63e69ad",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 4
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 26,
+      "puzzleHash": "0a7162d0be7d51b997d9c77378d45b495fc4b6edd546040489f31e0edfb77b8a",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 33
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "84601c6650b3e1fe73d02758401c3a27a9d97726e760799846b1b1194c475cd7",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 42
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "tricky",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "828adcf64e7b9e13f76839d63fc1b4230f678a5d371e2b44d3c7aa2a9348fa95",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 34
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "tricky",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "bb4bb47aba573dab0ac8781972d4eb8ea488fe559f74b0535d7559f77d4485c3",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 43
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "cf46f06f0175c938e708afa4773ffbc82451510b7c22afc8755231a09ff396ea",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 34
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "cf46f06f0175c938e708afa4773ffbc82451510b7c22afc8755231a09ff396ea",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 42
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "very-hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "fe91de54ea30177de8da9cc94ee55ea742172300f53d6ebc5d2fd8eed97e177d",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 34
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "very-hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "516cdd7809a5d1ef97e1347c885f718c638eaf473367adabb22d87a1f0c3619d",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 45
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "expert",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "b1089d7771bd2f9abcce84483dafac9f96440416d2cec8e69aff8fb629989bef",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 38
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "expert",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "f42e251cb6283f2fc4acacde35c156c82ff9ea3c312b6b5991f1c5ec40ec0837",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 51
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "master",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "fd866c6f822d705cad4b4fb3c448ff8e0ab679d79a163a76e2e2c8355f6fe67e",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 163
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "master",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 22,
+      "puzzleHash": "e041708bdf2f2a4ffc957a0d3189200d1415c8648b7ff92eb4bb7984195d87e8",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 214
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "extreme",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "f25c95337ff6498f896d3c4abced60cbdc2a3e681f1bbc60189fa3d37f598650",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 469
+    },
+    {
+      "variant": "anti-knight",
+      "difficulty": "extreme",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "ba24493ed36a64d6b911fdef30f1e4447ff34818bf80e7bb9f71abb1c365d8d2",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 796
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 28,
+      "puzzleHash": "99008aae22313562de534556874af4806ef471ac6a243df6e4208fd339fa6c4f",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 29,
+      "puzzleHash": "aeaae8c5c8dbfa45ac1d3139a820076f3c483147c95ca00746fe6c5a1c48ada8",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 26,
+      "puzzleHash": "9d17338802303afcbc00a434675da9dbd881eab9ea0492a7347ea510f3fefbd9",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 10
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "e206bc6a951705be7aeb8735057ff4688201f64e07e473fa51ccb5772484a83b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "tricky",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "c58f2c1c0ca5334c6b1d006626f6ad8ccacd72abc98e37c0ce96f4f6b81b2003",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 13
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "tricky",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "f6c1e3b14301d97321333a380d6da5d36e68480f660d9d470f54e4fdb8b13d64",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 7
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "6008bc26f53d0b46f82830c8c50cc22668993d155b144f67772b8d024859b26d",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 56
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "a8c03b0a76e24da1d0ba13d7a6984df69716f5fa2270474a990df53b53d5e4f3",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 13
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "very-hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 14,
+      "puzzleHash": "87b774f34cd6b0aa138284fb7ea6597d15f273af02d702a77ac9b61076fd9127",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 7
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "very-hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "b7224e46a32fb4ac287964fbbfd992cd787b1eaedd87e4b2c827801955f9b35c",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 8
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "expert",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "6f9936e9a067a800171c1b3b932699effb1f564f2ab137a84ff712590663d334",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 30
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "expert",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "ed77c24110bf54f8267c44f0561685459f049413205292fbcd1c8350c66f69a7",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 7
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "master",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "2e5490d54c3b8fd179196e6b4777466f434948fa59eab60c6d42ed6a18cee251",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 26
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "master",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 18,
+      "puzzleHash": "76e72455ebc30a4d2cc746bc8492cb30552536b6192723ecda9d1f709b89c388",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 12
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "extreme",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 17,
+      "puzzleHash": "b1eaa1742f90554534f567b68eaa0a0c1f2c50997e2f96a05837637e65d260f3",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 142
+    },
+    {
+      "variant": "thermometer",
+      "difficulty": "extreme",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "89f8e5da5856d202239edb15dfa9aeb594002ab756dcd185d5fa4fab6b159767",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 1409
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 27,
+      "puzzleHash": "a07d82cb2fe709a03e206015b80445329b2bb79e52a322fb2b75189e04b17497",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 6
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 31,
+      "puzzleHash": "8df0b723d1c081a40d7c71bb9e7c22c00946e6c3f580b32d62c4e2fb53b9893c",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 5
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "70a1d32ee2b71ec1a438e20369c759d90aa2e91c74e31212e98330bf18637a2b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 63
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 18,
+      "puzzleHash": "6553860c2edca7390289668aa2f8db0e7cf53c447137e6dca68f43770f6bcdf4",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 7
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "tricky",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 19,
+      "puzzleHash": "81190781e035fbd8466e03a5d5bbf8feb178cd7b0a56f318293789571445cc29",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 7
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "tricky",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "aa890fd6aca3fe04a4ecc4a09f48b284ffac534fd3891b9f7df76b140c58e833",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 30
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 22,
+      "puzzleHash": "311c00295b2fcecaeb5e1d8ff476f64edec3ebc3562c4464b350f913db2a027b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 15
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 22,
+      "puzzleHash": "311c00295b2fcecaeb5e1d8ff476f64edec3ebc3562c4464b350f913db2a027b",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 34
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "very-hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "c9e42cab376b273f5f45f9fc1479424587aacda68f3ac560bb6acc594c2602a5",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 28
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "very-hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "239a2ab3e313e59d7c5e3700d40b7460fbe33ced561f8407ecbf5b7b859613f6",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 18
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "expert",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 22,
+      "puzzleHash": "b670e0122c865c571306f61e189105b79cbe1bf045ef3020ba748bb67ed76e87",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 100
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "expert",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "7904077f7257579c075c632d6021639579963bc9e200ef5ddd50cb9ed8dc1e7f",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 41
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "master",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "3483abf0a790c2404424c69d529bcd07dd71bac5e9697426734eac0c2d19dc68",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 300
+    },
+    {
+      "variant": "arrow",
+      "difficulty": "master",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 19,
+      "puzzleHash": "99604395f148a1ccd0589aa8c2c321fd42f4f10eaf839c6f10b59f08d1a0fe39",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 59
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "easy",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 28,
+      "puzzleHash": "0989d1928ead31cd7387596fee329eaf31e44d1a48f29ababd85520d7ba04291",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "easy",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 29,
+      "puzzleHash": "d0c27cd2fb0f191d7fd27fca72c8294f954c9e0bd964aef0e28bd8cb453e0547",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 2
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "medium",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "0a4a7b8209e55622a974d8936b1056bf104a99f1dc9a6cfa1bad26e79a747b3e",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 3
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "medium",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 21,
+      "puzzleHash": "dbcbdf8168ec18db4f0837f93f7a9c7a268aa2a305633a1c6319fd88ba00a5fd",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 6
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "tricky",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "1427cb7b944fc4c99b4067e2af2171cb69ccb8264264e1f5d3b43c7fb290a3d9",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 11
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "tricky",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "1427cb7b944fc4c99b4067e2af2171cb69ccb8264264e1f5d3b43c7fb290a3d9",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 10
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 23,
+      "puzzleHash": "451cb05b74e23710625ae70582b7808587a38b8b98adeae1bbecc44203e77639",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 19
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 25,
+      "puzzleHash": "c6919aa9700bb6300d7698d2001d9131a0c333b421dccde6256f10ed4b44c6cc",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 11
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "very-hard",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 24,
+      "puzzleHash": "feefdad4989acd43951c2397d880055c85fd3c70fbd19783f4f7e1730a378773",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 20
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "very-hard",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 14,
+      "puzzleHash": "5d213db1b0b1b54bcc1833adf346207d505c4971ddbf355afb22e91a7e648775",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 42
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "expert",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 16,
+      "puzzleHash": "54d6c406c2b3f0df5215c8b6549cff8b2a014fa3b5ad97ef2f46ec5c7f8cb33c",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 33
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "expert",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 20,
+      "puzzleHash": "a493baf34e7189bfb9724c9ef2b4b07e5e18a4d2c5d55c378e57f5a659fccce7",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 18
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "master",
+      "seed": 0,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 17,
+      "puzzleHash": "ca67e1c38f85f3dfadcc0bcd33b44059dce99855437bb37b02373a7097e55edb",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 85
+    },
+    {
+      "variant": "kropki",
+      "difficulty": "master",
+      "seed": 1,
+      "excludedPuzzles": 0,
+      "status": "passed",
+      "givens": 16,
+      "puzzleHash": "9630545916d328b23d5431d1fe8b902c58060fe364cb1c79d5e63fdbdac5e9a8",
+      "hintsChecked": 20,
+      "hintModesChecked": 2,
+      "milliseconds": 104
+    }
+  ]
+}

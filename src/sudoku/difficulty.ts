@@ -12,6 +12,10 @@ export const SINGLE_TECHNIQUES: readonly string[] = ['full-house', 'hidden-singl
 export type DifficultyPreference = Difficulty | 'auto'
 export const DIFFICULTY_OPTIONS: readonly DifficultyPreference[] = DIFFICULTY_LEVELS
 
+export function statisticsDifficulties(solvedDifficulties: readonly (Difficulty | null | undefined)[]): readonly Difficulty[] {
+  return solvedDifficulties.includes('unfair') ? [...DIFFICULTY_LEVELS, 'unfair'] : DIFFICULTY_LEVELS
+}
+
 export function isDifficulty(value: unknown): value is Difficulty {
   return typeof value === 'string' && Object.hasOwn(DIFFICULTY_LABELS, value)
 }

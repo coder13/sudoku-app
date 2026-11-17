@@ -1,5 +1,5 @@
 import { runEngine } from './engine.ts'
-import { createGameId, makeGame, type Game } from './game.ts'
+import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
 import { detectPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
 import { validation } from './puzzle-validation.ts'
 import { variantName } from './variants.ts'
@@ -7,8 +7,8 @@ import { variantName } from './variants.ts'
 export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] }
 
 export function findImportedPuzzle(games: readonly Game[], { givens, variant }: Pick<ImportedPuzzle, 'givens' | 'variant'>) {
-  return games.find(game => game.source !== 'draft' && game.givens === givens &&
-    (variant ? game.variant && JSON.stringify(game.variant.puzzle) === JSON.stringify(variant.puzzle) : !game.variant))
+  const identity = puzzleIdentity({ givens, variant })
+  return games.find(game => game.source !== 'draft' && puzzleIdentity(game) === identity)
 }
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
