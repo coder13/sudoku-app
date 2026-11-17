@@ -5,7 +5,7 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { BookOpen, Bookmark, Check, ChevronLeft, ChevronRight, Download, Play } from 'lucide-react'
 import {
   COLLECTIONS, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus,
-  discoverCollections, findCollectionGame, getCollection, getGameCollection, nextCollectionPuzzle, type CollectionPuzzleInfo, type PuzzleCollection,
+  findCollectionGame, getCollection, getGameCollection, nextCollectionPuzzle, type CollectionPuzzleInfo, type PuzzleCollection,
 } from '../sudoku/collections'
 import { collectionDownloadBytes, collectionDownloads, fetchCollectionGrid, formatCollectionBytes } from '../sudoku/collection-downloads'
 import { openCollectionPuzzle } from '../sudoku/collection-play'
@@ -142,8 +142,7 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
   const [opening, setOpening] = useState(false)
   const openRequest = useRef<AbortController | null>(null)
   const online = useOnlineStatus()
-  const downloads = useSyncExternalStore(collectionDownloads.subscribe, collectionDownloads.getSnapshot, collectionDownloads.getServerSnapshot)
-  const downloadedCollections = new Set(Object.keys(downloads).filter(id => Object.keys(downloads[id]).length))
+  useSyncExternalStore(collectionDownloads.subscribe, collectionDownloads.getSnapshot, collectionDownloads.getServerSnapshot)
   const collection = getCollection(search.collection)
   const puzzle = collection?.puzzles.find(puzzle => puzzle.id === search.puzzle)
   const difficulties = collection ? collectionDifficulties(collection) : []
@@ -195,31 +194,38 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
   </section>
 
   if (!collection) {
-    const collections = online ? discoverCollections(games, search.view === 'all', downloadedCollections)
-      : COLLECTIONS.filter(collection => Object.keys(collectionDownloads.grids(collection, games)).length > 0)
+    const cards = COLLECTIONS.map(collection => {
+      const available = online ? undefined : new Set(Object.keys(collectionDownloads.grids(collection, games)))
+      return {
+        collection,
+        count: available?.size ?? collection.puzzles.length,
+        difficulties: collectionDifficulties(collection, available),
+      }
+    }).filter(card => card.count > 0)
     return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
       <header><h2 id={`${id}-title`}>Puzzle collections</h2></header>
-      {collections.length ? <div className="collection-cards">
-        {collections.map(collection => {
-          const count = online ? collection.puzzles.length : Object.keys(collectionDownloads.grids(collection, games)).length
-          return <Link key={collection.id} className="collection-card" to="/puzzles/collections" search={{ collection: collection.id }}>
-            <span className="collection-card-icon"><BookOpen size={24} aria-hidden="true" /></span>
-            <span className="collection-card-count">{collection.kind === 'handmade' ? 'Handmade' : 'Generated'}</span>
-            <h3>{collection.title}</h3><p>{collection.description}</p>
-            <span className="collection-card-footer"><span>{count} {count === 1 ? 'puzzle' : 'puzzles'}{online ? '' : ' available offline'}</span><ChevronRight size={18} aria-hidden="true" /></span>
+      {cards.length ? <div className="collection-cards">
+        {cards.map(({ collection, count, difficulties }) => (
+          <Link key={collection.id} className="collection-card" to="/puzzles/collections" search={{ collection: collection.id }}>
+            <span className="collection-card-icon"><BookOpen size={21} aria-hidden="true" /></span>
+            <div className="collection-card-heading">
+              <h3>{collection.title}</h3>
+              <span>{count} {count === 1 ? 'puzzle' : 'puzzles'}{online ? '' : ' available offline'}</span>
+            </div>
+            <ChevronRight className="collection-card-chevron" size={18} aria-hidden="true" />
+            <p>{collection.description}</p>
+            <small className="collection-card-difficulties">{difficulties.map(difficulty => DIFFICULTY_LABELS[difficulty]).join(' · ')}</small>
           </Link>
-        })}
+        ))}
       </div> : <p className="collection-note">No collection puzzles available offline.</p>}
-      {online && (search.view === 'all' || collections.length < COLLECTIONS.length) && <Link to="/puzzles/collections"
-        search={{ view: search.view === 'all' ? undefined : 'all' }} className="collection-generate-link">
-        {search.view === 'all' ? 'Back to handmade collections' : 'Browse all collections'} <ChevronRight size={16} aria-hidden="true" />
-      </Link>}
-      <Link to="/puzzles/new" search={{}} className="collection-generate-link">Generate a new puzzle <ChevronRight size={16} aria-hidden="true" /></Link>
+      <Link to="/puzzles/new" search={{}} className="button secondary collection-action">Generate a new puzzle <ChevronRight size={16} aria-hidden="true" /></Link>
     </section>
   }
 
   if (!difficulty) return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
-    <Link className="collection-back" to="/puzzles/collections" search={{}}><ChevronLeft size={16} aria-hidden="true" /> All collections</Link>
+    <Link className="button secondary collection-action collection-browse" to="/puzzles/collections" search={{}}>
+      <ChevronLeft size={16} aria-hidden="true" /> Browse all collections
+    </Link>
     <header className="collection-list-header">
       <div><h2 id={`${id}-title`}>Choose difficulty</h2><p>{collection.title}{online ? '' : ' · Offline'}</p></div>
       {online && <DownloadPuzzles collection={collection} missing={missing} games={games} />}

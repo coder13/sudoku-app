@@ -86,17 +86,9 @@ export function collectionPuzzleStatus(puzzle: CollectionPuzzleInfo, games: read
   return matching.some(game => game.started) ? 'in-progress' : 'unplayed'
 }
 
-export function collectionDifficulties(collection: PuzzleCollection) {
+export function collectionDifficulties(collection: PuzzleCollection, available?: ReadonlySet<string>) {
   return (Object.keys(DIFFICULTY_LABELS) as Difficulty[]).filter(difficulty =>
-    collection.puzzles.some(puzzle => puzzle.difficulty === difficulty))
-}
-
-// Show handmade collections first. Keep a previously played generated collection
-// visible so an app update never hides a player's ongoing collection.
-export function discoverCollections(games: readonly Game[], all = false, downloaded: ReadonlySet<string> = new Set()) {
-  return COLLECTIONS.filter(collection => all || collection.kind === 'handmade' ||
-    downloaded.has(collection.id) ||
-    games.some(game => getGameCollection(game)?.collection.id === collection.id))
+    collection.puzzles.some(puzzle => puzzle.difficulty === difficulty && (!available || available.has(puzzle.id))))
 }
 
 export function collectionPuzzles(collection: PuzzleCollection, difficulty: Difficulty, available?: ReadonlySet<string>) {

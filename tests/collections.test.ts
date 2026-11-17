@@ -3,7 +3,7 @@ import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 import {
   COLLECTIONS as CATALOG, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus,
-  discoverCollections, findCollectionGame, getGameCollection,
+  findCollectionGame, getGameCollection,
   nextCollectionPuzzle, type CollectionPuzzleInfo,
 } from '../src/sudoku/collections.ts'
 import { isCollectionReference } from '../src/sudoku/collection-reference.ts'
@@ -91,15 +91,11 @@ test('the client catalog contains metadata and zero bundled puzzle grids', () =>
   assert.equal(nextCollectionPuzzle(collection, [], 'easy', undefined, new Set()), undefined)
 })
 
-test('discovery starts with handmade puzzles and retains previously opened collections', () => {
-  assert.ok(discoverCollections([]).every(collection => collection.kind === 'handmade'))
-  assert.deepEqual(discoverCollections([], true), CATALOG)
-  const legacy = COLLECTIONS.find(collection => collection.kind === 'generated')!
-  const puzzle = legacy.puzzles[0]
-  const saved = { ...makeGame('legacy', puzzle.title, puzzle.givens, 'collection'),
-    collection: { collectionId: legacy.id, puzzleId: puzzle.id } }
-  assert.ok(discoverCollections([saved]).some(set => set.id === legacy.id))
-  assert.ok(!discoverCollections([{ ...saved, givens: EMPTY }]).some(set => set.id === legacy.id))
+test('offline difficulty labels reflect the available puzzles', () => {
+  assert.deepEqual(collectionDifficulties(collection, new Set()), [])
+  const available = collection.puzzles.filter(puzzle => puzzle.difficulty === 'medium')
+  assert.ok(available.length > 0)
+  assert.deepEqual(collectionDifficulties(collection, new Set(available.map(puzzle => puzzle.id))), ['medium'])
 })
 
 test('the metadata catalog stays within 12 KiB compressed and 64 KiB uncompressed', () => {

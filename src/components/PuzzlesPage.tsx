@@ -232,7 +232,6 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
   const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
   const collection = getCollection(collectionSearch?.collection)
   const collectionPuzzle = getCollectionPuzzle(collectionSearch?.collection, collectionSearch?.puzzle)?.puzzle
-  const collectionView = collectionSearch?.view
   const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
     collectionDifficulties(collection).includes(collectionSearch.difficulty) ? collectionSearch.difficulty : undefined)
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
@@ -282,10 +281,10 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
   return <main className={`puzzles-page ${section ? 'puzzles-subscreen' : ''}`}>
     <header className="puzzles-page-heading">
       {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"
-        search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined, view: collectionView }
-          : collectionDifficulty ? { collection: collectionSearch.collection, view: collectionView } : {}}
+        search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
+          : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
         className="icon-button puzzles-back" aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
-          : collectionDifficulty ? 'Change collection difficulty' : 'Back to collections'}><ChevronLeft size={21} /></Link>
+          : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
         : backToVariant ? <Link to="/puzzles/new" search={{ step: 'variant' }} replace
         className="icon-button puzzles-back" aria-label="Back to variants"><ChevronLeft size={21} /></Link>
         : backToStart ? <Link to="/puzzles/new" search={{}} replace

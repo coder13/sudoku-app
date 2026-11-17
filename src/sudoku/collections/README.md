@@ -60,9 +60,8 @@ device. The next-puzzle action stays at the same difficulty in either mode.
   The app displays its own difficulty, not the source's category.
 - This is an automated selection of generated puzzles, not a handmade set.
 
-This older collection remains accessible through **Browse all collections** and
-saved puzzle links. It also remains visible for players who already opened one
-of its puzzles. The initial discovery view favors handmade collections.
+The Collections page lists both collections online. Offline, it lists collections
+and difficulties with puzzles available on the device.
 
 ## Authorship and size
 
