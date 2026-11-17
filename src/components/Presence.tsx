@@ -1,6 +1,17 @@
-import { type ReactNode, useEffect, useState } from 'react'
+import { cloneElement, type ReactElement, type ReactNode, useEffect, useState } from 'react'
 
-export function usePresence(open: boolean, exitDuration = 150) {
+type MotionSpeed = 'standard' | 'overlay'
+type PresenceState = 'open' | 'exit'
+const EXIT_PAINT_BUFFER_MS = 34
+
+export function exitDelay(speed: MotionSpeed) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0
+  const value = getComputedStyle(document.documentElement).getPropertyValue(`--motion-${speed}-duration`).trim()
+  const duration = Number.parseFloat(value) * (value.endsWith('ms') ? 1 : 1000)
+  return duration > 0 ? duration + EXIT_PAINT_BUFFER_MS : 0
+}
+
+export function usePresence(open: boolean, speed: MotionSpeed = 'standard') {
   const [mounted, setMounted] = useState(open)
 
   useEffect(() => {
@@ -9,22 +20,47 @@ export function usePresence(open: boolean, exitDuration = 150) {
       return
     }
     if (!mounted) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const delay = exitDelay(speed)
+    if (!delay) {
       setMounted(false)
       return
     }
-    const timeout = window.setTimeout(() => setMounted(false), exitDuration)
+    const timeout = window.setTimeout(() => setMounted(false), delay)
     return () => window.clearTimeout(timeout)
-  }, [exitDuration, mounted, open])
+  }, [mounted, open, speed])
 
-  return { mounted, exiting: mounted && !open }
+  return { mounted: open || mounted, exiting: mounted && !open }
 }
 
-export function Presence({ open, exitDuration = 150, children }: {
+export function Presence({ open, children }: {
   open: boolean
-  exitDuration?: number
-  children: (presence: 'open' | 'exit') => ReactNode
+  children: (presence: PresenceState) => ReactNode
 }) {
-  const { mounted, exiting } = usePresence(open, exitDuration)
+  const { mounted, exiting } = usePresence(open)
   return mounted ? children(exiting ? 'exit' : 'open') : null
+}
+
+type Surface = ReactElement<{
+  className?: string
+  'data-presence'?: PresenceState
+  'aria-hidden'?: boolean
+  inert?: boolean
+}>
+
+export function usePresentContent<T>(content: T | false | null | undefined) {
+  const { mounted, exiting } = usePresence(Boolean(content))
+  const [previous, setPrevious] = useState(content)
+  if (content !== previous && (content || !mounted)) setPrevious(content)
+  return { content: mounted ? content || previous : null, exiting }
+}
+
+export function MotionSurface({ children }: { children: Surface | false | null | undefined }) {
+  const { content: surface, exiting } = usePresentContent(children)
+  if (!surface) return null
+  return cloneElement(surface, {
+    className: `${surface.props.className ?? ''} motion-surface`,
+    'data-presence': exiting ? 'exit' : 'open',
+    'aria-hidden': exiting || surface.props['aria-hidden'],
+    inert: exiting || surface.props.inert,
+  })
 }

@@ -1,5 +1,6 @@
 import { Download } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { MotionSurface } from './Presence'
 
 export function OfflineUpdates() {
   const [updateWorker, setUpdateWorker] = useState<ServiceWorker | null>(null)
@@ -83,16 +84,14 @@ export function OfflineUpdates() {
     updateWorker.postMessage({ type: 'SKIP_WAITING' })
   }
 
-  if (!updateWorker) return null
-
-  return <UpdatePrompt updating={updating} onDismiss={() => setUpdateWorker(null)} onUpdate={installUpdate} />
+  return <UpdatePrompt open={Boolean(updateWorker)} updating={updating} onDismiss={() => setUpdateWorker(null)} onUpdate={installUpdate} />
 }
 
-export function UpdatePrompt({ updating, onDismiss, onUpdate }: {
-  updating: boolean; onDismiss: () => void; onUpdate: () => void
+export function UpdatePrompt({ open = true, updating, onDismiss, onUpdate }: {
+  open?: boolean; updating: boolean; onDismiss: () => void; onUpdate: () => void
 }) {
   return (
-    <aside className="update-prompt" role="dialog" aria-labelledby="update-title" aria-describedby="update-description">
+    <MotionSurface>{open && <aside className="update-prompt" role="dialog" aria-labelledby="update-title" aria-describedby="update-description">
       <span className="update-prompt-icon" aria-hidden="true"><Download size={20} /></span>
       <span className="update-prompt-copy">
         <strong id="update-title">App update ready</strong>
@@ -102,6 +101,6 @@ export function UpdatePrompt({ updating, onDismiss, onUpdate }: {
         <button className="button secondary" disabled={updating} onClick={onDismiss}>Later</button>
         <button className="button primary" disabled={updating} onClick={onUpdate}>{updating ? 'Updating…' : 'Update app'}</button>
       </span>
-    </aside>
+    </aside>}</MotionSurface>
   )
 }

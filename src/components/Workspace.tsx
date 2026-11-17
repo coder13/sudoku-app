@@ -18,7 +18,7 @@ import { shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
 import { NewPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
-import { Presence } from './Presence'
+import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
 import { isSettingsSection, Settings } from './Settings'
@@ -476,7 +476,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       </PlayContent.Provider>
       </PuzzlesContent.Provider>
 
-      {playing && resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
+      <MotionSurface>{playing && resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
         <span className="resize-session-copy"><strong>Resize input panel</strong><small>Drag the handle or adjust digit size.</small></span>
         <span className="resize-size-controls" role="group" aria-label="Digit size">
           <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
@@ -488,7 +488,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           <button className="button secondary" onClick={cancelResize}>Cancel</button>
           <button className="button primary" onClick={finishResize}>Save</button>
         </span>
-      </div>}
+      </div>}</MotionSurface>
 
       {panel === 'new' && !mobile && <NewPuzzle close={close} difficulty={newPuzzlePreference?.difficulty ?? difficulty} initialVariant={newPuzzlePreference?.variant}
         onDifficultyChange={setDifficulty} onPuzzleStart={rememberNewPuzzle} onCreate={createPuzzle} />}

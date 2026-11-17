@@ -29,17 +29,22 @@
   --puzzle-padding-inline: var(--space-12);
   --motion-fast-duration: 110ms;
   --motion-standard-duration: 150ms;
+  --motion-overlay-duration: 240ms;
+  --motion-press-duration: 60ms;
   --motion-move: cubic-bezier(.4, 0, .2, 1);
   --motion-enter: cubic-bezier(0, 0, .2, 1);
   --motion-exit: cubic-bezier(.4, 0, 1, 1);
   --motion-spring: cubic-bezier(.16, 1, .3, 1);
-  --board-mark-motion: var(--motion-fast-duration) var(--motion-move);
-  --board-shape-motion: var(--motion-standard-duration) var(--motion-move);
+  --motion-fast: var(--motion-fast-duration) var(--motion-move);
+  --motion-standard: var(--motion-standard-duration) var(--motion-move);
+  --board-mark-motion: var(--motion-fast);
+  --board-shape-motion: var(--motion-standard);
+  transition: color var(--motion-standard), background-color var(--motion-standard);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; min-width: 280px; overflow: hidden; background: var(--page-bg); }
+body { margin: 0; min-width: 280px; overflow: hidden; background: var(--page-bg); transition: background-color var(--motion-standard); }
 .app-shell {
   height: 100dvh;
   display: flex;
@@ -87,7 +92,21 @@ h1, h2, p { margin: 0; }
 svg { flex-shrink: 0; }
 [aria-hidden="true"] { user-select: none; }
 
-.topbar { background: var(--surface); border-bottom: 1px solid var(--border); }
+:where(
+  .app-menu :is(button, a), .puzzle-context-menu button, .desktop-insight-tabs button, .advanced-browser-tabs button,
+  .advanced-browser-list button, .desktop-dockview .dv-tab, .chain-row, .chain-swatches, .chain-color-input i,
+  .cell-color-swatch, .game-row, .game-row-with-options, .puzzles-section-links a, .new-option, .option-icon,
+  .main-menu-tabs :is(button, a), .main-menu-mobile-list :is(button, a),
+  .variant-option, .main-difficulty-options label, .difficulty-options button,
+  .settings-tabs :is(button, a), .settings-mobile-menu :is(button, a), .settings-header-back, .settings-menu-icon,
+  .resize-panels-option, .appearance-toggle, .theme-preview i, .highlight-style-options, .learn-nav-toggle, .learn-nav-link,
+  input:not([type="range"]), textarea, select, [role="tab"], .puzzle-mode-tab
+) {
+  transition: background-color var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast),
+    box-shadow var(--motion-fast), opacity var(--motion-fast);
+}
+
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); transition: background-color var(--motion-standard), border-color var(--motion-standard); }
 .topbar-inner, .page { width: min(100%, 1128px); margin-inline: auto; padding-inline: 26px; }
 .topbar-inner { min-height: calc(var(--topbar-height) - 1px); display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); }
 .advanced-topbar .topbar-inner { width: 100%; max-width: none; padding-inline: var(--space-12); }
@@ -127,7 +146,7 @@ svg { flex-shrink: 0; }
   font-size: 14px;
   font-weight: 730;
   text-decoration: none;
-  transition: color 140ms var(--motion-move), background-color 140ms var(--motion-move);
+  transition: color var(--motion-fast), background-color var(--motion-fast);
 }
 .primary-navigation a[data-status="active"] { background: var(--surface-muted); color: var(--ink); }
 .mobile-primary-navigation { display: none; }
@@ -148,8 +167,11 @@ svg { flex-shrink: 0; }
   box-shadow: 0 12px 30px #00000026;
   transform-origin: top right;
 }
-.app-menu[data-presence="open"] { animation: popup-enter 150ms var(--motion-enter) both; }
-.app-menu[data-presence="exit"] { pointer-events: none; animation: popup-exit 150ms var(--motion-exit) both; }
+.app-menu[data-presence] { transition: opacity var(--motion-standard), transform var(--motion-standard); }
+.app-menu[data-presence="exit"] { opacity: 0; transform: translateY(-3px) scale(.97); pointer-events: none; }
+@starting-style {
+  .app-menu[data-presence="open"] { opacity: 0; transform: translateY(-3px) scale(.97); }
+}
 .app-menu :is(button, a) {
   width: 100%;
   min-height: 42px;
@@ -184,8 +206,8 @@ svg { flex-shrink: 0; }
   white-space: nowrap;
   text-decoration: none;
   line-height: 1.1;
-  transition: background-color 140ms var(--motion-move), border-color 140ms var(--motion-move),
-    color 140ms var(--motion-move), box-shadow 140ms var(--motion-move), transform 120ms var(--motion-move);
+  transition: background-color var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast),
+    box-shadow var(--motion-fast), opacity var(--motion-fast), transform var(--motion-fast);
 }
 .button:disabled, .icon-button:disabled { opacity: .48; }
 .primary { background: var(--primary-bg); color: var(--primary-ink); box-shadow: 0 2px 3px #00000016; }
@@ -200,7 +222,7 @@ svg { flex-shrink: 0; }
   color: var(--dark-purple);
 }
 .borderless { border-color: transparent; background: transparent; box-shadow: none; }
-.button:not(:disabled):active, .icon-button:not(:disabled):active { transform: scale(.97); transition-duration: 60ms; }
+.button:not(:disabled):active, .icon-button:not(:disabled):active { transform: scale(.97); transition-duration: var(--motion-press-duration); }
 
 .page {
   height: calc(100dvh - 71px);
@@ -208,7 +230,6 @@ svg { flex-shrink: 0; }
   padding-bottom: clamp(var(--space-8), 2dvh, var(--space-22));
   overflow: hidden;
 }
-.learn-page { animation: page-enter 180ms var(--motion-enter) both; }
 .workspace {
   height: 100%;
   display: grid;
@@ -662,6 +683,7 @@ svg { flex-shrink: 0; }
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--surface-shadow);
+  transition: background-color var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard);
 }
 .puzzle {
   --board-frame-width: min(100%, var(--board-frame-limit));
@@ -828,8 +850,7 @@ svg { flex-shrink: 0; }
 .hint-dock {
   margin-top: var(--space-12);
 }
-.standard-input-stack > :is(.hint-dock, .solution-path), .mobile-hint-panel,
-.mobile-completion, .completion-frame { animation: surface-enter 180ms var(--motion-enter) both; }
+.mobile-completion, .completion-frame { animation: surface-enter var(--motion-standard-duration) var(--motion-enter) both; }
 .hint-dock .hint-card {
   max-height: clamp(104px, 18dvh, 180px);
   overflow: auto;
@@ -1293,7 +1314,7 @@ svg { flex-shrink: 0; }
   background: transparent;
   color: inherit;
   text-align: left;
-  transition: color 120ms var(--motion-move), background-color 120ms var(--motion-move), box-shadow 120ms var(--motion-move);
+  transition: color var(--motion-fast), background-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 .solution-path-step:focus-visible { outline-offset: -2px; }
 .solution-path-step:hover { background: var(--surface-hover); }
@@ -1390,10 +1411,10 @@ svg { flex-shrink: 0; }
   color: var(--key-ink);
   box-shadow: 0 1px 1px #00000006;
   touch-action: manipulation;
-  transition: color 120ms var(--motion-move), background-color 120ms var(--motion-move),
-    border-color 120ms var(--motion-move), box-shadow 120ms var(--motion-move), transform 90ms var(--motion-move);
+  transition: color var(--motion-fast), background-color var(--motion-fast), border-color var(--motion-fast),
+    box-shadow var(--motion-fast), opacity var(--motion-fast), transform var(--motion-fast);
 }
-.key:not(:disabled):active { transform: scale(.96); transition-duration: 45ms; }
+.key:not(:disabled):active { transform: scale(.96); transition-duration: var(--motion-press-duration); }
 .keypad:not(.palette) .key { min-height: 0; }
 .desktop-play-resizable .standard-input-stack .keypad:not(.palette) .key {
   font-size: max(18px, calc(var(--digit-pad-width) * var(--digit-font-ratio, .114)));
@@ -1681,7 +1702,6 @@ svg { flex-shrink: 0; }
   margin-inline: auto;
   padding: var(--space-28) 34px 0;
   overflow: hidden;
-  animation: page-enter 180ms var(--motion-enter) both;
 }
 .puzzles-page-heading { flex: none; display: flex; align-items: center; gap: var(--space-10); margin-bottom: var(--space-20); }
 .puzzles-page-heading h1 { font-size: 25px; letter-spacing: -.035em; }
@@ -1694,7 +1714,6 @@ svg { flex-shrink: 0; }
   overflow-y: auto;
   overscroll-behavior-y: contain;
   padding: 34px clamp(var(--space-24), 5vw, var(--space-64)) 46px;
-  animation: page-enter 180ms var(--motion-enter) both;
 }
 .shortcuts-page-inner { width: min(100%, 900px); display: grid; gap: 30px; margin-inline: auto; }
 .shortcuts-page-heading {
@@ -1788,7 +1807,6 @@ svg { flex-shrink: 0; }
   background: color-mix(in srgb, var(--surface) 95%, transparent);
   box-shadow: 0 13px 35px #00000030;
   backdrop-filter: blur(10px);
-  animation: notice-enter 220ms var(--motion-spring) both;
 }
 .resize-session-bar strong, .resize-session-bar small { display: block; }
 .resize-session-bar strong { font-size: 14px; }
@@ -1818,7 +1836,6 @@ svg { flex-shrink: 0; }
   color: var(--ink);
   box-shadow: 0 16px 42px #00000038;
   backdrop-filter: blur(12px);
-  animation: notice-enter 220ms var(--motion-spring) both;
 }
 .update-prompt-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: var(--surface-muted); color: var(--dark-purple); }
 .update-prompt-copy { min-width: 0; }
@@ -1960,7 +1977,7 @@ svg { flex-shrink: 0; }
   font-weight: 730;
   white-space: nowrap;
 }
-.completion-techniques summary > svg { color: var(--muted); transition: transform 160ms var(--motion-move); }
+.completion-techniques summary > svg { color: var(--muted); transition: transform var(--motion-fast); }
 .completion-techniques[open] summary { border-bottom: 1px solid var(--border); }
 .completion-techniques[open] summary > svg { transform: rotate(180deg); }
 .completion-techniques-panel { max-height: min(148px, 30cqw); overflow-y: auto; padding: var(--space-4) var(--space-10); }
@@ -2049,15 +2066,15 @@ svg { flex-shrink: 0; }
   box-shadow: 0 5px 18px #0000004d, 0 28px 90px #00000099;
   overflow: auto;
 }
-.dialog[data-presence="open"] { animation: dialog-enter 150ms var(--motion-enter) both; }
+.dialog[data-presence="open"] { animation: dialog-enter var(--motion-standard-duration) var(--motion-enter) both; }
 .dialog[data-presence="exit"] {
   pointer-events: none;
-  animation: dialog-exit 150ms var(--motion-exit) both;
+  animation: dialog-exit var(--motion-standard-duration) var(--motion-exit) both;
 }
 .dialog.check-dialog { width: min(410px, calc(100vw - 28px)); }
 .dialog::backdrop { background: #00000065; }
-.dialog[data-presence="open"]::backdrop { animation: dialog-backdrop-enter 150ms ease-out both; }
-.dialog[data-presence="exit"]::backdrop { animation: dialog-backdrop-exit 150ms ease-in both; }
+.dialog[data-presence="open"]::backdrop { animation: dialog-backdrop-enter var(--motion-standard-duration) ease-out both; }
+.dialog[data-presence="exit"]::backdrop { animation: dialog-backdrop-exit var(--motion-standard-duration) ease-in both; }
 .dialog.settings-dialog::backdrop {
   background: #00000080;
   -webkit-backdrop-filter: blur(12px) saturate(.75);
@@ -2203,25 +2220,56 @@ svg { flex-shrink: 0; }
 @keyframes action-sheet-exit {
   to { opacity: 0; transform: translateY(100%); }
 }
-@keyframes popup-enter {
-  from { opacity: 0; transform: translateY(-3px) scale(.97); }
-}
-@keyframes popup-exit {
-  to { opacity: 0; transform: translateY(-3px) scale(.97); }
-}
 @keyframes surface-enter {
   from { opacity: 0; transform: translateY(6px); }
 }
-@keyframes page-enter {
+@keyframes content-enter {
   from { opacity: 0; }
 }
-@keyframes screen-enter {
-  from { opacity: 0; transform: translateY(4px); }
+.motion-surface { transition: opacity var(--motion-standard), transform var(--motion-standard); }
+.motion-surface.surface { transition: opacity var(--motion-standard), transform var(--motion-standard),
+  background-color var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard); }
+.motion-surface:is(.update-prompt, .resize-session-bar) { --surface-motion-offset: -6px; }
+.mobile-panel.motion-surface { --surface-motion-offset: 0px; transition: opacity var(--motion-standard); }
+.motion-surface[data-presence="exit"] { opacity: 0; transform: translateY(var(--surface-motion-offset, 4px)); pointer-events: none; }
+@starting-style {
+  .motion-surface[data-presence="open"] { opacity: 0; transform: translateY(var(--surface-motion-offset, 4px)); }
 }
-@keyframes notice-enter {
-  from { opacity: 0; transform: translateY(-10px) scale(.98); }
+@supports not selector(:active-view-transition-type(navigation)) {
+  .motion-screen { animation: content-enter var(--motion-standard-duration) var(--motion-enter) both; }
 }
-.motion-screen { animation: screen-enter 160ms var(--motion-enter) both; }
+:root:active-view-transition-type(navigation)::view-transition { pointer-events: none; }
+:root:active-view-transition-type(navigation)::view-transition-group(root),
+:root:active-view-transition-type(navigation)::view-transition-old(root),
+:root:active-view-transition-type(navigation)::view-transition-new(root) {
+  animation-duration: var(--motion-standard-duration);
+  animation-timing-function: var(--motion-move);
+}
+.desktop-insight-body > :is(.puzzle-analysis-content, .chains-panel, .solution-path, .advanced-spoiler-panel),
+.dock-panel-content > :is(.hint-dock, .solution-path, .advanced-spoiler-panel),
+:is(.advanced-browser-list, .advanced-browser-empty, .import-preview, .hint-card-reason, .hint-card-removals) {
+  animation: content-enter var(--motion-standard-duration) var(--motion-enter) both;
+}
+.dock-ready .dock-panel-content:not(.dock-puzzle-panel) { transition: opacity var(--motion-standard); }
+@starting-style {
+  .dock-ready .dock-panel-content:not(.dock-puzzle-panel) { opacity: 0; }
+}
+@supports selector(::details-content) {
+  details::details-content {
+    opacity: 0;
+    transition: opacity var(--motion-standard), content-visibility var(--motion-standard) allow-discrete;
+  }
+  details[open]::details-content { opacity: 1; }
+}
+@supports (interpolate-size: allow-keywords) {
+  details::details-content {
+    interpolate-size: allow-keywords;
+    block-size: 0;
+    overflow: clip;
+    transition: block-size var(--motion-standard), opacity var(--motion-standard), content-visibility var(--motion-standard) allow-discrete;
+  }
+  details[open]::details-content { block-size: auto; }
+}
 .dialog-form { display: flex; flex-direction: column; gap: 9px; }
 .dialog-form p { font-size: 14px; line-height: 1.55; color: var(--muted); margin-bottom: 3px; }
 .dialog-form label:not(.file-picker) { font-size: 13px; font-weight: 760; }
@@ -2699,10 +2747,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     overflow: hidden;
   }
   .puzzle-actions-sheet[data-presence="open"] {
-    animation: action-sheet-enter 240ms var(--motion-spring) both;
+    animation: action-sheet-enter var(--motion-overlay-duration) var(--motion-spring) both;
   }
   .puzzle-actions-sheet[data-presence="exit"] {
-    animation: action-sheet-exit 240ms var(--motion-exit) both;
+    animation: action-sheet-exit var(--motion-overlay-duration) var(--motion-exit) both;
   }
   .puzzle-actions-sheet .dialog-inner {
     display: flex;
@@ -2856,6 +2904,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+  details::details-content { transition: none !important; }
   [data-board-fade="exit"] { display: none; }
 }
 
