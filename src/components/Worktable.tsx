@@ -210,6 +210,8 @@ export function Worktable({
   const [analysisCardOpen, setAnalysisCardOpen] = useState(false)
   const [desktopInsightTab, setDesktopInsightTab] = useState<'solution' | 'techniques'>('techniques')
   const [focusAnalysisRequest, setFocusAnalysisRequest] = useState(0)
+  const [focusSolutionRequest, setFocusSolutionRequest] = useState(0)
+  const [desktopSolutionVisible, setDesktopSolutionVisible] = useState(false)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [changePuzzleOpen, setChangePuzzleOpen] = useState(false)
@@ -329,7 +331,7 @@ export function Worktable({
   const activeDesktopTab: 'solution' | 'techniques' = desktopInsightTab === 'solution' && openSolutionTab
     ? 'solution' : desktopInsightTab === 'techniques' && openTechniqueTab
       ? 'techniques' : openTechniqueTab ? 'techniques' : 'solution'
-  const previewing = openSolutionTab && (advancedWorkspace || activeDesktopTab === 'solution')
+  const previewing = openSolutionTab && (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab === 'solution')
   const disabled = Boolean(placeholder) || previewing || game.paused
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const chainsVisible = advancedWorkspace && showRightPanel && desktopChainsVisible
@@ -1223,7 +1225,10 @@ export function Worktable({
   async function showSolutionPath(force = false) {
     if (!desktop || draft || busy) return
     setPuzzleMenuOpen(false)
-    if (!advancedWorkspace) setDesktopInsightTab('solution')
+    if (advancedWorkspace) {
+      onOpenRightPanel()
+      setFocusSolutionRequest((request) => request + 1)
+    } else setDesktopInsightTab('solution')
     setSolutionPathRevealed(true)
     if (solutionPath && !force) return
     setSolutionStep(0)
@@ -1632,8 +1637,10 @@ export function Worktable({
             : <p className="analysis-empty">Available for classic Sudoku puzzles.</p>}
           details={detailsPanel} browser={browserPanel} showLeft={showLeftPanel} showRight={showRightPanel} showBottom={showBottomPanel}
           focusHintRequest={focusHintRequest} focusAnalysisRequest={focusAnalysisRequest}
+          focusSolutionRequest={focusSolutionRequest}
           focusChainsRequest={chainInspection ? focusChainsRequest : 0}
-          onChainsVisibleChange={setDesktopChainsVisible} />
+          onChainsVisibleChange={setDesktopChainsVisible}
+          onSolutionVisibleChange={setDesktopSolutionVisible} />
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">
               {inputPanel}
