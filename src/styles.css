@@ -215,15 +215,60 @@ svg { flex-shrink: 0; }
 .standard-input-stack > .workspace-controls { grid-area: auto; }
 .standard-input-stack > .workspace-controls,
 .standard-input-stack > .hint-dock { flex: none; }
-.standard-input-stack > :is(.puzzle-analysis-card, .solution-path) {
+.standard-input-stack > .desktop-insight-panel {
   flex: 1 1 0;
   min-height: 0;
-  max-height: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024;
 }
-.standard-input-stack > .puzzle-analysis-card .puzzle-analysis-card-body { flex: 1; }
+.desktop-insight-toolbar {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  gap: 6px;
+  min-height: 46px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+.desktop-insight-tabs { display: flex; flex: 1; min-width: 0; gap: 2px; align-items: stretch; }
+.desktop-insight-tabs button {
+  min-width: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.desktop-insight-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--selected-border);
+  background: var(--surface);
+  color: var(--ink);
+}
+.desktop-insight-tabs button:focus-visible {
+  outline: 2px solid var(--selected-border);
+  outline-offset: -2px;
+}
+.desktop-insight-close { flex: none; align-self: center; width: 34px; height: 34px; min-height: 34px; }
+.desktop-insight-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.desktop-insight-body > .puzzle-analysis-content { padding: 10px 12px; }
+.desktop-insight-body > .solution-path {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
 
-.standard-input-stack > .solution-path { min-height: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024; }
 .standard-input-stack:has(.hint-dock) { align-self: stretch; }
 .standard-input-stack .hint-dock { margin-top: 0; }
 .workspace-initializing { visibility: hidden; }
