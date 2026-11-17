@@ -109,3 +109,51 @@ test('blocked reads and failed writes leave controls usable and notify subscribe
   store.set('selectedDigit', null)
   assert.equal(notifications, 2)
 })
+
+test('one tab cannot overwrite unrelated settings saved by another tab', () => {
+  const storage = memoryStorage()
+  const first = createPlayPreferenceStore(storage)
+  const second = createPlayPreferenceStore(storage)
+  first.set('pencil', true)
+  first.set('selectedDigit', 7)
+  second.set('multi', true)
+  second.set('puzzleBrowserView', 'saved')
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), {
+    ...DEFAULT_PLAY_PREFERENCES, pencil: true, selectedDigit: 7, multi: true, puzzleBrowserView: 'saved',
+  })
+  // Other tabs do not change the active input mode in the middle of a move.
+  assert.equal(second.getSnapshot().pencil, false)
+  second.set('highlightMode', true)
+  first.set('pencil', false)
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), {
+    ...DEFAULT_PLAY_PREFERENCES, selectedDigit: 7, multi: true, puzzleBrowserView: 'saved',
+  })
+})
+
+test('an older app tab preserves settings introduced by a newer app update', () => {
+  const storage = memoryStorage(JSON.stringify({ pencil: true, futureSetting: { enabled: true } }))
+  const store = createPlayPreferenceStore(storage)
+  store.set('selectedDigit', 8)
+  assert.deepEqual(JSON.parse(storage.getItem(PLAY_PREFERENCES_KEY)!).futureSetting, { enabled: true })
+  assert.equal(createPlayPreferenceStore(storage).getSnapshot().pencil, true)
+})
+
+test('a later successful write recovers unsaved changes and keeps other tabs settings', () => {
+  const storage = memoryStorage()
+  let full = true
+  const first = createPlayPreferenceStore({
+    ...storage,
+    setItem(key, value) {
+      if (full) throw new Error('Storage full')
+      storage.setItem(key, value)
+    },
+  })
+  first.set('pencil', true)
+  first.set('selectedDigit', 3)
+  createPlayPreferenceStore(storage).set('multi', true)
+  full = false
+  first.set('candidateKind', 'center')
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), {
+    ...DEFAULT_PLAY_PREFERENCES, pencil: true, selectedDigit: 3, multi: true, candidateKind: 'center',
+  })
+})

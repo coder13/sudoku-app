@@ -61,13 +61,20 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
 
 type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'>
 
+function readSavedPreferences(storage: PreferenceStorage): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(storage.getItem(PLAY_PREFERENCES_KEY) ?? 'null')
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+  } catch { return null }
+}
+
 export function createPlayPreferenceStore(storage?: PreferenceStorage) {
   let current = { ...DEFAULT_PLAY_PREFERENCES }
   try {
-    const target = storage ?? localStorage
-    current = parsePlayPreferences(JSON.parse(target.getItem(PLAY_PREFERENCES_KEY) ?? 'null'))
+    current = parsePlayPreferences(readSavedPreferences(storage ?? localStorage))
   } catch { /* Defaults also work during server rendering or with blocked storage. */ }
   const listeners = new Set<() => void>()
+  let pending: Partial<PlayPreferences> = {}
 
   return {
     subscribe(listener: () => void) {
@@ -79,11 +86,18 @@ export function createPlayPreferenceStore(storage?: PreferenceStorage) {
     set<K extends keyof PlayPreferences>(key: K, value: PlayPreferences[K] | ((previous: PlayPreferences[K]) => PlayPreferences[K])) {
       const next = typeof value === 'function' ? value(current[key]) : value
       if (Object.is(current[key], next)) return
-      current = next === true && INPUT_MODE_KEYS.some((mode) => mode === key)
-        ? { ...current, pencil: false, highlightMode: false, colorMode: false, eraseMode: false, [key]: next }
-        : { ...current, [key]: next }
+      const changes = INPUT_MODE_KEYS.some((mode) => mode === key)
+        ? { pencil: false, highlightMode: false, colorMode: false, eraseMode: false, [key]: next }
+        : { [key]: next }
+      current = { ...current, ...changes }
+      pending = { ...pending, ...changes }
       // Save inside the action, before a refresh or an app-update reload can run.
-      try { (storage ?? localStorage).setItem(PLAY_PREFERENCES_KEY, JSON.stringify(current)) }
+      try {
+        const target = storage ?? localStorage
+        // Preserve unrelated settings from other tabs, including fields from newer app versions.
+        target.setItem(PLAY_PREFERENCES_KEY, JSON.stringify({ ...(readSavedPreferences(target) ?? current), ...pending }))
+        pending = {}
+      }
       catch { /* Controls remain usable for this session when storage is full or blocked. */ }
       listeners.forEach((listener) => listener())
     },
