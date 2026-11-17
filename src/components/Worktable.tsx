@@ -1567,7 +1567,7 @@ export function Worktable({
   const solutionPathPanel = previewing ? (
     <SolutionPath state={solutionPath} index={solutionStep}
       onSelect={selectSolutionStep} onRetry={() => { void showSolutionPath(true) }} onClose={closeSolutionPath}
-      onReveal={markSolutionVisible} />
+      onReveal={markSolutionVisible} embedded />
   ) : null
   const advancedHintPanel = hintPanel || (
     <section className="advanced-spoiler-panel" aria-label="Hint">
