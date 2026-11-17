@@ -43,7 +43,7 @@ test('Grouped AIC location shows all candidates in an endpoint group', () => {
   assert.equal(marks?.get(2)?.get(4)?.label, 'chain end')
 })
 
-test('WXYZ-Wing explains the restricted digits, required digit, and exact target visibility', () => {
+test('WXYZ-Wing shows why placing the outside candidate would leave a cell unfilled', () => {
   const candidates = Array(81).fill(0)
   candidates[33] = mask(5, 8)
   candidates[69] = mask(5, 9)
@@ -56,9 +56,9 @@ test('WXYZ-Wing explains the restricted digits, required digit, and exact target
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.deepEqual(diagram.reasonSteps, [
-    'Only 8 can fill more than one of the four cells. The 1 candidates share row 9. The 5 candidates share column 7. The 9 candidates share column 7.',
-    'The other three digits can fill at most three cells. At least one of the four cells must take 8.',
-    'At least one of R4C7 and R9C3 must take 8. Putting 8 in R4C3 would block all of those spots.',
+    '1, 5, and 9 can each fill at most one of the four cells. The 1 candidates share row 9. The 5 candidates share column 7. The 9 candidates share column 7.',
+    'Putting 8 in R4C3 would rule out 8 in R4C7 and R9C3.',
+    'That leaves only three digits for the four cells. Each can fill at most one cell, so one cell would be left without a digit.',
   ])
   assert.doesNotMatch(diagram.reason, /fourth cell|exactly one.*8/)
   assert.equal(diagram.accentLabel, 'Required digit')
@@ -78,9 +78,9 @@ test('WXYZ-Wing handles all four restricted digits without inventing an unrestri
     evidence: { 'wxyz-wing': { cells: [0, 3, 27, 30], digits: [1, 2, 3, 4], unrestricted: null } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.equal(diagram.reasonSteps?.[1], 'Four cells need four digits, so each digit must appear once.')
-  assert.match(diagram.reason, /At least one of R1C1 and R4C1 must take 1/)
-  assert.match(diagram.reason, /At least one of R4C1 and R4C4 must take 4/)
+  assert.match(diagram.reason, /Each digit can fill at most one of the four cells/)
+  assert.match(diagram.reason, /Putting 1 in R7C1 would rule out 1 in R1C1 and R4C1/)
+  assert.match(diagram.reason, /Putting 4 in R4C2 would rule out 4 in R4C1 and R4C4/)
   assert.doesNotMatch(diagram.reason, /null|undefined|other three/)
   assert.equal(diagram.accentLabel, undefined)
 })

@@ -260,8 +260,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
   if ('wxyz-wing' in evidence) {
     const { cells, digits, unrestricted } = evidence['wxyz-wing']
     const restricted = digits.filter((digit) => digit !== unrestricted)
-    const repeat = unrestricted === null ? 'Each digit can fill at most one of the four cells.'
-      : `Only ${unrestricted} can fill more than one of the four cells.`
+    const once = unrestricted === null ? 'Each digit can fill at most one of the four cells.'
+      : `${list.format(restricted.map(String))} can each fill at most one of the four cells.`
     const limits = restricted.map((digit) => {
       const locations = marks(cells, [digit]).map(({ cell }) => cell)
       if (locations.length === 1) return `Digit ${digit} has one spot.`
@@ -271,19 +271,24 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       return house ? `The ${digit} candidates share ${houseName(house)}.`
         : `Every pair of ${digit} candidates shares a row, column, or box.`
     })
-    const required = unrestricted === null ? 'Four cells need four digits, so each digit must appear once.'
-      : `The other three digits can fill at most three cells. At least one of the four cells must take ${unrestricted}.`
     const targets = new Map<number, Candidate>()
     for (const action of actions) {
       if ('eliminate' in action && !targets.has(action.eliminate.digit)) targets.set(action.eliminate.digit, action.eliminate)
     }
+    const blocked = Array.from(targets.values(), ({ cell, digit }) => {
+      const locations = marks(cells, [digit]).map(({ cell }) => cellName(cell))
+      return `Putting ${digit} in ${cellName(cell)} would rule out ${digit} in ${list.format(locations)}.`
+    })
     return {
       cells, candidates: marks(cells, restricted),
       mainLabel: 'Digits that cannot repeat',
       accent: unrestricted === null ? undefined : { candidates: marks(cells, [unrestricted]), label: 'Required digit' },
       description: `The four marked cells can only use ${list.format(digits.map(String))}.`,
-      ...explainSteps([[repeat, ...limits].join(' '), required,
-        ...Array.from(targets.values(), (target) => explainRemoval(target, marks(cells, [target.digit])))]),
+      ...explainSteps([
+        [once, ...limits].join(' '),
+        ...blocked,
+        'That leaves only three digits for the four cells. Each can fill at most one cell, so one cell would be left without a digit.',
+      ]),
     }
   }
   if ('chain' in evidence) {
