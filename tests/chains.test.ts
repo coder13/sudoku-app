@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { analyzeChains, candidateId, chainExtensionStrength, completeChainLoop, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
+import { analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainExtensionStrength, completeChainLoop, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
 
 const id = (cell: number, digit = 1) => candidateId({ cell, digit })
 const pathEdges = (...nodes: number[]): ChainEdge[] => nodes.slice(1).map((node, i) => [nodes[i], node])
@@ -93,4 +93,34 @@ test('disjoint drawings are analyzed separately and a branch is not treated as a
     { title: 'Branched links', actions: [] },
     { title: 'Strong link', actions: [] },
   ])
+})
+
+test('Medusa colors a branch and removes the color that contains a conflict', () => {
+  const links = graph({ 0: [1, 2], 1: [1, 3], 9: [1, 4] })
+  const root = id(0)
+  const branch = [id(0, 2), id(1), id(9)]
+  const edges: ChainEdge[] = branch.map((node) => [root, node])
+  // The candidates in cells 1 and 9 see each other but have no strong link.
+  const [medusa] = analyzeMedusa(links, [...edges, [id(1), id(9)]])
+  assert.deepEqual(medusa.sides, new Map([[root, 0], ...branch.map((node) => [node, 1] as const)]))
+  assert.deepEqual(medusa.actions, branch.map((node) => ({ eliminate: chainCandidate(node) })))
+})
+
+test('Medusa removes an uncolored candidate that sees both colors', () => {
+  const links = graph({ 0: [1, 2], 1: [1, 3], 2: [3, 6], 9: [1, 5], 28: [3, 7], 36: [1, 8] })
+  const [medusa] = analyzeMedusa(links, pathEdges(id(0, 2), id(0), id(1), id(1, 3)))
+  assert.deepEqual(medusa.actions, [{ eliminate: { cell: 9, digit: 1 } }])
+})
+
+test('Medusa rejects a color that removes every candidate from a cell', () => {
+  const links = graph({ 0: [1, 2], 1: [1, 3], 2: [3, 6], 9: [1, 3], 28: [3, 7], 36: [1, 8] })
+  const [medusa] = analyzeMedusa(links, pathEdges(id(0, 2), id(0), id(1), id(1, 3)))
+  assert.deepEqual(medusa.actions, [{ eliminate: { cell: 0, digit: 1 } }, { eliminate: { cell: 1, digit: 3 } }])
+})
+
+test('Medusa offers no edits when both colors lead to a conflict', () => {
+  const links = graph({ 0: [1, 2], 1: [1, 3], 9: [1, 3] })
+  const [medusa] = analyzeMedusa(links, pathEdges(id(0, 2), id(0), id(1), id(1, 3)))
+  assert.deepEqual(medusa.actions, [])
+  assert.match(medusa.explanation ?? '', /Both colors lead to a conflict/)
 })

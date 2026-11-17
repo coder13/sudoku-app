@@ -18,6 +18,7 @@ type Props = {
   candidates?: readonly number[]
   candidatePreview?: Candidate & { mode: 'candidate' | 'center' | 'corner' }
   annotations?: BoardAnnotations
+  showAnnotatedCandidates?: boolean
   region?: BoardRegion
   label?: string
   showGuides: boolean
@@ -52,7 +53,7 @@ export function Board({
   variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides,
   highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates,
 }: Props) {
   const variantRules = variantPuzzle?.rules
   const regions = variantPuzzle?.regions
@@ -65,22 +66,24 @@ export function Board({
   const candidateAction = onPaintCandidate ?? onCandidate
   const Cell = onCell && !candidateAction ? 'button' : 'div'
   const layout = candidates ? 'grid' : candidateLayout
+  const annotationSlots = showAnnotatedCandidates ? annotations?.candidates : undefined
+  const usesDigitSlots = (cell: number) => layout === 'grid' || annotationSlots?.has(cell)
   const rows = region ? DIGITS.slice(region.row, region.row + region.rows) : DIGITS
   const columns = region ? DIGITS.slice(region.column, region.column + region.columns) : DIGITS
   const size = region && { '--board-rows': rows.length, '--board-columns': columns.length } as CSSProperties
   const playableCell = (cell: number) => values[cell] === '0' &&
     rows.includes(Math.floor(cell / 9) + 1) && columns.includes(cell % 9 + 1)
   const gridMask = (cell: number) => candidates?.[cell] ??
-    ((position?.corner[cell] ?? 0) | (layout === 'grid' ? position?.center[cell] ?? 0 : 0))
-  const centerMask = (cell: number) => layout === 'center-corner' ? position?.center[cell] ?? 0 : 0
+    ((position?.corner[cell] ?? 0) | (usesDigitSlots(cell) ? position?.center[cell] ?? 0 : 0))
+  const centerMask = (cell: number) => usesDigitSlots(cell) ? 0 : position?.center[cell] ?? 0
   let tabCandidate: CandidateSlot | undefined
-  if (candidateAction) {
+  if (onPaintCandidate) {
     if (candidateFocus && playableCell(candidateFocus.cell) &&
       hasCandidate((candidateFocus.slotted ? gridMask : centerMask)(candidateFocus.cell), candidateFocus.digit)) {
       tabCandidate = candidateFocus
     } else {
       const hasCandidates = (cell: number) => playableCell(cell) && (gridMask(cell) || centerMask(cell))
-      const cell = onPaintCandidate && hasCandidates(active) ? active : Array.from(values).findIndex((_, index) => hasCandidates(index))
+      const cell = hasCandidates(active) ? active : Array.from(values).findIndex((_, index) => hasCandidates(index))
       if (cell !== -1) {
         const slotted = Boolean(gridMask(cell))
         tabCandidate = { cell, digit: marksOf((slotted ? gridMask : centerMask)(cell))[0], slotted }
@@ -123,7 +126,7 @@ export function Board({
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={label}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
-          onKeyDown={candidateAction && navigateCandidates}
+          onKeyDown={onPaintCandidate && navigateCandidates}
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {rows.map((row) => (
@@ -139,14 +142,19 @@ export function Board({
                 const corner = position?.corner[index] ?? 0
                 const centerMarks = centerMask(index)
                 const gridMarks = gridMask(index)
+                const linkedDigits = annotationSlots?.get(index)
+                let displayedGridMarks = gridMarks
+                for (const digit of linkedDigits?.keys() ?? []) displayedGridMarks |= 1 << (digit - 1)
                 const centerCandidates = marksOf(centerMarks)
-                const gridCandidates = marksOf(gridMarks)
+                const gridCandidates = marksOf(displayedGridMarks)
                 const candidateMask = candidates?.[index] ?? (center | corner)
                 const preview = !value && candidatePreview?.cell === index ? candidatePreview : undefined
-                const previewSlotted = preview?.mode !== 'center'
-                const previewMask = previewSlotted ? gridMarks : centerMarks
+                const previewSlotted = preview?.mode !== 'center' || Boolean(linkedDigits)
+                const previewMask = preview?.mode === 'center' && linkedDigits ? center
+                  : preview?.mode === 'corner' && linkedDigits ? corner : previewSlotted ? gridMarks : centerMarks
                 const previewAction = preview && (hasCandidate(previewMask, preview.digit) ? 'remove' : 'add')
-                const withPreview = preview && previewAction === 'add' ? marksOf(previewMask | (1 << (preview.digit - 1))) : undefined
+                const withPreview = preview && previewAction === 'add'
+                  ? marksOf((previewSlotted ? displayedGridMarks : centerMarks) | (1 << (preview.digit - 1))) : undefined
                 const visibleGridCandidates = (previewSlotted && withPreview) || gridCandidates
                 const visibleCenterCandidates = (!previewSlotted && withPreview) || centerCandidates
                 const candidateColors = candidates ? undefined : position?.candidateColors?.[index]
@@ -172,7 +180,7 @@ export function Board({
                 const label = [
                   `Row ${row}, column ${col}`,
                   value ? (fixed ? `given ${value}` : `digit ${value}`) : 'empty',
-                  !value && gridCandidates.length ? `${layout === 'grid' ? '' : 'corner '}candidates ${gridCandidates.join(' ')}` : '',
+                  !value && gridCandidates.length ? `${usesDigitSlots(index) ? '' : 'corner '}candidates ${gridCandidates.join(' ')}` : '',
                   !value && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
                   color ? COLORS[color - 1] : '',
                   regionAtCell !== undefined && `region ${regionAtCell + 1}`,
@@ -213,8 +221,11 @@ export function Board({
                     const pending = selectedCandidate?.cell === index && selectedCandidate.digit === digit
                     const linkTarget = isLinkTarget?.(candidate)
                     const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],
+                      onCandidate && candidateHighlightStyle && digit === focusDigit && 'highlighted',
                       linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
-                    return <button type="button" key={digit} className={`candidate-button ${onPaintCandidate ? 'paint-candidate' : 'chain-candidate'}`} style={style}
+                    const classes = ['candidate-button', onPaintCandidate ? 'paint-candidate' : 'chain-candidate', onCandidate && highlightClass]
+                      .filter(Boolean).join(' ')
+                    return <button type="button" key={digit} className={classes} style={style}
                       aria-label={candidateLabel} data-link-target={linkTarget || undefined}
                       aria-pressed={onCandidate ? pending : undefined} data-mark={annotation && (annotation.mark ?? 'ring')}
                       tabIndex={tabCandidate?.cell === index && tabCandidate.digit === digit && tabCandidate.slotted === slotted ? 0 : -1}
@@ -222,7 +233,11 @@ export function Board({
                         if (event.pointerType !== 'touch') onCandidateHover(candidate)
                       })}
                       onPointerLeave={onCandidateHover && (() => onCandidateHover(null))}
-                      onFocus={() => setCandidateFocus({ ...candidate, slotted })} onClick={() => candidateAction(candidate)}>
+                      onMouseDown={onPaintCandidate ? undefined : (event) => event.preventDefault()}
+                      onFocus={onPaintCandidate && (() => setCandidateFocus({ ...candidate, slotted }))}
+                      onClick={(event) => {
+                        if (onPaintCandidate || event.detail > 0) candidateAction(candidate)
+                      }}>
                       {color ? <span className={colorClass}>{digit}</span> : digit}
                     </button>
                   }

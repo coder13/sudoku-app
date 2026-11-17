@@ -32,20 +32,22 @@ function housesAt(cell: number, regions?: readonly number[]) {
 }
 
 export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle) {
-  const candidates = masks.flatMap((mask, cell) => marksOf(mask).map((digit) => candidateId({ cell, digit })))
-  const counts = Array.from({ length: 27 }, () => Array<number>(9).fill(0))
+  const cellCandidates = masks.map((mask, cell) => marksOf(mask).map((digit) => candidateId({ cell, digit })))
+  const candidates = cellCandidates.flat()
+  const houseCandidates = Array.from({ length: 27 }, () => Array.from({ length: 9 }, () => [] as number[]))
   const regions = puzzle?.regions?.type === 'jigsaw' ? regionMembership(puzzle.regions.regions) : undefined
   const houses = masks.map((_, cell) => housesAt(cell, regions))
   for (const rule of puzzle?.rules ?? []) {
     if (rule.type !== 'diagonal' && rule.type !== 'extra-house') continue
     const cells = rule.type === 'extra-house' ? rule.cells : variantHouseCells({ diagonal: rule.diagonal }, puzzle!)
-    const house = counts.push(Array<number>(9).fill(0)) - 1
+    const house = houseCandidates.push(Array.from({ length: 9 }, () => [])) - 1
     for (const cell of cells) houses[cell].push(house)
   }
   for (const id of candidates) {
     const { cell, digit } = chainCandidate(id)
-    for (const house of houses[cell]) counts[house][digit - 1]++
+    for (const house of houses[cell]) houseCandidates[house][digit - 1].push(id)
   }
+  const constraints = [...houseCandidates.flat(), ...cellCandidates].filter((group) => group.length > 1)
 
   function peers(a: number, b: number) { return peer(a, b, puzzle) }
 
@@ -62,11 +64,11 @@ export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle)
     const second = chainCandidate(b)
     if (!hasCandidate(masks[first.cell], first.digit) || !hasCandidate(masks[second.cell], second.digit)) return
     if (first.cell === second.cell) return candidateCount(masks[first.cell]) === 2 ? 'strong' : 'weak'
-    return houses[first.cell].some((house) => houses[second.cell].includes(house) && counts[house][first.digit - 1] === 2)
+    return houses[first.cell].some((house) => houses[second.cell].includes(house) && houseCandidates[house][first.digit - 1].length === 2)
       ? 'strong' : 'weak'
   }
 
-  return { candidates, peers, conflicts, strength }
+  return { candidates, peers, conflicts, strength, constraints }
 }
 
 export type ChainGraph = ReturnType<typeof makeChainGraph>
@@ -169,10 +171,9 @@ function analyzePath(graph: ChainGraph, nodes: number[]): ChainAnalysis {
   return { nodes, strengths: links, title: 'Non-alternating loop', actions: [], canComplete: false }
 }
 
-export function analyzeChains(graph: ChainGraph, edges: readonly ChainEdge[]) {
+function chainComponents(edges: readonly ChainEdge[]) {
   const neighbors = new Map<number, number[]>()
   for (const [a, b] of edges) {
-    if (!graph.strength(a, b)) continue
     for (const [from, to] of [[a, b], [b, a]]) {
       const list = neighbors.get(from)
       if (list) list.push(to)
@@ -180,7 +181,7 @@ export function analyzeChains(graph: ChainGraph, edges: readonly ChainEdge[]) {
     }
   }
 
-  const chains: ChainAnalysis[] = []
+  const components: number[][] = []
   const visited = new Set<number>()
   for (const node of neighbors.keys()) {
     if (visited.has(node)) continue
@@ -193,13 +194,22 @@ export function analyzeChains(graph: ChainGraph, edges: readonly ChainEdge[]) {
         component.push(to)
       }
     }
+    components.push(component)
+  }
+  return { neighbors, components }
+}
+
+export function analyzeChains(graph: ChainGraph, edges: readonly ChainEdge[]) {
+  const { neighbors, components } = chainComponents(edges.filter(([a, b]) => graph.strength(a, b)))
+  const chains: ChainAnalysis[] = []
+  for (const component of components) {
 
     if (component.some((id) => neighbors.get(id)!.length > 2)) {
       chains.push({ nodes: component, strengths: [], title: 'Branched links', actions: [], canComplete: false })
       continue
     }
 
-    const start = component.find((id) => neighbors.get(id)!.length === 1) ?? node
+    const start = component.find((id) => neighbors.get(id)!.length === 1) ?? component[0]
     const path = [start]
     let previous = -1
     let current = start
@@ -214,6 +224,40 @@ export function analyzeChains(graph: ChainGraph, edges: readonly ChainEdge[]) {
     chains.push(analyzePath(graph, path))
   }
   return chains
+}
+
+export function analyzeMedusa(graph: ChainGraph, edges: readonly ChainEdge[]) {
+  const { neighbors, components } = chainComponents(edges.filter(([a, b]) => graph.strength(a, b) === 'strong'))
+  return components.map((nodes) => {
+    const sides = new Map<number, 0 | 1>([[nodes[0], 0]])
+    for (const from of nodes) {
+      const opposite = sides.get(from) === 0 ? 1 : 0
+      for (const to of neighbors.get(from)!) {
+        if (sides.has(to) && sides.get(to) !== opposite) {
+          return { nodes, sides: new Map<number, 0 | 1>(), actions: [],
+            explanation: 'This loop cannot alternate two colors. Remove a link to color it.' }
+        }
+        sides.set(to, opposite)
+      }
+    }
+
+    const colors = [nodes.filter((node) => sides.get(node) === 0), nodes.filter((node) => sides.get(node) === 1)]
+    const excluded = colors.map((members) =>
+      new Set(graph.candidates.filter((target) => members.some((node) => graph.conflicts(target, node)))))
+    const contradictions = colors.map((members, side) =>
+      members.some((node) => excluded[side].has(node)) ||
+      graph.constraints.some((group) => group.every((node) => excluded[side].has(node))))
+    if (contradictions.every(Boolean)) {
+      return { nodes, sides, actions: [], explanation: 'Both colors lead to a conflict. Review the candidates and links.' }
+    }
+    const falseSide = contradictions.indexOf(true)
+    const removals = falseSide === -1
+      ? graph.candidates.filter((node) => !sides.has(node) && excluded.every((group) => group.has(node)))
+      : colors[falseSide]
+    const explanation = falseSide !== -1 ? `Color ${falseSide === 0 ? 'A' : 'B'} leads to a conflict, so remove its candidates.`
+      : removals.length ? 'Remove candidates that conflict with both colors.' : undefined
+    return { nodes, sides, actions: removals.map((node) => ({ eliminate: chainCandidate(node) })), explanation }
+  })
 }
 
 export function chainExtensionStrength(graph: ChainGraph, edges: readonly ChainEdge[], extension: ChainEdge): LinkStrength | undefined {

@@ -1,7 +1,7 @@
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, ListFilter, ListOrdered, LogOut, MoreHorizontal, Pause, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LogOut, MoreHorizontal, Pause, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
@@ -18,6 +18,7 @@ import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudo
 import { lessonRoutes } from '../sudoku/lessons'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
 import { techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
+import type { DesktopPuzzleView } from '../sudoku/play-preferences'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
@@ -50,7 +51,11 @@ import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
 
-const ANALYSIS_CARD_KEY = 'sudoku-app:v1:techniques-card-open'
+const desktopInsightTabs = [
+  { id: 'solution', label: 'Solution' },
+  { id: 'techniques', label: 'Available techniques' },
+  { id: 'chains', label: 'Chains' },
+] as const
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -159,7 +164,7 @@ function matchesHintPosition(game: Game, position: HintPosition) {
 function isChainStep(step?: Deduction) {
   if (!step) return false
   const { evidence, technique } = step
-  return 'chain' in evidence || 'inference' in evidence || 'single-digit-chain' in evidence ||
+  return 'chain' in evidence || 'inference' in evidence || 'single-digit-chain' in evidence || 'coloring' in evidence ||
     ['forcing-chain', 'als-chain', 'sk-loop'].includes(technique)
 }
 
@@ -215,10 +220,13 @@ export function Worktable({
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
+  const [chainHighlightDigit, setChainHighlightDigit] = useState<number | null>(null)
   const [selectedColor, setSelectedColor] = usePlayPreference('selectedColor')
   const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
   const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
+  const [desktopViews, setDesktopViews] = usePlayPreference('desktopViews')
+  const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
   const [pencil, setPencil] = usePlayPreference('pencil')
@@ -231,8 +239,6 @@ export function Worktable({
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
   const [analysisOpen, setAnalysisOpen] = useState(false)
-  const [analysisCardOpen, setAnalysisCardOpen] = useState(false)
-  const [desktopInsightTab, setDesktopInsightTab] = useState<'solution' | 'techniques'>('techniques')
   const [focusAnalysisRequest, setFocusAnalysisRequest] = useState(0)
   const [focusSolutionRequest, setFocusSolutionRequest] = useState(0)
   const [desktopSolutionVisible, setDesktopSolutionVisible] = useState(false)
@@ -246,21 +252,6 @@ export function Worktable({
   const [notes, setNotes] = useState<{
     values: string; eliminations?: number[]; variant?: Game['variant']; masks: number[] | null; failed?: boolean
   }>()
-  useEffect(() => {
-    try {
-      const pinned = localStorage.getItem(ANALYSIS_CARD_KEY) === 'true'
-      setAnalysisCardOpen(pinned)
-      if (pinned) setDesktopInsightTab('techniques')
-    } catch { /* The card is still usable without persistent storage. */ }
-  }, [])
-
-  function setPinnedAnalysis(open: boolean) {
-    setAnalysisCardOpen(open)
-    setDesktopInsightTab(open ? 'techniques' : 'solution')
-    try { localStorage.setItem(ANALYSIS_CARD_KEY, String(open)) }
-    catch { /* Remember the choice for this session. */ }
-  }
-
   const [hintState, setHint] = useState<HintState | null>(null)
   const [hintRevealed, setHintRevealed] = useState(false)
   const mobile = useMobileLayout()
@@ -282,6 +273,7 @@ export function Worktable({
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
   const puzzleMenuPopupRef = useRef<HTMLDivElement>(null)
+  const insightTabsRef = useRef<HTMLDivElement>(null)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
@@ -365,15 +357,16 @@ export function Worktable({
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
   const { mounted: puzzleMenuMounted, exiting: puzzleMenuExiting } = usePresence(puzzleMenuOpen)
-  const openSolutionTab = desktop && !draft && solutionPathRevealed && solutionPath !== null
-  const openTechniqueTab = desktop && !draft && !variant && analysisCardOpen
-  const activeDesktopTab: 'solution' | 'techniques' = desktopInsightTab === 'solution' && openSolutionTab
-    ? 'solution' : desktopInsightTab === 'techniques' && openTechniqueTab
-      ? 'techniques' : openTechniqueTab ? 'techniques' : 'solution'
-  const previewing = openSolutionTab && (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab === 'solution')
+  const openInsightTabs = desktop && !advancedWorkspace && !placeholder && !draft
+    ? desktopInsightTabs.filter(({ id }) => desktopViews.open.includes(id) && (id === 'chains' ? !solved : !variant))
+    : []
+  const activeDesktopTab = openInsightTabs.find(({ id }) => id === desktopViews.active) ??
+    openInsightTabs.find(({ id }) => id === 'techniques') ?? openInsightTabs[0]
+  const previewing = desktop && !draft && solutionPathRevealed && solutionPath !== null &&
+    (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab?.id === 'solution')
   const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
-  const chainsVisible = advancedWorkspace && showRightPanel && desktopChainsVisible
+  const chainsVisible = advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains'
   const variantEliminations = variant && eliminations
   const currentNotes = notes?.values === values && notes.variant === variant && notes.eliminations === variantEliminations ? notes : undefined
   const masks = currentNotes?.masks
@@ -385,11 +378,13 @@ export function Worktable({
   const offerSingles = !draft && !solved && (generatedWithAuto || (
     !ratingPending && needsSinglesCheck && singlesCheck?.givens === givens && singlesCheck.variant === variant && singlesCheck.needsMore
   ))
-  const chainMasks = useMemo(() => chainsVisible && !draft && !solved && !previewing && masks
-    ? masks.map((mask, index) => mask & ~(eliminations?.[index] ?? 0)) : null,
-  [chainsVisible, draft, solved, previewing, masks, eliminations])
-  const chainGraph = useMemo(() => chainMasks && makeChainGraph(chainMasks, variant?.puzzle), [chainMasks, variant])
-  const sketch = useChainSketch(chainGraph, `${id}:${values}:${eliminations?.join(',') ?? ''}`, Boolean(chainGraph))
+  const chainMasks = useMemo(() => chainsVisible && !disabled && !draft && !solved && masks
+    ? masks.map((mask, index) => mask & (displayedCandidates?.[index] ?? 0x1ff) & ~(eliminations?.[index] ?? 0))
+    : null, [chainsVisible, disabled, draft, solved, masks, displayedCandidates, eliminations])
+  const missingChainCandidates = chainMasks?.some((mask, cell) => !mask && values[cell] === '0')
+  const chainGraph = useMemo(() => chainMasks && !missingChainCandidates ? makeChainGraph(chainMasks, variant?.puzzle) : null,
+    [chainMasks, missingChainCandidates, variant])
+  const sketch = useChainSketch(chainGraph, `${id}:${values}:${eliminations?.join(',') ?? ''}:${displayedCandidates?.join(',') ?? ''}`)
   const canPaint = !cellColorsDisabled && advancedWorkspace && showRightPanel
   const brush = canPaint ? colorBrush : null
   const candidateBrush = colorTarget === 'candidate' && !cellColorsDisabled && !sketch.drawing && !hintAnnotations && !mobileHintOpen
@@ -458,7 +453,7 @@ export function Worktable({
     hintReturnFocus.current = false
     setSolutionPath(null)
     setSolutionPathRevealed(false)
-    setDesktopInsightTab(analysisCardOpen ? 'techniques' : 'solution')
+    setStartDrawingOnOpen(false)
     setSolutionStep(0)
     setSolutionHintOpen(false)
     setSolvedView('results')
@@ -473,7 +468,7 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab')
+    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .chains-panel')
       || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
@@ -642,11 +637,27 @@ export function Worktable({
     return () => { current = false }
   }, [draft, solved, values, variant, variantEliminations])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!startDrawingOnOpen || !chainsVisible || !currentNotes) return
+    setStartDrawingOnOpen(false)
+    if (chainGraph && !sketch.drawing) sketch.toggle()
+  }, [startDrawingOnOpen, chainsVisible, currentNotes, chainGraph, sketch])
+
+  useLayoutEffect(() => {
+    if (chainsVisible) return () => setStartDrawingOnOpen(false)
+  }, [chainsVisible])
+
+  useLayoutEffect(() => {
     if (!sketch.drawing) return
     setColorBrush(null)
-    boardRef.current?.querySelector<HTMLElement>('.chain-candidate[tabindex="0"]')?.focus({ preventScroll: true })
+    setChainHighlightDigit(selectedDigit)
   }, [sketch.drawing])
+
+  useLayoutEffect(() => {
+    if (!advancedWorkspace && focusChainsRequest && activeDesktopTab?.id === 'chains') {
+      insightTabsRef.current?.querySelector<HTMLButtonElement>('[data-insight-tab="chains"]')?.focus({ preventScroll: true })
+    }
+  }, [advancedWorkspace, focusChainsRequest, activeDesktopTab?.id])
 
   useLayoutEffect(() => {
     if (paintingCandidates) {
@@ -809,6 +820,15 @@ export function Worktable({
         hintEliminations(valuesOf(origin), completeCandidateMasks(origin), origin.position.eliminations))
       return next
     })
+  }
+
+  function toggleChainHighlight(digit: number) {
+    setChainHighlightDigit((current) => digit === 0 || current === digit ? null : digit)
+  }
+
+  function stopDrawingAndFocusGrid() {
+    sketch.stop()
+    requestAnimationFrame(() => boardRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus({ preventScroll: true }))
   }
 
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected) {
@@ -1055,23 +1075,60 @@ export function Worktable({
       if (event.key === 'Shift') setCandidatePreviewCell(null)
       if (event.key === 'Tab' || event.key === 'Enter' || event.key === ' ' || ARROWS[event.key]) setPointerFocusedCell(null)
       const target = event.target
-      if (event.defaultPrevented || rearranging || game.paused || previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
+      if (event.defaultPrevented || rearranging || game.paused || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
+      if (desktop && !draft && !solved && !placeholder && shortcutMatches(event, shortcuts, 'chainDrawing')) {
+        event.preventDefault()
+        if (event.repeat) return
+        if (sketch.drawing) stopDrawingAndFocusGrid()
+        else if (chainGraph) sketch.toggle()
+        else if (!chainsVisible || previewing) {
+          setStartDrawingOnOpen(true)
+          showChains()
+        } else if (!currentNotes) setStartDrawingOnOpen((open) => !open)
+        return
+      }
+      if (previewing) return
+      if (!draft && !disabled && !solved && (mobile || !advancedWorkspace) && shortcutMatches(event, shortcuts, 'actions')) {
+        event.preventDefault()
+        setPuzzleMenuOpen(false)
+        setActionsOpen(true)
+        return
+      }
+      if (chainGraph && shortcutMatches(event, shortcuts, 'newChain')) {
+        event.preventDefault()
+        if (event.repeat) return
+        sketch.addSketch()
+        if (!sketch.drawing) sketch.toggle()
+        return
+      }
       if (event.key === 'Control' || event.key === 'Meta') {
         if (canActivateTemporaryPencil) setPencilModifier(true)
         return
       }
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
+      const highlightedDigit = highlightedDigitShortcut(event) ?? functionKeyDigit(event.key)
       if (sketch.drawing) {
-        if (key === 'escape') sketch.cancel()
-        if (shortcut && key === 'z' && !event.shiftKey) {
+        if (key === 'escape') {
+          event.preventDefault()
+          if (sketch.pending === null) stopDrawingAndFocusGrid()
+          else sketch.endPath()
+        } else if (shortcut && key === 'z' && !event.shiftKey) {
           event.preventDefault()
           if (sketch.canUndo) sketch.undo()
+        } else if (shortcutMatches(event, shortcuts, 'highlightMode')) {
+          event.preventDefault()
+          setChainHighlightDigit(null)
+        } else if (!shortcut && highlightedDigit) {
+          event.preventDefault()
+          setChainHighlightDigit(highlightedDigit)
+        } else if (!shortcut && (/^[0-9]$/.test(key) || key === 'delete' || key === 'backspace')) {
+          event.preventDefault()
+          if (!event.repeat) toggleChainHighlight(Number(key) || 0)
         }
         return
       }
-      const highlightedDigit = highlightedDigitShortcut(event) ?? functionKeyDigit(event.key)
       if (key === 'escape' && (brush !== null || paintingCandidates)) {
         const cell = target instanceof HTMLElement ? target.closest<HTMLElement>('.paint-candidate')?.closest<HTMLElement>('[data-cell]') : null
         if (cell) {
@@ -1126,10 +1183,6 @@ export function Worktable({
         if (colorTarget === 'candidate' && (paintingCandidates || colorMode) && event.repeat) return
         if (paintingCandidates && !colorMode) chooseColor(0)
         else input(0)
-      } else if (!draft && shortcutMatches(event, shortcuts, 'actions') && !solved && (mobile || !advancedWorkspace)) {
-        event.preventDefault()
-        setPuzzleMenuOpen(false)
-        setActionsOpen(true)
       } else if (!draft && shortcutMatches(event, shortcuts, 'generateCandidates') && !solved && !busy) {
         event.preventDefault()
         void generateCandidates()
@@ -1381,8 +1434,7 @@ export function Worktable({
   function applyToCurrentPosition(actions: readonly DeductionAction[], candidates: readonly number[], hintSnapshot?: HintPosition, technique?: string) {
     let applied = false
     edit((current) => {
-      const currentPosition = hintSnapshot ? matchesHintPosition(current, hintSnapshot)
-        : valuesOf(current) === values && current.position.eliminations === eliminations
+      const currentPosition = matchesHintPosition(current, hintSnapshot ?? hintPosition)
       if (!currentPosition) return current
       const next = applyDeduction(current, actions, candidates)
       applied = next !== current
@@ -1411,7 +1463,7 @@ export function Worktable({
     if (advancedWorkspace) {
       onOpenRightPanel()
       setFocusSolutionRequest((request) => request + 1)
-    } else setDesktopInsightTab('solution')
+    } else openDesktopView('solution')
     setSolutionPathRevealed(true)
     if (solutionPath && !force) return
     setSolutionStep(0)
@@ -1437,10 +1489,10 @@ export function Worktable({
 
   function closeSolutionPath() {
     setSolutionPathRevealed(false)
-    if (analysisCardOpen) setDesktopInsightTab('techniques')
     setSolutionHintOpen(false)
     setPuzzleMenuOpen(false)
-    puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+    if (advancedWorkspace) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+    else closeDesktopView('solution')
   }
 
   function selectSolutionStep(index: number) {
@@ -1506,10 +1558,13 @@ export function Worktable({
   const chainUnavailable = chainGraph ? undefined
     : previewing ? 'Select a chain step in Solution.'
     : draft || solved ? 'Chains are available while solving.'
-    : currentNotes?.failed ? 'Candidates couldn’t load.'
+    : game.paused ? 'Resume the puzzle to mark chains.'
+    : missingChainCandidates ? 'Restore candidates in empty cells before you mark chains.'
+    : currentNotes?.failed ? 'The candidates did not load.'
     : currentNotes?.masks === null ? 'Resolve the grid conflicts to draw links.'
     : 'Loading candidates…'
-  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} unavailable={chainUnavailable} inspection={chainInspection} />
+  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection}
+    digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: setChainHighlightDigit } : undefined} />
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={!rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen}
@@ -1525,6 +1580,36 @@ export function Worktable({
     aria-keyshortcuts={shortcutLabel(shortcuts.solveSingles)}>
     <CheckCheck size={17} /> Solve all singles <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.solveSingles)}</kbd>
   </button>
+  function showChains() {
+    setPuzzleMenuOpen(false)
+    setActionsOpen(false)
+    setHintRevealed(false)
+    if (advancedWorkspace) {
+      if (previewing) closeSolutionPath()
+      else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+      onOpenRightPanel()
+    } else openDesktopView('chains')
+    setFocusChainsRequest((request) => request + 1)
+  }
+
+  function openDesktopView(view: DesktopPuzzleView) {
+    setDesktopViews((current) => current.active === view ? current : {
+      open: current.open.includes(view) ? current.open : [...current.open, view],
+      active: view,
+    })
+  }
+
+  function closeDesktopView(view: DesktopPuzzleView) {
+    const remaining = openInsightTabs.filter(({ id }) => id !== view)
+    const next = remaining.find(({ id }) => id === 'techniques') ?? remaining[0]
+    setDesktopViews((current) => {
+      const open = current.open.filter((id) => id !== view)
+      return { open, active: next?.id ?? open[0] ?? null }
+    })
+    if (next) {
+      insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`)?.focus({ preventScroll: true })
+    } else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+  }
   function showAnalysis() {
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -1532,16 +1617,28 @@ export function Worktable({
       onOpenRightPanel()
       setFocusAnalysisRequest((request) => request + 1)
     } else if (desktop) {
-      setPinnedAnalysis(true)
+      openDesktopView('techniques')
     } else {
       setAnalysisOpen(true)
     }
   }
 
+  const solutionAction = previewing ? (
+    <button onClick={closeSolutionPath} disabled={busy}>
+      <ListOrdered size={17} /> Return to puzzle
+    </button>
+  ) : desktop && !draft && !variant && (
+    <button onClick={() => { void showSolutionPath() }} disabled={busy} aria-label="Open solution panel">
+      <ListOrdered size={17} /> Solution
+    </button>
+  )
   const analysisAction = !draft && !solved && !variant && (
     <button onClick={showAnalysis}>
       <ListFilter size={17} /> Available techniques
     </button>
+  )
+  const chainsAction = desktop && !draft && !solved && !placeholder && (
+    <button onClick={showChains}><Link2 size={17} /> Chains</button>
   )
   const commonSolvingMenuItems = <>
     <button onClick={() => { void generateCandidates() }} disabled={busy || solved}
@@ -1550,7 +1647,8 @@ export function Worktable({
       <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.generateCandidates)}</kbd>
     </button>
     <button aria-pressed={highlightCandidatePairs} disabled={solved} onClick={() => {
-      setSelectedDigit(null)
+      if (sketch.drawing) setChainHighlightDigit(null)
+      else setSelectedDigit(null)
       setHighlightCandidatePairs((current) => !current)
       setPuzzleMenuOpen(false)
       setActionsOpen(false)
@@ -1565,16 +1663,13 @@ export function Worktable({
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
-    {previewing ? (
-      <button onClick={closeSolutionPath} disabled={busy}>
-        <ListOrdered size={17} /> Return to puzzle
-      </button>
-    ) : !draft && !variant && desktop && (
-      <button onClick={() => { void showSolutionPath() }} disabled={busy} aria-label="Open solution panel">
-        <ListOrdered size={17} /> Solution
-      </button>
-    )}
-    {analysisAction}
+    {(solutionAction || analysisAction || chainsAction) && <>
+      <div className="app-menu-separator" role="separator" />
+      {solutionAction}
+      {analysisAction}
+      {chainsAction}
+      <div className="app-menu-separator" role="separator" />
+    </>}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle
@@ -1615,6 +1710,7 @@ export function Worktable({
     ? undefined
     : eraseMode ? 'erase' : colorMode ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging ? undefined : gridInputMode
+  const visibleChainAnnotations = !hintAnnotations && !paintingCandidates && sketch.annotations.links?.length ? sketch.annotations : undefined
   const livePuzzleStage = previewing ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
@@ -1623,12 +1719,14 @@ export function Worktable({
   : sketch.drawing && chainMasks ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
+      highlightedDigit={chainHighlightDigit} highlighting={highlighting} highlightCandidateCount={highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
     <Board variantPuzzle={variant?.puzzle} givens={game.givens} values={values} position={hintBoardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
-      candidates={hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations}
+      candidates={hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations ?? visibleChainAnnotations}
+      showAnnotatedCandidates={Boolean(visibleChainAnnotations)}
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
@@ -1716,7 +1814,7 @@ export function Worktable({
             </>
           )}
         </div>
-        <div className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
+        <div className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
           onContextMenu={preventControlClickMenu} onPointerUp={finishControlClick}
           onBlur={(event) => {
             const cell = event.target.dataset.cell
@@ -1766,8 +1864,8 @@ export function Worktable({
           eraseMode={eraseMode} toggleEraseMode={() => {
             setColorBrush(null); setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
           }}
-          selectedDigit={colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0}
-          values={values} input={input}
+          selectedDigit={sketch.drawing ? chainHighlightDigit : colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0}
+          values={values} input={sketch.drawing ? toggleChainHighlight : input} chainDrawing={sketch.drawing}
           undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
           onCheck={presentationDraft || previewing ? undefined : () => { void runCheck() }}
           compact={mobile} actionsButtonRef={actionsMenuButtonRef} actionsOpen={actionsOpen}
@@ -1776,15 +1874,10 @@ export function Worktable({
             setPuzzleMenuOpen(false)
             setActionsOpen((open) => !open)
           } : undefined}
-          disabled={disabled || sketch.drawing || (solved && !showSolvedGrid)} draft={presentationDraft} inputSize={inputSize} panelHeight={panelHeight}
+          disabled={disabled || (solved && !showSolvedGrid)} draft={presentationDraft} inputSize={inputSize} panelHeight={panelHeight}
           setPanelHeight={setPanelHeight} beginResize={beginResize} multi={multi} toggleMulti={toggleMulti} />
       </div>
   )
-  const solutionPathPanel = previewing ? (
-    <SolutionPath state={solutionPath} index={solutionStep}
-      onSelect={selectSolutionStep} onRetry={() => { void showSolutionPath(true) }} onClose={closeSolutionPath}
-      onReveal={markSolutionVisible} embedded />
-  ) : null
   const advancedHintPanel = hintPanel || (
     <section className="advanced-spoiler-panel" aria-label="Hint">
       <span className="advanced-spoiler-icon" aria-hidden="true"><Lightbulb size={21} /></span>
@@ -1797,10 +1890,10 @@ export function Worktable({
       </button>
     </section>
   )
-  const advancedSolutionPathPanel = solutionPathRevealed && solutionPath ? (
+  const solutionPathPanel = solutionPathRevealed && solutionPath ? (
     <SolutionPath state={solutionPath} index={solutionStep}
       onSelect={selectSolutionStep} onRetry={() => { void showSolutionPath(true) }} onClose={closeSolutionPath}
-      onReveal={markSolutionVisible} />
+      onReveal={markSolutionVisible} embedded={!advancedWorkspace} />
   ) : (
     <section className="advanced-spoiler-panel" aria-label="Solution">
       <span className="advanced-spoiler-icon" aria-hidden="true"><ListOrdered size={21} /></span>
@@ -1842,50 +1935,50 @@ export function Worktable({
     <>
       {advancedWorkspace
         ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel} chains={chainsPanel} cellColors={cellColorsPanel}
-          hint={advancedHintPanel} solutionPath={advancedSolutionPathPanel}
+          hint={advancedHintPanel} solutionPath={solutionPathPanel}
           techniques={!draft && !variant
             ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
             : <p className="analysis-empty">Available for classic Sudoku puzzles.</p>}
           details={detailsPanel} browser={browserPanel} showLeft={showLeftPanel} showRight={showRightPanel} showBottom={showBottomPanel}
           focusHintRequest={focusHintRequest} focusAnalysisRequest={focusAnalysisRequest}
           focusSolutionRequest={focusSolutionRequest}
-          focusChainsRequest={chainInspection ? focusChainsRequest : 0}
+          focusChainsRequest={focusChainsRequest}
           onChainsVisibleChange={setDesktopChainsVisible}
           onSolutionVisibleChange={setDesktopSolutionVisible} />
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack" id="standard-digit-input">
               {inputPanel}
               {hintPanel}
-              {(openSolutionTab || openTechniqueTab) && <section className="desktop-insight-panel" aria-label="Puzzle insights">
+              {activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
                 <div className="desktop-insight-toolbar">
-                  <div className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
+                  <div ref={insightTabsRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
                     onKeyDown={(event) => {
-                      if (!openSolutionTab || !openTechniqueTab || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return
+                      if (openInsightTabs.length < 2 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
                       event.preventDefault()
-                      const next = activeDesktopTab === 'solution' ? 'techniques' : 'solution'
-                      setDesktopInsightTab(next)
+                      const index = openInsightTabs.indexOf(activeDesktopTab)
+                      const step = event.key === 'ArrowLeft' ? -1 : 1
+                      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? openInsightTabs.length - 1
+                        : (index + step + openInsightTabs.length) % openInsightTabs.length
+                      const next = openInsightTabs[nextIndex].id
+                      openDesktopView(next)
                       event.currentTarget.querySelector<HTMLButtonElement>(`[data-insight-tab="${next}"]`)?.focus()
                     }}>
-                    {openSolutionTab && <button type="button" role="tab" data-insight-tab="solution"
-                      id="desktop-insight-tab-solution" aria-controls="desktop-insight-content"
-                      aria-selected={activeDesktopTab === 'solution'} tabIndex={activeDesktopTab === 'solution' ? 0 : -1}
-                      onClick={() => setDesktopInsightTab('solution')}>Solution</button>}
-                    {openTechniqueTab && <button type="button" role="tab" data-insight-tab="techniques"
-                      id="desktop-insight-tab-techniques" aria-controls="desktop-insight-content"
-                      aria-selected={activeDesktopTab === 'techniques'} tabIndex={activeDesktopTab === 'techniques' ? 0 : -1}
-                      onClick={() => setDesktopInsightTab('techniques')}>Available techniques</button>}
+                    {openInsightTabs.map(({ id, label }) => <button type="button" key={id} role="tab" data-insight-tab={id}
+                      id={`desktop-insight-tab-${id}`} aria-controls="desktop-insight-content"
+                      aria-selected={activeDesktopTab.id === id} tabIndex={activeDesktopTab.id === id ? 0 : -1}
+                      onClick={() => openDesktopView(id)}>{label}</button>)}
                   </div>
                   <button type="button" className="icon-button borderless desktop-insight-close"
-                    aria-label={`Close ${activeDesktopTab === 'solution' ? 'solution' : 'available techniques'} tab`}
-                    onClick={() => activeDesktopTab === 'solution' ? closeSolutionPath() : setPinnedAnalysis(false)}>
+                    aria-label={`Close ${activeDesktopTab.label.toLowerCase()} tab`}
+                    onClick={() => activeDesktopTab.id === 'solution' ? closeSolutionPath() : closeDesktopView(activeDesktopTab.id)}>
                     <X size={18} aria-hidden="true" />
                   </button>
                 </div>
                 <div className="desktop-insight-body" id="desktop-insight-content" role="tabpanel"
-                  aria-labelledby={`desktop-insight-tab-${activeDesktopTab}`}>
-                  {activeDesktopTab === 'techniques'
+                  aria-labelledby={`desktop-insight-tab-${activeDesktopTab.id}`}>
+                  {activeDesktopTab.id === 'techniques'
                     ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
-                    : solutionPathPanel}
+                    : activeDesktopTab.id === 'chains' ? chainsPanel : solutionPathPanel}
                 </div>
               </section>}
             </div></>
