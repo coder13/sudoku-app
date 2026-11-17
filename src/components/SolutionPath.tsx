@@ -16,6 +16,7 @@ type Props = {
   onRetry: () => void
   onClose: () => void
   onReveal?: () => void
+  embedded?: boolean
 }
 
 function bottleneckLabel(availability?: MoveAvailability) {
@@ -23,7 +24,7 @@ function bottleneckLabel(availability?: MoveAvailability) {
   return availability.easyMoves === 0 ? 'No easy moves' : 'Only one easy move'
 }
 
-export function SolutionPath({ state, index, onSelect, onRetry, onClose, onReveal }: Props) {
+export function SolutionPath({ state, index, onSelect, onRetry, onClose, onReveal, embedded = false }: Props) {
   const list = useRef<HTMLOListElement>(null)
   const close = useRef<HTMLButtonElement>(null)
   const steps = state.status === 'ready' ? state.trace.steps : undefined
@@ -33,7 +34,9 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   const moveAvailability = state.status === 'ready' ? state.trace.moveAvailability : undefined
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
 
-  useEffect(() => { close.current?.focus({ preventScroll: true }) }, [])
+  useEffect(() => {
+    if (!embedded) close.current?.focus({ preventScroll: true })
+  }, [embedded])
 
   useLayoutEffect(() => {
     if (count > 0) onReveal?.()
@@ -69,12 +72,12 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
     }}>
       <header className="solution-path-heading">
         <div>
-          <h2>Solution</h2>
+          {!embedded && <h2>Solution</h2>}
           {steps && <p>{count} {count === 1 ? 'step' : 'steps'} from the givens</p>}
         </div>
-        <button ref={close} type="button" className="icon-button borderless" onClick={onClose} aria-label="Return to puzzle" title="Return to puzzle">
+        {!embedded && <button ref={close} type="button" className="icon-button borderless" onClick={onClose} aria-label="Return to puzzle" title="Return to puzzle">
           <X size={18} aria-hidden="true" />
-        </button>
+        </button>}
       </header>
       {state.status === 'loading' && <p className="solution-path-message" role="status">Finding the steps…</p>}
       {state.status === 'unavailable' && <div className="solution-path-message">
