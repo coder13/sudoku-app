@@ -4,11 +4,13 @@ import { OfflineUpdates } from '../components/OfflineUpdates'
 import { SudokuShell } from '../components/Workspace'
 import { APPEARANCE_KEY, DEFAULT_APPEARANCE } from '../sudoku/preferences'
 import { THEME_TOKENS, themeVariables } from '../sudoku/themes'
-import '@fontsource-variable/dm-sans/wght.css'
+import latinFont from '@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2?url'
+import '../fonts.css'
 import '../styles.css'
 
 const initialTheme = DEFAULT_APPEARANCE.lightTheme
-const initialStyle = { colorScheme: 'light', ...themeVariables(initialTheme, 'light') }
+const initialThemeColor = THEME_TOKENS[initialTheme].light.pageBg
+const initialStyle = { colorScheme: 'light', backgroundColor: 'var(--page-bg)', ...themeVariables(initialTheme, 'light') }
 const themeBootstrap = `(() => {
   try {
     const root = document.documentElement
@@ -38,9 +40,6 @@ const themeBootstrap = `(() => {
 export const Route = createRootRoute({
   head: () => ({
     meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
-      { name: 'theme-color', content: THEME_TOKENS[initialTheme].light.pageBg },
       { name: 'description', content: 'Play, create and share classic Sudoku puzzles.' },
       { title: 'Sudoku' },
     ],
@@ -61,7 +60,15 @@ function App() {
 function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang="en" style={initialStyle} suppressHydrationWarning>
-      <head><HeadContent /><script dangerouslySetInnerHTML={{ __html: themeBootstrap }} /></head>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="theme-color" content={initialThemeColor} suppressHydrationWarning />
+        <link rel="preload" href={latinFont} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <script id="startup-theme" dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+        <HeadContent />
+      </head>
       <body>{children}<OfflineUpdates /><Scripts /></body>
     </html>
   )

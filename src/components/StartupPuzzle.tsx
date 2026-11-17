@@ -1,4 +1,6 @@
+import type { CSSProperties } from 'react'
 import { COLORS, EMPTY, type Game } from '../sudoku/game'
+import { DEFAULT_GRID_TEXT_SCALE } from '../sudoku/grid-text-scale'
 import { PLAY_PREFERENCES_KEY, type PlayPreferences } from '../sudoku/play-preferences'
 import {
   ADVANCED_MODE_KEY, APPEARANCE_KEY, INPUT_SIZE_KEY, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
@@ -174,7 +176,7 @@ export function StartupPuzzle() {
   return (
     <>
       <div className="puzzle-column startup-puzzle" aria-hidden="true" inert>
-        <div className="surface puzzle">
+        <div className="surface puzzle" style={{ '--board-font-scale': DEFAULT_GRID_TEXT_SCALE } as CSSProperties}>
           <div className="puzzle-actions"><span className="icon-button puzzle-menu-trigger" /></div>
           <div className="puzzle-stage">
             <div className="startup-grid-template"><Board givens={EMPTY} values={EMPTY} showGuides={false} /></div>

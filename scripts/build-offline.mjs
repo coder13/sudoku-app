@@ -19,8 +19,24 @@ if (!files.includes('/index.html') || !files.some((path) => path.endsWith('.wasm
 const worker = await readFile(new URL('./worker.js', import.meta.url), 'utf8')
 const hash = createHash('sha256').update(worker)
 for (const file of files) {
+  const asset = new URL('.' + file, directory)
+  let content = await readFile(asset)
+  if (file.endsWith('.html')) {
+    const html = content.toString('utf8')
+    // React can hoist stylesheet links ahead of the inline script and delay the saved theme.
+    const themeTags = /<meta name="(?:color-scheme|theme-color)"[^>]*>|<script id="startup-theme">[\s\S]*?<\/script>/g
+    const stylesheet = /<link rel="stylesheet"/
+    const tags = html.match(themeTags)
+    if (tags?.length === 3 && stylesheet.test(html)) {
+      const reordered = html.replace(themeTags, '').replace(stylesheet, (link) => tags.join('') + link)
+      if (reordered !== html) {
+        content = Buffer.from(reordered)
+        await writeFile(asset, content)
+      }
+    }
+  }
   hash.update(file)
-  hash.update(await readFile(new URL('.' + file, directory)))
+  hash.update(content)
 }
 const revision = hash.digest('hex').slice(0, 16)
 const source = `const cacheName = 'sudoku-app-shell-${revision}'\nconst assets = ${JSON.stringify(files)}\n\n${worker}`
