@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
 import type { DeductionAction, DeductionMatch } from '../src/sudoku/engine.ts'
-import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, summarizeDeductions, summarizeGroup } from '../src/sudoku/puzzle-analysis.ts'
+import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, summarizeDeductions, summarizeGroup, techniqueTargetCount } from '../src/sudoku/puzzle-analysis.ts'
 
 function match(actions: DeductionAction[], techniques: string[]): DeductionMatch {
   const affectedCandidates = actions.map((action) => 'place' in action ? action.place : action.eliminate)
@@ -17,16 +18,21 @@ function match(actions: DeductionAction[], techniques: string[]): DeductionMatch
   }
 }
 
-test('quick scan covers common singles, pointing, wings and fish without repeated detectors', () => {
+test('available techniques include every detector in the Rust engine catalog', () => {
+  const source = readFileSync(new URL('../crates/engine/src/technique.rs', import.meta.url), 'utf8')
+  const rustCatalog = source.slice(source.indexOf('catalog! {'), source.indexOf('impl Technique {'))
+  const ids = [...rustCatalog.matchAll(/^\s*\w+:\s*"([^"]+)"/gm)].map((match) => match[1])
+  assert.ok(ids.length >= 72)
   assert.equal(new Set(ANALYSIS_TECHNIQUES).size, ANALYSIS_TECHNIQUES.length)
-  for (const technique of ['naked-single', 'hidden-single', 'pointing', 'xy-wing', 'x-wing', 'swordfish', 'bug-plus-one']) {
-    assert.ok(ANALYSIS_TECHNIQUES.includes(technique), technique)
-  }
-  assert.ok(!ANALYSIS_TECHNIQUES.includes('forcing-net'))
-  assert.equal(ANALYSIS_GROUPS.length, 7)
-  assert.deepEqual(ANALYSIS_GROUPS.find((group) => group.title === 'Uniqueness')?.techniques, ['bug-plus-one'])
-  assert.equal(ANALYSIS_GROUPS.find((group) => group.title === 'Uniqueness')?.kind, 'placements')
+  assert.deepEqual(new Set(ANALYSIS_TECHNIQUES), new Set(ids))
+
+  const groups = analysisGroupsForCatalog(ids.map((id) => ({ id })))
+  assert.equal(groups.length, ANALYSIS_GROUPS.length)
+  assert.deepEqual(groups.flatMap(({ techniques }) => techniques).sort(), [...ids].sort())
+  assert.deepEqual(analysisGroupsForCatalog([...ids.map((id) => ({ id })), { id: 'future-technique' }])
+    .at(-1), { title: 'Other techniques', techniques: ['future-technique'] })
 })
+
 
 test('count distinct action targets for each technique even with overlapping proofs and moves', () => {
   const findings = summarizeDeductions([
@@ -54,4 +60,16 @@ test('count distinct action targets for each technique even with overlapping pro
     technique: 'bug-plus-one', patterns: 1, placements: [{ cell: 4, digit: 9 }], removals: [],
   })
   assert.deepEqual(summarizeGroup([]), { placements: 0, removals: 0 })
+})
+
+test('candidate target counts include both placements and removals without double-counting proofs', () => {
+  const moves = [
+    match([{ place: { cell: 14, digit: 8 } }], ['forcing-chain']),
+    match([{ eliminate: { cell: 20, digit: 2 } }, { eliminate: { cell: 21, digit: 2 } }], ['forcing-chain', 'aic']),
+    match([{ eliminate: { cell: 20, digit: 2 } }], ['forcing-chain']),
+    match([{ eliminate: { cell: 30, digit: 7 } }], ['aic']),
+  ]
+  assert.equal(techniqueTargetCount(moves, 'forcing-chain'), 3)
+  assert.equal(techniqueTargetCount(moves, 'aic'), 3)
+  assert.equal(techniqueTargetCount(moves, 'xy-wing'), 0)
 })
