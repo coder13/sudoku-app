@@ -213,7 +213,7 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string) {
     const name = `${candidate.digit} in ${cellName(candidate.cell)}`
     if (pending === null) {
       setPending(id)
-      setStatus(`${name} selected. Choose a linked candidate.`)
+      setStatus('')
       return
     }
     if (pending === id) {
@@ -227,7 +227,7 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string) {
       setStatus('Link removed.')
     } else if (linkTargets.has(id)) {
       changeEdges([...edges, link], id)
-      setStatus('Choose another candidate, or end this path.')
+      setStatus('')
     } else if (active.type === 'medusa') {
       setStatus('Choose a candidate with a strong link to the selected candidate.')
     } else if (!graph.strength(...link)) {

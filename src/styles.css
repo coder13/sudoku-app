@@ -440,6 +440,7 @@ svg { flex-shrink: 0; }
 .chain-draw-tools .button { padding-inline: var(--space-8); }
 .chain-list { display: grid; gap: var(--space-4); padding: 0; margin: 0; list-style: none; }
 .chain-row { min-width: 0; padding: var(--space-4) var(--space-8) var(--space-8); border: 1px solid var(--border); border-radius: 8px; }
+.chain-row:not([data-active]) { cursor: pointer; }
 .chain-row[data-active] { background: var(--surface-muted); border-color: var(--selected-border); }
 .chain-row[data-hidden] .chain-swatches { opacity: .45; }
 .chain-row-actions { display: flex; align-items: center; gap: var(--space-4); }
@@ -461,6 +462,7 @@ svg { flex-shrink: 0; }
 .chain-swatches { display: inline-flex; gap: 3px; }
 .chain-swatches i { width: 8px; height: 8px; border-radius: 50%; }
 .chain-row h2 { font-size: 12px; margin-bottom: 2px; }
+.chain-row > :is(h2, p) { cursor: pointer; user-select: none; }
 .chain-row .chain-notation { color: var(--ink); }
 .chain-editor { display: grid; gap: var(--space-8); margin-top: var(--space-8); padding-top: var(--space-8); border-top: 1px solid var(--border); }
 .chain-settings { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); }
@@ -490,7 +492,6 @@ svg { flex-shrink: 0; }
   pointer-events: none;
 }
 .chain-color-input select { padding-inline-start: 25px; }
-.chain-instructions { min-height: 2.9em; }
 .chain-legend { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-14); font-size: 12px; color: var(--muted); }
 .chain-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .chain-legend i { width: 18px; border-top: 2px solid var(--ink); }

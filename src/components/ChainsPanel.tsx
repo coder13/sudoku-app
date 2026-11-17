@@ -61,6 +61,7 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
   const drawLabel = sketch.drawing ? 'Done drawing' : 'Draw links'
   const drawKey = shortcutLabel(shortcuts.chainDrawing)
   const newKey = shortcutLabel(shortcuts.newChain)
+  const status = sketch.status || (sketch.drawing && active.hidden ? 'Show this chain to draw links.' : '')
   const editor = <>
     <div className="chain-settings">
       <label>
@@ -110,35 +111,35 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
         </button>
       </div>
     </div>
-    <p className="chain-instructions" role="status">{sketch.status || (sketch.drawing
-      ? active.hidden ? 'Show this chain to draw links.'
-        : medusa ? 'Select candidates joined by strong links. Select a marked candidate to start a branch.'
-        : 'Select candidates in order to draw links. Select the last candidate again to end the path.'
-      : 'Choose Draw links to mark candidates on the grid.')}</p>
+    {status && <p role="status">{status}</p>}
     {sketch.chains.map((chain) => {
       const results = deductionResults(chain.actions)
-      const open = chain.nodes[0] !== chain.nodes.at(-1)
+      const canFinishLoop = sketch.canFinishLoop(chain)
+      const branched = chain.strengths.length === 0
+      if (!results.length && !canFinishLoop && !branched) return null
       return <article className="chain-analysis" key={chain.nodes[0]}>
         {sketch.chains.length > 1 && <h2>{chain.title}</h2>}
-        {chain.explanation && <p>{chain.explanation}</p>}
-        {results.length > 0 ? <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>
-          : <p>{chain.strengths.length ? 'No placements or eliminations from these links.' : 'Remove a link at the branch to analyze a single path.'}</p>}
-        {(results.length > 0 || open) && <div className="chain-toolbar">
+        {branched && <p>Remove a branch to analyze the path.</p>}
+        {results.length > 0 && <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>}
+        {(results.length > 0 || canFinishLoop) && <div className="chain-toolbar">
           {results.length > 0 && <button type="button" className="button primary" onClick={() => onApply(chain.actions)}>Apply edits</button>}
-          {open && <button type="button" className="button secondary" disabled={!sketch.canFinishLoop(chain)}
-            onClick={() => sketch.finishLoop(chain)}>Complete loop</button>}
+          {canFinishLoop && <button type="button" className="button secondary" onClick={() => sketch.finishLoop(chain)}>Complete loop</button>}
         </div>}
+        {results.length > 0 && chain.explanation && <details className="chain-links">
+          <summary>Why this works</summary><p>{chain.explanation}</p>
+        </details>}
       </article>
     })}
     {sketch.medusas.map(({ nodes, actions, explanation }) => {
       const results = deductionResults(actions)
+      if (!results.length && !explanation) return null
       return <article className="chain-analysis" key={nodes[0]}>
         {sketch.medusas.length > 1 && <h2>{`${nodes.length} candidates starting at ${pointName(chainCandidate(nodes[0]))}`}</h2>}
-        <p>{explanation ?? 'No candidates to remove from these links.'}</p>
-        {results.length > 0 && <>
+        {results.length > 0 ? <>
           <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>
           <button type="button" className="button primary" onClick={() => onApply(actions)}>Apply edits</button>
-        </>}
+          {explanation && <details className="chain-links"><summary>Why this works</summary><p>{explanation}</p></details>}
+        </> : <p>{explanation}</p>}
       </article>
     })}
   </>
@@ -162,9 +163,13 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
           const selected = id === active.id
           const visibilityLabel = `${hidden ? 'Show' : 'Hide'} ${name.toLowerCase()}`
           const deleteLabel = `Delete ${name.toLowerCase()}`
-          const title = type === 'medusa' ? '3D Medusa' : chains.length === 1 ? chains[0].title : undefined
+          const title = type === 'medusa' ? '3D Medusa'
+            : chains.length === 1 && chains[0].strengths.length !== 1 ? chains[0].title : undefined
           const VisibilityIcon = hidden ? EyeOff : Eye
-          return <li className="chain-row" key={id} data-active={selected || undefined} data-hidden={hidden || undefined}>
+          return <li className="chain-row" key={id} data-active={selected || undefined} data-hidden={hidden || undefined}
+            onClick={(event) => {
+              if (!selected && event.target instanceof Element && !event.target.closest('button')) sketch.switchSketch(id)
+            }}>
             <div className="chain-row-actions">
               <button type="button" className="chain-select" aria-pressed={selected} onClick={() => sketch.switchSketch(id)}>
                 <span className="chain-swatches" aria-hidden="true">
