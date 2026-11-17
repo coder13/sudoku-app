@@ -470,13 +470,10 @@ fn lesson_examples() -> ResultValue {
             .ok_or(INVALID_LESSON)?;
         let practice = transpose_lesson_position(&position);
         let proofs = technique_deductions_at(&practice, technique).map_err(|_| INVALID_LESSON)?;
-        let suggestion = proofs
-            .first()
-            .and_then(|proof| proof.actions.first())
-            .ok_or(INVALID_LESSON)?;
+        let proof = proofs.first().ok_or(INVALID_LESSON)?;
         let mut lesson = position_with_candidates(&position)?;
         lesson["deduction"] = json!(deduction);
-        lesson["practice"] = practice_value(&practice, &proofs, *suggestion)?;
+        lesson["practice"] = practice_value(&practice, &proofs, proof)?;
         lessons.insert(technique.id().into(), lesson);
     }
     Ok(Value::Object(lessons))
@@ -485,7 +482,7 @@ fn lesson_examples() -> ResultValue {
 fn practice_value(
     position: &PositionSnapshot,
     proofs: &[Hint],
-    suggestion: HintAction,
+    proof: &Hint,
 ) -> ResultValue {
     let mut answers: Vec<_> = proofs
         .iter()
@@ -495,7 +492,8 @@ fn practice_value(
     answers.dedup();
     let mut drill = position_with_candidates(position)?;
     drill["answers"] = json!(answers);
-    drill["suggestion"] = json!(suggestion);
+    drill["suggestion"] = json!(proof.actions.first().ok_or(INVALID_LESSON)?);
+    drill["deduction"] = json!(proof);
     Ok(drill)
 }
 
@@ -508,9 +506,7 @@ fn practice_examples(technique: Technique) -> ResultValue {
             .iter()
             .find(|hint| hint.actions == example.expected_actions)
             .ok_or(INVALID_LESSON)?;
-        let mut exercise = practice_value(&position, &proofs, expected.actions[0])?;
-        exercise["deduction"] = json!(expected);
-        exercises.push(exercise);
+        exercises.push(practice_value(&position, &proofs, expected)?);
     }
     Ok(Value::Array(exercises))
 }

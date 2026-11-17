@@ -169,12 +169,14 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: 16px; align-items: start; min-width: 0; font-size: 14px; line-height: 1.5; }
 .lesson-workbench .board-frame { max-width: min(470px, calc(var(--diagram-columns, 9) * 46px + 20px)); margin-inline: auto; }
 .lesson-workbench-tools { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.lesson-workbench-tools .hint-card { width: 100%; }
 .lesson-workbench .controls { width: 100%; height: auto; padding: 8px; }
 .lesson-workbench .controls-content { height: auto; grid-template-columns: 48px minmax(0, min(var(--input-size, 210px), calc(100cqw - 108px))) 44px; gap: 8px; }
 .lesson-workbench .keypad-stack { width: auto; }
 .lesson-workbench .keypad:not(.palette) { min-height: 142px; }
 .lesson-practice-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .lesson-practice-feedback { min-height: 3em; color: var(--muted); line-height: 1.45; }
+.lesson-practice-feedback:empty { display: none; }
 .lesson-practice-feedback[data-result="correct"] { color: var(--lesson-result); }
 .lesson-outcomes { color: var(--ink); font-weight: 650; padding-inline-start: 0; margin: 0; }
 ul.lesson-outcomes { padding-inline-start: 1.3em; }

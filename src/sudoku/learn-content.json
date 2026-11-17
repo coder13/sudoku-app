@@ -17,6 +17,18 @@
     "blocks": [
       {
         "type": "heading",
+        "id": "where-to-start",
+        "title": "Where to start"
+      },
+      {
+        "type": "text",
+        "paragraphs": [
+          "Pick an empty cell with several placed digits in its row, column, or box. Cross off every digit those three houses already contain.",
+          "If one digit remains, you can place it. If several remain, try a cell whose houses contain more distinct digits."
+        ]
+      },
+      {
+        "type": "heading",
         "id": "houses",
         "title": "Houses"
       },
@@ -116,6 +128,18 @@
           "summary": "Fill the last empty cell in a house.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Scan rows, columns, and boxes for a house with eight filled cells. Count which digit from 1 to 9 is missing.",
+                "If the house has two or more gaps, try a different house."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "Look for a house with eight digits filled in. Check which digit from 1 to 9 is missing and put it in the gap."
@@ -153,6 +177,18 @@
           "title": "Naked Single",
           "summary": "Place a digit when it’s the only candidate left in its cell.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with an empty cell that shares houses with many placed digits. Compare the digits already in its row, column, and box.",
+                "If those houses rule out eight different digits, place the one that remains. With candidates shown, look for a cell with one candidate."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -201,6 +237,18 @@
           "title": "Hidden Single",
           "summary": "Place a digit when it has only one possible cell in a house.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a digit that already appears in several boxes. Find a box that still needs it and use the placed copies to rule out rows and columns.",
+                "If exactly one empty cell in the box can take the digit, place it there. You can also search one row or column at a time."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -260,6 +308,18 @@
           "title": "Locked Candidates",
           "summary": "Erase a candidate when its only places in one house are also in another.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Highlight one digit and look for a box where all its candidates line up in one row or column. This is the start of pointing.",
+                "For claiming, start with a row or column whose candidates for that digit all fall in one box. Continue if the other house still has the digit as a candidate outside the overlap."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -340,6 +400,19 @@
           "title": "Naked Subsets",
           "summary": "When several cells have just enough digits to fill them, erase those digits from the rest of the house.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a house with several short candidate lists. Start with two cells that each have the same two candidates.",
+                "For a triple or quadruple, add cells whose candidates mostly repeat digits you have already counted. Continue when the number of distinct digits matches the number of cells.",
+                "If the cells all sit in the overlap of a line and a box, look for removals in both houses."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -462,6 +535,18 @@
           "summary": "If several digits have only the same few cells available, erase the other candidates from those cells.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In one house, pick a missing digit with only two or three possible cells. Look for other missing digits whose candidates fit inside that same small set of cells.",
+                "Continue if the number of cells equals the number of chosen digits. Look inside those cells for candidates outside the chosen digits."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "Start with digits a house still needs. Count every cell that can take at least one of your chosen digits. If there are as many cells as digits, those cells are all spoken for."
@@ -558,6 +643,18 @@
           "title": "X-Wing",
           "summary": "Look for two rows that use the same two columns for a digit, or the same pattern turned sideways.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit. Find a row with exactly two places for it and scan the other rows for the same two columns.",
+                "A row with a few extra candidates in one box is worth checking for a fin. If a corner is missing, check the sashimi version. You can start with columns as well."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -658,6 +755,18 @@
           "summary": "Find a digit that three rows can place only in the same three columns.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit and mark the columns it can use in rows with two or three places for it. Start with two rows whose candidates mostly line up.",
+                "Look for a third row that fits the same three columns. If some candidates fall outside those columns, keep looking only if those extras share one box. You can also start with columns."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "Look across three rows for one digit. Each row must have at least two candidates, and together they can use only three columns. Those rows need three copies in distinct columns. Erase the other candidates in those columns. You can also start with three columns and erase from the crossing rows."
@@ -741,6 +850,18 @@
           "title": "Jellyfish",
           "summary": "Find a digit that four rows can place only in the same four columns.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit and start with rows whose candidates fall in only a few columns. Add rows that reuse those columns.",
+                "Check for four rows that use four columns between them. For a finned version, all candidates outside those four columns must share a box. You can also start with columns."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -832,6 +953,18 @@
           "summary": "Find two rows with two places each for a digit and one pair of ends in the same column.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit and find two rows with exactly two places each for it. Look for pairs with one column in common and different columns at the other ends.",
+                "Continue if another candidate for the digit can see both of those other ends. You can turn the same search sideways."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "Pick a digit with two candidates in each of two rows. Find a candidate in one row directly above the matching candidate in the other. The two far ends must sit in different columns."
@@ -879,6 +1012,18 @@
           "title": "Two-String Kite",
           "summary": "Join a row pair and a column pair for one digit through the box they share.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a row with exactly two places for one digit. Look for a column with exactly two places for the same digit.",
+                "Continue if one end of each pair shares a box with the other. Check whether another candidate sees both far ends."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -932,6 +1077,18 @@
           "title": "Empty Rectangle",
           "summary": "Use a box’s two candidate lines and a pair outside it to erase a candidate.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit in a box. Look for candidates that all fit on one row and one column, with candidates on both arms.",
+                "Look outside the box for a row or column with only two places for that digit. Continue if one end lines up with an arm of the box."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -997,6 +1154,18 @@
           "title": "Almost Locked Sets (ALS)",
           "summary": "One extra candidate digit lets a set connect to another set and force a removal.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a cell that has two candidates, or two cells in one house with three distinct candidates. Look for a second set nearby that shares a digit.",
+                "Keep the connection if every copy of the shared digit in one set sees every copy in the other. Then look for another shared digit or a link to a third set."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -1117,6 +1286,18 @@
           "summary": "Either digit in the pivot makes one of the wings take their common digit.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a cell with two candidates. For each of those digits, look for a cell it sees with exactly two candidates, one of which is that digit.",
+                "Continue if the two outside cells share the same extra digit. Look for another cell with that digit that sees both outside cells."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "In the example, the middle cell, or pivot, has 1 and 2. Look for two cells that see it. One has only 1 and 3 and the other has only 2 and 3. Those two cells are the wings."
@@ -1168,6 +1349,18 @@
           "title": "XYZ-Wing",
           "summary": "The pivot holds the wings’ common digit, so a target has to see all three cells.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a cell with three candidates. Look for two cells it sees that each contain only two of those three digits.",
+                "Continue if the pairs share one digit and together cover all three. A target must have that shared digit and see all three cells."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -1221,6 +1414,18 @@
           "summary": "Link two cells with the same two candidates so one wing must take the other digit.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find two cells that have the same two candidates. Pick one of those digits and look for a house with exactly two places for it.",
+                "Keep looking if each end of that pair sees a different starting cell. A target for the other digit must see both starting cells."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "In the figure, both wings have 5 and 7. Column 2 has just two places for 7, and each of those places sees a different wing. Whichever place takes 7 leaves the wing it sees with only 5."
@@ -1264,6 +1469,18 @@
           "title": "WXYZ-Wing",
           "summary": "Four cells with four digits can force a digit across houses.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a cell that has a short candidate list. Add nearby cells that reuse those digits until four cells contain exactly four distinct digits between them.",
+                "For each digit, check whether all its copies in the four cells see one another. Keep the pattern if at least three digits pass this check."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -1363,6 +1580,18 @@
           "summary": "Use two colors to follow the possible placements of one digit.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one digit and find a row, column, or box with exactly two places for it. Color the candidates differently.",
+                "At each end, look for another house where that digit also has exactly two places. Keep going while you can add links, then check for a conflict within one color or a candidate that sees both."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "Find two candidates for the same digit that are the only places for it in one house. Color them differently. When either candidate forms another such pair, color the new end with the opposite color. Within one connected set, placing one color rules out the other."
@@ -1431,6 +1660,19 @@
           "title": "3D Medusa",
           "summary": "Use cells with two candidates to carry two-color reasoning from one digit to another.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a cell with exactly two candidates and give them opposite colors. Pick either digit and look for a house where it has exactly one other spot.",
+                "Give that other spot the opposite color. If it is in a cell with two candidates, switch digits there and look for another link. Follow each connected branch.",
+                "If a link stops, check the other branches. Look for a conflict within one color or a candidate that either color would rule out."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -1503,6 +1745,18 @@
           "summary": "Follow strong and weak links for one digit to find a candidate that sees both ends.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a digit with exactly two places in a house. From one end, find another candidate for that digit that it sees.",
+                "Keep the new candidate if it has a house with a second two-place link. After a strong link, look for an outside candidate that sees both ends."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "When a house has just two places for a digit, the pair forms a strong link. If one end is ruled out, the other must be placed. Any two candidates for the same digit that see each other form a weak link. If one end is placed, the other must be ruled out."
@@ -1547,6 +1801,18 @@
           "summary": "Link cells with two candidates until the same digit appears at both ends.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a cell with two candidates. Pick one digit as the starting end. Use the other digit to find a cell you can see with exactly two candidates that includes it.",
+                "Switch to the other digit in each new cell. Continue until a far end has the starting digit and another candidate for that digit sees both ends."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "Pick one candidate to cross out in a cell with two marks. That forces its other digit. Find another two-candidate cell that sees the first and shares the forced digit. Cross out that digit there and use the other mark to continue."
@@ -1588,6 +1854,19 @@
           "title": "Alternating Inference Chains",
           "summary": "Follow alternating links to show that at least one end of the chain must be true.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a strong link. Look for a cell with two candidates or a digit with exactly two places in a house.",
+                "From the far end, find a candidate that conflicts with it and has a strong link of its own. Keep alternating. After a strong link, look for a candidate that conflicts with both ends.",
+                "For a grouped chain, also look for several spots for one digit in the same stretch of a box and a line. Treat the group as one end."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -1669,6 +1948,18 @@
           "title": "Nice Loops",
           "summary": "Follow a chain back to the same candidate and check the two links that meet there.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a candidate with several links, such as a digit in a cell with two candidates and a two-place link in its row.",
+                "Alternate strong and weak links. Continue if a link can return to the original candidate or group. Check whether the first and last links match."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -1783,6 +2074,18 @@
           "title": "Unique Rectangle",
           "summary": "Look for four corners where swapping two digits would give a second solution.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "On a puzzle with one solution, start at a cell with only two candidates. Look for that same pair in a second cell in its row or column.",
+                "Look across those lines for two more cells that both contain the pair. Continue if the four corners span exactly two boxes. The extra candidates and strong links tell you which version to use."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
@@ -1973,6 +2276,18 @@
           "summary": "In a puzzle with one solution, look for the extra candidate that keeps all the empty cells from having two choices.",
           "blocks": [
             {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Scan the empty cells for short candidate lists. Keep looking if exactly one cell has three candidates and every other empty cell has two.",
+                "In the row, column, and box of the three-candidate cell, count the possible spots for each of its digits. Look for the digit that has three spots in all three houses."
+              ]
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "BUG stands for Bivalue Universal Grave. In a BUG, every empty cell has two candidates and every missing digit has two places in each house that needs it. If you solved that grid, changing every originally empty cell to its other digit would still leave one of each digit in every house. You’d have two solutions."
@@ -2032,6 +2347,18 @@
           "title": "Forcing Chains and Nets",
           "summary": "Follow a possible move until it breaks a rule or leads to the same result as every other choice.",
           "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a cell with two candidates or a digit with only two places in a house. A candidate that affects several short candidate lists is also worth a try.",
+                "Try a choice and look for a single that follows from it. Keep going while changes force new moves. Look for a rule that breaks or a move that all starting choices share. For a net, record which earlier changes work together to force the next move."
+              ]
+            },
             {
               "type": "text",
               "paragraphs": [
