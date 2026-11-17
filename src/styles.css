@@ -2220,12 +2220,85 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     overscroll-behavior-y: contain;
     padding-bottom: 8px;
   }
-  .standard-workspace-page .workspace:has(> .puzzle-column) {
+  .standard-workspace-page .workspace:has(> .mobile-panel-layout) {
     height: auto;
     min-height: 100%;
-    grid-template-rows: auto auto;
-    align-content: space-evenly;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
   }
+  /* Stable sibling panels keep their state and the original spacing when reordered. */
+  .mobile-panel-layout { display: contents; -webkit-touch-callout: none; }
+  .mobile-panel { position: relative; flex: none; min-width: 0; }
+  .mobile-panel + .mobile-panel { margin-top: 8px; }
+  .mobile-panel-space { flex: 1 0 0; }
+  .mobile-panel-gap { flex-basis: 8px; }
+  .workspace:has(.mobile-panel-layout[data-rearranging]) { padding-top: 64px; }
+  .page:has(.mobile-panel-layout[data-rearranging]) { overflow-x: hidden; }
+  .mobile-panel-layout[data-rearranging] { user-select: none; }
+  .mobile-panel-layout[data-rearranging] .mobile-panel-content { opacity: .55; pointer-events: none; }
+  .mobile-panel-toolbar {
+    position: fixed;
+    z-index: 65;
+    top: calc(var(--topbar-height) + 8px);
+    inset-inline: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 56px;
+    padding: 6px 8px 6px 12px;
+  }
+  .mobile-panel-toolbar strong { display: block; font-size: 14px; }
+  .mobile-panel-toolbar small { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+  .mobile-panel-toolbar .icon-button { flex: none; width: 44px; min-height: 44px; }
+  .mobile-panel-editor { position: absolute; inset: 0; border-radius: 14px; outline: 2px dashed var(--selected-border); }
+  .mobile-panel-drag {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    color: var(--ink);
+    text-align: start;
+    cursor: grab;
+    touch-action: none;
+  }
+  .mobile-panel-drag > span {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid var(--selected-border);
+    border-radius: 10px;
+    background: var(--surface);
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .mobile-panel-move-buttons { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+  .mobile-panel-move-buttons .icon-button { width: 44px; min-height: 44px; background: var(--surface); }
+  .mobile-panel[data-dragging] { z-index: 64; pointer-events: none; }
+  .mobile-panel[data-dragging] .mobile-panel-editor { outline-style: solid; box-shadow: 0 8px 24px #0003; }
+  .mobile-panel[data-drop]::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset-inline: 0;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--selected-border);
+    pointer-events: none;
+  }
+  .mobile-panel[data-drop="before"]::after { top: -6px; }
+  .mobile-panel[data-drop="after"]::after { bottom: -6px; }
   .standard-workspace-page .puzzle { gap: 4px 8px; padding: 6px 8px 8px; }
   .standard-workspace-page .puzzle-actions { grid-area: actions; margin: 0; }
   .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger) { width: 44px; min-height: 44px; }
@@ -2237,12 +2310,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     /* Reserve room for the header and keypad on short portrait screens. */
     --board-frame-width: min(100%, max(220px, calc(100dvh - var(--topbar-height) - 320px)));
   }
-  .standard-workspace-page .workspace:has(.mobile-solving-controls.with-hint) .puzzle-stage {
+  .standard-workspace-page .workspace:has(.mobile-panel-layout.with-hint) .puzzle-stage {
     /* Keep room for both the hint and digit input. Short screens can still scroll. */
     --board-frame-width: min(100%, max(130px, calc(100dvh - var(--topbar-height) - 540px)));
   }
-  .mobile-solving-controls { gap: 8px; }
-  .mobile-solving-controls > .workspace-controls { grid-area: auto; }
   .standard-workspace-page .draft-tip {
     grid-area: draft;
     width: auto;
@@ -2255,7 +2326,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     height: auto;
     grid-template-columns: 48px minmax(0, var(--input-size, 210px)) 44px;
   }
-  .mobile-solving-controls.with-hint .compact-controls .controls-content {
+  .mobile-panel-layout.with-hint .compact-controls .controls-content {
     grid-template-columns: 48px minmax(0, min(var(--input-size, 210px), max(142px, 20dvh))) 44px;
   }
   .compact-controls .keypad-stack { width: auto; }
@@ -2319,8 +2390,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     padding: 0;
   }
   .mobile-hint-panel .hint-card { width: 100%; height: 100%; padding: 9px 12px; }
-  .mobile-solving-controls.with-hint .mobile-hint-panel { height: clamp(130px, 24dvh, 205px); }
-  .mobile-solving-controls .mobile-hint-panel .hint-card { max-height: 100%; }
+  .mobile-panel-layout.with-hint .mobile-hint-panel { height: clamp(130px, 24dvh, 205px); }
+  .mobile-panel-layout .mobile-hint-panel .hint-card { max-height: 100%; }
   .mobile-hint-panel .hint-card-heading { grid-template-columns: 38px minmax(0, 1fr) 44px; gap: 4px 8px; }
   .mobile-hint-panel .hint-card-actions { grid-column: 1 / -1; grid-row: auto; }
   .mobile-hint-panel .hint-card-actions .button { padding-inline: 10px; }
@@ -2373,11 +2444,17 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 
 @media (max-width: 900px) and (orientation: landscape) and (min-width: 560px),
   (max-width: 1440px) and (pointer: coarse) and (orientation: landscape) and (min-width: 560px) {
-  .standard-workspace-page .workspace:has(> .puzzle-column) {
-    grid-template: "puzzle controls" auto / minmax(0, 1fr) minmax(0, .85fr);
+  .standard-workspace-page .workspace:has(> .mobile-panel-layout) {
+    display: grid;
+    grid-template: auto / minmax(0, 1fr) minmax(0, .85fr);
+    gap: 8px;
     align-content: center;
     align-items: center;
   }
+  .mobile-panel-space { display: none; }
+  .mobile-panel + .mobile-panel { margin-top: 0; }
+  .mobile-panel[data-first] { grid-column: 1; grid-row: 1 / span var(--mobile-secondary-count); }
+  .mobile-panel:not([data-first]) { grid-column: 2; grid-row: var(--mobile-panel-row); }
   .standard-workspace-page .puzzle-stage {
     --board-frame-width: min(100%, max(180px, calc(100dvh - var(--topbar-height) - 80px)));
   }

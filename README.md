@@ -53,6 +53,8 @@ The editor runs on its own local preview server. Set `LESSON_EDITOR_PORT` to use
 
 The grid accepts keyboard or touch input. It supports two types of candidates, cell colors, multi-select, undo, and redo. Open **Puzzles → New puzzle** to choose a variant and a difficulty. Jigsaw offers Easy through Hard. The other variants offer Easy through Extreme. The variant name above the grid opens its rules. The engine checks that the variant rule is needed for a unique solution, then rates a full logical solve using that rule. Hints explain the active rules and show the candidates or cells involved.
 
+On mobile, press and hold a card for five seconds to rearrange the cards. Drag a card or use its arrow buttons to move it. The puzzle and timer stop while you rearrange cards. Press **X** to return to play. The browser saves the card order across refreshes and app updates.
+
 Use **Create by hand** to enter givens for Classic Sudoku. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
 
 Open **Learn** for technique articles with diagrams and practice puzzles. In a practice puzzle, select an empty cell and a digit, then check your move.

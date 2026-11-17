@@ -35,6 +35,7 @@ import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
 import { HintCard } from './HintCard'
+import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
 import { Modal } from './Modal'
@@ -245,6 +246,8 @@ export function Worktable({
   const [hintRevealed, setHintRevealed] = useState(false)
   const mobile = useMobileLayout()
   const desktop = !mobile
+  const [mobileRearranging, setMobileRearranging] = useState(false)
+  const rearranging = mobile && mobileRearranging
   const [solutionPath, setSolutionPath] = useState<SolutionPathState | null>(null)
   const [solutionPathRevealed, setSolutionPathRevealed] = useState(false)
   const [solutionStep, setSolutionStep] = useState(0)
@@ -348,7 +351,7 @@ export function Worktable({
     ? 'solution' : desktopInsightTab === 'techniques' && openTechniqueTab
       ? 'techniques' : openTechniqueTab ? 'techniques' : 'solution'
   const previewing = openSolutionTab && (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab === 'solution')
-  const disabled = Boolean(placeholder) || previewing || game.paused
+  const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const chainsVisible = advancedWorkspace && showRightPanel && desktopChainsVisible
   const variantEliminations = variant && eliminations
@@ -393,7 +396,7 @@ export function Worktable({
       ? { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
       : null
 
-  useTimer(game.id, !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
+  useTimer(game.id, !rearranging && !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
     !resetOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen && !analysisOpen)
 
   const markHintVisible = useCallback(() => {
@@ -436,8 +439,8 @@ export function Worktable({
     pathRequest.current++
   }, [game.id, game.source])
 
-  useGridClickAway(boardRef, () => setSelected([]), (target) => Boolean(
-    target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
+  useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
+    target.closest('[data-panel-editor]') || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
 
@@ -619,14 +622,14 @@ export function Worktable({
   useEffect(() => {
     if (!hintOpen) return
     function closeHint(event: KeyboardEvent) {
-      if (event.defaultPrevented || event.key !== 'Escape' ||
+      if (rearranging || event.defaultPrevented || event.key !== 'Escape' ||
         (event.target instanceof HTMLElement && event.target.closest('dialog[open]'))) return
       if (solutionHintOpen) setSolutionHintOpen(false)
       else setHintRevealed(false)
     }
     window.addEventListener('keydown', closeHint)
     return () => window.removeEventListener('keydown', closeHint)
-  }, [hintOpen, solutionHintOpen])
+  }, [hintOpen, solutionHintOpen, rearranging])
 
   useEffect(() => {
     if (mobileHintOpen) {
@@ -928,7 +931,7 @@ export function Worktable({
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       const target = event.target
-      if (event.defaultPrevented || game.paused || previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
+      if (event.defaultPrevented || rearranging || game.paused || previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
@@ -1379,7 +1382,7 @@ export function Worktable({
   const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} unavailable={chainUnavailable} inspection={chainInspection} />
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
-      ratingPending={ratingPending} shortcutEnabled={!modalOpen && !puzzleMenuOpen && !actionsOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen}
+      ratingPending={ratingPending} shortcutEnabled={!rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen}
       showGuides={appearance.showGuides} onChooseDifficulty={() => {
         if (mobile) onNewPuzzle('difficulty')
         else setSolvedView('difficulty')
@@ -1478,7 +1481,7 @@ export function Worktable({
       </>}
     </div>
   )
-  const canSelectCell = !game.paused && !mobileResults
+  const canSelectCell = !game.paused && !mobileResults && !rearranging
   const livePuzzleStage = previewing ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
@@ -1731,11 +1734,24 @@ export function Worktable({
                 </div>
               </section>}
             </div></>
-          : <>{puzzlePanel}{mobileResults
-            ? <div className="workspace-controls mobile-completion">{completionPanel}</div>
-            : <div className={`workspace-controls mobile-solving-controls${mobileHintOpen ? ' with-hint' : ''}`}>
-              {mobileHintOpen && hintPanel}{inputPanel}
-            </div>}</>}
+          : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={mobileHintOpen && !mobileResults}
+            blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisOpen ||
+              dialogResult !== null || changePuzzleOpen || resetOpen || cancelDraftOpen}
+            onRearrangingChange={(active) => {
+              setMobileRearranging(active)
+              if (!active) return
+              const pointerId = candidateDrag.current?.pointerId ?? dragSelection.current?.pointerId
+              candidateDrag.current = null
+              dragSelection.current = null
+              pendingDoubleClickSingle.current = null
+              if (pointerId !== undefined && boardRef.current?.hasPointerCapture(pointerId)) boardRef.current.releasePointerCapture(pointerId)
+            }}
+            panels={{
+              puzzle: { title: 'Puzzle', content: puzzlePanel },
+              hint: mobileHintOpen && !mobileResults ? { title: 'Hint', content: hintPanel } : undefined,
+              input: !mobileResults ? { title: 'Keypad', content: inputPanel } : undefined,
+              completion: mobileResults ? { title: 'Results', content: <div className="workspace-controls mobile-completion">{completionPanel}</div> } : undefined,
+            }} />}
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} exitDuration={240}
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
       {variant && variantRulesOpen && <Modal title={`${VARIANTS[variant.id].name} rules`} onClose={() => setVariantRulesOpen(false)}>
