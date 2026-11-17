@@ -4,11 +4,13 @@ import { Fragment, useEffect, useId, useState } from 'react'
 import type { LessonExample } from '../sudoku/engine'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram } from '../sudoku/lesson-diagram'
+import { lessonForcingProof } from '../sudoku/lesson-proof'
 import { articles, type Drill, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardRegion } from './BoardAnnotations'
 import { LearnBreadcrumbs } from './LearnBreadcrumbs'
 import { PracticePuzzle } from './LessonPractice'
+import { LessonProofExplorer } from './LessonProofExplorer'
 import { SelectControl } from './SelectControl'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, LessonExample>
@@ -82,7 +84,13 @@ export function Block({ block, variant }: { block: LessonBlock; variant: string 
     case 'heading': return <h2 className="article-subheading" id={block.id}>{block.title}</h2>
     case 'text': return <>{block.paragraphs.map((paragraph, index) => <p className="article-paragraph" key={index}>{paragraph}</p>)}</>
     case 'list': return <ul className="article-list">{block.items.map((item, index) => <li key={index}>{item}</li>)}</ul>
-    case 'diagram': return <Diagram example={lessonExamples[block.example]} crop={block.region} copy={block.copy} />
+    case 'diagram': {
+      const example = lessonExamples[block.example]
+      const proof = block.interactive ? lessonForcingProof(example) : undefined
+      return proof
+        ? <LessonProofExplorer key={block.example} example={example} proof={proof} crop={block.region} description={block.copy?.description} />
+        : <Diagram example={example} crop={block.region} copy={block.copy} />
+    }
     case 'practice': return <Practice block={block} variant={variant} />
   }
 }

@@ -35,7 +35,7 @@ const inferenceName = (node: InferenceNode) => 'candidate' in node
   : `${node.group.digit} in ${either.format(node.group.cells.map(cellName))}`
 const boardPoint = (node: InferenceNode) => 'candidate' in node ? node.candidate : node.group
 
-function houseName(house: House) {
+export function houseName(house: House) {
   if ('row' in house) return `row ${house.row + 1}`
   if ('column' in house) return `column ${house.column + 1}`
   return `box ${house.box + 1}`
@@ -165,6 +165,23 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     return {
       houses: bases, otherHouses: covers, cells: [...candidates.map(({ cell }) => cell), ...fins], candidates,
       accent: fins.length ? { candidates: marks(fins, [digit]), label: 'Fin candidate' } : undefined, description, reason,
+    }
+  }
+  if ('kraken-fish' in evidence) {
+    const { bases, covers, fins, digit, cover, branches } = evidence['kraken-fish']
+    const baseHouses = bases.map(houseCells)
+    const coverHouses = covers.map(houseCells)
+    const body = marks([...new Set(baseHouses.flat())].filter((cell) =>
+      baseHouses.filter((house) => house.includes(cell)).length === coverHouses.filter((house) => house.includes(cell)).length), [digit])
+    const starts = branches.flatMap(([step]) => step && 'candidate' in step.from ? [step.from.candidate] : [])
+    return {
+      houses: bases, otherHouses: covers, cells: body.map(({ cell }) => cell).concat(fins),
+      candidates: body, mainLabel: 'Fish body',
+      accent: { candidates: starts, label: cover ? 'Fin or selected cover candidate' : 'Fin candidate' },
+      description: `Follow digit ${digit} in ${list.format(bases.map(houseName))} and ${list.format(covers.map(houseName))}.`,
+      reason: cover
+        ? `Some fin is true, or ${houseName(cover)} gets its ${digit} from the fish. Every starting choice rules out ${candidateName(first)}.`
+        : `The fish rules out ${candidateName(first)} when all fins are false. Each fin rules it out through a chain.`,
     }
   }
   if ('single-digit-chain' in evidence) {
@@ -339,15 +356,29 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
       reason: `Erase ${first.digit} from ${cellName(cell)} in your head. Every empty cell would have two choices and the grid would fit the pattern that allows a swap. Since the puzzle has one solution, that ${first.digit} has to stay.`,
     }
   }
+  if ('tridagon' in evidence) {
+    const { cells, digits, guardians } = evidence.tridagon
+    return {
+      cells: cells.flat(), candidates: marks(cells.flat(), digits), mainLabel: 'Core candidate',
+      accent: { candidates: guardians, label: guardians.length === 1 ? 'Guardian, marked as the placement' : 'Guardian candidate' },
+      description: `The twelve marked cells can’t all use only ${list.format(digits.map(String))}.`,
+      reason: guardians.length === 1
+        ? `Only ${candidateName(guardians[0])} can break the pattern, so place it.`
+        : `At least one guardian has to be true.`,
+    }
+  }
   if ('forcing' in evidence) {
     const { branches } = evidence.forcing
-    const starting = branches.map(({ assumption }) => assumption.candidate)
-      .filter(({ cell, digit }) => cell !== first.cell || digit !== first.digit)
+    const starting: Candidate[] = []
     const statement = ({ candidate, truth }: { candidate: Candidate; truth: boolean }) =>
       `${candidate.digit} ${truth ? 'goes in' : 'is ruled out in'} ${cellName(candidate.cell)}`
-    const trace = branches.map(({ assumption, steps, conflict }) => {
-      const effects = [assumption, ...steps.map(({ effect }) => effect)]
+    type Branch = typeof branches[number]
+    function describeBranch({ assumption, steps, conflict }: Branch, inherited: Branch['assumption'][] = []): NonNullable<Pattern['trace']> {
+      const { cell, digit } = assumption.candidate
+      if (cell !== first.cell || digit !== first.digit) starting.push(assumption.candidate)
+      const effects = [assumption, ...inherited, ...steps.map(({ effect }) => effect)]
       let conclusion = `This choice also ${'place' in firstAction ? 'forces' : 'rules out'} ${candidateName(first)}.`
+      let cases: NonNullable<Pattern['trace']> = []
       if (conflict && 'opposite' in conflict) {
         conclusion = `The steps both force and rule out ${candidateName(effects[conflict.opposite[0]].candidate)}.`
       } else if (conflict && 'exhausted' in conflict) {
@@ -356,13 +387,23 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
           if ('cell' in scope) conclusion = `${cellName(scope.cell)} has no candidate left.`
           if ('house' in scope) conclusion = `There is no place for ${scope.house.digit} in ${houseName(scope.house.house)}.`
         }
+      } else if (conflict && 'cases' in conflict) {
+        const split = conflict.cases[0].branch.assumption.candidate
+        conclusion = `Keep these deductions and test both possibilities for ${candidateName(split)}. Both cases below end in a contradiction.`
+        cases = conflict.cases.flatMap(({ branch, premises }) => describeBranch(branch, premises.map((index) => effects[index])))
       }
-      return {
-        assumption: `Assume ${statement(assumption)}.`,
-        steps: steps.map(({ effect, causes }) => `${capital(statement(effect))} (from ${list.format(causes.map((index) => index === 0 ? 'the assumption' : `step ${index}`))}).`),
+      const causeName = (index: number) => {
+        if (index === 0) return 'the assumption'
+        if (index <= inherited.length) return `the earlier deduction that ${statement(effects[index])}`
+        return `step ${index - inherited.length}`
+      }
+      return [{
+        assumption: `${inherited.length ? 'Keep the earlier deductions and assume' : 'Assume'} ${statement(assumption)}.`,
+        steps: steps.map(({ effect, causes }) => `${capital(statement(effect))} (from ${list.format(causes.map(causeName))}).`),
         conclusion,
-      }
-    })
+      }, ...cases]
+    }
+    const trace = branches.flatMap((branch) => describeBranch(branch))
     return {
       candidates: branches.flatMap(({ steps }) => steps.map(({ effect }) => effect.candidate)),
       accent: starting.length ? { candidates: starting, label: 'Starting assumption' } : undefined,
