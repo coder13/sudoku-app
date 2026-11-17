@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict'
-import { after, before, test } from 'node:test'
-import { readFile } from 'node:fs/promises'
+import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
-import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
-import { runEngine, type EngineRequest, type EngineResponse, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
+import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
 import { applyDeduction, enter, isSolved, redo, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportedPuzzle, prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
@@ -13,28 +11,10 @@ import { hasMarkedPair, validVariantSave, variantHouseCells, variantHouseMasks }
 import { mixedFixtures } from './helpers/mixed-fixtures.ts'
 import { countMixedSolutions } from './helpers/mixed-oracle.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
-const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker')
-before(() => {
-  class TestWorker {
-    onmessage?: (message: { data: EngineResponse }) => void
-    onerror?: () => void
-    handle = createEngineHandler(async () => {
-      const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
-      return (await WebAssembly.instantiate(bytes)).instance.exports as unknown as EngineExports
-    })
-    postMessage(message: { id: number; request: EngineRequest }) {
-      void this.handle(message).then(data => this.onmessage?.({ data }))
-    }
-    terminate() {}
-  }
-  Object.defineProperty(globalThis, 'Worker', { value: TestWorker, configurable: true })
-})
-after(() => {
-  if (originalWorker) Object.defineProperty(globalThis, 'Worker', originalWorker)
-  else delete (globalThis as { Worker?: unknown }).Worker
-})
+useWasmWorker()
 
 const link = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.stringify({ id: 'mixed', puzzle }))
 

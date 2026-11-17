@@ -6,7 +6,7 @@ import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from
 import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { generationVariant, variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
 import { collectionProgress, getGameCollection, nextCollectionPuzzle } from '../sudoku/collections'
@@ -43,10 +43,10 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
       online ? undefined : new Set(Object.keys(collectionDownloads.grids(collectionEntry.collection, games)))) : undefined
   const progress = collectionEntry && collectionDifficulty
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
-  const mixed = game.variant?.id === 'mixed'
-  const recipe = game.variant?.id === 'mixed' ? undefined : game.variant?.id
+  const recipe = generationVariant(game.variant)
+  const needsChoice = Boolean(game.variant && !recipe)
   const nextDifficulty = variantDifficulty(recipe, preferredDifficulty)
-  const nextLabel = mixed ? 'Choose another puzzle' : nextDifficulty === 'auto'
+  const nextLabel = needsChoice ? 'Choose another puzzle' : nextDifficulty === 'auto'
     ? `Next ${variantDifficultyLabel(recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
   const result = results.get(game.id)
   const ratingChange = result && Math.round(result.after) - Math.round(result.before)
@@ -60,7 +60,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const canPlayNext = collectionEntry ? Boolean(collectionNext) && !ratingPending && !loadingNext : canGenerate
   const playNext = useCallback(() => {
     if (!canPlayNext) return
-    if (mixed) {
+    if (needsChoice) {
       onChooseVariant()
       return
     }
@@ -77,7 +77,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         setLoadingNext(false)
       })
     } else void generate(preferredDifficulty, undefined, recipe)
-  }, [canPlayNext, inCollection, mixed, game.id, recipe, generate, onChooseVariant, online, preferredDifficulty])
+  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, generate, onChooseVariant, online, preferredDifficulty])
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
 
@@ -144,7 +144,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
             {collectionEntry ? <>
               <Link className="button secondary" to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
               <Link className="button secondary" to="/puzzles">Choose a different puzzle</Link>
-            </> : !mixed && <>
+            </> : !needsChoice && <>
               <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
               <button className="button secondary" aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</button>
             </>}

@@ -30,6 +30,18 @@ The Wasm audit now measures candidates, uniqueness verification, exact solving, 
 
 The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
+### Quadruple integration in progress
+
+This stage is isolated on `codex/sudoku-quadruple-integration`. [Quadruple issue](https://github.com/coder13/sudoku-app/issues/37)
+
+- [x] Port one-to-four printed digit occurrences, exact validation, candidate restrictions, logical proofs, circle-to-house locks, symmetry, and derived clue generation.
+- [x] Verify Clover's five-given puzzle with an independent counter and store real Coach exports, including a repeated-digit circle with Diagonal and Killer rules.
+- [x] Test Quadruple with every subset of the eight existing rendered families through the app's Wasm import service.
+- [x] Add accessible circle labels, a Quadruple lesson, and three practice positions. Verify desktop preview, Play, hint text, move history, reload, and a checked practice removal.
+- [ ] Finish mobile, sharing, and completion browser checks after the interrupted browser session.
+- [ ] Finish full native, Wasm, feature-profile, documentation, production-build, and performance checks against current main.
+- [ ] Merge the complete app flow. Keep New puzzle generation presets unavailable until their difficulty recipes pass calibration.
+
 ## 1. Share a reliable engine contract
 
 - [x] Use one puzzle validation path for ratings, solve traces, hints, and opening analysis. Add a sparse regression case where a logical solve succeeds after exact search reaches its limit.

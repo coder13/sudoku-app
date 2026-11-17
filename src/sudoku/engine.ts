@@ -43,6 +43,7 @@ export type VariantRule =
   | { type: 'diagonal'; diagonal: 'main' | 'anti' }
   | { type: 'extra-house'; cells: readonly number[] }
   | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number }[]; coverGrid?: boolean }
+  | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
   | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
   | { type: 'clone'; groups: readonly (readonly number[])[] }
   | { type: 'anti-knight' | 'anti-king' | 'non-consecutive' }
@@ -67,6 +68,7 @@ export type VariantPuzzle = {
 export type VariantClueLayout =
   | { type: 'killer-cages'; cages: readonly (readonly number[])[]; coverGrid?: boolean }
   | { type: 'killer-cage-sizes'; sizes: readonly number[]; coverGrid?: boolean }
+  | { type: 'quadruple'; topLeft: number; clueSize: number }
   | { type: 'parity'; cells: readonly number[] }
   | { type: 'inequality'; cells: readonly [number, number] }
   | { type: 'markers'; family: 'kropki' | 'xv'; negative?: readonly [boolean, boolean]; count?: number }
@@ -437,6 +439,7 @@ export type VariantDeduction = {
     | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
+    | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }
     | { type: 'classic'; proof: Evidence; swapCells: number[] }
 }

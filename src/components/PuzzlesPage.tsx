@@ -11,7 +11,7 @@ import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId, type PuzzleVariantId } from '../sudoku/variants'
+import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId, type PuzzleVariantId } from '../sudoku/variants'
 import { StopPlaying } from './PuzzleDialogs'
 import { useMobileLayout } from './mobile-layout'
 import { MobileNewPuzzle, type MobileNewPuzzleScreen } from './MobileNewPuzzle'
@@ -61,7 +61,7 @@ function PuzzleLibrary({ games, active, select, manage }: {
   const title = useId()
   const activePuzzles = games.filter((game) => !isSolved(game) && !game.savedForLater)
   const saved = games.filter((game) => !isSolved(game) && game.savedForLater)
-  const variantOrder: PuzzleVariantId[] = [...Object.keys(VARIANTS) as VariantId[], 'mixed']
+  const variantOrder: PuzzleVariantId[] = [...Object.keys(PUZZLE_VARIANTS) as Exclude<PuzzleVariantId, 'mixed'>[], 'mixed']
   const difficultyOrder = [...Object.keys(DIFFICULTY_LABELS), 'unrated']
   const solved = games.filter(isSolved).sort((left, right) => {
     const leftVariant = left.variant?.id ?? 'classic'
@@ -112,7 +112,7 @@ function PuzzleLibrary({ games, active, select, manage }: {
       <h3 id={`${title}-solved`}>Solved puzzles</h3>
       {solvedGroups.length > 0 ? solvedGroups.map((group) => <section className="solved-puzzle-group" key={group.key}
         aria-labelledby={`${title}-${group.key}`}>
-        <h4 id={`${title}-${group.key}`}>{group.variant === 'mixed' ? 'Mixed rules' : VARIANTS[group.variant].name} · {group.difficulty ? DIFFICULTY_LABELS[group.difficulty] : 'Unrated'}</h4>
+        <h4 id={`${title}-${group.key}`}>{group.variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[group.variant].name} · {group.difficulty ? DIFFICULTY_LABELS[group.difficulty] : 'Unrated'}</h4>
         {list(group.games)}
       </section>) : <p className="main-menu-empty">You haven’t solved any puzzles yet.</p>}
     </section>

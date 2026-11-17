@@ -16,6 +16,7 @@ import {
   saveNewPuzzlePreference, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
+import { generationVariant } from '../sudoku/variants'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
@@ -260,8 +261,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   function openNewPuzzle(step?: 'difficulty') {
     if (mobile) {
       setPanel(null)
-      void navigate({ to: '/puzzles/new', search: step === 'difficulty' && game?.variant?.id !== 'mixed'
-        ? { step, variant: game?.variant?.id ?? 'classic' } : {} })
+      void navigate({ to: '/puzzles/new', search: step === 'difficulty' && (!game?.variant || generationVariant(game.variant))
+        ? { step, variant: generationVariant(game?.variant) ?? 'classic' } : {} })
     } else setPanel('new')
   }
 

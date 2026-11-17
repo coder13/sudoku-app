@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// Version of the point costs and difficulty thresholds for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 5;
+pub const VARIANT_SCORING_VERSION: u32 = 6;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 
 macro_rules! catalog {
@@ -84,6 +84,8 @@ catalog! {
     Between: "between", 23, Easy;
     /// Find increasing assignments along a thermometer.
     Thermometer: "thermometer", 26, Easy;
+    /// Require every printed digit occurrence in the four cells touching a circle.
+    Quadruple: "quadruple", 27, Medium;
     /// Find possible digit differences along a Whispers line.
     Whispers: "whispers", 27, Medium;
     /// Remove digits that cannot be assigned to the cells of a Killer cage.
@@ -134,6 +136,16 @@ impl VariantTechnique {
     }
 }
 
+/// A clue and its source rules recorded in a variant proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantClueScope {
+    /// Indices of the original puzzle rules for this clue.
+    pub rules: Vec<usize>,
+    /// Cells in the clue's compiled order.
+    pub cells: Vec<usize>,
+}
+
 /// Evidence for a logical move in a structured puzzle.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(
@@ -180,6 +192,19 @@ pub enum VariantEvidence {
         /// Possible locations where both houses can place the digit.
         cells: Vec<usize>,
         /// Digit confined to the intersection.
+        digit: u8,
+    },
+    /// A clue requires a digit somewhere in the intersecting house.
+    LockedDigit {
+        /// Clue establishing that the digit occurs in the house.
+        clue: VariantClueScope,
+        /// House whose other cells lose the digit.
+        target: VariantHouseKind,
+        /// Possible locations for the digit in the house and clue.
+        cells: Vec<usize>,
+        /// Candidate masks for the clue's cells, including placed digits.
+        domains: Vec<u16>,
+        /// Required digit.
         digit: u8,
     },
     /// A classic proof that applies to the current rules.
@@ -358,8 +383,7 @@ impl VariantPosition {
                 let floor = rating
                     .hardest
                     .map_or(Difficulty::Easy, VariantTechnique::difficulty);
-                rating.status =
-                    SolveStatus::Solved(floor);
+                rating.status = SolveStatus::Solved(floor);
                 break;
             }
             let Some(step) = order
@@ -399,6 +423,7 @@ impl VariantDeduction {
             VariantEvidence::CageSum { cells, .. }
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
+            VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Classic { proof, .. } => proof.pattern_size(),
         };
         (
@@ -559,7 +584,10 @@ impl CompiledVariant {
     }
 
     /// Prefer the easiest enabled move that unlocks singles, within the puzzle's tier.
-    #[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
+    #[cfg(any(
+        test,
+        all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))
+    ))]
     pub(crate) fn useful_hints(
         &self,
         entries: &Board,
@@ -646,7 +674,10 @@ impl CompiledVariant {
         Ok(choices)
     }
 
-    #[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
+    #[cfg(any(
+        test,
+        all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))
+    ))]
     fn single_progress(&self, mut board: Board, mut removals: [u16; CELLS]) -> usize {
         let mut placed = 0;
         while board.contains(&0) {
@@ -797,6 +828,19 @@ impl CompiledVariant {
                     }
                 }
             }
+            Quadruple => {
+                for clue in &self.quadruples {
+                    let domains = clue.cells.map(|cell| position.domain(cell));
+                    if let Some(proof) = position.explain_constraint(
+                        technique,
+                        &[clue.rule_index],
+                        &clue.cells,
+                        clue.support(domains).into_iter(),
+                    ) {
+                        proofs.push(proof);
+                    }
+                }
+            }
             CageCombinations => {
                 for cage in &self.cages {
                     let domains: Vec<_> = cage
@@ -819,7 +863,10 @@ impl CompiledVariant {
                 }
             }
             CageHouseSum => self.cage_house_sums(position, &mut proofs),
-            LockedCandidates => self.locked_candidates(position, &mut proofs),
+            LockedCandidates => {
+                self.locked_candidates(position, &mut proofs);
+                self.quadruple_locks(position, &mut proofs);
+            }
             Classic(classic) => self.classic_proofs(position, classic, &mut proofs),
             Parity => {
                 proofs.extend(self.parity_clues.iter().filter_map(|clue| {
@@ -1006,6 +1053,61 @@ impl CompiledVariant {
                             actions,
                         });
                     }
+                }
+            }
+        }
+    }
+
+    fn quadruple_locks(&self, position: &ProofPosition<'_>, proofs: &mut Vec<VariantDeduction>) {
+        for clue in &self.quadruples {
+            let domains = clue.cells.map(|cell| position.domain(cell));
+            let supported = clue.support(domains);
+            let scope = cell_mask(&clue.cells).unwrap();
+            for digit in digits(clue.required_digits()) {
+                let bit = digit_bit(digit);
+                for (target, &house) in self.houses.iter().zip(&self.house_masks) {
+                    let cells: Vec<_> = clue
+                        .cells
+                        .iter()
+                        .zip(supported)
+                        .filter_map(|(&cell, mask)| {
+                            (house & (1 << cell) != 0 && mask & bit != 0).then_some(cell)
+                        })
+                        .collect();
+                    if cells.len() < 2 {
+                        continue;
+                    }
+                    let actions: Vec<_> = cells_in(house & !scope)
+                        .filter(|&cell| position.masks[cell] & bit != 0)
+                        .map(|cell| HintAction::Eliminate(Candidate { cell, digit }))
+                        .collect();
+                    if actions.is_empty() {
+                        continue;
+                    }
+                    let without = std::array::from_fn(|i| {
+                        if house & (1 << clue.cells[i]) != 0 {
+                            domains[i] & !bit
+                        } else {
+                            domains[i]
+                        }
+                    });
+                    if clue.has_assignment(without) {
+                        continue;
+                    }
+                    proofs.push(VariantDeduction {
+                        technique: VariantTechnique::LockedCandidates,
+                        evidence: VariantEvidence::LockedDigit {
+                            clue: VariantClueScope {
+                                rules: vec![clue.rule_index],
+                                cells: clue.cells.to_vec(),
+                            },
+                            target: target.kind,
+                            cells,
+                            domains: domains.to_vec(),
+                            digit,
+                        },
+                        actions,
+                    });
                 }
             }
         }

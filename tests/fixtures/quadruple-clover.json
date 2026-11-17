@@ -1,0 +1,131 @@
+{
+  "author": "Clover",
+  "source": "https://www.gmpuzzles.com/blog/2025/07/quadruples-sudoku-by-clover/",
+  "solutionSource": "https://www.gmpuzzles.com/images/puzzles2025/250722-QuadruplesSudoku-soln.pdf",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000000000000000000000000010000000432000000050000000000000000000000000000000",
+    "rules": [
+      {
+        "type": "quadruple",
+        "topLeft": 1,
+        "digits": [
+          1,
+          2
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 6,
+        "digits": [
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 9,
+        "digits": [
+          5,
+          7,
+          9
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 13,
+        "digits": [
+          2,
+          8
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 20,
+        "digits": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 23,
+        "digits": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 28,
+        "digits": [
+          6
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 42,
+        "digits": [
+          9
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 47,
+        "digits": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 50,
+        "digits": [
+          1,
+          3,
+          4
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 57,
+        "digits": [
+          4,
+          7
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 61,
+        "digits": [
+          6,
+          7,
+          8
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 64,
+        "digits": [
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 69,
+        "digits": [
+          3,
+          4
+        ]
+      }
+    ]
+  },
+  "solution": "428579613916328754573164289842917365765432891391856427654293178289741536137685942",
+  "coach": "https://sudoku.coach/en/play/SCv7_32_f2e8b4i11q1i0425tsp6m5s213lbdfa1iu6gmko9458mm4crmj3bm5oq9khgikpm1jo9hucvc40mat3rq5ngilcpg394uecsmn97d0gaa9u90rb637eq5v6f1nc2l77eodi4r8o7bvjbl03ek4h6i0nm6kt1rs4ojfbcoop73kvkjlebjmtsjbnj26kh660rqfqd4in36ob6gtudgj1bk9hvij3t374b4ddi5b18hsmcjohg5m72oj9hnlcg0os96cbc0h8ssp3p9k9o39s660mj3d4cgcbjk7f1piecg9n7196bbg24vj2p3gb4bo4f4e6vsalevmvr6lgfp8frltfq054pjvgp"
+}

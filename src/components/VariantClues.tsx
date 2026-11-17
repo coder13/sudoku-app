@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { VariantRule } from '../sudoku/engine'
-import { extraRegionName } from '../sudoku/variants'
+import { extraRegionName, quadrupleCells } from '../sudoku/variants'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
@@ -89,6 +89,17 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
     </defs>}
     {rules.map((rule, index) => {
       switch (rule.type) {
+        case 'quadruple': {
+          const cx = x(rule.topLeft) + 1
+          const cy = y(rule.topLeft) + 1
+          const count = rule.digits.length
+          return <g key={index} className="variant-quadruple">
+            <circle cx={cx} cy={cy} r=".265" />
+            {rule.digits.map((digit, i) => <text key={i}
+              x={cx + (count === 1 || count === 3 && i === 2 ? 0 : i % 2 ? .105 : -.105)}
+              y={cy + (count <= 2 ? 0 : Math.floor(i / 2) ? .105 : -.105)}>{digit}</text>)}
+          </g>
+        }
         case 'diagonal':
           return <line key={index} className="variant-diagonal" x1={rule.diagonal === 'main' ? 0 : 9} y1="0"
             x2={rule.diagonal === 'main' ? 9 : 0} y2="9" />
@@ -124,6 +135,10 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
   const labels: string[][] = Array.from({ length: 81 }, () => [])
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
+      case 'quadruple':
+        for (const cell of quadrupleCells(rule.topLeft)) labels[cell].push(
+          `Quadruple ${rule.digits.join(', ')}, circle touching ${reference(rule.topLeft)} and its three neighbors; repeated digits need separate cells`)
+        break
       case 'diagonal': {
         const main = rule.diagonal === 'main'
         for (let i = 0; i < 9; i++) {

@@ -32,7 +32,18 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const source = variantHouseName(evidence.source, puzzle)
       const target = variantHouseName(evidence.target, puzzle)
       description = `In the ${source}, digit ${evidence.digit} can only go in cells shared with the ${target}.`
-      reason = `The other cells in the ${target} cannot contain ${evidence.digit}.`
+      reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
+      break
+    }
+    case 'locked-digit': {
+      cells = evidence.clue.cells
+      const printed = evidence.clue.rules.flatMap(index => {
+        const rule = puzzle.rules?.[index]
+        return rule?.type === 'quadruple' ? rule.digits : []
+      })
+      const target = variantHouseName(evidence.target, puzzle)
+      description = `The Quadruple circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
+      reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
       break
     }
     case 'cage-sum': {
@@ -48,6 +59,14 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
     case 'constraint': {
       cells = evidence.cells
       switch (technique) {
+        case 'quadruple': {
+          const printed = evidence.rules.flatMap(index => {
+            const rule = puzzle.rules?.[index]
+            return rule?.type === 'quadruple' ? rule.digits : []
+          })
+          description = `The circle requires ${printed.join(', ')} in its four surrounding cells. Each repeated digit needs a separate cell.`
+          break
+        }
         case 'anti-knight':
           description = 'The highlighted cells are a chess knight’s move apart, so they must contain different digits.'
           break

@@ -10,7 +10,8 @@ export function variantLessonExercise({ position, deduction, ...exercise }: Vari
   const { puzzle, entries, eliminations } = position
   const { pattern, ...hint } = variantHintChoice(deduction, puzzle)
   if (pattern && 'domains' in deduction.evidence) {
-    const { cells, domains } = deduction.evidence
+    const { domains } = deduction.evidence
+    const cells = deduction.evidence.type === 'locked-digit' ? deduction.evidence.clue.cells : deduction.evidence.cells
     pattern.candidates = cells.flatMap((cell, index) => {
       const active = exercise.candidates[cell] & domains[index]
       return Array.from({ length: 9 }, (_, digit) => digit + 1)

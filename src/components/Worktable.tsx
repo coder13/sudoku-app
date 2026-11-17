@@ -29,7 +29,7 @@ import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
 import { variantHintChoice, variantSolutionPath } from '../sudoku/variant-hints'
 import { getVariantPlayOrder, playCandidates, variantHintOrder, variantPosition } from '../sudoku/variant-play'
-import { variantName, variantRuleDescriptions, variantHouseMasks } from '../sudoku/variants'
+import { generationVariant, variantName, variantRuleDescriptions, variantHouseMasks } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
@@ -1584,7 +1584,7 @@ export function Worktable({
         else setSolvedView('difficulty')
       }} onChooseVariant={onNewPuzzle} />
   ) : showDifficulty ? (
-    <PuzzleDifficulty value={preferredDifficulty} variant={variant?.id === 'mixed' ? undefined : variant?.id} showGuides={appearance.showGuides}
+    <PuzzleDifficulty value={preferredDifficulty} variant={generationVariant(variant)} showGuides={appearance.showGuides}
       onBack={() => setSolvedView('results')} onChange={onDifficultyChange} />
   ) : null
   const solveSinglesAction = <button onClick={() => { void solveAllSingles() }} disabled={busy || !hasSingles}
