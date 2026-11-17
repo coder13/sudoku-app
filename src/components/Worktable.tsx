@@ -1,7 +1,7 @@
 import {
-  type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
+  type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, ListFilter, ListOrdered, LogOut, MoreHorizontal, Pause, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Delete, Eye, Highlighter, Info, Lightbulb, ListFilter, ListOrdered, LogOut, MoreHorizontal, Palette, Pause, Pen, Pencil, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
@@ -9,7 +9,7 @@ import { EngineError, replayStep, runEngine, type Candidate, type Deduction, typ
 import {
   COLORS, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
   formatTime, hasCandidate, hintEliminations, isSolved, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
-  type ColorTarget, type ErrorMode, type Game, type Mode, type Position,
+  type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
@@ -27,7 +27,7 @@ import { playerActions } from '../sudoku/technique-progress'
 import { variantHintChoice, variantSolutionPath } from '../sudoku/variant-hints'
 import { getVariantPlayOrder, playCandidates, variantHintOrder, variantPosition } from '../sudoku/variant-play'
 import { VARIANTS, variantHouseMasks } from '../sudoku/variants'
-import { Board } from './Board'
+import { Board, gridCellAtPoint } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
 import { ChainsPanel } from './ChainsPanel'
@@ -48,6 +48,13 @@ import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
 
 const ANALYSIS_CARD_KEY = 'sudoku-app:v1:techniques-card-open'
+const GRID_MODES = {
+  pen: { label: 'Pen', Icon: Pen },
+  pencil: { label: 'Pencil', Icon: Pencil },
+  highlight: { label: 'Highlight', Icon: Highlighter },
+  color: { label: 'Color', Icon: Palette },
+  erase: { label: 'Erase', Icon: Delete },
+} as const
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -147,7 +154,17 @@ type CandidateDrag = {
   mode: 'candidate' | 'center' | 'corner'
   digit: number
   action: 'add' | 'remove'
+  temporary: boolean
   moved: boolean
+  controlClick?: boolean
+}
+
+type CandidatePress = {
+  pointerId: number
+  cell: number
+  digit: number
+  mode: CandidateDrag['mode']
+  cancelled: boolean
 }
 
 function matchesHintPosition(game: Game, position: HintPosition) {
@@ -209,6 +226,8 @@ export function Worktable({
   setPuzzleBrowserView: (view: PuzzleBrowserView) => void
 }) {
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
+  const gridModeId = useId()
+  const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
   const [selectedColor, setSelectedColor] = usePlayPreference('selectedColor')
@@ -218,6 +237,8 @@ export function Worktable({
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
   const [pencil, setPencil] = usePlayPreference('pencil')
+  const [pencilModifier, setPencilModifier] = useState(false)
+  const [candidatePreviewCell, setCandidatePreviewCell] = useState<number | null>(null)
   const [candidateKind, setCandidateKind] = usePlayPreference('candidateKind')
   const [colorMode, setColorMode] = usePlayPreference('colorMode')
   const [eraseMode, setEraseMode] = usePlayPreference('eraseMode')
@@ -282,6 +303,8 @@ export function Worktable({
   const hintReturnFocus = useRef(false)
   const dragSelection = useRef<{ pointerId: number; start: number; base: number[]; additive: boolean; moved: boolean } | null>(null)
   const candidateDrag = useRef<CandidateDrag | null>(null)
+  const candidatePress = useRef<CandidatePress | null>(null)
+  const hoveredCell = useRef<number | null>(null)
   const suppressCellClick = useRef(false)
   const pendingDoubleClickSingle = useRef<{ index: number; digit: number; game: Game } | null>(null)
   const pathRequest = useRef(0)
@@ -295,9 +318,7 @@ export function Worktable({
   const draft = game.source === 'draft'
   // A loading draft skips solver effects but reserves the regular play UI.
   const presentationDraft = draft && !placeholder
-  const mode: Mode = draft ? 'value' : colorMode ? 'color' : pencil
-    ? advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
-    : 'value'
+  const candidateMode = advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
   const solved = isSolved(game)
   const mobileHintOpen = mobile && hintRevealed && !draft && !solved
   const hint = hintState?.position === hintPosition ? hintState : null
@@ -388,8 +409,17 @@ export function Worktable({
   const candidateBrush = colorTarget === 'candidate' && !cellColorsDisabled && !sketch.drawing && !hintAnnotations && !mobileHintOpen
     ? colorMode ? selectedColor : brush : null
   const paintingCandidates = candidateBrush !== null
-  const canDragCandidates = !disabled && !draft && pencil && !highlightMode && !colorMode && !eraseMode &&
+  const canActivateTemporaryPencil = !pencil && !highlightMode && !colorMode && !eraseMode &&
+    !disabled && !draft && !solved && !sketch.drawing && brush === null && !modalOpen && !mobileHintOpen &&
+    !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !changePuzzleOpen && !variantRulesOpen && !analysisOpen
+  const temporaryPencil = pencilModifier && canActivateTemporaryPencil
+  const pencilActive = pencil || temporaryPencil
+  const mode: Mode = draft ? 'value' : colorMode ? 'color' : pencilActive ? candidateMode : 'value'
+  const canDragCandidates = !disabled && !draft && pencilActive && !highlightMode && !colorMode && !eraseMode &&
     !paintingCandidates && !sketch.drawing && !hintAnnotations && selectedDigit !== null && selectedDigit > 0
+  const canPreviewCandidates = canDragCandidates && selected.length === 0 && brush === null && !solved &&
+    !modalOpen && !mobileHintOpen && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen &&
+    !changePuzzleOpen && !variantRulesOpen && !analysisOpen
   const trace = solutionPath?.status === 'ready' ? solutionPath.trace : undefined
   const previewPosition = trace?.positions?.[solutionStep]
   const replayedSolutionStep = useMemo(() => trace && replayStep(trace, solutionStep), [trace, solutionStep])
@@ -430,6 +460,7 @@ export function Worktable({
   }, [givens, id, variant])
 
   useLayoutEffect(() => {
+    setPointerFocusedCell(null)
     setDialogResult(null)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -448,6 +479,9 @@ export function Worktable({
     setRatingFailed(false)
     dragSelection.current = null
     candidateDrag.current = null
+    candidatePress.current = null
+    hoveredCell.current = null
+    setCandidatePreviewCell(null)
     suppressCellClick.current = false
     pathRequest.current++
   }, [game.id, game.source])
@@ -681,28 +715,58 @@ export function Worktable({
   }, [puzzleMenuOpen])
 
   useEffect(() => {
-    function finishDragSelection(event: PointerEvent) {
-      let moved = false
+    function releasePencilModifier(event: KeyboardEvent) {
+      if ((event.key === 'Control' || event.key === 'Meta') && !event.ctrlKey && !event.metaKey) setPencilModifier(false)
+    }
+    function clearPencilModifier() { setPencilModifier(false) }
+
+    window.addEventListener('keyup', releasePencilModifier)
+    window.addEventListener('blur', clearPencilModifier)
+    return () => {
+      window.removeEventListener('keyup', releasePencilModifier)
+      window.removeEventListener('blur', clearPencilModifier)
+    }
+  }, [])
+
+  useEffect(() => {
+    function finishGridPointer(event: PointerEvent) {
+      const press = candidatePress.current
+      if (press?.pointerId === event.pointerId) {
+        press.cancelled ||= event.type === 'pointercancel' || gridCellAtPoint(boardRef.current, event) !== press.cell
+        setCandidatePreviewCell(null)
+      }
+      let suppressClick = false
       if (dragSelection.current?.pointerId === event.pointerId) {
-        moved = dragSelection.current.moved
+        suppressClick = dragSelection.current.moved
         dragSelection.current = null
       }
       if (candidateDrag.current?.pointerId === event.pointerId) {
-        moved = candidateDrag.current.moved || moved
+        const { moved, temporary } = candidateDrag.current
+        suppressClick ||= moved || (temporary && !event.ctrlKey && !event.metaKey)
         candidateDrag.current = null
       }
-      if (!moved) return
+      if (!suppressClick) return
       suppressCellClick.current = true
       window.setTimeout(() => { suppressCellClick.current = false }, 100)
     }
 
-    window.addEventListener('pointerup', finishDragSelection)
-    window.addEventListener('pointercancel', finishDragSelection)
+    window.addEventListener('pointerup', finishGridPointer)
+    window.addEventListener('pointercancel', finishGridPointer)
     return () => {
-      window.removeEventListener('pointerup', finishDragSelection)
-      window.removeEventListener('pointercancel', finishDragSelection)
+      window.removeEventListener('pointerup', finishGridPointer)
+      window.removeEventListener('pointercancel', finishGridPointer)
     }
   }, [])
+
+  useEffect(() => {
+    const press = candidatePress.current
+    if (canPreviewCandidates && (!press || (press.digit === selectedDigit && press.mode === candidateMode))) {
+      if (temporaryPencil && !press) setCandidatePreviewCell(hoveredCell.current)
+      return
+    }
+    if (press) press.cancelled = true
+    setCandidatePreviewCell(null)
+  }, [canPreviewCandidates, candidateMode, selectedDigit, temporaryPencil])
 
   useEffect(() => {
     if (advancedModes.colorsEnabled) return
@@ -738,10 +802,10 @@ export function Worktable({
     roomStore.update(game.id, transform)
   }
 
-  function enterFromInput(cells: number[], digit: number, inputMode: Mode, allowMultipleValues = false) {
+  function enterFromInput(cells: number[], digit: number, inputMode: Mode, options?: EnterOptions) {
     edit((current) => {
       const origin = current
-      const next = enter(origin, cells, inputMode, digit, { allowMultipleValues })
+      const next = enter(origin, cells, inputMode, digit, options)
       const actions = playerActions(origin, next, cells, inputMode, digit)
       if (actions.length && !solved) void observeTechniqueActions(origin, actions, 'independent',
         hintEliminations(valuesOf(origin), completeCandidateMasks(origin), origin.position.eliminations))
@@ -774,7 +838,7 @@ export function Worktable({
         setSelectedDigit(digit)
         return
       }
-      enterFromInput(cells, digit, inputMode, inputMode === 'value')
+      enterFromInput(cells, digit, inputMode, { allowMultipleValues: inputMode === 'value' })
       return
     }
     if (highlightMode && inputMode !== 'value') return
@@ -822,10 +886,17 @@ export function Worktable({
     edit((current) => paintCandidate(current, candidate, candidateBrush))
   }
 
-  const canDoubleClickSingle = advancedModes.doubleClickSingles && !draft && !solved && !pencil &&
+  const canDoubleClickSingle = advancedModes.doubleClickSingles && !draft && !solved && !pencilActive &&
     !highlightMode && !colorMode && !eraseMode && brush === null && selectedDigit === null && !hintAnnotations
 
   function clickCell(index: number, event: MouseEvent) {
+    const press = candidatePress.current
+    if (press && event.detail > 0) {
+      // Touch generates a click after pointerup, even after leaving an implicitly captured cell.
+      candidatePress.current = null
+      if (press.cancelled || press.cell !== index || !canPreviewCandidates || values[index] !== '0' ||
+        press.digit !== selectedDigit || press.mode !== candidateMode) return
+    }
     const doubleClickEligible = canDoubleClickSingle && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey
     if (!doubleClickEligible || pendingDoubleClickSingle.current?.index !== index) pendingDoubleClickSingle.current = null
     if (event.detail === 1) {
@@ -835,7 +906,7 @@ export function Worktable({
         ? { index, digit, game } : null
     }
     if (event.detail > 1 && doubleClickEligible && pendingDoubleClickSingle.current) return
-    if (suppressCellClick.current) {
+    if (suppressCellClick.current && event.detail > 0) {
       suppressCellClick.current = false
       return
     }
@@ -852,8 +923,9 @@ export function Worktable({
       setSelected([])
       return
     }
-    if (!givenDigit && !highlightMode && !selected.length && armedInput !== null && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-      enterFromInput([index], armedInput, mode)
+    const selectingMultiple = !pencilActive && (event.metaKey || event.ctrlKey)
+    if (!givenDigit && !highlightMode && !selected.length && armedInput !== null && !event.shiftKey && !selectingMultiple) {
+      enterFromInput([index], armedInput, mode, { toggleValue: !draft && mode === 'value' })
       return
     }
     if (givenDigit) setSelectedDigit(givenDigit)
@@ -885,6 +957,9 @@ export function Worktable({
 
   function startCellDrag(index: number, event: ReactPointerEvent) {
     if (event.button !== 0 || !event.isPrimary) return
+    setPointerFocusedCell(index)
+    suppressCellClick.current = false
+    candidatePress.current = null
     if (highlightMode) {
       dragSelection.current = {
         pointerId: event.pointerId,
@@ -895,27 +970,46 @@ export function Worktable({
       }
       return
     }
+    if (event.pointerType === 'touch') {
+      if (canPreviewCandidates && selectedDigit !== null && values[index] === '0' && !event.shiftKey) {
+        candidatePress.current = { pointerId: event.pointerId, cell: index, digit: selectedDigit, mode: candidateMode, cancelled: false }
+        setCandidatePreviewCell(index)
+      }
+      return
+    }
     if (!canDragCandidates || values[index] !== '0') return
     const initial = roomStore.getSnapshot().games.find((item) => item.id === game.id) ?? game
     const digit = selectedDigit!
-    const candidateMode = mode as CandidateDrag['mode']
     const mask = candidateMode === 'candidate'
       ? initial.position.center[index] | initial.position.corner[index]
       : initial.position[candidateMode][index]
     candidateDrag.current = {
       pointerId: event.pointerId, previous: index, initial, cells: new Set(),
-      mode: candidateMode, digit, action: hasCandidate(mask, digit) ? 'remove' : 'add', moved: false,
+      mode: candidateMode, digit, action: hasCandidate(mask, digit) ? 'remove' : 'add', temporary: temporaryPencil, moved: false,
     }
   }
 
-  function continueCellDrag(index: number, event: ReactPointerEvent) {
+  function continueCellDrag(index: number | null, event: ReactPointerEvent) {
+    if (event.pointerType === 'touch') {
+      const press = candidatePress.current
+      if (press?.pointerId === event.pointerId && index !== press.cell) {
+        press.cancelled = true
+        setCandidatePreviewCell(null)
+      }
+    } else if (event.buttons === 0) {
+      hoveredCell.current = event.shiftKey ? null : index
+      setCandidatePreviewCell(canPreviewCandidates && !event.shiftKey ? index : null)
+    }
+    if (index === null) return
     const pressed = event.pointerType === 'touch' || Boolean(event.buttons & 1)
     const stroke = candidateDrag.current
     if (stroke) {
-      if (stroke.pointerId !== event.pointerId || !pressed || stroke.previous === index) return
+      if (stroke.pointerId !== event.pointerId || !pressed || stroke.previous === index ||
+        (stroke.temporary && !temporaryPencil)) return
       event.preventDefault()
       if (!stroke.moved) {
         stroke.moved = true
+        setCandidatePreviewCell(null)
         setSelected([])
         boardRef.current?.setPointerCapture(event.pointerId)
       }
@@ -941,11 +1035,34 @@ export function Worktable({
     setSelected(drag.additive ? [...new Set([...drag.base, ...dragged])] : dragged)
   }
 
+  function preventControlClickMenu(event: MouseEvent) {
+    // On macOS, a Control-click can open the context menu in place of a click.
+    const stroke = candidateDrag.current
+    if (!canPreviewCandidates || !event.ctrlKey || event.shiftKey || event.button !== 0 ||
+      !stroke || stroke.previous !== gridCellAtPoint(boardRef.current, event)) return
+    event.preventDefault()
+    stroke.controlClick = true
+  }
+
+  function finishControlClick(event: ReactPointerEvent) {
+    const stroke = candidateDrag.current
+    if (!stroke?.controlClick || stroke.pointerId !== event.pointerId || stroke.moved || !canPreviewCandidates ||
+      (stroke.temporary && !temporaryPencil) || stroke.previous !== gridCellAtPoint(boardRef.current, event)) return
+    clickCell(stroke.previous, event)
+    suppressCellClick.current = true
+  }
+
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
+      if (event.key === 'Shift') setCandidatePreviewCell(null)
+      if (event.key === 'Tab' || event.key === 'Enter' || event.key === ' ' || ARROWS[event.key]) setPointerFocusedCell(null)
       const target = event.target
       if (event.defaultPrevented || rearranging || game.paused || previewing || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || changePuzzleOpen || cancelDraftOpen || analysisOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
+      if (event.key === 'Control' || event.key === 'Meta') {
+        if (canActivateTemporaryPencil) setPencilModifier(true)
+        return
+      }
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
       if (sketch.drawing) {
@@ -982,7 +1099,6 @@ export function Worktable({
         if (!cells.some((cell) => values[cell] === '0')) return
         event.preventDefault()
         if (event.repeat) return
-        const candidateMode: Mode = advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
         input(Number(digit), candidateMode, cells)
       } else if (!shortcut && ARROWS[event.key] && (target === document.body || boardRef.current?.contains(target as Node))) {
         event.preventDefault()
@@ -1494,6 +1610,10 @@ export function Worktable({
     </div>
   )
   const canSelectCell = !game.paused && !mobileResults && !rearranging
+  const gridInputMode = placeholder || draft || solved || mobileResults || previewing || (sketch.drawing && chainMasks)
+    ? undefined
+    : eraseMode ? 'erase' : colorMode ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
+  const gridModeCue = gridInputMode && !game.paused ? GRID_MODES[gridInputMode] : undefined
   const livePuzzleStage = previewing ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
@@ -1508,16 +1628,24 @@ export function Worktable({
   ) : (
     <Board variantPuzzle={variant?.puzzle} givens={game.givens} values={values} position={hintBoardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations}
+      candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
+        ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
+      descriptionId={gridModeCue ? gridModeId : undefined}
       label={variant ? `${VARIANTS[variant.id].name} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
       highlightedDigit={mobileResults ? null : selectedDigit} selected={mobileResults ? undefined : selected} active={active}
+      pointerFocusedCell={pointerFocusedCell}
       highlightCandidateCount={!hintAnnotations && highlightCandidatePairs ? 2 : null}
       boardRef={boardRef} onCell={canSelectCell && !paintingCandidates ? clickCell : undefined}
       onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations ? doubleClickCell : undefined}
       onPaintCandidate={paintingCandidates ? colorCandidate : undefined} dragSelect={canSelectCell && (highlightMode || canDragCandidates)}
       onCellPointerDown={canSelectCell && !paintingCandidates ? startCellDrag : undefined}
-      onCellPointerMove={canSelectCell && !paintingCandidates ? continueCellDrag : undefined} />
+      onCellPointerMove={canSelectCell && !paintingCandidates ? continueCellDrag : undefined}
+      onGridPointerLeave={() => {
+        hoveredCell.current = null
+        setCandidatePreviewCell(null)
+      }} />
   )
   const pausedPuzzleStage = (
     <div className={`board-frame puzzle-paused-frame ${appearance.showGuides ? '' : 'guides-hidden'}`}>
@@ -1534,6 +1662,7 @@ export function Worktable({
   const puzzlePanel = (
       <div className="puzzle-column" ref={puzzlePanelRef}>
         <section className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
+          data-input-mode={gridInputMode}
           style={{ '--board-font-scale': appearance.gridTextScale } as CSSProperties}>
         {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
           {difficulty && <span className="puzzle-difficulty">
@@ -1586,7 +1715,12 @@ export function Worktable({
             </>
           )}
         </div>
-        <div className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}>
+        <div className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
+          onContextMenu={preventControlClickMenu} onPointerUp={finishControlClick}
+          onBlur={(event) => {
+            const cell = event.target.dataset.cell
+            if (cell !== undefined) setPointerFocusedCell((current) => current === Number(cell) ? null : current)
+          }}>
           {placeholder ? <div className="puzzle-placeholder-stage">
             <div className="puzzle-grid-reservation" aria-hidden="true" inert>
               <Board givens={givens} values={values} showGuides={appearance.showGuides} />
@@ -1604,13 +1738,16 @@ export function Worktable({
           ) : livePuzzleStage}
         </div>
         {presentationDraft && <div className="draft-tip"><PencilLine size={16} /> Enter the givens, then save your puzzle.</div>}
-
+        {gridModeCue && <div className="board-mode-tab" id={gridModeId} role="status">
+          <gridModeCue.Icon size={15} aria-hidden="true" />
+          <span className="sr-only">{gridModeCue.label} mode</span>
+        </div>}
         </section>
       </div>
   )
   const inputPanel = (
       <div className="workspace-controls">
-        <Controls mode={mode} pencil={pencil} togglePencil={() => {
+        <Controls mode={mode} pencil={pencilActive} togglePencil={() => {
           setColorBrush(null); setEraseMode(false); setColorMode(false); setHighlightMode(false); setPencil((current) => !current)
         }}
           candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}

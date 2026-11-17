@@ -84,7 +84,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   function toggleColor() { setColorMode(!colorMode); setPencil(false); setHighlightMode(false); setEraseMode(false) }
   function toggleErase() { setEraseMode(!eraseMode); setPencil(false); setColorMode(false); setHighlightMode(false); setSelected([]) }
 
-  function input(digit: number, inputMode: Mode = mode, cells = selected) {
+  function input(digit: number, inputMode: Mode = mode, cells = selected, toggleValue = false) {
     if (digit > 0) setEraseMode(false)
     if (inputMode === 'color') {
       if (digit > COLORS.length) return
@@ -97,7 +97,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
       setSelectedDigit(selectedDigit === digit || digit === 0 ? null : digit)
       return
     }
-    commit((current) => enter(current, cells, inputMode, digit, { allowMultipleValues: highlightMode }))
+    commit((current) => enter(current, cells, inputMode, digit, { allowMultipleValues: highlightMode, toggleValue }))
   }
 
   function select(cell: number, event: MouseEvent) {
@@ -110,7 +110,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
       commit((current) => enter(current, [cell], 'color', selectedColor)); return
     }
     if (!highlightMode && !selected.length && selectedDigit !== null && game.givens[cell] === '0') {
-      input(selectedDigit, mode, [cell]); return
+      input(selectedDigit, mode, [cell], mode === 'value' && !eraseMode); return
     }
     const given = givenDigitAt(game.givens, cell)
     if (given) setSelectedDigit(given)
@@ -196,7 +196,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
         } : undefined}
         onCellPointerMove={interactive && highlightMode ? (cell, event) => {
           const current = drag.current
-          if (!current || !(event.buttons & 1) || cell === current.start) return
+          if (!current || cell === null || !(event.buttons & 1) || cell === current.start) return
           event.preventDefault(); suppressClick.current = true; setActive(cell)
           const rectangle = rectangleSelection(current.start, cell)
           setSelected(current.additive ? [...new Set([...current.base, ...rectangle])] : rectangle)

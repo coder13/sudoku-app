@@ -34,9 +34,69 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Starter: Story = {}
+export const TemporaryPencil: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
+    const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
+    await userEvent.click(canvas.getByRole('button', { name: /^Select 4$/ }))
+    await userEvent.keyboard('{Meta>}')
+    await expect(grid).toHaveAccessibleDescription('Pencil mode')
+    await userEvent.click(cell)
+    await expect(cell).toHaveAccessibleName(/empty, candidates 4/)
+    await userEvent.keyboard('{/Meta}')
+    await expect(grid).toHaveAccessibleDescription('Pen mode')
+    await userEvent.keyboard('{Control>}')
+    await expect(grid).toHaveAccessibleDescription('Pencil mode')
+    await userEvent.keyboard('{/Control}')
+    await expect(grid).toHaveAccessibleDescription('Pen mode')
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+  },
+}
+export const PenDigitToggle: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const digit = canvas.getByRole('button', { name: /^Select 1$/ })
+    const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 8,/ })
+    await userEvent.click(digit)
+    await userEvent.click(cell)
+    await expect(cell).toHaveAccessibleName('Row 1, column 8, digit 1')
+    await userEvent.click(cell)
+    await expect(cell).toHaveAccessibleName('Row 1, column 8, empty')
+    await expect(canvas.getByRole('button', { name: /^Deselect 1$/ })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await expect(cell).toHaveAccessibleName('Row 1, column 8, digit 1')
+    await userEvent.click(cell)
+    await expect(cell).toHaveAccessibleName('Row 1, column 8, empty')
+  },
+}
 const rapidTapMasks = Array<number>(81).fill(0)
 rapidTapMasks[2] = (1 << 3) | (1 << 4)
 rapidTapMasks[40] = 1 << 4
+export const PencilCandidatePreview: Story = {
+  args: { game: replaceCandidates(starter, rapidTapMasks, { recordHistory: false }) },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Pencil mode' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Select 4' }))
+    const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
+    const removal = canvas.getByRole('gridcell', { name: 'Row 1, column 3, empty, candidates 4 5' })
+    const addition = canvas.getByRole('gridcell', { name: 'Row 1, column 4, empty' })
+    for (const [cell, description] of [[removal, 'Remove candidate 4'], [addition, 'Add candidate 4']] as const) {
+      const { x, y, width, height } = cell.getBoundingClientRect()
+      fireEvent.pointerMove(grid, { pointerType: 'mouse', clientX: x + width / 2, clientY: y + height / 2 })
+      await expect(cell).toHaveAccessibleDescription(description)
+    }
+    for (const key of ['Meta', 'Control']) {
+      await userEvent.keyboard(`{${key}>}`)
+      await expect(grid).toHaveAccessibleDescription('Pencil mode')
+      await expect(addition).toHaveAccessibleDescription('Add candidate 4')
+      await userEvent.keyboard(`{/${key}}`)
+      await expect(grid).toHaveAccessibleDescription('Pencil mode')
+      await expect(addition).toHaveAccessibleDescription('Add candidate 4')
+    }
+    await expect(removal).toHaveAccessibleName(/^Row 1, column 3, empty, candidates 4 5(?:, cell highlighted for candidate 4)?$/)
+    await expect(addition).toHaveAccessibleName('Row 1, column 4, empty')
+    fireEvent.pointerMove(grid, { pointerType: 'mouse', clientX: 0, clientY: 0 })
+  },
+}
 export const RapidPencilTaps: Story = {
   args: { game: replaceCandidates(starter, rapidTapMasks, { recordHistory: false }) },
   play: async ({ canvas, userEvent }) => {
@@ -88,6 +148,20 @@ export const ClickAwayClearsCell: Story = {
   },
 }
 export const InProgress: Story = { args: { game: inProgress, games: [inProgress] } }
+export const GridModeCue: Story = {
+  args: { game: inProgress, games: [inProgress] },
+  play: async ({ canvas, userEvent }) => {
+    const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
+    await expect(grid).toHaveAccessibleDescription('Pen mode')
+    await userEvent.click(canvas.getByRole('button', { name: 'Pencil mode' }))
+    await expect(grid).toHaveAccessibleDescription('Pencil mode')
+    const highlight = canvas.getByRole('button', { name: 'Highlight mode' })
+    await userEvent.click(highlight)
+    await expect(grid).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.click(highlight)
+    await expect(grid).toHaveAccessibleDescription('Pen mode')
+  },
+}
 export const Paused: Story = {
   args: {
     game: { ...inProgress, paused: true }, games: [{ ...inProgress, paused: true }],
