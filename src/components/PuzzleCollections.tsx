@@ -3,11 +3,11 @@ import { useId, useState } from 'react'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { BookOpen, Bookmark, Check, ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import {
-  COLLECTIONS, collectionProgress, collectionPuzzleStatus, findCollectionGame, getCollection,
+  COLLECTIONS, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus, findCollectionGame, getCollection,
   getGameCollection, type CollectionPuzzle, type PuzzleCollection,
 } from '../sudoku/collections'
 import { openCollectionPuzzle } from '../sudoku/collection-play'
-import { DIFFICULTY_LABELS, isDifficulty } from '../sudoku/difficulty'
+import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { isSolved, type Game } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
 import { Board } from './Board'
@@ -31,7 +31,7 @@ export function PuzzleCollectionCredit({ game }: { game: Game }) {
   const entry = getGameCollection(game)
   if (!entry) return null
   return <div className="puzzle-collection-credit">
-    <Link to="/puzzles/collections" search={{ collection: entry.collection.id, puzzle: entry.puzzle.id }}>
+    <Link to="/puzzles/collections" search={{ collection: entry.collection.id, difficulty: entry.puzzle.difficulty ?? undefined, puzzle: entry.puzzle.id }}>
       <BookOpen size={14} aria-hidden="true" /> {entry.collection.title}
     </Link>
     <span>By {entry.collection.creator}</span>
@@ -46,6 +46,8 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
   const [message, setMessage] = useState('')
   const collection = getCollection(search.collection)
   const puzzle = collection?.puzzles.find(puzzle => puzzle.id === search.puzzle)
+  const difficulties = collection ? collectionDifficulties(collection) : []
+  const difficulty = puzzle?.difficulty ?? (search.difficulty && difficulties.includes(search.difficulty) ? search.difficulty : undefined)
 
   function open(puzzleId: string, play: boolean) {
     if (!collection) return
@@ -84,12 +86,31 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
     <Link to="/puzzles/new" search={{}} className="collection-generate-link">Generate a new puzzle <ChevronRight size={16} aria-hidden="true" /></Link>
   </section>
 
+  if (!difficulty) return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
+    <Link className="collection-back" to="/puzzles/collections" search={{}}><ChevronLeft size={16} aria-hidden="true" /> All collections</Link>
+    <header><h2 id={`${id}-title`}>Choose difficulty</h2><p>Choose a difficulty to start or continue {collection.title}.</p></header>
+    <div className="collection-difficulty-cards">
+      {difficulties.map(difficulty => {
+        const puzzles = collectionPuzzles(collection, difficulty)
+        const progress = collectionProgress(collection, games, difficulty)
+        const label = DIFFICULTY_LABELS[difficulty]
+        return <Link key={difficulty} className="collection-difficulty-card" to="/puzzles/collections" search={{ collection: collection.id, difficulty }}>
+          <strong>{label}</strong><span>{puzzles.length} puzzles</span>
+          <progress value={progress.solved} max={puzzles.length} aria-label={`${label}: ${progress.solved} of ${puzzles.length} solved`} />
+          <small>{progress.solved} of {puzzles.length} solved</small><ChevronRight size={18} aria-hidden="true" />
+        </Link>
+      })}
+    </div>
+    <CollectionCredits collection={collection} />
+  </section>
+
+  const groupSearch = { ...search, collection: collection.id, difficulty, puzzle: undefined }
   if (puzzle) {
     const existing = findCollectionGame(puzzle, games)
     const solved = existing && isSolved(existing)
     return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
-      <Link className="collection-back" to="/puzzles/collections" search={{ ...search, puzzle: undefined }}>
-        <ChevronLeft size={16} aria-hidden="true" /> Back to {collection.title}
+      <Link className="collection-back" to="/puzzles/collections" search={groupSearch}>
+        <ChevronLeft size={16} aria-hidden="true" /> Back to {DIFFICULTY_LABELS[difficulty].toLowerCase()} puzzles
       </Link>
       <header><h2 id={`${id}-title`}>{puzzle.title}</h2><p>{collection.title} · {difficultyLabel(puzzle)} · Classic</p></header>
       <div className="collection-puzzle-preview">
@@ -110,36 +131,27 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
     </section>
   }
 
-  const progress = collectionProgress(collection, games)
-  const availableDifficulties = Object.entries(DIFFICULTY_LABELS).filter(([difficulty]) =>
-    collection.puzzles.some(puzzle => puzzle.difficulty === difficulty))
-  const puzzles = collection.puzzles.filter(puzzle =>
-    (!search.difficulty || puzzle.difficulty === search.difficulty) &&
-    (!search.status || collectionPuzzleStatus(puzzle, games) === search.status))
+  const progress = collectionProgress(collection, games, difficulty)
+  const difficultyPuzzles = collectionPuzzles(collection, difficulty)
+  const puzzles = difficultyPuzzles.filter(puzzle => !search.status || collectionPuzzleStatus(puzzle, games) === search.status)
   const next = puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'in-progress')
     ?? puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'unplayed')
 
   return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
-    <Link className="collection-back" to="/puzzles/collections" search={{}}><ChevronLeft size={16} aria-hidden="true" /> All collections</Link>
-    <header><h2 id={`${id}-title`}>{collection.title}</h2><p>{collection.description}</p></header>
+    <Link className="collection-back" to="/puzzles/collections" search={{ collection: collection.id }}><ChevronLeft size={16} aria-hidden="true" /> Change difficulty</Link>
+    <header><h2 id={`${id}-title`}>{DIFFICULTY_LABELS[difficulty]} puzzles</h2><p>{collection.title}</p></header>
     <div className="collection-summary">
-      <div><strong>{progress.solved} of {collection.puzzles.length} solved</strong>
-        <progress value={progress.solved} max={collection.puzzles.length} aria-label="Collection completion" /></div>
-      {next ? <Link to="/puzzles/collections" search={{ ...search, puzzle: next.id }} className="button primary">
-        <Play size={16} aria-hidden="true" /> {collectionPuzzleStatus(next, games) === 'in-progress' ? 'Continue collection' : 'Next puzzle'}
-      </Link> : progress.solved === collection.puzzles.length && <span className="collection-complete"><Check size={18} aria-hidden="true" /> Collection complete</span>}
+      <div><strong>{progress.solved} of {difficultyPuzzles.length} solved</strong>
+        <progress value={progress.solved} max={difficultyPuzzles.length} aria-label={`${DIFFICULTY_LABELS[difficulty]} completion`} /></div>
+      {next ? <button type="button" onClick={() => open(next.id, true)} className="button primary">
+        <Play size={16} aria-hidden="true" /> {collectionPuzzleStatus(next, games) === 'in-progress' ? 'Continue collection' : 'Play next puzzle'}
+      </button> : progress.solved === difficultyPuzzles.length && <span className="collection-complete"><Check size={18} aria-hidden="true" /> Difficulty complete</span>}
     </div>
+    {message && <p role="status" className="dialog-status">{message}</p>}
     <div className="collection-filters">
-      <label>Difficulty<select value={search.difficulty ?? ''} onChange={event => {
-        const difficulty = isDifficulty(event.target.value) ? event.target.value : undefined
-        void navigate({ to: '/puzzles/collections', search: { ...search, difficulty }, replace: true })
-      }}>
-        <option value="">All difficulties</option>
-        {availableDifficulties.map(([difficulty, label]) => <option value={difficulty} key={difficulty}>{label}</option>)}
-      </select></label>
       <label>Progress<select value={search.status ?? ''} onChange={event => {
         const status = event.target.value as keyof typeof statusLabels | ''
-        void navigate({ to: '/puzzles/collections', search: { ...search, status: status || undefined }, replace: true })
+        void navigate({ to: '/puzzles/collections', search: { ...groupSearch, status: status || undefined }, replace: true })
       }}>
         <option value="">All puzzles</option>
         {Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
@@ -150,9 +162,9 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
       {puzzles.map(puzzle => {
         const status = collectionPuzzleStatus(puzzle, games)
         const existing = findCollectionGame(puzzle, games)
-        const number = collection.puzzles.indexOf(puzzle) + 1
+        const number = difficultyPuzzles.indexOf(puzzle) + 1
         return <li key={puzzle.id}>
-          <Link to="/puzzles/collections" search={{ ...search, puzzle: puzzle.id }}>
+          <Link to="/puzzles/collections" search={{ ...groupSearch, puzzle: puzzle.id }}>
             <span className="collection-puzzle-number">{String(number).padStart(2, '0')}</span>
             <span className="collection-puzzle-copy"><strong>{puzzle.title}</strong><small>{difficultyLabel(puzzle)} · {existing?.savedForLater ? 'Saved for later' : statusLabels[status]}</small></span>
             {status === 'solved' ? <Check size={18} aria-hidden="true" /> : <ChevronRight size={18} aria-hidden="true" />}
@@ -160,7 +172,7 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
         </li>
       })}
     </ol> : <div className="collection-empty"><p>No puzzles match these filters.</p>
-      <Link to="/puzzles/collections" search={{ collection: collection.id }}>Clear filters</Link></div>}
+      <Link to="/puzzles/collections" search={{ collection: collection.id, difficulty }}>Clear filters</Link></div>}
     <CollectionCredits collection={collection} />
   </section>
 }

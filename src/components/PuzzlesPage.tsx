@@ -17,7 +17,7 @@ import { MobileNewPuzzle, type MobileNewPuzzleScreen } from './MobileNewPuzzle'
 import { VariantSelector } from './VariantSelector'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { PuzzleCollections } from './PuzzleCollections'
-import { getCollectionPuzzle, getCollection } from '../sudoku/collections'
+import { collectionDifficulties, getCollectionPuzzle, getCollection } from '../sudoku/collections'
 
 type Section = 'puzzles' | 'new' | 'collections' | 'statistics'
 type SectionItem = { id: Section; label: string; description: string; icon: ComponentType<{ size?: number }> }
@@ -232,6 +232,8 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
   const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
   const collection = getCollection(collectionSearch?.collection)
   const collectionPuzzle = getCollectionPuzzle(collectionSearch?.collection, collectionSearch?.puzzle)?.puzzle
+  const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
+    collectionDifficulties(collection).includes(collectionSearch.difficulty) ? collectionSearch.difficulty : undefined)
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
   const mobileNewPuzzle = mobile && section === 'new'
   const screen = mobileNewPuzzle && preferencesReady
@@ -261,7 +263,7 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
 
   function content(current: Section) {
     if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} select={selectPuzzle} manage={setManagingId} />
-    if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionSearch?.puzzle}`} games={games} onPlay={play} />
+    if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`} games={games} onPlay={play} />
     if (current === 'new') return preferencesReady && <NewPuzzleSection difficulty={difficulty}
       remembered={newPuzzlePreference} save={savePuzzlePreference} done={play} />
     return <Statistics games={games} />
@@ -279,14 +281,17 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
   return <main className={`puzzles-page ${section ? 'puzzles-subscreen' : ''}`}>
     <header className="puzzles-page-heading">
       {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"
-        search={collectionSearch.puzzle ? { ...collectionSearch, puzzle: undefined } : {}}
-        className="icon-button puzzles-back" aria-label={collectionSearch.puzzle ? 'Back to collection' : 'Back to collections'}><ChevronLeft size={21} /></Link>
+        search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
+          : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
+        className="icon-button puzzles-back" aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
+          : collectionDifficulty ? 'Change collection difficulty' : 'Back to collections'}><ChevronLeft size={21} /></Link>
         : backToVariant ? <Link to="/puzzles/new" search={{ step: 'variant' }} replace
         className="icon-button puzzles-back" aria-label="Back to variants"><ChevronLeft size={21} /></Link>
         : backToStart ? <Link to="/puzzles/new" search={{}} replace
           className="icon-button puzzles-back" aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
           : section && <Link to="/puzzles" className="icon-button puzzles-back" aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}
-      <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{screen ? newPuzzleTitle[screen] : collectionPuzzle?.title ?? collection?.title ?? sectionItem?.label ?? 'Puzzles'}</h1>
+      <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{screen ? newPuzzleTitle[screen]
+        : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? sectionItem?.label ?? 'Puzzles'}</h1>
     </header>
     {!mobileNewPuzzle && <div className="main-menu-desktop">
       <nav className="main-menu-tabs" aria-label="Puzzles sections">

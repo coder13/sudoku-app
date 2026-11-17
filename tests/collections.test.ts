@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  COLLECTIONS, collectionProgress, collectionPuzzleStatus, findCollectionGame, getGameCollection,
+  COLLECTIONS, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus, findCollectionGame, getGameCollection,
+  nextCollectionPuzzle, type CollectionPuzzle,
 } from '../src/sudoku/collections.ts'
 import { isCollectionReference } from '../src/sudoku/collection-reference.ts'
 import { EMPTY, enter, makeGame, restartGame } from '../src/sudoku/game.ts'
-import { openCollectionPuzzle } from '../src/sudoku/collection-play.ts'
+import { openCollectionPuzzle, openNextCollectionPuzzle } from '../src/sudoku/collection-play.ts'
 import { roomStore } from '../src/sudoku/storage.ts'
 
 const collection = COLLECTIONS[0]
@@ -56,6 +57,43 @@ test('credits require the catalog grid and survive a restart', () => {
   assert.equal(getGameCollection({ ...game, source: 'draft' }), undefined)
   assert.equal(isCollectionReference({ collectionId: '../bad', puzzleId: 'x' }), false)
   assert.equal(isCollectionReference({ collectionId: collection.id, puzzleId: 12 }), false)
+})
+
+test('difficulty groups cover each catalog without mixing levels', () => {
+  for (const collection of COLLECTIONS) {
+    const difficulties = collectionDifficulties(collection)
+    const grouped = difficulties.flatMap(difficulty => collectionPuzzles(collection, difficulty))
+    assert.equal(grouped.length, collection.puzzles.length)
+    assert.equal(new Set(grouped.map(puzzle => puzzle.id)).size, grouped.length)
+    for (const difficulty of difficulties) {
+      const puzzles = collectionPuzzles(collection, difficulty)
+      assert.ok(puzzles.length > 0)
+      assert.ok(puzzles.every(puzzle => puzzle.difficulty === difficulty))
+      assert.equal(collectionProgress(collection, [], difficulty).unplayed, puzzles.length)
+    }
+  }
+})
+
+test('next puzzle skips solved grids, stays in one difficulty, and stops when complete', () => {
+  // Permute a published grid and its known solution to make distinct valid fixtures.
+  const swap = (digits: string, digit: string) => [...digits].map(value => value === '1' ? digit : value === digit ? '1' : value).join('')
+  const puzzles: CollectionPuzzle[] = ['1', '2', '3', '4'].map((digit, index) => ({
+    ...puzzle, id: `fixture-${index}`, difficulty: index === 3 ? 'hard' : 'easy', givens: swap(puzzle.givens, digit),
+  }))
+  const set = { ...collection, puzzles }
+  const finished = puzzles.map((puzzle, index) => {
+    const game = makeGame(`solved-${index}`, puzzle.title, puzzle.givens, 'imported')
+    return { ...game, started: true, position: { ...game.position, entries: swap(solution, String(index + 1)) } }
+  })
+  assert.equal(nextCollectionPuzzle(set, [], 'easy')?.id, puzzles[0].id)
+  assert.equal(nextCollectionPuzzle(set, [], 'easy', puzzles[0].id)?.id, puzzles[1].id)
+  assert.equal(nextCollectionPuzzle(set, [finished[1]], 'easy', puzzles[0].id)?.id, puzzles[2].id)
+  assert.equal(nextCollectionPuzzle(set, [finished[2]], 'easy', puzzles[2].id)?.id, puzzles[0].id)
+  const unfinished = { ...makeGame('unfinished', puzzles[2].title, puzzles[2].givens, 'imported'), started: true }
+  assert.equal(nextCollectionPuzzle(set, [unfinished], 'easy')?.id, puzzles[2].id)
+  assert.deepEqual(collectionProgress(set, finished.slice(0, 3), 'easy'), { unplayed: 0, 'in-progress': 0, solved: 3 })
+  assert.equal(nextCollectionPuzzle(set, finished.slice(0, 3), 'easy', puzzles[2].id), undefined)
+  assert.equal(nextCollectionPuzzle(set, finished.slice(0, 3), 'hard')?.id, puzzles[3].id)
 })
 
 class MemoryStorage {
@@ -111,6 +149,24 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     assert.equal(roomStore.getSnapshot().games.length, 1)
     assert.equal(roomStore.getSnapshot().games[0].title, imported.title)
     assert.equal(roomStore.getSnapshot().games[0].elapsed, 21)
+
+    const next = nextCollectionPuzzle(collection, roomStore.getSnapshot().games, puzzle.difficulty!, puzzle.id)!
+    const savedNext = { ...enter(makeGame('next-import', 'Continue this game', next.givens, 'imported'),
+      [next.givens.indexOf('0')], 'candidate', 2), started: true, savedForLater: true, elapsed: 42 }
+    roomStore.add(savedNext)
+    roomStore.update(imported.id, game => ({ ...game, difficulty: 'extreme', position: { ...game.position, entries: solution } }))
+    // Use the catalog difficulty even if the player's rating labels differ.
+    assert.equal(openNextCollectionPuzzle(imported.id)?.id, savedNext.id)
+    const resumed = roomStore.getSnapshot().games.find(game => game.id === savedNext.id)!
+    assert.equal(roomStore.getSnapshot().active, savedNext.id)
+    assert.deepEqual(resumed.position, savedNext.position)
+    assert.deepEqual(resumed.past, savedNext.past)
+    assert.equal(resumed.elapsed, 42)
+    assert.equal(resumed.savedForLater, undefined)
+    assert.deepEqual(resumed.collection, { collectionId: collection.id, puzzleId: next.id })
+    openNextCollectionPuzzle(imported.id)
+    assert.equal(roomStore.getSnapshot().games.length, 2)
+    assert.throws(() => openNextCollectionPuzzle('missing'))
   } finally {
     disconnect()
     for (const key of ['window', 'localStorage', 'sessionStorage']) Reflect.deleteProperty(globalThis, key)

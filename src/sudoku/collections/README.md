@@ -64,3 +64,12 @@ including earlier imports. Opening an existing puzzle preserves its title,
 placed digits, candidates, timer, and history. Deleting a game also removes its
 collection progress unless another saved copy remains. Restarting preserves
 the source reference. The play view uses the current engine for player ratings.
+
+Each collection opens with a required difficulty choice. Counts and progress in
+the puzzle list apply to that difficulty. The completion screen and the next
+puzzle shortcut continue in source order within the same collection difficulty.
+They skip solved puzzles and wrap to earlier unfinished puzzles at the end.
+They stop when the difficulty is complete. The catalog difficulty controls this
+sequence, even if the player's current technique order produces a different rating.
+Players can change the collection difficulty or return to Puzzles from the
+completion screen.

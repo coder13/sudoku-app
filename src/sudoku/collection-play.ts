@@ -1,4 +1,4 @@
-import { findCollectionGame, getCollectionPuzzle } from './collections.ts'
+import { findCollectionGame, getCollectionPuzzle, getGameCollection, nextCollectionPuzzle } from './collections.ts'
 import { createGameId, makeGame } from './game.ts'
 import { roomStore } from './storage.ts'
 
@@ -18,4 +18,14 @@ export function openCollectionPuzzle(collectionId: string, puzzleId: string, pla
   // The play view rates the game with the current engine, just like an import.
   roomStore.add(play ? game : { ...game, savedForLater: true })
   return { id: game.id, added: true }
+}
+
+export function openNextCollectionPuzzle(gameId: string) {
+  const { games } = roomStore.getSnapshot()
+  const game = games.find(game => game.id === gameId)
+  const entry = game && getGameCollection(game)
+  if (!entry) throw new Error('This puzzle is not in the collection.')
+  if (!entry.puzzle.difficulty) return undefined
+  const next = nextCollectionPuzzle(entry.collection, games, entry.puzzle.difficulty, entry.puzzle.id)
+  return next ? openCollectionPuzzle(entry.collection.id, next.id) : undefined
 }

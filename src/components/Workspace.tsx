@@ -15,10 +15,10 @@ import {
 } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { DesktopPlayLayout } from './DesktopPlayLayout'
+import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
 import { NewPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
-import { Presence } from './Presence'
+import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
 import { isSettingsSection, Settings } from './Settings'
@@ -116,6 +116,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const game = games.find((item) => item.id === active)
   const mobile = useMobileLayout()
   const workspaceMode = mobile ? 'standard' : preferredWorkspaceMode
+  const desktopStandard = !mobile && workspaceMode === 'standard'
   const advancedShell = workspaceMode === 'advanced' && (playing || learning)
   const activeLeftPanelOpen = learning ? advancedPanels.articles : advancedPanels.left
   const colorModeIndex = COLOR_MODE_ORDER.indexOf(appearance.colorMode)
@@ -368,7 +369,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   return (
     <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
-      enabled={playing && workspaceReady && !mobile && workspaceMode === 'standard'}>
+      enabled={playing && workspaceReady && desktopStandard}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
           <Link to="/" className="wordmark" onClick={() => setMenuOpen(false)}>
@@ -449,7 +450,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         <main id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace">
           {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}
           {linkError && <p className="workspace-error" role="alert">{linkError}</p>}
-          <div className="workspace">
+          <PlayWorkspace resizable={desktopStandard}>
             {game || !mobile ? (
               <Worktable game={game ?? pendingWorkspaceGame} placeholder={game ? undefined : emptyPuzzleContent} games={games} preferredDifficulty={difficulty}
                 modalOpen={panel !== null || menuOpen || resizeMode || settingsRoute}
@@ -468,14 +469,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
             ) : (
               <section className="surface empty-board">{emptyPuzzleContent}</section>
             )}
-          </div>
+          </PlayWorkspace>
         </main>
       ) : null}>
         {children}
       </PlayContent.Provider>
       </PuzzlesContent.Provider>
 
-      {playing && resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
+      <MotionSurface>{playing && resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
         <span className="resize-session-copy"><strong>Resize input panel</strong><small>Drag the handle or adjust digit size.</small></span>
         <span className="resize-size-controls" role="group" aria-label="Digit size">
           <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
@@ -487,7 +488,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           <button className="button secondary" onClick={cancelResize}>Cancel</button>
           <button className="button primary" onClick={finishResize}>Save</button>
         </span>
-      </div>}
+      </div>}</MotionSurface>
 
       {panel === 'new' && !mobile && <NewPuzzle close={close} difficulty={newPuzzlePreference?.difficulty ?? difficulty} initialVariant={newPuzzlePreference?.variant}
         onDifficultyChange={setDifficulty} onPuzzleStart={rememberNewPuzzle} onCreate={createPuzzle} />}

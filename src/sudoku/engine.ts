@@ -132,6 +132,7 @@ export type EngineRequest =
   | ({ type: 'hints'; limit?: number | 'all'; includePatterns?: boolean; preferProgress?: boolean; difficulty?: Difficulty } & CandidatePosition & HintOptions)
   | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
   | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
+  | ({ type: 'technique-count'; technique: string } & CandidatePosition)
   | ({ type: 'prove-rank'; pattern: RankPattern; target: Candidate; nodeBudget: number } & StartingPosition)
   | ({ type: 'discover-rank'; target: Candidate; nodeBudget: number } & StartingPosition)
   | ({ type: 'discover-rank-deductions'; limit?: number; nodeBudget: number; maxNodesPerCandidate: number } & StartingPosition)
@@ -470,6 +471,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'hints' } ? HintChoices :
   T extends { type: 'next-deduction' } ? HintStages | null :
   T extends { type: 'deductions' } ? DeductionMatch[] :
+  T extends { type: 'technique-count' } ? number :
   T extends { type: 'prove-rank' } ? RankOutcome :
   T extends { type: 'discover-rank' } ? RankDiscovery :
   T extends { type: 'discover-rank-deductions' } ? RankDiscoveryScan :
@@ -545,7 +547,7 @@ export function runEngine<T extends EngineRequest>(request: T, options: { intera
   return new Promise((resolve, reject) => {
     // A scan for an unfamiliar move must not hold up hints or candidate updates.
     const connection = options.interactive && request.type === 'deductions' ? techniqueDetailEngine
-      : options.background || request.type === 'classify-actions' || request.type === 'deductions' ? techniqueEngine
+      : options.background || request.type === 'classify-actions' || request.type === 'deductions' || request.type === 'technique-count' ? techniqueEngine
       : request.type === 'generate-variant' || request.type === 'generate-practice-example' ? generationEngine : playEngine
     connection.worker ??= connect(connection)
     const id = ++requestId

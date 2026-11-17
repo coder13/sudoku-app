@@ -1,6 +1,7 @@
 import nikoli from './collections/nikoli-100.json' with { type: 'json' }
 import exchange from './collections/sudoku-exchange.json' with { type: 'json' }
 import type { Difficulty } from './engine.ts'
+import { DIFFICULTY_LABELS } from './difficulty.ts'
 import { isSolved, type Game } from './game.ts'
 
 export type CollectionPuzzle = {
@@ -76,9 +77,32 @@ export function collectionPuzzleStatus(puzzle: CollectionPuzzle, games: readonly
   return matching.some(game => game.started) ? 'in-progress' : 'unplayed'
 }
 
-export function collectionProgress(collection: PuzzleCollection, games: readonly Game[]) {
-  return collection.puzzles.reduce((counts, puzzle) => {
+export function collectionDifficulties(collection: PuzzleCollection) {
+  return (Object.keys(DIFFICULTY_LABELS) as Difficulty[]).filter(difficulty =>
+    collection.puzzles.some(puzzle => puzzle.difficulty === difficulty))
+}
+
+export function collectionPuzzles(collection: PuzzleCollection, difficulty: Difficulty) {
+  return collection.puzzles.filter(puzzle => puzzle.difficulty === difficulty)
+}
+
+export function collectionProgress(collection: PuzzleCollection, games: readonly Game[], difficulty?: Difficulty) {
+  const puzzles = difficulty ? collectionPuzzles(collection, difficulty) : collection.puzzles
+  return puzzles.reduce((counts, puzzle) => {
     counts[collectionPuzzleStatus(puzzle, games)]++
     return counts
   }, { unplayed: 0, 'in-progress': 0, solved: 0 })
+}
+
+// Continue in source order within one difficulty, wrapping to earlier unfinished
+// puzzles at the end. Never switch difficulty or replay a completed puzzle.
+export function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string) {
+  const puzzles = collectionPuzzles(collection, difficulty)
+  if (!afterId) {
+    return puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'in-progress')
+      ?? puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'unplayed')
+  }
+  const index = puzzles.findIndex(puzzle => puzzle.id === afterId)
+  const remaining = index < 0 ? puzzles : [...puzzles.slice(index + 1), ...puzzles.slice(0, index)]
+  return remaining.find(puzzle => collectionPuzzleStatus(puzzle, games) !== 'solved')
 }

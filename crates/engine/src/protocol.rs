@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::generation::{puzzle_permutation, start_builtin_pool};
+use super::hints::technique_counts::TechniqueCountScan;
 use super::hints::{checked_position, classify_actions, rank_position, rank_useful_position};
 use super::{
     Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, GeneratedPuzzle,
@@ -117,6 +118,11 @@ enum Request {
         values: String,
         eliminations: Option<Vec<u16>>,
         technique_order: Option<Vec<String>>,
+    },
+    TechniqueCount {
+        values: String,
+        eliminations: Option<Vec<u16>>,
+        technique: String,
     },
     ProveRank {
         values: String,
@@ -682,6 +688,7 @@ type ActiveGeneration = GenerationSearch<'static, GenerationOutput>;
 
 thread_local! {
     static GENERATION: RefCell<HashMap<u32, ActiveGeneration>> = RefCell::new(HashMap::new());
+    static TECHNIQUE_COUNTS: RefCell<TechniqueCountScan> = RefCell::default();
 }
 
 #[cfg_attr(not(feature = "cli"), allow(dead_code))]
@@ -1016,6 +1023,19 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             )
             .map_err(hint_error)?;
             return Ok(ResponseValue::Deductions(results));
+        }
+        Request::TechniqueCount {
+            values,
+            eliminations,
+            technique,
+        } => {
+            let board = board(&values)?;
+            let eliminations = elimination_masks(eliminations)?;
+            let technique = Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?;
+            let count = TECHNIQUE_COUNTS
+                .with_borrow_mut(|scan| scan.count(board, eliminations, technique))
+                .map_err(hint_error)?;
+            Ok(json!(count))
         }
         Request::ProveRank {
             values,
