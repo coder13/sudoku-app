@@ -36,6 +36,7 @@ import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
 import { GridModeBadge } from './GridModeBadge'
+import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
@@ -1679,6 +1680,7 @@ export function Worktable({
             {formatTime(game.elapsed)}
           </span>
         </div>}
+        <PuzzleCollectionCredit game={game} />
         <div className="puzzle-actions">
           {presentationDraft ? (
             <>
