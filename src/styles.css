@@ -2722,11 +2722,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     border: 0;
     box-shadow: none;
   }
-  .puzzle-actions-sheet :is(.puzzle-menu button, .dialog-heading button) { min-height: 44px; }
-  .puzzle-actions-sheet .puzzle-menu button { min-height: 44px; gap: var(--space-8); padding-inline: var(--space-8); font-size: 12px; }
+  .puzzle-actions-sheet .puzzle-menu button { min-height: 52px; gap: var(--space-8); padding-inline: var(--space-8); font-size: 16px; }
   .puzzle-actions-sheet .dialog-heading .icon-button,
   .puzzle-actions-sheet .dialog-heading .icon-button:hover {
     width: 44px;
+    min-height: 44px;
     border-color: transparent;
     background: transparent;
     box-shadow: none;
