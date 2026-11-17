@@ -6,6 +6,8 @@ import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineRe
 import { STARTER } from '../src/sudoku/formats.ts'
 import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
 import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
+import { practiceClueAnnotations, practiceSearch } from '../src/sudoku/lesson-guidance.ts'
+import { articles } from '../src/sudoku/lessons.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { generatePlayableVariant, playCandidates } from '../src/sudoku/variant-play.ts'
@@ -1081,6 +1083,10 @@ test('lesson examples preserve the candidates and deduction for each technique',
     assert.equal(practice.eliminations.length, 81)
     assert.deepEqual(practice.candidates, practiceLegal.map((mask, cell) => mask & ~practice.eliminations[cell]))
     assert.ok(practice.answers.some((action) => JSON.stringify(action) === JSON.stringify(practice.suggestion)))
+    assert.equal(practice.deduction.technique, id)
+    assert.deepEqual(practice.deduction.actions[0], practice.suggestion)
+    assert.ok(practice.deduction.actions.every((action) =>
+      practice.answers.some((answer) => JSON.stringify(answer) === JSON.stringify(action))))
     for (const action of practice.answers) {
       const { cell, digit } = 'place' in action ? action.place : action.eliminate
       assert.ok((practice.candidates[cell] & (1 << (digit - 1))) !== 0)
@@ -1092,6 +1098,34 @@ test('lesson examples preserve the candidates and deduction for each technique',
   transposed[60] = 1 << 5
   transposed[61] = 1 << 2
   assert.deepEqual(lessons['hidden-quadruple'].practice.eliminations, transposed)
+})
+
+test('every Learn article gives a starting scan and every drill can preview its own proof', async () => {
+  const { run } = engineRequests()
+  const examples = await run({ type: 'lesson-examples' })
+  for (const article of articles) {
+    assert.ok(article.blocks.some((block) => block.type === 'heading' && block.id === 'where-to-start'), article.id)
+    for (const block of article.blocks) {
+      if (block.type !== 'practice') continue
+      for (const { example } of block.drills) {
+        const { practice } = examples[example]
+        const { start, check, follow } = practiceSearch(practice)
+        for (const clue of [start, check]) {
+          assert.ok(clue.text, example)
+          const annotations = practiceClueAnnotations(clue)
+          assert.ok(annotations.cells?.size || annotations.candidates?.size, example)
+          for (const [cell, marks] of annotations.candidates ?? []) {
+            for (const [digit] of marks) assert.ok(hasCandidate(practice.candidates[cell], digit), example)
+          }
+        }
+        if (follow) {
+          const { annotations } = lessonDiagram(practice, undefined, { showActions: false })
+          assert.ok([...annotations.candidates?.values() ?? []].every(marks =>
+            [...marks.values()].every(mark => mark.mark !== 'strike' && mark.label !== 'to place')), example)
+        }
+      }
+    }
+  }
 })
 
 test('practice exercises expose three independent grids and a checkable suggestion for a technique', async () => {

@@ -1,9 +1,47 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { Deduction } from '../src/sudoku/engine.ts'
-import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
+import type { Deduction, HintChoice } from '../src/sudoku/engine.ts'
+import { hintLocation, lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 
 const mask = (...digits: number[]) => digits.reduce((value, digit) => value | 1 << (digit - 1), 0)
+
+test('AIC location reveals the endpoint candidates without revealing links or the removal', () => {
+  const start = { candidate: { cell: 3, digit: 4 } }
+  const inner = { candidate: { cell: 21, digit: 4 } }
+  const end = { candidate: { cell: 26, digit: 6 } }
+  const hint: HintChoice = {
+    technique: 'aic', actions: [{ eliminate: { cell: 8, digit: 6 } }],
+    evidence: { inference: { links: [
+      { from: start, to: inner, source: { house: { column: 3 } }, strength: 'strong' },
+      { from: inner, to: end, source: { peers: {} }, strength: 'weak' },
+    ] } },
+  }
+  const clue = hintLocation(hint, 'concise')
+  assert.ok(clue)
+  assert.equal(clue.text, 'Chain starts at 4 in r1c4. It ends at 6 in r3c9.')
+  assert.deepEqual([...clue.annotations.cells!.keys()], [3, 26])
+  assert.equal(clue.annotations.candidates?.get(3)?.get(4)?.label, 'chain start')
+  assert.equal(clue.annotations.candidates?.get(26)?.get(6)?.label, 'chain end')
+  assert.equal(clue.annotations.candidates?.size, 2)
+  assert.equal(clue.annotations.links, undefined)
+})
+
+test('Grouped AIC location shows all candidates in an endpoint group', () => {
+  const hint: HintChoice = {
+    technique: 'grouped-aic', actions: [{ eliminate: { cell: 3, digit: 4 } }],
+    evidence: { inference: { links: [{
+      from: { group: { cells: [0, 1], digit: 4 } }, to: { candidate: { cell: 2, digit: 4 } },
+      source: { house: { row: 0 } }, strength: 'strong',
+    }] } },
+  }
+  const clue = hintLocation(hint, 'concise')
+  assert.ok(clue)
+  assert.equal(clue.text, 'Chain starts at 4 in r1c1 or r1c2. It ends at 4 in r1c3.')
+  const marks = clue.annotations.candidates
+  assert.equal(marks?.get(0)?.get(4)?.label, 'chain start')
+  assert.equal(marks?.get(1)?.get(4)?.label, 'chain start')
+  assert.equal(marks?.get(2)?.get(4)?.label, 'chain end')
+})
 
 test('WXYZ-Wing explains the restricted digits, required digit, and exact target visibility', () => {
   const candidates = Array(81).fill(0)

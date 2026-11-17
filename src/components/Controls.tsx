@@ -182,7 +182,7 @@ export function Controls(props: Props) {
 
           <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
-              <button className="icon-button pencil-button" title={`Pencil mode (${shortcutLabel(shortcuts.pencilMode)}) · Drag with a chosen digit to add or remove candidates · Cmd+1–9 or Ctrl+1–9 toggles candidates in selected cells`} aria-label="Pencil mode"
+              <button className="icon-button pencil-button" title={`Pencil mode (${shortcutLabel(shortcuts.pencilMode)}) · Drag with a mouse and a chosen digit to add or remove candidates · Cmd+1–9 or Ctrl+1–9 toggles candidates in selected cells`} aria-label="Pencil mode"
                 aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.pencilMode)} onClick={props.togglePencil} disabled={props.disabled}>
                 <Pencil size={18} />
               </button>
