@@ -56,12 +56,12 @@ test('WXYZ-Wing shows why placing the outside candidate would leave a cell unfil
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.deepEqual(diagram.reasonSteps, [
-    '1, 5, and 9 can each fill at most one of the four cells. The 1 candidates share row 9. The 5 candidates share column 7. The 9 candidates share column 7.',
-    'Putting 8 in R4C3 would rule out 8 in R4C7 and R9C3.',
-    'That leaves only three digits for the four cells. Each can fill at most one cell, so one cell would be left without a digit.',
+    'In the wing, 1, 5, and 9 can each appear at most once. The candidates for 1 share row 9. The candidates for 5 share column 7. The candidates for 9 share column 7.',
+    'If R4C3 takes 8, it rules out every 8 in the wing (R4C7 and R9C3).',
+    'That leaves only 1, 5, and 9 for four cells. Each remaining digit can appear at most once, so one cell would have no digit.',
   ])
   assert.doesNotMatch(diagram.reason, /fourth cell|exactly one.*8/)
-  assert.equal(diagram.accentLabel, 'Required digit')
+  assert.equal(diagram.accentLabel, 'Digit the wing must use')
   assert.deepEqual(diagram.results, ['Remove 8 from R4C3.'])
 })
 
@@ -78,9 +78,9 @@ test('WXYZ-Wing handles all four restricted digits without inventing an unrestri
     evidence: { 'wxyz-wing': { cells: [0, 3, 27, 30], digits: [1, 2, 3, 4], unrestricted: null } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.match(diagram.reason, /Each digit can fill at most one of the four cells/)
-  assert.match(diagram.reason, /Putting 1 in R7C1 would rule out 1 in R1C1 and R4C1/)
-  assert.match(diagram.reason, /Putting 4 in R4C2 would rule out 4 in R4C1 and R4C4/)
+  assert.match(diagram.reason, /Each digit can appear at most once in the wing/)
+  assert.match(diagram.reason, /If R7C1 takes 1, it rules out every 1 in the wing \(R1C1 and R4C1\)/)
+  assert.match(diagram.reason, /If R4C2 takes 4, it rules out every 4 in the wing \(R4C1 and R4C4\)/)
   assert.doesNotMatch(diagram.reason, /null|undefined|other three/)
   assert.equal(diagram.accentLabel, undefined)
 })

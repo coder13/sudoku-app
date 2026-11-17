@@ -135,9 +135,9 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
   if ('wxyz-wing' in evidence) {
     const { cells, digits: values } = evidence['wxyz-wing']
     return {
-      start: { cells: cells.slice(0, 1), text: `Read the candidates in ${cellName(cells[0])}. Look for nearby cells that reuse them.` },
-      check: { cells, candidates: marks(cells, values), text: `Look at ${names(cells)}. Count the different candidate digits across all four cells.` },
-      follow: 'For each digit, check whether any two of its candidates can both be placed. If only one digit can repeat, what happens without it?',
+      start: { cells: cells.slice(0, 1), text: `Start at ${cellName(cells[0])}. Look nearby for cells that use some of the same candidates.` },
+      check: { cells, candidates: marks(cells, values), text: 'Count the different candidate digits in the four highlighted cells. There must be four in total.' },
+      follow: 'Check one digit at a time. If two cells with that candidate share no row, column, or box, the digit can appear more than once in the wing.',
     }
   }
   if ('als-xz' in evidence || 'als-chain' in evidence) {

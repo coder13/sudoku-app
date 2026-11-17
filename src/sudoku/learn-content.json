@@ -1582,7 +1582,7 @@
         {
           "id": "wxyz-wing",
           "title": "WXYZ-Wing",
-          "summary": "Four cells with four digits can force a digit across houses.",
+          "summary": "Four cells with four candidate digits can rule out a candidate elsewhere.",
           "blocks": [
             {
               "type": "heading",
@@ -1592,43 +1592,47 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start with a cell that has a short candidate list. Add nearby cells that reuse those digits until four cells contain exactly four distinct digits between them.",
-                "For each digit, check whether all its copies in the four cells see one another. Keep the pattern if at least three digits pass this check."
-              ]
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Pick four cells with exactly four different candidates between them. Look at one digit at a time. If all the cells that could take it in the wing see one another, that digit is restricted. Only one of those cells can take it."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "als-connection",
-              "title": "The ALS connection"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "An almost locked set (ALS) has one more candidate digit than cells. All its cells share one house.",
-                "A common WXYZ-Wing connects two ALSs with four cells in total. This arrangement is a small ALS-XZ pattern.",
-                "The whole wing can span several houses. It is not necessarily one ALS."
+                "Start with a cell that has few candidates. Look for three nearby cells so that the four cells have exactly four candidate digits between them. These four cells form the wing if they pass the next check.",
+                "Check one digit at a time. If every pair of cells with that candidate shares a row, column, or box, the digit can appear at most once in the wing. At least three digits must meet that rule."
               ]
             },
             {
               "type": "heading",
               "id": "one-unrestricted-digit",
-              "title": "One unrestricted digit"
+              "title": "When only one digit can repeat"
             },
             {
               "type": "text",
               "paragraphs": [
-                "If three digits are restricted, they can fill at most three cells. The fourth digit has to fill at least one. Erase it from a cell that sees every place it could go in the wing."
+                "The three digits that cannot repeat can fill at most three cells. The fourth digit must appear somewhere in the wing.",
+                "Look for that candidate outside the wing. If placing it would rule out that digit everywhere in the wing, remove it. Placing it would leave only three digits for four cells."
               ]
             },
             {
               "type": "diagram",
               "example": "wxyz-wing"
+            },
+            {
+              "type": "heading",
+              "id": "all-digits-restricted",
+              "title": "When no digit can repeat"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "The four cells must use each of the four digits once. For each digit, remove any outside candidate that would rule it out everywhere in the wing."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "als-connection",
+              "title": "The almost locked set connection"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "An almost locked set (ALS) has one more candidate digit than cells. Its cells share a row, column, or box. Some WXYZ-Wings can be split into two such sets, which gives an ALS-XZ proof."
+              ]
             },
             {
               "type": "heading",
@@ -1638,21 +1642,9 @@
             {
               "type": "text",
               "paragraphs": [
-                "R4C3, R4C4, and R4C6 form a three-cell ALS with digits 1, 2, 5, and 9. R6C1 forms another ALS with candidates 1 and 9.",
-                "The two 1 candidates share box 4, so the sets cannot both use 1. At least one set must use 9.",
-                "R4C2 sees all the 9 candidates in both sets. It therefore loses candidate 9.",
-                "The restricted-digit count also explains this removal. It does not require every four-cell arrangement to have the same ALS layout."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "all-digits-restricted",
-              "title": "All four digits restricted"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "All four cells need digits, so when every digit is restricted, each goes in exactly one cell. For each digit, erase it from cells that see all its places in the wing. With two unrestricted digits, this count gives no specific digit to erase."
+                "R4C3, R4C4, and R4C6 form one set with candidates 1, 2, 5, and 9. R6C1 forms the other set with candidates 1 and 9.",
+                "The two candidates for 1 share box 4, so at least one set must leave out 1. That set needs all its remaining digits, including 9.",
+                "Putting 9 in R4C2 would rule out 9 in both sets. That is why you can remove it."
               ]
             },
             {

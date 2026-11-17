@@ -260,16 +260,17 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
   if ('wxyz-wing' in evidence) {
     const { cells, digits, unrestricted } = evidence['wxyz-wing']
     const restricted = digits.filter((digit) => digit !== unrestricted)
-    const once = unrestricted === null ? 'Each digit can fill at most one of the four cells.'
-      : `${list.format(restricted.map(String))} can each fill at most one of the four cells.`
+    const restrictedDigits = list.format(restricted.map(String))
+    const once = unrestricted === null ? 'Each digit can appear at most once in the wing.'
+      : `In the wing, ${restrictedDigits} can each appear at most once.`
     const limits = restricted.map((digit) => {
       const locations = marks(cells, [digit]).map(({ cell }) => cell)
-      if (locations.length === 1) return `Digit ${digit} has one spot.`
+      if (locations.length === 1) return `Only ${cellName(locations[0])} can take ${digit} in the wing.`
       const [start] = locations
       const houses = [{ row: Math.floor(start / 9) }, { column: start % 9 }, { box: Math.floor(start / 27) * 3 + Math.floor(start % 9 / 3) }]
       const house = houses.find((house) => locations.every((cell) => houseCells(house).includes(cell)))
-      return house ? `The ${digit} candidates share ${houseName(house)}.`
-        : `Every pair of ${digit} candidates shares a row, column, or box.`
+      return house ? `The candidates for ${digit} share ${houseName(house)}.`
+        : `Any two cells with candidate ${digit} share a row, column, or box.`
     })
     const targets = new Map<number, Candidate>()
     for (const action of actions) {
@@ -277,17 +278,18 @@ function describePattern(deduction: Deduction, candidates: readonly number[]): P
     }
     const blocked = Array.from(targets.values(), ({ cell, digit }) => {
       const locations = marks(cells, [digit]).map(({ cell }) => cellName(cell))
-      return `Putting ${digit} in ${cellName(cell)} would rule out ${digit} in ${list.format(locations)}.`
+      return `If ${cellName(cell)} takes ${digit}, it rules out every ${digit} in the wing (${list.format(locations)}).`
     })
+    const remaining = unrestricted === null ? 'only three digits' : `only ${restrictedDigits}`
     return {
       cells, candidates: marks(cells, restricted),
-      mainLabel: 'Digits that cannot repeat',
-      accent: unrestricted === null ? undefined : { candidates: marks(cells, [unrestricted]), label: 'Required digit' },
-      description: `The four marked cells can only use ${list.format(digits.map(String))}.`,
+      mainLabel: 'Digits that can appear at most once',
+      accent: unrestricted === null ? undefined : { candidates: marks(cells, [unrestricted]), label: 'Digit the wing must use' },
+      description: `The four highlighted cells have only four candidate digits between them. They are ${list.format(digits.map(String))}.`,
       ...explainSteps([
         [once, ...limits].join(' '),
         ...blocked,
-        'That leaves only three digits for the four cells. Each can fill at most one cell, so one cell would be left without a digit.',
+        `That leaves ${remaining} for four cells. Each remaining digit can appear at most once, so one cell would have no digit.`,
       ]),
     }
   }
