@@ -17,7 +17,7 @@ import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/hi
 import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, hintKey, ratingAttemptFor } from '../sudoku/player-rating'
-import { techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
+import { TECHNIQUE_FINDER_TITLE, techniqueHintsFromMatches } from '../sudoku/puzzle-analysis'
 import type { DesktopPuzzleView } from '../sudoku/play-preferences'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
@@ -53,7 +53,7 @@ import { usePuzzleSelection } from './usePuzzleSelection'
 
 const desktopInsightTabs = [
   { id: 'solution', label: 'Solution' },
-  { id: 'techniques', label: 'Available techniques' },
+  { id: 'techniques', label: TECHNIQUE_FINDER_TITLE },
   { id: 'chains', label: 'Chains' },
 ] as const
 
@@ -1634,7 +1634,7 @@ export function Worktable({
   )
   const analysisAction = !draft && !solved && !variant && (
     <button onClick={showAnalysis}>
-      <ListFilter size={17} /> Available techniques
+      <ListFilter size={17} /> {TECHNIQUE_FINDER_TITLE}
     </button>
   )
   const chainsAction = desktop && !draft && !solved && !placeholder && (

@@ -35,6 +35,30 @@ function engineRequests() {
   return { raw, run }
 }
 
+test('technique counts match full deductions before and after a candidate edit', async () => {
+  const { raw, run } = engineRequests()
+  const values = STARTER
+  const techniques = ['hidden-single', 'pointing', 'aic', 'pattern-overlay', 'pairwise-pattern-overlay',
+    'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
+  const edited = Array<number>(81).fill(0)
+  edited[2] = 1 // Remove 1 from r1c3. Its solution digit is 4.
+
+  for (const eliminations of [undefined, edited, undefined]) {
+    for (const technique of techniques) {
+      const matches = await run({ type: 'deductions', values, eliminations, techniqueOrder: [technique] })
+      const targets = new Set(matches.filter(({ proofs }) => proofs.some((proof) => proof.technique === technique))
+        .flatMap(({ affectedCandidates }) => affectedCandidates.map(({ cell, digit }) => `${cell}:${digit}`)))
+      assert.equal(await run({ type: 'technique-count', values, eliminations, technique }), targets.size, technique)
+    }
+  }
+
+  const invalid = edited.slice()
+  invalid[2] = 1 << 3
+  const result = await raw({ type: 'technique-count', values, eliminations: invalid, technique: 'hidden-single' })
+  assert.ok('error' in result)
+  assert.equal(result.code, 'invalid-eliminations')
+})
+
 test('rank requests find and replay a pointing removal with a shared budget', async () => {
   const { run } = engineRequests()
   const values = LOCKED_PAIR
