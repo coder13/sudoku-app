@@ -10,7 +10,7 @@ test('default editable shortcuts are unique', () => {
 })
 
 test('saved shortcut preferences accept valid partial changes', () => {
-  assert.deepEqual(parseShortcutPreferences({ digitMode: 'x' }), { ...DEFAULT_SHORTCUTS, digitMode: 'x' })
+  assert.deepEqual(parseShortcutPreferences({ digitMode: 'v' }), { ...DEFAULT_SHORTCUTS, digitMode: 'v' })
 })
 
 test('older saved shortcuts gain the Generate all candidates default without creating a conflict', () => {
@@ -25,6 +25,20 @@ test('the new Chains shortcuts preserve keys already assigned by the user', () =
   assert.equal(shortcuts.digitMode, 'l')
   assert.equal(shortcuts.pencilMode, 'b')
   assert.equal(new Set(Object.values(shortcuts)).size, EDITABLE_SHORTCUTS.length)
+})
+
+test('the shade shortcut preserves existing X bindings and supports a custom key', () => {
+  const { switchColorShade: _, ...olderPreferences } = DEFAULT_SHORTCUTS
+  assert.deepEqual(parseShortcutPreferences(olderPreferences), DEFAULT_SHORTCUTS)
+  const migrated = parseShortcutPreferences({ ...olderPreferences, digitMode: 'x' })
+  assert.equal(migrated.digitMode, 'x')
+  assert.notEqual(migrated.switchColorShade, 'x')
+  assert.equal(new Set(Object.values(migrated)).size, EDITABLE_SHORTCUTS.length)
+  const custom = parseShortcutPreferences({ switchColorShade: 'v' })
+  const plain = { altKey: false, ctrlKey: false, metaKey: false, shiftKey: false }
+  assert.equal(shortcutMatches({ ...plain, key: 'v' }, custom, 'switchColorShade'), true)
+  assert.equal(shortcutMatches({ ...plain, key: 'x' }, custom, 'switchColorShade'), false)
+  assert.equal(shortcutMatches({ ...plain, key: 'v', ctrlKey: true }, custom, 'switchColorShade'), false)
 })
 
 test('invalid or conflicting saved shortcuts fall back to defaults', () => {
@@ -68,5 +82,6 @@ test('app text zoom uses Ctrl or Command and ignores unmodified puzzle input', (
 
 test('shortcut conflicts identify the command that already owns a key', () => {
   assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', DEFAULT_SHORTCUTS.pencilMode), 'pencilMode')
-  assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', 'x'), null)
+  assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', 'v'), null)
+  assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', 'x'), 'switchColorShade')
 })

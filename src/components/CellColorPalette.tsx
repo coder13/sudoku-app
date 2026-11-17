@@ -1,5 +1,7 @@
 import { ArrowUpDown, Check, Eraser, Link2 } from 'lucide-react'
+import { useSyncExternalStore } from 'react'
 import { alternateColorShade, COLORS, COLOR_FAMILIES, DIGITS, type ColorTarget } from '../sudoku/game'
+import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 
 type Props = {
   target: ColorTarget
@@ -8,6 +10,7 @@ type Props = {
   hasColors: boolean
   disabled: boolean
   onColor: (color: number) => void
+  onSwitchShade: () => void
   onStop: () => void
   onClear: () => void
   highlightedDigit: number | null
@@ -26,7 +29,9 @@ export function ColorTargetPicker({ target, disabled, onTarget }: Pick<Props, 't
   )
 }
 
-export function ColorSwatches({ brush, disabled, onColor }: Pick<Props, 'brush' | 'disabled' | 'onColor'>) {
+export function ColorSwatches({ brush, disabled, onColor, onSwitchShade }: Pick<Props, 'brush' | 'disabled' | 'onColor' | 'onSwitchShade'>) {
+  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
+  const shadeKey = shortcutLabel(shortcuts.switchColorShade)
   const alternate = brush === null ? null : alternateColorShade(brush)
   return <div className="color-picker">
     <div className="cell-color-swatches" role="group" aria-label="Color shades">
@@ -44,14 +49,14 @@ export function ColorSwatches({ brush, disabled, onColor }: Pick<Props, 'brush' 
       </div>)}
     </div>
     <button type="button" className="button secondary color-shade-switch" disabled={disabled || alternate === null}
-      title={alternate === null ? 'Choose a color first' : `Switch to ${COLORS[alternate - 1].toLowerCase()}`}
-      onClick={() => { if (alternate !== null) onColor(alternate) }}>
-      <ArrowUpDown size={15} aria-hidden="true" /> Switch shade
+      title={alternate === null ? 'Choose a color first' : `Switch to ${COLORS[alternate - 1].toLowerCase()} (${shadeKey})`}
+      aria-keyshortcuts={shadeKey} onClick={onSwitchShade}>
+      <ArrowUpDown size={15} aria-hidden="true" /> Switch shade <kbd aria-hidden="true">{shadeKey}</kbd>
     </button>
   </div>
 }
 
-export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onStop, onClear,
+export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onSwitchShade, onStop, onClear,
   highlightedDigit, onHighlightDigit, canColorStrongLinks, strongLinkMessage, onColorStrongLinks }: Props) {
   const subject = target === 'cell' ? 'cells' : 'candidates'
   const instructions = disabled ? 'Coloring is available while playing.'
@@ -63,7 +68,7 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
   return (
     <section className="cell-color-palette" aria-label="Coloring">
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
-      {target === 'candidate' && <div className="color-link-tools">
+      <div className="color-link-tools">
         <span className="color-link-label">Highlight number</span>
         <div className="color-highlight-digits" role="group" aria-label="Highlight candidates while coloring">
           {DIGITS.map((digit) => <button type="button" key={digit} className="button secondary"
@@ -71,11 +76,12 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
             onClick={() => onHighlightDigit(highlightedDigit === digit ? null : digit)}>{digit}</button>)}
         </div>
         <button type="button" className="button secondary color-strong-links" disabled={disabled || !canColorStrongLinks}
-          onClick={onColorStrongLinks}><Link2 size={16} aria-hidden="true" /> Color strong links</button>
+          title="Follow every strong link for the highlighted number, alternating light and dark shades."
+          onClick={onColorStrongLinks}><Link2 size={16} aria-hidden="true" /> Auto-color strong links</button>
         <p className="color-link-message" aria-live="polite">{strongLinkMessage}</p>
-      </div>}
+      </div>
       <p aria-live="polite">{instructions}</p>
-      <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} />
+      <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} onSwitchShade={onSwitchShade} />
       <p className="color-pair-help">Use light and dark shades of one color to mark the two sides of a strong link.</p>
       <div className="cell-color-actions">
         <button type="button" className="button secondary" aria-pressed={brush === 0} aria-label={`Erase ${target} color`}

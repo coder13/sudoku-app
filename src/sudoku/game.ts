@@ -224,6 +224,17 @@ export function paintCandidate(game: Game, candidate: Candidate, color: number):
   return paintCandidates(game, [{ ...candidate, color }])
 }
 
+export function paintCells(game: Game, marks: readonly { cell: number; color: number }[]): Game {
+  const colors = [...game.position.colors]
+  for (const { cell, color } of marks) {
+    if (!Number.isInteger(cell) || cell < 0 || cell >= 81 ||
+      !Number.isInteger(color) || color < 0 || color > COLORS.length) continue
+    colors[cell] = color
+  }
+  return colors.every((color, cell) => color === game.position.colors[cell]) ? game
+    : move(game, { ...game.position, colors })
+}
+
 export function paintCandidates(game: Game, marks: readonly (Candidate & { color: number })[]): Game {
   const { candidateColors, entries, center, corner } = game.position
   const next = { ...candidateColors }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMPTY, enter, makeGame, paintCandidate, paintCandidates, redo, replaceCandidates, undo } from '../src/sudoku/game.ts'
+import { EMPTY, enter, makeGame, paintCandidate, paintCandidates, paintCells, redo, replaceCandidates, undo } from '../src/sudoku/game.ts'
 import { findStrongLinkGroups, strongLinkColorMarks } from '../src/sudoku/strong-link-colors.ts'
 
 const masksFor = (cells: number[], digit = 1) => Array.from({ length: 81 }, (_, cell) => cells.includes(cell) ? 1 << (digit - 1) : 0)
@@ -23,6 +23,22 @@ test('separate groups get separate color pairs while weak links and isolated can
   assert.equal(marks.some(({ cell }) => cell === 26), false)
   assert.deepEqual(findStrongLinkGroups(masksFor([0, 1, 2]), 1).groups, [])
   assert.deepEqual(findStrongLinkGroups(masksFor([0, 4]), 2).groups, [])
+})
+
+test('coloring follows a long branched group through multiple houses and an even loop', () => {
+  const cells = [3, 4, 6, 7, 8, 10, 15, 18, 19, 20, 26, 36, 37, 41, 45, 48, 56, 58, 63, 64, 71, 77, 78, 79]
+  const { groups, conflictingGroups } = findStrongLinkGroups(masksFor(cells, 3), 3)
+  assert.equal(conflictingGroups, 0)
+  assert.equal(groups.length, 3)
+  const colors = new Map(strongLinkColorMarks(groups, 8).map(({ cell, color }) => [cell, color]))
+  for (const cell of [3, 20, 41, 45, 58]) assert.equal(colors.get(cell), 8)
+  for (const cell of [4, 48, 56, 77]) assert.equal(colors.get(cell), 2)
+  assert.equal(groups[0].links, 9)
+  assert.equal(colors.get(7), 9)
+  assert.equal(colors.get(79), 3)
+  assert.equal(colors.get(10), 10)
+  assert.equal(colors.get(15), 4)
+  assert.equal(colors.size, 13)
 })
 
 test('a pair in both a row and a box counts as one link, and even loops alternate consistently', () => {
@@ -80,4 +96,25 @@ test('unrelated groups cannot silently reuse a color pair, and invalid inputs pr
   assert.deepEqual(strongLinkColorMarks(Array(7).fill(groups[0]), 1), [])
   for (const color of [0, 13, -1, 1.5, NaN]) assert.deepEqual(strongLinkColorMarks(groups, color), [])
   for (const digit of [0, 10, 1.5, NaN]) assert.deepEqual(findStrongLinkGroups(masksFor([0, 1]), digit).groups, [])
+})
+
+test('automatic cell coloring is one undo step, keeps candidate marks, and is safe to repeat', () => {
+  let game = replaceCandidates(makeGame('links', 'Strong links', EMPTY, 'custom'), masksFor([0, 4, 36, 40]))
+  game = paintCandidate(game, { cell: 0, digit: 1 }, 9)
+  game = enter(game, [8], 'color', 6)
+  const { groups } = findStrongLinkGroups(masksFor([0, 4, 36, 40]), 1)
+  const marks = strongLinkColorMarks(groups, 5)
+  const colored = paintCells(game, marks)
+  assert.equal(colored.past.length, game.past.length + 1)
+  for (const { cell, color } of marks) assert.equal(colored.position.colors[cell], color)
+  assert.equal(colored.position.colors[8], 6)
+  assert.equal(colored.position.candidateColors, game.position.candidateColors)
+  assert.equal(colored.position.entries, game.position.entries)
+  assert.equal(colored.position.corner, game.position.corner)
+  assert.equal(colored.position.center, game.position.center)
+  assert.deepEqual(undo(colored).position, game.position)
+  assert.deepEqual(redo(undo(colored)).position, colored.position)
+  assert.equal(paintCells(colored, marks), colored)
+  for (const cell of [-1, 81, 1.5, NaN]) assert.equal(paintCells(colored, [{ cell, color: 1 }]), colored)
+  for (const color of [-1, 13, 1.5, NaN]) assert.equal(paintCells(colored, [{ cell: 0, color }]), colored)
 })

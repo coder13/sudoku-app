@@ -8,8 +8,8 @@ import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
-  COLORS, COLOR_FAMILIES, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
+  COLORS, COLOR_FAMILIES, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
+  formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
@@ -415,7 +415,7 @@ export function Worktable({
     : !colorLinkMasks ? 'Check the grid and candidates before coloring links.'
     : colorLinks.conflictingGroups ? 'These links cannot use alternating shades. Check the candidates.'
     : colorLinks.groups.length > COLOR_FAMILIES.length ? 'There are more groups than color pairs. Color these groups manually.'
-    : colorLinks.groups.length ? `${colorLinks.groups.reduce((count, group) => count + group.links, 0)} strong links for ${coloringDigit}. Each connected group gets its own color.`
+    : colorLinks.groups.length ? `${colorLinks.groups.reduce((count, group) => count + group.links, 0)} strong links for ${coloringDigit}. Each connected group gets its own light/dark pair.`
     : `No strong links for ${coloringDigit}.`
   const canActivateTemporaryPencil = !pencil && !highlightMode && !colorMode && !eraseMode &&
     !disabled && !draft && !solved && !sketch.drawing && brush === null && !modalOpen && !mobileHintOpen &&
@@ -935,6 +935,15 @@ export function Worktable({
     setSelectedDigit(digit)
   }
 
+  function switchColorShade() {
+    if (cellColorsDisabled || sketch.drawing) return
+    const color = colorMode ? selectedColor : brush
+    const alternate = color === null ? null : alternateColorShade(color)
+    if (alternate === null) return
+    setSelectedColor(alternate)
+    if (!colorMode) setColorBrush(alternate)
+  }
+
   function toggleHighlightMode() {
     if (brush !== null && colorTarget === 'candidate') {
       setHighlightMode((current) => !current)
@@ -953,14 +962,14 @@ export function Worktable({
     const marks = strongLinkColorMarks(colorLinks.groups, firstColor)
     if (sketch.drawing) sketch.stop()
     setHintRevealed(false)
-    setColorTarget('candidate')
     setColorMode(false)
     setEraseMode(false)
     setPencil(false)
     highlightColorDigit(coloringDigit)
     setSelectedColor(firstColor)
     setColorBrush(firstColor)
-    edit((current) => current.position === game.position ? paintCandidates(current, marks) : current)
+    edit((current) => current.position !== game.position ? current
+      : colorTarget === 'cell' ? paintCells(current, marks) : paintCandidates(current, marks))
   }
 
   function clearColors() {
@@ -1210,6 +1219,9 @@ export function Worktable({
         }
         setColorBrush(null)
         if (paintingCandidates && colorMode) setSelectedColor(null)
+      } else if (!draft && !event.isComposing && shortcutMatches(event, shortcuts, 'switchColorShade')) {
+        event.preventDefault()
+        if (!event.repeat) switchColorShade()
       } else if (shortcut && ['z', 'y'].includes(key)) {
         event.preventDefault()
         edit(key === 'y' || event.shiftKey ? redo : undo)
@@ -1626,7 +1638,8 @@ export function Worktable({
       hasColors={colorTarget === 'cell' ? game.position.colors.some(Boolean) : Boolean(game.position.candidateColors)}
       highlightedDigit={coloringDigit} onHighlightDigit={highlightColorDigit}
       canColorStrongLinks={canColorStrongLinks} strongLinkMessage={strongLinkMessage} onColorStrongLinks={colorStrongLinks}
-      disabled={cellColorsDisabled} onColor={chooseColor} onStop={() => setColorBrush(null)} onClear={clearColors} />
+      disabled={cellColorsDisabled} onColor={chooseColor} onSwitchShade={switchColorShade}
+      onStop={() => setColorBrush(null)} onClear={clearColors} />
   )
   const chainUnavailable = chainGraph ? undefined
     : previewing ? 'Select a chain step in Solution.'
@@ -1953,7 +1966,7 @@ export function Worktable({
           colorMode={colorMode} colorTarget={colorTarget} setColorTarget={changeColorTarget} toggleColorMode={() => {
             setColorBrush(null); setEraseMode(false); setPencil(false); setHighlightMode(false); setColorMode((current) => !current)
           }}
-          onOpenColors={desktop ? showColors : undefined} colorsActive={brush !== null}
+          onOpenColors={desktop ? showColors : undefined} colorsActive={brush !== null} onSwitchShade={switchColorShade}
           highlightMode={highlightMode} toggleHighlightMode={toggleHighlightMode}
           eraseMode={eraseMode} toggleEraseMode={() => {
             setColorBrush(null); setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)

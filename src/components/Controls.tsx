@@ -23,6 +23,7 @@ type Props = {
   colorsActive?: boolean
   colorTarget: ColorTarget
   setColorTarget: (target: ColorTarget) => void
+  onSwitchShade: () => void
   eraseMode: boolean
   toggleEraseMode: () => void
   highlightMode: boolean
@@ -183,8 +184,10 @@ export function Controls(props: Props) {
               })}
             </div>
             {colors && <button type="button" className="button secondary color-shade-switch"
-              disabled={props.disabled || alternate === null} onClick={() => { if (alternate !== null) props.input(alternate) }}>
-              <ArrowUpDown size={15} aria-hidden="true" /> Switch shade
+              title={`Switch color shade (${shortcutLabel(shortcuts.switchColorShade)})`}
+              aria-keyshortcuts={shortcutLabel(shortcuts.switchColorShade)}
+              disabled={props.disabled || alternate === null} onClick={props.onSwitchShade}>
+              <ArrowUpDown size={15} aria-hidden="true" /> Switch shade <kbd aria-hidden="true">{shortcutLabel(shortcuts.switchColorShade)}</kbd>
             </button>}
             {candidateColors && <button type="button" className="button secondary candidate-color-eraser"
               aria-label="Erase candidate color" aria-pressed={props.selectedDigit === 0} aria-keyshortcuts="0 Delete Backspace"
