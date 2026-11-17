@@ -1,6 +1,6 @@
-import { Eraser, Link2, Plus, Trash2, Undo2 } from 'lucide-react'
+import { Eraser, Eye, EyeOff, Link2, Plus, Trash2, Undo2 } from 'lucide-react'
 import type { Deduction, DeductionAction } from '../sudoku/engine'
-import { chainCandidate } from '../sudoku/chains'
+import { chainCandidate, type LinkStrength } from '../sudoku/chains'
 import { DIGITS } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
 import { cellName, deductionResults } from '../sudoku/lesson-diagram'
@@ -24,10 +24,18 @@ function pointName(point: BoardLink['from']) {
   return `${point.digit} in ${cellName(point.cell)}`
 }
 
-function LinkLegend() {
+function compactPath(nodes: readonly number[], strengths: readonly LinkStrength[]) {
+  return nodes.map((id, i) => {
+    const { cell, digit } = chainCandidate(id)
+    const candidate = `${digit}${cellName(cell).toLowerCase()}`
+    return i === 0 ? candidate : `${strengths[i - 1] === 'strong' ? '=' : '−'} ${candidate}`
+  }).join(' ')
+}
+
+function LinkLegend({ notation = false }: { notation?: boolean }) {
   return <div className="chain-legend" aria-label="Link styles">
-    <span><i aria-hidden="true" />Strong</span>
-    <span><i className="weak-link" aria-hidden="true" />Weak</span>
+    <span><i aria-hidden="true" />Strong{notation && <code>=</code>}</span>
+    <span><i className="weak-link" aria-hidden="true" />Weak{notation && <code>−</code>}</span>
   </div>
 }
 
@@ -55,23 +63,62 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
   const newKey = shortcutLabel(shortcuts.newChain)
   return <section className="chains-panel" aria-label="Chains">
     {unavailable ? <p role="status">{unavailable}</p> : <>
-      <div className="chain-picker">
-        <label>
-          <span>Chain</span>
-          <select value={active.id} onChange={(event) => sketch.switchSketch(Number(event.target.value))}>
-            {sketch.sketches.map(({ id, type, color }, index) => <option key={id} value={id}>
-              {type === 'medusa' ? 'Medusa' : 'Chain'} {index + 1} ({color})
-            </option>)}
-          </select>
-        </label>
+      <div className="chain-toolbar chain-draw-tools">
+        <button type="button" className={`button ${sketch.drawing ? 'secondary' : 'primary'}`}
+          title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={sketch.toggle}>
+          <Link2 size={15} aria-hidden="true" /> {drawLabel}
+        </button>
         <button type="button" className="button secondary" title={`New chain (${newKey})`} aria-keyshortcuts={newKey} onClick={sketch.addSketch}>
-          <Plus size={15} /> New chain
+          <Plus size={15} aria-hidden="true" /> New chain
         </button>
-        <button type="button" className="icon-button borderless" aria-label="Delete chain" title="Delete chain"
-          disabled={sketch.sketches.length === 1 && !sketch.hasLinks} onClick={sketch.deleteSketch}>
-          <Trash2 size={16} aria-hidden="true" />
-        </button>
+        <div className="chain-edit-actions">
+          <button type="button" className="button secondary" disabled={!sketch.drawing || sketch.pending === null}
+            title="End path (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</button>
+          <button type="button" className="icon-button borderless" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
+            aria-keyshortcuts="Control+Z Meta+Z"
+            disabled={!sketch.canUndo} onClick={sketch.undo}>
+            <Undo2 size={16} aria-hidden="true" />
+          </button>
+          <button type="button" className="icon-button borderless" aria-label="Clear links" title="Clear links"
+            disabled={!sketch.hasLinks} onClick={sketch.clear}>
+            <Eraser size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
+      <ul className="chain-list" aria-label="Drawn chains">
+        {sketch.sketches.map(({ id, type, color, secondColor, hidden, edges, chains, paths }, index) => {
+          const name = `Chain ${index + 1}`
+          const selected = id === active.id
+          const visibilityLabel = `${hidden ? 'Show' : 'Hide'} ${name.toLowerCase()}`
+          const deleteLabel = `Delete ${name.toLowerCase()}`
+          const title = type === 'medusa' ? '3D Medusa' : chains.length === 1 ? chains[0].title : undefined
+          const VisibilityIcon = hidden ? EyeOff : Eye
+          return <li className="chain-row" key={id} data-active={selected || undefined} data-hidden={hidden || undefined}>
+            <div className="chain-row-actions">
+              <button type="button" className="chain-select" aria-pressed={selected} onClick={() => sketch.switchSketch(id)}>
+                <span className="chain-swatches" aria-hidden="true">
+                  <i style={{ backgroundColor: chainColor(color) }} />
+                  {type === 'medusa' && <i style={{ backgroundColor: chainColor(secondColor) }} />}
+                </span>
+                {name}
+              </button>
+              <button type="button" className="icon-button borderless" aria-label={visibilityLabel} title={visibilityLabel}
+                onClick={() => sketch.toggleVisibility(id)}>
+                <VisibilityIcon size={16} aria-hidden="true" />
+              </button>
+              <button type="button" className="icon-button borderless" aria-label={deleteLabel} title={deleteLabel}
+                disabled={sketch.sketches.length === 1 && edges.length === 0} onClick={() => sketch.deleteSketch(id)}>
+                <Trash2 size={16} aria-hidden="true" />
+              </button>
+            </div>
+            {title && <h2>{title}</h2>}
+            {paths.length > 0
+              ? <p className="chain-notation"><code>{paths.map(({ nodes, strengths }) => compactPath(nodes, strengths)).join(', ')}</code></p>
+              : <p>No links yet.</p>}
+          </li>
+        })}
+      </ul>
+      {sketch.sketches.some(({ paths }) => paths.length > 0) && <LinkLegend notation />}
       <div className="chain-settings">
         <label>
           <span>Type</span>
@@ -108,36 +155,16 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
           </select>
         </label>}
       </div>
-      <div className="chain-toolbar">
-        <button type="button" className={`button ${sketch.drawing ? 'secondary' : 'primary'}`}
-          title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={sketch.toggle}>
-          <Link2 size={15} aria-hidden="true" /> {drawLabel}
-        </button>
-        <button type="button" className="button secondary" disabled={!sketch.drawing || sketch.pending === null}
-          title="End path (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</button>
-        <button type="button" className="icon-button borderless" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
-          aria-keyshortcuts="Control+Z Meta+Z"
-          disabled={!sketch.canUndo} onClick={sketch.undo}>
-          <Undo2 size={16} aria-hidden="true" />
-        </button>
-        <button type="button" className="icon-button borderless" aria-label="Clear links" title="Clear links"
-          disabled={!sketch.hasLinks} onClick={sketch.clear}>
-          <Eraser size={16} aria-hidden="true" />
-        </button>
-      </div>
-      {!medusa && <LinkLegend />}
       <p className="chain-instructions" role="status">{sketch.status || (sketch.drawing
-        ? medusa ? 'Select candidates joined by strong links. Select a marked candidate to start a branch.'
+        ? active.hidden ? 'Show this chain to draw links.'
+          : medusa ? 'Select candidates joined by strong links. Select a marked candidate to start a branch.'
           : 'Select candidates in order to draw links. Select the last candidate again to end the path.'
         : 'Choose Draw links to mark candidates on the grid.')}</p>
       {sketch.chains.map((chain) => {
-        const first = chainCandidate(chain.nodes[0])
-        const last = chainCandidate(chain.nodes.at(-1)!)
         const results = deductionResults(chain.actions)
         const open = chain.nodes[0] !== chain.nodes.at(-1)
         return <article className="chain-analysis" key={chain.nodes[0]}>
-          <h2>{chain.title}</h2>
-          {chain.strengths.length > 0 && <p>{pointName(first)}{chain.loop ? '' : ` to ${pointName(last)}`} · {chain.strengths.length} {chain.strengths.length === 1 ? 'link' : 'links'}</p>}
+          {sketch.chains.length > 1 && <h2>{chain.title}</h2>}
           {chain.explanation && <p>{chain.explanation}</p>}
           {results.length > 0 ? <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>
             : <p>{chain.strengths.length ? 'No placements or eliminations from these links.' : 'Remove a link at the branch to analyze a single path.'}</p>}
@@ -148,10 +175,10 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
           </div>}
         </article>
       })}
-      {sketch.medusas.map(({ nodes, sides, actions, explanation }) => {
+      {sketch.medusas.map(({ nodes, actions, explanation }) => {
         const results = deductionResults(actions)
         return <article className="chain-analysis" key={nodes[0]}>
-          <h2>{sides.size ? `3D Medusa · ${nodes.length} candidates` : '3D Medusa'}</h2>
+          {sketch.medusas.length > 1 && <h2>{`${nodes.length} candidates starting at ${pointName(chainCandidate(nodes[0]))}`}</h2>}
           <p>{explanation ?? 'No candidates to remove from these links.'}</p>
           {results.length > 0 && <>
             <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>

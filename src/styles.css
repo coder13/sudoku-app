@@ -434,9 +434,34 @@ svg { flex-shrink: 0; }
 .chains-panel p { color: var(--muted); overflow-wrap: anywhere; }
 .chain-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-6); }
 .chains-panel .button { min-height: 34px; padding-inline: 9px; font-size: 12px; }
-.chain-picker, .chain-settings { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); }
-.chain-picker { padding-bottom: var(--space-10); border-bottom: 1px solid var(--border); }
-.chain-picker label { flex: 1 1 110px; }
+.chain-draw-tools, .chain-edit-actions { gap: var(--space-4); }
+.chain-edit-actions { display: flex; }
+.chain-draw-tools .button { padding-inline: var(--space-8); }
+.chain-list { display: grid; gap: var(--space-4); padding: 0; margin: 0; list-style: none; }
+.chain-row { min-width: 0; padding: var(--space-4) var(--space-8) var(--space-8); border: 1px solid var(--border); border-radius: 8px; }
+.chain-row[data-active] { background: var(--surface-muted); border-color: var(--selected-border); }
+.chain-row[data-hidden] .chain-swatches { opacity: .45; }
+.chain-row-actions { display: flex; align-items: center; gap: var(--space-4); }
+.chain-select {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+.chain-swatches { display: inline-flex; gap: 3px; }
+.chain-swatches i { width: 8px; height: 8px; border-radius: 50%; }
+.chain-row h2 { font-size: 12px; margin-bottom: 2px; }
+.chain-row .chain-notation { color: var(--ink); }
+.chain-settings { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-8); }
 .chain-settings label:first-child { flex: 1 1 136px; }
 .chain-settings label { flex: 1 1 80px; }
 .chains-panel label { display: grid; gap: 4px; min-width: 0; color: var(--muted); font-size: 12px; font-weight: 650; }
