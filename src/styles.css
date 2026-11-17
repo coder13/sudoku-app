@@ -285,7 +285,8 @@ svg { flex-shrink: 0; }
   box-shadow: none;
 }
 
-.standard-puzzle-stack > .hint-dock { margin-top: 0; }
+.standard-puzzle-stack > .hint-dock { inline-size: 100%; margin-top: 0; }
+.standard-puzzle-stack:has(> .hint-dock),
 .standard-puzzle-stack:has(> .hint-dock) .puzzle {
   --board-frame-limit: min(529px, max(240px, calc(100dvh - 340px)));
 }
@@ -555,10 +556,12 @@ svg { flex-shrink: 0; }
   background: var(--surface);
   box-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024;
 }
-.puzzle {
+.puzzle, .standard-puzzle-stack {
   --board-frame-limit: min(529px, max(240px, calc(100dvh - 240px)));
   --board-frame-width: min(100%, var(--board-frame-limit));
   --puzzle-padding-inline: var(--space-12);
+}
+.puzzle {
   --board-guide-width: 20px;
   --board-guide-offset: 10px;
   --puzzle-grid-inset: calc(max(0px, (100cqi - var(--board-frame-limit)) / 2) + var(--board-guide-width));
@@ -576,7 +579,8 @@ svg { flex-shrink: 0; }
   --board-mode-border-width: 3px;
   overflow: visible;
 }
-.standard-workspace-page .puzzle[data-input-mode] {
+.standard-workspace-page .puzzle[data-input-mode],
+.standard-workspace-page .standard-puzzle-stack:has(> .puzzle-column > .puzzle[data-input-mode]) > .hint-dock {
   max-inline-size: max(240px, calc(var(--board-frame-width) + 2 * var(--puzzle-padding-inline) + 2px));
   margin-inline: auto;
 }
@@ -666,7 +670,7 @@ svg { flex-shrink: 0; }
   max-height: clamp(104px, 18dvh, 180px);
   overflow: auto;
 }
-.standard-puzzle-stack .hint-card { max-height: none; overflow: visible; }
+.standard-puzzle-stack .hint-card { width: 100%; max-height: none; overflow: visible; }
 .hint-card {
   container: hint-card / inline-size;
   width: var(--hint-card-width);
