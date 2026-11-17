@@ -62,7 +62,7 @@ impl House {
         }
     }
 
-    fn all() -> impl Iterator<Item = Self> {
+    pub(crate) fn all() -> impl Iterator<Item = Self> + Clone {
         (0..27).map(Self::from_index)
     }
 
@@ -1583,7 +1583,7 @@ pub(crate) fn classify_actions(
     eliminations: Option<&[u16; CELLS]>,
     actions: &[HintAction],
 ) -> Result<Vec<Option<Technique>>, HintError> {
-    let position = checked_position(board, eliminations)?;
+    let (position, solution) = checked_position_with_solution(board, eliminations, true)?;
     let mut result = vec![None; actions.len()];
     let mut pending: Vec<_> = actions
         .iter()
@@ -1596,6 +1596,10 @@ pub(crate) fn classify_actions(
                     .masks()
                     .get(cell)
                     .is_some_and(|mask| mask & digit_bit(digit) != 0)
+                && solution.as_ref().is_none_or(|solution| match action {
+                    HintAction::Place(_) => solution[cell] == digit,
+                    HintAction::Eliminate(_) => solution[cell] != digit,
+                })
         })
         .collect();
     let search = DeductionSearch::new(position.board(), position.masks());
@@ -1666,18 +1670,26 @@ pub(crate) fn checked_position(
     board: &Board,
     eliminations: Option<&[u16; CELLS]>,
 ) -> Result<Position, HintError> {
+    checked_position_with_solution(board, eliminations, false).map(|(position, _)| position)
+}
+
+fn checked_position_with_solution(
+    board: &Board,
+    eliminations: Option<&[u16; CELLS]>,
+    need_solution: bool,
+) -> Result<(Position, Option<Board>), HintError> {
     let verified = logical::verified_position(board).map_err(HintError::Puzzle)?;
-    // Validation can advance a copy of the board. Hints refer to the requested position.
+    let solution = (need_solution || eliminations.is_some())
+        .then(|| verified.verified_solution())
+        .flatten();
     let mut position = Position::known_unique(board);
     if let Some(eliminations) = eliminations {
-        let solution = verified
-            .verified_solution()
-            .ok_or(HintError::Puzzle(Analysis::SearchLimit))?;
-        if !position.retain_eliminations(eliminations, &solution) {
+        let answer = solution.as_ref().ok_or(HintError::Puzzle(Analysis::SearchLimit))?;
+        if !position.retain_eliminations(eliminations, answer) {
             return Err(HintError::InvalidEliminations);
         }
     }
-    Ok(position)
+    Ok((position, solution))
 }
 
 #[cfg(test)]

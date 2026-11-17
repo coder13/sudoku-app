@@ -18,9 +18,9 @@ const MIN_CLUES: usize = 17;
 /// Check the normal-play quality floor and all configured lower-tier orders.
 /// This does not prove that no unimplemented or alternate human route exists.
 pub fn accepts_difficulty(board: &Board, level: Difficulty) -> bool {
-    logical::matches_generation_path(
+    logical::match_generation_path(
         board, &level.technique_order(), Some(&GenerationRating::Difficulty(level)), None,
-    )
+    ).is_some()
 }
 
 /// Criteria for an exact clue count and optional point range.
@@ -131,6 +131,25 @@ impl GenerationCriteria<'_> {
     }
 }
 
+pub(crate) enum MatchedPath {
+    Unrated,
+    Rated(PuzzleRating),
+}
+
+impl MatchedPath {
+    pub(crate) fn rated(self, board: Board, order: &[Technique]) -> Option<GeneratedPuzzle> {
+        let rating = match self {
+            Self::Rated(rating) => rating,
+            Self::Unrated => rate_puzzle(&board, order).ok()?,
+        };
+        Some(GeneratedPuzzle { board, rating })
+    }
+}
+
+fn difficulty_order(level: Difficulty, enabled: &[Technique]) -> Vec<Technique> {
+    level.technique_order().into_iter().filter(|technique| enabled.contains(technique)).collect()
+}
+
 struct MatchingPlan {
     clues: RangeInclusive<usize>,
     rating: Option<GenerationRating>,
@@ -149,15 +168,14 @@ impl MatchingPlan {
             rating: criteria.rating.clone(),
             technique: criteria.technique.map(|technique| (technique, mode)),
             technique_order: match &criteria.rating {
-                Some(GenerationRating::Difficulty(level)) => level.technique_order().into_iter()
-                    .filter(|technique| criteria.technique_order.contains(technique)).collect(),
+                Some(GenerationRating::Difficulty(level)) => difficulty_order(*level, criteria.technique_order),
                 _ => criteria.technique_order.to_vec(),
             },
         })
     }
 
-    fn matches(&self, board: &Board) -> bool {
-        logical::matches_generation_path(
+    fn match_path(&self, board: &Board) -> Option<MatchedPath> {
+        logical::match_generation_path(
             board,
             &self.technique_order,
             self.rating.as_ref(),
@@ -239,6 +257,16 @@ pub fn start_matching<'a>(
     templates: Cow<'a, [Board]>,
     max_attempts: u32,
 ) -> Result<GenerationSearch<'a, Board>, GenerationError> {
+    Ok(start_matching_path(seed, criteria, mode, templates, max_attempts)?.map(|(board, _)| board))
+}
+
+pub(crate) fn start_matching_path<'a>(
+    seed: u32,
+    criteria: &GenerationCriteria<'_>,
+    mode: TechniqueTargetMode,
+    templates: Cow<'a, [Board]>,
+    max_attempts: u32,
+) -> Result<GenerationSearch<'a, (Board, MatchedPath)>, GenerationError> {
     let plan = MatchingPlan::new(criteria, mode)?;
     let mut random = Random::from_seed(seed);
     if !templates.is_empty() {
@@ -246,24 +274,27 @@ pub fn start_matching<'a>(
             TemplateAttempts::new(TemplateSource::Boards(templates), &plan.clues, &mut random);
         let budget = attempts.budget(max_attempts);
         return Ok(GenerationSearch::new(random, budget, move |random| {
-            attempts.draw(random).filter(|board| plan.matches(board))
+            let board = attempts.draw(random)?;
+            plan.match_path(&board).map(|path| (board, path))
         }));
     }
     Ok(GenerationSearch::new(random, max_attempts, move |random| {
         let (&min, &max) = (plan.clues.start(), plan.clues.end());
         let mut board = filled_board(random);
-        if max == CELLS && plan.matches(&board) {
-            return Some(board);
+        if max == CELLS && let Some(path) = plan.match_path(&board) {
+            return Some((board, path));
         }
         if min == CELLS {
             return None;
         }
-        let mut matched = false;
+        let mut matched = None;
         carve(&mut board, random, |board, clues| {
-            matched = clues <= max && plan.matches(board);
-            matched || clues == min
+            if clues <= max {
+                matched = plan.match_path(board);
+            }
+            matched.is_some() || clues == min
         });
-        matched.then_some(board)
+        matched.map(|path| (board, path))
     }))
 }
 
@@ -273,6 +304,14 @@ pub fn start_targeted(
     target: GenerationTarget<'_>,
     max_attempts: u32,
 ) -> Result<GenerationSearch<'static, Board>, GenerationError> {
+    Ok(start_targeted_path(seed, target, max_attempts)?.map(|(board, _)| board))
+}
+
+pub(crate) fn start_targeted_path(
+    seed: u32,
+    target: GenerationTarget<'_>,
+    max_attempts: u32,
+) -> Result<GenerationSearch<'static, (Board, MatchedPath)>, GenerationError> {
     let random = Random::from_seed(seed);
     match target {
         GenerationTarget::Opening(technique) => {
@@ -291,7 +330,7 @@ pub fn start_targeted(
             level,
             technique_order,
         } => {
-            let order = technique_order.to_vec();
+            let order = difficulty_order(level, technique_order);
             Ok(GenerationSearch::new(random, max_attempts, move |random| {
                 targeted_attempt(
                     random,
@@ -305,22 +344,25 @@ pub fn start_targeted(
     }
 }
 
-fn targeted_attempt(random: &mut Random, target: GenerationTarget<'_>) -> Option<Board> {
+fn targeted_attempt(random: &mut Random, target: GenerationTarget<'_>) -> Option<(Board, MatchedPath)> {
     let mut board = filled_board(random);
     let mut denser_puzzles = Vec::new();
-    if carve(&mut board, random, |board, clues| {
+    let mut matched = None;
+    carve(&mut board, random, |board, clues| {
         if matches!(target, GenerationTarget::Difficulty { .. }) && clues > DEFAULT_CLUES {
             denser_puzzles.push(*board);
             return false;
         }
-        target.matches(board)
-    }) {
-        return Some(board);
+        matched = target.match_path(board);
+        matched.is_some()
+    });
+    if let Some(path) = matched {
+        return Some((board, path));
     }
     denser_puzzles
         .into_iter()
         .rev()
-        .find(|board| target.matches(board))
+        .find_map(|board| target.match_path(&board).map(|path| (board, path)))
 }
 
 /// A matched puzzle and the rating computed after transforming its grid.
@@ -398,9 +440,8 @@ fn start_verified_templates(
     );
     let budget = attempts.budget(max_attempts);
     GenerationSearch::new(random, budget, move |random| {
-        let board = attempts.draw(random).filter(|board| plan.matches(board))?;
-        let rating = rate_puzzle(&board, &plan.technique_order).ok()?;
-        Some(GeneratedPuzzle { board, rating })
+        let board = attempts.draw(random)?;
+        plan.match_path(&board)?.rated(board, &plan.technique_order)
     })
 }
 

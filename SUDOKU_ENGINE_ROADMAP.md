@@ -6,13 +6,15 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `9e711ca`, including capability packaging and the hint-readability merge, plus the focused mixed-rule integration described below. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `5ecf765`, including capability packaging, mixed-rule integration, the UAT fixes, and the engine performance work, plus the focused hint and solution access repair described below. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
 | Classic solving, scoring, proofs, hints, generation, and browser worker | In main | Preserve the public contracts and versioned ratings |
+| Sparse validation, hint paging, worker isolation, and batched singles | In main through [PR 100](https://github.com/coder13/sudoku-app/pull/100) | Preserve the measured improvements while extending the same app flows to every built-in variant |
 | Windoku | In main through [PR 93](https://github.com/coder13/sudoku-app/pull/93) | Maintain its import, play, save, hint, and generation coverage |
-| Mixed rules in the eight currently rendered families | Complete in this integration on `codex/sudoku-combined-rules` | Preserve the combined-flow regressions and extend coverage with each new family in [issue 87](https://github.com/coder13/sudoku-app/issues/87) |
+| Mixed rules in the eight currently rendered families | In main through [PR 95](https://github.com/coder13/sudoku-app/pull/95) | Preserve the combined-flow regressions and extend coverage with each new family in [issue 87](https://github.com/coder13/sudoku-app/issues/87) |
+| Built-in variant hint and solution access | Repaired in the focused integration for [issue 97](https://github.com/coder13/sudoku-app/issues/97) | Preserve visible hint, Technique Finder, and Solution controls in standard, advanced, and mobile play |
 | Additional rule families and shading | Research on `codex/sudoku-engine-integration` | Port one app-ready family from current main through [issue 35](https://github.com/coder13/sudoku-app/issues/35) |
 | Proof explorer and expert lesson work | Open in [PR 14](https://github.com/coder13/sudoku-app/pull/14) | Reconcile its diff with current main and the research branch before integration |
 | Uncommitted proof, technique, and lesson edits | Preserved in the original R&D worktree | Compare each change with current main and the research branch before porting it |
@@ -34,6 +36,8 @@ Every split needs an inventory of callers, an explicit dependency graph, and beh
 ## Priorities and completion criteria
 
 Work proceeds in this order. A correctness failure or a measured regression can move ahead of the current milestone. Keep research available in separate worktrees while each integration becomes reviewable.
+
+Usable help for the variants already offered by the app comes before another rule family. Engine support alone does not complete this requirement. Each offered difficulty needs several sound hint choices when available, selectable technique proofs, and a complete solution walkthrough from the givens. Check the actual workspace controls as well as the worker APIs. Cache keys must include the full puzzle rules and regions, and background scans must leave requested hints responsive.
 
 | Priority | Outcome | Evidence of completion |
 | --- | --- | --- |

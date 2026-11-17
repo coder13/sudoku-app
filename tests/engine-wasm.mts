@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
-import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type RankPattern } from '../src/sudoku/engine.ts'
+import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type RankPattern, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { DIFFICULTY_LEVELS, difficultyIndex } from '../src/sudoku/difficulty.ts'
 import { generateClassic } from '../src/sudoku/classic-generation.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
-import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
+import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, singleFromCandidates, undo } from '../src/sudoku/game.ts'
 import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
 import { practiceClueAnnotations, practiceSearch } from '../src/sudoku/lesson-guidance.ts'
 import { lessonExample, variantLessonExercise, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
@@ -43,7 +43,7 @@ test('technique counts match full deductions before and after a candidate edit',
   const { raw, run } = engineRequests()
   const values = STARTER
   const techniques = ['hidden-single', 'pointing', 'aic', 'pattern-overlay', 'pairwise-pattern-overlay',
-    'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
+    'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay', 'nested-forcing-net']
   const edited = Array<number>(81).fill(0)
   edited[2] = 1 // Remove 1 from r1c3. Its solution digit is 4.
 
@@ -1888,6 +1888,7 @@ test('the worker protocol reaches the compiled browser engine', async () => {
   const rejected = await raw({ type: 'logical-solve', values: ambiguous, techniqueOrder: ['unique-rectangle-1'] })
   assert.ok('code' in rejected && rejected.code === 'multiple')
 
+  assert.equal(await run({ type: 'analyze', values: SPARSE }), 'unique')
   const rating = await run({ type: 'rate', values: SPARSE })
   assert.equal(rating.score.points, 846)
   assert.deepEqual(rating.status, { solved: 'medium' })
@@ -2524,4 +2525,111 @@ test('every playable variant generates its supported difficulties with a unique 
       })
     }
   }
+})
+
+test('exhaustive hint pages preserve order and evidence and release only their own result', async () => {
+  const { run, raw } = engineRequests()
+  const request = { type: 'hints', values: STARTER, includePatterns: true, limit: 'all',
+    preferProgress: true, disabledTechniques: ['naked-single'] } as const
+  const full = await run(request)
+  const first = await run({ ...request, collection: 11 })
+  assert.ok(first.choices.length > 0 && first.choices.length < full.available)
+  assert.equal(first.available, full.available)
+  assert.deepEqual(first.candidates, full.candidates)
+  const choices = [...first.choices]
+  await run({ ...request, limit: 0 })
+  while (choices.length < full.available) {
+    const page = await run({ type: 'hint-page', collection: 11, index: choices.length })
+    assert.equal(page.offset, choices.length)
+    assert.equal(page.candidates, undefined)
+    choices.push(...page.choices)
+  }
+  assert.deepEqual(choices, full.choices)
+  const backwards = await run({ type: 'hint-page', collection: 11, index: 1 })
+  assert.deepEqual(backwards.choices, first.choices)
+  const invalid = await raw({ type: 'hint-page', collection: 11, index: full.available })
+  assert.ok('code' in invalid && invalid.code === 'invalid-hint-index')
+
+  const variant = { type: 'variant', operation: 'hints', position: { puzzle: { version: 1, givens: STARTER } },
+    techniqueOrder: ['hidden-single', 'naked-single'], limit: 100 } as const
+  const expected = await run(variant)
+  const next = await run({ ...variant, collection: 12 })
+  await run({ type: 'release-hints', collection: 11 })
+  assert.deepEqual(next.choices, expected.slice(0, next.choices.length))
+  assert.equal(next.available, expected.length)
+  const last = await run({ type: 'hint-page', collection: 12, index: expected.length - 1, variant: true })
+  assert.deepEqual(last.choices, expected.slice(last.offset))
+  await run({ type: 'release-hints', collection: 12 })
+  const expired = await raw({ type: 'hint-page', collection: 12, index: 0 })
+  assert.ok('code' in expired && expired.code === 'expired-hints')
+})
+
+test('one singles request follows displayed candidates, removals and alternate houses', async () => {
+  const { run, raw } = engineRequests()
+  const fixtures: { name: string; position: VariantPuzzle }[] = JSON.parse(await readFile(
+    new URL('../crates/engine/benches/fixtures/variants.json', import.meta.url), 'utf8'))
+  for (const { name, position: puzzle } of fixtures.filter(f => ['classic', 'jigsaw-killer', 'killer', 'x-sudoku', 'windoku'].includes(f.name))) {
+    let values = puzzle.givens
+    const classic = name === 'classic'
+    const solution = await run({ type: 'variant', operation: 'solve', position: { puzzle } })
+    const displayed = Array<number>(81).fill(511)
+    const removed = Array<number>(81).fill(0)
+    for (const [cell, digit] of [...solution].entries()) {
+      if (cell % 3 === 0) displayed[cell] = 1 << (Number(digit) - 1)
+      if (cell % 4 === 0) removed[cell] = 1 << (Number(digit) % 9)
+    }
+    const actual = classic
+      ? await run({ type: 'solve-singles', values, displayedCandidates: displayed, eliminations: removed })
+      : await run({ type: 'variant', operation: 'solve-singles', position: { puzzle, eliminations: removed }, displayedCandidates: displayed })
+    while (true) {
+      const legal = classic ? await run({ type: 'notes', values }) : await run({
+        type: 'variant', operation: 'candidates', position: { puzzle, entries: values, eliminations: removed },
+      })
+      assert.ok(legal)
+      const move = singleFromCandidates(values, legal.map((mask, cell) => mask & displayed[cell]), removed, classic ? undefined : puzzle)
+      if (!move) break
+      const [cell, digit] = move
+      values = values.slice(0, cell) + digit + values.slice(cell + 1)
+    }
+    assert.equal(actual, values, name)
+    assert.notEqual(actual, puzzle.givens, name)
+  }
+  assert.equal(await run({ type: 'solve-singles', values: STARTER, displayedCandidates: Array(81).fill(0) }), STARTER)
+  const bad = await raw({ type: 'solve-singles', values: '11' + '0'.repeat(79) })
+  assert.ok('code' in bad && bad.code === 'conflict')
+  const mask = await raw({ type: 'solve-singles', values: STARTER, displayedCandidates: [0] })
+  assert.ok('code' in mask && mask.code === 'invalid-eliminations')
+})
+
+test('compiled variant candidates follow the whole puzzle definition as positions alternate', async () => {
+  const { run } = engineRequests()
+  const givens = '0'.repeat(81)
+  const plain = { version: 1, givens } as const
+  const odd = { ...plain, rules: [{ type: 'parity', cells: [0], parity: 'odd' }] } as const
+  const entries = '0' + '2' + '0'.repeat(79)
+  const candidates = (puzzle: VariantPuzzle, placed?: string) =>
+    run({ type: 'variant', operation: 'candidates', position: { puzzle, entries: placed } })
+  assert.equal((await candidates(odd))[0], 0b101010101)
+  assert.equal((await candidates(plain, entries))[0], 511 & ~2)
+  assert.equal((await candidates(odd))[0], 0b101010101)
+  assert.equal((await candidates({ ...odd, givens: '1' + givens.slice(1) }))[0], 0)
+  assert.equal((await candidates(plain))[0], 511)
+})
+
+test('generation returns its accepted score and preserves grid-only and stepped requests', async () => {
+  const { run } = engineRequests()
+  const targeted = { type: 'generate-targeted', seed: 2, maxAttempts: 128, target: { type: 'difficulty', level: 'medium' } } as const
+  const constrained = { type: 'generate-constrained', seed: 1, maxAttempts: 1, clues: 80,
+    score: [14, 14], techniqueOrder: ['hidden-single'] } as const
+  for (const request of [targeted, constrained]) {
+    const board = await run(request)
+    const rated = await run({ ...request, includeRating: true })
+    assert.equal(rated.board, board)
+    assert.deepEqual(rated.rating, await run({ type: 'rate', values: board, techniqueOrder: rated.rating.techniqueOrder }))
+  }
+  const request = { ...constrained, includeRating: true } as const
+  const expected = await run(request)
+  await run({ type: 'generation-start', job: 9, request })
+  const step = await run({ type: 'generation-advance', job: 9 })
+  assert.deepEqual(step, { status: 'matched', attempts: 1, puzzle: expected })
 })
