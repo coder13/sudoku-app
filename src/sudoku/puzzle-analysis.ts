@@ -46,6 +46,26 @@ export const ANALYSIS_TECHNIQUES = ANALYSIS_GROUPS.flatMap(({ techniques }) => [
 
 export type AnalysisGroup = { title: string; techniques: string[] }
 
+export type AnalysisCount = { count: number } | { error: string }
+
+/** Hide only confirmed zeroes. Pending scans and errors remain visible. */
+export function filterAnalysisGroups(
+  groups: readonly AnalysisGroup[],
+  results: Readonly<Record<string, AnalysisCount>>,
+  hideZero: boolean,
+  solved = false,
+): AnalysisGroup[] {
+  if (!hideZero) return groups.map(({ title, techniques }) => ({ title, techniques: [...techniques] }))
+  return groups.flatMap(({ title, techniques }) => {
+    const visible = techniques.filter((technique) => {
+      if (solved) return false
+      const result = results[technique]
+      return result === undefined || !('count' in result) || result.count > 0
+    })
+    return visible.length ? [{ title, techniques: visible }] : []
+  })
+}
+
 /** Use the engine catalog, not the display list, as the source of truth.
  * Any future detector without a hand-picked family is still included.
  */
