@@ -255,7 +255,8 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string) {
     deleteSketch() {
       const index = sketches.findIndex(({ id }) => id === active.id)
       const remaining = sketches.filter(({ id }) => id !== active.id)
-      const next = remaining.length ? remaining : [newSketch(nextId.current++)]
+      const next = remaining.length ? remaining : [newSketch(1)]
+      if (!remaining.length) nextId.current = 2
       setSketches(next)
       setActiveId(next[Math.min(index, next.length - 1)].id)
       endPath()

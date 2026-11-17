@@ -214,8 +214,11 @@ export function Board({
                     const pending = selectedCandidate?.cell === index && selectedCandidate.digit === digit
                     const linkTarget = isLinkTarget?.(candidate)
                     const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],
+                      onCandidate && candidateHighlightStyle && digit === focusDigit && 'highlighted',
                       linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
-                    return <button type="button" key={digit} className={`candidate-button ${onPaintCandidate ? 'paint-candidate' : 'chain-candidate'}`} style={style}
+                    const classes = ['candidate-button', onPaintCandidate ? 'paint-candidate' : 'chain-candidate', onCandidate && highlightClass]
+                      .filter(Boolean).join(' ')
+                    return <button type="button" key={digit} className={classes} style={style}
                       aria-label={candidateLabel} data-link-target={linkTarget || undefined}
                       aria-pressed={onCandidate ? pending : undefined} data-mark={annotation && (annotation.mark ?? 'ring')}
                       tabIndex={tabCandidate?.cell === index && tabCandidate.digit === digit && tabCandidate.slotted === slotted ? 0 : -1}

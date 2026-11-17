@@ -37,6 +37,7 @@ type Props = {
   actionsButtonRef?: Ref<HTMLButtonElement>
   actionsOpen?: boolean
   compact?: boolean
+  chainDrawing?: boolean
   canUndo: boolean
   canRedo: boolean
   disabled: boolean
@@ -54,7 +55,8 @@ export function Controls(props: Props) {
   const [mobile, setMobile] = useState(false)
   const [panelBounds, setPanelBounds] = useState({ min: 250, max: 420 })
   const drag = useRef<{ y: number; height: number } | null>(null)
-  const colors = props.mode === 'color'
+  const editsDisabled = props.disabled || props.chainDrawing
+  const colors = !props.chainDrawing && props.mode === 'color'
   const candidateColors = colors && props.colorTarget === 'candidate'
   const choices = colors ? COLORS.map((_, i) => i + 1) : DIGITS
   const counts = Array(10).fill(0) as number[]
@@ -133,14 +135,14 @@ export function Controls(props: Props) {
 
       <div className="controls-content">
           <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
-            <button className="icon-button history-button" onClick={props.undo} disabled={props.disabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
-            <button className="icon-button history-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
-            {props.onCheck && <button className="icon-button puzzle-check-button" onClick={props.onCheck} disabled={props.disabled}
+            <button className="icon-button history-button" onClick={props.undo} disabled={editsDisabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
+            <button className="icon-button history-button" onClick={props.redo} disabled={editsDisabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
+            {props.onCheck && <button className="icon-button puzzle-check-button" onClick={props.onCheck} disabled={editsDisabled}
               aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></button>}
             {props.onActions && (
               <div className="controls-actions-wrap">
                 <button type="button" ref={props.actionsButtonRef} className="icon-button actions-key"
-                  aria-label="Actions" title={`Actions (${shortcutLabel(shortcuts.actions)})`} disabled={props.disabled} aria-expanded={props.actionsOpen}
+                  aria-label="Actions" title={`Actions (${shortcutLabel(shortcuts.actions)})`} disabled={editsDisabled} aria-expanded={props.actionsOpen}
                   aria-keyshortcuts={shortcutLabel(shortcuts.actions)}
                   aria-controls={props.actionsOpen ? (props.compact ? 'mobile-actions-menu' : 'input-actions-menu') : undefined}
                   aria-haspopup={props.compact ? 'dialog' : undefined} onClick={props.onActions}>
@@ -154,20 +156,21 @@ export function Controls(props: Props) {
           <div className="keypad-stack">
             {!props.draft && props.pencil && props.advancedModes.candidateLayout === 'center-corner' && (
               <div className="input-switch" role="group" aria-label="Candidate position">
-                <button aria-pressed={props.candidateKind === 'center'} disabled={props.disabled} onClick={() => props.setCandidateKind('center')}>Center</button>
-                <button aria-pressed={props.candidateKind === 'corner'} disabled={props.disabled} onClick={() => props.setCandidateKind('corner')}>Corner</button>
+                <button aria-pressed={props.candidateKind === 'center'} disabled={editsDisabled} onClick={() => props.setCandidateKind('center')}>Center</button>
+                <button aria-pressed={props.candidateKind === 'corner'} disabled={editsDisabled} onClick={() => props.setCandidateKind('corner')}>Corner</button>
               </div>
             )}
             {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
             <div className={`keypad ${colors ? 'palette' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
                 const armed = props.selectedDigit === digit
-                const digitLabel = `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
+                const digitLabel = props.chainDrawing ? `${armed ? 'Clear highlight for' : 'Highlight'} ${digit}`
+                  : `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
                 return (
                   <button type="button" key={digit}
                     className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && !colors && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
                     aria-label={colors ? COLORS[digit - 1] : digitLabel}
-                    aria-keyshortcuts={colors ? `${digit}` : `Shift+${digit} F${digit}`}
+                    aria-keyshortcuts={colors ? `${digit}` : `${props.chainDrawing ? `${digit} ` : ''}Shift+${digit} F${digit}`}
                     aria-pressed={armed} disabled={props.disabled}
                     onClick={() => props.input(digit)}>
                     {colors ? <span className="swatch" /> : <span>{digit}</span>}
@@ -183,30 +186,33 @@ export function Controls(props: Props) {
           <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
               <button className="icon-button pencil-button" title={`Pencil mode (${shortcutLabel(shortcuts.pencilMode)}) · Drag with a mouse and a chosen digit to add or remove candidates · Cmd+1–9 or Ctrl+1–9 toggles candidates in selected cells`} aria-label="Pencil mode"
-                aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.pencilMode)} onClick={props.togglePencil} disabled={props.disabled}>
+                aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.pencilMode)} onClick={props.togglePencil} disabled={editsDisabled}>
                 <Pencil size={18} />
               </button>
             )}
             {!props.draft && (
-              <button className="icon-button highlight-mode-button" title={`Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
-                aria-label="Highlight mode" aria-pressed={props.highlightMode} aria-keyshortcuts={shortcutLabel(shortcuts.highlightMode)}
-                onClick={props.toggleHighlightMode} disabled={props.disabled}>
+              <button className="icon-button highlight-mode-button"
+                title={props.chainDrawing ? `Clear digit highlight (${shortcutLabel(shortcuts.highlightMode)})` : `Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
+                aria-label={props.chainDrawing ? 'Clear digit highlight' : 'Highlight mode'}
+                aria-pressed={props.chainDrawing ? undefined : props.highlightMode} aria-keyshortcuts={shortcutLabel(shortcuts.highlightMode)}
+                onClick={props.chainDrawing ? () => props.input(0) : props.toggleHighlightMode}
+                disabled={props.disabled || (props.chainDrawing && props.selectedDigit === null)}>
                 <Highlighter size={18} />
               </button>
             )}
             {!props.draft && props.advancedModes.colorsEnabled && (
               <button className="icon-button color-mode-button" title={`Color mode (${shortcutLabel(shortcuts.colorMode)})`} aria-label="Color mode"
-                aria-pressed={props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)} onClick={props.toggleColorMode} disabled={props.disabled}>
+                aria-pressed={props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)} onClick={props.toggleColorMode} disabled={editsDisabled}>
                 <Palette size={18} />
               </button>
             )}
             {!props.draft && (props.compact || mobile || props.advancedModes.multiSelectButton) && (
-              <button className="icon-button multi-select-button" onClick={props.toggleMulti} disabled={props.disabled}
+              <button className="icon-button multi-select-button" onClick={props.toggleMulti} disabled={editsDisabled}
                 aria-label="Multi-select" title="Multi-select" aria-pressed={props.multi}>
                 <Layers2 size={18} />
               </button>
             )}
-            <button className="icon-button erase-mode-button" onClick={props.toggleEraseMode} disabled={props.disabled}
+            <button className="icon-button erase-mode-button" onClick={props.toggleEraseMode} disabled={editsDisabled}
               aria-label="Erase mode" title={`Erase mode (${shortcutLabel(shortcuts.eraseMode)})`}
               aria-keyshortcuts={shortcutLabel(shortcuts.eraseMode)} aria-pressed={props.eraseMode}><Delete size={18} /></button>
           </div>

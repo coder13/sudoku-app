@@ -1047,9 +1047,10 @@ svg { flex-shrink: 0; }
   background: color-mix(in srgb, var(--chain-preview) 15%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chain-preview) 75%, transparent);
 }
+.chain-candidate:is(.candidate-match-spotlight, .candidate-match-text:where([data-mark])) { background: var(--matching-bg); }
 .chain-candidate:hover, .chain-candidate[aria-pressed="true"] { background: var(--board-selected-bg); }
 .candidate-button:focus-visible { outline-offset: -1px; }
-.candidate-match:not(.candidate-color) { color: var(--entry-ink) !important; }
+.candidate-match:not(.candidate-color, .chain-candidate[data-mark]) { color: var(--entry-ink) !important; }
 .candidate-match-spotlight {
   border-radius: 50%;
   background: var(--matching-bg);

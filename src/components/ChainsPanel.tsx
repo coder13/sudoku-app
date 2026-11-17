@@ -1,6 +1,7 @@
 import { Eraser, Link2, Plus, Trash2, Undo2 } from 'lucide-react'
 import type { Deduction, DeductionAction } from '../sudoku/engine'
 import { chainCandidate } from '../sudoku/chains'
+import { DIGITS } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
 import { cellName, deductionResults } from '../sudoku/lesson-diagram'
 import type { BoardLink } from './BoardAnnotations'
@@ -10,6 +11,7 @@ type ChainInspection = { deduction: Deduction; links: readonly BoardLink[]; expl
 type Props = {
   sketch: ReturnType<typeof useChainSketch>
   onApply: (actions: readonly DeductionAction[]) => void
+  digitHighlight?: { digit: number | null; onChange: (digit: number | null) => void }
   unavailable?: string
   inspection?: ChainInspection
 }
@@ -27,7 +29,7 @@ function LinkLegend() {
   </div>
 }
 
-export function ChainsPanel({ sketch, onApply, unavailable, inspection }: Props) {
+export function ChainsPanel({ sketch, onApply, digitHighlight, unavailable, inspection }: Props) {
   if (inspection) {
     const { deduction, links, explanation } = inspection
     return <section className="chains-panel" aria-label="Chains">
@@ -52,8 +54,8 @@ export function ChainsPanel({ sketch, onApply, unavailable, inspection }: Props)
         <label>
           <span>Chain</span>
           <select value={active.id} onChange={(event) => sketch.switchSketch(Number(event.target.value))}>
-            {sketch.sketches.map(({ id, type, color }) => <option key={id} value={id}>
-              {type === 'medusa' ? 'Medusa' : 'Chain'} {id} ({color})
+            {sketch.sketches.map(({ id, type, color }, index) => <option key={id} value={id}>
+              {type === 'medusa' ? 'Medusa' : 'Chain'} {index + 1} ({color})
             </option>)}
           </select>
         </label>
@@ -90,6 +92,13 @@ export function ChainsPanel({ sketch, onApply, unavailable, inspection }: Props)
               {CHAIN_COLORS.map((color) => <option key={color}>{color}</option>)}
             </select>
           </span>
+        </label>}
+        {digitHighlight && <label>
+          <span>Highlight digit</span>
+          <select value={digitHighlight.digit ?? ''} onChange={(event) => digitHighlight.onChange(Number(event.target.value) || null)}>
+            <option value="">None</option>
+            {DIGITS.map((digit) => <option key={digit}>{digit}</option>)}
+          </select>
         </label>}
       </div>
       <div className="chain-toolbar">

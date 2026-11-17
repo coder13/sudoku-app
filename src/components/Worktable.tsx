@@ -221,6 +221,7 @@ export function Worktable({
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
+  const [chainHighlightDigit, setChainHighlightDigit] = useState<number | null>(null)
   const [selectedColor, setSelectedColor] = usePlayPreference('selectedColor')
   const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
   const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
@@ -644,9 +645,10 @@ export function Worktable({
     return () => { current = false }
   }, [draft, solved, values, variant, variantEliminations])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!sketch.drawing) return
     setColorBrush(null)
+    setChainHighlightDigit(selectedDigit)
     boardRef.current?.querySelector<HTMLElement>('.chain-candidate[tabindex="0"]')?.focus({ preventScroll: true })
   }, [sketch.drawing])
 
@@ -817,6 +819,10 @@ export function Worktable({
         hintEliminations(valuesOf(origin), completeCandidateMasks(origin), origin.position.eliminations))
       return next
     })
+  }
+
+  function toggleChainHighlight(digit: number) {
+    setChainHighlightDigit((current) => digit === 0 || current === digit ? null : digit)
   }
 
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected) {
@@ -1071,6 +1077,7 @@ export function Worktable({
       }
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
+      const highlightedDigit = highlightedDigitShortcut(event) ?? functionKeyDigit(event.key)
       if (sketch.drawing) {
         if (key === 'escape') {
           event.preventDefault()
@@ -1078,14 +1085,21 @@ export function Worktable({
             sketch.stop()
             requestAnimationFrame(() => boardRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus({ preventScroll: true }))
           } else sketch.endPath()
-        }
-        if (shortcut && key === 'z' && !event.shiftKey) {
+        } else if (shortcut && key === 'z' && !event.shiftKey) {
           event.preventDefault()
           if (sketch.canUndo) sketch.undo()
+        } else if (shortcutMatches(event, shortcuts, 'highlightMode')) {
+          event.preventDefault()
+          setChainHighlightDigit(null)
+        } else if (!shortcut && highlightedDigit) {
+          event.preventDefault()
+          setChainHighlightDigit(highlightedDigit)
+        } else if (!shortcut && (/^[0-9]$/.test(key) || key === 'delete' || key === 'backspace')) {
+          event.preventDefault()
+          if (!event.repeat) toggleChainHighlight(Number(key) || 0)
         }
         return
       }
-      const highlightedDigit = highlightedDigitShortcut(event) ?? functionKeyDigit(event.key)
       if (key === 'escape' && (brush !== null || paintingCandidates)) {
         const cell = target instanceof HTMLElement ? target.closest<HTMLElement>('.paint-candidate')?.closest<HTMLElement>('[data-cell]') : null
         if (cell) {
@@ -1522,7 +1536,8 @@ export function Worktable({
     : currentNotes?.failed ? 'The candidates did not load.'
     : currentNotes?.masks === null ? 'Resolve the grid conflicts to draw links.'
     : 'Loading candidates…'
-  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} unavailable={chainUnavailable} inspection={chainInspection} />
+  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} unavailable={chainUnavailable} inspection={chainInspection}
+    digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: setChainHighlightDigit } : undefined} />
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={!rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !changePuzzleOpen && !cancelDraftOpen && !variantRulesOpen}
@@ -1670,6 +1685,7 @@ export function Worktable({
   : sketch.drawing && chainMasks ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
+      highlightedDigit={chainHighlightDigit} highlighting={highlighting}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
@@ -1813,8 +1829,8 @@ export function Worktable({
           eraseMode={eraseMode} toggleEraseMode={() => {
             setColorBrush(null); setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
           }}
-          selectedDigit={colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0}
-          values={values} input={input}
+          selectedDigit={sketch.drawing ? chainHighlightDigit : colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0}
+          values={values} input={sketch.drawing ? toggleChainHighlight : input} chainDrawing={sketch.drawing}
           undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
           onCheck={presentationDraft || previewing ? undefined : () => { void runCheck() }}
           compact={mobile} actionsButtonRef={actionsMenuButtonRef} actionsOpen={actionsOpen}
@@ -1823,7 +1839,7 @@ export function Worktable({
             setPuzzleMenuOpen(false)
             setActionsOpen((open) => !open)
           } : undefined}
-          disabled={disabled || sketch.drawing || (solved && !showSolvedGrid)} draft={presentationDraft} inputSize={inputSize} panelHeight={panelHeight}
+          disabled={disabled || (solved && !showSolvedGrid)} draft={presentationDraft} inputSize={inputSize} panelHeight={panelHeight}
           setPanelHeight={setPanelHeight} beginResize={beginResize} multi={multi} toggleMulti={toggleMulti} />
       </div>
   )
