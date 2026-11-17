@@ -453,6 +453,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 workspaceMode={workspaceMode}
                 showLeftPanel={advancedPanels.left} showRightPanel={advancedPanels.right} showBottomPanel={advancedPanels.bottom}
                 onOpenHintPanel={() => setPanelVisibility('bottom', true)}
+                onOpenRightPanel={() => setPanelVisibility('right', true)}
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
                 onNewPuzzle={openNewPuzzle} onCreatePuzzle={createPuzzle} onEditPuzzle={editPuzzle}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
