@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { gzipSync } from 'node:zlib'
 import {
-  COLLECTIONS, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus, findCollectionGame, getGameCollection,
-  nextCollectionPuzzle, type CollectionPuzzle,
+  COLLECTIONS as CATALOG, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus,
+  findCollectionGame, getGameCollection,
+  nextCollectionPuzzle, type CollectionPuzzleInfo,
 } from '../src/sudoku/collections.ts'
 import { isCollectionReference } from '../src/sudoku/collection-reference.ts'
 import { EMPTY, enter, makeGame, restartGame } from '../src/sudoku/game.ts'
 import { openCollectionPuzzle, openNextCollectionPuzzle } from '../src/sudoku/collection-play.ts'
 import { roomStore } from '../src/sudoku/storage.ts'
+import { collectionDownloads } from '../src/sudoku/collection-downloads.ts'
+import { collectionGridHash } from '../src/sudoku/collection-integrity.ts'
+import { fullCollections as COLLECTIONS, puzzleResponse } from './collection-fixtures.ts'
 
 const collection = COLLECTIONS[0]
 const puzzle = collection.puzzles[0]
@@ -74,11 +79,37 @@ test('difficulty groups cover each catalog without mixing levels', () => {
   }
 })
 
+test('the client catalog contains metadata and zero bundled puzzle grids', () => {
+  assert.ok(CATALOG.every(collection => collection.puzzles.every(puzzle => !('givens' in puzzle))))
+  for (const full of COLLECTIONS) {
+    for (const puzzle of full.puzzles) {
+      assert.equal(puzzle.givensHash, collectionGridHash(puzzle.givens))
+      assert.equal(puzzle.bytes, Buffer.byteLength(puzzle.givens))
+      assert.ok(!JSON.stringify(CATALOG).includes(puzzle.givens))
+    }
+  }
+  assert.equal(nextCollectionPuzzle(collection, [], 'easy', undefined, new Set()), undefined)
+})
+
+test('offline difficulty labels reflect the available puzzles', () => {
+  assert.deepEqual(collectionDifficulties(collection, new Set()), [])
+  const available = collection.puzzles.filter(puzzle => puzzle.difficulty === 'medium')
+  assert.ok(available.length > 0)
+  assert.deepEqual(collectionDifficulties(collection, new Set(available.map(puzzle => puzzle.id))), ['medium'])
+})
+
+test('the metadata catalog stays within 12 KiB compressed and 64 KiB uncompressed', () => {
+  const data = Buffer.from(JSON.stringify(CATALOG))
+  assert.ok(data.byteLength <= 64 * 1024, `Catalog is ${data.byteLength} bytes`)
+  const compressed = gzipSync(data).byteLength
+  assert.ok(compressed <= 12 * 1024, `Compressed catalog is ${compressed} bytes`)
+})
+
 test('next puzzle skips solved grids, stays in one difficulty, and stops when complete', () => {
   // Permute a published grid and its known solution to make distinct valid fixtures.
   const swap = (digits: string, digit: string) => [...digits].map(value => value === '1' ? digit : value === digit ? '1' : value).join('')
-  const puzzles: CollectionPuzzle[] = ['1', '2', '3', '4'].map((digit, index) => ({
-    ...puzzle, id: `fixture-${index}`, difficulty: index === 3 ? 'hard' : 'easy', givens: swap(puzzle.givens, digit),
+  const puzzles: (CollectionPuzzleInfo & { givens: string })[] = ['1', '2', '3', '4'].map((digit, index) => ({
+    ...puzzle, id: `fixture-${index}`, difficulty: index === 3 ? 'hard' : 'easy', givens: swap(puzzle.givens, digit), givensHash: collectionGridHash(swap(puzzle.givens, digit)),
   }))
   const set = { ...collection, puzzles }
   const finished = puzzles.map((puzzle, index) => {
@@ -94,6 +125,12 @@ test('next puzzle skips solved grids, stays in one difficulty, and stops when co
   assert.deepEqual(collectionProgress(set, finished.slice(0, 3), 'easy'), { unplayed: 0, 'in-progress': 0, solved: 3 })
   assert.equal(nextCollectionPuzzle(set, finished.slice(0, 3), 'easy', puzzles[2].id), undefined)
   assert.equal(nextCollectionPuzzle(set, finished.slice(0, 3), 'hard')?.id, puzzles[3].id)
+
+  const savedIds = new Set([puzzles[2].id])
+  assert.deepEqual(collectionPuzzles(set, 'easy'), puzzles.slice(0, 3))
+  assert.deepEqual(collectionPuzzles(set, 'easy', savedIds), [puzzles[2]])
+  assert.equal(nextCollectionPuzzle(set, [], 'easy', undefined, savedIds)?.id, puzzles[2].id)
+  assert.equal(nextCollectionPuzzle(set, [finished[2]], 'easy', puzzles[2].id, savedIds), undefined)
 })
 
 class MemoryStorage {
@@ -105,19 +142,25 @@ class MemoryStorage {
 }
 
 test('save, open, reload, and reopen preserve one game and its progress', async () => {
+  const originalFetch = globalThis.fetch
   const local = new MemoryStorage()
   Object.defineProperties(globalThis, {
     localStorage: { value: local, configurable: true },
     sessionStorage: { value: new MemoryStorage(), configurable: true },
     window: { value: { addEventListener() {}, removeEventListener() {} }, configurable: true },
+    fetch: { value: puzzleResponse, configurable: true },
   })
   const disconnect = roomStore.connect()
+  const disconnectDownloads = collectionDownloads.connect()
   try {
-    const saved = openCollectionPuzzle(collection.id, puzzle.id, false)
+    const offline = { online: false }
+    await assert.rejects(openCollectionPuzzle(collection.id, puzzle.id, offline), /not available offline/)
+    await collectionDownloads.download(collection, [puzzle])
+    const saved = await openCollectionPuzzle(collection.id, puzzle.id, { ...offline, play: false })
     assert.equal(saved.added, true)
     assert.equal(roomStore.getSnapshot().active, null)
     assert.equal(roomStore.getSnapshot().games[0].savedForLater, true)
-    const started = openCollectionPuzzle(collection.id, puzzle.id)
+    const started = await openCollectionPuzzle(collection.id, puzzle.id, offline)
     assert.equal(started.id, saved.id)
     assert.equal(started.added, false)
     assert.equal(roomStore.getSnapshot().games.length, 1)
@@ -126,14 +169,14 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     const before = roomStore.getSnapshot().games[0]
     roomStore.connect()()
     assert.deepEqual(roomStore.getSnapshot().games[0], JSON.parse(JSON.stringify(before)))
-    openCollectionPuzzle(collection.id, puzzle.id)
+    await openCollectionPuzzle(collection.id, puzzle.id, offline)
     const after = roomStore.getSnapshot().games[0]
     assert.deepEqual(after.position, before.position)
     assert.deepEqual(after.past, before.past)
     assert.equal(after.elapsed, 93)
     assert.equal(after.source, 'collection')
     assert.deepEqual(after.collection, reference)
-    assert.throws(() => openCollectionPuzzle('missing', puzzle.id))
+    await assert.rejects(openCollectionPuzzle('missing', puzzle.id, offline))
     assert.equal(roomStore.getSnapshot().games.length, 1)
 
     // A malformed optional reference must not discard an otherwise valid game.
@@ -145,7 +188,7 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     roomStore.remove(after.id)
     const imported = { ...makeGame('older-import', 'My custom title', puzzle.givens, 'imported'), started: true, elapsed: 21 }
     roomStore.add(imported)
-    assert.equal(openCollectionPuzzle(collection.id, puzzle.id).id, imported.id)
+    assert.equal((await openCollectionPuzzle(collection.id, puzzle.id, offline)).id, imported.id)
     assert.equal(roomStore.getSnapshot().games.length, 1)
     assert.equal(roomStore.getSnapshot().games[0].title, imported.title)
     assert.equal(roomStore.getSnapshot().games[0].elapsed, 21)
@@ -156,7 +199,7 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     roomStore.add(savedNext)
     roomStore.update(imported.id, game => ({ ...game, difficulty: 'extreme', position: { ...game.position, entries: solution } }))
     // Use the catalog difficulty even if the player's rating labels differ.
-    assert.equal(openNextCollectionPuzzle(imported.id)?.id, savedNext.id)
+    assert.equal((await openNextCollectionPuzzle(imported.id, offline))?.id, savedNext.id)
     const resumed = roomStore.getSnapshot().games.find(game => game.id === savedNext.id)!
     assert.equal(roomStore.getSnapshot().active, savedNext.id)
     assert.deepEqual(resumed.position, savedNext.position)
@@ -164,11 +207,23 @@ test('save, open, reload, and reopen preserve one game and its progress', async 
     assert.equal(resumed.elapsed, 42)
     assert.equal(resumed.savedForLater, undefined)
     assert.deepEqual(resumed.collection, { collectionId: collection.id, puzzleId: next.id })
-    openNextCollectionPuzzle(imported.id)
+    await openNextCollectionPuzzle(imported.id, offline)
     assert.equal(roomStore.getSnapshot().games.length, 2)
-    assert.throws(() => openNextCollectionPuzzle('missing'))
+    await assert.rejects(openNextCollectionPuzzle('missing', offline))
+
+    roomStore.remove(savedNext.id)
+    assert.equal(await openNextCollectionPuzzle(imported.id, offline), undefined)
+    const online = await openNextCollectionPuzzle(imported.id, { online: true })
+    assert.equal(roomStore.getSnapshot().active, online?.id)
+    const fetched = roomStore.getSnapshot().games.find(game => game.id === online?.id)
+    assert.equal(fetched?.givens, next.givens)
+    assert.equal(fetched?.collection?.puzzleId, next.id)
+    assert.deepEqual(Object.keys(collectionDownloads.getSnapshot()[collection.id]), [puzzle.id])
+    assert.equal((await openNextCollectionPuzzle(imported.id, offline))?.id, fetched?.id)
   } finally {
     disconnect()
+    disconnectDownloads()
+    Object.defineProperty(globalThis, 'fetch', { value: originalFetch, configurable: true })
     for (const key of ['window', 'localStorage', 'sessionStorage']) Reflect.deleteProperty(globalThis, key)
   }
 })

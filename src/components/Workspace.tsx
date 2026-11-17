@@ -5,6 +5,7 @@ import {
   Monitor, Moon, SlidersHorizontal, Sun,
 } from 'lucide-react'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
+import { collectionDownloads } from '../sudoku/collection-downloads'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import {
@@ -145,6 +146,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const disconnect = roomStore.connect()
+    const disconnectDownloads = collectionDownloads.connect()
     const preferences = readPreferences()
     setAdvancedModesState(preferences.advancedModes)
     setAppearanceState(preferences.appearance)
@@ -159,7 +161,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
     setWorkspaceReady(true)
-    return disconnect
+    return () => { disconnect(); disconnectDownloads() }
   }, [])
   useEffect(() => {
     if (!mobile || panel !== 'new') return

@@ -284,7 +284,7 @@ export function PuzzlesPage({ games, active, difficulty, setDifficulty, newPuzzl
         search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
           : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
         className="icon-button puzzles-back" aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
-          : collectionDifficulty ? 'Change collection difficulty' : 'Back to collections'}><ChevronLeft size={21} /></Link>
+          : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
         : backToVariant ? <Link to="/puzzles/new" search={{ step: 'variant' }} replace
         className="icon-button puzzles-back" aria-label="Back to variants"><ChevronLeft size={21} /></Link>
         : backToStart ? <Link to="/puzzles/new" search={{}} replace
