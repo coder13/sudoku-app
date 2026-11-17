@@ -37,6 +37,30 @@ test('zero default downloads, exact chosen batches, no repeats, and offline relo
   close()
 })
 
+test('downloading the entire collection fills every difficulty without fetching saved puzzles again', async () => {
+  const storage = new MemoryStorage()
+  const requests = new Set<string>()
+  const store = createCollectionDownloadStore(() => storage, async url => {
+    const path = String(url)
+    assert.ok(!requests.has(path), `Fetched twice: ${path}`)
+    requests.add(path)
+    return puzzleResponse(url)
+  })
+  const prepared = collection.puzzles.slice(0, 2)
+  await store.download(collection, prepared)
+  assert.equal(await store.download(collection, collection.puzzles), collection.puzzles.length - prepared.length)
+  assert.equal(requests.size, collection.puzzles.length)
+
+  const offlineStore = createCollectionDownloadStore(() => storage, async () => { throw new TypeError('Offline') })
+  const disconnect = offlineStore.connect()
+  try {
+    assert.deepEqual(offlineStore.grids(collection),
+      Object.fromEntries(collection.puzzles.map(puzzle => [puzzle.id, puzzle.givens])))
+  } finally {
+    disconnect()
+  }
+})
+
 test('an interrupted or invalid batch saves nothing and can be retried', async () => {
   const storage = new MemoryStorage()
   let bad = true
