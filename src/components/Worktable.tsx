@@ -289,7 +289,6 @@ export function Worktable({
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
   const puzzleMenuPopupRef = useRef<HTMLDivElement>(null)
-  const chainsButtonRef = useRef<HTMLButtonElement>(null)
   const insightTabsRef = useRef<HTMLDivElement>(null)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
@@ -1543,8 +1542,14 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     setHintRevealed(false)
-    setStandardChainsOpen(true)
-    setDesktopInsightTab('chains')
+    if (advancedWorkspace) {
+      if (previewing) closeSolutionPath()
+      else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+      onOpenRightPanel()
+    } else {
+      setStandardChainsOpen(true)
+      setDesktopInsightTab('chains')
+    }
     setFocusChainsRequest((request) => request + 1)
   }
 
@@ -1558,8 +1563,7 @@ export function Worktable({
     if (next) {
       setDesktopInsightTab(next.id)
       insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`)?.focus({ preventScroll: true })
-    } else if (activeDesktopTab.id === 'chains') chainsButtonRef.current?.focus({ preventScroll: true })
-    else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+    } else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
   }
   function showAnalysis() {
     setPuzzleMenuOpen(false)
@@ -1578,6 +1582,9 @@ export function Worktable({
     <button onClick={showAnalysis}>
       <ListFilter size={17} /> Available techniques
     </button>
+  )
+  const chainsAction = desktop && !draft && !solved && !placeholder && (
+    <button onClick={showChains}><Link2 size={17} /> Chains</button>
   )
   const commonSolvingMenuItems = <>
     <button onClick={() => { void generateCandidates() }} disabled={busy || solved}
@@ -1607,6 +1614,7 @@ export function Worktable({
       </button>
       {analysisAction}
     </>}
+    {chainsAction}
     {mobile && analysisAction}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
@@ -1640,11 +1648,13 @@ export function Worktable({
       popover={mobile ? 'manual' : undefined} data-presence={puzzleMenuExiting ? 'exit' : 'open'}
       aria-hidden={puzzleMenuExiting || undefined} inert={puzzleMenuExiting || undefined}
       onClickCapture={mobile ? () => puzzleMenuButtonRef.current?.focus({ preventScroll: true }) : undefined}>
-      {previewing ? <button onClick={closeSolutionPath} disabled={busy}>
-        <ListOrdered size={17} /> Return to puzzle
-      </button> : <>
-        {puzzleOptionItems}
-      </>}
+      {previewing ? <>
+        <button onClick={closeSolutionPath} disabled={busy}>
+          <ListOrdered size={17} /> Return to puzzle
+        </button>
+        {!advancedWorkspace && analysisAction}
+        {chainsAction}
+      </> : puzzleOptionItems}
     </div>
   )
   const canSelectCell = !game.paused && !mobileResults && !rearranging
@@ -1747,13 +1757,6 @@ export function Worktable({
                   <Play className="pause-toggle-play" size={18} />
                 </span>
               </button>}
-              {desktop && !advancedWorkspace && !draft && !solved && !placeholder && (
-                <button type="button" ref={chainsButtonRef} className="button soft"
-                  title="Mark chains" aria-pressed={activeDesktopTab?.id === 'chains'}
-                  aria-controls={openChainsTab ? 'desktop-insight-content' : undefined} onClick={showChains}>
-                  <Link2 size={16} aria-hidden="true" /> Chains
-                </button>
-              )}
               <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
                 <button ref={puzzleMenuButtonRef} className="icon-button borderless puzzle-menu-trigger" aria-label="Open puzzle options"
                   title="Puzzle options" disabled={Boolean(placeholder)} aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
@@ -1893,7 +1896,7 @@ export function Worktable({
           details={detailsPanel} browser={browserPanel} showLeft={showLeftPanel} showRight={showRightPanel} showBottom={showBottomPanel}
           focusHintRequest={focusHintRequest} focusAnalysisRequest={focusAnalysisRequest}
           focusSolutionRequest={focusSolutionRequest}
-          focusChainsRequest={chainInspection ? focusChainsRequest : 0}
+          focusChainsRequest={focusChainsRequest}
           onChainsVisibleChange={setDesktopChainsVisible}
           onSolutionVisibleChange={setDesktopSolutionVisible} />
         : desktop
