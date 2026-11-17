@@ -3,18 +3,18 @@ import type { Candidate, DeductionMatch } from './engine'
 // Keep the quick scan bounded to common, local patterns. Deep chain and forcing
 // searches can be expensive and should not block ordinary play.
 export const ANALYSIS_GROUPS = [
-  { title: 'Singles', techniques: ['full-house', 'naked-single', 'hidden-single'] },
-  { title: 'Locked candidates', techniques: ['pointing', 'claiming'] },
-  { title: 'Subsets', techniques: [
+  { title: 'Singles', kind: 'placements', techniques: ['full-house', 'naked-single', 'hidden-single'] },
+  { title: 'Locked candidates', kind: 'removals', techniques: ['pointing', 'claiming'] },
+  { title: 'Subsets', kind: 'removals', techniques: [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',
     'hidden-triple', 'naked-quadruple', 'hidden-quadruple',
   ] },
-  { title: 'Wings', techniques: ['w-wing', 'xy-wing', 'xyz-wing', 'wxyz-wing'] },
-  { title: 'Fish', techniques: [
+  { title: 'Wings', kind: 'removals', techniques: ['w-wing', 'xy-wing', 'xyz-wing', 'wxyz-wing'] },
+  { title: 'Fish', kind: 'removals', techniques: [
     'x-wing', 'swordfish', 'jellyfish', 'finned-x-wing', 'sashimi-x-wing',
     'finned-swordfish', 'sashimi-swordfish',
   ] },
-  { title: 'Single-digit patterns', techniques: [
+  { title: 'Single-digit patterns', kind: 'removals', techniques: [
     'skyscraper', 'two-string-kite', 'empty-rectangle', 'simple-coloring',
   ] },
 ] as const
