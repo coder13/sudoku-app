@@ -29,8 +29,9 @@ pub use hints::{
     ForcingInference, ForcingLiteral, ForcingScope, GroupedDoubleExocetProof,
     GroupedExocetComponent, Hint, HintAction, HintChoices, HintError, HintEvidence, HintStages,
     House, InferenceLink, InferenceNode, KrakenLink, KrakenLinkReason, LinkSource, LinkStrength,
-    ProofPattern, RectangleSupport, SectorLink, SectorSubset, SkLoopProof, UniquenessSupport,
-    deductions, deductions_at, hint_choices, hints_at, next_deduction, next_deduction_at,
+    PatternOverlayDigit, PatternOverlayGeometry, PatternOverlayProof, ProofPattern,
+    RectangleSupport, SectorLink, SectorSubset, SkLoopProof, UniquenessSupport, deductions,
+    deductions_at, hint_choices, hints_at, next_deduction, next_deduction_at,
     next_enabled_deduction, ranked_hints, technique_deductions, technique_deductions_at,
 };
 pub use logical::{

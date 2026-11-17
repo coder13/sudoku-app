@@ -3,9 +3,11 @@ use super::{
     PEERS, PatternSearch, Technique, bit_indices, cell_bit, cells, coordinates, house_cells,
 };
 use crate::{
-    RectangleSupport,
+    LinkSource, RectangleSupport,
     hints::{digit_bit, digits, placement, visit_unions},
 };
+
+use super::guardians::{GuardianGroup, visit_partitions};
 
 type Visitor<'a> = &'a mut dyn FnMut(Deduction) -> ControlFlow<Deduction>;
 
@@ -51,6 +53,39 @@ pub(super) fn rectangles(masks: &[u16; CELLS], bivalue: u128) -> Vec<Rectangle> 
             })
         })
         .collect()
+}
+
+pub(super) fn visit_guardian_links(
+    search: &PatternSearch<'_>,
+    mut visit: impl FnMut([GuardianGroup; 2], LinkSource),
+) {
+    let mut guardians = Vec::new();
+    for &corners in &RECTANGLES {
+        let masks = corners.map(|cell| search.masks[cell]);
+        let common = masks
+            .into_iter()
+            .fold(crate::DIGITS, |pair, mask| pair & mask);
+        let mut remaining = common;
+        for first in digits(common) {
+            remaining &= !digit_bit(first);
+            for second in digits(remaining) {
+                let pair = digit_bit(first) | digit_bit(second);
+                guardians.clear();
+                for (cell, mask) in corners.into_iter().zip(masks) {
+                    guardians.extend(digits(mask & !pair).map(|digit| Candidate { cell, digit }));
+                }
+                if guardians.len() >= 2 {
+                    let source = LinkSource::UniqueRectangle {
+                        corners: corners.map(|cell| cell as u8),
+                        digits: [first, second],
+                    };
+                    visit_partitions(&guardians, search.positions_by_digit(), |groups| {
+                        visit(groups, source);
+                    });
+                }
+            }
+        }
+    }
 }
 
 pub(super) fn visit_rectangles(
@@ -406,3 +441,48 @@ const RECTANGLES: [[usize; 4]; 486] = {
     }
     shapes
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_rectangle_link_needs_two_boxes_and_both_swap_digits_in_every_corner() {
+        for (corners, broken, expected) in [
+            ([0, 3, 9, 12], false, true),
+            ([0, 3, 9, 12], true, false),
+            ([0, 3, 27, 30], false, false),
+            ([0, 1, 9, 10], false, false),
+        ] {
+            let mut masks = [0; CELLS];
+            for cell in corners {
+                masks[cell] = digit_bit(1) | digit_bit(2);
+            }
+            masks[corners[1]] |= digit_bit(3);
+            masks[corners[3]] |= digit_bit(4);
+            if broken {
+                masks[corners[0]] &= !digit_bit(2);
+            }
+            let search = PatternSearch::new(&[0; CELLS], &masks);
+            let mut found = Vec::new();
+            visit_guardian_links(&search, |groups, source| found.push((groups, source)));
+            if expected {
+                assert_eq!(
+                    found,
+                    vec![(
+                        [
+                            GuardianGroup::SingleDigit(3, cell_bit(corners[1])),
+                            GuardianGroup::SingleDigit(4, cell_bit(corners[3]))
+                        ],
+                        LinkSource::UniqueRectangle {
+                            corners: corners.map(|cell| cell as u8),
+                            digits: [1, 2]
+                        },
+                    )]
+                );
+            } else {
+                assert!(found.is_empty());
+            }
+        }
+    }
+}

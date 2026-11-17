@@ -594,7 +594,8 @@ mod tests {
             Ok(vec![
                 Technique::FullHouse,
                 Technique::NakedSingle,
-                Technique::HiddenSingle
+                Technique::HiddenSingle,
+                Technique::PatternOverlay,
             ])
         );
         assert!(!has_exclusive_opener(&board, Technique::FullHouse));

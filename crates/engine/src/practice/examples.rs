@@ -1,4 +1,6 @@
-use super::{PracticeExample, Technique, elimination_masks, place, remove};
+use super::{
+    PracticeExample, Technique, elimination_masks, pattern_overlay, place, rectangle_chains, remove,
+};
 
 // HoDoKu worked example gaic1als01.
 pub(super) const ALS_AIC: PracticeExample = PracticeExample {
@@ -100,6 +102,15 @@ pub(super) const ALS_CELL_CONTINUOUS_NICE_LOOP: PracticeExample = PracticeExampl
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
+        Technique::UniqueRectangleAic => [rectangle_chains::AIC[1], rectangle_chains::AIC[2]],
+        Technique::UniqueRectangleDiscontinuousNiceLoop => [
+            rectangle_chains::DISCONTINUOUS[1],
+            rectangle_chains::DISCONTINUOUS[2],
+        ],
+        Technique::UniqueRectangleContinuousNiceLoop => [
+            rectangle_chains::CONTINUOUS[1],
+            rectangle_chains::CONTINUOUS[2],
+        ],
         Technique::AlsAic => {
             const {
                 [
@@ -529,6 +540,17 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                     },
                 ]
             }
+        }
+        Technique::PatternOverlay => [pattern_overlay::SINGLE[1], pattern_overlay::SINGLE[2]],
+        Technique::PairwisePatternOverlay => {
+            [pattern_overlay::PAIRWISE[1], pattern_overlay::PAIRWISE[2]]
+        }
+        Technique::TriplePatternOverlay => [pattern_overlay::TRIPLE[1], pattern_overlay::TRIPLE[2]],
+        Technique::QuadruplePatternOverlay => {
+            [pattern_overlay::QUADRUPLE[1], pattern_overlay::QUADRUPLE[2]]
+        }
+        Technique::QuintuplePatternOverlay => {
+            [pattern_overlay::QUINTUPLE[1], pattern_overlay::QUINTUPLE[2]]
         }
         Technique::KrakenFish1 => {
             const {

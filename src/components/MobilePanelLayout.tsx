@@ -1,5 +1,5 @@
 import { Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, GripVertical, X } from 'lucide-react'
+import { GripVertical, X } from 'lucide-react'
 import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
@@ -158,12 +158,6 @@ export function MobilePanelLayout(props: Props) {
     scrollFrame.current = requestAnimationFrame(scrollWhileDragging)
   }
 
-  function moveBy(id: MobilePanelId, direction: -1 | 1) {
-    const index = visible.indexOf(id)
-    const target = visible[index + direction]
-    if (target) saveMove(id, { id: target, edge: direction < 0 ? 'before' : 'after' })
-  }
-
   function exit() {
     finishDrag(false)
     latest.current.onRearrangingChange(false)
@@ -276,20 +270,9 @@ export function MobilePanelLayout(props: Props) {
           {props.rearranging && <div className="mobile-panel-editor" data-panel-editor>
             <button type="button" className="mobile-panel-drag" aria-label={`Move ${panel.title.toLowerCase()} card`}
               aria-describedby="mobile-panel-instructions" onPointerDown={(event) => startDrag(id, event)}
-              onLostPointerCapture={(event) => { if (drag.current?.pointerId === event.pointerId) finishDrag(false) }}
-              onKeyDown={(event) => {
-                if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return
-                event.preventDefault()
-                moveBy(id, event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1)
-              }}>
+              onLostPointerCapture={(event) => { if (drag.current?.pointerId === event.pointerId) finishDrag(false) }}>
               <span><GripVertical size={18} aria-hidden="true" />{panel.title}</span>
             </button>
-            <div className="mobile-panel-move-buttons">
-              <button type="button" className="icon-button" aria-label={`Move ${panel.title.toLowerCase()} card earlier`}
-                disabled={index === 0} onClick={() => moveBy(id, -1)}><ArrowUp size={20} aria-hidden="true" /></button>
-              <button type="button" className="icon-button" aria-label={`Move ${panel.title.toLowerCase()} card later`}
-                disabled={index === visible.length - 1} onClick={() => moveBy(id, 1)}><ArrowDown size={20} aria-hidden="true" /></button>
-            </div>
           </div>}
         </div>
         {index === 0 && visible.length > 1 && <div className="mobile-panel-space mobile-panel-gap" aria-hidden="true" />}

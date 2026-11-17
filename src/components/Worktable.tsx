@@ -36,7 +36,7 @@ import { ChainsPanel } from './ChainsPanel'
 import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
-import { GridModeBadge } from './GridModeBadge'
+import { ModeBadge } from './ModeBadge'
 import { HintCard } from './HintCard'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
@@ -215,8 +215,8 @@ export function Worktable({
 }) {
   useActionHistory(game)
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
-  const gridModeId = useId()
-  const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('modeBadgePosition')
+  const modeBadgeId = useId()
+  const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('cardModeBadgePosition')
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
@@ -269,7 +269,7 @@ export function Worktable({
   const [singlesCheck, setSinglesCheck] = useState<{ givens: string; variant: Game['variant']; needsMore: boolean }>()
   const boardRef = useRef<HTMLDivElement>(null)
   const restoreCellFocus = useRef<number | null>(null)
-  const puzzlePanelRef = useRef<HTMLDivElement>(null)
+  const puzzleCardRef = useRef<HTMLElement>(null)
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
   const puzzleMenuPopupRef = useRef<HTMLDivElement>(null)
@@ -298,6 +298,7 @@ export function Worktable({
   const candidateMode = advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
   const solved = isSolved(game)
   const mobileHintOpen = mobile && hintRevealed && !draft && !solved
+  const showMobileHintCard = mobileHintOpen || rearranging
   const hint = hintState?.position === hintPosition ? hintState : null
   const visibleHint = hintRevealed ? hint : null
   const hintLoading = hintRevealed && busy && !visibleHint
@@ -467,7 +468,8 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor], .desktop-insight-panel, .chains-panel') || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
+    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .chains-panel')
+      || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
 
@@ -488,16 +490,26 @@ export function Worktable({
     menu.showPopover?.()
     const position = () => {
       const anchor = button.getBoundingClientRect()
+      // The anchor is measured in viewport pixels, while fixed offsets inherit the page zoom.
+      const scale = Number(getComputedStyle(menu).getPropertyValue('--desktop-layout-scale')) || 1
+      const width = menu.offsetWidth * scale
+      const height = menu.offsetHeight * scale
       const gap = 8
-      const left = anchor.left - menu.offsetWidth - gap
-      const top = anchor.top + (anchor.height - menu.offsetHeight) / 2
-      menu.style.left = `${Math.max(gap, left)}px`
-      menu.style.top = `${Math.max(gap, Math.min(top, window.innerHeight - menu.offsetHeight - gap))}px`
+      const left = Math.max(gap, anchor.left - width - gap)
+      const top = Math.max(gap, Math.min(anchor.top + (anchor.height - height) / 2, window.innerHeight - height - gap))
+      menu.style.left = `${left / scale}px`
+      menu.style.top = `${top / scale}px`
     }
     position()
+    const workspace = menu.closest('main')
+    const inputPanel = menu.closest('.standard-input-stack')
+    const observer = new ResizeObserver(position)
+    if (workspace) observer.observe(workspace)
+    if (inputPanel) observer.observe(inputPanel)
     window.addEventListener('resize', position)
     window.addEventListener('scroll', position, true)
     return () => {
+      observer.disconnect()
       window.removeEventListener('resize', position)
       window.removeEventListener('scroll', position, true)
     }
@@ -1221,6 +1233,7 @@ export function Worktable({
 
   async function runCheck() {
     if (busy) return
+    if (previewing) closeSolutionPath()
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     setBusy(true)
@@ -1271,6 +1284,7 @@ export function Worktable({
 
   async function solveAllSingles() {
     if (busy || !offerSingles) return
+    if (previewing) closeSolutionPath()
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     setBusy(true)
@@ -1609,7 +1623,11 @@ export function Worktable({
     }
   }
 
-  const solutionAction = desktop && !draft && !variant && (
+  const solutionAction = previewing ? (
+    <button onClick={closeSolutionPath} disabled={busy}>
+      <ListOrdered size={17} /> Return to puzzle
+    </button>
+  ) : desktop && !draft && !variant && (
     <button onClick={() => { void showSolutionPath() }} disabled={busy} aria-label="Open solution panel">
       <ListOrdered size={17} /> Solution
     </button>
@@ -1684,13 +1702,7 @@ export function Worktable({
       popover={mobile ? 'manual' : undefined} data-presence={puzzleMenuExiting ? 'exit' : 'open'}
       aria-hidden={puzzleMenuExiting || undefined} inert={puzzleMenuExiting || undefined}
       onClickCapture={mobile ? () => puzzleMenuButtonRef.current?.focus({ preventScroll: true }) : undefined}>
-      {previewing ? <>
-        <button onClick={closeSolutionPath} disabled={busy}>
-          <ListOrdered size={17} /> Return to puzzle
-        </button>
-        {!advancedWorkspace && analysisAction}
-        {chainsAction}
-      </> : puzzleOptionItems}
+      {puzzleOptionItems}
     </div>
   )
   const canSelectCell = !game.paused && !mobileResults && !rearranging
@@ -1717,16 +1729,7 @@ export function Worktable({
       showAnnotatedCandidates={Boolean(visibleChainAnnotations)}
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
-      descriptionId={badgeMode ? gridModeId : undefined}
-      modeBadge={badgeMode && <GridModeBadge mode={badgeMode} descriptionId={gridModeId} gridRef={boardRef}
-        position={modeBadgePosition} onPosition={setModeBadgePosition} onCycleMode={() => {
-          setColorBrush(null)
-          setEraseMode(false)
-          setColorMode(false)
-          setPencilModifier(false)
-          setPencil(badgeMode === 'pen')
-          setHighlightMode(badgeMode === 'pencil')
-        }} />}
+      descriptionId={badgeMode ? modeBadgeId : undefined}
       label={variant ? `${VARIANTS[variant.id].name} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
@@ -1756,8 +1759,8 @@ export function Worktable({
     </div>
   )
   const puzzlePanel = (
-      <div className="puzzle-column" ref={puzzlePanelRef}>
-        <section className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
+      <div className="puzzle-column">
+        <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
           data-input-mode={gridInputMode}
           style={{ '--board-font-scale': appearance.gridTextScale } as CSSProperties}>
         {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
@@ -1833,6 +1836,15 @@ export function Worktable({
             </div>
           ) : livePuzzleStage}
         </div>
+        {badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleCardRef}
+          position={modeBadgePosition} onPosition={setModeBadgePosition} onCycleMode={() => {
+            setColorBrush(null)
+            setEraseMode(false)
+            setColorMode(false)
+            setPencilModifier(false)
+            setPencil(badgeMode === 'pen')
+            setHighlightMode(badgeMode === 'pencil')
+          }} />}
         {presentationDraft && <div className="draft-tip"><PencilLine size={16} /> Enter the givens, then save your puzzle.</div>}
         </section>
       </div>
@@ -1934,7 +1946,7 @@ export function Worktable({
           onChainsVisibleChange={setDesktopChainsVisible}
           onSolutionVisibleChange={setDesktopSolutionVisible} />
         : desktop
-          ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack">
+          ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack" id="standard-digit-input">
               {inputPanel}
               {hintPanel}
               {activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
@@ -1970,7 +1982,7 @@ export function Worktable({
                 </div>
               </section>}
             </div></>
-          : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={mobileHintOpen && !mobileResults}
+          : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
             blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisOpen ||
               dialogResult !== null || changePuzzleOpen || resetOpen || cancelDraftOpen}
             onRearrangingChange={(active) => {
@@ -1984,7 +1996,11 @@ export function Worktable({
             }}
             panels={{
               puzzle: { title: 'Puzzle', content: puzzlePanel },
-              hint: mobileHintOpen && !mobileResults ? { title: 'Hint', content: hintPanel } : undefined,
+              hint: showMobileHintCard ? { title: 'Hint', content: hintPanel || (
+                <div className="hint-dock workspace-controls mobile-hint-panel">
+                  <HintCard hint={{ title: 'Puzzle hints', text: 'Hints will appear here.' }} onClose={() => {}} />
+                </div>
+              ) } : undefined,
               input: !mobileResults ? { title: 'Keypad', content: inputPanel } : undefined,
               completion: mobileResults ? { title: 'Results', content: <div className="workspace-controls mobile-completion">{completionPanel}</div> } : undefined,
             }} />}

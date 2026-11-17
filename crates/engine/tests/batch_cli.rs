@@ -197,7 +197,9 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
         [
             Technique::ForcingNet,
             Technique::NestedForcingNet,
-            Technique::KrakenFish2
+            Technique::TriplePatternOverlay,
+            Technique::QuintuplePatternOverlay,
+            Technique::KrakenFish2,
         ]
     );
     let solution = solve(&board).unwrap();

@@ -5,6 +5,7 @@ use super::{Analysis, Board, CELLS, PositionSnapshot, Technique, coordinates, lo
 
 #[path = "patterns/mod.rs"]
 mod patterns;
+pub(crate) use patterns::OverlaySearch;
 
 #[path = "proofs.rs"]
 mod proofs;
@@ -134,6 +135,13 @@ pub enum LinkSource {
         cells: [[u8; 3]; 4],
         /// Three digits in the impossible core.
         digits: [u8; 3],
+    },
+    /// At least one extra candidate must break this Unique Rectangle.
+    UniqueRectangle {
+        /// Zero-based cell indices in row-major order.
+        corners: [u8; 4],
+        /// The two digits that could swap if no extra candidate were true.
+        digits: [u8; 2],
     },
     /// At least one of the two endpoint digits must occur in this almost locked set.
     AlmostLockedSet(AlmostLockedSetLink),
@@ -711,6 +719,47 @@ pub enum AlignedExclusionReason {
     EmptyCell(usize),
 }
 
+/// One digit's cells before and after checking compatible overlay patterns.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct PatternOverlayDigit {
+    /// Digit used by each pattern in this scope.
+    pub digit: u8,
+    /// Placed copies and live candidate cells before the overlay.
+    pub allowed: Vec<usize>,
+    /// Cells used in at least one pattern compatible with the other scopes.
+    pub supported: Vec<usize>,
+}
+
+/// The house and peer constraints used by a variant Pattern Overlay proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct PatternOverlayGeometry {
+    /// Every required house, listed as its nine zero-based cells.
+    pub houses: Vec<[usize; 9]>,
+    /// Pairs that may not contain the same digit and share no required house.
+    /// These pairs are additional to the exclusions inside the required houses.
+    pub excluded_pairs: Vec<[usize; 2]>,
+}
+
+/// The digit families used to prove one Pattern Overlay deduction.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct PatternOverlayProof {
+    /// Digit placed or removed.
+    pub digit: u8,
+    /// Participating digit families, in digit order.
+    pub scopes: Vec<PatternOverlayDigit>,
+    /// Explicit geometry for variant proofs. The classic rows, columns, and boxes
+    /// are implicit when this field is absent.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub geometry: Option<Box<PatternOverlayGeometry>>,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(
     feature = "wasm-api",
@@ -719,6 +768,8 @@ pub enum AlignedExclusionReason {
 )]
 /// Technique-specific facts that establish a deduction. The hint carries the proved actions separately.
 pub enum HintEvidence {
+    /// A digit can occupy only the cells covered by compatible placement patterns.
+    PatternOverlay(Box<PatternOverlayProof>),
     /// One cell contains a single candidate.
     Cell(usize),
     /// A house determines the placement of a digit.
@@ -1125,6 +1176,9 @@ impl HintEvidence {
             HintEvidence::EmptyRectangle { cells, .. } => cells.len() + 2,
             HintEvidence::Chain { links } => links.len() + 1,
             HintEvidence::Inference { links } => links.len() + 1,
+            HintEvidence::PatternOverlay(proof) => {
+                proof.scopes.iter().map(|scope| scope.allowed.len()).sum()
+            }
             HintEvidence::Coloring { colors, .. } => colors.iter().map(Vec::len).sum(),
             HintEvidence::UniqueRectangle { support, .. } => match support {
                 RectangleSupport::Subset { cells, .. } => 4 + cells.len(),

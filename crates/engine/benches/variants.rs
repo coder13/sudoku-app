@@ -4,7 +4,7 @@ use serde::Deserialize;
 use sudoku_app_engine::{
     Analysis, GenerationStep, Technique, VariantClueLayout, VariantGenerationOptions,
     VariantPosition, VariantPuzzle, VariantTechnique, ranked_hints, rate_puzzle,
-    start_variant_generation,
+    start_variant_generation, variant_practice_examples,
 };
 
 const SAMPLES: usize = 40;
@@ -44,7 +44,39 @@ fn sample<T>(mut run: impl FnMut() -> T) -> String {
     )
 }
 
+fn overlay_benchmark() {
+    let overlay = [
+        Technique::PatternOverlay,
+        Technique::PairwisePatternOverlay,
+        Technique::TriplePatternOverlay,
+        Technique::QuadruplePatternOverlay,
+        Technique::QuintuplePatternOverlay,
+    ]
+    .map(VariantTechnique::Classic);
+    let exercise = variant_practice_examples(overlay[0]).unwrap().remove(0);
+    let givens = VariantPosition::new(exercise.position.puzzle.clone());
+    let default = VariantTechnique::DEFAULT_ORDER;
+    let mut extended = default.to_vec();
+    extended.extend(overlay);
+    println!("Jigsaw Pattern Overlay. Rating ms, median/p95.");
+    for (name, position) in [("givens", givens), ("worked position", exercise.position)] {
+        for (profile, order) in [("default", default), ("overlay", extended.as_slice())] {
+            let trace = position.solve_logically(order).unwrap();
+            let timing = sample(|| position.rate(order).unwrap());
+            println!(
+                "{name} {profile}: {:?}, {} steps, {timing}",
+                trace.rating.status,
+                trace.steps.len()
+            );
+        }
+    }
+}
+
 fn main() {
+    if std::env::args().any(|arg| arg == "--pattern-overlay") {
+        overlay_benchmark();
+        return;
+    }
     let fixtures: Vec<Fixture> =
         serde_json::from_str(include_str!("fixtures/variants.json")).unwrap();
     println!(

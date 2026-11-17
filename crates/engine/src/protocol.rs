@@ -7,14 +7,14 @@ use std::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::generation::start_builtin_pool;
+use super::generation::{puzzle_permutation, start_builtin_pool};
 use super::hints::{checked_position, classify_actions, rank_position, rank_useful_position};
 use super::{
     Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, GeneratedPuzzle,
     GenerationConflict, GenerationCriteria, GenerationError, GenerationRating, GenerationSearch,
     GenerationStep, GenerationTarget, Hint, HintAction, HintError, HintStages, PositionSnapshot,
-    ProofPattern, RankDiscovery, RankDiscoveryScan, RankError, RankFallbackOptions, RankOutcome,
-    RankPattern, RankProof, RankScan, SCORING_VERSION, SolverProfile, Technique,
+    ProofPattern, Random, RankDiscovery, RankDiscoveryScan, RankError, RankFallbackOptions,
+    RankOutcome, RankPattern, RankProof, RankScan, SCORING_VERSION, SolverProfile, Technique,
     TechniqueTargetMode, candidates, check_practice_move, compare_paths, deductions,
     discover_rank_at, discover_rank_deductions_at, next_enabled_deduction, opening_techniques,
     parse_givens, prove_rank_at, rank_deductions_at, rank_proof_effort_at, rate_puzzle,
@@ -177,6 +177,11 @@ enum Request {
         technique: String,
         #[serde(default)]
         variant: bool,
+    },
+    GeneratePracticeExample {
+        technique: String,
+        seed: u32,
+        exclude: String,
     },
     GenerateTargeted {
         seed: u32,
@@ -509,6 +514,35 @@ fn practice_examples(technique: Technique) -> ResultValue {
         exercises.push(practice_value(&position, &proofs, expected)?);
     }
     Ok(Value::Array(exercises))
+}
+
+fn generate_practice_example(technique: Technique, seed: u32, exclude: Board) -> ResultValue {
+    let mut random = Random::from_seed(seed);
+    let mut examples = technique.practice_examples();
+    random.shuffle(&mut examples);
+    for example in examples.into_iter().cycle().take(6) {
+        let original = example.position().map_err(puzzle_error)?;
+        let (cells, digits) = puzzle_permutation(&mut random);
+        let position = PositionSnapshot {
+            givens: cells.map(|cell| digits[usize::from(original.givens[cell])]),
+            entries: cells.map(|cell| digits[usize::from(original.entries[cell])]),
+            eliminations: cells.map(|cell| {
+                (1..=9).fold(0, |mask, digit| {
+                    let bit = (original.eliminations[cell] >> (digit - 1)) & 1;
+                    mask | (bit << (digits[digit] - 1))
+                })
+            }),
+        };
+        if position.values().map_err(puzzle_error)? == exclude {
+            continue;
+        }
+        // Find the proof again so the answer and its explanation match the new grid.
+        let proofs = technique_deductions_at(&position, technique).map_err(|_| INVALID_LESSON)?;
+        if let Some(proof) = proofs.first() {
+            return practice_value(&position, &proofs, proof);
+        }
+    }
+    Err(INVALID_LESSON)
 }
 
 fn puzzle_error(analysis: Analysis) -> (&'static str, &'static str) {
@@ -1091,6 +1125,15 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             technique,
             variant: false,
         } => practice_examples(Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?),
+        Request::GeneratePracticeExample {
+            technique,
+            seed,
+            exclude,
+        } => generate_practice_example(
+            Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?,
+            seed,
+            board(&exclude)?,
+        ),
         request @ (Request::GenerateTargeted { .. }
         | Request::GenerateConstrained { .. }
         | Request::GenerateFromPool(_)

@@ -293,6 +293,77 @@ test('ALS links prove outside placements and carry their locked candidates throu
   for (const digit of [2, 8]) assert.equal(diagram.annotations.candidates?.get(61)?.get(digit)?.mark, 'ring')
 })
 
+test('Unique Rectangle chains and Nice Loops are opt-in and carry the swap premise', async () => {
+  const { run } = engineRequests()
+  const { techniques, defaultOrder } = await run({ type: 'techniques' })
+  const ids = ['unique-rectangle-aic', 'unique-rectangle-discontinuous-nice-loop', 'unique-rectangle-continuous-nice-loop']
+  for (const technique of ids) {
+    const item = techniques.find(candidate => candidate.id === technique)
+    assert.equal(item?.requiresUniqueSolution, true)
+    assert.equal(item?.cost, 360)
+    assert.ok(!defaultOrder.includes(technique))
+    const examples = await run({ type: 'practice-examples', technique })
+    assert.equal(examples.length, 3)
+    const { givens: values, entries, eliminations, suggestion, deduction } = examples[0]
+    assert.ok('inference' in deduction.evidence)
+    assert.ok(deduction.evidence.inference.links.some(link => 'unique-rectangle' in link.source))
+    const check = await run({ type: 'check-practice-move', technique, values, entries, eliminations, action: suggestion })
+    assert.ok(check && check.actions.some(action => JSON.stringify(action) === JSON.stringify(suggestion)))
+    const trace = await run({ type: 'logical-solve', values, entries, eliminations, techniqueOrder: [technique] })
+    assert.ok(trace.steps.length > 0)
+    assert.equal(trace.rating.score.points, trace.steps.length * 360)
+  }
+  const [example] = await run({ type: 'practice-examples', technique: ids[1] })
+  const moves = await run({ type: 'deductions', values: lessonValues(example), eliminations: example.eliminations, techniqueOrder: [ids[1]] })
+  const placement = moves.find(move => move.actions.some(action => 'place' in action && action.place.cell === 22 && action.place.digit === 2))
+  assert.ok(placement)
+  const proof = placement.proofs.find(({ evidence }) => 'inference' in evidence && evidence.inference.links.some(link =>
+    'unique-rectangle' in link.source && JSON.stringify(link.source['unique-rectangle']) === JSON.stringify({ corners: [28, 34, 46, 52], digits: [6, 7] })))
+  assert.ok(proof)
+  for (const cell of [28, 34, 46, 52]) {
+    for (const digit of [6, 7]) assert.ok(proof.pattern.candidates.some(candidate => candidate.cell === cell && candidate.digit === digit))
+  }
+})
+
+test('Pattern Overlay through five digits offers replayable moves and completes an expert stall', async () => {
+  const { run } = engineRequests()
+  const ids = ['pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay',
+    'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
+  const { techniques, defaultOrder } = await run({ type: 'techniques' })
+  for (const [index, technique] of ids.entries()) {
+    const metadata = techniques.find(candidate => candidate.id === technique)
+    assert.equal(metadata?.cost, 500 + 150 * index)
+    assert.ok(!defaultOrder.includes(technique))
+    const examples = await run({ type: 'practice-examples', technique })
+    assert.equal(examples.length, 3)
+    const { givens: values, entries, eliminations, suggestion, deduction } = examples[0]
+    assert.ok('pattern-overlay' in deduction.evidence)
+    const proof = deduction.evidence['pattern-overlay']
+    assert.equal(proof.scopes.length, index + 1)
+    const checked = await run({ type: 'check-practice-move', technique, values, entries, eliminations, action: suggestion })
+    assert.equal(checked?.technique, technique)
+    if (index === 1) {
+      assert.deepEqual(proof.scopes.map(scope => scope.digit), [3, 7])
+      assert.deepEqual(deduction.actions, [16, 43].map(cell => ({ eliminate: { cell, digit: 7 } })))
+      const seven = proof.scopes[1]
+      for (const cell of [16, 43]) {
+        assert.ok(seven.allowed.includes(cell))
+        assert.ok(!seven.supported.includes(cell))
+      }
+    }
+  }
+  const [example] = await run({ type: 'practice-examples', technique: ids[4] })
+  const values = example.givens
+  const techniqueOrder = [...defaultOrder]
+  techniqueOrder.splice(techniqueOrder.indexOf('forcing-chain'), 0,
+    'unique-rectangle-aic', 'unique-rectangle-discontinuous-nice-loop', 'unique-rectangle-continuous-nice-loop')
+  const stalled = await run({ type: 'rate', values, techniqueOrder })
+  assert.equal(stalled.status, 'stalled')
+  techniqueOrder.splice(techniqueOrder.indexOf('forcing-chain'), 0, ...ids)
+  const solved = await run({ type: 'rate', values, techniqueOrder })
+  assert.deepEqual(solved.status, { solved: 'extreme' })
+})
+
 test('Firework chains expose crossing-house links and replay a published removal', async () => {
   const { run } = engineRequests()
   const technique = 'firework-aic'
@@ -737,8 +808,12 @@ test('hint limits and disabled techniques apply before ranking and choosing a pr
   assert.equal(alternateProof.available, 1)
   assert.equal(alternateProof.choices[0].technique, 'hidden-single')
   assert.deepEqual(alternateProof.choices[0].actions, [{ place: { cell: 0, digit: Number(solved[0]) } }])
-  assert.deepEqual(await run({ type: 'hints', values: oneCell, disabledTechniques }), { choices: [], available: 0 })
-  assert.equal(await run({ type: 'next-deduction', values: oneCell, disabledTechniques }), null)
+  const overlayProof = await run({ type: 'next-deduction', values: oneCell, disabledTechniques })
+  assert.equal(overlayProof?.deduction.technique, 'pattern-overlay')
+  assert.deepEqual(overlayProof?.deduction.actions, alternateProof.choices[0].actions)
+  const noProof = [...disabledTechniques, 'pattern-overlay']
+  assert.deepEqual(await run({ type: 'hints', values: oneCell, disabledTechniques: noProof }), { choices: [], available: 0 })
+  assert.equal(await run({ type: 'next-deduction', values: oneCell, disabledTechniques: noProof }), null)
 })
 
 test('ten ranked hints match the full search after accounting for candidate removals and disabled techniques', async () => {
@@ -1124,6 +1199,33 @@ test('every Learn article gives a starting scan and every drill can preview its 
             [...marks.values()].every(mark => mark.mark !== 'strike' && mark.label !== 'to place')), example)
         }
       }
+    }
+  }
+})
+
+test('each Learn drill generates a different grid with a verified walkthrough for its technique', async () => {
+  const { run } = engineRequests()
+  const examples = await run({ type: 'lesson-examples' })
+  const drills = new Set(articles.flatMap(article => article.blocks.flatMap(block =>
+    block.type === 'practice' ? block.drills.map(({ example }) => example) : [])))
+  for (const technique of drills) {
+    let exclude = lessonValues(examples[technique].practice)
+    for (let repeat = 0; repeat < 2; repeat++) {
+      const generated = await run({ type: 'generate-practice-example', technique, seed: 27, exclude })
+      const values = lessonValues(generated)
+      assert.notEqual(values, exclude, technique)
+      assert.equal(generated.deduction.technique, technique)
+      assert.deepEqual(generated.deduction.actions[0], generated.suggestion)
+      assert.ok(generated.answers.some(action => JSON.stringify(action) === JSON.stringify(generated.suggestion)), technique)
+      const legal = await run({ type: 'notes', values })
+      assert.deepEqual(generated.candidates, legal?.map((mask, cell) => mask & ~generated.eliminations[cell]), technique)
+      const proof = await run({ type: 'check-practice-move', technique, values: generated.givens,
+        entries: generated.entries, eliminations: generated.eliminations, action: generated.suggestion })
+      assert.equal(proof?.technique, technique)
+      const { start, check } = practiceSearch(generated)
+      assert.ok(start.text && check.text, technique)
+      assert.ok(lessonDiagram(generated).results.length, technique)
+      exclude = values
     }
   }
 })
@@ -2076,6 +2178,41 @@ test('fog hints and replay use only the revealed rules and player knowledge', as
   const replay = await run({ ...request, visibility, operation: 'replay-step', stepIndex: 0, techniqueOrder: ['thermometer'] })
   assert.deepEqual(replay?.before, revealed)
   assert.deepEqual(replay?.deduction, hints[1])
+})
+
+test('Jigsaw Pattern Overlay exposes its own regions and replays the published move', async () => {
+  const { run } = engineRequests()
+  const technique = 'pattern-overlay'
+  const [exercise] = await run({ type: 'practice-examples', variant: true, technique })
+  const { position, suggestion } = exercise
+  const { regions } = position.puzzle
+  assert.ok(regions?.type === 'jigsaw')
+  const expected = { eliminate: { cell: 76, digit: 7 } }
+  assert.deepEqual(suggestion, expected)
+  const request = { type: 'variant', position, techniqueOrder: [technique] } as const
+  const hints = await run({ ...request, operation: 'hints', limit: 10 })
+  const published = hints.find(hint => hint.actions.some(action =>
+    'eliminate' in action && action.eliminate.cell === 76 && action.eliminate.digit === 7))
+  assert.ok(published?.evidence.type === 'classic' && 'pattern-overlay' in published.evidence.proof)
+  const proof = published.evidence.proof['pattern-overlay']
+  assert.deepEqual(proof.geometry?.houses.slice(18), regions.regions)
+  assert.deepEqual(proof.geometry?.excludedPairs, [])
+  assert.equal(proof.scopes[0].digit, 7)
+  assert.ok(proof.scopes[0].allowed.includes(76) && !proof.scopes[0].supported.includes(76))
+  const replay = await run({ ...request, operation: 'replay-step', stepIndex: 0 })
+  assert.deepEqual(replay?.deduction, published)
+  assert.deepEqual(replay?.before, position)
+  assert.ok((replay?.after.eliminations[76] ?? 0) & (1 << 6))
+
+  const { defaultOrder } = await run({ type: 'techniques', variant: true })
+  const fromGivens = { type: 'variant', position: { puzzle: position.puzzle }, operation: 'rate' } as const
+  const baseline = await run({ ...fromGivens, techniqueOrder: defaultOrder })
+  assert.equal(baseline.status, 'stalled')
+  const techniqueOrder = [...defaultOrder, technique, 'pairwise-pattern-overlay', 'triple-pattern-overlay',
+    'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
+  const rated = await run({ ...fromGivens, techniqueOrder })
+  assert.deepEqual(rated.status, { solved: 'extreme' })
+  assert.ok(rated.counts['triple-pattern-overlay'] > 0)
 })
 
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
