@@ -14,8 +14,9 @@ type Props = {
 }
 
 function pointName(point: BoardLink['from']) {
-  return 'cells' in point ? `${point.digit} in ${point.cells.map(cellName).join(' or ')}`
-    : `${point.digit} in ${cellName(point.cell)}`
+  if ('cells' in point) return `${point.digit} in ${point.cells.map(cellName).join(' or ')}`
+  if ('candidates' in point) return point.candidates.map(({ cell, digit }) => `${digit} in ${cellName(cell)}`).join(' or ')
+  return `${point.digit} in ${cellName(point.cell)}`
 }
 
 function LinkLegend() {

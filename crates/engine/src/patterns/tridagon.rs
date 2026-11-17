@@ -1,8 +1,10 @@
 use super::{
     Candidate, ControlFlow, Deduction, DeductionActions, HintAction, HintEvidence, PEERS,
-    PatternSearch, Technique, cell_bit, digits, forcing::GuardianSearch, report_eliminations,
+    PatternSearch, Technique, bit_indices, cell_bit, cells, digits, forcing::GuardianSearch,
+    report_eliminations,
 };
 use crate::{DIGITS, ForcingBranch, LinkSource};
+use std::collections::BTreeSet;
 
 // The three even permutations precede the three odd permutations.
 const PERMUTATIONS: [[usize; 3]; 6] = [
@@ -231,37 +233,53 @@ fn visit_patterns(
     ControlFlow::Continue(())
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum GuardianGroup {
+    SingleDigit(u8, u128),
+    Mixed(Vec<Candidate>),
+}
+
 pub(super) fn visit_links(
     search: &PatternSearch<'_>,
-    mut visit: impl FnMut([(u8, u128); 2], LinkSource),
+    mut visit: impl FnMut([GuardianGroup; 2], LinkSource),
 ) {
-    // A two-node link can cover guardians of at most two digits, with one
-    // occurrence of each digit per cell in the twelve-cell pattern.
-    let _ = visit_patterns(search, 24, &mut |pattern| {
+    // Each useful group must conflict with some candidate. That candidate
+    // can see at most twelve guardians of its own digit and six other
+    // guardian digits in its cell.
+    let _ = visit_patterns(search, 36, &mut |mut pattern| {
         if pattern.guardians.len() < 2 {
             return ControlFlow::Continue(());
         }
         let mut positions = [0; 9];
         let mut digits = 0u16;
-        for guardian in pattern.guardians {
+        for guardian in &pattern.guardians {
             let index = usize::from(guardian.digit - 1);
             positions[index] |= cell_bit(guardian.cell);
             digits |= 1 << index;
-            if digits.count_ones() > 2 {
-                return ControlFlow::Continue(());
-            }
         }
         let source = LinkSource::Tridagon {
             // Sudoku has 81 cells. Keep this geometry compact in graph edges.
             cells: pattern.cells.map(|triple| triple.map(|cell| cell as u8)),
             digits: pattern.digits,
         };
+        if digits.count_ones() > 2 {
+            if can_cover_other_digits(&positions, digits) {
+                pattern.guardians.sort_unstable();
+                visit_mixed_partitions(&pattern.guardians, search.positions_by_digit(), |groups| {
+                    visit(groups, source);
+                });
+            }
+            return ControlFlow::Continue(());
+        }
         let first = digits.trailing_zeros() as usize;
         let last = digits.ilog2() as usize;
         let digit = first as u8 + 1;
         if first != last {
             visit(
-                [(digit, positions[first]), (last as u8 + 1, positions[last])],
+                [
+                    GuardianGroup::SingleDigit(digit, positions[first]),
+                    GuardianGroup::SingleDigit(last as u8 + 1, positions[last]),
+                ],
                 source,
             );
         } else {
@@ -272,7 +290,10 @@ pub(super) fn visit_links(
             let mut subset = (optional - 1) & optional;
             loop {
                 visit(
-                    [(digit, anchored | subset), (digit, optional ^ subset)],
+                    [
+                        GuardianGroup::SingleDigit(digit, anchored | subset),
+                        GuardianGroup::SingleDigit(digit, optional ^ subset),
+                    ],
                     source,
                 );
                 if subset == 0 {
@@ -283,6 +304,98 @@ pub(super) fn visit_links(
         }
         ControlFlow::Continue(())
     });
+}
+
+fn can_cover_other_digits(positions: &[u128; 9], digits: u16) -> bool {
+    // Beyond their own two digits, the witnesses can only see guardians
+    // in their own two cells.
+    let mut remaining = digits;
+    for first in bit_indices(digits) {
+        remaining &= !(1 << first);
+        for second in bit_indices(remaining) {
+            let other_cells = bit_indices(digits & !(1 << first | 1 << second))
+                .fold(0, |cells, digit| cells | positions[digit]);
+            if other_cells.count_ones() <= 2 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn visit_mixed_partitions(
+    guardians: &[Candidate],
+    positions: &[u128; 9],
+    mut visit: impl FnMut([GuardianGroup; 2]),
+) {
+    let mut coverage = [0u64; crate::CELLS * 9];
+    for (index, guardian) in guardians.iter().enumerate() {
+        for (digit, &live) in positions.iter().enumerate() {
+            let conflicts = if digit + 1 == usize::from(guardian.digit) {
+                PEERS[guardian.cell]
+            } else {
+                cell_bit(guardian.cell)
+            };
+            for cell in cells(live & conflicts) {
+                coverage[cell * 9 + digit] |= 1 << index;
+            }
+        }
+    }
+    let mut witnesses: Vec<_> = coverage.into_iter().filter(|&set| set != 0).collect();
+    witnesses.sort_unstable();
+    witnesses.dedup();
+    let all = (1u64 << guardians.len()) - 1;
+    let mut partitions = BTreeSet::new();
+    for &left in witnesses.iter().filter(|&&set| set & 1 != 0) {
+        for &right in witnesses.iter().filter(|&&set| left | set == all) {
+            // Put the first guardian on the left to avoid reversing a partition.
+            let required = (all ^ right) | 1;
+            let shared = left & right & !1;
+            let mut flexible = shared;
+            loop {
+                let first = required | flexible;
+                if first != all && partitions.insert(first) {
+                    visit([
+                        guardian_group(guardians, first),
+                        guardian_group(guardians, all ^ first),
+                    ]);
+                }
+                if flexible == 0 {
+                    break;
+                }
+                flexible = (flexible - 1) & shared;
+            }
+        }
+    }
+}
+
+fn guardian_group(guardians: &[Candidate], selected: u64) -> GuardianGroup {
+    let members: Vec<_> = guardians
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &candidate)| (selected & (1 << i) != 0).then_some(candidate))
+        .collect();
+    let digit = members[0].digit;
+    if members.iter().all(|member| member.digit == digit) {
+        GuardianGroup::SingleDigit(
+            digit,
+            members
+                .into_iter()
+                .fold(0, |all, member| all | cell_bit(member.cell)),
+        )
+    } else {
+        GuardianGroup::Mixed(members)
+    }
+}
+
+#[cfg(test)]
+pub(super) fn has_pattern(search: &PatternSearch<'_>) -> bool {
+    let mut found = false;
+    let _ = visit_patterns(search, usize::MAX, &mut |_| {
+        found = true;
+        ControlFlow::Continue(())
+    });
+    found
 }
 
 fn visit_direct(
@@ -328,6 +441,62 @@ mod tests {
     use super::*;
 
     #[test]
+    fn mixed_partitions_match_exhaustive_candidate_conflicts() {
+        let guardians = [
+            Candidate { cell: 0, digit: 5 },
+            Candidate { cell: 0, digit: 3 },
+            Candidate { cell: 1, digit: 3 },
+            Candidate { cell: 2, digit: 6 },
+            Candidate { cell: 2, digit: 7 },
+        ];
+        let live = [
+            Candidate { cell: 0, digit: 1 },
+            Candidate { cell: 2, digit: 3 },
+        ]
+        .into_iter()
+        .chain(guardians)
+        .collect::<Vec<_>>();
+        let mut positions = [0; 9];
+        for candidate in &live {
+            positions[usize::from(candidate.digit - 1)] |= cell_bit(candidate.cell);
+        }
+        let expected: BTreeSet<_> = (1..(1u64 << guardians.len()) - 1)
+            .step_by(2)
+            .filter(|&first| {
+                [first, ((1 << guardians.len()) - 1) ^ first]
+                    .into_iter()
+                    .all(|group| {
+                        live.iter().any(|&candidate| {
+                            guardians.iter().enumerate().all(|(i, &guardian)| {
+                                group & (1 << i) == 0 || conflicts(guardian, candidate)
+                            })
+                        })
+                    })
+            })
+            .collect();
+        assert!(expected.contains(&0b00001));
+        assert!(expected.contains(&0b00011));
+
+        let mut actual = BTreeSet::new();
+        visit_mixed_partitions(&guardians, &positions, |[first, _]| {
+            let first = guardians
+                .iter()
+                .enumerate()
+                .fold(0, |bits, (i, candidate)| {
+                    let included = match &first {
+                        GuardianGroup::SingleDigit(digit, cells) => {
+                            *digit == candidate.digit && cells & cell_bit(candidate.cell) != 0
+                        }
+                        GuardianGroup::Mixed(members) => members.contains(candidate),
+                    };
+                    bits | u64::from(included) << i
+                });
+            assert!(actual.insert(first));
+        });
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn guardian_links_cover_every_live_alternative() {
         let position = Technique::TridagonAic
             .practice_example()
@@ -349,11 +518,26 @@ mod tests {
             });
             links
         };
-        assert_eq!(links(&masks), [[(7, cell_bit(32)), (9, cell_bit(40))]]);
+        use GuardianGroup::SingleDigit;
+        assert_eq!(
+            links(&masks),
+            [[SingleDigit(7, cell_bit(32)), SingleDigit(9, cell_bit(40))]]
+        );
 
-        // A third digit breaks that two-node link.
+        // A third digit cannot be ignored in a strong link.
         masks[0] |= 1 << (4 - 1);
-        assert!(links(&masks).is_empty());
+        assert!(
+            links(&masks)
+                .iter()
+                .all(|groups| groups.iter().any(|group| {
+                    match group {
+                        SingleDigit(digit, members) => *digit == 4 && members & cell_bit(0) != 0,
+                        GuardianGroup::Mixed(members) => {
+                            members.contains(&Candidate { cell: 0, digit: 4 })
+                        }
+                    }
+                }))
+        );
 
         // Three guardians of one digit can be grouped without losing an alternative.
         masks[0] = (masks[0] & !(1 << (4 - 1))) | 1 << (7 - 1);
@@ -361,7 +545,14 @@ mod tests {
         masks[40] &= !(1 << (9 - 1));
         let links = links(&masks);
         assert_eq!(links.len(), 3);
-        for [(first_digit, first), (second_digit, second)] in links {
+        for pair in links {
+            let [
+                SingleDigit(first_digit, first),
+                SingleDigit(second_digit, second),
+            ] = pair
+            else {
+                panic!("expected two groups of one digit");
+            };
             assert_eq!([first_digit, second_digit], [7, 7]);
             assert_eq!(first & second, 0);
             assert_eq!(first | second, cell_bit(0) | cell_bit(3) | cell_bit(32));

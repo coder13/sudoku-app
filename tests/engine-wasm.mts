@@ -5,6 +5,7 @@ import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-pr
 import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type RankPattern } from '../src/sudoku/engine.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, undo } from '../src/sudoku/game.ts'
+import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { generatePlayableVariant, playCandidates } from '../src/sudoku/variant-play.ts'
@@ -228,6 +229,68 @@ test('Fireworks exposes the published triple and quadruple through practice and 
   assert.equal(step.after.eliminations[48] & (1 << 3), 1 << 3)
 })
 
+test('ALS chains and both Nice Loops are selectable and expose replayable proofs', async () => {
+  const { run } = engineRequests()
+  const { techniques, defaultOrder } = await run({ type: 'techniques' })
+  for (const technique of ['als-aic', 'als-discontinuous-nice-loop', 'als-continuous-nice-loop']) {
+    assert.equal(techniques.find(item => item.id === technique)?.cost, 360)
+    assert.ok(!defaultOrder.includes(technique))
+    const exercises = await run({ type: 'practice-examples', technique })
+    assert.equal(exercises.length, 3)
+    const [exercise] = exercises
+    const { givens: values, entries, eliminations, suggestion, deduction, candidates } = exercise
+    assert.ok('inference' in deduction.evidence)
+    assert.ok(deduction.evidence.inference.links.some(link => 'almost-locked-set' in link.source))
+    const checked = await run({ type: 'check-practice-move', values, entries, eliminations, technique, action: suggestion })
+    assert.equal(checked?.technique, technique)
+    const trace = await run({ type: 'logical-solve', values, entries, eliminations, techniqueOrder: [technique] })
+    assert.ok(trace.steps.length > 0)
+    assert.equal(trace.rating.score.points, trace.steps.length * 360)
+    if (technique === 'als-continuous-nice-loop') {
+      assert.equal(deduction.actions.length, 15)
+      assert.deepEqual(deduction.actions[0], { eliminate: { cell: 30, digit: 8 } })
+      const diagram = lessonDiagram({ deduction, candidates })
+      assert.match(diagram.reason, /exactly one of the two linked digits/)
+      assert.equal(diagram.annotations.candidates?.get(49)?.get(8)?.mark, 'ring')
+      assert.equal(diagram.annotations.candidates?.get(30)?.get(8)?.mark, 'strike')
+    }
+  }
+})
+
+test('ALS links prove outside placements and carry their locked candidates through a loop', async () => {
+  const { run } = engineRequests()
+  const [aic] = await run({ type: 'practice-examples', technique: 'als-aic' })
+  const current = lessonValues(aic)
+  const moves = await run({ type: 'deductions', values: current, eliminations: aic.eliminations, techniqueOrder: ['als-aic'] })
+  const source = { set: { cells: [11, 74], digits: [1, 8, 9] }, cell: 38, blocked: 257 }
+  const proof = moves.filter(move => move.actions.length === 3 && [36, 45, 65].every(cell =>
+    move.actions.some(action => 'eliminate' in action && action.eliminate.cell === cell && action.eliminate.digit === 6)))
+    .flatMap(move => move.proofs).find(({ evidence }) => 'inference' in evidence && evidence.inference.links.some(link =>
+      'almost-locked-set-cell' in link.source && link.source['almost-locked-set-cell'].cell === 38 &&
+      link.source['almost-locked-set-cell'].blocked === 257))
+  assert.ok(proof && 'inference' in proof.evidence)
+  const outside = proof.evidence.inference.links.find(link => 'almost-locked-set-cell' in link.source)
+  assert.deepEqual(outside?.source, { 'almost-locked-set-cell': source })
+  for (const digit of [1, 9]) {
+    assert.ok(proof.pattern.candidates.some(candidate => candidate.cell === 38 && candidate.digit === digit))
+  }
+
+  const [, , loop] = await run({ type: 'practice-examples', technique: 'als-continuous-nice-loop' })
+  const removal = { eliminate: { cell: 35, digit: 6 } }
+  assert.ok(loop.deduction.actions.some(action => 'eliminate' in action && action.eliminate.cell === 35 && action.eliminate.digit === 6))
+  const loops = await run({ type: 'deductions', values: lessonValues(loop), eliminations: loop.eliminations, techniqueOrder: ['als-continuous-nice-loop'] })
+  const published = loops.filter(move => move.actions.some(action => 'eliminate' in action &&
+    action.eliminate.cell === 35 && action.eliminate.digit === 6)).flatMap(move => move.proofs)
+    .find(({ evidence }) => 'inference' in evidence && evidence.inference.links.length === 8 &&
+      evidence.inference.links.some(link => 'almost-locked-set-cell' in link.source &&
+        link.source['almost-locked-set-cell'].cell === 61 && link.source['almost-locked-set-cell'].blocked === 130))
+  assert.ok(published)
+  const diagram = lessonDiagram({ candidates: loop.candidates, deduction: { ...published, actions: [removal] } })
+  assert.match(diagram.reason, /set must use 6 in either case/)
+  assert.match(diagram.reason, /forces 5 in R7C8/)
+  for (const digit of [2, 8]) assert.equal(diagram.annotations.candidates?.get(61)?.get(digit)?.mark, 'ring')
+})
+
 test('Firework chains expose crossing-house links and replay a published removal', async () => {
   const { run } = engineRequests()
   const technique = 'firework-aic'
@@ -255,7 +318,7 @@ test('Firework chains expose crossing-house links and replay a published removal
   const moves = await run({ type: 'deductions', values: currentValues, eliminations, techniqueOrder: [technique] })
   const diagram = moves.flatMap(move => move.proofs).find(proof => 'inference' in proof.evidence &&
     proof.evidence.inference.links.some(link => 'firework' in link.source && link.source.firework === 12 &&
-      ('candidate' in link.from ? link.from.candidate.digit : link.from.group.digit) === 4))
+      ('candidate' in link.from ? link.from.candidate.digit === 4 : 'group' in link.from && link.from.group.digit === 4)))
   assert.ok(diagram)
   assert.ok(diagram.pattern.houses.some(house => 'box' in house && house.box === 1))
   assert.ok(diagram.pattern.houses.some(house => 'column' in house && house.column === 3))
@@ -276,6 +339,33 @@ test('Firework chains expose crossing-house links and replay a published removal
   assert.ok('inference' in evidence)
   assert.ok(evidence.inference.links.some(link => 'firework' in link.source &&
     [link.from, link.to].some(node => 'group' in node && node.group.cells.length >= 5)))
+})
+
+test('Firework chain practice exposes an almost locked set in the proof', async () => {
+  const { run } = engineRequests()
+  const technique = 'firework-aic'
+  const [, exercise] = await run({ type: 'practice-examples', technique })
+  const { givens: values, entries, eliminations, suggestion, deduction } = exercise
+  assert.deepEqual(suggestion, { eliminate: { cell: 24, digit: 8 } })
+  assert.ok('inference' in deduction.evidence)
+  const { links } = deduction.evidence.inference
+  assert.ok(links.some(link => link.strength === 'strong' && 'firework' in link.source))
+  assert.ok(links.some(link => link.strength === 'strong' && 'almost-locked-set' in link.source))
+
+  const moves = await run({ type: 'deductions', values, eliminations, techniqueOrder: [technique] })
+  const mixed = moves.filter(move => move.actions.some(action => 'eliminate' in action &&
+    action.eliminate.cell === 24 && action.eliminate.digit === 8)).flatMap(move => move.proofs)
+    .find(proof => 'inference' in proof.evidence && proof.evidence.inference.links.length === 5 &&
+      proof.evidence.inference.links.some(link => 'firework' in link.source && link.source.firework === 15))
+  assert.ok(mixed && 'inference' in mixed.evidence)
+  const set = mixed.evidence.inference.links.find(link => 'almost-locked-set' in link.source)
+  assert.ok(set && 'almost-locked-set' in set.source)
+  assert.deepEqual(set.source['almost-locked-set'], { cells: [29, 31, 35], digits: [2, 4, 8, 9] })
+  assert.ok(mixed.pattern.houses.some(house => 'row' in house && house.row === 3))
+  assert.ok(mixed.pattern.candidates.some(candidate => candidate.cell === 31 && candidate.digit === 8))
+  const checked = await run({ type: 'check-practice-move', values, entries, eliminations, technique, action: suggestion })
+  assert.ok(checked?.actions.some(action => 'eliminate' in action &&
+    action.eliminate.cell === 24 && action.eliminate.digit === 8))
 })
 
 test('Firework W-Wing reports grouped wings and bills once for two removals', async () => {
@@ -389,6 +479,33 @@ test('Tridagon chains expose guardian, almost locked set, and Firework links', a
     const { cell, digit } = action.eliminate
     assert.equal(first.after.eliminations[cell] & (1 << (digit - 1)), 1 << (digit - 1))
   }
+})
+
+test('Tridagon chains expose all digits in a mixed guardian group', async () => {
+  const { run } = engineRequests()
+  const values = '003056709007109006009070150201000500340000601970013000090000360730000015000000907'
+  const technique = 'tridagon-aic'
+  const moves = await run({ type: 'deductions', values, techniqueOrder: [technique] })
+  const expected = [2, 4, 8].map(digit => ({ eliminate: { cell: 75, digit } }))
+  const move = moves.find(({ actions }) => actions.length === expected.length &&
+    actions.every((action, i) => 'eliminate' in action && action.eliminate.cell === 75 &&
+      action.eliminate.digit === expected[i].eliminate.digit))
+  assert.deepEqual(move?.actions, expected)
+  const proof = move?.proofs.find(({ evidence }) => 'inference' in evidence &&
+    evidence.inference.links.length === 3 && evidence.inference.links.some(link => 'firework' in link.source) &&
+    evidence.inference.links.some(link => 'tridagon' in link.source && 'mixed-group' in link.to))
+  assert.ok(proof && 'inference' in proof.evidence)
+  const guardian = proof.evidence.inference.links.find(link => 'tridagon' in link.source)
+  assert.ok(guardian && 'mixed-group' in guardian.to)
+  const members = [3, 5, 6].map(digit => ({ cell: 75, digit }))
+  assert.deepEqual(guardian.to['mixed-group'], members)
+  for (const { cell, digit } of members) {
+    assert.ok(proof.pattern.candidates.some(candidate => candidate.cell === cell && candidate.digit === digit))
+  }
+  const { candidates } = await run({ type: 'hints', values, techniqueOrder: [technique], limit: 1, includePatterns: true })
+  assert.ok(candidates)
+  const diagram = lessonDiagram({ candidates, deduction: { ...proof, actions: expected } }, proof.pattern)
+  assert.deepEqual(diagram.annotations.links?.[2]?.to, { candidates: members })
 })
 
 test('opt-in rank solve records the rank removal, score, and replay positions', async () => {

@@ -8,6 +8,7 @@ fn members(node: &InferenceNode) -> (u8, Vec<usize>) {
     match node {
         InferenceNode::Candidate(candidate) => (candidate.digit, vec![candidate.cell]),
         InferenceNode::Group { digit, cells } => (*digit, cells.clone()),
+        InferenceNode::MixedGroup(_) => panic!("Kraken endpoints use one digit"),
     }
 }
 

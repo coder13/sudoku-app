@@ -296,6 +296,66 @@ const FIREWORKS_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
     ],
 )];
 
+const ALS_INFERENCE: [Technique; 3] = [
+    Technique::AlsAic,
+    Technique::AlsDiscontinuousNiceLoop,
+    Technique::AlsContinuousNiceLoop,
+];
+
+const ALS_INFERENCE_EXAMPLES: &[(&str, &[(&str, &str)])] = &[
+    (
+        "als-aic",
+        &[
+            (
+                "gaic1als01",
+                Technique::AlsAic.practice_examples()[0].givens,
+            ),
+            (
+                "hodoku-1335",
+                Technique::AlsAic.practice_examples()[1].givens,
+            ),
+            (
+                "hodoku-1343",
+                Technique::AlsAic.practice_examples()[2].givens,
+            ),
+        ],
+    ),
+    (
+        "als-discontinuous-nice-loop",
+        &[
+            (
+                "gdnlals01",
+                Technique::AlsDiscontinuousNiceLoop.practice_examples()[0].givens,
+            ),
+            (
+                "hodoku-1287",
+                Technique::AlsDiscontinuousNiceLoop.practice_examples()[1].givens,
+            ),
+            (
+                "hodoku-1298",
+                Technique::AlsDiscontinuousNiceLoop.practice_examples()[2].givens,
+            ),
+        ],
+    ),
+    (
+        "als-continuous-nice-loop",
+        &[
+            (
+                "gcnlals01",
+                Technique::AlsContinuousNiceLoop.practice_examples()[0].givens,
+            ),
+            (
+                "hodoku-1254",
+                Technique::AlsContinuousNiceLoop.practice_examples()[1].givens,
+            ),
+            (
+                "hodoku-1253",
+                Technique::AlsContinuousNiceLoop.practice_examples()[2].givens,
+            ),
+        ],
+    ),
+];
+
 const FIREWORK_AIC_EXAMPLES: &[(&str, &[(&str, &str)])] = &[(
     "firework-aic",
     &[
@@ -407,6 +467,8 @@ fn main() {
     let forcing_examples = args.iter().any(|arg| arg == "--forcing-examples");
     let aligned_examples = args.iter().any(|arg| arg == "--aligned-examples");
     let aligned = args.iter().any(|arg| arg == "--aligned-exclusion");
+    let als_inference = args.iter().any(|arg| arg == "--als-inference");
+    let als_inference_examples = args.iter().any(|arg| arg == "--als-inference-examples");
     let complex_fish = args.iter().any(|arg| arg == "--complex-fish");
     let kraken = args.iter().any(|arg| arg == "--kraken");
     let senior_exocet = args.iter().any(|arg| arg == "--senior-exocet");
@@ -459,6 +521,8 @@ fn main() {
         DOUBLE_EXOCET_EXAMPLES
     } else if fireworks_examples {
         FIREWORKS_EXAMPLES
+    } else if als_inference_examples {
+        ALS_INFERENCE_EXAMPLES
     } else if firework_aic_examples {
         FIREWORK_AIC_EXAMPLES
     } else if firework_w_wing_examples {
@@ -477,6 +541,9 @@ fn main() {
         .iter()
         .position(|&technique| technique == Technique::ForcingChain)
         .unwrap();
+    if als_inference {
+        order.splice(before_forcing..before_forcing, ALS_INFERENCE);
+    }
     if senior_exocet && !senior_first {
         order.insert(before_forcing, Technique::SeniorExocet);
     }
@@ -581,6 +648,9 @@ fn main() {
     if fireworks {
         eprintln!("Fireworks before 3D Medusa");
     }
+    if als_inference {
+        eprintln!("ALS chains and Nice Loops before forcing");
+    }
     if firework_aic {
         eprintln!("Firework chains before forcing");
     }
@@ -641,6 +711,9 @@ fn main() {
                 "firework-l-wing" => Some(Technique::FireworkLWing),
                 "firework-als-wing" => Some(Technique::FireworkAlsWing),
                 "tridagon-aic" => Some(Technique::TridagonAic),
+                "als-aic" => Some(Technique::AlsAic),
+                "als-discontinuous-nice-loop" => Some(Technique::AlsDiscontinuousNiceLoop),
+                "als-continuous-nice-loop" => Some(Technique::AlsContinuousNiceLoop),
                 _ => None,
             } {
                 let count = trace.score.counts.get(&technique).copied().unwrap_or(0);

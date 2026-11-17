@@ -1257,6 +1257,9 @@ impl Technique {
             Self::AlsXz => return ALS_XZ,
             Self::AlsXyWing => return ALS_XY_WING,
             Self::AlsChain => return ALS_CHAIN,
+            Self::AlsAic => return examples::ALS_AIC,
+            Self::AlsDiscontinuousNiceLoop => return examples::ALS_DISCONTINUOUS_NICE_LOOP,
+            Self::AlsContinuousNiceLoop => return examples::ALS_CONTINUOUS_NICE_LOOP,
             Self::DeathBlossom => return DEATH_BLOSSOM,
             Self::SueDeCoq => return SUE_DE_COQ,
             Self::Exocet => return EXOCET,
@@ -2157,6 +2160,151 @@ mod tests {
     }
 
     #[test]
+    fn als_cell_links_replay_the_published_chain_and_loop() {
+        for (technique, example, len, cells, outside, blocked) in [
+            (
+                Technique::AlsAic,
+                examples::ALS_AIC,
+                3,
+                &[11, 74][..],
+                38,
+                0b100000001,
+            ),
+            (
+                Technique::AlsContinuousNiceLoop,
+                examples::ALS_CELL_CONTINUOUS_NICE_LOOP,
+                8,
+                &[8, 62, 71, 80][..],
+                61,
+                0b010000010,
+            ),
+        ] {
+            let position = example.position().unwrap();
+            let mut masks = candidates(&position.values().unwrap()).unwrap();
+            for (mask, removed) in masks.iter_mut().zip(position.eliminations) {
+                *mask &= !removed;
+            }
+            let proofs = technique_deductions_at(&position, technique).unwrap();
+            let (links, cell_link) = proofs.iter().find_map(|proof| {
+                let HintEvidence::Inference { links } = &proof.evidence else { return None; };
+                if proof.actions != example.expected_actions || links.len() != len { return None; }
+                let cell_link = links.iter().find(|link| matches!(link.source,
+                    LinkSource::AlmostLockedSetCell { set, cell, blocked: alternatives }
+                    if set.cells().eq(cells.iter().copied()) && cell == outside && alternatives == blocked
+                ))?;
+                Some((links, cell_link))
+            }).expect("published ALS link to a forced cell");
+            for link in links {
+                assert_link_is_valid(link, &masks);
+            }
+            if technique == Technique::AlsContinuousNiceLoop {
+                let target = Candidate { cell: 35, digit: 6 };
+                assert!(als_loop_locks(cell_link, &masks, target));
+                assert!(!links.iter().any(|link| {
+                    link.strength == LinkStrength::Weak
+                        && link
+                            .from
+                            .candidates()
+                            .chain(link.to.candidates())
+                            .all(|member| candidates_conflict(member, target))
+                }));
+            }
+        }
+    }
+
+    #[test]
+    fn als_inference_proofs_replay_all_three_shapes() {
+        for technique in [
+            Technique::AlsAic,
+            Technique::AlsDiscontinuousNiceLoop,
+            Technique::AlsContinuousNiceLoop,
+        ] {
+            for (index, example) in technique.practice_examples().into_iter().enumerate() {
+                let position = example.position().unwrap();
+                let mut masks = candidates(&position.values().unwrap()).unwrap();
+                for (mask, removed) in masks.iter_mut().zip(position.eliminations) {
+                    *mask &= !removed;
+                }
+                let solution = crate::VerifiedTemplate::verify(position.givens).unwrap();
+                let hints = technique_deductions_at(&position, technique).unwrap();
+                let links = hints.iter().find_map(|hint| {
+                    if hint.actions != example.expected_actions { return None; }
+                    let HintEvidence::Inference { links } = &hint.evidence else { return None; };
+                    let published_loop = technique == Technique::AlsContinuousNiceLoop && index == 0;
+                    (!published_loop || links.iter().any(|link| {
+                        matches!(link.source, LinkSource::AlmostLockedSet(set) if set.cells().eq([49, 50]))
+                    })).then_some(links)
+                }).unwrap_or_else(|| panic!("missing {} proof for exercise {index}", technique.id()));
+                assert!(links.iter().any(|link| matches!(
+                    link.source,
+                    LinkSource::AlmostLockedSet(_) | LinkSource::AlmostLockedSetCell { .. }
+                )));
+                for pair in links.windows(2) {
+                    assert_eq!(pair[0].to, pair[1].from);
+                    assert_ne!(pair[0].strength, pair[1].strength);
+                }
+                for link in links {
+                    assert_link_is_valid(link, &masks);
+                }
+                let first = &links[0];
+                let last = links.last().unwrap();
+                for &action in example.expected_actions {
+                    let target = action.candidate();
+                    assert_eq!(
+                        solution.solution()[target.cell] == target.digit,
+                        matches!(action, HintAction::Place(_))
+                    );
+                    match technique {
+                        Technique::AlsAic => {
+                            assert_eq!(first.strength, LinkStrength::Strong);
+                            assert_eq!(last.strength, LinkStrength::Strong);
+                            assert!(
+                                first
+                                    .from
+                                    .candidates()
+                                    .chain(last.to.candidates())
+                                    .all(|candidate| candidates_conflict(candidate, target))
+                            );
+                        }
+                        Technique::AlsDiscontinuousNiceLoop => {
+                            assert_eq!(first.from, InferenceNode::Candidate(target));
+                            assert_eq!(last.to, first.from);
+                            assert_eq!(last.strength, first.strength);
+                            assert_eq!(
+                                matches!(action, HintAction::Place(_)),
+                                first.strength == LinkStrength::Strong
+                            );
+                        }
+                        Technique::AlsContinuousNiceLoop => {
+                            assert_eq!(last.to, first.from);
+                            assert_eq!(first.strength, LinkStrength::Strong);
+                            assert_eq!(last.strength, LinkStrength::Weak);
+                            let weak_link = links.iter().any(|link| {
+                                link.strength == LinkStrength::Weak
+                                    && link
+                                        .from
+                                        .candidates()
+                                        .chain(link.to.candidates())
+                                        .all(|candidate| candidates_conflict(candidate, target))
+                            });
+                            if index == 0 && target.digit == 8 {
+                                assert!(!weak_link, "8 needs the lock inside the ALS");
+                            }
+                            assert!(
+                                weak_link
+                                    || links
+                                        .iter()
+                                        .any(|link| als_loop_locks(link, &masks, target))
+                            );
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn firework_inference_replays_crossing_lines_and_extends_grouped_chains() {
         let [published, ring, wide] = Technique::FireworkAic.practice_examples();
         for (example, group_size) in [(published, 2), (ring, 2), (wide, 5)] {
@@ -2191,7 +2339,12 @@ mod tests {
                 let max_group = links
                     .iter()
                     .filter(|link| matches!(link.source, LinkSource::Firework(_)))
-                    .map(|link| link.from.cells().len().max(link.to.cells().len()))
+                    .map(|link| {
+                        link.from
+                            .candidates()
+                            .count()
+                            .max(link.to.candidates().count())
+                    })
                     .max()
                     .expect("chain uses a Firework link");
                 covers_expected_link |=
@@ -2201,8 +2354,10 @@ mod tests {
                         panic!("open chains remove candidates");
                     };
                     assert!(
-                        inference_members(&first.from)
-                            .chain(inference_members(&last.to))
+                        first
+                            .from
+                            .candidates()
+                            .chain(last.to.candidates())
                             .all(|end| candidates_conflict(target, end))
                     );
                 }
@@ -2222,11 +2377,61 @@ mod tests {
         }
     }
 
-    fn inference_members(node: &InferenceNode) -> impl Iterator<Item = Candidate> + '_ {
-        let digit = node.digit();
-        node.cells()
-            .iter()
-            .map(move |&cell| Candidate { cell, digit })
+    #[test]
+    fn tridagon_chains_replay_guardians_with_several_digits() {
+        // Depth-three lines 9859 and 117661, both from their givens.
+        let cases = [
+            (
+                "003056709007109006009070150201000500340000601970013000090000360730000015000000907",
+                vec![
+                    Candidate { cell: 75, digit: 3 },
+                    Candidate { cell: 75, digit: 5 },
+                    Candidate { cell: 75, digit: 6 },
+                ],
+                vec![remove(75, 2), remove(75, 4), remove(75, 8)],
+            ),
+            (
+                "003406780007180000000073100200000360081000000930000400340068000000740800000001640",
+                vec![
+                    Candidate { cell: 70, digit: 1 },
+                    Candidate { cell: 80, digit: 3 },
+                ],
+                vec![remove(80, 3)],
+            ),
+        ];
+        for (givens, group, actions) in cases {
+            let board = crate::parse_givens(givens).unwrap();
+            let position = crate::PositionSnapshot::new(board);
+            let masks = candidates(&board).unwrap();
+            let solution = crate::VerifiedTemplate::verify(board).unwrap();
+            let hints = technique_deductions_at(&position, Technique::TridagonAic).unwrap();
+            let proof = hints.iter().find_map(|hint| {
+                let HintEvidence::Inference { links } = &hint.evidence else { return None; };
+                let includes_group = links.iter().any(|link| {
+                    matches!(link.source, LinkSource::Tridagon { .. }) &&
+                        [&link.from, &link.to].into_iter().any(|node| matches!(node, InferenceNode::MixedGroup(candidates) if *candidates == group))
+                });
+                (hint.actions == actions && links.len() == 3 && includes_group).then_some(links)
+            }).expect("three-link proof with a mixed guardian group");
+            for link in proof {
+                assert_link_is_valid(link, &masks);
+            }
+            for pair in proof.windows(2) {
+                assert_eq!(pair[0].to, pair[1].from);
+                assert_ne!(pair[0].strength, pair[1].strength);
+            }
+            for action in actions {
+                let target = action.candidate();
+                assert_ne!(solution.solution()[target.cell], target.digit);
+                assert!(
+                    proof[0]
+                        .from
+                        .candidates()
+                        .chain(proof[2].to.candidates())
+                        .all(|end| candidates_conflict(target, end))
+                );
+            }
+        }
     }
 
     #[test]
@@ -2263,10 +2468,9 @@ mod tests {
                 if hint.actions == example.expected_actions {
                     matching |= match number {
                         0 => links.len() == 3,
-                        1 => links
-                            .iter()
-                            .filter(|link| uses_guardian(link))
-                            .any(|link| link.from.cells().len() + link.to.cells().len() > 2),
+                        1 => links.iter().filter(|link| uses_guardian(link)).any(|link| {
+                            link.from.candidates().count() + link.to.candidates().count() > 2
+                        }),
                         _ => {
                             links.len() == 3
                                 && links
@@ -2281,8 +2485,10 @@ mod tests {
                 for action in hint.actions {
                     assert!(matches!(action, HintAction::Eliminate(_)));
                     assert!(
-                        inference_members(&first.from)
-                            .chain(inference_members(&last.to))
+                        first
+                            .from
+                            .candidates()
+                            .chain(last.to.candidates())
                             .all(|end| candidates_conflict(action.candidate(), end))
                     );
                 }
@@ -2323,9 +2529,70 @@ mod tests {
                         .any(|house| House::at(b.cell).contains(&house))))
     }
 
+    fn als_loop_locks(link: &InferenceLink, masks: &[u16; CELLS], target: Candidate) -> bool {
+        let (set, blocked, outside) = match link.source {
+            LinkSource::AlmostLockedSet(set) => (set, 0, None),
+            LinkSource::AlmostLockedSetCell { set, blocked, cell } => {
+                (set, blocked, Some(usize::from(cell)))
+            }
+            _ => return false,
+        };
+        let bit = crate::hints::digit_bit(target.digit);
+        set.digits().any(|digit| digit == target.digit)
+            && blocked & bit == 0
+            && !link
+                .from
+                .candidates()
+                .chain(link.to.candidates())
+                .any(|candidate| Some(candidate.cell) != outside && candidate.digit == target.digit)
+            && set
+                .cells()
+                .filter(|&cell| masks[cell] & bit != 0)
+                .all(|cell| {
+                    candidates_conflict(
+                        Candidate {
+                            cell,
+                            digit: target.digit,
+                        },
+                        target,
+                    )
+                })
+    }
+
+    fn assert_als_set(set: crate::AlmostLockedSetLink, masks: &[u16; CELLS]) {
+        let first = set.cells().next().unwrap();
+        assert!(
+            House::at(first)
+                .into_iter()
+                .any(|house| { set.cells().all(|cell| House::at(cell).contains(&house)) })
+        );
+        let union = set.cells().fold(0, |bits, cell| bits | masks[cell]);
+        assert_eq!(
+            union,
+            set.digits()
+                .fold(0, |bits, digit| bits | crate::hints::digit_bit(digit))
+        );
+        assert_eq!(set.digits().count(), set.cells().count() + 1);
+    }
+
+    fn assert_als_endpoint(
+        set: crate::AlmostLockedSetLink,
+        endpoint: &InferenceNode,
+        masks: &[u16; CELLS],
+    ) {
+        let digit = endpoint.candidates().next().unwrap().digit;
+        let bit = crate::hints::digit_bit(digit);
+        let sites: Vec<_> = set
+            .cells()
+            .filter(|&cell| masks[cell] & bit != 0)
+            .map(|cell| Candidate { cell, digit })
+            .collect();
+        assert_eq!(sites, endpoint.candidates().collect::<Vec<_>>());
+    }
+
     fn assert_link_is_valid(link: &InferenceLink, masks: &[u16; CELLS]) {
-        let from: Vec<_> = inference_members(&link.from).collect();
-        let to: Vec<_> = inference_members(&link.to).collect();
+        let from: Vec<_> = link.from.candidates().collect();
+        let to: Vec<_> = link.to.candidates().collect();
         assert!(from.iter().all(|value| !to.contains(value)));
         assert!(
             from.iter()
@@ -2400,24 +2667,49 @@ mod tests {
             }
             LinkSource::AlmostLockedSet(set) => {
                 assert_eq!(link.strength, LinkStrength::Strong);
-                assert_ne!(link.from.digit(), link.to.digit());
-                let first = set.cells().next().unwrap();
-                assert!(
-                    House::at(first)
-                        .into_iter()
-                        .any(|house| { set.cells().all(|cell| House::at(cell).contains(&house)) })
+                assert_ne!(
+                    link.from.candidates().next().unwrap().digit,
+                    link.to.candidates().next().unwrap().digit
                 );
-                let union = set.cells().fold(0, |bits, cell| bits | masks[cell]);
-                let digits = set
-                    .digits()
-                    .fold(0, |bits, digit| bits | (1 << (digit - 1)));
-                assert_eq!(union, digits);
-                assert_eq!(set.digits().count(), set.cells().count() + 1);
+                assert_als_set(set, masks);
                 for endpoint in [&link.from, &link.to] {
-                    let bit = 1 << (endpoint.digit() - 1);
-                    let sites: Vec<_> =
-                        set.cells().filter(|&cell| masks[cell] & bit != 0).collect();
-                    assert_eq!(sites, endpoint.cells());
+                    assert_als_endpoint(set, endpoint, masks);
+                }
+                return;
+            }
+            LinkSource::AlmostLockedSetCell { set, cell, blocked } => {
+                assert_eq!(link.strength, LinkStrength::Strong);
+                assert_als_set(set, masks);
+                let cell = usize::from(cell);
+                assert!(!set.cells().any(|inside| inside == cell));
+                let (outside, inside) = if matches!(&link.from, InferenceNode::Candidate(candidate) if candidate.cell == cell)
+                {
+                    (&link.from, &link.to)
+                } else {
+                    (&link.to, &link.from)
+                };
+                let InferenceNode::Candidate(forced) = outside else {
+                    panic!("expected one candidate in the outside cell");
+                };
+                assert_eq!(forced.cell, cell);
+                let forced_bit = crate::hints::digit_bit(forced.digit);
+                assert_eq!(blocked, masks[cell] & !forced_bit);
+                assert!(blocked.count_ones() >= 2);
+                assert_als_endpoint(set, inside, masks);
+                let trigger = inside.candidates().next().unwrap().digit;
+                assert_eq!(blocked & crate::hints::digit_bit(trigger), 0);
+                for digit in crate::hints::digits(blocked) {
+                    assert!(set.digits().any(|in_set| in_set == digit));
+                    let bit = crate::hints::digit_bit(digit);
+                    for member in set.cells().filter(|&cell| masks[cell] & bit != 0) {
+                        assert!(candidates_conflict(
+                            Candidate {
+                                cell: member,
+                                digit
+                            },
+                            Candidate { cell, digit }
+                        ));
+                    }
                 }
                 return;
             }

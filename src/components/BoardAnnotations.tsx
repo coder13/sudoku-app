@@ -1,6 +1,7 @@
 import { useId } from 'react'
 
 type BoardPoint = { cell: number; digit?: number } | { cells: readonly number[]; digit: number }
+  | { candidates: readonly { cell: number; digit: number }[] }
 export type BoardRegion = { row: number; column: number; rows: number; columns: number }
 
 export type BoardLink = {
@@ -24,8 +25,9 @@ const CELL = 10
 const CANDIDATE_INSET = 0.07
 
 function coordinates(point: BoardPoint): { x: number; y: number } {
-  if ('cells' in point) {
-    const positions = point.cells.map((cell) => coordinates({ cell, digit: point.digit }))
+  if ('cells' in point || 'candidates' in point) {
+    const candidates = 'cells' in point ? point.cells.map(cell => ({ cell, digit: point.digit })) : point.candidates
+    const positions = candidates.map(coordinates)
     return {
       x: positions.reduce((sum, item) => sum + item.x, 0) / positions.length,
       y: positions.reduce((sum, item) => sum + item.y, 0) / positions.length,
