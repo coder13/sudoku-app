@@ -383,7 +383,6 @@ svg { flex-shrink: 0; }
 .dock-panel-content { width: 100%; height: 100%; min-width: 0; padding: 0; overflow: auto; }
 .desktop-dock .surface { border: 0; border-radius: 0; box-shadow: none; }
 .desktop-dock .puzzle { min-height: 100%; }
-.dock-puzzle-panel .puzzle[data-input-mode] { min-height: calc(100% - var(--space-12)); }
 .dock-puzzle-panel .puzzle {
   --puzzle-padding-inline: var(--space-10);
   padding-block: var(--space-8);
@@ -548,6 +547,7 @@ svg { flex-shrink: 0; }
   position: relative;
   min-width: 0;
 }
+.puzzle-column:has(.puzzle[data-input-mode]) { padding-inline: var(--space-8); }
 .workspace > .puzzle-column { grid-area: puzzle; }
 .surface {
   border: 1px solid var(--border);
@@ -572,7 +572,10 @@ svg { flex-shrink: 0; }
   gap: var(--space-6) var(--space-8);
 }
 .puzzle:has(.board-frame.guides-hidden) { --board-guide-width: 0px; --board-guide-offset: 0px; }
-.puzzle[data-input-mode] { overflow: visible; }
+.puzzle[data-input-mode] {
+  --board-mode-border-width: 3px;
+  overflow: visible;
+}
 .standard-workspace-page .puzzle[data-input-mode] {
   max-inline-size: max(240px, calc(var(--board-frame-width) + 2 * var(--puzzle-padding-inline) + 2px));
   margin-inline: auto;
@@ -792,23 +795,47 @@ svg { flex-shrink: 0; }
   --board-mode-border: dotted;
 }
 .puzzle[data-input-mode] .sudoku-grid {
-  border: 3px var(--board-mode-border, solid) var(--board-mode-accent);
+  border: var(--board-mode-border-width) var(--board-mode-border, solid) var(--board-mode-accent);
 }
 .board-mode-tab {
   position: absolute;
-  grid-column: 1 / -1;
-  inset-inline-start: calc(var(--puzzle-grid-inset) + (min(100cqi, var(--board-frame-limit)) - var(--board-guide-width)) * .05);
-  inset-block-end: 0;
-  translate: 0 50%;
   display: grid;
   place-items: center;
-  inline-size: 28px;
+  inline-size: var(--space-28);
   block-size: var(--space-22);
-  border-radius: 6px;
+  padding: 0;
+  border: 0;
   background: var(--board-mode-accent);
   color: light-dark(white, #181924);
-  pointer-events: none;
-  z-index: 1;
+  cursor: grab;
+  touch-action: none;
+  z-index: 4;
+}
+.board-mode-tab:active { cursor: grabbing; }
+.board-mode-tab:is([data-edge="top"], [data-edge="bottom"]) {
+  inset-inline-start: clamp(0px, var(--mode-offset), calc(100% - var(--space-28)));
+}
+.board-mode-tab:is([data-edge="left"], [data-edge="right"]) {
+  inset-block-start: clamp(0px, var(--mode-offset), calc(100% - var(--space-28)));
+  inline-size: var(--space-16);
+  block-size: var(--space-28);
+}
+.board-mode-tab:is([data-edge="left"], [data-edge="right"]) svg { width: 12px; height: 12px; }
+.board-mode-tab[data-edge="top"] {
+  inset-block-end: calc(100% - var(--board-mode-border-width));
+  border-radius: 6px 6px 0 0;
+}
+.board-mode-tab[data-edge="right"] {
+  inset-inline-start: calc(100% - var(--board-mode-border-width));
+  border-radius: 0 6px 6px 0;
+}
+.board-mode-tab[data-edge="bottom"] {
+  inset-block-start: calc(100% - var(--board-mode-border-width));
+  border-radius: 0 0 6px 6px;
+}
+.board-mode-tab[data-edge="left"] {
+  inset-inline-end: calc(100% - var(--board-mode-border-width));
+  border-radius: 6px 0 0 6px;
 }
 .sudoku-grid.drag-select { touch-action: none; }
 .grid-row { display: grid; grid-template-columns: repeat(var(--board-columns, 9), minmax(0, 1fr)); min-height: 0; }

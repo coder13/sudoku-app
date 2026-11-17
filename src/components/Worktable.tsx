@@ -1,7 +1,7 @@
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, Delete, Eye, Highlighter, Info, Lightbulb, ListFilter, ListOrdered, LogOut, MoreHorizontal, Palette, Pause, Pen, Pencil, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Eye, Info, Lightbulb, ListFilter, ListOrdered, LogOut, MoreHorizontal, Pause, PencilLine, Play, Plus, RotateCcw, Share2, X } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
@@ -34,6 +34,7 @@ import { ChainsPanel } from './ChainsPanel'
 import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
+import { DEFAULT_GRID_MODE_BADGE_POSITION, GridModeBadge } from './GridModeBadge'
 import { HintCard } from './HintCard'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
@@ -48,13 +49,6 @@ import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
 
 const ANALYSIS_CARD_KEY = 'sudoku-app:v1:techniques-card-open'
-const GRID_MODES = {
-  pen: { label: 'Pen', Icon: Pen },
-  pencil: { label: 'Pencil', Icon: Pencil },
-  highlight: { label: 'Highlight', Icon: Highlighter },
-  color: { label: 'Color', Icon: Palette },
-  erase: { label: 'Erase', Icon: Delete },
-} as const
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -227,6 +221,7 @@ export function Worktable({
 }) {
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
   const gridModeId = useId()
+  const [modeBadgePosition, setModeBadgePosition] = useState(DEFAULT_GRID_MODE_BADGE_POSITION)
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
@@ -1613,7 +1608,7 @@ export function Worktable({
   const gridInputMode = placeholder || draft || solved || mobileResults || previewing || (sketch.drawing && chainMasks)
     ? undefined
     : eraseMode ? 'erase' : colorMode ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
-  const gridModeCue = gridInputMode && !game.paused ? GRID_MODES[gridInputMode] : undefined
+  const badgeMode = game.paused || rearranging ? undefined : gridInputMode
   const livePuzzleStage = previewing ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
@@ -1630,7 +1625,9 @@ export function Worktable({
       candidates={hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations}
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
-      descriptionId={gridModeCue ? gridModeId : undefined}
+      descriptionId={badgeMode ? gridModeId : undefined}
+      modeBadge={badgeMode && <GridModeBadge mode={badgeMode} descriptionId={gridModeId} gridRef={boardRef}
+        position={modeBadgePosition} onPosition={setModeBadgePosition} />}
       label={variant ? `${VARIANTS[variant.id].name} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
@@ -1738,10 +1735,6 @@ export function Worktable({
           ) : livePuzzleStage}
         </div>
         {presentationDraft && <div className="draft-tip"><PencilLine size={16} /> Enter the givens, then save your puzzle.</div>}
-        {gridModeCue && <div className="board-mode-tab" id={gridModeId} role="status">
-          <gridModeCue.Icon size={15} aria-hidden="true" />
-          <span className="sr-only">{gridModeCue.label} mode</span>
-        </div>}
         </section>
       </div>
   )
