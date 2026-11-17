@@ -197,6 +197,22 @@ records that run. Native Mac Chrome and Firefox both passed the basic solving,
 candidate, history, navigation, Settings-return, and hint flows.
 The native-browser results are recorded in [browser cases](browser-cases.json).
 
+### PR integration verification
+
+Before opening the PR, the branch was merged with `origin/main` at `a13e05b`,
+including the mixed-rule import work. Duplicate detection now uses the new shared
+import helper, and identity regression coverage includes mixed-rule puzzles.
+The existing desktop wrapper spacing fix is also included.
+
+- `npm run check`: passed after integration.
+- `npm test`: **302 tests passed**, zero failures ([log](pr-tests.log)).
+- Vite production build and offline bundle generation: passed ([log](pr-build.log)).
+- Packaged offline-route regressions: **3 tests passed** ([log](pr-offline.log)).
+
+This build reused the previously validated engine artifact; the PR changes no
+Rust engine code. The native Chrome/Firefox smoke results above precede this main
+merge and were not repeated as part of PR preparation.
+
 ## UAT-06 — Shortcut capture feedback is invisible
 
 Click Change shortcut for Pencil mode, then press D (already assigned) or a

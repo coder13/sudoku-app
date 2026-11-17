@@ -62,9 +62,14 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
           const rules = evidence.rules.map((index) => puzzle.rules?.[index]).filter((rule) => rule?.type === 'kropki')
           const ratio = rules.some((rule) => hasMarkedPair(rule.ratioTwo?.pairs, a, b))
           const consecutive = rules.some((rule) => hasMarkedPair(rule.consecutive?.pairs, a, b))
-          description = ratio && consecutive ? 'The two dots require consecutive digits with one double the other, so the pair must be 1 and 2.'
-            : ratio ? 'The black dot requires one of these digits to be double the other.'
-              : 'The white dot requires these two digits to be consecutive.'
+          const noConsecutive = rules.some(rule => rule.consecutive?.negative && !hasMarkedPair(rule.consecutive.pairs, a, b))
+          const noRatio = rules.some(rule => rule.ratioTwo?.negative && !hasMarkedPair(rule.ratioTwo.pairs, a, b))
+          description = ratio && consecutive ? 'The two dots require consecutive digits with one double the other, so the pair must be 1 and 2.' : [
+            consecutive && 'The white dot requires these two digits to be consecutive.',
+            ratio && 'The black dot requires one of these digits to be double the other.',
+            noConsecutive && 'There is no white dot between these cells, so their digits cannot be consecutive.',
+            noRatio && 'There is no black dot between these cells, so neither digit can be double the other.',
+          ].filter(Boolean).join(' ') || 'The Kropki rules restrict the highlighted cells.'
           break
         }
         default: description = 'The marked rule restricts the highlighted cells.'

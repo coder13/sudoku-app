@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { deflateSync } from 'node:zlib'
 import lzString from 'lz-string'
 import { exportPuzzle, STARTER } from '../src/sudoku/formats.ts'
-import { WINDOKU_REGIONS, isPlayablePuzzle } from '../src/sudoku/variants.ts'
+import { WINDOKU_REGIONS, isPlayablePuzzle, variantName, variantRuleDescriptions } from '../src/sudoku/variants.ts'
+import { countMixedSolutions } from './helpers/mixed-oracle.ts'
+import { mixedFixtures } from './helpers/mixed-fixtures.ts'
+import { coachCode as coach } from './helpers/coach-code.ts'
 import { EMPTY } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
@@ -13,13 +15,6 @@ const killerCode = 'SCv7_32_f2ear5619r1j0424vv2ueeb4dmnhrtoafv013t8gml8m9a8dak99
 const jigsawCode = 'SCv7_32_f2e6rjmd1b130360u5rsjec7tihmncvjrpg4fsb656skp67287crmbq9lc7b8vp8pm7l5uk2njp6bpj7ga8hpb19udqrjgbod9eajd9ql7vinvhjfl2mrc2k6hnha2uirfk20kaik4lb2him72ccjma1sp3lk9mefibhu0uqt8u65l23bdj15gg6e4k67lcv8mtfbejp19p5qni1r1r21nhsn4'
 const shortGrid = STARTER.replace(/\d0{0,5}/g, (run) =>
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx'[Number(run[0]) + 10 * (run.length - 1)])
-
-function coach(data: Record<string, unknown>) {
-  const alphabet = '0123456789abcdefghijklmnopqrstuv'
-  const bytes = deflateSync(JSON.stringify({ gridSize: 9, ...data }))
-  const bits = Array.from(bytes, (byte) => byte.toString(2).padStart(8, '0')).join('')
-  return 'SCv7_32_' + bits.match(/.{1,5}/g)!.map((chunk) => alphabet[Number.parseInt(chunk.padEnd(5, '0'), 2)]).join('')
-}
 
 test('detects existing formats and compact Classic links', async () => {
   const inputs = [
@@ -104,10 +99,17 @@ test('imports Windoku regions and keeps them through sharing', async () => {
   assert.deepEqual(imported.variant.puzzle.rules, WINDOKU_REGIONS.map(cells => ({ type: 'extra-house', cells })))
   const shared = 'https://example.org/#variant=' + encodeURIComponent(JSON.stringify(imported.variant))
   assert.deepEqual(await detectPuzzle(shared), { ...imported, format: 'Puzzle link' })
-  await assert.rejects(detectPuzzle(coach({ givenConstraints: givenConstraints.slice(1) })), /unsupported or invalid/)
-  await assert.rejects(detectPuzzle(coach({ givenConstraints: [
+  const partial = await detectPuzzle(coach({ givenConstraints: givenConstraints.slice(1) }))
+  assert.equal(partial.variant?.id, 'mixed')
+  assert.deepEqual(partial.variant.puzzle.rules, WINDOKU_REGIONS.slice(1).map(cells => ({ type: 'extra-house', cells })))
+  const repeated = await detectPuzzle(coach({ givenConstraints: [
     ...givenConstraints, { type: 'region', segments: [{ cells: WINDOKU_REGIONS[0], parameters: {} }] },
-  ] })), /unsupported or invalid/)
+  ] }))
+  assert.equal(repeated.variant?.id, 'mixed')
+  assert.equal(repeated.variant.puzzle.rules?.length, 5)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'region', segments: [
+    { cells: WINDOKU_REGIONS[0].slice(1), parameters: {} },
+  ] }] })), /unsupported or invalid/)
 })
 
 test('opens f-puzzles links, raw exports, and SudokuPad f-puzzles links', async () => {
@@ -137,9 +139,93 @@ test('reports unsupported or damaged codes without treating them as Classic', as
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'cage', segments: [] }] })), /no Killer cages/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [
     { type: 'antiKnight', segments: [] },
-    { type: 'diagonalNegative', segments: [] },
-  ] })), /combination/)
+    { type: 'globalEntropy', segments: [] },
+  ] })), /not supported yet.*globalEntropy/)
   await assert.rejects(detectPuzzle('x'.repeat(MAX_IMPORT_LENGTH + 1)), /one puzzle at a time/)
+})
+
+test('authored mixed fixtures require their rules and have independently verified completions', () => {
+  for (const [name, { puzzle, solution }] of Object.entries(mixedFixtures)) {
+    const full = countMixedSolutions(puzzle)
+    assert.equal(full.count, 1, name)
+    assert.equal(full.solution, solution, name)
+    assert.equal(countMixedSolutions({ ...puzzle, rules: puzzle.rules?.filter(rule => rule.type !== 'killer-cages') }).count, 2, name)
+    if (name === 'x-killer') assert.equal(countMixedSolutions({
+      ...puzzle, rules: puzzle.rules?.filter(rule => rule.type !== 'diagonal'),
+    }).count, 2)
+  }
+})
+
+test('Coach, f-puzzles, and native share links preserve the complete mixed puzzle', async () => {
+  for (const fixture of Object.values(mixedFixtures)) {
+    for (const source of [fixture.coach, fixture.fpuzzles]) {
+      const imported = await detectPuzzle(source)
+      assert.equal(imported.variant?.id, 'mixed')
+      // f-puzzles stores unordered diagonal flags; Coach stores an ordered constraint list.
+      const expected = structuredClone(fixture.puzzle)
+      if (source === fixture.fpuzzles && expected.rules?.[0]?.type === 'diagonal') {
+        expected.rules = [expected.rules[1], expected.rules[0], ...expected.rules.slice(2)]
+      }
+      assert.deepEqual(imported.variant.puzzle, expected)
+      assert.equal(isPlayablePuzzle('mixed', imported.variant.puzzle), true)
+      const link = 'https://example.org/#variant=' + encodeURIComponent(JSON.stringify(imported.variant))
+      assert.deepEqual(await detectPuzzle(link), { ...imported, format: 'Puzzle link' })
+    }
+  }
+  assert.equal(variantName({ id: 'mixed', puzzle: mixedFixtures['x-killer'].puzzle }), 'Diagonal + Killer')
+  assert.equal(variantName({ id: 'mixed', puzzle: mixedFixtures['jigsaw-killer'].puzzle }), 'Jigsaw + Killer')
+})
+
+test('mixed imports preserve interleaved rule indices and explain every rule family', async () => {
+  const constraints = [
+    { type: 'cage', segments: [{ cells: [10, 11], parameters: { sum: 3 } }], settings: {} },
+    { type: 'region', segments: [{ cells: WINDOKU_REGIONS[0], parameters: {} }], settings: {} },
+    { type: 'diagonalPositive', segments: [], settings: {} },
+    { type: 'thermometer', segments: [{ cells: [0, 1, 2], parameters: {} }], settings: {} },
+    { type: 'arrow', segments: [{ cells: [4, 13, 14], parameters: {} }], settings: {} },
+    { type: 'antiKnight', segments: [], settings: {} },
+  ]
+  const imported = await detectPuzzle(coach({ givenConstraints: constraints }))
+  assert.equal(imported.variant?.id, 'mixed')
+  assert.deepEqual(imported.variant.puzzle.rules, [
+    { type: 'killer-cages', cages: [{ cells: [10, 11], sum: 3 }] },
+    { type: 'extra-house', cells: WINDOKU_REGIONS[0] },
+    { type: 'diagonal', diagonal: 'anti' },
+    { type: 'thermometer', cells: [0, 1, 2] },
+    { type: 'arrow', circle: 4, cells: [13, 14] },
+    { type: 'anti-knight' },
+  ])
+  const descriptions = variantRuleDescriptions(imported.variant.puzzle)
+  for (const rule of ['extra region', 'top-right to bottom-left', 'cage', 'thermometer', 'arrow', 'knight']) {
+    assert.ok(descriptions.some(description => description.toLowerCase().includes(rule)), rule)
+  }
+  assert.equal(isPlayablePuzzle('killer-cages', imported.variant.puzzle), false)
+  for (const invalid of [
+    { type: 'extra-house', cells: [...WINDOKU_REGIONS[0].slice(1), WINDOKU_REGIONS[0][1]] },
+    { type: 'thermometer', cells: [0, 81] },
+    { type: 'arrow', circle: 4, cells: [4] },
+    { type: 'parity', parity: 'even', cells: [0] },
+  ]) assert.equal(isPlayablePuzzle('mixed', { ...imported.variant.puzzle, rules: [...imported.variant.puzzle.rules!, invalid] }), false)
+})
+
+test('Coach white and black dot layers keep independent negative flags and shared edges', async () => {
+  const imported = await detectPuzzle(coach({ givenConstraints: [
+    { type: 'difference', segments: [{ cells: [7, 8], parameters: {} }], settings: { negativeConstraint: true } },
+    { type: 'ratio', segments: [{ cells: [8, 7], parameters: { ratio: 2 } }], settings: { negativeConstraint: false } },
+  ] }))
+  assert.equal(imported.variant?.id, 'kropki')
+  assert.deepEqual(imported.variant.puzzle.rules, [
+    { type: 'kropki', consecutive: { pairs: [[7, 8]], negative: true } },
+    { type: 'kropki', ratioTwo: { pairs: [[8, 7]], negative: false } },
+  ])
+  assert.ok(variantRuleDescriptions(imported.variant.puzzle).some(rule => rule.includes('Every adjacent pair of consecutive digits')))
+  assert.ok(!variantRuleDescriptions(imported.variant.puzzle).some(rule => rule.includes('Every adjacent pair with one digit double')))
+  for (const constraint of [
+    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 2 } }], settings: {} },
+    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 3 } }], settings: {} },
+    { type: 'ratio', segments: [{ cells: [7, 7], parameters: {} }], settings: {} },
+    { type: 'ratio', segments: [{ cells: [7, 8], parameters: {} }], settings: { negativeConstraint: 'true' } },
+  ]) await assert.rejects(detectPuzzle(coach({ givenConstraints: [constraint] })), /not supported|invalid|unsupported/)
 })
 
 test('every Classic share format round-trips sparse and dense grids without player progress', async () => {

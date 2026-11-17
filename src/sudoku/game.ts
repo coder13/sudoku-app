@@ -128,7 +128,7 @@ function orderedPuzzleFields(value: unknown): unknown {
 export function normalizePuzzleIdentity(identity: string): string {
   const separator = identity.indexOf(':')
   const variant = identity.slice(0, separator)
-  if (separator < 0 || !isVariantId(variant) || variant === 'classic') return identity
+  if (separator < 0 || (!isVariantId(variant) && variant !== 'mixed') || variant === 'classic') return identity
   try {
     const puzzle: unknown = JSON.parse(identity.slice(separator + 1))
     if (puzzle && typeof puzzle === 'object' && !Array.isArray(puzzle)) {

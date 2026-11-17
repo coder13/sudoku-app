@@ -4,6 +4,15 @@ import { gzipSync } from 'node:zlib'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 
 const fixtures = JSON.parse(await readFile(new URL('../crates/engine/benches/fixtures/variants.json', import.meta.url), 'utf8'))
+const mixed = JSON.parse(await readFile(new URL('../tests/fixtures/mixed-puzzles.json', import.meta.url), 'utf8'))
+const combined = JSON.parse(await readFile(new URL('../tests/fixtures/combined-families.json', import.meta.url), 'utf8'))
+fixtures.push({
+  name: 'x-killer', position: mixed['x-killer'].puzzle,
+  template: { version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' },
+  ] },
+  derivedClues: [{ type: 'killer-cage-sizes', sizes: Array(27).fill(3), coverGrid: true }], givens: 8,
+}, { name: 'all-families', position: combined.puzzle })
 const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
 const { instance } = await WebAssembly.instantiate(bytes)
 const handle = createEngineHandler(async () => instance.exports)
@@ -51,6 +60,10 @@ for (const { name, position: puzzle, template, derivedClues, givens } of fixture
   const validation = await sample({ type: 'variant', position, operation: 'analyze', maxNodes })
   const solve = await sample({ type: 'variant', position, operation: 'solve', maxNodes })
 
+  if (!template) {
+    console.log(`${name.padEnd(16)} candidates ${candidates}  verify ${validation}  solve ${solve}  rate ${rating}  hints ${hints}  generate not configured`)
+    continue
+  }
   const measurements = []
   let matches = 0
   for (let seed = 1; seed <= seeds; seed++) {

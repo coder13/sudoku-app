@@ -307,12 +307,10 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 
 @media (max-width: 960px) {
   .learn-page { grid-template-columns: minmax(0, 1fr); gap: var(--space-14); padding-top: var(--space-8); }
-  .article-subheading, .lesson-worked-examples, .lesson-article h2, .lesson-example-notes {
-    scroll-margin-top: calc(var(--topbar-height) + 76px);
-  }
   .learn-navigation {
+    position: relative;
     z-index: 10;
-    top: var(--topbar-height);
+    top: auto;
     display: block;
     max-height: none;
     padding-block: var(--space-8);

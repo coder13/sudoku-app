@@ -29,7 +29,7 @@ import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
 import { variantHintChoice, variantSolutionPath } from '../sudoku/variant-hints'
 import { getVariantPlayOrder, playCandidates, variantHintOrder, variantPosition } from '../sudoku/variant-play'
-import { VARIANTS, variantHouseMasks } from '../sudoku/variants'
+import { variantName, variantRuleDescriptions, variantHouseMasks } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
@@ -1588,7 +1588,7 @@ export function Worktable({
         else setSolvedView('difficulty')
       }} onChooseVariant={onNewPuzzle} />
   ) : showDifficulty ? (
-    <PuzzleDifficulty value={preferredDifficulty} variant={variant?.id} showGuides={appearance.showGuides}
+    <PuzzleDifficulty value={preferredDifficulty} variant={variant?.id === 'mixed' ? undefined : variant?.id} showGuides={appearance.showGuides}
       onBack={() => setSolvedView('results')} onChange={onDifficultyChange} />
   ) : null
   const solveSinglesAction = <button onClick={() => { void solveAllSingles() }} disabled={busy || !hasSingles}
@@ -1745,7 +1745,7 @@ export function Worktable({
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
-      label={variant ? `${VARIANTS[variant.id].name} Sudoku grid` : undefined}
+      label={variant ? `${variantName(variant)} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
       highlightedDigit={mobileResults ? null : selectedDigit} selected={mobileResults ? undefined : selected} active={active}
@@ -1798,8 +1798,8 @@ export function Worktable({
           ) : (
             <>
               {variant && <button type="button" className="button soft variant-rules-button" onClick={() => setVariantRulesOpen(true)}
-                aria-label={`${VARIANTS[variant.id].name} Sudoku rules`} aria-haspopup="dialog">
-                <Info size={16} aria-hidden="true" />{VARIANTS[variant.id].name}
+                aria-label={`${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
+                <Info size={16} aria-hidden="true" />{variant.id === 'mixed' ? 'Mixed rules' : variantName(variant)}
               </button>}
               {solved && !previewing && <button className="button soft puzzle-view-toggle" aria-pressed={showSolvedGrid} onClick={() => {
                 setSolvedView(showSolvedGrid ? 'results' : 'grid')
@@ -1963,9 +1963,11 @@ export function Worktable({
           onChainsVisibleChange={setDesktopChainsVisible}
           onSolutionVisibleChange={setDesktopSolutionVisible} />
         : desktop
-          ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack" id="standard-digit-input">
-              {inputPanel}
+          ? <><div className="standard-puzzle-stack">
+              {puzzlePanel}
               <MotionSurface>{hintPanel}</MotionSurface>
+            </div><div className="standard-input-stack" id="standard-digit-input">
+              {inputPanel}
               <MotionSurface>{activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
                 <div className="desktop-insight-toolbar">
                   <div ref={insightTabsRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
@@ -2023,10 +2025,9 @@ export function Worktable({
             }} />}
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
-      {variant && <Modal title={`${VARIANTS[variant.id].name} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>
+      {variant && <Modal title={`${variantName(variant)} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>
         <div className="variant-rules-copy">
-          {variant.id !== 'jigsaw' && <p>{VARIANTS.classic.rule}</p>}
-          <p>{VARIANTS[variant.id].rule}</p>
+          {variantRuleDescriptions(variant.puzzle).map(rule => <p key={rule}>{rule}</p>)}
         </div>
       </Modal>}
       {analysisDialogOpen && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} onSelectTechnique={showTechniqueHints} />}

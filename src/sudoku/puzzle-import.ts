@@ -2,7 +2,7 @@ import lzString from 'lz-string'
 import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle } from './formats.ts'
 import { EMPTY } from './game.ts'
-import { isPlayablePuzzle, isVariantId, type VariantGame } from './variants.ts'
+import { isPlayablePuzzle, isVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000
 const MAX_DECODED_LENGTH = 128_000
@@ -57,13 +57,12 @@ function readRegions(labels: unknown): VariantPuzzle['regions'] {
 }
 
 function makeImportedPuzzle(format: ImportFormat, givens: string, rules: VariantRule[], regions: VariantPuzzle['regions']): ImportedPuzzle {
-  const id = regions?.type === 'jigsaw' ? 'jigsaw' : rules[0]?.type === 'extra-house' ? 'windoku' : rules[0]?.type
-  if (!id) return { givens, format }
   const puzzle: VariantPuzzle = { version: 1, givens, ...(regions && { regions }), ...(rules.length && { rules }) }
-  if (rules.some((rule) => rule.type !== (id === 'windoku' ? 'extra-house' : id))) throw new Error('This combination of Sudoku rules is not supported yet.')
-  if (!isVariantId(id) || !isPlayablePuzzle(id, puzzle)) {
-    throw new Error('This puzzle has unsupported or invalid rules.')
-  }
+  // Validate the complete rule list before using it to choose a display name.
+  if (!rules.length && !regions) return { givens, format }
+  if (!isPlayablePuzzle('mixed', puzzle)) throw new Error('This puzzle has unsupported or invalid rules.')
+  const id = variantIdForPuzzle(puzzle)
+  if (id === 'classic') return { givens, format }
   return { givens, format, variant: { id, puzzle } }
 }
 
@@ -140,7 +139,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (constraint.type !== 'region' && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'cage') {
       const cages = constraint.segments.map((segment: unknown) => {
         if (!record(segment) || !Array.isArray(segment.cells) || !record(segment.parameters) ||
@@ -155,6 +154,29 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
       if (constraint.segments.length) throw new Error(`This Sudoku Coach puzzle uses unsupported cells for ${constraint.type}.`)
       if (constraint.type === 'antiKnight') rules.push({ type: 'anti-knight' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })
+    } else if (constraint.type === 'difference' || constraint.type === 'ratio') {
+      const kind = constraint.type
+      const settings = constraint.settings
+      if (hasData(settings) && (!record(settings) ||
+        Object.keys(settings).some(key => key !== 'negativeConstraint') ||
+        settings.negativeConstraint !== undefined && typeof settings.negativeConstraint !== 'boolean')) {
+        throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+      }
+      const pairs = constraint.segments.map((segment: unknown) => {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
+          !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== kind)) {
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${constraint.type} marker.`)
+        }
+        const expected = constraint.type === 'difference' ? 1 : 2
+        if (segment.parameters[kind] !== undefined && segment.parameters[kind] !== expected) {
+          throw new Error(`This Sudoku Coach ${constraint.type} marker is not supported yet.`)
+        }
+        return segment.cells as [number, number]
+      })
+      const marks = { pairs, negative: record(settings) && settings.negativeConstraint === true }
+      rules.push(constraint.type === 'difference'
+        ? { type: 'kropki', consecutive: marks }
+        : { type: 'kropki', ratioTwo: marks })
     } else if (constraint.type === 'region') {
       const styling = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
       if (hasData(constraint.settings) && (!record(constraint.settings) ||
@@ -269,10 +291,10 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   if (url) {
     if (url.hash.startsWith('#variant=')) {
       const shared = parseJSON(new URLSearchParams(url.hash.slice(1)).get('variant') ?? '', 'Puzzle link')
-      if (!record(shared) || !isVariantId(shared.id) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle)) {
+      if (!record(shared) || (shared.id !== 'mixed' && !isVariantId(shared.id)) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle)) {
         throw new Error('This link is missing a valid Sudoku variant.')
       }
-      const variant = { id: shared.id, puzzle: shared.puzzle }
+      const variant: NonNullable<ImportedPuzzle['variant']> = { id: shared.id, puzzle: shared.puzzle }
       return { givens: variant.puzzle.givens, format: 'Puzzle link', variant }
     }
     if (url.hash.startsWith('#puzzle=')) return { givens: parsePuzzle(url.href), format: 'Puzzle link' }

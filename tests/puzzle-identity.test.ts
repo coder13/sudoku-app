@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMPTY, normalizePuzzleIdentity, puzzleIdentity } from '../src/sudoku/game.ts'
+import { EMPTY, makeGame, normalizePuzzleIdentity, puzzleIdentity } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { WINDOKU_REGIONS, type PlayableVariant } from '../src/sudoku/variants.ts'
+import { findImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { WINDOKU_REGIONS, type VariantGame } from '../src/sudoku/variants.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 
@@ -13,7 +14,7 @@ function reverseObjectFields(value: unknown): unknown {
 }
 
 const puzzle = (extra: Partial<VariantPuzzle>): VariantPuzzle => ({ version: 1, givens: EMPTY, ...extra })
-const variants: { id: PlayableVariant; puzzle: VariantPuzzle }[] = [
+const variants: Pick<VariantGame, 'id' | 'puzzle'>[] = [
   { id: 'killer-cages', puzzle: puzzle({ rules: [{ type: 'killer-cages', cages: [{ cells: [0, 1], sum: 3 }], coverGrid: false }] }) },
   { id: 'windoku', puzzle: puzzle({ rules: WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })) }) },
   { id: 'diagonal', puzzle: puzzle({ rules: [{ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' }] }) },
@@ -23,6 +24,8 @@ const variants: { id: PlayableVariant; puzzle: VariantPuzzle }[] = [
   { id: 'arrow', puzzle: puzzle({ rules: [{ type: 'arrow', circle: 0, cells: [9, 10] }] }) },
   { id: 'kropki', puzzle: puzzle({ rules: [{ type: 'kropki', consecutive: { pairs: [[0, 1]], negative: false },
     ratioTwo: { pairs: [[9, 10]], negative: false } }] }) },
+  { id: 'mixed', puzzle: puzzle({ rules: [{ type: 'diagonal', diagonal: 'main' },
+    { type: 'killer-cages', cages: [{ cells: [0, 1], sum: 3 }] }] }) },
 ]
 
 test('object key order cannot create a different identity for the same imported variant', async () => {
@@ -33,6 +36,8 @@ test('object key order cannot create a different identity for the same imported 
     assert.equal(puzzleIdentity(imported), puzzleIdentity(original), variant.id)
     assert.equal(puzzleIdentity(original), `${variant.id}:${JSON.stringify(variant.puzzle)}`, 'established field order stays stable: ' + variant.id)
     assert.equal(normalizePuzzleIdentity(`${variant.id}:${JSON.stringify((reversed as typeof variant).puzzle)}`), puzzleIdentity(original))
+    const saved = { ...makeGame('existing', 'Existing puzzle', EMPTY, 'imported'), variant: { ...variant, solution: EMPTY } }
+    assert.equal(findImportedPuzzle([saved], imported), saved, 'import lookup shares the normalized identity: ' + variant.id)
   }
 })
 
