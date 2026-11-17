@@ -113,7 +113,8 @@ const vite = await createServer({
       const article = previewArticles.get(id.split('?')[0])
       if (!article) return
       // Wait for the article's own hydration commit before touching its DOM.
-      return source.replace(`<article className="${article}">`, `<article className="${article}" ref={(element) => { element?.setAttribute('data-preview-ready', '') }}>`)
+      return source.replace('editorPreview = false', 'editorPreview = true')
+        .replace(`<article className="${article}">`, `<article className="${article}" ref={(element) => { element?.setAttribute('data-preview-ready', '') }}>`)
     },
     configureServer(server) {
       server.middlewares.use((request, response, next) => {

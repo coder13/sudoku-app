@@ -6,7 +6,7 @@
     "difficultyTitle": "Difficulty ratings",
     "difficultyParagraphs": [
       "Easy moves look for a single choice, such as the last place a digit can go in a house. Medium moves use small sets of candidates or the overlap between a line and a box. Hard patterns can span several houses. Unfair moves often need longer chains or more cases to check. For an Extreme move, you may have to follow several possible placements and see where each one leads.",
-      "The menu puts each lesson under its easiest variant. The labels below show the range for that lesson. A puzzle’s rating counts the whole solve, including how many steps it takes."
+      "Each variant lists its lessons by difficulty. When a lesson covers several forms of a technique, it appears at the easiest level. A puzzle’s rating counts the whole solve, including the number of steps."
     ],
     "fundamentalsNote": "For the rules, cell addresses, and candidates, start with"
   },
@@ -91,7 +91,7 @@
       {
         "type": "text",
         "paragraphs": [
-          "Place the 3. A cell with just one candidate gives you a naked single. This can also happen later, after another move lets you cross out a candidate."
+          "A cell with just one candidate gives you a naked single. This can also happen later, after another move lets you cross out a candidate."
         ]
       },
       {
@@ -229,7 +229,15 @@
             {
               "label": "Sudoku Snake",
               "href": "https://www.sudokusnake.com/nakedsingles.php"
+            },
+            {
+              "label": "Krazydad",
+              "href": "https://krazydad.com/sudokustrategy/"
             }
+          ],
+          "aliases": [
+            "Sole Candidate",
+            "Singleton"
           ]
         },
         {
@@ -246,13 +254,13 @@
               "type": "text",
               "paragraphs": [
                 "Pick a digit that already appears in several boxes. Find a box that still needs it and use the placed copies to rule out rows and columns.",
-                "If exactly one empty cell in the box can take the digit, place it there. You can also search one row or column at a time."
+                "If the digit can go in only one empty cell in the box, place it there. You can also search one row or column at a time."
               ]
             },
             {
               "type": "text",
               "paragraphs": [
-                "Choose a digit a house still needs. Check every empty cell in that house for it. If just one cell can take the digit, put it there. Other candidates in that cell make the single easy to miss."
+                "Choose a digit a house still needs. Check every empty cell in that house for it. If the digit can go in only one cell, place it there. Other candidates in that cell make the single easy to miss."
               ]
             },
             {
@@ -294,7 +302,14 @@
             {
               "label": "Sudoku Snake",
               "href": "https://www.sudokusnake.com/hiddensingles.php"
+            },
+            {
+              "label": "Krazydad",
+              "href": "https://krazydad.com/sudokustrategy/"
             }
+          ],
+          "aliases": [
+            "Unique Candidate"
           ]
         }
       ]
@@ -386,6 +401,10 @@
             {
               "label": "Sudoku Snake",
               "href": "https://www.sudokusnake.com/claiming.php"
+            },
+            {
+              "label": "Diagonal Locked Candidates in X Sudoku",
+              "href": "/learn/diagonal-locked-candidates"
             }
           ]
         }
@@ -427,7 +446,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Two cells each show only 4 and 6. Whichever takes 4, the other takes 6. Erase 4 and 6 from the rest of the house."
+                "Two cells each show only 4 and 6. If one cell is 4, the other must be 6. Erase 4 and 6 from the rest of the house."
               ]
             },
             {
@@ -453,7 +472,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "The lists 12, 24, 34, and 123 contain only four distinct digits. In one house, those four cells take up 1, 2, 3, and 4. Erase the four digits elsewhere in the house."
+                "The lists 12, 24, 34, and 123 contain only four distinct digits. If the four cells share a house, they must use 1, 2, 3, and 4. Erase the four digits elsewhere in the house."
               ]
             },
             {
@@ -549,7 +568,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start with digits a house still needs. Count every cell that can take at least one of your chosen digits. If there are as many cells as digits, those cells are all spoken for."
+                "Start with digits a house still needs. Count every cell with at least one of the chosen candidates. If there are as many cells as digits, those cells are all spoken for."
               ]
             },
             {
@@ -560,7 +579,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "When two digits can only go in the same two cells, those cells have to take the pair. Check all nine cells of the house before you erase the other candidates in those two cells."
+                "If two digits can go only in the same two cells, the pair must go there. Check all nine cells of the house before you erase the other candidates in those two cells."
               ]
             },
             {
@@ -575,7 +594,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Count the cells that can take any of three digits. If there are exactly three such cells in the house, erase their other candidates. A cell can show any one, two, or all three of the chosen digits."
+                "Count the cells with at least one of the three candidates. If there are exactly three such cells in the house, erase their other candidates. A cell can show any one, two, or all three of the chosen digits."
               ]
             },
             {
@@ -658,7 +677,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Look for a digit with exactly two places in each of two rows, lined up in the same columns. One row takes one column and the other takes the second. That uses up both columns for this digit."
+                "Look for a digit with exactly two places in each of two rows, lined up in the same columns. The digit must go in a different column in each row. That uses up both columns for this digit."
               ]
             },
             {
@@ -684,7 +703,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "The four corners can come with extra candidates, called fins, outside the crossing lines. All fins must share a box. A target sits in that box on a crossing line, outside the starting lines. If a fin takes the digit, the box rules out the target. If all fins are gone, the X-Wing rules it out."
+                "The four corners can come with extra candidates, called fins, outside the crossing lines. All fins must share a box. A target sits in that box on a crossing line, outside the starting lines. If the digit goes in a fin, the box rules out the target. If all fins are gone, the X-Wing rules it out."
               ]
             },
             {
@@ -784,7 +803,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Set aside the candidates outside the crossing lines. If they all sit in one box and you can see an ordinary Swordfish without them, check where the crossing lines enter that box. Erase only outside the starting lines. A fin in the box rules out the target if it takes the digit, and the Swordfish rules it out if all fins are gone."
+                "Set aside the candidates outside the crossing lines. If they all sit in one box and you can see an ordinary Swordfish without them, check where the crossing lines enter that box. Erase only outside the starting lines. If the digit goes in a fin, the fin rules out the target. If all fins are gone, the Swordfish rules it out."
               ]
             },
             {
@@ -880,7 +899,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "If you have a Jellyfish plus a few extra candidates outside the crossing lines, check where the extras are. They must all be in one box. The target is in that box and on a crossing line, outside the starting lines. It loses if a fin takes the digit and if the Jellyfish uses up the crossing lines."
+                "If you have a Jellyfish plus a few extra candidates outside the crossing lines, check where the extras are. They must all be in one box. The target is in that box and on a crossing line, outside the starting lines. If the digit goes in a fin, the fin rules out the target. If all fins are gone, the Jellyfish rules it out."
               ]
             },
             {
@@ -977,7 +996,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Only one of the aligned cells can take the digit. At least one row has to put it at its far end. Erase the digit from cells that see both far ends. You can also use two columns with one pair of ends in the same row."
+                "The digit can go in at most one of the aligned cells. It must appear at the far end of at least one row. Erase the digit from cells that see both far ends. You can also use two columns with one pair of ends in the same row."
               ]
             },
             {
@@ -1027,7 +1046,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find a row and a column with exactly two places each for the same digit. You need four different cells, with one end from each pair in the same box. Only one of those ends can take the digit, so at least one far end has to take it."
+                "Find a row and a column with exactly two places each for the same digit. You need four different cells, with one end from each pair in the same box. The digit can go in at most one of the ends that share a box. It must go in at least one far end."
               ]
             },
             {
@@ -1102,7 +1121,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find a line outside the box with only two places for the digit. One end of the pair must line up with one arm. If that end takes the digit, the box has to put its copy on the other arm. Look for a target on that other arm’s line that also sees the far end of the pair. Either placement rules it out."
+                "Find a line outside the box with only two places for the digit. One end of the pair must line up with one arm. If the digit goes in that end, the copy in the box must go on the other arm. Look for a target on that other arm’s line that also sees the far end of the pair. Either placement rules it out."
               ]
             },
             {
@@ -1169,7 +1188,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "An almost locked set (ALS) contains one more candidate digit than cells. All its cells share one house.",
+                "An almost locked set (ALS) contains one more candidate digit than cells. All its cells share a row, column, or box. If you place a digit in one cell, it is ruled out in the other cells in the set.",
                 "A cell with candidates 2 and 7 is an ALS. Two cells in one row with candidates 1, 2, and 3 between them also form an ALS."
               ]
             },
@@ -1183,7 +1202,7 @@
               "paragraphs": [
                 "A naked pair has two cells and two candidate digits. An ALS with two cells has three candidate digits.",
                 "If one digit is absent from an ALS, its cells must use every other digit. The ALS then becomes a locked subset.",
-                "For example, two cells in one row contain {1, 2} and {2, 3}. Without 1, they must take 2 and 3."
+                "For example, two cells in one row have candidates {1, 2} and {2, 3}. If you rule out 1, the first cell must be 2. That rules out 2 in the second cell, so it must be 3."
               ]
             },
             {
@@ -1194,28 +1213,24 @@
             {
               "type": "text",
               "paragraphs": [
-                "Two separate ALSs can share a restricted common candidate, called X. Every cell that contains X in one set sees every X cell in the other.",
-                "The sets cannot both use X. At least one set must therefore use all its other digits.",
+                "Two sets can share a digit called X. Check each X candidate in the first set against every X candidate in the second. If every pair shares a row, column, or box, X is a restricted common candidate.",
+                "If you place X in one set, it rules out X in the other. At least one set must fill its cells with its other digits.",
                 "If both sets contain another digit Z, at least one set must use Z. If an outside cell sees every Z candidate in both sets, it loses Z."
               ]
             },
             {
               "type": "diagram",
-              "example": "als-xz"
-            },
-            {
-              "type": "heading",
-              "id": "als-xz-example",
-              "title": "The shared digits in this example"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "The column set contains R3C7 and R5C7, with digits 1, 3, and 4. The row set contains R2C4, R2C5, R2C7, and R2C9.",
-                "The row set has five candidate digits: 1, 3, 4, 5, and 9. Both sets therefore have one more candidate digit than cells.",
-                "Their 3 candidates both lie in column 7, so the sets cannot both use 3. At least one set must use 1.",
-                "R2C8 sees every 1 candidate in both sets. It therefore loses candidate 1."
-              ]
+              "example": "als-xz",
+              "notes": {
+                "id": "als-xz-example",
+                "title": "The shared digits in this example",
+                "paragraphs": [
+                  "The column set contains R3C7 and R5C7, with digits 1, 3, and 4. The row set contains R2C4, R2C5, R2C7, and R2C9.",
+                  "The row set has five candidate digits: 1, 3, 4, 5, and 9. Both sets therefore have one more candidate digit than cells.",
+                  "The candidates for 3 in both sets share column 7. If you place 3 in one set, it rules out 3 in the other. At least one set must fill its cells with its other digits, including 1.",
+                  "R2C8 sees every 1 candidate in both sets. It therefore loses candidate 1."
+                ]
+              }
             },
             {
               "type": "heading",
@@ -1294,14 +1309,9 @@
             {
               "type": "text",
               "paragraphs": [
-                "Each set is a petal. An almost locked set has one more distinct candidate digit than it has cells, and its cells share a house. If the stem takes a linked digit, its petal loses that digit. The petal must then use every remaining digit.",
+                "Each set is a petal. An almost locked set has one more distinct candidate digit than it has cells, and its cells share a house. If a linked digit goes in the stem, it is ruled out in the matching petal. The petal must then use every remaining digit.",
                 "A target cell must see every copy of the shared digit in every petal. One unseen copy gives that petal a way to use the digit without ruling out the target."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -1355,11 +1365,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "sue-de-coq",
               "copy": {
@@ -1393,12 +1398,12 @@
     },
     {
       "title": "Wings",
-      "overview": "In an XY-Wing, either choice for the middle cell makes one of the two wings take the same digit. A cell that sees both wings loses that candidate. The other wings use different ways to force a digit. With WXYZ-Wing, check which digits could occur twice in the four cells.",
+      "overview": "In an XY-Wing, either choice for the middle cell forces the shared digit into one wing. A cell that sees both wings loses that candidate. The other wings use different ways to force a digit. With WXYZ-Wing, check which digits could occur twice in the four cells.",
       "lessons": [
         {
           "id": "xy-wing",
           "title": "XY-Wing",
-          "summary": "Either digit in the pivot makes one of the wings take their common digit.",
+          "summary": "Either choice for the pivot forces the shared digit into one wing.",
           "blocks": [
             {
               "type": "heading",
@@ -1415,18 +1420,18 @@
             {
               "type": "text",
               "paragraphs": [
-                "In the example, the middle cell, or pivot, has 1 and 2. Look for two cells that see it. One has only 1 and 3 and the other has only 2 and 3. Those two cells are the wings."
+                "The middle cell is called the pivot. The two outside cells are the wings. Check each wing against the pivot separately. They can see it through different houses."
               ]
             },
             {
               "type": "diagram",
-              "example": "xy-wing"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "A 1 in the pivot leaves the 1 and 3 wing with 3. A 2 leaves the other wing with 3. Erase 3 anywhere that sees both wings. Check each wing against the pivot separately. They can see it through different houses."
-              ]
+              "example": "xy-wing",
+              "notes": {
+                "paragraphs": [
+                  "The pivot has 1 and 2. One wing has only 1 and 3. The other has only 2 and 3.",
+                  "A 1 in the pivot leaves the 1 and 3 wing with 3. A 2 leaves the other wing with 3. Erase 3 anywhere that sees both wings."
+                ]
+              }
             },
             {
               "type": "practice",
@@ -1477,20 +1482,14 @@
               ]
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "The pivot in the figure has 2, 8, and 9. The wings see the pivot and have only 2 and 8, or 8 and 9. If the pivot takes 2 or 9, one wing takes 8. The pivot could also take 8 itself."
-              ]
-            },
-            {
               "type": "diagram",
-              "example": "xyz-wing"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Erase 8 from a cell that sees all three. R6C5 sees the wing in R2C5 through column 5, and sees the pivot and the other wing through the middle box."
-              ]
+              "example": "xyz-wing",
+              "notes": {
+                "paragraphs": [
+                  "The pivot has 2, 8, and 9. The wings see the pivot and have only 2 and 8, or 8 and 9. If the pivot is 2 or 9, one wing must be 8. The pivot can also be 8.",
+                  "Erase 8 from a cell that sees all three. R6C5 sees the wing in R2C5 through column 5, and sees the pivot and the other wing through the middle box."
+                ]
+              }
             },
             {
               "type": "practice",
@@ -1526,7 +1525,7 @@
         {
           "id": "w-wing",
           "title": "W-Wing",
-          "summary": "Link two cells with the same two candidates so one wing must take the other digit.",
+          "summary": "Link two cells with the same two candidates so the other digit must go in one wing.",
           "blocks": [
             {
               "type": "heading",
@@ -1543,18 +1542,18 @@
             {
               "type": "text",
               "paragraphs": [
-                "In the figure, both wings have 5 and 7. Column 2 has just two places for 7, and each of those places sees a different wing. Whichever place takes 7 leaves the wing it sees with only 5."
+                "Either end of the link rules out the linked digit in one wing. That wing must use the other digit. You can remove the other digit from any cell that sees both wings. Try forming the link with either of the two digits."
               ]
             },
             {
               "type": "diagram",
-              "example": "w-wing"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Erase 5 in any cell that sees both wings. If you find a house with two places for 5 instead, use that link to look for a removal of 7."
-              ]
+              "example": "w-wing",
+              "notes": {
+                "paragraphs": [
+                  "Both wings have 5 and 7. Column 2 has just two places for 7, and each of those places sees a different wing. Placing 7 in either spot leaves only 5 in the wing that spot sees.",
+                  "Erase 5 in any cell that sees both wings."
+                ]
+              }
             },
             {
               "type": "practice",
@@ -1582,7 +1581,7 @@
         {
           "id": "wxyz-wing",
           "title": "WXYZ-Wing",
-          "summary": "Four cells with four digits can force a digit across houses.",
+          "summary": "Four cells with four candidate digits can rule out a candidate elsewhere.",
           "blocks": [
             {
               "type": "heading",
@@ -1592,67 +1591,55 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start with a cell that has a short candidate list. Add nearby cells that reuse those digits until four cells contain exactly four distinct digits between them.",
-                "For each digit, check whether all its copies in the four cells see one another. Keep the pattern if at least three digits pass this check."
-              ]
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Pick four cells with exactly four different candidates between them. Look at one digit at a time. If all the cells that could take it in the wing see one another, that digit is restricted. Only one of those cells can take it."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "als-connection",
-              "title": "The ALS connection"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "An almost locked set (ALS) has one more candidate digit than cells. All its cells share one house.",
-                "A common WXYZ-Wing connects two ALSs with four cells in total. This arrangement is a small ALS-XZ pattern.",
-                "The whole wing can span several houses. It is not necessarily one ALS."
+                "Start with a cell that has few candidates. Look for three nearby cells so that the four cells have exactly four candidate digits between them. These four cells form the wing if they pass the next check.",
+                "Check one digit at a time. Look for a shared row, column, or box for every pair of cells with that candidate. If every pair shares one, placing the digit in one wing cell rules it out in the others. At least three digits must meet this rule."
               ]
             },
             {
               "type": "heading",
               "id": "one-unrestricted-digit",
-              "title": "One unrestricted digit"
+              "title": "When only one digit can repeat"
             },
             {
               "type": "text",
               "paragraphs": [
-                "If three digits are restricted, they can fill at most three cells. The fourth digit has to fill at least one. Erase it from a cell that sees every place it could go in the wing."
+                "The three digits that cannot repeat can fill at most three cells. The fourth digit must appear somewhere in the wing.",
+                "Look for that candidate outside the wing. If placing it would rule out that digit everywhere in the wing, remove it. Placing it would leave only three digits for four cells."
               ]
             },
             {
               "type": "diagram",
-              "example": "wxyz-wing"
-            },
-            {
-              "type": "heading",
-              "id": "wxyz-als-example",
-              "title": "Read this example as ALS-XZ"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "R4C3, R4C4, and R4C6 form a three-cell ALS with digits 1, 2, 5, and 9. R6C1 forms another ALS with candidates 1 and 9.",
-                "The two 1 candidates share box 4, so the sets cannot both use 1. At least one set must use 9.",
-                "R4C2 sees all the 9 candidates in both sets. It therefore loses candidate 9.",
-                "The restricted-digit count also explains this removal. It does not require every four-cell arrangement to have the same ALS layout."
-              ]
+              "example": "wxyz-wing",
+              "notes": {
+                "id": "wxyz-als-example",
+                "title": "Read this example as ALS-XZ",
+                "paragraphs": [
+                  "R4C3, R4C4, and R4C6 form one set with candidates 1, 2, 5, and 9. R6C1 forms the other set with candidates 1 and 9.",
+                  "The two candidates for 1 share box 4, so at least one set must leave out 1. That set needs all its remaining digits, including 9.",
+                  "Putting 9 in R4C2 would rule out 9 in both sets. That is why you can remove it."
+                ]
+              }
             },
             {
               "type": "heading",
               "id": "all-digits-restricted",
-              "title": "All four digits restricted"
+              "title": "When no digit can repeat"
             },
             {
               "type": "text",
               "paragraphs": [
-                "All four cells need digits, so when every digit is restricted, each goes in exactly one cell. For each digit, erase it from cells that see all its places in the wing. With two unrestricted digits, this count gives no specific digit to erase."
+                "The four cells must use each of the four digits once. For each digit, remove any outside candidate that would rule it out everywhere in the wing."
+              ]
+            },
+            {
+              "type": "heading",
+              "id": "als-connection",
+              "title": "The almost locked set connection"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "An almost locked set (ALS) has one more candidate digit than cells. Its cells share a row, column, or box. Some WXYZ-Wings can be split into two such sets, which gives an ALS-XZ proof."
               ]
             },
             {
@@ -1681,7 +1668,10 @@
               "href": "https://www.sudokuwiki.org/WXYZ_Wing"
             }
           ],
-          "referencesTitle": "Related lessons and references"
+          "referencesTitle": "Related lessons and references",
+          "aliases": [
+            "Bent Quad"
+          ]
         }
       ]
     },
@@ -1724,7 +1714,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "If an uncolored candidate sees one of each color, it can’t take the digit whichever color is placed. Erase it."
+                "If an uncolored candidate sees one candidate of each color, either color rules it out. Erase the uncolored candidate."
               ]
             },
             {
@@ -1940,7 +1930,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Stop when the last cell has to take the digit you first crossed out. One of the two ends has to take it. Erase that digit wherever a cell sees both ends. An XY-Wing uses the same argument with three cells."
+                "Stop when the digit you first crossed out must go in the last cell. The digit must appear at one end of the chain. Erase that digit wherever a cell sees both ends. An XY-Wing uses the same argument with three cells."
               ]
             },
             {
@@ -2056,6 +2046,9 @@
               "label": "SudokuWiki grouped AIC",
               "href": "https://www.sudokuwiki.org/AIC_with_Groups"
             }
+          ],
+          "aliases": [
+            "AIC"
           ]
         },
         {
@@ -2089,7 +2082,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "With two weak links at the join, assume the starting candidate is true. The loop takes you back to that candidate and makes it false, so erase it. With two strong links, starting with it false forces it to be true. Place it."
+                "With two weak links at the join, assume the starting candidate is true. The loop returns to the starting candidate and rules it out. Erase it. With two strong links, starting with it false forces it to be true. Place it."
               ]
             },
             {
@@ -2196,11 +2189,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "als-aic",
               "copy": {
@@ -2248,11 +2236,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "als-discontinuous-nice-loop",
               "copy": {
@@ -2298,11 +2281,6 @@
                 "Start with a strong link supplied by an almost locked set. Trace alternating weak and strong links until the path returns to its first node.",
                 "Check that the first and last links have different strengths. On a weak link, find outside candidates that conflict with both ends."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -2360,7 +2338,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Use this on a puzzle with exactly one solution. Look for four empty corners in two rows and two columns, across exactly two boxes. All four can take the same two digits. If they used only those digits, each diagonal would hold one of them. You could swap the two digits without changing which digits any house contains. At least one corner has to use an extra digit to prevent that swap."
+                "Use this on a puzzle with exactly one solution. Look for four empty corners in two rows and two columns, across exactly two boxes. All four have the same two candidates. If they used only those digits, each diagonal would hold one of them. You could swap the two digits without changing which digits any house contains. At least one corner has to use an extra digit to prevent that swap."
               ]
             },
             {
@@ -2416,7 +2394,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Two adjacent corners have extras. Look for a digit of the rectangle pair that has only those two places in a shared house. One corner must take it. If the other corner took the second digit of the pair, all four corners would use only the pair. Erase the second digit from both corners with extras."
+                "Two adjacent corners have extras. Look for a digit of the rectangle pair that has only those two places in a shared house. That digit must go in one corner. If you place the second digit of the pair in the other corner, all four corners would use only the pair. Erase the second digit from both corners with extras."
               ]
             },
             {
@@ -2431,7 +2409,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find the same extra digit in two opposite corners or in three corners, with no other extras. At least one of those corners must take the extra. Erase it from any cell that sees all the corners where it appears."
+                "Find the same extra digit in two opposite corners or in three corners, with no other extras. The extra digit must go in at least one of those corners. Erase it from any cell that sees all the corners where it appears."
               ]
             },
             {
@@ -2446,7 +2424,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "The two corners with extras are opposite each other. Find a digit of the pair whose only places in both rows and both columns are the four corners. It must take one whole diagonal. If it took the diagonal with extras, the other two corners would take the second digit and allow the swap. Erase the linked digit from the corners with extras."
+                "The two corners with extras are opposite each other. Find a digit of the pair whose only places in both rows and both columns are the four corners. That digit must appear in both corners of one diagonal. If it goes on the diagonal with extras, the other two corners must both contain the second digit. That would allow the swap. Erase the linked digit from the corners with extras."
               ]
             },
             {
@@ -2461,7 +2439,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start at a corner that contains just the pair and look at the opposite corner. One digit of the pair must have no places beyond the rectangle in that opposite corner’s row and column. If the opposite corner took the other digit, both lines would force the rectangle into the swappable arrangement. Erase that other digit from the opposite corner."
+                "Start at a corner that contains just the pair and look at the opposite corner. One digit of the pair must have no places beyond the rectangle in that opposite corner’s row and column. If you place the other digit in the opposite corner, both lines force a rectangle whose digits can swap. Erase that other digit from the opposite corner."
               ]
             },
             {
@@ -2625,11 +2603,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "unique-loop",
               "copy": {
@@ -2675,11 +2648,6 @@
                 "In a puzzle with one solution, find a rectangle that spans two boxes and shares a pair of digits in all four corners.",
                 "Collect the extra candidates that can break the swap. The two ends of the rectangle link must cover every such choice."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -2729,11 +2697,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "unique-rectangle-discontinuous-nice-loop",
               "copy": {
@@ -2779,11 +2742,6 @@
                 "Find a rectangle whose extra candidates give an at-least-one link. Close an alternating path that crosses this link.",
                 "Check the strengths where the last link meets the first. If the loop still alternates there, inspect each weak link for a shared conflict."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -2928,11 +2886,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "tridagon-forcing-net",
               "copy": {
@@ -2978,11 +2931,6 @@
                 "Choose a candidate whose placement changes several nearby cells. Mark each removal it forces before continuing.",
                 "After each change, count the remaining candidates in the affected cells and houses. A new two-choice link can appear during the branch."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3036,11 +2984,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "advanced-forcing-net",
               "copy": {
@@ -3086,11 +3029,6 @@
                 "Trace an outer branch until direct deductions stop. In that branch, find a cell or house with a short list of remaining choices.",
                 "Follow each inner choice separately. Carry a step back to the outer branch only when the inner proof establishes it there."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3146,11 +3084,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "fireworks",
               "copy": {
@@ -3198,16 +3131,11 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "firework-w-wing",
               "copy": {
                 "description": "The crossed-out candidate sees the two possible places forced by the connected bivalue cells.",
-                "reason": "If the target were true, both bivalue cells would take the other digit. Both Firework digits would lose their wing copies and need the same pivot."
+                "reason": "If you place the target candidate, the other digit must go in both cells. Both Firework digits would lose their wing copies and need the same pivot."
               }
             },
             {
@@ -3221,7 +3149,7 @@
               "guide": {
                 "start": "Find two digits that share the same Firework pivot. Look for two outside cells that each contain only those two digits.",
                 "check": "Check that each bivalue cell covers one outside arm for the other digit. The same target must also see every wing copy of its own digit.",
-                "reason": "If the target were true, both bivalue cells would take the other digit. Both Firework digits would lose their wing copies and need the same pivot."
+                "reason": "If you place the target candidate, the other digit must go in both cells. Both Firework digits would lose their wing copies and need the same pivot."
               }
             }
           ],
@@ -3246,13 +3174,8 @@
               "type": "text",
               "paragraphs": [
                 "Find a Firework pair with one wing cell on each arm. Then look for a strong link for a third digit with one end at a wing.",
-                "Check that the other end of the strong link sees the opposite Firework wing. Test whether that wing could take the third digit."
+                "Check that the other end of the strong link sees the opposite Firework wing. Check whether the third digit can go in that wing."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3272,7 +3195,7 @@
               ],
               "guide": {
                 "start": "Find a Firework pair with one wing cell on each arm. Then look for a strong link for a third digit with one end at a wing.",
-                "check": "Check that the other end of the strong link sees the opposite Firework wing. Test whether that wing could take the third digit.",
+                "check": "Check that the other end of the strong link sees the opposite Firework wing. Check whether the third digit can go in that wing.",
                 "reason": "The candidate would rule out the far end of the strong link. That forces the same digit into the other wing and leaves both Firework digits needing the pivot."
               }
             }
@@ -3300,11 +3223,6 @@
                 "Look for two Fireworks with the same digit pair. Find a cell with just those two candidates that sees every outside wing copy for both patterns.",
                 "Each choice in that cell can force the same digit into both pivots. Find where the other digit can still go in each set of wings."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3352,11 +3270,6 @@
                 "Look for a Firework pivot and two wings. Find two groups of candidates such that at least one group must provide the required Firework digit.",
                 "Use that at-least-one guarantee as a strong link. Look for ordinary weak links that can connect the groups to the rest of a chain."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3412,11 +3325,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "aligned-pair-exclusion",
               "copy": {
@@ -3462,11 +3370,6 @@
                 "Choose three cells whose placements can affect the same constrained neighbors. Fix a candidate in one cell and list the choices in the other two.",
                 "Test each combination for a repeated digit in a house or a nearby cell left with no candidates."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3516,11 +3419,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "tridagon",
               "copy": {
@@ -3561,11 +3459,6 @@
                 "Find a Tridagon with multiple guardian candidates. Try dividing the guardians into two groups that together cover all the extra candidates.",
                 "Find weak links to the groups. To rule out a group, a candidate must conflict with every guardian in it."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3615,11 +3508,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "sk-loop",
               "copy": {
@@ -3660,11 +3548,6 @@
                 "Find a group of cells whose candidates fit into a small collection of house-and-digit slots. Include nearby cells that use only those same slots.",
                 "Count the cells and the slots. Check every candidate in the set against at least one slot, and make sure each slot can hold only one placement."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3720,16 +3603,11 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "exocet",
               "copy": {
                 "description": "Compare the highlighted bases with the target cells. Cross out target digits excluded by every compatible cross-line assignment.",
-                "reason": "A digit placed in the base pair needs a place on every cross-line. If the outside spots only cover two copies, a target must take the remaining copy."
+                "reason": "A digit placed in the base pair needs a place on every cross-line. If only two copies can go outside the targets, the remaining copy must go in a target cell."
               }
             },
             {
@@ -3743,7 +3621,7 @@
               "guide": {
                 "start": "Look for two base cells on one line within the same box. Find target cells in the other boxes of that band or stack.",
                 "check": "For every base digit, count the houses that cover its remaining spots on the cross-lines outside the targets. Check whether those spots can satisfy all three lines alone.",
-                "reason": "A digit placed in the base pair needs a place on every cross-line. If the outside spots only cover two copies, a target must take the remaining copy."
+                "reason": "A digit placed in the base pair needs a place on every cross-line. If only two copies can go outside the targets, the remaining copy must go in a target cell."
               }
             }
           ],
@@ -3765,11 +3643,6 @@
                 "Start with a base pair in one box. Follow its cross-lines to a target beyond the base band or stack.",
                 "Check the covers for each base digit across all three lines. If two cells act as one target, check the strong link that gives the group a single role."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3817,11 +3690,6 @@
                 "Find two Exocet patterns that use the same cross-lines. Write down the possible base and target assignments for each.",
                 "Pair the assignments and check them together. Reject any pairing that repeats a digit in a house or makes the shared cross-lines impossible to fill."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3881,11 +3749,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "franken-fish",
               "copy": {
@@ -3932,14 +3795,9 @@
             {
               "type": "text",
               "paragraphs": [
-                "Choose one digit and look for a fish whose bases or covers mix rows and columns. Boxes can also take part.",
+                "Choose one digit and look for a fish whose bases or covers mix rows and columns. The bases or covers can also include boxes.",
                 "Count how many bases and covers each candidate belongs to. Check uncovered and overlapping base spots before accepting a removal."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -3958,7 +3816,7 @@
                 }
               ],
               "guide": {
-                "start": "Choose one digit and look for a fish whose bases or covers mix rows and columns. Boxes can also take part.",
+                "start": "Choose one digit and look for a fish whose bases or covers mix rows and columns. The bases or covers can also include boxes.",
                 "check": "Count how many bases and covers each candidate belongs to. Check uncovered and overlapping base spots before accepting a removal.",
                 "reason": "If placing a candidate uses more cover spaces than it supplies base placements, the remaining bases can run out of room. Verify the result for every fin."
               }
@@ -3991,11 +3849,6 @@
                 "Look for a finned fish with a candidate the finless fish would remove. List all the fins that can break that fish.",
                 "For each fin, follow a chain from that fin being true. Every chain must rule out the same fish target."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4047,11 +3900,6 @@
                 "Choose a line or cover involved in a finned fish. List the required fish-digit placements that remain possible, along with the fins that can break the fish.",
                 "Follow each listed placement through its chain. Look for a candidate that every branch rules out. It can be a different digit."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4111,11 +3959,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "pattern-overlay",
               "copy": {
@@ -4161,11 +4004,6 @@
                 "Pick two digits whose candidate layouts often use the same cells. Find the valid full layouts for each digit separately.",
                 "Pair the layouts and reject pairs that share a cell. Check whether each candidate is part of at least one surviving pair."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4215,11 +4053,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "triple-pattern-overlay",
               "copy": {
@@ -4265,11 +4098,6 @@
                 "Look for four digits whose few surviving layouts compete for the same cells. Reuse the results from their three-digit groups.",
                 "Try full layouts for all four digits together. Track any cell that the same digit uses in every surviving combination."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4319,11 +4147,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "quintuple-pattern-overlay",
               "copy": {
@@ -4356,13 +4179,14 @@
       ]
     },
     {
-      "title": "Variant rules for cells and pairs",
-      "overview": "Use marks and neighbor rules to narrow the candidates in affected cells.",
+      "title": "X Sudoku",
+      "overview": "Both long diagonals follow the same rule as rows, columns, and boxes.",
+      "variant": true,
       "lessons": [
         {
-          "id": "parity",
-          "title": "Odd and even cells",
-          "summary": "Remove candidates of the wrong parity from a marked cell.",
+          "id": "diagonal-locked-candidates",
+          "title": "Diagonal Locked Candidates",
+          "summary": "Use the overlap between a long diagonal and a box to remove candidates.",
           "blocks": [
             {
               "type": "heading",
@@ -4372,44 +4196,102 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
-                "Compare the candidates with the allowed digits. Odd cells can take 1, 3, 5, 7, or 9. Even cells can take 2, 4, 6, or 8."
+                "In X Sudoku, each long diagonal must contain the digits 1 through 9 once. Each diagonal crosses three boxes.",
+                "Pick a digit that still needs a place on a diagonal. Check whether all its candidates on that diagonal are in the same box.",
+                "The diagonal must place the digit in that box. Remove the digit from the other cells in the box that are off the diagonal."
               ]
             },
             {
               "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
+              "id": "start-in-a-box",
+              "title": "Start in a box"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "You can also start with a box that crosses a diagonal. If all its places for a digit are on that diagonal, the box must place it there.",
+                "Remove the digit from the cells on that diagonal outside the box."
+              ]
             },
             {
               "type": "diagram",
-              "example": "parity",
+              "example": "locked-candidates"
+            },
+            {
+              "type": "practice",
+              "instruction": "Remove a candidate using the overlap of a diagonal and a box.",
+              "guide": {
+                "start": "Look at the diagonals and the boxes they cross. Pick a digit and find its possible cells.",
+                "check": "Check whether all the places for the digit in one house also belong to the other house."
+              },
+              "drills": [
+                {
+                  "example": "locked-candidates",
+                  "title": "Diagonal Locked Candidates"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "Locked Candidates in Classic Sudoku",
+              "href": "/learn/locked-candidates"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Killer Sudoku",
+      "overview": "Use the sum of a cage or compare several cage totals with the total of a house.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "cage-combinations",
+          "title": "Killer cage combinations",
+          "summary": "Keep assignments that reach a cage total with distinct digits.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
+                "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "cage-combinations",
               "copy": {
-                "description": "Read the parity clue under the grid. Compare it with the marked cell’s candidates.",
-                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+                "description": "Read the small total in the cage corner. Check the highlighted cells against complete cage assignments.",
+                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
               }
             },
             {
               "type": "practice",
               "drills": [
                 {
-                  "example": "parity",
-                  "title": "Odd and even cells"
+                  "example": "cage-combinations",
+                  "title": "Killer cage combinations"
                 }
               ],
               "guide": {
-                "start": "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
-                "check": "Compare the candidates with the allowed digits. Odd cells can take 1, 3, 5, 7, or 9. Even cells can take 2, 4, 6, or 8.",
-                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+                "start": "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
+                "check": "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot.",
+                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
               }
             }
           ],
           "references": []
         },
         {
-          "id": "anti-king",
-          "title": "Anti-King",
-          "summary": "Use a chess king’s move to rule out repeated digits across touching corners.",
+          "id": "cage-house-sum",
+          "title": "Killer cage and house sums",
+          "summary": "Subtract cage totals from a house total of 45 to find the sum of shared or leftover cells.",
           "blocks": [
             {
               "type": "heading",
@@ -4419,40 +4301,47 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start at a placed digit near a box corner. Check the cells one row and one column away.",
-                "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves."
+                "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
+                "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total."
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
-              "example": "anti-king",
+              "example": "cage-house-sum",
               "copy": {
-                "description": "Find the placed digit beside the highlighted cell on a diagonal.",
-                "reason": "The two cells are one king’s move apart, so they must differ. The placed digit rules out its matching candidate."
+                "description": "Follow the highlighted boundary. Use the cage totals to find the sum that the highlighted cells must reach.",
+                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
               }
             },
             {
               "type": "practice",
               "drills": [
                 {
-                  "example": "anti-king",
-                  "title": "Anti-King"
+                  "example": "cage-house-sum",
+                  "title": "Killer cage and house sums"
                 }
               ],
               "guide": {
-                "start": "Start at a placed digit near a box corner. Check the cells one row and one column away.",
-                "check": "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves.",
-                "reason": "The two cells are one king’s move apart, so they must differ. The placed digit rules out its matching candidate."
+                "start": "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
+                "check": "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total.",
+                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
               }
             }
           ],
-          "references": []
-        },
+          "references": [
+            {
+              "label": "Killer cage combinations",
+              "href": "/learn/cage-combinations"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Chess variants",
+      "overview": "A chess move tells you which pairs of cells must have different digits.",
+      "variant": true,
+      "lessons": [
         {
           "id": "anti-knight",
           "title": "Anti-Knight",
@@ -4469,11 +4358,6 @@
                 "Pick a placed digit. Move two cells up, down, left, or right, then one cell across at a right angle.",
                 "Check whether any reachable cell still shows that digit. Try the same move from other placed digits."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4501,6 +4385,244 @@
           "references": []
         },
         {
+          "id": "anti-king",
+          "title": "Anti-King",
+          "summary": "Use a chess king’s move to rule out repeated digits across touching corners.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a placed digit near a box corner. Check the cells one row and one column away.",
+                "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "anti-king",
+              "copy": {
+                "description": "Find the placed digit beside the highlighted cell on a diagonal.",
+                "reason": "The two cells are one king’s move apart, so they must differ. The placed digit rules out its matching candidate."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "anti-king",
+                  "title": "Anti-King"
+                }
+              ],
+              "guide": {
+                "start": "Start at a placed digit near a box corner. Check the cells one row and one column away.",
+                "check": "Look for the same digit as a candidate in those cells. The ordinary houses often cover the other king moves.",
+                "reason": "The two cells are one king’s move apart, so they must differ. The placed digit rules out its matching candidate."
+              }
+            }
+          ],
+          "references": []
+        }
+      ]
+    },
+    {
+      "title": "Thermometer",
+      "overview": "Follow the order of digits from the bulb to the tip.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "thermometer",
+          "title": "Thermometers",
+          "summary": "Use strictly increasing digits from the bulb to the tip.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
+                "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "thermometer",
+              "copy": {
+                "description": "Read the thermometer from the round bulb to the tip. Check how many increasing steps a crossed-out candidate leaves room for.",
+                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "thermometer",
+                  "title": "Thermometers"
+                }
+              ],
+              "guide": {
+                "start": "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
+                "check": "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells.",
+                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
+              }
+            }
+          ],
+          "references": []
+        }
+      ]
+    },
+    {
+      "title": "Arrow",
+      "overview": "Use the sum of the digits along an arrow.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "arrow",
+          "title": "Arrows",
+          "summary": "Match the sum of the arrow’s path to the digit in its circle.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
+                "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "arrow",
+              "copy": {
+                "description": "The circle gives the total. Follow the arrow and check which path digits can add to that total.",
+                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "arrow",
+                  "title": "Arrows"
+                }
+              ],
+              "guide": {
+                "start": "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
+                "check": "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other.",
+                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
+              }
+            }
+          ],
+          "references": []
+        }
+      ]
+    },
+    {
+      "title": "Kropki",
+      "overview": "Use the difference or ratio marked by a dot.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "kropki",
+          "title": "Kropki dots",
+          "summary": "Check which candidate pairs fit a white or black dot.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
+                "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "kropki",
+              "copy": {
+                "description": "Read the dot between the marked cells. Keep only candidates that belong to a pair that fits the dot.",
+                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "kropki",
+                  "title": "Kropki dots"
+                }
+              ],
+              "guide": {
+                "start": "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
+                "check": "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2.",
+                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
+              }
+            }
+          ],
+          "references": []
+        }
+      ]
+    },
+    {
+      "title": "Other cell and pair rules",
+      "overview": "Use rules that restrict one cell, a pair, or a group of matching cells.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "parity",
+          "title": "Odd and even cells",
+          "summary": "Remove candidates of the wrong parity from a marked cell.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Where to start"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
+                "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "parity",
+              "copy": {
+                "description": "Read the parity clue under the grid. Compare it with the marked cell’s candidates.",
+                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "parity",
+                  "title": "Odd and even cells"
+                }
+              ],
+              "guide": {
+                "start": "Find a cell marked odd or even. Check the puzzle’s rule if you need to identify the mark.",
+                "check": "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8.",
+                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
+              }
+            }
+          ],
+          "references": []
+        },
+        {
           "id": "non-consecutive",
           "title": "Non-consecutive neighbors",
           "summary": "Keep digits that differ by one out of cells that share an edge.",
@@ -4516,11 +4638,6 @@
                 "Start with a placed digit. Check its neighbors above, below, left, and right.",
                 "Look for candidates one less or one more than that digit. For 1, check only 2. For 9, check only 8."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4565,11 +4682,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "inequality",
               "copy": {
@@ -4612,16 +4724,11 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "clone",
               "copy": {
-                "description": "The clue under the board lists the cells that must take the same digit.",
-                "reason": "All cells in the group must take the same value. A digit missing from any one cell cannot go in the others."
+                "description": "The clue under the board lists the cells that must contain the same digit.",
+                "reason": "All cells in the group must contain the same digit. A digit missing from any one cell cannot go in the others."
               }
             },
             {
@@ -4635,54 +4742,7 @@
               "guide": {
                 "start": "Find a group of cells marked to have the same digit. Compare the candidates at matching positions.",
                 "check": "If one cell has a placed digit, check that digit in all its copies. Otherwise, find the digits common to every candidate list.",
-                "reason": "All cells in the group must take the same value. A digit missing from any one cell cannot go in the others."
-              }
-            }
-          ],
-          "references": []
-        },
-        {
-          "id": "kropki",
-          "title": "Kropki dots",
-          "summary": "Check which candidate pairs fit a white or black dot.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
-                "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
-              "type": "diagram",
-              "example": "kropki",
-              "copy": {
-                "description": "Read the dot between the marked cells. Keep only candidates that belong to a pair that fits the dot.",
-                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "kropki",
-                  "title": "Kropki dots"
-                }
-              ],
-              "guide": {
-                "start": "Pick a marked pair with few candidates. Read a white dot as a difference of one and a black dot as a ratio of two to one.",
-                "check": "Try each candidate with the options across the dot. If the pair has both dots, it must use 1 and 2.",
-                "reason": "Any candidate without a matching partner violates the dot. Cross it out and check whether this leaves the other cell with fewer choices."
+                "reason": "All cells in the group must contain the same digit. A digit missing from any one cell cannot go in the others."
               }
             }
           ],
@@ -4704,11 +4764,6 @@
                 "Find an X or V between two cells. Start with the pair that has a placed digit or the shorter candidate lists.",
                 "Subtract each candidate in the first cell from the marked sum. Check whether the result fits in the second cell."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4738,8 +4793,9 @@
       ]
     },
     {
-      "title": "Variant lines and sums",
-      "overview": "Check candidate combinations along a line or inside a cage.",
+      "title": "Other line rules",
+      "overview": "Use the order, range, or sum of digits along a marked line.",
+      "variant": true,
       "lessons": [
         {
           "id": "palindrome",
@@ -4755,20 +4811,15 @@
               "type": "text",
               "paragraphs": [
                 "Start at the first and last cells of the line. Those cells must contain the same digit.",
-                "Move one step inward from each end and repeat. Keep only the digits that both cells of each pair can take."
+                "Move one step inward from each end and repeat. Keep only the candidates that appear in both cells of each pair."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
               "example": "palindrome",
               "copy": {
                 "description": "Use the ordered cell list below the board. Compare positions from opposite ends of that list.",
-                "reason": "The line must read the same in both directions. A candidate whose mirror cannot take the same digit can go."
+                "reason": "The line must read the same in both directions. If the digit is missing from the matching cell, remove the candidate."
               }
             },
             {
@@ -4781,8 +4832,8 @@
               ],
               "guide": {
                 "start": "Start at the first and last cells of the line. Those cells must contain the same digit.",
-                "check": "Move one step inward from each end and repeat. Keep only the digits that both cells of each pair can take.",
-                "reason": "The line must read the same in both directions. A candidate whose mirror cannot take the same digit can go."
+                "check": "Move one step inward from each end and repeat. Keep only the candidates that appear in both cells of each pair.",
+                "reason": "The line must read the same in both directions. If the digit is missing from the matching cell, remove the candidate."
               }
             }
           ],
@@ -4811,11 +4862,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "between",
               "copy": {
@@ -4841,53 +4887,6 @@
           "references": []
         },
         {
-          "id": "thermometer",
-          "title": "Thermometers",
-          "summary": "Use strictly increasing digits from the bulb to the tip.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
-                "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
-              "type": "diagram",
-              "example": "thermometer",
-              "copy": {
-                "description": "Read the thermometer from the round bulb to the tip. Check how many increasing steps a crossed-out candidate leaves room for.",
-                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "thermometer",
-                  "title": "Thermometers"
-                }
-              ],
-              "guide": {
-                "start": "Count the cells on a thermometer. Start at the bulb, where the smallest digit on the line must go.",
-                "check": "Allow room for a higher digit at every step. Work backwards from the tip to limit the earlier cells.",
-                "reason": "A candidate must have a smaller choice before it and a larger choice after it where those neighbors exist. Remove candidates that cannot fit an increasing sequence."
-              }
-            }
-          ],
-          "references": []
-        },
-        {
           "id": "whispers",
           "title": "Whispers lines",
           "summary": "Check the minimum difference required between neighbors on a line.",
@@ -4903,11 +4902,6 @@
                 "Read the minimum difference from the clue. German Whispers usually use 5. Start at a placed digit or a cell with few options.",
                 "For each candidate, find a neighbor’s candidate that differs by at least the required amount. Check both neighbors for an interior cell."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -4935,100 +4929,6 @@
           "references": []
         },
         {
-          "id": "cage-combinations",
-          "title": "Killer cage combinations",
-          "summary": "Keep assignments that reach a cage total with distinct digits.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
-                "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
-              "type": "diagram",
-              "example": "cage-combinations",
-              "copy": {
-                "description": "Read the small total in the cage corner. Check the highlighted cells against complete cage assignments.",
-                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "cage-combinations",
-                  "title": "Killer cage combinations"
-                }
-              ],
-              "guide": {
-                "start": "Pick a small dashed cage with an unusual total. List sets of distinct digits of the right size that add to that total.",
-                "check": "Try to fit each set to the individual cells. Remove a set if some digit in it has no valid slot or several digits need the same slot.",
-                "reason": "A candidate needs a full assignment that uses it in its own cell. A digit can fit the cage total and still have no way to fit that cell."
-              }
-            }
-          ],
-          "references": []
-        },
-        {
-          "id": "arrow",
-          "title": "Arrows",
-          "summary": "Match the sum of the arrow’s path to the digit in its circle.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
-                "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
-              "type": "diagram",
-              "example": "arrow",
-              "copy": {
-                "description": "The circle gives the total. Follow the arrow and check which path digits can add to that total.",
-                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "arrow",
-                  "title": "Arrows"
-                }
-              ],
-              "guide": {
-                "start": "Start with the circle’s candidates and count the cells on the arrow. A long arrow needs a total large enough to fit all its cells.",
-                "check": "Try combinations along the arrow and compare their sums with the circle. Apply the usual house rules to any cells that see each other.",
-                "reason": "A candidate belongs only if it fits a full assignment with that sum. You can remove candidates from the circle and the path."
-              }
-            }
-          ],
-          "references": []
-        },
-        {
           "id": "renban",
           "title": "Renban lines",
           "summary": "Fit the line’s cells into a set of consecutive digits in any order.",
@@ -5044,11 +4944,6 @@
                 "Count the cells on the line. For a three-cell Renban, try candidate sets such as 1, 2, 3 or 5, 6, 7.",
                 "Check whether each consecutive set can give each cell a different valid digit. Any given digit on the line must belong to the set."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -5093,11 +4988,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "region-sum",
               "copy": {
@@ -5126,64 +5016,13 @@
               "href": "/learn/arrow"
             }
           ]
-        },
-        {
-          "id": "cage-house-sum",
-          "title": "Killer cage and house sums",
-          "summary": "Subtract cage totals from a house total of 45 to find the sum of shared or leftover cells.",
-          "blocks": [
-            {
-              "type": "heading",
-              "id": "where-to-start",
-              "title": "Where to start"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
-                "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total."
-              ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
-              "type": "diagram",
-              "example": "cage-house-sum",
-              "copy": {
-                "description": "Follow the highlighted boundary. Use the cage totals to find the sum that the highlighted cells must reach.",
-                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
-              }
-            },
-            {
-              "type": "practice",
-              "drills": [
-                {
-                  "example": "cage-house-sum",
-                  "title": "Killer cage and house sums"
-                }
-              ],
-              "guide": {
-                "start": "Pick a row, column, or box that contains several full cages. Add their totals and compare the result with 45.",
-                "check": "If cages cross the house boundary, count which cells are inside and outside. The sum of the outside cells is the cage total minus the inside total.",
-                "reason": "Every house contains the digits 1 through 9, so its total is 45. Subtract known totals to get a new sum, then check the remaining candidates against it."
-              }
-            }
-          ],
-          "references": [
-            {
-              "label": "Killer cage combinations",
-              "href": "/learn/cage-combinations"
-            }
-          ]
         }
       ]
     },
     {
-      "title": "Variant clues outside the grid",
-      "overview": "Read each clue in its marked direction and check which assignments can give that total or count.",
+      "title": "Outside clues",
+      "overview": "Read the clue outside the grid before checking the cells it points to.",
+      "variant": true,
       "lessons": [
         {
           "id": "little-killer",
@@ -5201,11 +5040,6 @@
                 "Start with the clue’s cells in order. Add the placed digits and subtract them from the clue total.",
                 "Find the smallest and largest totals the empty cells can still reach. Check candidates against the remaining sum and the houses the ray crosses."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -5250,11 +5084,6 @@
               ]
             },
             {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
-            },
-            {
               "type": "diagram",
               "example": "skyscrapers",
               "copy": {
@@ -5295,11 +5124,6 @@
                 "Find candidate positions for 1 and 9 in the clued line. The clue counts only the digits between those two positions.",
                 "Try a pair of endpoints and add the possible middle digits. A zero clue means the 1 and 9 touch."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -5344,14 +5168,9 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start at the edge cell nearest the clue. If that cell takes 3, add the first three cells, including the 3.",
+                "Start at the edge cell nearest the clue. If that cell is 3, add the first three digits, including the 3.",
                 "Try each edge candidate. Check whether a prefix of that length can reach the total without repeating a digit."
               ]
-            },
-            {
-              "type": "heading",
-              "id": "worked-example",
-              "title": "Worked example"
             },
             {
               "type": "diagram",
@@ -5370,7 +5189,7 @@
                 }
               ],
               "guide": {
-                "start": "Start at the edge cell nearest the clue. If that cell takes 3, add the first three cells, including the 3.",
+                "start": "Start at the edge cell nearest the clue. If that cell is 3, add the first three digits, including the 3.",
                 "check": "Try each edge candidate. Check whether a prefix of that length can reach the total without repeating a digit.",
                 "reason": "If a prefix length cannot reach the total, remove the edge digit that chose it. A later candidate can go if it fits no surviving prefix assignment."
               }

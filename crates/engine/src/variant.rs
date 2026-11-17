@@ -24,6 +24,7 @@ pub use logical::{
 };
 use pairs::{PairClue, PairCompiler, PairConstraint, ParityClue};
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
+pub(crate) use practice::generate_practice_example;
 pub use search::VariantPositionError;
 pub use symmetry::canonical_variant;
 pub use visibility::{VariantVisibility, VariantVisibilityError};

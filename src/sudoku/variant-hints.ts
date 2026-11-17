@@ -42,7 +42,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       } else {
         description = `The highlighted cage needs distinct digits that add to ${evidence.sum}.`
       }
-      reason = 'The crossed-out candidates cannot take part in any valid combination for that sum.'
+      reason = 'No valid combination for that sum includes a crossed-out candidate.'
       break
     }
     case 'constraint': {

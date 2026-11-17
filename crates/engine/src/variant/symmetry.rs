@@ -1,5 +1,6 @@
 use super::{
-    ClueDirection, MarkedPairs, PuzzleRule, RegionLayout, VariantDefinitionError, VariantPuzzle,
+    ClueDirection, MarkedPairs, PuzzleRule, RegionLayout, VariantDefinitionError, VariantPosition,
+    VariantPuzzle,
 };
 use crate::CELLS;
 
@@ -28,9 +29,7 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
         .into_iter()
         .map(|transform| {
             let mut copy = puzzle.clone();
-            for (cell, &digit) in puzzle.givens.iter().enumerate() {
-                copy.givens[transform.cell(cell)] = digit;
-            }
+            transform.puzzle(&mut copy);
             if rename_digits {
                 let mut renamed = [0; 10];
                 let mut next = 1;
@@ -45,15 +44,6 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
                     }
                     *given = *entry;
                 }
-            }
-            if let RegionLayout::Jigsaw { regions } = &mut copy.regions {
-                for region in &mut *regions {
-                    transform.unordered(region);
-                }
-                regions.sort_unstable();
-            }
-            for rule in &mut copy.rules {
-                transform.rule(rule);
             }
             copy.rules.sort_unstable();
             copy
@@ -88,6 +78,33 @@ impl SquareTransform {
         let row = if self.0 & 2 != 0 { 8 - row } else { row };
         let column = if self.0 & 4 != 0 { 8 - column } else { column };
         9 * row + column
+    }
+
+    pub fn position(self, position: &mut VariantPosition) {
+        self.puzzle(&mut position.puzzle);
+        position.entries = self.grid(position.entries);
+        position.eliminations = self.grid(position.eliminations);
+    }
+
+    fn grid<T: Copy>(self, original: [T; CELLS]) -> [T; CELLS] {
+        let mut result = original;
+        for (cell, value) in original.into_iter().enumerate() {
+            result[self.cell(cell)] = value;
+        }
+        result
+    }
+
+    fn puzzle(self, puzzle: &mut VariantPuzzle) {
+        puzzle.givens = self.grid(puzzle.givens);
+        if let RegionLayout::Jigsaw { regions } = &mut puzzle.regions {
+            for region in &mut *regions {
+                self.unordered(region);
+            }
+            regions.sort_unstable();
+        }
+        for rule in &mut puzzle.rules {
+            self.rule(rule);
+        }
     }
 
     fn direction(self, direction: ClueDirection) -> ClueDirection {
