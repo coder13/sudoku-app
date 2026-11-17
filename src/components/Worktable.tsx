@@ -42,7 +42,7 @@ import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
 import { Modal } from './Modal'
-import { usePresence } from './Presence'
+import { MotionSurface, usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionPath, type SolutionPathState } from './SolutionPath'
@@ -1948,8 +1948,8 @@ export function Worktable({
         : desktop
           ? <><div className="standard-puzzle-stack">{puzzlePanel}</div><div className="standard-input-stack" id="standard-digit-input">
               {inputPanel}
-              {hintPanel}
-              {activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
+              <MotionSurface>{hintPanel}</MotionSurface>
+              <MotionSurface>{activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
                 <div className="desktop-insight-toolbar">
                   <div ref={insightTabsRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
                     onKeyDown={(event) => {
@@ -1980,7 +1980,7 @@ export function Worktable({
                     ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
                     : activeDesktopTab.id === 'chains' ? chainsPanel : solutionPathPanel}
                 </div>
-              </section>}
+              </section>}</MotionSurface>
             </div></>
           : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
             blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisOpen ||
@@ -2004,9 +2004,9 @@ export function Worktable({
               input: !mobileResults ? { title: 'Keypad', content: inputPanel } : undefined,
               completion: mobileResults ? { title: 'Results', content: <div className="workspace-controls mobile-completion">{completionPanel}</div> } : undefined,
             }} />}
-      <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} exitDuration={240}
+      <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
-      {variant && variantRulesOpen && <Modal title={`${VARIANTS[variant.id].name} rules`} onClose={() => setVariantRulesOpen(false)}>
+      {variant && <Modal title={`${VARIANTS[variant.id].name} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>
         <div className="variant-rules-copy">
           {variant.id !== 'jigsaw' && <p>{VARIANTS.classic.rule}</p>}
           <p>{VARIANTS[variant.id].rule}</p>
@@ -2032,7 +2032,7 @@ export function Worktable({
           </button>}
         </div>
       </Modal>}
-      {resetOpen && <Modal title="Reset puzzle" onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
+      <Modal title="Reset puzzle" open={resetOpen} onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
         <p>Remove all placed digits, candidates, colors, and elapsed time from this puzzle?</p>
         <div className="dialog-actions">
           <button className="button secondary" onClick={() => setResetOpen(false)}>Cancel</button>
@@ -2049,8 +2049,8 @@ export function Worktable({
             setResetOpen(false)
           }}>Reset puzzle</button>
         </div>
-      </Modal>}
-      {cancelDraftOpen && <Modal title={game.editingId ? 'Cancel puzzle editing?' : 'Cancel puzzle creation?'}
+      </Modal>
+      <Modal title={game.editingId ? 'Cancel puzzle editing?' : 'Cancel puzzle creation?'} open={cancelDraftOpen}
         onClose={() => setCancelDraftOpen(false)} className="reset-puzzle-dialog">
         <p>{game.editingId
           ? 'Discard your changes and return to the saved puzzle?'
@@ -2059,7 +2059,7 @@ export function Worktable({
           <button className="button secondary" onClick={() => setCancelDraftOpen(false)}>Keep editing</button>
           <button className="button danger" onClick={onCancelDraft}>{game.editingId ? 'Discard changes' : 'Discard draft'}</button>
         </div>
-      </Modal>}
+      </Modal>
     </>
   )
 }

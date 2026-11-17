@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { GripVertical, X } from 'lucide-react'
+import { MotionSurface, usePresentContent } from './Presence'
 import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
@@ -47,7 +48,9 @@ export function MobilePanelLayout(props: Props) {
   const orderRef = useRef(order)
   const latest = useRef(props)
   latest.current = props
-  const visible = order.filter((id) => props.panels[id])
+  const { content: hint, exiting: hintExiting } = usePresentContent(props.panels.hint)
+  const panels = { ...props.panels, hint: hint || undefined }
+  const visible = order.filter((id) => panels[id])
 
   function cancelHold() {
     if (hold.current) window.clearTimeout(hold.current.timer)
@@ -84,7 +87,7 @@ export function MobilePanelLayout(props: Props) {
     const current = drag.current
     if (!current?.moved || !root.current) return
     let nearest: { id: MobilePanelId; rect: DOMRect; distance: number } | undefined
-    for (const panel of root.current.querySelectorAll<HTMLElement>('[data-mobile-panel]')) {
+    for (const panel of root.current.querySelectorAll<HTMLElement>('[data-mobile-panel]:not([inert])')) {
       const id = panel.dataset.mobilePanel as MobilePanelId
       if (id === current.id) continue
       const rect = panel.getBoundingClientRect()
@@ -234,7 +237,7 @@ export function MobilePanelLayout(props: Props) {
     finishDrag(false)
   }, [visible.join(',')])
 
-  return <div ref={root} className={`mobile-panel-layout${props.withHint ? ' with-hint' : ''}`}
+  return <div ref={root} className={`mobile-panel-layout${props.withHint || hintExiting ? ' with-hint' : ''}`}
     data-rearranging={props.rearranging || undefined} style={{ '--mobile-secondary-count': visible.length - 1 } as CSSProperties}
     onPointerDownCapture={startHold}
     onContextMenuCapture={(event) => { if (hold.current || props.rearranging) event.preventDefault() }}
@@ -244,21 +247,23 @@ export function MobilePanelLayout(props: Props) {
         event.stopPropagation()
       }
     }}>
-    {props.rearranging && <div className="mobile-panel-toolbar surface" role="region" aria-label="Rearrange cards" data-panel-editor>
+    <MotionSurface>{props.rearranging && <div className="mobile-panel-toolbar surface" role="region" aria-label="Rearrange cards" data-panel-editor>
       <div><strong>Rearrange cards</strong><small id="mobile-panel-instructions">
         {saveFailed ? 'Order saved for this session only.' : 'Drag cards to move them. Changes save automatically.'}
       </small></div>
       <button ref={closeButton} type="button" className="icon-button borderless" aria-label="Finish rearranging cards" onClick={exit}>
         <X size={22} aria-hidden="true" />
       </button>
-    </div>}
+    </div>}</MotionSurface>
     <div className="mobile-panel-space" aria-hidden="true" />
     {visible.map((id, index) => {
-      const panel = props.panels[id]!
+      const panel = panels[id]!
+      const exiting = id === 'hint' && hintExiting
       const moving = dragView?.id === id
       const drop = dragView?.drop?.id === id ? dragView.drop.edge : undefined
       return <Fragment key={id}>
-        <div className="mobile-panel" data-mobile-panel={id} data-first={index === 0 || undefined}
+        <div className={`mobile-panel${id === 'hint' ? ' motion-surface' : ''}`} data-mobile-panel={id} data-first={index === 0 || undefined}
+          data-presence={id === 'hint' ? exiting ? 'exit' : 'open' : undefined} inert={exiting || undefined} aria-hidden={exiting || undefined}
           data-dragging={moving || undefined} data-drop={drop} role="group" aria-label={`${panel.title} card`}
           style={{
             '--mobile-panel-row': index,

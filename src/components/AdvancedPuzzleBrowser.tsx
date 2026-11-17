@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Archive, ArchiveRestore, BookmarkMinus, BookmarkPlus, Dices, PencilLine, Save } from 'lucide-react'
 import { formatPuzzleRating } from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
+import { usePresentContent } from './Presence'
 
 export type PuzzleBrowserView = 'active' | 'past' | 'saved'
 
@@ -37,6 +38,7 @@ export function AdvancedPuzzleBrowser({ games, active, view, onViewChange, onSel
   onRestorePuzzle: (id: string) => void
 }) {
   const [menu, setMenu] = useState<{ game: Game; x: number; y: number } | null>(null)
+  const { content: shownMenu, exiting: menuExiting } = usePresentContent(menu)
   const menuRef = useRef<HTMLDivElement>(null)
   const activeGame = games.find((game) => game.id === active)
   const visible = view === 'past'
@@ -112,7 +114,7 @@ export function AdvancedPuzzleBrowser({ games, active, view, onViewChange, onSel
       {(['active', 'past', 'saved'] as const).map((item) => <button key={item} role="tab" aria-selected={view === item}
         onClick={() => onViewChange(item)}>{item === 'active' ? 'Active' : item === 'past' ? 'Past' : 'Saved'}</button>)}
     </div>
-    {visible.length ? <ul className="advanced-browser-list">
+    {visible.length ? <ul className="advanced-browser-list" key={view}>
       {visible.map((game) => <li key={game.id}>
         <button onClick={() => onSelect(game.id)} onContextMenu={(event) => contextMenu(game, event)}
           onKeyDown={(event) => contextMenuKey(game, event)}
@@ -122,9 +124,10 @@ export function AdvancedPuzzleBrowser({ games, active, view, onViewChange, onSel
           <span><strong>{game.title}</strong><small>{puzzleStatus(game)}</small></span>
         </button>
       </li>)}
-    </ul> : <p className="advanced-browser-empty">{view === 'active' ? 'No active puzzles.' : view === 'past' ? 'No completed puzzles yet.' : 'No saved puzzles.'}</p>}
-    {menu && createPortal(<div ref={menuRef} className="puzzle-context-menu" role="menu" aria-label={`${menu.game.title} actions`}
-      style={{ left: menu.x, top: menu.y }}>
+    </ul> : <p className="advanced-browser-empty" key={view}>{view === 'active' ? 'No active puzzles.' : view === 'past' ? 'No completed puzzles yet.' : 'No saved puzzles.'}</p>}
+    {shownMenu && createPortal(<div ref={menuRef} className="puzzle-context-menu motion-surface" role="menu" aria-label={`${shownMenu.game.title} actions`}
+      style={{ left: shownMenu.x, top: shownMenu.y }} data-presence={menuExiting ? 'exit' : 'open'}
+      inert={menuExiting || undefined} aria-hidden={menuExiting || undefined}>
       {view === 'active' ? <>
         <button role="menuitem" onClick={() => act(onSavePuzzle)}><BookmarkPlus size={16} /> Save puzzle</button>
         <button role="menuitem" onClick={() => act(onArchivePuzzle)}><Archive size={16} /> Remove from Active</button>
