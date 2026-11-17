@@ -316,6 +316,10 @@ svg { flex-shrink: 0; }
 }
 .dock-solution-panel { display: flex; min-height: 0; }
 .dock-solution-panel .solution-path { width: 100%; height: 100%; flex: 1; }
+.dock-analysis-panel { min-width: 0; padding: 10px 12px; }
+.dock-analysis-panel .analysis-table { font-size: 12px; }
+.dock-analysis-panel .analysis-table th:last-child,
+.dock-analysis-panel .analysis-table td:last-child { width: 80px; }
 .dock-details-panel { padding: 12px 14px; }
 .cell-color-palette { display: grid; gap: 12px; padding: 12px 14px; }
 .cell-color-palette p { min-height: 2.8em; color: var(--muted); font-size: 13px; line-height: 1.4; }
@@ -1663,6 +1667,26 @@ svg { flex-shrink: 0; }
 .dialog-heading h2 { font-size: 23px; letter-spacing: -.037em; }
 
 .dialog.puzzle-analysis-dialog { width: min(540px, calc(100vw - 28px)); }
+.puzzle-analysis-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  max-height: min(60dvh, 550px);
+  padding: 0;
+  overflow: hidden;
+}
+.puzzle-analysis-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.puzzle-analysis-card-heading h2 { font-size: 15px; font-weight: 760; }
+.puzzle-analysis-card-body { min-height: 0; padding: 10px 12px; overflow-y: auto; overscroll-behavior: contain; }
 /* Full-width summary dialogs on the mobile workspace. Desktop stays compact. */
 @media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
   .dialog.puzzle-analysis-dialog {
@@ -1707,7 +1731,7 @@ svg { flex-shrink: 0; }
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
 }
-.analysis-table .analysis-data-row th { font-weight: 500; }
+.analysis-table .analysis-data-row th { font-weight: 500; overflow-wrap: anywhere; }
 .analysis-table .analysis-data-row td { font-weight: 680; font-variant-numeric: tabular-nums; }
 .analysis-table .analysis-data-row .analysis-zero { color: var(--muted); font-weight: 450; }
 .analysis-table tbody:last-child .analysis-data-row:last-child > * { border-bottom: 0; }
