@@ -9,10 +9,10 @@ import {
 
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
-const GAME_PREFIX = PREFIX + 'game:'
+export const GAME_PREFIX = PREFIX + 'game:'
 const RATING_PREFIX = PREFIX + 'rating-result:'
 const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
-const ACTIVE = PREFIX + 'active'
+export const ACTIVE_GAME_KEY = PREFIX + 'active'
 const READY = PREFIX + 'initialized'
 const BUILT_IN_STARTER_ID = 'warmup'
 const sources = ['starter', 'generated', 'imported', 'custom', 'draft']
@@ -209,7 +209,7 @@ function storageKey(key: string) {
   return key.startsWith(LEGACY_PREFIX) ? PREFIX + key.slice(LEGACY_PREFIX.length) : key
 }
 
-function legacyKey(key: string) {
+export function legacyKey(key: string) {
   return LEGACY_PREFIX + key.slice(PREFIX.length)
 }
 
@@ -257,10 +257,10 @@ function hydrate() {
     if (!readSaved(localStorage, READY)) {
       localStorage.setItem(READY, '1')
     }
-    let last = readSaved(localStorage, ACTIVE)
+    let last = readSaved(localStorage, ACTIVE_GAME_KEY)
     try {
       migrateStorage(sessionStorage)
-      last = readSaved(sessionStorage, ACTIVE) ?? last
+      last = readSaved(sessionStorage, ACTIVE_GAME_KEY) ?? last
     } catch { /* local fallback */ }
     const sorted = orderGames(games)
     let outcomesSaved = true
@@ -314,10 +314,10 @@ function remember(id: string | null) {
 }
 
 function rememberActive(storage: Storage, id: string | null) {
-  if (id !== null) storage.setItem(ACTIVE, id)
+  if (id !== null) storage.setItem(ACTIVE_GAME_KEY, id)
   else {
-    storage.removeItem(legacyKey(ACTIVE))
-    storage.removeItem(ACTIVE)
+    storage.removeItem(legacyKey(ACTIVE_GAME_KEY))
+    storage.removeItem(ACTIVE_GAME_KEY)
   }
 }
 
