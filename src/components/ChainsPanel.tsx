@@ -2,13 +2,13 @@ import { Eraser, Eye, EyeOff, Link2, Plus, RotateCw, Trash2, Undo2 } from 'lucid
 import type { Deduction, DeductionAction } from '../sudoku/engine'
 import { chainCandidate, type LinkStrength } from '../sudoku/chains'
 import { DIGITS } from '../sudoku/game'
-import { techniqueLabel } from '../sudoku/hints'
+import { cellReference, techniqueLabel, type CellReferenceOptions } from '../sudoku/hints'
 import { cellName, deductionResults } from '../sudoku/lesson-diagram'
 import { shortcutLabel, type ShortcutPreferences } from '../sudoku/shortcuts'
 import type { BoardLink } from './BoardAnnotations'
 import { CHAIN_COLORS, chainColor, type useChainSketch } from './useChainSketch'
 
-type ChainInspection = { deduction: Deduction; links: readonly BoardLink[]; explanation?: string }
+type ChainInspection = CellReferenceOptions & { deduction: Deduction; links: readonly BoardLink[]; explanation?: string }
 type Props = {
   sketch: ReturnType<typeof useChainSketch>
   onApply: (actions: readonly DeductionAction[]) => void
@@ -18,10 +18,10 @@ type Props = {
   inspection?: ChainInspection
 }
 
-function pointName(point: BoardLink['from']) {
-  if ('cells' in point) return `${point.digit} in ${point.cells.map(cellName).join(' or ')}`
-  if ('candidates' in point) return point.candidates.map(({ cell, digit }) => `${digit} in ${cellName(cell)}`).join(' or ')
-  return `${point.digit} in ${cellName(point.cell)}`
+function pointName(point: BoardLink['from'], nameCell = cellName) {
+  if ('cells' in point) return `${point.digit} in ${point.cells.map(nameCell).join(' or ')}`
+  if ('candidates' in point) return point.candidates.map(({ cell, digit }) => `${digit} in ${nameCell(cell)}`).join(' or ')
+  return `${point.digit} in ${nameCell(point.cell)}`
 }
 
 function compactPath(nodes: readonly number[], strengths: readonly LinkStrength[]) {
@@ -41,16 +41,17 @@ function LinkLegend({ notation = false }: { notation?: boolean }) {
 
 export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavailable, inspection }: Props) {
   if (inspection) {
-    const { deduction, links, explanation } = inspection
+    const { deduction, links, explanation, cellReferenceStyle, difficulty } = inspection
+    const nameCell = cellReferenceStyle === undefined ? cellName : (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
     return <section className="chains-panel" aria-label="Chains">
       <h2>{techniqueLabel(deduction.technique)}</h2>
       {links.length > 0 && <LinkLegend />}
       {explanation && <p>{explanation}</p>}
-      <ul className="chain-results">{deductionResults(deduction.actions).map((result) => <li key={result}>{result}</li>)}</ul>
+      <ul className="chain-results">{deductionResults(deduction.actions, inspection).map((result) => <li key={result}>{result}</li>)}</ul>
       {links.length > 0 && <details className="chain-links">
         <summary>{links.length} {links.length === 1 ? 'link' : 'links'}</summary>
         <ol>{links.map(({ from, to, dashed }, i) => (
-          <li key={i}>{pointName(from)} to {pointName(to)} · {dashed ? 'weak' : 'strong'}</li>
+          <li key={i}>{pointName(from, nameCell)} to {pointName(to, nameCell)} · {dashed ? 'weak' : 'strong'}</li>
         ))}</ol>
       </details>}
     </section>

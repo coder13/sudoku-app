@@ -310,7 +310,11 @@ type Evidence =
       scopes: { digit: number; allowed: number[]; supported: number[] }[]
       geometry?: { houses: number[][]; excludedPairs: [number, number][] }
     } }
-  | { variant: { description: string; reason: string } }
+  | { variant: {
+      description: string; reason: string
+      /** App display context; native proof data and worker responses stay unchanged. */
+      source?: { deduction: VariantDeduction; puzzle: VariantPuzzle }
+    } }
   | { cell: number }
   | { house: House }
   | { intersection: { source: House; target: House; cells: number[] } }

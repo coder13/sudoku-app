@@ -92,9 +92,9 @@ This performance pass is isolated on `codex/sudoku-nested-witness-pruning` from 
 - [x] Reduce paired exhaustive median scans from 1,596.603 to 857.367 ms for Quadruple and 330.498 to 66.237 ms for Odd/Even. Preserve all 107 app-order per-technique outputs on both fixtures; add 1,543 app gzip bytes. [Method and limits](tests/fixtures/README.md#additional-completion-witnesses)
 - [x] Pass CI and merge the measured improvement in [PR 107](https://github.com/coder13/sudoku-app/pull/107), main at `4811a05`.
 
-### Anti-King integration in progress
+### Anti-King integration merged
 
-This stage is isolated on `codex/sudoku-anti-king-integration` from main at `4811a05`. [Anti-King issue](https://github.com/coder13/sudoku-app/issues/43)
+This stage reached main at `3e0bfec` through [PR 108](https://github.com/coder13/sudoku-app/pull/108). The reviewed worktree remains available on `codex/sudoku-anti-king-integration`. [Anti-King issue](https://github.com/coder13/sudoku-app/issues/43)
 
 - [x] Reuse the existing native corner restrictions, eight-point deduction, practice positions and generation API without changing engine rules or scoring.
 - [x] Verify Philip Newman's published King of Diamonds puzzle and completion against the PDFs. Confirm uniqueness and rule dependency with a separate counter.
@@ -104,9 +104,19 @@ This stage is isolated on `codex/sudoku-anti-king-integration` from main at `481
 - [x] Check all 1,024 selections of the ten previous rendered families. Preserve all source rules; 768 compatible fixed-clue samples import and solve, while 256 samples with conflicting knight givens reject correctly. Keep the fixtures and direct completion checks independent of engine search.
 - [x] Pass 361 app tests, 220 Wasm tests, TypeScript and the production/offline build against merged main. Verify the rebuilt Wasm is byte-for-byte identical to main's engine.
 - [x] Measure candidate updates, validation, exact solving, rating, ordinary/exhaustive hints and generation. Match 20/20 seeds with 30 givens and required Anti-King. [Evidence and timing limits](tests/fixtures/README.md#anti-king-sources-and-app-coverage)
-- [ ] Pass CI and merge the complete app flow as a focused change.
+- [x] Pass CI's native release suite, feature matrix, four Wasm profiles, app/Wasm contracts, strict Cargo documentation and deployment checks; merge the complete app flow in [PR 108](https://github.com/coder13/sudoku-app/pull/108).
 - [ ] Review the live desktop/mobile player flow when browser tooling is available. Rendered components cover grid labels, corner feedback, sharing, completion and accessible help controls.
 - [ ] Calibrate difficulty recipes before offering Anti-King in New puzzle. Native generation is available; app presets remain unavailable.
+
+### Consistent cell references in hints and solutions
+
+This repair is isolated on `codex/sudoku-proof-cell-references` from main at `3e0bfec`. [Display issue](https://github.com/coder13/sudoku-app/issues/109)
+
+- [x] Apply Concise, Verbose and Automatic to complete Classic and variant explanations, reason steps, forcing traces, solution lists and the solution chain inspector. Use each technique's difficulty for Automatic.
+- [x] Preserve typed variant deduction and puzzle context for display formatting without scanning again or rewriting arbitrary prose. Keep existing lesson defaults and legacy opaque text.
+- [x] Check all 224 shipped diagram/practice proofs for unchanged geometry and evidence and the expected naming changes. Cover serialized variant context, rendered hint cards, desktop/mobile solution lists and every chain-inspection point form.
+- [x] Pass TypeScript, 368 app tests, 220 Wasm tests and the production/offline build. Verify the Wasm artifact remains byte-for-byte identical to main.
+- [ ] Pass CI and merge the focused repair.
 
 ## 1. Share a reliable engine contract
 

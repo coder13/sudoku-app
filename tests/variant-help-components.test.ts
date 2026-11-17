@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { after, before, test } from 'node:test'
 import { createElement, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -6,10 +7,16 @@ import { createServer, type ViteDevServer } from 'vite'
 import { isSolved, makeGame } from '../src/sudoku/game.ts'
 import { PUZZLE_VARIANTS, type PuzzleVariantId } from '../src/sudoku/variants.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
+import { describeHint, type CellReferenceStyle } from '../src/sudoku/hints.ts'
+import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
+import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 
 let server: ViteDevServer
 let Worktable: (props: Record<string, unknown>) => ReactNode
 let SolutionDialog: (props: Record<string, unknown>) => ReactNode
+let SolutionPath: (props: Record<string, unknown>) => ReactNode
+let HintCard: (props: Record<string, unknown>) => ReactNode
+let ChainsPanel: (props: Record<string, unknown>) => ReactNode
 let Board: (props: Record<string, unknown>) => ReactNode
 let PuzzleAnalysisContents: (props: Record<string, unknown>) => ReactNode
 let preferences: Record<string, unknown>
@@ -20,13 +27,89 @@ before(async () => {
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] } })
   ;({ Worktable } = await server.ssrLoadModule('/src/components/Worktable.tsx'))
-  ;({ SolutionDialog } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ SolutionDialog, SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
+  ;({ ChainsPanel } = await server.ssrLoadModule('/src/components/ChainsPanel.tsx'))
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
   ;({ PuzzleAnalysisContents } = await server.ssrLoadModule('/src/components/PuzzleAnalysis.tsx'))
   preferences = await server.ssrLoadModule('/src/sudoku/preferences.ts')
   playPreferences = await server.ssrLoadModule('/src/sudoku/play-preferences.ts')
 })
 after(async () => { await server?.close() })
+
+test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
+  const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
+    new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))
+  const parity = lessonExample(corpus.parity)
+  for (const cellReferenceStyle of ['verbose', 'concise', 'automatic'] satisfies CellReferenceStyle[]) {
+    const options = { cellReferenceStyle, difficulty: 'easy' as const }
+    const diagram = lessonDiagram(parity, parity.pattern, options)
+    const hint = describeHint(parity.deduction, options)
+    const expected = cellReferenceStyle === 'concise' ? 'r9c9' : 'row 9, column 9'
+    const card = renderToStaticMarkup(createElement(HintCard, {
+      hint, explanation: [diagram.description, diagram.reason], onClose() {},
+    }))
+    assert.ok(card.includes(`${expected} has an odd circle`))
+    assert.ok(card.includes(`Remove digit 8 from the candidates in ${expected}.`))
+    if (cellReferenceStyle !== 'concise') assert.doesNotMatch(card, /\br9c9\b/i)
+
+    const props = { state: { status: 'ready', trace: { steps: [parity.deduction], rating: { status: { solved: 'easy' } } } },
+      index: 0, cellReferenceStyle, techniqueDifficulties: { parity: 'easy' },
+      onSelect() {}, onRetry() {}, onClose() {} }
+    for (const Component of [SolutionPath, SolutionDialog]) {
+      const html = renderToStaticMarkup(createElement(Component, {
+        ...props, grid: null, explanation: { title: hint.title, text: diagram.description },
+      }))
+      assert.ok(html.includes(`Remove 8 from ${expected}.`))
+      if (cellReferenceStyle !== 'concise') assert.doesNotMatch(html, /\br9c9\b/i)
+    }
+  }
+  const forcing = lessonExample(corpus['nested-forcing-net'])
+  const diagram = lessonDiagram(forcing, forcing.pattern, { cellReferenceStyle: 'verbose' })
+  const html = renderToStaticMarkup(createElement(HintCard, {
+    hint: describeHint(forcing.deduction, { cellReferenceStyle: 'verbose' }),
+    explanation: [diagram.description, diagram.reason], trace: diagram.trace, onClose() {},
+  }))
+  assert.match(html, /Read the proof step by step/)
+  assert.match(html, /row [1-9], column [1-9]/)
+  assert.doesNotMatch(html, /\br[1-9]c[1-9]\b/i)
+})
+
+test('Automatic solution lists use each technique difficulty and absent preferences preserve lesson notation', () => {
+  const props = { state: { status: 'ready', trace: { steps: [
+    { technique: 'naked-single', actions: [{ place: { cell: 0, digit: 2 } }] },
+    { technique: 'aic', actions: [{ eliminate: { cell: 80, digit: 8 } }] },
+  ], rating: { status: { solved: 'hard' } } } }, index: 0,
+  onSelect() {}, onRetry() {}, onClose() {} }
+  const automatic = renderToStaticMarkup(createElement(SolutionPath, {
+    ...props, cellReferenceStyle: 'automatic', techniqueDifficulties: { 'naked-single': 'easy', aic: 'hard' },
+  }))
+  assert.ok(automatic.includes('Place 2 in row 1, column 1.'))
+  assert.ok(automatic.includes('Remove 8 from r9c9.'))
+  const fallback = renderToStaticMarkup(createElement(SolutionPath, props))
+  assert.ok(fallback.includes('Place 2 in R1C1.'))
+  assert.ok(fallback.includes('Remove 8 from R9C9.'))
+})
+
+test('solution chain inspection uses the same preference for results and every link point form', () => {
+  const options = { cellReferenceStyle: 'verbose', difficulty: 'hard' }
+  const inspection = { ...options, deduction: { technique: 'grouped-aic', actions: [{ eliminate: { cell: 80, digit: 8 } }] },
+    links: [
+      { from: { cell: 0, digit: 1 }, to: { cells: [1, 2], digit: 2 } },
+      { from: { candidates: [{ cell: 3, digit: 3 }, { cell: 4, digit: 4 }] }, to: { cell: 5, digit: 5 }, dashed: true },
+    ] }
+  const props = { sketch: {}, shortcuts: {}, onApply() {}, inspection }
+  const long = renderToStaticMarkup(createElement(ChainsPanel, props))
+  for (const column of [1, 2, 3, 4, 5, 6]) assert.ok(long.includes(`row 1, column ${column}`))
+  assert.ok(long.includes('Remove 8 from row 9, column 9.'))
+  assert.doesNotMatch(long, /\br[1-9]c[1-9]\b/i)
+  const short = renderToStaticMarkup(createElement(ChainsPanel, {
+    ...props, inspection: { ...inspection, cellReferenceStyle: 'automatic' },
+  }))
+  assert.ok(short.includes('Remove 8 from r9c9.'))
+  assert.ok(short.includes('2 in r1c2 or r1c3'))
+  assert.ok(short.includes('3 in r1c4 or 4 in r1c5'))
+})
 
 test('the variant finder explains invalid candidates and entries before showing technique counts', () => {
   const game = { ...makeGame('invalid-finder', 'Variant', STARTER, 'imported'), variant: {

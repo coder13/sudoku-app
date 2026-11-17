@@ -1,9 +1,10 @@
 import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantPuzzle, VariantTrace } from './engine'
-import { cellReference } from './hints.ts'
+import { cellReference, type CellReferenceOptions } from './hints.ts'
 import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName } from './variants.ts'
 
-export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPuzzle): HintChoice {
+export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPuzzle, options: CellReferenceOptions = {}): HintChoice {
   const { actions, evidence, technique } = deduction
+  const nameCell = (cell: number) => cellReference(cell, options.cellReferenceStyle ?? 'concise', options.difficulty)
   const focus = actions.map((action) => 'place' in action ? action.place : action.eliminate)
   if (evidence.type === 'classic') return {
     actions, technique, evidence: evidence.proof,
@@ -15,7 +16,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   switch (evidence.type) {
     case 'single': {
       const { candidate, house } = evidence
-      const location = cellReference(candidate.cell, 'concise')
+      const location = nameCell(candidate.cell)
       cells = house ? variantHouseCells(house, puzzle) : [candidate.cell]
       if (!house) {
         description = `Only ${candidate.digit} remains in ${location}.`
@@ -62,7 +63,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         case 'parity': {
           const rule = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'parity')
           if (rule?.type === 'parity') {
-            const location = cellReference(cells[0], 'concise')
+            const location = nameCell(cells[0])
             description = rule.parity === 'odd'
               ? `${location} has an odd circle, so it can contain only 1, 3, 5, 7, or 9.`
               : `${location} has an even square, so it can contain only 2, 4, 6, or 8.`
@@ -82,7 +83,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
           description = 'The highlighted cells are a chess knight’s move apart, so they must contain different digits.'
           break
         case 'anti-king': {
-          const name = (cell: number) => cellReference(cell, 'concise')
+          const name = nameCell
           description = `${cells.map(name).join(' and ')} touch at a corner. Anti-King requires different digits in these cells.`
           reason = focus.map(({ cell, digit }) => `${digit} cannot go in ${name(cell)}; ${name(cells.find(other => other !== cell)!)} is restricted to ${digit}.`).join(' ')
           break
@@ -116,7 +117,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   }
   return {
     technique, actions,
-    evidence: { variant: { description, reason } },
+    evidence: { variant: { description, reason, source: { deduction, puzzle } } },
     pattern: { houses: [], cells: [...cells], candidates: focus },
   }
 }
