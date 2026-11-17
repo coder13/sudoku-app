@@ -38,12 +38,12 @@ test('the colors panel and the dark brush survive a reload', () => {
     setItem: (key: string, value: string) => { saved.set(key, value) },
   }
   const store = createPlayPreferenceStore(storage)
-  store.set('colorsPanelOpen', true)
+  store.set('desktopViews', { open: ['chains', 'colors'], active: 'colors' })
   store.set('selectedColor', 12)
   store.set('colorBrush', 12)
   store.set('colorTarget', 'candidate')
   const reloaded = createPlayPreferenceStore(storage).getSnapshot()
-  assert.equal(reloaded.colorsPanelOpen, true)
+  assert.deepEqual(reloaded.desktopViews, { open: ['chains', 'colors'], active: 'colors' })
   assert.equal(reloaded.selectedColor, 12)
   assert.equal(reloaded.colorBrush, 12)
   assert.equal(reloaded.colorTarget, 'candidate')

@@ -10,6 +10,9 @@ export const MIN_DESKTOP_PUZZLE_WIDTH = 260
 
 type DesktopPanelWidths = { input: number; puzzle: number | null }
 const DEFAULT_DESKTOP_PANEL_WIDTHS: DesktopPanelWidths = { input: DEFAULT_DESKTOP_INPUT_WIDTH, puzzle: null }
+const DESKTOP_VIEW_IDS = ['solution', 'techniques', 'chains', 'colors'] as const
+export type DesktopPuzzleView = typeof DESKTOP_VIEW_IDS[number]
+type DesktopViewPreferences = { open: DesktopPuzzleView[]; active: DesktopPuzzleView | null }
 
 export type PlayPreferences = {
   pencil: boolean
@@ -21,17 +24,18 @@ export type PlayPreferences = {
   selectedColor: number | null
   colorTarget: ColorTarget
   colorBrush: number | null
-  colorsPanelOpen: boolean
   highlightCandidatePairs: boolean
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
   cardModeBadgePosition: ModeBadgePosition
   desktopLayoutWidth: number
   desktopPanelWidths: DesktopPanelWidths
+  desktopViews: DesktopViewPreferences
 }
 
 // Keep this key independent of the app build and service-worker cache version.
 export const PLAY_PREFERENCES_KEY = 'sudoku-app:v1:play-preferences'
+const LEGACY_TECHNIQUES_KEY = 'sudoku-app:v1:techniques-card-open'
 export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   pencil: false,
   candidateKind: 'corner',
@@ -42,13 +46,13 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   selectedColor: null,
   colorTarget: 'cell',
   colorBrush: null,
-  colorsPanelOpen: false,
   highlightCandidatePairs: false,
   multi: false,
   puzzleBrowserView: 'active',
   cardModeBadgePosition: { edge: 'bottom', offset: 0.95 },
   desktopLayoutWidth: DEFAULT_DESKTOP_LAYOUT_WIDTH,
   desktopPanelWidths: DEFAULT_DESKTOP_PANEL_WIDTHS,
+  desktopViews: { open: [], active: null },
 }
 const INPUT_MODE_KEYS = ['eraseMode', 'colorMode', 'highlightMode', 'pencil'] as const
 
@@ -79,6 +83,16 @@ function parseDesktopPanelWidths(value: unknown, legacyInputWidth: unknown): Des
   return DEFAULT_DESKTOP_PANEL_WIDTHS
 }
 
+function parseDesktopViews(value: unknown): DesktopViewPreferences {
+  if (!value || typeof value !== 'object' || !('open' in value) || !Array.isArray(value.open)) {
+    return DEFAULT_PLAY_PREFERENCES.desktopViews
+  }
+  const saved = value.open
+  const open = DESKTOP_VIEW_IDS.filter((view) => saved.includes(view))
+  const active = open.find((view) => 'active' in value && view === value.active) ?? open[0] ?? null
+  return { open, active }
+}
+
 export function parsePlayPreferences(value: unknown): PlayPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { ...DEFAULT_PLAY_PREFERENCES }
   const saved = value as Record<string, unknown>
@@ -94,7 +108,6 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     selectedColor: inRange(saved.selectedColor, 0, COLORS.length) ? saved.selectedColor : null,
     colorTarget: saved.colorTarget === 'candidate' ? 'candidate' : 'cell',
     colorBrush: inRange(saved.colorBrush, 0, COLORS.length) ? saved.colorBrush : null,
-    colorsPanelOpen: saved.colorsPanelOpen === true,
     highlightCandidatePairs: saved.highlightCandidatePairs === true,
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
@@ -103,6 +116,8 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     desktopLayoutWidth: inRange(saved.desktopLayoutWidth, MIN_DESKTOP_LAYOUT_WIDTH, Number.MAX_SAFE_INTEGER)
       ? saved.desktopLayoutWidth : DEFAULT_DESKTOP_LAYOUT_WIDTH,
     desktopPanelWidths: parseDesktopPanelWidths(saved.desktopPanelWidths, saved.desktopInputWidth),
+    desktopViews: parseDesktopViews(saved.desktopViews ??
+      (saved.colorsPanelOpen === true ? { open: ['colors'], active: 'colors' } : undefined)),
   }
 }
 
@@ -118,7 +133,14 @@ function readSavedPreferences(storage: PreferenceStorage): Record<string, unknow
 export function createPlayPreferenceStore(storage?: PreferenceStorage) {
   let current = { ...DEFAULT_PLAY_PREFERENCES }
   try {
-    current = parsePlayPreferences(readSavedPreferences(storage ?? localStorage))
+    const target = storage ?? localStorage
+    const saved = readSavedPreferences(target)
+    current = parsePlayPreferences(saved)
+    if (saved?.desktopViews === undefined && target.getItem(LEGACY_TECHNIQUES_KEY) === 'true') {
+      current.desktopViews = {
+        open: ['techniques', ...current.desktopViews.open], active: current.desktopViews.active ?? 'techniques',
+      }
+    }
   } catch { /* Defaults also work during server rendering or with blocked storage. */ }
   const listeners = new Set<() => void>()
   let pending: Partial<PlayPreferences> = {}

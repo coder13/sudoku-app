@@ -75,6 +75,46 @@ test('older partial settings gain new defaults without losing saved choices', ()
   })
 })
 
+test('open desktop views and the active view survive a fresh app instance', () => {
+  const storage = memoryStorage()
+  const store = createPlayPreferenceStore(storage)
+  store.set('desktopViews', { open: ['solution', 'techniques', 'chains'], active: 'chains' })
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, {
+    open: ['solution', 'techniques', 'chains'], active: 'chains',
+  })
+  store.set('desktopViews', { open: ['techniques'], active: 'techniques' })
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, {
+    open: ['techniques'], active: 'techniques',
+  })
+})
+
+test('the legacy techniques panel preference is preserved until the user changes their views', () => {
+  const storage = memoryStorage(JSON.stringify({ pencil: true }))
+  storage.setItem('sudoku-app:v1:techniques-card-open', 'true')
+  const store = createPlayPreferenceStore(storage)
+  assert.deepEqual(store.getSnapshot().desktopViews, { open: ['techniques'], active: 'techniques' })
+  store.set('desktopViews', { open: [], active: null })
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, { open: [], active: null })
+})
+
+test('saved desktop views ignore unknown names and closed active views', () => {
+  const preferences = parsePlayPreferences({
+    desktopViews: { open: ['chains', 'unknown', 'chains'], active: 'solution' },
+  })
+  assert.deepEqual(preferences.desktopViews, { open: ['chains'], active: 'chains' })
+})
+
+test('the earlier Colors panel preference joins saved views without reopening a closed panel', () => {
+  const storage = memoryStorage(JSON.stringify({ colorsPanelOpen: true, colorBrush: 12 }))
+  storage.setItem('sudoku-app:v1:techniques-card-open', 'true')
+  const store = createPlayPreferenceStore(storage)
+  assert.deepEqual(store.getSnapshot().desktopViews, { open: ['techniques', 'colors'], active: 'colors' })
+  store.set('desktopViews', { open: ['chains'], active: 'chains' })
+  const reloaded = createPlayPreferenceStore(storage).getSnapshot()
+  assert.deepEqual(reloaded.desktopViews, { open: ['chains'], active: 'chains' })
+  assert.equal(reloaded.colorBrush, 12)
+})
+
 test('the mode badge position survives reloads and other play setting changes', () => {
   const storage = memoryStorage(JSON.stringify({ pencil: true }))
   const store = createPlayPreferenceStore(storage)
