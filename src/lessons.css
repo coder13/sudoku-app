@@ -195,10 +195,10 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 
 @media (max-width: 960px) {
   .learn-page { grid-template-columns: minmax(0, 1fr); gap: 14px; padding-top: 8px; }
-  .article-subheading { scroll-margin-top: calc(var(--topbar-height) + 76px); }
   .learn-navigation {
+    position: relative;
     z-index: 10;
-    top: var(--topbar-height);
+    top: auto;
     display: block;
     max-height: none;
     padding-block: 8px;
