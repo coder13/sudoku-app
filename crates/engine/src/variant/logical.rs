@@ -108,6 +108,8 @@ catalog! {
     Quadruple: "quadruple", 27, Medium;
     /// Find possible digit differences along a Whispers line.
     Whispers: "whispers", 27, Medium;
+    /// Apply the repeating low, medium and high groups along an Entropic line.
+    Entropic: "entropic", 27, Medium;
     /// Remove digits that cannot be assigned to the cells of a Killer cage.
     CageCombinations: "cage-combinations", 34, Easy;
     /// Find assignments whose path digits add to the digit in the circle.
@@ -988,7 +990,7 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
-            Arrow | Between | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+            Arrow | Between | Entropic | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines
                     .iter()

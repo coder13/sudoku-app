@@ -1,0 +1,809 @@
+{
+  "description": "Complete original Coach exports. Deferred sources remain intact for later companion-rule integration.",
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/EoGB",
+      "title": "Entropic Snake",
+      "author": "adboe",
+      "published": "2026-04-22 14:27:37",
+      "code": "SCv7_32_f2e5b3mddb230344rv2ueeaovq9pqqrrrhdoup8fc7bhhgte6siadk46nhtpadk5lk89uhschhj5apdequrvl5eli2g4lve8tmqpdmgn6kkfqkq1mfv5fvjose7c78r7rfu0l9pp7ptj3a73ob5q6bbt3pltnjtslul5tla03al7ujki8fitdpu7agnqfmlifhcn5ef7nvaknfmter2hdr603q0s209chg412nhq45k8810m2a182drg8a126u0d4ueu08jcga6j08gogp0gi54hk0gm222462o200ti60p8gs101s5307m6o5d5h8c7efofc31lhnpnhjptps973ndmucfbttuqp8omvntk0he7a",
+      "solution": "924318657358746192671295348295481763743652819816937425582163974467829531139574286",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000607000000000000005000000080000700000010000000000502000000407800001000000086",
+        "rules": [
+          {
+            "type": "entropic",
+            "cells": [
+              73,
+              74,
+              75,
+              67,
+              76,
+              77,
+              78,
+              68,
+              58,
+              59,
+              60,
+              69,
+              70,
+              61,
+              62,
+              52,
+              42,
+              51,
+              41,
+              50,
+              40,
+              49,
+              48,
+              39,
+              38,
+              28,
+              37,
+              27,
+              19,
+              18,
+              9,
+              0,
+              10,
+              1,
+              11,
+              2,
+              3,
+              12,
+              13,
+              21,
+              22,
+              14,
+              15,
+              16,
+              25,
+              24,
+              33,
+              34,
+              35,
+              44,
+              53
+            ]
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/EoGB.png",
+      "imageSha256": "dc091e077eaf78270e09a708fc0630c06f34102da246965fd8423de10ebe3746"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/BSEJ",
+      "title": "Entropic Web",
+      "author": "joe",
+      "published": "2025-12-22 17:17:35",
+      "code": "SCv7_32_f2e7r4drd81j2425vt2vaa9kfa6u8dh9qeigobkc5kb83f9htcip067vffi609v0o1f90d22cvj5tk6p1h9tnfdmltl5c19jmi7jkflnk76ifcpiupbrjbr03uaarv4svrou2gfhbqkbie9snm7qeueqmjomlsrm6pmmelj267pufcf761qpp9vncfdrtd5huqb5678eum76tqrufumh4ii62ibv148gh2fe8k11beqa06almhph23d88sesi4o347h16jkh9j0i4e7s39ptoj4r8eeunl0dpqbgmvres88a2hskgb5ng994c8i0akmv2d4kj6akiqjng91027kusfa3b2i9rgvlcgb5fs3p246klr3peg8ol6ao91r7ikh62jh34545s04f47qqbtvmn7mr73eet5rfftcqnh0",
+      "solution": "347269581985134726621857349264985173798316254513472968156743892872691435439528617",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000080004000000000000000080100000300000000000000000000000000000005000000007",
+        "rules": [
+          {
+            "type": "entropic",
+            "cells": [
+              6,
+              7,
+              8,
+              17,
+              26,
+              35,
+              44,
+              53,
+              62,
+              71,
+              80,
+              79,
+              78,
+              77,
+              76,
+              75,
+              74,
+              73,
+              72,
+              63,
+              54,
+              45,
+              36,
+              27,
+              18,
+              9,
+              0,
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              12,
+              11,
+              10,
+              19,
+              28,
+              37,
+              46,
+              55,
+              64,
+              65,
+              66,
+              67,
+              68,
+              69
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              13,
+              14,
+              15,
+              16,
+              25,
+              34
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              22,
+              21,
+              20,
+              29,
+              38
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              47,
+              56,
+              57
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              58,
+              59,
+              60
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              48,
+              49,
+              50
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              51,
+              42,
+              41
+            ]
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/BSEJ.png",
+      "imageSha256": "1218688ecea1299e6dbaf0fb49693acda55a3f6508fe3d54b5335ce8851be913"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Hyk5",
+      "title": "Entropic Loop",
+      "author": "Raumplaner",
+      "published": "2026-08-04 06:52:41",
+      "code": "SCv7_32_f2e8qkmbdq1j047s2ufufg7q15e7nrddou506igscgkj3i2oild98vvfkp6l22p5sap5kitjmcpr77i4iv1f29bsf18le42tf3pv3acfcd76r23p2jqum962a7a58g74uu0l3gm7jjt2274u8fq04onkrn2vug0fvpubstdqg2la0ih80tmm235cgrislfc355ghqb6n1an8098o16mq09ckgb9901j485ebilsg2ai40n095i22li0iibsni2q12s6s9k56urhb6jtsfmt5t6srlqe47r5urusbn86p8ll77q5nsglpcgqbqrtkgbdvt1jae9bkmk7ik7ckrk3la1iqtti2bi2l08dlkefqjk10pg9ucbegkm6e04fs7qf4ie7ofjaf49nsenfdv0qlfkqvv7u4vlkq3rgcqvrpdvhsm0jefn50avj9nisns0nt703k6",
+      "solution": "863957241917423856542186739381674592629538174754219368298345617136792485475861923",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {
+            "type": "entropic",
+            "cells": [
+              40,
+              39,
+              38,
+              37,
+              46,
+              55,
+              64,
+              65,
+              66,
+              57,
+              58,
+              67,
+              68,
+              69,
+              70,
+              61,
+              52,
+              43,
+              42,
+              33,
+              34,
+              25,
+              16,
+              15,
+              14,
+              23,
+              22,
+              13,
+              12,
+              11,
+              10,
+              19,
+              28,
+              29,
+              30,
+              31,
+              40
+            ]
+          },
+          {
+            "type": "kropki",
+            "ratioTwo": {
+              "pairs": [
+                [
+                  32,
+                  41
+                ],
+                [
+                  48,
+                  49
+                ],
+                [
+                  27,
+                  36
+                ],
+                [
+                  35,
+                  44
+                ],
+                [
+                  21,
+                  20
+                ],
+                [
+                  47,
+                  56
+                ],
+                [
+                  51,
+                  60
+                ]
+              ],
+              "negative": false
+            }
+          },
+          {
+            "type": "kropki",
+            "consecutive": {
+              "pairs": [
+                [
+                  24,
+                  23
+                ],
+                [
+                  41,
+                  50
+                ],
+                [
+                  45,
+                  36
+                ],
+                [
+                  80,
+                  79
+                ]
+              ],
+              "negative": false
+            }
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/Hyk5.png",
+      "imageSha256": "8f134fc2d3c3a4cbce98723d6159b5991e775ec2b7800e0fddb6575382b2616e"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Hafj",
+      "title": "L25 entropic",
+      "author": "cocolo",
+      "published": "2026-07-19 16:44:52",
+      "code": "SCv7_32_f2e8r4uddq1j0444rv2ueef0fv63bluueam3gh6486b150u0dnakdf3rit54q6os4ai9bpe3mu1neplpm9r0hhrtv3paosj0dlsfesenokogr1ogqf4allpb1d3lcs89iov7n8kohtkuhumgni2eg6eot3donvq53dvjtjpntmg3jd40aa81lgk0bc4bka08174i3a0ae03geni2b1406hb5k5mgrlgvgr1sa9pvi3c7b6ngksm4ik22u6jp08290vkpsgia8d9hi6039djgiku0q2lmbnimptpqc532fe9visa5rle4i7uthq2fersn6l7gpjam5qitii0dimv7v64358f87f5o6thpsssjkggdfdk02g8df6tu7n3pf9fgi0q1khjd48mgbc1ipu12p4ddp51otos9idlqjqirlb3n0enpo73mcvejd73n6pvvulavofhiv87v4baosskriv6pivu7543qv834tc1plo",
+      "solution": "286491537759386142341752968573168294962574381814239675625843719437915826198627453",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {
+            "type": "entropic",
+            "cells": [
+              59,
+              51,
+              52,
+              44,
+              35,
+              26,
+              17,
+              25,
+              24,
+              23,
+              31,
+              21,
+              20,
+              19,
+              9,
+              18,
+              27,
+              36,
+              46,
+              47,
+              57
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              34,
+              33,
+              41
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              28,
+              29,
+              39
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              45,
+              55,
+              56,
+              66,
+              76,
+              68,
+              60,
+              61,
+              53
+            ]
+          },
+          {
+            "type": "xv",
+            "five": {
+              "pairs": [
+                [
+                  67,
+                  58
+                ],
+                [
+                  38,
+                  29
+                ],
+                [
+                  42,
+                  33
+                ]
+              ]
+            },
+            "ten": {
+              "pairs": [
+                [
+                  49,
+                  40
+                ],
+                [
+                  24,
+                  15
+                ],
+                [
+                  20,
+                  11
+                ],
+                [
+                  65,
+                  64
+                ],
+                [
+                  70,
+                  69
+                ],
+                [
+                  8,
+                  7
+                ],
+                [
+                  1,
+                  0
+                ]
+              ]
+            }
+          },
+          {
+            "type": "kropki",
+            "consecutive": {
+              "pairs": [
+                [
+                  52,
+                  43
+                ],
+                [
+                  37,
+                  28
+                ],
+                [
+                  42,
+                  41
+                ]
+              ],
+              "negative": false
+            }
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/Hafj.png",
+      "imageSha256": "458a3567de409e0f517355e93e8a8be20d2db0b87d3f3862d082a5aea5f81876"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Ksy3",
+      "title": "palindren? renbalindrome? renbananer?",
+      "author": "carrion",
+      "published": "2026-10-14 11:33:35",
+      "code": "SCv7_32_f2eaqlebiadk037sissung5so5blusurcdl0vb4pe96hbbo2nhdotivvjobf3mhh0r12260339t38knn91ec9ccboldvo5e45ohn2q6asrafaonn2fhi3l428iahugptshsfka2f06rvdl5l4kvg0se6lm61amqt51o6rels7qp7i3j5r5u8itu0s9jqhtuvho2ib4i8d7u73hsh329b1i2o6bhogsf46686hckurstlpb5rr5sc60peolcck4pgdmq58gha4n7kuvjk1m5gum1s183opk73r0s1ann4pni1ge1a2brmhqrut3p5g3qcol2s8gnckgi3372ru2259qsfjisujgth1bfq00pisojkr072iu8coi35kgugeq9dl1kf6blfo889h26bul58uie6edrcssb81pko40so36sm8tcqeaic36p10dre8eiki5ben244ujt755h49o1hsnr1tt6cec64v9s9udmikqrd59ip9qdp1jb6adcv57usvmrni6fbk9lqls13qpgmi7cjib30in94ts3m90ssqr2n22abs53li80e9fi5gbgmpmpbh40o891ms5ktsmfu2pqa6juln43799c66a0dnmatmjkfnr9j6v1lfcs7seql9fa3giuu9heom7gjerv2ic2kk5vgiv8e10vb4j9od2ogb9v6iafgaaikuuj59k1k6q2ugu8jdg0jkeajmlpk14sh97jo2khvds2chfkgpk2cibb7c7ogj4jnto19a4p4l922ra1j84t6socri1ho7ms4sherurblmhqf6km8ef25mdejc4f2t5qap4u3km9uohjb32gcn7bj1vicr6kmbtvmtof2tet6hm3radn654ioj3oq2s2ejc9du0rg16b9s8eqg20rqqhmmrb8kmo4uvf8vrt4dvv78fe1cg7cveu2sokh1ugnub17lqvg3t5pi6d0",
+      "solution": "872146935165329784394758216913584672647912853258673491489235167736491528521867349",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {
+            "type": "renban",
+            "cells": [
+              3,
+              11,
+              1,
+              10,
+              19,
+              29,
+              37,
+              45,
+              55
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              47,
+              57,
+              66,
+              58,
+              67,
+              76,
+              77,
+              69,
+              60
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              26,
+              35,
+              44,
+              43,
+              51
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              22,
+              32
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              20,
+              30
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              5,
+              15,
+              14,
+              23
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              33,
+              41,
+              50,
+              59,
+              51
+            ]
+          },
+          {
+            "type": "palindrome",
+            "cells": [
+              48,
+              38,
+              39,
+              31,
+              23,
+              14,
+              15,
+              5
+            ]
+          },
+          {
+            "type": "palindrome",
+            "cells": [
+              60,
+              69,
+              77,
+              76,
+              67,
+              58,
+              66,
+              57,
+              47,
+              55,
+              45,
+              37,
+              29,
+              19,
+              10,
+              1,
+              11,
+              3
+            ]
+          },
+          {
+            "type": "palindrome",
+            "cells": [
+              20,
+              30,
+              22,
+              32
+            ]
+          },
+          {
+            "type": "palindrome",
+            "cells": [
+              33,
+              41,
+              50,
+              59,
+              51,
+              43,
+              44,
+              35,
+              26
+            ]
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              65,
+              74
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              73,
+              72
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              10,
+              9
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              11,
+              2
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              25,
+              26
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              22,
+              13
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              78,
+              79
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              70,
+              69
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              61,
+              60
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              49,
+              48
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              34,
+              33
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              19,
+              20
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              55,
+              46
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              23,
+              22
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              67,
+              66
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              76,
+              77
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              43,
+              42
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              46,
+              45
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              52,
+              51
+            ],
+            "sum": 13
+          },
+          {
+            "type": "kropki",
+            "ratioTwo": {
+              "pairs": [
+                [
+                  64,
+                  65
+                ]
+              ],
+              "negative": false
+            }
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              7,
+              8,
+              16,
+              25,
+              26,
+              34,
+              35,
+              43,
+              52,
+              53,
+              61,
+              62,
+              70,
+              79,
+              71
+            ]
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/Ksy3.png",
+      "imageSha256": "19332a55061e124eb8eeba241cc407c6096413a16fb217396130ccb12f01100b"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/LEjN",
+      "title": "Entropic Spiral",
+      "author": "Aidan",
+      "published": "2026-10-29 01:15:06",
+      "code": "SCv7_32_f2e8b4ub9r1j0425vv2unevghjftq0hreom525t1mkh4m8dda85qih7teue552gacac8bpchtqeses9ildv2lmt7uafdaai1uniir3vnkknvb82m99fi6qfq9oqenmrgvb7khiohppbqnddqeisdn3c779qman6q7j7qkr6lh8q58fferceak7rm5vev0c6md6rjudmf47rqvuajndfb4mmbr2rmofkte0ot7lcspurb4u9ccevfbjjaie3m3eap1l5n1racm08idgb8321e2ljvrt6tqqtef6t7du5i341sms04lvgh4n441do1sdm8mo44so0d4p8se31mc05ncc0mqr032f11d3s28ejtgg7v07mup4t0m9pbli3p3dv11156hbulj29sp2ocp211pi430asdatlgdk307jo86a6qg4f4ll1k1s08u91c28gob78i0duk1ms5pibom268c8n4h4dj9v7jh6gu34ev200v3dv2su7r2fjt00066b3n",
+      "solution": "527963184496128537138475296952637841374851629861249375285714963643592718719386452",
+      "deferred": "Global Entropy and additional source content remain unsupported. Preserve the whole source."
+    },
+    {
+      "url": "https://sudoku.coach/en/s/7nms",
+      "title": "Entropic Order",
+      "author": "Raumplaner",
+      "published": "2025-05-23 08:00:26",
+      "code": "SCv7_32_f2e9b4qhde1j0545vv5nqfhb4oor3uhq0ptuhm63uoqej0tj8415d2r6ceevhnrndkrq27adt65hhu5uef10qtt0l9ppm5vndkkkmgclveqcqveruiv2mn73ff5f50esgop130fsfr3h8lblvdfd83sdtvddr7i0nmmrdtm8lqjp7ttel7s39313fpij3ivmk2sn5p8qffl0sl6qnaffsh0alphkihgsn0lrkojbnnmudi1v9on224p80eag8ebdk0qko353gee8l804cbvadoeu31146668e2f5tgh4615ugs4usp98im21pcg2e90kn1dvr9pe1lfct0pfref7iltur8nnuqfgn5f6hn251eujsrp07tkhifeip66v5645ug37s2i73g89tjg41q3rt0afdqu91e62lv77gtbd8a9n1ugqgs6nmqurtnpge0uj58o7jn1o2cojpvg0g0821so",
+      "solution": "834196257769542813521837649385764192472918536196253784617389425948625371253471968",
+      "deferred": "Global Entropy and additional source content remain unsupported. Preserve the whole source."
+    }
+  ]
+}

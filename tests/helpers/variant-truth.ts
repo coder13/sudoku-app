@@ -49,6 +49,12 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
       case 'palindrome':
         rule.cells.forEach((cell, i) => assert.equal(digits[cell], digits[rule.cells[rule.cells.length - 1 - i]]))
         break
+      case 'entropic': {
+        for (let i = 0; i < rule.cells.length; i++) for (let j = i + 1; j < Math.min(i + 3, rule.cells.length); j++) {
+          assert.notEqual(Math.floor((digits[rule.cells[i]] - 1) / 3), Math.floor((digits[rule.cells[j]] - 1) / 3))
+        }
+        break
+      }
       case 'renban': {
         const values = rule.cells.map(cell => digits[cell])
         assert.ok(distinct(rule.cells))

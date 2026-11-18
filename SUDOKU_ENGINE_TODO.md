@@ -19,6 +19,9 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
 
+- [x] Audit Entropic Lines against Clover's published puzzle/solution PDFs, five complete original Coach exports and two deferred Global Entropy combinations. Preserve independent touching paths, closed walks and the redundant Ksy3 clue. [Source and integration contract](SUDOKU_ENTROPIC_AUDIT.md)
+- [ ] Merge native/app Entropic integration through [issue 58](https://github.com/coder13/sudoku-app/issues/58) after its full release gates.
+
 - [x] Audit Renban against two published puzzle/solution PDF pairs and six original Coach exports. Independently verify five complete 9×9 fixtures. Preserve the grid-size, legacy-format and Entropic companion gaps. [Source and integration contract](SUDOKU_RENBAN_AUDIT.md)
 - [x] Merge Renban native/app integration through [PR 157](https://github.com/coder13/sudoku-app/pull/157). All checks passed on reviewed head `673523f`; main contains the release at `7ce7fcc`. [Issue 55](https://github.com/coder13/sudoku-app/issues/55) is closed. Live viewport review, New puzzle calibration and [BSms human solve coverage](https://github.com/coder13/sudoku-app/issues/158) remain follow-ups.
 
@@ -755,3 +758,23 @@ The isolated worktree is `codex/sudoku-renban-integration`, based on main `69289
 - [x] Pass all native, feature, Wasm/app, strict documentation and deployment checks on `673523f` in [run 44348686818](https://github.com/coder13/sudoku-app/actions/runs/44348686818). Merge [PR 157](https://github.com/coder13/sudoku-app/pull/157) at `7ce7fcc` and verify both commits on remote main. The source worktree stays pinned to the reviewed head.
 - [ ] Complete live viewport interaction review and calibrate New puzzle recipes. Native template generation remains available.
 - [ ] Extend the stalled BSms logical path through [issue 158](https://github.com/coder13/sudoku-app/issues/158). Establish an independent human deduction before adding a named detector or changing scoring. Exact search already proves its unique completion.
+
+## 18. Integrate Entropic Lines into the app
+
+The isolated worktree is `codex/sudoku-entropic-integration`, based on main `679311f`. Track the family in [issue 58](https://github.com/coder13/sudoku-app/issues/58). [Source contract and known limits](SUDOKU_ENTROPIC_AUDIT.md)
+
+- [x] Inspect Clover's Numeric Keypad puzzle/solution PDFs and five complete Coach diagrams. Independently establish all six unique completions. Preserve two complete deferred Global Entropy sources.
+- [x] Follow Coach's independent-per-segment semantics. Preserve touching paths, repeated references, closed loops, the two-cell different-group rule and unrestricted one-cell paths.
+- [x] Port bounded group support, exact enforcement, typed proofs, transformations and the 27-point Medium research cost. Pass the independent proof-effort model and keep prior costs/scoring version 8.
+- [x] Pass 344 native tests, sixteen capability combinations, four profiles and strict full/reduced Cargo docs. Exhaust all 262,144 two-cell domain pairs and check longer paths with independent digit assignments.
+- [x] Wire complete import, visible paths/overlap lanes, accessible labels, candidates, both Pencil modes, input/history, actual storage, sharing, hints/pages/Finder, practice and Learn.
+- [x] Replay every source action and independently check every positive Entropic proof. Keep Hyk5/Hafj partial paths explicit. Check generated practice and first-technique/exact-score generation on three selected seeds.
+- [x] Preserve the legacy 65,536-selection regression. Add 173 bounded Entropic composition cases: 171 compatible and two intentional contradictions.
+- [x] Pass TypeScript, 479 app tests, eleven focused new Wasm contracts and twelve retained/new line-component checks.
+- [x] Inspect twenty-eight static light/dark exports at 900/360 pixels. Keep live viewport interaction review separate.
+- [x] Pass all 292 Wasm contracts and all 8,167 complete retained responses under explicit legacy profiles. Compare 53 variant corpus positions, 354 positive practice positions, all 118 prior detectors and nine Classic Tridagon positions without response normalization.
+- [x] Pass the production/offline build with 161 routes. Rebuilds preserve the measured Wasm artifact.
+- [ ] Record source/retained timings, memory, package profiles and generation yield.
+- [ ] Pass reviewed-head CI and deployment checks, merge the focused PR and verify remote main ancestry.
+- [ ] Research the Hyk5/Hafj human reasoning gaps and slow Hyk5 rating. Derive independently checked deductions before adding named techniques or changing scores.
+- [ ] Complete live viewport interaction review and calibrate New puzzle recipes. Native template generation remains available.

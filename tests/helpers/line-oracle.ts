@@ -18,6 +18,11 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
     if (rule.type === 'renban') sets.push({ cells: rule.cells })
     else if (rule.type === 'killer-cages') sets.push(...rule.cages)
     else if (rule.type === 'parity') rule.cells.forEach(cell => edges.push([cell, cell, (a,b) => a === b && a % 2 === (rule.parity === 'odd' ? 1 : 0)]))
+    else if (rule.type === 'entropic') {
+      for (let i = 0; i < rule.cells.length; i++) for (let j = i + 1; j < Math.min(i + 3, rule.cells.length); j++) {
+        edges.push([rule.cells[i], rule.cells[j], (a, b) => Math.floor((a - 1) / 3) !== Math.floor((b - 1) / 3)])
+      }
+    }
     else if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
       edges.push([cell, rule.cells[rule.cells.length - 1 - i], (a, b) => a === b]))

@@ -215,6 +215,7 @@ impl SquareTransform {
                 }
             }
             Thermometer { cells }
+            | Entropic { cells }
             | Whispers { cells, .. }
             | Between { cells }
             | RegionSum { cells, .. } => self.path(cells),

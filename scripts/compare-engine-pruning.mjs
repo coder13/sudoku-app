@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -22,13 +22,18 @@ const before = await engine(beforePath), after = await engine(afterPath)
 const classic = await before({ type: 'techniques' }), old = await before({ type: 'techniques', variant: true })
 assert.deepEqual(await after({ type: 'techniques' }), classic)
 const updated = await after({ type: 'techniques', variant: true })
-if (options.includes('--adjacent-total')) {
+const additionsExpected = [
+  ...(options.includes('--adjacent-total') ? [{ id: 'adjacent-total', aliases: [], cost: 20, difficulty: 'easy', requiresUniqueSolution: false }] : []),
+  ...(options.includes('--entropic') ? [{ id: 'entropic', aliases: [], cost: 27, difficulty: 'medium', requiresUniqueSolution: false }] : []),
+]
+if (additionsExpected.length) {
   const additions = updated.techniques.filter(item => !old.techniques.some(before => before.id === item.id))
-  assert.deepEqual(additions, [{ id: 'adjacent-total', aliases: [], cost: 20, difficulty: 'easy', requiresUniqueSolution: false }])
-  assert.deepEqual({ ...updated, defaultOrder: updated.defaultOrder.filter(id => id !== 'adjacent-total'),
-    difficultyOrder: updated.difficultyOrder.filter(id => id !== 'adjacent-total'),
-    techniques: updated.techniques.filter(item => item.id !== 'adjacent-total') }, old)
-  console.log('Catalog adds only adjacent-total at twenty points/Easy. All retained requests below use explicit legacy profiles, without response normalization.')
+  assert.deepEqual(additions.toSorted((a,b)=>a.id.localeCompare(b.id)), additionsExpected.toSorted((a,b)=>a.id.localeCompare(b.id)))
+  const retained = id => !additionsExpected.some(item => item.id === id)
+  assert.deepEqual({ ...updated, defaultOrder: updated.defaultOrder.filter(retained),
+    difficultyOrder: updated.difficultyOrder.filter(retained),
+    techniques: updated.techniques.filter(item => retained(item.id)) }, old)
+  console.log('Catalog adds only the declared techniques. All retained requests below use explicit legacy profiles, without response normalization.')
 } else assert.deepEqual(updated, old)
 const techniqueOrder = variantTechniqueOrder(old.defaultOrder, classic.difficultyOrder,
   Object.fromEntries([...classic.techniques, ...old.techniques].map(item => [item.id, item.difficulty])))
@@ -98,6 +103,14 @@ if (options.includes('--xv')) {
     fixtures.push({ name: `xv-coach-${source.url.split('/').pop()}`,
       position: { puzzle: (await detectPuzzle(source.code)).variant.puzzle } })
   }
+}
+if (options.includes('--renban')) {
+  for (const file of ['renban-clover', 'renban-killer-clover']) fixtures.push({ name: file,
+    position: { puzzle: (await read(`../tests/fixtures/${file}.json`)).puzzle } })
+  for (const source of (await read('../tests/fixtures/renban-coach.json')).examples.filter(source => !source.deferred)) {
+    fixtures.push({ name: `renban-coach-${source.url.split('/').pop()}`, position: { puzzle: source.puzzle } })
+  }
+  fixtures.push({ name: 'adjacent-sum-99Eu', position: { puzzle: (await detectPuzzle((await read('../tests/fixtures/adjacent-sum-coach.json')).source.code)).variant.puzzle } })
 }
 let comparisons = 0, positive = 0, improvedBudgets = 0, alternativeCompletions = 0
 const exhausted = result => result === 'search-limit' || result?.engineError === 'search-limit'
@@ -184,7 +197,7 @@ for (const technique of detectors) {
 }
 console.log(options.includes('--exact-houses')
   ? `${comparisons} responses checked: ${comparisons - improvedBudgets - alternativeCompletions} match exactly, ${improvedBudgets} verified budget improvements, ${alternativeCompletions} validated alternative completions. ${fixtures.length} corpus positions, ${positive} positive practice positions, ${detectors.length} detector IDs and every hint page.`
-  : `${comparisons} complete responses match on ${fixtures.length} corpus positions and ${positive} positive practice positions; ${detectors.length} detector IDs, unchanged catalogs/scoring and every hint page.`)
+  : `${comparisons} complete responses match on ${fixtures.length} corpus positions and ${positive} positive practice positions; ${detectors.length} detector IDs, retained catalogs/scoring and every hint page.`)
 
 if (options.includes('--classic-tridagon')) {
   const start = comparisons

@@ -59,6 +59,7 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       case 'palindrome': return [`Palindrome · ${path(rule.cells)}`]
       case 'between': return [`Between line · ${path(rule.cells)}`]
       case 'whispers': return [`Whispers line · ${path(rule.cells)}. Minimum difference ${rule.minDifference}.`]
+      case 'entropic': return [`Entropic line · ${path(rule.cells)}. Every three positions use low, medium and high digits.`]
       case 'renban': return [`Renban line · ${path(rule.cells)}`]
       case 'region-sum': return [`Region Sum line · ${path(rule.cells)}${rule.groupByRegion ? '. Combine visits to the same region.' : ''}`]
       case 'little-killer': return [`Little Killer ${rule.sum} · ${path(rule.cells)}`]
