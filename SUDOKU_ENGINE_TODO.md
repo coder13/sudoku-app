@@ -791,6 +791,6 @@ The isolated worktree is `codex/sudoku-entropic-rating-audit`, based on main `68
 - [x] Pass 485 app tests and 292 Wasm contracts. Extend profiling to progressed positions and an explicit Wasm artifact. Extend full-response comparisons with all Entropic sources and every Hyk5 stage.
 - [x] Preserve all 10,679 complete comparison responses and 140 generation outcomes. Finish paired source/retained measurements and both actual caller runs. Record all package costs and memory increases. Hyk5 app rating falls from 884.961 to 798.371 ms median. 63Jk falls from 3,997.348 to 3,667.600 ms.
 - [x] Pass the 161-route production/offline build and preserve the measured Wasm hash.
-- [ ] Pass all checks on the reviewed PR head. Merge the PR and verify both the reviewed commit and merge on remote main.
+- [x] Pass all native, feature, Wasm/app, strict documentation and deployment checks on `8bf317f` in [run 44369897495](https://github.com/coder13/sudoku-app/actions/runs/44369897495). Merge [PR 166](https://github.com/coder13/sudoku-app/pull/166) at `54c75b6`. Verify both commits on remote main and keep the source worktree pinned to the reviewed head.
 
 Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app/issues/162). Broader latency and real browser-worker costs remain in [issue 88](https://github.com/coder13/sudoku-app/issues/88).
