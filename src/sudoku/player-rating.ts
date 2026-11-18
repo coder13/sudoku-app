@@ -11,6 +11,8 @@ const puzzleRatings: Record<Difficulty, number> = { beginner: 760, easy: 800, me
 const legacyTiers: readonly Difficulty[] = ['easy', 'medium', 'hard', 'unfair', 'extreme']
 const fastSolveSeconds: Record<Difficulty, number> = { beginner: 90, easy: 120, medium: 180, tricky: 240, hard: 300, 'very-hard': 420, expert: 480, master: 600, extreme: 720, impossible: 1200, unfair: 480 }
 const EARLY_RESULTS = 4
+const AUTO_PROMOTION_WINDOW = 8
+const AUTO_PROMOTION_SOLVES = 6
 
 export type RatingFinish = 'solved' | 'hints' | 'too-hard' | 'solution'
 type RatingMode = 'fixed' | 'placement'
@@ -204,6 +206,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
   let tier = tiers.indexOf(initialPlayerRating.recommended)
   let observed = 0
   let recent: number[] = []
+  let recentUnaided: boolean[] = []
   let fixedEvidence: (number | undefined)[] = []
   let atTier: number[] = []
   let placementPending = placement
@@ -212,6 +215,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
     if (!placementPending) return
     tier = DIFFICULTY_LEVELS.indexOf(currentDifficulty(placementPending.difficulty))
     recent = []
+    recentUnaided = []
     atTier = []
     fixedEvidence = []
     struggled.clear()
@@ -253,6 +257,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
       if (skipEasy && tier === playedTier) {
         tier = tiers.indexOf('medium')
         recent = []
+        recentUnaided = []
         atTier = []
       }
       results.set(event.gameId, { event, before: rating, after: rating, recommended: currentDifficulty(tiers[tier]), speedBonus: 0 })
@@ -279,6 +284,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
     const adjustment = !analysisUsed && solved && !onlySingles && !repeatedHelp ? difference : Math.min(0, difference)
     const baseRating = Math.max(700, Math.min(1150, rating + weight * adjustment - assistancePenalty))
     rating = Math.min(1150, baseRating + bonus)
+    if (gradual && playedTier >= tier) recentUnaided = [...recentUnaided, unaided].slice(-AUTO_PROMOTION_WINDOW)
     if (!affectsCalibration) {
       // A technique scan by itself does not calibrate the next difficulty.
       results.set(event.gameId, { event, before, after: rating, recommended: currentDifficulty(tiers[tier]), speedBonus: 0 })
@@ -299,6 +305,10 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
     const fixedCalibration = demonstratedTier !== undefined && demonstratedTier > tier
     const fastSolve = unaided && elapsed > 0 && elapsed <= fastSolveSeconds[difficulty]
     const solvedBeyondSingles = !analysisUsed && !repeatedHelp && credit === 1 && singlesAssistance === 'partial' && event.mode === undefined && playedTier > 0
+    const promotionEvidence = gradual
+      ? unaided && playedTier >= tier && recentUnaided.length === AUTO_PROMOTION_WINDOW &&
+        recentUnaided.filter(Boolean).length >= AUTO_PROMOTION_SOLVES
+      : recent.filter(value => value >= 0.9).length >= 3
     if (!gradual && fixedCalibration) {
       nextTier = early ? demonstratedTier : tier + 1
     } else if (!gradual && early && (fastSolve || solvedBeyondSingles) && playedTier >= tier - 1) {
@@ -308,7 +318,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
       }
     } else if (!gradual && early && tier > 0 && playedTier === tier && struggling) {
       nextTier--
-    } else if (!repeatedHelp && tier < tiers.length - 1 && expectedCredit(rating, tiers[tier + 1]) >= 0.65 && recent.filter((value) => value >= 0.9).length >= 3) {
+    } else if (promotionEvidence && tier < tiers.length - 1 && expectedCredit(rating, tiers[tier + 1]) >= 0.65) {
       nextTier++
     } else if (tier > 0 && atTier.filter((value) => value === 0).length >= 2) {
       nextTier--
@@ -318,6 +328,7 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
       if (nextTier > tier) rating = Math.max(rating, startingRatingFor(tiers[nextTier]))
       tier = nextTier
       recent = []
+      recentUnaided = []
       atTier = []
     }
     const result: RatedResult = { event, before, after: rating, recommended: currentDifficulty(tiers[tier]), speedBonus: Math.min(bonus, 1150 - baseRating) }

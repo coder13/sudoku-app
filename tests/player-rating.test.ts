@@ -56,14 +56,29 @@ test('current Auto moves up after several independent puzzles and down after rep
   const current = (index: number, overrides: Partial<RatingEvent> = {}) => outcome(index, {
     ratingVersion: PLAYER_RATING_VERSION, ...overrides,
   })
-  const clean = [1, 2, 3, 4].map(index => current(index, { elapsed: 90 }))
+  const clean = Array.from({ length: 8 }, (_, index) => current(index + 1, { elapsed: 90 }))
   assert.equal(calculatePlayerRating(clean.slice(0, 1)).recommended, 'medium')
-  assert.equal(calculatePlayerRating(clean.slice(0, 3)).recommended, 'medium')
+  assert.equal(calculatePlayerRating(clean.slice(0, 7)).recommended, 'medium')
   assert.equal(calculatePlayerRating(clean).recommended, 'tricky')
+  const higher = Array.from({ length: 8 }, (_, index) => current(index + 9, { difficulty: 'tricky', elapsed: 90 }))
+  assert.equal(calculatePlayerRating([...clean, ...higher.slice(0, 7)]).recommended, 'tricky')
+  assert.equal(calculatePlayerRating([...clean, ...higher]).recommended, 'hard')
 
   const assisted = [1, 2].map(index => current(index, { finish: 'hints', viewed: 3, hintsRequested: 3, analysisUsed: true }))
   assert.equal(calculatePlayerRating(assisted.slice(0, 1)).recommended, 'medium')
   assert.equal(calculatePlayerRating(assisted).recommended, 'easy')
+})
+
+test('a hint or Technique Finder uses a slot in the Auto promotion window', () => {
+  const events = Array.from({ length: 8 }, (_, index) => outcome(index + 1, { ratingVersion: PLAYER_RATING_VERSION }))
+  events[1] = { ...events[1], viewed: 1, hintsRequested: 1 }
+  events[3] = { ...events[3], analysisUsed: true }
+  events[5] = { ...events[5], viewed: 1, hintsRequested: 1 }
+  assert.equal(calculatePlayerRating(events).recommended, 'medium')
+  events.push(outcome(9, { ratingVersion: PLAYER_RATING_VERSION }))
+  assert.equal(calculatePlayerRating(events).recommended, 'medium')
+  events.push(outcome(10, { ratingVersion: PLAYER_RATING_VERSION }))
+  assert.equal(calculatePlayerRating(events).recommended, 'tricky')
 })
 
 test('an accepted difficulty check starts Auto at its recommendation with the same rating', () => {

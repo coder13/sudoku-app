@@ -75,7 +75,7 @@ Preview and Play explain every active rule. Mixed puzzles retain their full defi
 
 Your player rating estimates your Sudoku skill. It starts at 855 and learns from the puzzles you play at Auto and fixed difficulties. Faster solves without hints can earn a small bonus based on your recent times at the same difficulty. Slow solves earn regular credit.
 
-Choose Auto in New puzzle for puzzles near your current level. Auto starts at Medium and adjusts one level at a time after several results. Independent solves help you move up. If several puzzles at your current level need repeated hints, Auto can move down.
+Choose Auto in New puzzle for puzzles near your current level. Auto starts at Medium and adjusts one level at a time. It uses six unaided solves in your last eight puzzles at your level or higher as evidence to move up. If several puzzles at your current level need repeated hints, Auto can move down.
 
 Choose Find my difficulty in New puzzle to try a short series of Classic puzzles. Give feedback to try a nearby level or finish the difficulty check. You can mark techniques that you know and techniques that you want to practice. If the recommendation suits you, choose Apply to Auto. The number on your player rating stays the same.
 
