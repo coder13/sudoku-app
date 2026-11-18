@@ -53,7 +53,7 @@ This family reached main at `c38cc2b` through [PR 135](https://github.com/coder1
 - [x] Profile selected expert searches at the stalled Coach position. Record bounded digit-matching research without changing the shipped engine or claiming a rating speedup. [Rating audit](https://github.com/coder13/sudoku-app/issues/134)
 - [ ] Finish live viewport interaction review. Static clue images and desktop/mobile component tests passed.
 - [ ] Calibrate difficulty recipes before offering Palindrome in New puzzle. Native generation and exact clue targets already pass.
-- [x] Improve the existing slow app-order Coach rating through [PR 137](https://github.com/coder13/sudoku-app/pull/137). Preserve all techniques, scores and choices. Continue the remaining Tridagon audit in [issue 138](https://github.com/coder13/sudoku-app/issues/138).
+- [x] Improve the existing slow app-order Coach rating through [PR 137](https://github.com/coder13/sudoku-app/pull/137) and [PR 141](https://github.com/coder13/sudoku-app/pull/141). Preserve all techniques, scores and choices. Continue the broader audit in [issue 88](https://github.com/coder13/sudoku-app/issues/88).
 
 ### Inequality integration audit
 
@@ -63,8 +63,11 @@ The next family remains open in [issue 47](https://github.com/coder13/sudoku-app
 - [x] Independently prove the preserved zero-given FzzD puzzle unique with all three Palindrome paths, seven inequalities and five white dots. Removing only inequalities gives multiple completions.
 - [x] Check the published completion against native rules and all twenty actions in each logical trace. Both profiles stall at 98 points after nine steps and offer seven opening choices.
 - [x] Identify the exact-search limit at both 20,000 and 1,000,000 nodes. Track a separate measured repair in [issue 139](https://github.com/coder13/sudoku-app/issues/139).
+- [x] Establish a larger-budget baseline. Two million nodes still exhaust. Ten million nodes prove uniqueness in about 6.8 seconds and find the published completion in about 5.7 seconds. These are single local observations.
+- [x] Isolate house Hidden Singles in the independent counter. Without them, 100,000 calls find no completion. With them, 52,244 calls prove uniqueness. Keep those counts separate from native node accounting.
 - [ ] Finish published clue review and the complete app flow before integrating inequalities. Preserve directed endpoints under every grid transformation.
 - [ ] Make sparse mixed-rule validation practical while keeping honest search-limit outcomes in [issue 139](https://github.com/coder13/sudoku-app/issues/139).
+- [ ] Test exact-search house propagation. Preserve public candidate and logical-profile behavior. Check boundary budgets, ambiguous completions and seeded generation before selecting the implementation.
 
 ### Non-Consecutive integration merged
 
@@ -145,18 +148,19 @@ This pass reached main at `799ba1e` through [PR 137](https://github.com/coder13/
 - [x] Measure nine fixtures with complete response checks. Reduce the Coach app-order median from 413.446 to 229.884 ms. Preserve scores, choices and memory. Record slower samples and the 5,013-byte app gzip increase. [Methods and limits](tests/fixtures/README.md#mask-constrained-digit-witnesses)
 - [x] Pass CI on reviewed head `336cc49`, merge through [PR 137](https://github.com/coder13/sudoku-app/pull/137) and confirm its ancestry on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44279709034)
 - [x] Independently enumerate all 5,832 recognized Tridagon geometries and identify a direct guardian bound. Keep this research separate from the shipped matching change.
-- [ ] Improve the remaining Tridagon searches with independently proved eligibility checks in [issue 138](https://github.com/coder13/sudoku-app/issues/138).
+- [x] Improve the Tridagon searches with independently proved direct eligibility and deferred forcing proof data in [PR 141](https://github.com/coder13/sudoku-app/pull/141).
 
-### Tridagon eligibility and proof allocation in progress
+### Tridagon eligibility and proof allocation merged
 
-This isolated pass starts from main `31fd429` in `codex/sudoku-tridagon-eligibility`. [Tridagon performance issue](https://github.com/coder13/sudoku-app/issues/138)
+This pass reached main at `2a327ad` through [PR 141](https://github.com/coder13/sudoku-app/pull/141). All CI and deployment checks passed on reviewed head `e83d707`. The reviewed worktree remains on `codex/sudoku-tridagon-eligibility`. [Tridagon performance issue](https://github.com/coder13/sudoku-app/issues/138)
 
 - [x] Prove the direct conflict bound across all 5,832 recognized geometries and every target cell and digit. Compare bounded and unbounded complete proofs after candidate edits.
 - [x] Skip direct patterns with more than nine guardians. Enumerate forcing guardians lazily while preserving original branch order, contradictory cases and the existing refutation bound.
 - [x] Compare 6,210 complete variant responses across forty corpus positions and 351 positive practice examples. Add 148 Classic responses across nine Tridagon positions, including traces, counts and every hint page.
 - [x] Pass 313 native tests, 413 app tests, 253 Wasm tests, sixteen capability combinations, four package profiles, strict full/reduced documentation, TypeScript and the 159-route production/offline build. Verify the final artifact against the complete response comparison.
 - [x] Measure nine fixtures and selected final-position searches. Reduce the Coach rating median from 228.995 to 102.495 ms and Newman's exhaustive page from 301.930 to 208.677 ms. Preserve choices and memory. Record the app savings, larger Solver/Classic packages and slower samples. [Methods and limits](tests/fixtures/README.md#tridagon-eligibility-and-deferred-proof-data)
-- [ ] Pass exact-head CI and merge this measured improvement separately.
+- [x] Pass CI on reviewed head `e83d707`, merge through [PR 141](https://github.com/coder13/sudoku-app/pull/141) and confirm its ancestry on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44286031509)
+- [ ] Continue the remaining latency and package-size audit in [issue 88](https://github.com/coder13/sudoku-app/issues/88). Keep the larger Solver and Classic profiles visible alongside the smaller app package.
 
 ### Checked geometric symmetries merged
 
