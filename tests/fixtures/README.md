@@ -216,3 +216,49 @@ The complete differential corpus includes 30 positive practice positions and 13 
 | app | 3,292,003 / 851,248 | 3,314,899 / 881,343 |
 
 The app adds 30,095 gzip bytes for the measured latency reduction. New probes compile only with `variants`; solver and Classic raw sizes are unchanged. Repeat the paired requests with `node --experimental-strip-types scripts/bench-overlay-engines.mjs before.wasm after.wasm`; optional fixture names select narrower runs. Use `scripts/compare-overlay-engines.mjs before.wasm after.wasm` for the complete differential corpus and `scripts/profile-variant-hints.mjs` for individual detector proofs and timings.
+
+## Non-Consecutive locks and candidate alternatives
+
+The four new techniques are two-cell locks, three-cell locks, bivalue and trivalue neighbors. The [public Coach solver](https://sudoku.coach/js/jCfXtZb-1776367508519.js) names these families. The engine uses its existing binary relations and a finite-alternative proof: every possible location of a house digit, or every candidate of one cell, must conflict with the candidate being removed. Evidence records the complete alternatives, rule indices and any shared houses. Exact search supplies no premise. Explicit exemptions remain active, and locks use the declared Jigsaw, diagonal and extra houses.
+
+`nonconsecutive-locked.json` archives Consecudoku's position after the prior app order stalled at 62 deductions on main `36add07`. It retains the original two givens, 38 white dots and all 38 Non-Consecutive exceptions. Its six expected removals replay from their actual house alternatives. With the new techniques enabled, the app solves directly from the original givens in 167 deductions and matches the published completion. Omitting the four new IDs reproduces the archived stall exactly.
+
+Twelve practice puzzles cover the four techniques, with distinct target scopes. Locks and bivalue exercises reuse the engine's unique Non-Consecutive teaching puzzles. Two trivalue exercises add a verified given to the original teaching puzzle. A separate set-based counter checks all twelve givens for uniqueness. Fresh seeded drills retain the selected proof and also pass the independent counter. Four generated 30-given puzzles, using seeds 31–34 and the matching practice puzzle as a solution anchor, start with the selected new technique under an explicit order. Each has one completion with Non-Consecutive and multiple completions without it. The requests allow 30 attempts and 50,000 nodes per attempt, with a score interval of 0–100,000. An unanchored two-cell first-move request with 35 givens exhausted its six-attempt, 20,000-node budget. These cases do not establish general generation success or calibrated app presets.
+
+Variant scoring version 7 adds the four IDs to the default order at 20, 24, 22 and 24 points. Older costs are unchanged. The three proof-effort estimates per technique extend the calibration set from 69 to 81 complete paths. Cost is charged once per deduction. A partial version-6 score of 946 at the Coach stall is distinct from its complete version-7 app score of 2,278.
+
+The differential corpus matches 2,052 retained responses across fourteen Classic/variant positions, including all 107 prior app detector outputs, exact completions, explicit old-profile ratings/traces and every hint page. Only the declared score-version metadata changes for those explicit profiles. Nine additional corpus proofs replay through an independent house/edge checker. Eleven new native cases include all 511 nonempty source masks at five boundary/interior cells for both cell techniques: 5,110 comparisons against direct neighbor assignments. Nine independently checked shifted Latin grids witness every source digit. Positive/near-miss cases cover missing edges, extra alternatives, 1/9 boundaries, Jigsaw, both diagonals, extra houses, absent rules and shared-house provenance.
+
+Paired Node/Wasm measurements on Darwin arm64, Node 26.13.0, use fresh instances per fixture and each build's own default/app order. Fixed requests use five warmups and twenty samples; exhaustive first pages use two warmups and ten samples. Execution order alternates. Values include encoding/decoding and exclude assertions, worker startup, transfer and rendering. Values are milliseconds median/p95.
+
+| Consecudoku operation | Main `36add07` | New techniques |
+| --- | ---: | ---: |
+| Candidates | 0.049 / 0.061 | 0.052 / 0.061 |
+| Uniqueness | 0.353 / 0.368 | 0.363 / 0.379 |
+| Exact solve | 0.356 / 0.380 | 0.366 / 0.385 |
+| Native default rating | 0.530 / 0.576, stalled | 0.841 / 0.922, complete |
+| App-order rating | 1,058.396 / 1,412.850, stalled | 1.067 / 1.600, complete |
+| App ten-hint request | 679.743 / 805.122 | 684.179 / 758.524 |
+| App exhaustive first page | 681.509 / 794.187 | 681.948 / 878.228 |
+
+Both opening hint requests still return the same four choices. Their latency remains an open target in [issue 88](https://github.com/coder13/sudoku-app/issues/88). Native default now completes more work; its complete score is 1,978. Committed Wasm memory after the measured requests stays at 6.56 MiB for this fixture. Buffer size does not measure process RSS or live allocations.
+
+| Retained fixture, app rate | Main median/p95 | New median/p95 |
+| --- | ---: | ---: |
+| Quadruple | 1.166 / 1.387 | 1.193 / 1.387 |
+| Odd/Even | 0.176 / 0.244 | 0.183 / 0.261 |
+| Anti-King | 0.152 / 0.179 | 0.153 / 0.190 |
+| Published Non-Consecutive | 0.362 / 0.373 | 0.365 / 0.379 |
+
+Their complete app scores remain 2,285, 1,150, 712 and 948. Exhaustive first-page medians change from 584.797 to 586.547 ms, 54.765 to 55.066 ms, 100.649 to 101.008 ms and 42.394 to 42.720 ms respectively. Published Non-Consecutive now has 70 choices instead of 66. The other counts stay 31, 23 and 438; all four ordinary requests still return ten choices. Committed memory stays at 5.88, 3.56, 10.44 and 4.06 MiB.
+
+| Wasm profile | Main raw/gzip bytes | New techniques raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,040,103 / 556,090 | 2,040,103 / 556,090 |
+| variant-solver | 2,544,268 / 690,303 | 2,576,562 / 690,191 |
+| classic | 2,555,726 / 662,307 | 2,555,726 / 662,307 |
+| app | 3,314,899 / 881,343 | 3,324,125 / 871,804 |
+
+The measured app artifact is 9,539 gzip bytes smaller. Solver and Classic profiles are identical in raw and gzip size. Local release tests, 382 app tests, 233 Wasm tests, TypeScript, all sixteen capability combinations, four Wasm contracts and strict full/reduced Cargo docs pass. App, type and Wasm checks also pass after integrating main's lesson/hint rewrite, PR 99 at `da339cf`; the four introductions and house naming follow that layout. The production/offline build renders 158 pages, including all four new lesson routes. Rendered component checks cover desktop/mobile proof cards, candidate marks, solution lists and cell naming preferences.
+
+Repeat with `node --experimental-strip-types scripts/compare-nonconsecutive-deductions.mjs before.wasm after.wasm` and `node --experimental-strip-types scripts/bench-nonconsecutive-deductions.mjs before.wasm after.wasm`. Optional fixture names narrow the benchmark. The verified production asset has SHA-256 `15a4b04916621e3ba1b6889835b98be38c8c6b5e5b3db113a7e6c9a4058eedcc`.

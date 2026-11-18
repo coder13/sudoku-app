@@ -3,7 +3,7 @@
 use std::collections::{BTreeSet, HashSet};
 
 use sudoku_app_engine::{
-    Analysis, DEFAULT_VARIANT_SEARCH_NODES, HintAction, VariantEvidence, VariantTechnique,
+    Analysis, DEFAULT_VARIANT_SEARCH_NODES, HintAction, VariantEvidence, VariantExclusionPremise, VariantTechnique,
     canonical_variant, variant_practice_examples,
 };
 
@@ -95,6 +95,17 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     scopes.insert(cells);
                 }
                 VariantEvidence::Single { .. } | VariantEvidence::Classic { .. } => {}
+                VariantEvidence::Exclusion { premise, rules, .. } => {
+                    assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    let mut cells = match premise {
+                        VariantExclusionPremise::Cell { cell, .. } => vec![cell],
+                        VariantExclusionPremise::House { cells, .. } => cells,
+                    };
+                    cells.extend(exercise.deduction.actions.iter().map(|action| action.candidate().cell));
+                    cells.sort_unstable();
+                    cells.dedup();
+                    scopes.insert(cells);
+                }
             }
         }
         if !scopes.is_empty() {

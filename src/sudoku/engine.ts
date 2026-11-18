@@ -156,10 +156,10 @@ export type EngineRequest =
   | ({ type: 'classify-actions'; actions: readonly DeductionAction[] } & CandidatePosition)
   | { type: 'opening-techniques'; values: string }
   | { type: 'techniques'; variant?: boolean }
-  | { type: 'lesson-examples' }
-  | { type: 'practice-examples'; technique: string; variant?: false }
-  | { type: 'practice-examples'; technique: string; variant: true }
-  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string; variant?: boolean }
+  | { type: 'lesson-examples'; focused?: boolean }
+  | { type: 'practice-examples'; technique: string; variant?: false; focused?: boolean }
+  | { type: 'practice-examples'; technique: string; variant: true; focused?: boolean }
+  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string; variant?: boolean; focused?: boolean }
   | GenerationRequest
   | GenerationCommand
 
@@ -443,6 +443,9 @@ export type VariantHouse = { row: number } | { column: number } | { region: numb
   | { diagonal: 'main' | 'anti' }
   /** Index into the full puzzle rule list. */
   | { extra: number }
+export type VariantExclusionPremise =
+  | { type: 'cell'; cell: number; domain: number }
+  | { type: 'house'; house: VariantHouse; digit: number; cells: number[] }
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]
@@ -452,6 +455,7 @@ export type VariantDeduction = {
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }
+    | { type: 'exclusion'; premise: VariantExclusionPremise; rules: number[]; houses: VariantHouse[] }
     | { type: 'classic'; proof: Evidence; swapCells: number[] }
 }
 export type VariantRating = Pick<PuzzleRating, 'status' | 'techniqueOrder' | 'scoringVersion'> & {

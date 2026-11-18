@@ -700,6 +700,12 @@
           "prerequisites": [
             "naked-single",
             "candidate-logic"
+          ],
+          "credits": [
+            {
+              "label": "Sudoku Exchange",
+              "href": "https://github.com/grantm/sudoku-exchange-puzzle-bank"
+            }
           ]
         },
         {
@@ -6821,10 +6827,7 @@
             },
             {
               "type": "diagram",
-              "example": "cage-house-sum",
-              "copy": {
-                "description": "Box 4 totals 45. The three cage cells in its middle row total 12, so the six other cells must add to 33."
-              }
+              "example": "cage-house-sum"
             },
             {
               "type": "practice",
@@ -7200,6 +7203,205 @@
           "difficulty": "easy"
         },
         {
+          "id": "non-consecutive-locked-candidates-2",
+          "title": "Non-Consecutive locked candidates (2 cells)",
+          "summary": "Two adjacent locations for a digit rule out the digit one less or one more in those cells. Either candidate would leave their house with no place for its required digit.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find two adjacent locations for one digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a row, column, box, or variant house where a digit has exactly two possible locations. The two cells must share an edge, and Non-Consecutive must apply across that edge.",
+                "A candidate one less or one more cannot go in either cell. It would exclude the required digit from its own cell and from the other cell. The house would have nowhere for that digit."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "non-consecutive-locked-candidates-2",
+              "copy": {
+                "description": "In row 1, 7 can go only in R1C7 or R1C8.",
+                "reason": "Remove 6 from R1C7. If R1C7 were 6, it could not be 7, and Non-Consecutive would forbid 7 in the adjacent R1C8. Row 1 would have no 7."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "non-consecutive-locked-candidates-2",
+                  "title": "Non-Consecutive locked candidates (2 cells)"
+                }
+              ],
+              "guide": {
+                "start": "Find a digit with exactly two locations in one house.",
+                "check": "Check that the locations share an edge and that no exception exempts it.",
+                "follow": "Look for candidates one less or one more in either location.",
+                "reason": "Either candidate would exclude the required digit from both locations."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Consecudoku on Sudoku Coach",
+              "href": "https://sudoku.coach/en/s/7RCb"
+            }
+          ],
+          "difficulty": "easy"
+        },
+        {
+          "id": "non-consecutive-locked-candidates-3",
+          "title": "Non-Consecutive locked candidates (3 cells)",
+          "summary": "A digit confined around one target can rule out a neighboring digit there. Every location for the required digit must be that target or its active Non-Consecutive neighbor.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check every location around one target"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a house whose possible locations for a digit fit into three cells around a target. Every location must be the target itself or share an active Non-Consecutive edge with it.",
+                "Remove a candidate one less or one more from the target. It would exclude the required digit from every possible location. The target need not be a location for the required digit: two locations on opposite sides can give the same deduction.",
+                "Check the entire house for another location. A location beyond these cells breaks the argument."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "non-consecutive-locked-candidates-3",
+              "copy": {
+                "description": "In row 6, 4 can go only in R6C4, R6C5, or R6C6.",
+                "reason": "Remove 5 from R6C5. It would exclude 4 from R6C5 itself and from both adjacent locations, leaving no 4 in row 6."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "non-consecutive-locked-candidates-3",
+                  "title": "Non-Consecutive locked candidates (3 cells)"
+                }
+              ],
+              "guide": {
+                "start": "Find a digit confined to two or three locations in one house.",
+                "check": "Choose a target that is one of those locations or shares an active Non-Consecutive edge with each of them. The complete pattern must span three cells.",
+                "follow": "Check the target for candidates one less or one more.",
+                "reason": "The candidate would leave the house with no location for its required digit."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Consecudoku on Sudoku Coach",
+              "href": "https://sudoku.coach/en/s/7RCb"
+            }
+          ],
+          "difficulty": "easy"
+        },
+        {
+          "id": "non-consecutive-bivalue",
+          "title": "Non-Consecutive bivalue",
+          "summary": "A cell with only two consecutive candidates rules out both digits in its edge neighbors. One choice would repeat a digit in their shared house; the other would violate Non-Consecutive.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find two consecutive candidates in one cell"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find an empty cell with exactly two candidates that differ by 1, such as 3 and 4. Check each cell that shares an active Non-Consecutive edge with it.",
+                "Neither 3 nor 4 can go in such a neighbor. One choice would repeat a digit in their shared row or column. The other would put consecutive digits across the edge.",
+                "Check for edge exceptions first. The digits 1 and 9 do not count as consecutive."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "non-consecutive-bivalue",
+              "copy": {
+                "description": "R4C4 can contain only 3 or 4.",
+                "reason": "Remove 3 from R4C3. If R4C3 were 3, a 3 in R4C4 would repeat it in row 4, while a 4 there would violate Non-Consecutive."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "non-consecutive-bivalue",
+                  "title": "Non-Consecutive bivalue"
+                }
+              ],
+              "guide": {
+                "start": "Find a cell with exactly two consecutive candidates.",
+                "check": "Choose a neighbor across an edge where Non-Consecutive applies.",
+                "follow": "Check whether either of the two digits remains in that neighbor.",
+                "reason": "Both choices for the source cell would conflict: one repeats a digit in a shared house, and the other differs by 1."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Consecudoku on Sudoku Coach",
+              "href": "https://sudoku.coach/en/s/7RCb"
+            }
+          ],
+          "difficulty": "easy"
+        },
+        {
+          "id": "non-consecutive-trivalue",
+          "title": "Non-Consecutive trivalue",
+          "summary": "A cell restricted to three consecutive digits rules out their middle digit in its edge neighbors. A neighboring middle digit would leave the source cell with no candidate.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Look for three consecutive candidates"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a cell restricted to three consecutive candidates, such as 5, 6, and 7. Check the cells across its active Non-Consecutive edges.",
+                "A 6 in a neighbor would rule out 5 and 7 through Non-Consecutive. It would also rule out 6 in the source cell through their shared row or column. Remove 6 from the neighbor.",
+                "The same argument works when only the two outer candidates remain. Check the full candidate list: another candidate outside that range would break the argument."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "non-consecutive-trivalue",
+              "copy": {
+                "description": "R4C4 can contain only 5, 6, or 7.",
+                "reason": "Remove 6 from R3C4. Non-Consecutive would rule out 5 and 7 in R4C4, while column 4 would rule out a second 6."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "non-consecutive-trivalue",
+                  "title": "Non-Consecutive trivalue"
+                }
+              ],
+              "guide": {
+                "start": "Find a cell whose candidates fit within three consecutive digits.",
+                "check": "Both outer digits must remain; the middle digit can be present or already removed.",
+                "follow": "Look for the middle digit in a neighbor across an active Non-Consecutive edge.",
+                "reason": "The neighbor's middle digit conflicts with every candidate in the source cell."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Consecudoku on Sudoku Coach",
+              "href": "https://sudoku.coach/en/s/7RCb"
+            }
+          ],
+          "difficulty": "easy"
+        },
+        {
           "id": "inequality",
           "title": "Inequality",
           "summary": "An inequality sign puts two cells in order. Every possible digit on the smaller side needs a larger partner on the other side. The largest and smallest available partners set the limits for both cells.",
@@ -7440,10 +7642,7 @@
             },
             {
               "type": "diagram",
-              "example": "whispers",
-              "copy": {
-                "description": "This line needs a difference of at least 5. Compare each end with the middle cell, R3C3."
-              }
+              "example": "whispers"
             },
             {
               "type": "practice",
@@ -7482,10 +7681,7 @@
             },
             {
               "type": "diagram",
-              "example": "renban",
-              "copy": {
-                "description": "The line has three cells and already contains 4 and 5. Only {3, 4, 5} or {4, 5, 6} can fit, so the last cell cannot be 8."
-              }
+              "example": "renban"
             },
             {
               "type": "practice",
@@ -7524,10 +7720,7 @@
             },
             {
               "type": "diagram",
-              "example": "region-sum",
-              "copy": {
-                "description": "R7C6 is alone in its part and contains 7. The other part, R7C7 and R8C7, must also add to 7."
-              }
+              "example": "region-sum"
             },
             {
               "type": "practice",
@@ -7578,10 +7771,7 @@
             },
             {
               "type": "diagram",
-              "example": "little-killer",
-              "copy": {
-                "description": "The ray totals 41. Its placed digits are 2, 6, and 9, so the four empty cells must add to 24."
-              }
+              "example": "little-killer"
             },
             {
               "type": "practice",
@@ -7620,10 +7810,7 @@
             },
             {
               "type": "diagram",
-              "example": "skyscrapers",
-              "copy": {
-                "description": "Look across row 9 from the left. The clue is 4, and the 9 in R9C7 hides both buildings after it."
-              }
+              "example": "skyscrapers"
             },
             {
               "type": "practice",
@@ -7662,10 +7849,7 @@
             },
             {
               "type": "diagram",
-              "example": "sandwich",
-              "copy": {
-                "description": "Row 1 has a sandwich clue of 20 and a 1 in R1C8. Try possible places for 9 and add only the digits between it and R1C8."
-              }
+              "example": "sandwich"
             },
             {
               "type": "practice",
@@ -7709,10 +7893,7 @@
             },
             {
               "type": "diagram",
-              "example": "x-sum",
-              "copy": {
-                "description": "The clue is 32. If R1C1 were 9, the sum would include the whole row and equal 45. Remove 9 from R1C1."
-              }
+              "example": "x-sum"
             },
             {
               "type": "practice",
@@ -7764,11 +7945,7 @@
             },
             {
               "type": "diagram",
-              "example": "quadruple",
-              "copy": {
-                "description": "The circle between R6C3, R6C4, R7C3, and R7C4 lists 2, 4, 6, and 8. These four cells need those four digits.",
-                "reason": "The four printed digits fill all four cells. There is no cell left for 5, so remove candidate 5 from R6C3."
-              }
+              "example": "quadruple"
             },
             {
               "type": "text",

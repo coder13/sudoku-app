@@ -24,17 +24,17 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
     const length = engine.run_request()
     const response = new Uint8Array(engine.memory.buffer, engine.response_buffer(), length)
     const { value, error } = JSON.parse(new TextDecoder().decode(response))
-    if (!value) throw new Error(error ?? `The engine returned no result for ${type}.`)
+    if (!value) throw new Error(`${type}${options.technique ? ` (${options.technique})` : ''}: ${error ?? 'The engine returned no result.'}`)
     return value
   }
 
   const capabilities = request('capabilities')
-  const examples = capabilities.teaching ? request('lesson-examples') : {}
+  const examples = capabilities.teaching ? request('lesson-examples', { focused: true }) : {}
   const { techniques } = request('techniques', { variant: capabilities.variants })
   if (capabilities.teaching && capabilities.variants) {
     for (const { id } of techniques) {
       if (examples[id]) continue
-      const [diagram, practice] = request('practice-examples', { variant: true, technique: id })
+      const [diagram, practice] = request('practice-examples', { variant: true, technique: id, focused: true })
       if (!diagram || !practice) throw new Error(`Missing variant lesson examples for ${id}.`)
       examples[id] = { ...diagram, practice }
     }

@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import { gzipSync } from 'node:zlib'
+import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
+import { NC_EXCLUSION_TECHNIQUES } from '../tests/helpers/exclusion-truth.ts'
+
+const [beforePath, afterPath, ...selected] = process.argv.slice(2)
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/bench-nonconsecutive-deductions.mjs before.wasm after.wasm [fixture names]')
+const binaries = await Promise.all([beforePath, afterPath].map(path => readFile(path)))
+async function engine(bytes) {
+  const { instance } = await WebAssembly.instantiate(bytes)
+  const handler = createEngineHandler(async () => instance.exports)
+  let id = 0
+  const request = async request => {
+    const response = await handler({ id: ++id, request })
+    assert.ok('value' in response, JSON.stringify(response))
+    return response.value
+  }
+  const classic = await request({ type: 'techniques' }), variant = await request({ type: 'techniques', variant: true })
+  return { request, memory: () => instance.exports.memory.buffer.byteLength, nativeOrder: variant.defaultOrder,
+    appOrder: variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder,
+      Object.fromEntries([...classic.techniques, ...variant.techniques].map(item => [item.id, item.difficulty]))) }
+}
+const load = async path => JSON.parse(await readFile(new URL(`../tests/fixtures/${path}.json`, import.meta.url), 'utf8'))
+const fixtures = await Promise.all([
+  ['quadruple', 'quadruple-clover'], ['parity', 'parity-big-eight'], ['anti-king', 'anti-king-newman'], ['non-consecutive', 'nonconsecutive-newman'],
+].map(async ([name, file]) => ({ name, puzzle: (await load(file)).puzzle })))
+fixtures.push({ name: 'nc-white-dots', puzzle: (await detectPuzzle((await load('nonconsecutive-coach')).examples[0].code)).variant.puzzle })
+for (const name of selected) assert.ok(fixtures.some(fixture => fixture.name === name), `Unknown fixture ${name}`)
+const summary = values => {
+  const sorted = values.toSorted((a, b) => a - b)
+  return [0.5, 0.95].map(q => sorted[Math.ceil(q * sorted.length) - 1].toFixed(3)).join('/')
+}
+const behavior = value => JSON.parse(JSON.stringify(value, (key, item) => key === 'scoringVersion' ? undefined :
+  key === 'techniqueOrder' ? item.filter(id => !NC_EXCLUSION_TECHNIQUES.includes(id)) : item))
+console.log(`Paired Node/Wasm, ${process.platform} ${process.arch}, Node ${process.version}; ms median/p95.`)
+console.log(`Before ${binaries[0].length} raw / ${gzipSync(binaries[0]).length} gzip; after ${binaries[1].length} raw / ${gzipSync(binaries[1]).length} gzip.`)
+console.log('Each engine uses its own declared default/app order. Fresh instances per fixture; alternate execution order.')
+console.log('Fixed requests: 5 warmups, 20 measured samples. Exhaustive first page: 2 warmups, 10 measured samples.')
+for (const { name, puzzle } of fixtures) {
+  if (selected.length && !selected.includes(name)) continue
+  const pair = await Promise.all(binaries.map(engine))
+  for (const operation of ['candidates', 'analyze', 'solve', 'native-rate', 'app-rate', 'ten-hints', 'exhaustive']) {
+    const options = pair.map(engine => ({ type: 'variant', position: { puzzle }, maxNodes: 20_000,
+      operation: operation.endsWith('rate') ? 'rate' : operation.endsWith('hints') || operation === 'exhaustive' ? 'hints' : operation,
+      techniqueOrder: operation === 'native-rate' ? engine.nativeOrder : engine.appOrder,
+      ...(operation === 'ten-hints' && { limit: 10, preferProgress: true, difficulty: 'medium' }),
+      ...(operation === 'exhaustive' && { limit: 0xffff_ffff, collection: 111, preferProgress: true, difficulty: 'medium' }),
+    }))
+    const expected = await Promise.all(pair.map((engine, index) => engine.request(options[index])))
+    if (!puzzle.rules?.some(rule => rule.type === 'non-consecutive')) assert.deepEqual(behavior(expected[1]), behavior(expected[0]))
+    const times = [[], []]
+    const warmups = operation === 'exhaustive' ? 2 : 5, samples = operation === 'exhaustive' ? 10 : 20
+    for (let round = 0; round < warmups + samples; round++) for (const index of round % 2 ? [1, 0] : [0, 1]) {
+      const start = performance.now()
+      const result = await pair[index].request(options[index])
+      const elapsed = performance.now() - start
+      assert.deepEqual(result, expected[index], `${name}: ${operation}: engine ${index}`)
+      if (round >= warmups) times[index].push(elapsed)
+    }
+    console.log(`${name} ${operation}: ${summary(times[0])} -> ${summary(times[1])}`)
+    if (operation.endsWith('rate')) console.log(`  ${JSON.stringify(expected.map(rating => ({ status: rating.status, points: rating.points, scoringVersion: rating.scoringVersion })))}`)
+    if (operation.endsWith('hints') || operation === 'exhaustive') console.log(`  choices ${expected.map(result => Array.isArray(result) ? result.length : result.available).join(' -> ')}`)
+  }
+  console.log(`${name} committed Wasm memory after requests: ${pair.map(engine => (engine.memory() / 1024 / 1024).toFixed(2)).join(' -> ')} MiB`)
+}

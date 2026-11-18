@@ -29,7 +29,7 @@ use super::{
     GenerationSearch, GenerationStep, GenerationTarget, TechniqueTargetMode,
 };
 #[cfg(feature = "teaching")]
-use super::{Random, technique_deductions_at};
+use super::{PracticeExample, Random, technique_deductions_at};
 #[cfg(feature = "teaching")]
 use crate::{check_practice_move, permutation::puzzle_permutation};
 
@@ -209,12 +209,17 @@ enum Request {
         variant: bool,
     },
     #[cfg(feature = "teaching")]
-    LessonExamples,
+    LessonExamples {
+        #[serde(default)]
+        focused: bool,
+    },
     #[cfg(feature = "teaching")]
     PracticeExamples {
         technique: String,
         #[serde(default)]
         variant: bool,
+        #[serde(default)]
+        focused: bool,
     },
     #[cfg(feature = "teaching")]
     GeneratePracticeExample {
@@ -223,6 +228,8 @@ enum Request {
         exclude: String,
         #[serde(default)]
         variant: bool,
+        #[serde(default)]
+        focused: bool,
     },
     #[cfg(feature = "generation")]
     GenerateTargeted {
@@ -574,21 +581,22 @@ fn transpose_lesson_position(position: &PositionSnapshot) -> PositionSnapshot {
 }
 
 #[cfg(feature = "teaching")]
-fn lesson_examples() -> ResultValue {
+fn lesson_examples(focused: bool) -> ResultValue {
     let mut lessons = serde_json::Map::new();
     for technique in Technique::ALL {
-        let example = technique.practice_example();
-        let position = example.position().map_err(puzzle_error)?;
-        let deduction = technique_deductions_at(&position, technique)
-            .map_err(|_| INVALID_LESSON)?
-            .into_iter()
-            .find(|hint| hint.actions == example.expected_actions)
-            .ok_or(INVALID_LESSON)?;
+        let mut selected = None;
+        for example in practice_sources(technique, focused) {
+            if let Some(exercise) = prepare_practice(example, technique, focused)? {
+                selected = Some(exercise);
+                break;
+            }
+        }
+        let (position, proofs) = selected.ok_or(INVALID_LESSON)?;
         let practice = transpose_lesson_position(&position);
-        let proofs = technique_deductions_at(&practice, technique).map_err(|_| INVALID_LESSON)?;
-        let proof = proofs.first().ok_or(INVALID_LESSON)?;
-        let mut lesson = lesson_position(&position, &deduction)?;
-        lesson["practice"] = practice_value(&practice, &proofs, proof)?;
+        let practice_proofs = technique_deductions_at(&practice, technique).map_err(|_| INVALID_LESSON)?;
+        let proof = practice_proofs.first().ok_or(INVALID_LESSON)?;
+        let mut lesson = lesson_position(&position, &proofs[0])?;
+        lesson["practice"] = practice_value(&practice, &practice_proofs, proof)?;
         lessons.insert(technique.id().into(), lesson);
     }
     Ok(Value::Object(lessons))
@@ -609,24 +617,87 @@ fn practice_value(position: &PositionSnapshot, proofs: &[Hint], proof: &Hint) ->
 }
 
 #[cfg(feature = "teaching")]
-fn practice_examples(technique: Technique) -> ResultValue {
-    let mut exercises = Vec::new();
-    for example in technique.practice_examples() {
-        let position = example.position().map_err(puzzle_error)?;
-        let proofs = technique_deductions_at(&position, technique).map_err(|_| INVALID_LESSON)?;
-        let expected = proofs
-            .iter()
-            .find(|hint| hint.actions == example.expected_actions)
-            .ok_or(INVALID_LESSON)?;
-        exercises.push(practice_value(&position, &proofs, expected)?);
+fn practice_sources(technique: Technique, focused: bool) -> [PracticeExample; 3] {
+    if focused && technique == Technique::Pointing {
+        // Sudoku Exchange Selection boards that retain pointing after singles and claiming.
+        return [
+            "083020090000800100029300008000098700070000060006740000300006980002005000010030540",
+            "103600400590001008000200000809020000207080905000070204000002000600800039005003802",
+            "000000000560000032230040079000060000070501090000708000053000920009806500700000004",
+        ].map(|givens| PracticeExample {
+            givens,
+            entries: None,
+            eliminations: None,
+            expected_actions: &[],
+        });
     }
-    Ok(Value::Array(exercises))
+    technique.practice_examples()
 }
 
 #[cfg(feature = "teaching")]
-fn generate_practice_example(technique: Technique, seed: u32, exclude: Board) -> ResultValue {
+fn focus_practice_position(
+    mut position: PositionSnapshot,
+    technique: Technique,
+    focused: bool,
+) -> ResultValue<PositionSnapshot> {
+    if focused && technique.difficulty() >= Difficulty::Medium {
+        let order = [
+            Technique::FullHouse,
+            Technique::HiddenSingleBox,
+            Technique::NakedSingle,
+            Technique::HiddenSingle,
+            Technique::Pointing,
+            Technique::Claiming,
+        ]
+        .into_iter()
+        .filter(|&basic| basic != technique)
+        .collect::<Vec<_>>();
+        for deduction in solve_position(&position, &order).map_err(hint_error)?.steps {
+            position.record_actions(&deduction.actions);
+        }
+    }
+    Ok(position)
+}
+
+#[cfg(feature = "teaching")]
+fn prepare_practice(
+    example: PracticeExample,
+    technique: Technique,
+    focused: bool,
+) -> ResultValue<Option<(PositionSnapshot, Vec<Hint>)>> {
+    let position = focus_practice_position(example.position().map_err(puzzle_error)?, technique, focused)?;
+    let mut proofs = technique_deductions_at(&position, technique).map_err(|_| INVALID_LESSON)?;
+    let exact = proofs.iter().position(|proof| proof.actions == example.expected_actions);
+    if !focused && exact.is_none() {
+        return Err(INVALID_LESSON);
+    }
+    if proofs.is_empty() {
+        return Ok(None);
+    }
+    let preferred = exact.or_else(|| proofs.iter().position(|proof| {
+        proof.actions.iter().any(|action| example.expected_actions.contains(action))
+    }));
+    if let Some(index) = preferred {
+        proofs.swap(0, index);
+    }
+    Ok(Some((position, proofs)))
+}
+
+#[cfg(feature = "teaching")]
+fn practice_examples(technique: Technique, focused: bool) -> ResultValue {
+    let mut exercises = Vec::new();
+    for example in practice_sources(technique, focused) {
+        if let Some((position, proofs)) = prepare_practice(example, technique, focused)? {
+            exercises.push(practice_value(&position, &proofs, &proofs[0])?);
+        }
+    }
+    (!exercises.is_empty()).then_some(Value::Array(exercises)).ok_or(INVALID_LESSON)
+}
+
+#[cfg(feature = "teaching")]
+fn generate_practice_example(technique: Technique, seed: u32, exclude: Board, focused: bool) -> ResultValue {
     let mut random = Random::from_seed(seed);
-    let mut examples = technique.practice_examples();
+    let mut examples = practice_sources(technique, focused);
     random.shuffle(&mut examples);
     for example in examples.into_iter().cycle().take(6) {
         let original = example.position().map_err(puzzle_error)?;
@@ -641,6 +712,7 @@ fn generate_practice_example(technique: Technique, seed: u32, exclude: Board) ->
                 })
             }),
         };
+        let position = focus_practice_position(position, technique, focused)?;
         if position.values().map_err(puzzle_error)? == exclude {
             continue;
         }
@@ -1341,34 +1413,39 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             })).collect::<Vec<_>>(),
         })),
         #[cfg(feature = "teaching")]
-        Request::LessonExamples => lesson_examples(),
+        Request::LessonExamples { focused } => lesson_examples(focused),
         #[cfg(all(feature = "teaching", feature = "variants"))]
         Request::PracticeExamples {
             technique,
             variant: true,
-        } => variant::practice_examples(&technique),
+            focused,
+        } => variant::practice_examples(&technique, focused),
         #[cfg(feature = "teaching")]
         Request::PracticeExamples {
             technique,
             variant: false,
-        } => practice_examples(Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?),
+            focused,
+        } => practice_examples(Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?, focused),
         #[cfg(all(feature = "teaching", feature = "variants"))]
         Request::GeneratePracticeExample {
             technique,
             seed,
             exclude,
             variant: true,
-        } => variant::generate_practice_example(&technique, seed, board(&exclude)?),
+            focused,
+        } => variant::generate_practice_example(&technique, seed, board(&exclude)?, focused),
         #[cfg(feature = "teaching")]
         Request::GeneratePracticeExample {
             technique,
             seed,
             exclude,
             variant: false,
+            focused,
         } => generate_practice_example(
             Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?,
             seed,
             board(&exclude)?,
+            focused,
         ),
         #[cfg(feature = "generation")]
         request @ (Request::GenerateTargeted { .. }

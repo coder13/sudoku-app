@@ -23,7 +23,7 @@ pub use generation::{
 };
 use lines::LineConstraint;
 pub use logical::{
-    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence,
+    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise,
     VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, PairConstraint, ParityClue};
@@ -32,7 +32,7 @@ use pairs::{PairClue, PairCompiler, PairConstraint, ParityClue};
     feature = "wasm-api",
     any(target_arch = "wasm32", test, feature = "cli")
 ))]
-pub(crate) use practice::generate_practice_example;
+pub(crate) use practice::{focused_practice_examples, generate_practice_example};
 #[cfg(any(feature = "teaching", test))]
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
 use quadruple::Quadruple;
@@ -494,6 +494,7 @@ impl VariantPuzzle {
             lines: Vec::new(),
             quadruples: Vec::new(),
             pair_clues: Vec::new(),
+            pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
             parity_clues: Vec::new(),
             extra_rule_cells: 0,
         };
@@ -712,6 +713,7 @@ pub struct CompiledVariant {
     lines: Vec<LineConstraint>,
     quadruples: Vec<Quadruple>,
     pair_clues: Vec<PairClue>,
+    pair_clue_memberships: [Vec<usize>; CELLS],
     parity_clues: Vec<ParityClue>,
     extra_rule_cells: u128,
 }

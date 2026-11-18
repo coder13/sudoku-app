@@ -2,12 +2,22 @@
 
 use sudoku_app_engine::{
     DEFAULT_VARIANT_SEARCH_NODES, Difficulty, SolveStatus, Technique, VARIANT_SCORING_VERSION,
-    VariantDeduction, VariantEvidence, VariantTechnique, variant_practice_examples,
+    VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantTechnique, variant_practice_examples,
 };
 
 fn estimate(deduction: &VariantDeduction) -> u16 {
     use VariantTechnique::*;
     let (cells, domains, cages) = match &deduction.evidence {
+        VariantEvidence::Exclusion { premise, .. } => {
+            let (base, alternatives, mut cells) = match premise {
+                VariantExclusionPremise::Cell { cell, domain } => (14, domain.count_ones(), vec![*cell]),
+                VariantExclusionPremise::House { cells, .. } => (12, cells.len() as u32, cells.clone()),
+            };
+            cells.extend(deduction.actions.iter().map(|action| action.candidate().cell));
+            cells.sort_unstable();
+            cells.dedup();
+            return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
+        }
         VariantEvidence::Intersection { .. } => return Technique::Pointing.cost(),
         VariantEvidence::Constraint { cells, domains, .. } => (cells, domains, 0),
         VariantEvidence::CageSum {
@@ -128,10 +138,10 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
             path_scores.push(total);
         }
     }
-    assert_eq!(path_scores.len(), 69);
+    assert_eq!(path_scores.len(), 3 * (VariantTechnique::DEFAULT_ORDER.len() - 3));
     path_scores.sort_unstable();
     println!(
-        "69 verified calibration paths, {}–{} points, median {}. Difficulty counts {:?}.",
-        path_scores[0], path_scores[68], path_scores[34], tiers,
+        "{} verified calibration paths, {}–{} points, median {}. Difficulty counts {:?}.",
+        path_scores.len(), path_scores[0], path_scores[path_scores.len() - 1], path_scores[path_scores.len() / 2], tiers,
     );
 }

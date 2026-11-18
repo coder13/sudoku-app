@@ -135,6 +135,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   let cells: readonly number[]
   let description: string
   let reason: string
+  let candidates = focus
   switch (evidence.type) {
     case 'single': {
       const { candidate: { cell, digit }, house } = evidence
@@ -167,6 +168,35 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const target = houseLabel(evidence.target)
       description = `The Quadruple circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
       reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
+      break
+    }
+    case 'exclusion': {
+      const { premise } = evidence
+      const cases = premise.type === 'cell'
+        ? Array.from({ length: 9 }, (_, index) => index + 1)
+          .filter(digit => premise.domain & 1 << (digit - 1)).map(digit => ({ cell: premise.cell, digit }))
+        : premise.cells.map(cell => ({ cell, digit: premise.digit }))
+      const sourceCells = premise.type === 'cell' ? [premise.cell] : premise.cells
+      cells = [...new Set([...sourceCells, ...focus.map(candidate => candidate.cell)])]
+      candidates = [...cases, ...focus]
+      const alternativesText = cases.map(candidate => premise.type === 'cell' ? String(candidate.digit) : nameCell(candidate.cell))
+      description = premise.type === 'cell'
+        ? `${nameCell(premise.cell)} can contain only ${alternatives.format(alternativesText)}.`
+        : `In ${houseLabel(premise.house)}, ${premise.digit} can go only in ${alternatives.format(alternativesText)}.`
+      reason = focus.map(target => {
+        const reasons = cases.map(source => {
+          if (source.cell === target.cell) return `${nameCell(source.cell)} would already contain ${target.digit}, so it could not contain ${source.digit}`
+          if (source.digit === target.digit) {
+            const house = evidence.houses.find(house => {
+              const sites = variantHouseCells(house, puzzle)
+              return sites.includes(source.cell) && sites.includes(target.cell)
+            })!
+            return `${source.digit} in ${nameCell(source.cell)} would repeat ${target.digit} in ${houseLabel(house)}`
+          }
+          return `Non-Consecutive forbids ${source.digit} in ${nameCell(source.cell)} next to ${target.digit}; they differ by 1 across their shared edge`
+        })
+        return `Remove ${target.digit} from ${nameCell(target.cell)}. If ${nameCell(target.cell)} were ${target.digit}, every alternative would fail: ${reasons.join('; ')}.`
+      }).join(' ')
       break
     }
     case 'cage-sum': {
@@ -226,7 +256,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   return {
     technique, actions,
     evidence: { variant: { description, reason, source: { deduction, puzzle } } },
-    pattern: { houses: [], cells: [...cells], candidates: focus },
+    pattern: { houses: [], cells: [...cells], candidates },
   }
 }
 
