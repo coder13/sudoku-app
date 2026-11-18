@@ -3,11 +3,11 @@
 //! A witness satisfies the standard houses and supplied masks used by the
 //! Classic forcing graph. It does not establish any additional variant rule.
 
+#[cfg(feature = "variants")]
+use super::super::completions::complete;
 use crate::{Board, CELLS, Candidate};
 #[cfg(feature = "variants")]
 use crate::{DIGITS, Units};
-#[cfg(feature = "variants")]
-use super::super::completions::complete;
 
 #[cfg(feature = "variants")]
 const NODES_PER_PROBE: u32 = 128;
@@ -50,6 +50,13 @@ impl<'a> Search<'a> {
             false
         }
     }
+
+    #[cfg(feature = "variants")]
+    pub(super) fn seed(&mut self, support: Option<&[u128; 9]>) {
+        if let Some(support) = support {
+            self.probes.seed(support);
+        }
+    }
 }
 
 #[cfg(feature = "variants")]
@@ -75,9 +82,23 @@ impl<'a> Probes<'a> {
 
     fn record(&mut self, solution: &Board) {
         for (cell, &digit) in solution.iter().enumerate() {
-            let bit = 1 << (digit - 1);
-            self.present[cell] |= bit;
-            self.absent[cell] |= self.masks[cell] & !bit;
+            self.record_digit(cell, 1 << (digit - 1));
+        }
+    }
+
+    fn record_digit(&mut self, cell: usize, bit: u16) {
+        self.present[cell] |= bit;
+        self.absent[cell] |= self.masks[cell] & !bit;
+    }
+
+    fn seed(&mut self, support: &[u128; 9]) {
+        for (digit, &sites) in support.iter().enumerate() {
+            let mut sites = sites;
+            while sites != 0 {
+                let cell = sites.trailing_zeros() as usize;
+                sites &= sites - 1;
+                self.record_digit(cell, 1 << digit);
+            }
         }
     }
 
@@ -153,6 +174,66 @@ mod tests {
         for digit in 1..=9 {
             assert!(search.satisfies(Candidate { cell: 0, digit }, true));
             assert!(search.satisfies(Candidate { cell: 0, digit }, false));
+        }
+    }
+
+    #[test]
+    fn shared_witnesses_match_independent_complete_grids_without_spending_nodes() {
+        let mut board = [0; CELLS];
+        board[40] = 5;
+        let masks = crate::candidates(&board).unwrap();
+        let first = crate::solve(&board).unwrap();
+        let second = first.map(|digit| match digit {
+            1 => 2,
+            2 => 1,
+            _ => digit,
+        });
+        let solutions = [first, second];
+        let mut support = [0; 9];
+        for solution in &solutions {
+            check_completion(solution, &board, &masks);
+            for (cell, &digit) in solution.iter().enumerate() {
+                support[usize::from(digit - 1)] |= 1 << cell;
+            }
+        }
+        for nodes in [0, 4096] {
+            let mut search = Search::new(&board, &masks, None, nodes);
+            search.seed(Some(&support));
+            assert_eq!(search.probes.remaining, nodes);
+            // With no fresh probes, exactly the assumptions satisfied by one
+            // of these independently checked grids have a witness.
+            search.probes.remaining = 0;
+            for (cell, &mask) in masks.iter().enumerate() {
+                for digit in 1..=9 {
+                    if mask & (1 << (digit - 1)) == 0 {
+                        continue;
+                    }
+                    for positive in [false, true] {
+                        assert_eq!(
+                            search.satisfies(Candidate { cell, digit }, positive),
+                            solutions
+                                .iter()
+                                .any(|solution| (solution[cell] == digit) == positive)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn missing_shared_coverage_never_certifies_an_unprobed_assumption() {
+        let board = [0; CELLS];
+        let masks = [DIGITS; CELLS];
+        for support in [None, Some(&[0; 9])] {
+            let mut search = Search::new(&board, &masks, None, 0);
+            search.seed(support);
+            for cell in [0, 40, 80] {
+                for digit in 1..=9 {
+                    assert!(!search.satisfies(Candidate { cell, digit }, true));
+                    assert!(!search.satisfies(Candidate { cell, digit }, false));
+                }
+            }
         }
     }
 

@@ -87,7 +87,19 @@ This pass reached main at `1a62a7c` through [PR 124](https://github.com/coder13/
 - [x] Measure paired ordinary/exhaustive hints, retained fixtures, committed Wasm memory and every package profile. Brain Zaps ordinary hints improve 660.803/678.451 → 486.085/514.869 ms, with eight choices unchanged. Empty cheap requests stay lazy. App Wasm adds 162 gzip bytes. [Methods and limits](tests/fixtures/README.md#earlier-bounded-uniqueness-eligibility)
 - [x] Pass 295 native tests including doctests, 396 app tests, 243 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build.
 - [x] Pass CI on reviewed head `3e60cc8`, merge the focused optimization through [PR 124](https://github.com/coder13/sudoku-app/pull/124) and verify the reviewed head on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44244011999)
-- [ ] Investigate geometric completion witnesses for the remaining nested searches in [issue 125](https://github.com/coder13/sudoku-app/issues/125). Keep the detector's premises, numeric variant validation and uniqueness certificates separate.
+- [x] Investigate geometric completion witnesses for the remaining nested searches in [issue 125](https://github.com/coder13/sudoku-app/issues/125). Keep the detector's premises, numeric variant validation and uniqueness certificates separate.
+
+### Shared geometric witnesses in progress
+
+This pass is isolated on `codex/sudoku-geometric-witnesses` from main `13062ad`. [Witness research issue](https://github.com/coder13/sudoku-app/issues/125)
+
+- [x] Profile the remaining empty nested search and verify the full variant probe's budget limit. Check geometric completions independently against houses, placements and candidate masks.
+- [x] Reuse cached partial Pattern Overlay witnesses for individual nested assumptions. Keep unknown assumptions active, existing probe budgets intact and uniqueness validation separate.
+- [x] Pass 179 native unit tests, including independent positive/negative witness truth, exhausted budgets, edited-cache invalidation, partial coverage and all twelve AI Escargot nested proofs.
+- [x] Match 3,419 complete responses across nineteen corpus positions, all 117 detectors and all 351 positive practice positions. Preserve every proof, rating, page and profile. Verify candidate/placement edits and puzzle alternation through the actual Wasm worker, including all twelve, eleven and fifty-three nested proofs at the three AI Escargot states.
+- [x] Measure paired ordinary/exhaustive hints, selected techniques, retained fixtures, memory and every package profile. Keep eight Whispers choices and 31 Quadruple choices. App Wasm saves 2,980 gzip bytes. Record the large Whispers timing tails and slower native-rating samples. [Methods and limits](tests/fixtures/README.md#shared-partial-geometric-witnesses)
+- [x] Pass 298 native tests including doctests, 396 app tests, 244 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build.
+- [ ] Pass CI on the reviewed head, merge separately and record the release.
 
 ### Complete candidate-support performance merged
 

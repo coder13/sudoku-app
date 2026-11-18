@@ -438,3 +438,82 @@ All four profile contracts pass. Solver and Classic sizes are unchanged, and var
 Focused native cases cover genuine unique proofs, ambiguous geometric support, candidate removals that mimic a uniqueness premise and an exhausted probe on a genuinely unique puzzle. Empty selected Type 1, Unique Loop and BUG+1 scans keep the exact check uninitialized. A Wasm regression preserves the public search-limit status and independently replays the still-available line/shared-house proofs. The final app suite passes 396 tests, and the final Wasm suite passes 243.
 
 The final native release suite passes 295 tests including seven doctests. All sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo docs and TypeScript checks pass. The production/offline build renders 159 routes. The rebuilt app hash matches the measured artifact.
+
+## Shared partial geometric witnesses
+
+[Issue 125](https://github.com/coder13/sudoku-app/issues/125) starts from main `13062ad`, after bounded uniqueness eligibility. Nested Forcing Net still repeats work for candidate assumptions that already have geometric witnesses. Its full variant completion probe can exhaust 512 nodes on Brain Zaps even when weaker Classic geometric completions are available.
+
+The nested search now reuses partial candidate support from the existing Pattern Overlay cache. A recorded digit supports its positive assumption and negative assumptions for the other digits in that cell. Each bit comes from a complete grid that respects the detector's masks and geometric premises. A union of these witnesses does not prove simultaneous assignments or uniqueness. Unwitnessed assumptions still run the original logical search and retain the existing bounded completion probes.
+
+This change adds no solver or search budget. The cache remains local to one proof position and compiled topology. Changed masks or placements invalidate it. The Classic detector only consumes support when its standard-box premises hold. Numeric rule enforcement, technique costs, selected profiles and scoring version 8 remain unchanged.
+
+Paired measurements use Node 26.13.0 on macOS arm64. No compiler or engine-generation process was identified before the timing runs. The desktop remains nondedicated, and the Whispers run has large tails.
+
+Each fixture uses separate engines and alternates their order. Fixed requests use five warmups and twenty measured samples. Exhaustive pages use two warmups and ten samples. Values are milliseconds, median/p95.
+
+| Brain Zaps operation | Main | Shared witnesses |
+| --- | ---: | ---: |
+| Candidates | 0.074/0.101 | 0.073/0.098 |
+| Exact analysis, 100,000 nodes | 21.248/23.611 | 19.083/24.498 |
+| Exact solving, 100,000 nodes | 20.067/23.463 | 21.149/23.923 |
+| Native default rating | 0.427/0.942 | 0.503/1.315 |
+| App-order rating | 0.423/0.917 | 0.418/0.940 |
+| Up to ten hints | 919.930/1530.396 | 419.767/699.695 |
+| Exhaustive first page | 959.996/1709.189 | 451.916/651.830 |
+| Selected Nested Forcing Net | 465.534/512.467 | 2.079/4.218 |
+
+Ordinary and exhaustive requests preserve all eight choices and their complete proofs. Selected Nested Forcing Net returns no proof in both engines. Complete native/app ratings stay at 862/1,212 points. Committed linear memory stays 9.44 MiB. Buffer size is not RSS or live allocation. The slower native-rating samples and timing tails prevent a universal performance claim.
+
+First operation requests on separate fresh instances measure 789.521 → 415.036 ms for ordinary hints and 951.573 → 432.788 ms for the exhaustive page. The selected nested request measures 489.556 → 2.159 ms. Module instantiation and catalog queries precede these timers. Measurements include request encoding and decoding and exclude result-comparison assertions, worker startup, worker transfer and rendering.
+
+| Selected empty Brain Zaps search | Main | Shared witnesses |
+| --- | ---: | ---: |
+| Unique Rectangle Type 1 | 0.029/0.078 | 0.030/0.035 |
+| Unique Loop | 0.019/0.058 | 0.019/0.057 |
+| BUG+1 | 0.033/0.112 | 0.033/0.074 |
+| Unique Rectangle AIC | 5.925/6.901 | 4.970/8.091 |
+| Unique Rectangle Continuous Nice Loop | 5.734/7.760 | 5.605/9.869 |
+| Unique Rectangle Discontinuous Nice Loop | 5.323/14.345 | 5.297/7.975 |
+
+| Retained fixture | App rate, main → change | Up to ten hints, main → change | Exhaustive page, main → change | Available choices | Committed MiB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Quadruple | 1.488/2.964 → 1.414/3.116 | 0.276/0.951 → 0.332/0.744 | 585.680/612.980 → 360.937/396.926 | 31 | 5.88 |
+| Odd/Even | 0.180/0.239 → 0.177/0.221 | 0.083/0.148 → 0.081/0.132 | 55.338/63.229 → 51.880/53.636 | 23 | 3.56 |
+| Anti-King | 0.160/0.209 → 0.158/0.201 | 0.120/0.137 → 0.121/0.139 | 101.663/104.260 → 101.486/104.204 | 438 | 10.44 |
+| Published Non-Consecutive | 0.389/0.485 → 0.388/0.468 | 0.081/0.100 → 0.082/0.100 | 41.335/42.955 → 35.577/36.285 | 70 | 4.06 |
+| Two-given Consecudoku | 1.054/1.143 → 1.038/1.156 | 0.757/0.858 → 0.749/0.871 | 0.736/0.821 → 0.721/0.809 | 4 | 1.50 |
+
+| Retained fixture | Candidates, main → change | Exact analysis, main → change | Exact solving, main → change |
+| --- | ---: | ---: | ---: |
+| Quadruple | 0.064/0.095 → 0.066/0.204 | 2.876/3.003 → 2.859/2.959 | 1.322/1.547 → 1.295/1.399 |
+| Odd/Even | 0.018/0.030 → 0.018/0.039 | 0.185/0.215 → 0.179/0.210 | 0.059/0.088 → 0.059/0.090 |
+| Anti-King | 0.015/0.039 → 0.015/0.031 | 0.036/0.050 → 0.036/0.041 | 0.023/0.032 → 0.023/0.034 |
+| Published Non-Consecutive | 0.019/0.022 → 0.019/0.021 | 0.335/0.385 → 0.341/0.383 | 0.258/0.279 → 0.256/0.291 |
+| Two-given Consecudoku | 0.051/0.059 → 0.051/0.066 | 0.367/0.426 → 0.363/0.410 | 0.367/0.400 → 0.368/0.411 |
+
+Retained statuses, scores, proof choices and committed memory match. The Quadruple exhaustive median improves about 38 percent. Smaller differences and timing tails are observational. This run does not measure browser cold loading or concurrency.
+
+Reproduce the paired runs and complete-output comparison after building both artifacts:
+
+```sh
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm whispers
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm
+```
+
+The app changes from 3,346,922 raw / 896,112 gzip bytes to 3,350,708 / 893,132. It adds 3,786 raw bytes and saves 2,980 gzip bytes. Before SHA-256 is `23e3c1628611abdf1eec975eb5379a46323e9f1c51c709f6620987bc9aad7dd5`; after is `dd9b4ded80fdf20edd7642b09944a8411aa0b07970dd401b3b360964e24b15aa`.
+
+| Wasm profile | Main raw/gzip bytes | Shared witnesses raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,040,103 / 556,090 | 2,040,103 / 556,086 |
+| variant-solver | 2,587,805 / 695,956 | 2,589,380 / 696,951 |
+| classic | 2,555,726 / 662,305 | 2,555,726 / 662,311 |
+| app | 3,346,922 / 896,112 | 3,350,708 / 893,132 |
+
+All four profile contracts pass. Solver and Classic raw sizes are unchanged, while gzip differs by -4 and +6 bytes. Variant-solver adds 1,575 raw / 995 gzip bytes. The new fields and witness-sharing code compile only with `variants`.
+
+The final comparison preserves 3,419 complete responses across nineteen corpus positions and all 351 positive practice positions. It covers all 117 detectors, every page, full proofs, traces, ratings, custom orders and exact search-limit outcomes. AI Escargot retains twelve nested proofs at the start, eleven after the checked removal and fifty-three after the checked placement. The actual Wasm worker also verifies puzzle alternation and restoration of the original proof list.
+
+Independent native truth checks compare both assumption polarities with actual complete grids and retain unknown cases with no probe budget. Cache tests invalidate shared support after candidate and placement edits. The unpruned nested search supplies the complete reference proofs at each AI Escargot state. The final Wasm suite passes 244 tests.
+
+All 298 native tests including seven doctests and 396 app tests pass. The sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation and TypeScript checks pass. The production/offline build renders 159 routes and reproduces the measured app hash.

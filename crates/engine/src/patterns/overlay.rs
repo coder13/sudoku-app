@@ -105,6 +105,13 @@ impl<'a> OverlaySearch<'a> {
             .is_some_and(|support| self.full_support(support))
     }
 
+    /// Already checked candidate witnesses under this position's geometry.
+    /// Partial support certifies only its individual candidate assumptions.
+    #[cfg(feature = "variants")]
+    pub(crate) fn known_completion_support(&self) -> Option<&[u128; 9]> {
+        self.witnessed.as_ref().and_then(OnceCell::get)
+    }
+
     #[cfg(feature = "variants")]
     fn completion_support(&self, nodes: u32) -> Option<&[u128; 9]> {
         self.witnessed.as_ref().map(|witnessed| {
@@ -345,16 +352,19 @@ mod tests {
         let mut masks = [DIGITS; CELLS];
         let mut search = OverlaySearch::for_variant(&board, &masks, houses, &PEERS, true);
         assert!(!search.known_full_completion_support());
+        assert!(search.known_completion_support().is_none());
         assert!(search.has_full_completion_support(4096));
         assert!(search.known_full_completion_support());
         masks[0] &= !1;
         search.update_classic(&board, &masks);
         assert!(!search.known_full_completion_support());
+        assert!(search.known_completion_support().is_none());
         assert!(search.has_full_completion_support(4096));
         board[0] = 2;
         masks = candidates(&board).unwrap();
         search.update_classic(&board, &masks);
         assert!(!search.known_full_completion_support());
+        assert!(search.known_completion_support().is_none());
         assert!(search.has_full_completion_support(4096));
         let empty = OverlaySearch::for_variant(&[0; CELLS], &[0; CELLS], houses, &PEERS, true);
         assert!(!empty.has_full_completion_support(0));
