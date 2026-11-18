@@ -262,3 +262,49 @@ Their complete app scores remain 2,285, 1,150, 712 and 948. Exhaustive first-pag
 The measured app artifact is 9,539 gzip bytes smaller. Solver and Classic profiles are identical in raw and gzip size. Local release tests, 382 app tests, 233 Wasm tests, TypeScript, all sixteen capability combinations, four Wasm contracts and strict full/reduced Cargo docs pass. App, type and Wasm checks also pass after integrating main's lesson/hint rewrite, PR 99 at `da339cf`; the four introductions and house naming follow that layout. The production/offline build renders 158 pages, including all four new lesson routes. Rendered component checks cover desktop/mobile proof cards, candidate marks, solution lists and cell naming preferences.
 
 Repeat with `node --experimental-strip-types scripts/compare-nonconsecutive-deductions.mjs before.wasm after.wasm` and `node --experimental-strip-types scripts/bench-nonconsecutive-deductions.mjs before.wasm after.wasm`. Optional fixture names narrow the benchmark. The verified production asset has SHA-256 `15a4b04916621e3ba1b6889835b98be38c8c6b5e5b3db113a7e6c9a4058eedcc`.
+
+
+## Complete candidate-support pruning
+
+This pass compares main `6c30514` (PR 115) with `codex/sudoku-candidate-support-pruning`. A bounded cache of completions under the Classic detector's masks, houses and equal-digit exclusions already exists for Pattern Overlay. When that cache covers every allowed candidate and no live cell has a singleton domain, it also witnesses both truth values of every candidate assumption. Non-uniqueness Classic searches cannot prove a placement or removal from those premises. Graph and branching families prepare this coverage lazily; cheaper searches only reuse existing coverage. Human point costs do not schedule the probe. Numeric variant techniques remain active because these witnesses need not be valid variant solutions.
+
+The original detector runs whenever coverage is partial, unknown or exhausted. Coverage permits 128 nodes per probe and 4,096 per position. It is invalidated by changed masks or placements and scoped to one compiled geometry. Uniqueness techniques never use relaxed completion coverage. A separate eligibility check skips them only when extra rule scopes cover every cell, so every recognized swap would fail the existing swap filter. Public capabilities and profile validation remain unchanged.
+
+Eight new native cases cover the real four-choice Coach opening, zero-budget fallback, positive graph and branching proofs, a supported singleton placement, safe/unsafe uniqueness scopes, Jigsaw topology, separate position instances, candidate and placement edits, and empty domains. Two independently checked completions of an ambiguous rectangle witness both truth values of its four bivalue cells. Existing mask/renaming/extra-geometry replay and all twelve AI Escargot nested proofs remain checked.
+
+The differential script matches 2,712 complete responses on fourteen corpus positions and all 348 positive training positions, including every one of the 116 catalog detector IDs (111 in the app order). It checks complete proof lists, candidates, exact analysis/solve, native/app traces and ratings, disabled and reversed profiles, every hint page, and unchanged catalogs and scoring version 7. No metadata is normalized away.
+
+Repeat with `node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm` and `node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm`. Optional fixture names narrow the benchmark. The benchmark asserts complete response equality before measurement and after every request, outside the timed region.
+
+
+Paired Node/Wasm measurements on Darwin arm64, Node 26.13.0, alternate engine order with five warmups/twenty samples for fixed requests and two warmups/ten samples for exhaustive first pages. Times include request encoding/decoding and exclude comparison assertions, module initialization, worker startup, transfer and rendering. Every call constructs a new proof position; its certificate is shared by the detectors within that request. These samples ran after this branch's builds finished, while unrelated native generation and other host work remained active. Large tails and small differences on the retained fixtures do not establish improvements or regressions. Values below are milliseconds median/p95.
+
+| Consecudoku operation | Main `6c30514` | Complete support |
+| --- | ---: | ---: |
+| Candidates | 0.116 / 0.139 | 0.117 / 0.149 |
+| Uniqueness | 0.504 / 1.051 | 0.498 / 0.924 |
+| Exact solve | 0.504 / 0.955 | 0.511 / 0.933 |
+| Native default rating | 1.345 / 2.321 | 1.314 / 2.157 |
+| App-order rating | 1.950 / 3.062 | 1.979 / 6.678 |
+| App ten-hint request | 1,300.655 / 2,148.838 | 1.122 / 2.620 |
+| App exhaustive first page | 1,457.041 / 1,886.049 | 2.101 / 8.220 |
+
+Both hint operations retain all four choices. Native/app complete scores stay 1,978/2,278. An additional single first request on a fresh Wasm instance measures 1,494.737 → 2.266 ms for ordinary hints and 1,189.900 → 2.205 ms for exhaustive hints. These first-request observations are not percentiles or browser cold-start measurements: instantiation and catalog lookup occur before timing. Committed Wasm linear memory after all measured requests falls from 6.56 to 1.50 MiB. This buffer size is not RSS or live allocation.
+
+| Retained fixture | App rate, main → support | Exhaustive page, main → support | Choices | Memory, MiB |
+| --- | ---: | ---: | ---: | ---: |
+| Quadruple | 1.476/2.884 → 1.477/2.797 | 1,053.750/1,251.448 → 1,002.179/1,128.910 | 31 | 5.88 |
+| Odd/Even | 0.217/0.509 → 0.224/0.506 | 183.063/380.316 → 150.367/200.512 | 23 | 3.56 |
+| Anti-King | 0.186/0.485 → 0.194/0.760 | 233.319/269.025 → 237.380/260.496 | 438 | 10.44 |
+| Published Non-Consecutive | 0.440/0.833 → 0.454/0.788 | 97.151/201.445 → 85.145/237.200 | 70 | 4.06 |
+
+Their complete app scores, ten ordinary choices, exhaustive choices and committed memory are unchanged. The robust target improvement is the empty Classic search on Consecudoku; the other timings remain observational under host contention. Cold browser loading, actual worker transfer and foreground/background scheduling remain outside this benchmark.
+
+| Wasm profile | Main raw/gzip bytes | Complete support raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,040,103 / 556,090 | 2,040,103 / 556,090 |
+| variant-solver | 2,576,562 / 690,191 | 2,585,481 / 700,237 |
+| classic | 2,555,726 / 662,307 | 2,555,726 / 662,305 |
+| app | 3,324,125 / 871,804 | 3,324,381 / 871,215 |
+
+The app adds 256 raw bytes and saves 589 gzip bytes; variant-solver adds 8,919 raw / 10,046 gzip bytes. The new paths compile only with `variants`. The measured production artifact has SHA-256 `a857e60ff33eeffe7aa6e729a1df5b84c771f32a07d6d8fb14b4158f2246809f`; main is `15a4b04916621e3ba1b6889835b98be38c8c6b5e5b3db113a7e6c9a4058eedcc`. All 284 native tests including doctests, 382 app tests, 233 Wasm tests, TypeScript, sixteen native capability combinations, four Wasm profiles, strict full/reduced Cargo documentation and the production/offline build with 158 prerendered routes pass locally.

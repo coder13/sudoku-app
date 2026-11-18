@@ -25,6 +25,7 @@ const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod exclusions;
+mod pruning;
 
 macro_rules! catalog {
     ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
@@ -1009,6 +1010,9 @@ impl CompiledVariant {
     ) {
         let variant = VariantTechnique::Classic(technique);
         if !self.supports_technique(variant) {
+            return;
+        }
+        if self.classic_search_is_empty(position, technique) {
             return;
         }
         if technique.pattern_overlay_width().is_some() {

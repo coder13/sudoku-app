@@ -90,6 +90,33 @@ impl<'a> OverlaySearch<'a> {
         search
     }
 
+    /// A complete witness for each allowed candidate certifies support under
+    /// these masks and this geometry. Failed or partial probes prove nothing.
+    #[cfg(feature = "variants")]
+    pub(crate) fn has_full_completion_support(&self, nodes: u32) -> bool {
+        self.completion_support(nodes)
+            .is_some_and(|support| self.full_support(support))
+    }
+
+    /// Read existing coverage without spending another search budget.
+    #[cfg(feature = "variants")]
+    pub(crate) fn known_full_completion_support(&self) -> bool {
+        self.witnessed.as_ref().and_then(OnceCell::get)
+            .is_some_and(|support| self.full_support(support))
+    }
+
+    #[cfg(feature = "variants")]
+    fn completion_support(&self, nodes: u32) -> Option<&[u128; 9]> {
+        self.witnessed.as_ref().map(|witnessed| {
+            witnessed.get_or_init(|| witnesses::support(&self.allowed, self.geometry, nodes))
+        })
+    }
+
+    #[cfg(feature = "variants")]
+    fn full_support(&self, support: &[u128; 9]) -> bool {
+        self.allowed.iter().all(|&sites| sites != 0) && support == &self.allowed
+    }
+
     pub(crate) fn visit(
         &mut self,
         technique: Technique,
@@ -162,9 +189,7 @@ impl<'a> OverlaySearch<'a> {
             let witnesses = if group.is_power_of_two() && self.geometry.is_none() {
                 witnessed.get()
             } else {
-                Some(witnessed.get_or_init(|| {
-                    witnesses::support(&self.allowed, self.geometry, COMPLETION_PROBE_NODES)
-                }))
+                self.completion_support(COMPLETION_PROBE_NODES)
             };
             if let Some(witnesses) = witnesses {
                 for digit in bit_indices(group) {
@@ -310,6 +335,31 @@ fn disjoint_layouts(families: &[Family<'_>], occupied: u128, witness: &mut [u128
 mod tests {
     use super::*;
     use crate::{Candidate, HintAction, VerifiedTemplate, candidates, technique_deductions_at};
+
+    #[cfg(all(feature = "variants", feature = "wasm-api"))]
+    #[test]
+    fn full_completion_certificates_invalidate_on_edits_and_do_not_accept_empty_domains() {
+        static HOUSES: std::sync::OnceLock<[u128; 27]> = std::sync::OnceLock::new();
+        let houses = HOUSES.get_or_init(|| House::all().map(house_cells).collect::<Vec<_>>().try_into().unwrap());
+        let mut board = [0; CELLS];
+        let mut masks = [DIGITS; CELLS];
+        let mut search = OverlaySearch::for_variant(&board, &masks, houses, &PEERS, true);
+        assert!(!search.known_full_completion_support());
+        assert!(search.has_full_completion_support(4096));
+        assert!(search.known_full_completion_support());
+        masks[0] &= !1;
+        search.update_classic(&board, &masks);
+        assert!(!search.known_full_completion_support());
+        assert!(search.has_full_completion_support(4096));
+        board[0] = 2;
+        masks = candidates(&board).unwrap();
+        search.update_classic(&board, &masks);
+        assert!(!search.known_full_completion_support());
+        assert!(search.has_full_completion_support(4096));
+        let empty = OverlaySearch::for_variant(&[0; CELLS], &[0; CELLS], houses, &PEERS, true);
+        assert!(!empty.has_full_completion_support(0));
+        assert!(!empty.known_full_completion_support());
+    }
 
     #[cfg(all(feature = "variants", feature = "wasm-api"))]
     #[test]
