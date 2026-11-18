@@ -3,7 +3,7 @@ import type { Candidate, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
 import { activeHighlightDigit } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
-import { regionMembership } from '../sudoku/variants'
+import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
 import { VariantClues, cageLabelInset, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
@@ -58,6 +58,10 @@ export function Board({
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates,
 }: Props) {
   const variantRules = variantPuzzle?.rules
+  const disjoint = useMemo(() => disjointGroupRuleIndices(variantRules ?? []), [variantRules])
+  const gridLabel = [label, variantRules?.some(rule => rule.type === 'global-entropy')
+    && 'Global Entropy: every 2 × 2 area needs a low digit 1–3, a medium digit 4–6 and a high digit 7–9, including across box or region borders.',
+    disjoint.size && DISJOINT_GROUPS_RULE].filter(Boolean).join(' ')
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [regions])
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules) : undefined, [variantRules])
@@ -130,7 +134,7 @@ export function Board({
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
-        <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={label}
+        <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           onKeyDown={candidateAction && navigateCandidates}
           onPointerLeave={onGridPointerLeave}

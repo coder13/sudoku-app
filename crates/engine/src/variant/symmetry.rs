@@ -178,7 +178,7 @@ impl SquareTransform {
                 }
                 groups.sort_unstable();
             }
-            AntiKnight {} | AntiKing {} => {}
+            AntiKnight {} | AntiKing {} | GlobalEntropy {} => {}
             NonConsecutive { except } => {
                 for cells in &mut *except {
                     self.unordered(cells);

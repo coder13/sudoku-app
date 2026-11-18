@@ -102,6 +102,8 @@ catalog! {
     NonConsecutiveLockedTriple: "non-consecutive-locked-candidates-3", 24, Easy;
     /// Candidates spanning three consecutive digits exclude their middle digit nearby.
     NonConsecutiveTrivalue: "non-consecutive-trivalue", 24, Easy;
+    /// Fit low, middle and high digits into a 2 × 2 area.
+    GlobalEntropy: "global-entropy", 24, Easy;
     /// Find increasing assignments along a thermometer.
     Thermometer: "thermometer", 26, Easy;
     /// Require every printed digit occurrence in the four cells touching a circle.
@@ -912,6 +914,17 @@ impl CompiledVariant {
                         {
                             place(cell, digit, Some(house.kind));
                         }
+                    }
+                }
+            }
+            GlobalEntropy => {
+                for (rule, cells) in self.entropy_windows() {
+                    let domains = cells.map(|cell| position.domain(cell));
+                    if let Some(proof) = position.explain_constraint(
+                        technique, &[rule], &cells,
+                        super::global_entropy::support(domains).into_iter(),
+                    ) {
+                        proofs.push(proof);
                     }
                 }
             }

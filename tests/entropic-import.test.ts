@@ -151,9 +151,7 @@ test('all grid transforms preserve every repeated reference and complete mixed s
   }
 })
 
-test('global companions, malformed paths and unknown parameters reject without partial imports', async () => {
-  for (const source of load('coach').examples.filter((s: { deferred?: string }) => s.deferred))
-    await assert.rejects(detectPuzzle(source.code), /globalEntropy/)
+test('malformed paths and unknown parameters reject without partial imports', async () => {
   for (const cells of [[], [81], [-1], [1.5]])
     assert.equal(
       isPlayablePuzzle('entropic', {

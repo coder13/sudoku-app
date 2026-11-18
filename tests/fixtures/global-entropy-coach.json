@@ -1,0 +1,463 @@
+{
+  "description": "Complete original exports. Deferred authored rules and formats remain explicit.",
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/A2s7",
+      "title": "Entropy Quads",
+      "author": "cyboogie",
+      "published": "2025-10-17 16:29:12",
+      "code": "SCv7_32_f2e7r4ab1b1i0420tspemb7iq7ubcrafq1isjghm4a13badhgkre9rmlq0q2h2830cp3spsupg44psfmpgvh9qha0b35ul0u77hnl00qs8qp1ieicgb6u16u5bt936k4ru2469o7lk49etmcck2dsgktog8ugtrf7jgf295dfbr846juk3m4s5ve8q2r19t2h6g2f2msl6jck526d0bue10l616t3im6vdm8kisnpnrdib5fbgr0rg49pu328f072js5p1it2o3vl5ku0c5fjomsglpho43mq4he103crf32skbb5qcrr76vprtktvnrcqhbm4jhi9d7bverrmsvve4pnq45bm6f",
+      "solution": "186925347524367819739841625615279483948153276273486951467538192392714568851692734",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000004000800030000000000000000000050000000000000000000000000000000000002000",
+        "rules": [
+          {
+            "type": "quadruple",
+            "topLeft": 7,
+            "digits": [
+              1,
+              4,
+              7
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 0,
+            "digits": [
+              2,
+              5,
+              8
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 3,
+            "digits": [
+              3,
+              6,
+              9
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 23,
+            "digits": [
+              1,
+              9
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 20,
+            "digits": [
+              2,
+              8
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 47,
+            "digits": [
+              3,
+              5
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 50,
+            "digits": [
+              8,
+              9
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 43,
+            "digits": [
+              1,
+              5,
+              6
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 65,
+            "digits": [
+              2
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 70,
+            "digits": [
+              4,
+              6
+            ]
+          },
+          {
+            "type": "global-entropy"
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/A2s7.png",
+      "imageSha256": "01a051ad908e4a988269d3f2df96ae6badaebd08343ecab61567583268faf3e5"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/CJhv",
+      "title": "Entropy Quads 3",
+      "author": "cyboogie",
+      "published": "2026-01-12 13:33:49",
+      "code": "SCv7_32_f2e7rkibhb1j0306s2tmh7a5dn2mj6jdt44rkb2tf0d6635eictesg17sjn97t052p23m2puvk4ci8uot3da7upjq3m0lc7equ27q5s62iqgmqc0soq84qt126dg5kl3jsalhnvtd1vggabmvk1gk64cnmd9ef9fal52tm5p3ajqiu1nhdnv7rderdsevfe93d3rg67fiubthj11nm7fkqkih55gpd6en92o347gpjudh2lhuknbeildrd9ealhgapas9ijl5e8g9apd2teefe0kpgj90oj6ci4mb3kh94j168pidehh6lociri1sldtdq8lhgf4i9pj1lq0jgkvr8f7t4fn9m7tsk",
+      "solution": "563487291918326754742591638137245869685973142429168573374852916251639487896714325",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {
+            "type": "global-entropy"
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 10,
+            "digits": [
+              1,
+              2
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 60,
+            "digits": [
+              8,
+              9
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 55,
+            "digits": [
+              4,
+              5
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 15,
+            "digits": [
+              5,
+              6
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 12,
+            "digits": [
+              2,
+              3,
+              5
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 57,
+            "digits": [
+              5,
+              6,
+              8
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 41,
+            "digits": [
+              1,
+              3,
+              8
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 45,
+            "digits": [
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 31,
+            "digits": [
+              5
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 33,
+            "digits": [
+              4,
+              6,
+              8
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 63,
+            "digits": [
+              2,
+              9
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 68,
+            "digits": [
+              3,
+              9
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 13,
+            "digits": [
+              6
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 2,
+            "digits": [
+              3,
+              3
+            ]
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/CJhv.png",
+      "imageSha256": "582bde054a76a0a764f1dc4fa630a0aa83d8ceefdfc8554e7dd4333b0d4230d4",
+      "withoutEntropyWitness": "563487291918326754742591638137945862685273149429168573374852916251639487896714325"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/AdoP",
+      "title": "sudoku² 25-11-14",
+      "author": "XH",
+      "published": "2025-11-14 10:42:30",
+      "code": "SCv7_32_f2e9r4mddb1j0444rt2ueef8fsmlvmps867ia1pn253e1m66262j9u6tne33grbe88v9hlditgrspr2tuh5jkvt4jskdk06hkvnjhfl77riqmq45fhu4daltijglidfiltkqbd2rs7r0trbdv5vlsf08dv9nhjabiv30rsrp2vkiomh547p6qpgtca4nr6i63qvcdvgiuugl6746lm931s1g0p3444ssgkhnguc4j2tqbeu43gbhtetftdoln43j3btuqbd6n4tqav0jlle5ef4ola8aio2160b4cg9ne07at0anal65ri341gq7907je00kdgpof1esad45pg09d9os5j1hhqf1r5lvt1pal8mnb5p3sk42qf619ao5lpb11mk2sl2nh9aj1712jfdc0algbj2no3lq5pblv2j5j81mi47rrh0f6hfh14ll0ks5kl96p07l41r9bf8dq1u5kv65lih2tmt6ui52b741ur80cjk211i622dq5rdv1h7mofqda3c764nt6v3rkmvutodttcnifjruk0",
+      "solution": "675194283813762945249538617952841736137629458486375192528417369394286571761953824",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000003010000000009000000000800000000009400400005000000007000094000000000000800",
+        "rules": [
+          {
+            "type": "extra-house",
+            "cells": [
+              0,
+              3,
+              6,
+              33,
+              30,
+              27,
+              54,
+              57,
+              60
+            ]
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              1,
+              4,
+              7,
+              34,
+              31,
+              28,
+              55,
+              58,
+              61
+            ]
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              8,
+              5,
+              2,
+              29,
+              56,
+              59,
+              32,
+              35,
+              62
+            ]
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              9,
+              12,
+              15,
+              42,
+              39,
+              36,
+              63,
+              66,
+              69
+            ]
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              10,
+              37,
+              64,
+              67,
+              40,
+              13,
+              16,
+              43,
+              70
+            ]
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              11,
+              38,
+              65,
+              68,
+              41,
+              14,
+              17,
+              44,
+              71
+            ]
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              18,
+              45,
+              72,
+              75,
+              48,
+              21,
+              24,
+              51,
+              78
+            ]
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              19,
+              46,
+              73,
+              76,
+              49,
+              22,
+              25,
+              52,
+              79
+            ]
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              80,
+              53,
+              26,
+              23,
+              50,
+              77,
+              74,
+              47,
+              20
+            ]
+          },
+          {
+            "type": "global-entropy"
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/AdoP.png",
+      "imageSha256": "f1692f2fee059f76d7259bfb0f81ab73de2a4966abd40b01e93f93fe3861af27"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/K95q",
+      "title": "That’s 3 in the corner",
+      "author": "IntelENC",
+      "published": "2026-09-14 14:48:09",
+      "code": "SCv7_32_f2ear51t9v1j0446vu5lirs87vpr2kimgj28gek4qgqpckhre9e512fqrust446k4b80qu5gdjknqvefrncpt62bfrpuhnpdddl61jlvraof5jn7i4qqp6475jv6jc1po9mgooqelk7qec2f2fphnlng09c3s368o4rbst9hmjurqtbd8outkhnberr2onsveosvno3g6seouc7rv47vugos7neiu5rvh2gk6gmrtnkmtddobkfpvmvu5ri191o3pmm1fsurhcfgf6pedk9umr6vjtb9l0v2402kg2a204d32c4i1c0o50p883a20aqg4lk06hk3o4cte5f8396036h3o78actj7md6mf1ib4qmdqtjbic6hrkj09peupopu47ccqlirqlquo6uq5j80jeokft1pd22sbi3pqbcdv0uesisal4kk350aa292d595511p7qg2pd5g9a212f9s4ln8i8j3at19uqdh72s52t212qq52lp0372o55u9gl6e28sb2kq2ieirphk784uba0iu2ctlaga9tha4j5oq16ddg0b42n257saqddh5lu5fa2fm1id1valqtlsvrntfg0dekk68g",
+      "solution": "926841573573629148148375926481537269735962481269184735692418357357296814814753692",
+      "deferred": "The description declares a negative black-dot rule absent from ratio settings in its export. Complete public-source import needs that authored rule.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/K95q.png",
+      "imageSha256": "43e1be651163a1af82234603c9036d68434e8916b920f0c1376b2362c12364fd"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/HqJ9",
+      "title": "Entropic 7 / 13 sums",
+      "author": "Krill",
+      "published": "2026-07-29 14:00:16",
+      "code": "SCv7_32_f2e8r56ddr130444rv2ueee4brvo8n5brpte6m3h930okb450giqc5a5nhtgqla1e7lmkruht8dqvf9rj6puh9lgbe3kubsq2l21fnntu0q0ssssr8oc8m9kltjh2tl2i4ak8f0t28iu5hvosjtnsves1e4ditrrvs1mskvpvaild83a0domh9rmtuhpuknh5jj28q6ssm10ei2sq1a30aom9389k0qq931u3km3kni81mm0m0t2m0pag291d943mgmd103n414uhglsufb1a73bs2r8cstcplc9hgm4uddjkk6d48ik2aeme9lehgjjubjc9ngeo7oqp9j1h5qq9kl00acvqe55gknj2lqu9rbdialogb6n7bp51samd7kj1qbeenr5k7vf3hn6j8pj31l1nfb6viir4r4nm9jlvnsddtmf8eecdgr9355ibcdqherijrvsuoc57tltgj0v7p3kit7mq333545ab0fqnml6uid3irhqlvuan03plnr4efsg53orrvog",
+      "solution": "268349157934715682517268349751682493349157826682493571176824935493571268825936714",
+      "deferred": "The export includes an empty Consecutive Line layer. Confirm its empty-layer semantics before accepting the complete export.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/HqJ9.png",
+      "imageSha256": "2538c1272fdc6156baa755369a16ce141b70c14821a427b0f05870c0926c822f"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/FLAb",
+      "title": "AJT’s Bento 🍱 flavoured with Entropy",
+      "author": "AndresJonTamin",
+      "published": "2026-05-11 13:26:09",
+      "code": "SCv7_32_f2eaalmbdqhj057t2v7vcblgm5suqhmhthjdfrl25gk3hl5a0e6224rlkbvfmn6s2p18oaaia5q19o7onr732s15il8ub0vq4t4pc0hhm994rnchdhvg0kl9nupdtob9dtp5btu3qkll29e9d00a8vrde44ij6ne4htlbv2mmki40eipjni2fdcgb87vvtg1gg3tgksbphh6h4ar2gba63v42q2sbi32dgor360um2n3cdpp4qagd0qvrvfe09ij0i0uakcbdi61mmqc5ij8hqqhoa7hl6a5d8olgm3j30desuqlav1jjk9ogf3meldsqipc62o9i2jsd56itgddr70d1rlkeo0fu9su71kc2eqk5l3pvfceos448rhdaote7csrnksor9jevjaprahaq7jkqjhlqg4v280l0o40eha301cq016o21av6pb8o38stl0qdj3ccfj10e08k0e2g3kk071jk463tui0sdt68o3g2tgq0d2lu2303gc65t4tqhu4onf9soktffqgluj7r7an607jebceov2vq1d5qrte2v7iql70e3uetci1rkhj65pio7e4bgjd4o6e8g5q9nkgnq9d7cf4ricedoldao636tgau73krhloln9flpqqth0ka70them7kv3j1or3rapepul6n9fhb8a3r2hvuhkgg4c55202h1eo36b3vktk2vv9psuijhduqv947bqp6kild8g12ij6g8slmp32m8sp7bigoctqlqtai758jfu3jcmpfttau5qse4j0m69u2va9orjer8d4lpphfa9203glktppd817ooo1a46b3spcu12cbdsjr0e3bmgoaki9nmoqk9t8e5eel0eduteul1rl8v25fa3nahsd85sdm2ntnqcpt5t578fab4bls7ehlm54e2dromcnq6silu2tm5i6e7qv13g6s3tbvhk6jerqv65t5bvgu5lse7dvjv7hffdt6afm8iau7svhc43vr7nrrk47mvvspr2mik",
+      "solution": "623597184748216953915483267369145728834972516492358671186724395571639842257861439",
+      "deferred": "Latin-square region geometry, Pill Arrow and cosmetic geometry remain unsupported. Keep the whole source.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/FLAb.png",
+      "imageSha256": "3fb31472d9f7e753635f459632f8da3c3ec6ee249a5f181b0320db906ef02a5c"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Hu9m",
+      "title": "Entropy 7/13",
+      "author": "DavidW",
+      "published": "2026-07-31 23:35:41",
+      "code": "SCv7_32_f2e8qlebdq1j047s2ufuf06n5vg5ltembe75a3tkm4k153s8n2mt4a7vroimikvhm3i0m0hk7f5ootsmmekceplvdevbqa0bh2tfjt7tof81vgqo6lujh2niv4m9lf98ck312jg78q4rk7aulfrb23v3e0s0j253lstnvgtu9h7i2d3tpl7ufio5nv2v4ngsnq30fntmne7msnjp2pnvoulqic2igot28cqld78ffqeahh4h1d57epfs0d90calmg59cr44i41ah4p8sn2g39k39lkqkoij7jc3261aadhm228sk1ci5ik2iedik0dg5l0al9min699564j50oip701pehi2k5ja1bk3prdc3lm49to2d4mlpmjh7ec4hso5i1g96t2j1qcq9mqod2bg4b10scsoo9cttp4uv1nt8tdoqjqdtthl3jpjn012t1v5dc3bmqln7g397gok60cr9h3l4ag7g2ack42qqshr5f7c0sjiq15fi375r1mgb9r01k64fn2276k7pgtgf7bdgaasusb7hlfhss87hbmnh67dn9nu2vibm7trs5d15cqd6fur81pm08v3f32dja90hf8asdebbg9kn2lh2nqeljhhpb46er709nhq2ou8k6s6omqenevmm45cq47t5v4arvu2lmia8dftpfigf2656akg",
+      "solution": "176894325528163947934275816749532681613748259285619473862951734391427568457386192",
+      "deferred": "Modular Lines remain unsupported. Keep Global Entropy, every sum, thermometer and ratio marker intact.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/Hu9m.png",
+      "imageSha256": "5f8fed5585421c2642f2be467811636a5b04c49e6ddef692f59d570a3d08e24e"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/2j53",
+      "title": "",
+      "author": "",
+      "published": null,
+      "code": "SCv4_Y614Y50a9b809X617740a8b10a6b5635X170a8b501020495X88X1609X_yR30_yyyyy0Ac80d0_0Ac80d0_0Ac80d0___y",
+      "solution": "279614853561387294384952617742539186918276435635841729493728561126495378857163942",
+      "deferred": "The original collection export uses SCv4. Preserve it for the generic legacy-format decoder.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/2j53.png"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/LEjN",
+      "title": "Entropic Spiral",
+      "author": "Aidan",
+      "published": "2026-10-29 01:15:06",
+      "code": "SCv7_32_f2e8b4ub9r1j0425vv2unevghjftq0hreom525t1mkh4m8dda85qih7teue552gacac8bpchtqeses9ildv2lmt7uafdaai1uniir3vnkknvb82m99fi6qfq9oqenmrgvb7khiohppbqnddqeisdn3c779qman6q7j7qkr6lh8q58fferceak7rm5vev0c6md6rjudmf47rqvuajndfb4mmbr2rmofkte0ot7lcspurb4u9ccevfbjjaie3m3eap1l5n1racm08idgb8321e2ljvrt6tqqtef6t7du5i341sms04lvgh4n441do1sdm8mo44so0d4p8se31mc05ncc0mqr032f11d3s28ejtgg7v07mup4t0m9pbli3p3dv11156hbulj29sp2ocp211pi430asdatlgdk307jo86a6qg4f4ll1k1s08u91c28gob78i0duk1ms5pibom268c8n4h4dj9v7jh6gu34ev200v3dv2su7r2fjt00066b3n",
+      "solution": "527963184496128537138475296952637841374851629861249375285714963643592718719386452",
+      "deferred": "The description adds forbidden connections at spiral breaks. The encoded Global Entropy and positive paths do not represent that additional rule. See issue 168.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/LEjN.png",
+      "imageSha256": "87e8a72f4dea816a7b1e26e32bb9385ab7c708986fea7e38234fd2eb87f36e71"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/7nms",
+      "title": "Entropic Order",
+      "author": "Raumplaner",
+      "published": "2025-05-23 08:00:26",
+      "code": "SCv7_32_f2e9b4qhde1j0545vv5nqfhb4oor3uhq0ptuhm63uoqej0tj8415d2r6ceevhnrndkrq27adt65hhu5uef10qtt0l9ppm5vndkkkmgclveqcqveruiv2mn73ff5f50esgop130fsfr3h8lblvdfd83sdtvddr7i0nmmrdtm8lqjp7ttel7s39313fpij3ivmk2sn5p8qffl0sl6qnaffsh0alphkihgsn0lrkojbnnmudi1v9on224p80eag8ebdk0qko353gee8l804cbvadoeu31146668e2f5tgh4615ugs4usp98im21pcg2e90kn1dvr9pe1lfct0pfref7iltur8nnuqfgn5f6hn251eujsrp07tkhifeip66v5645ug37s2i73g89tjg41q3rt0afdqu91e62lv77gtbd8a9n1ugqgs6nmqurtnpge0uj58o7jn1o2cojpvg0g0821so",
+      "solution": "834196257769542813521837649385764192472918536196253784617389425948625371253471968",
+      "deferred": "Outside L/M/H letters order digit groups and are stored as cosmetic text. Their mathematical rule remains unsupported. See issue 169.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/7nms.png",
+      "imageSha256": "f83b03666f01e838967bf9948a236c1801a50ccdc4fd0015cade00ad235fdb78"
+    }
+  ]
+}

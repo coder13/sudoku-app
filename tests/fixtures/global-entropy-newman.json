@@ -1,0 +1,20 @@
+{
+  "url": "https://www.gmpuzzles.com/blog/2026/04/entropy-sudoku-by-philip-newman/",
+  "title": "Ordered Entropy",
+  "author": "Philip Newman",
+  "published": "2026-04-30",
+  "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2026/260430-EntropySudoku-OrderedEntropy.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2026/260430-EntropySudoku-OrderedEntropy-soln.pdf",
+  "puzzleSha256": "bbeff1858adfd777df4b7ce982610787db889b7d7624659197139c590b2871b3",
+  "solutionSha256": "0ad07e5f1c0ff954c9bd51bc05db8d180a3124a9015351504f11d7c65072d693",
+  "solution": "364519728791824365258637491823746159576291834419358672185963247642175983937482516",
+  "puzzle": {
+    "version": 1,
+    "givens": "304010000000020000050030400020046000000000000000350070005060040000070000000080506",
+    "rules": [
+      {
+        "type": "global-entropy"
+      }
+    ]
+  }
+}

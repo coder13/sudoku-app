@@ -477,6 +477,7 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `thermometer`, `whispers`, `palindrome` | Supply `cells` in line order. Start a Thermometer at the bulb. Set `minDifference` for Whispers. |
 | `arrow`, `renban`, `between` | Supply `cells` in line order. For Arrow, supply its `circle` separately. For Between, include both endpoints in `cells`. |
 | `entropic` | Keep the ordered walk, including closures and revisits. Every three positions use the low, medium and high groups. |
+| `global-entropy` | Every 2 × 2 area contains a low, medium and high digit, including areas across region boundaries. |
 | `region-sum` | Supply `cells` in line order. The active regions divide the line into segments. Set `groupByRegion` to true to combine separate visits to the same region. |
 | `sandwich`, `x-sum`, `skyscrapers`, `little-killer` | Supply `cells` from the clue toward the far edge in the declared `direction`. Use `count` for Skyscrapers and `sum` for the other clues. |
 
@@ -610,3 +611,12 @@ Use `entropic` with the original ordered `cells` walk. Every three successive po
 The compiler retains repeated references and closed paths. It maps the walk onto distinct cells and their repeating phases. A cell revisited in different phases makes the constraint unsatisfiable. Every support request checks at most six group orders. Drawings and serialized rules keep their original order.
 
 The logical technique costs 27 points at Medium difficulty, as in the research catalog. Existing scoring version 8 and prior costs stay unchanged. Proof evidence records the original rule index, distinct cells and input domains. The three checked practice positions also support generated drills. Fixed templates support generation and required-family dependence. App presets require separate difficulty calibration.
+
+
+## Global Entropy
+
+Use `{"type":"global-entropy"}` to require low (1–3), medium (4–6) and high (7–9) digits in every 2 × 2 area. The rule covers all 64 areas and applies across box or Jigsaw boundaries. It does not impose a same-digit peer relation between the diagonals of an area. Other active rules still apply.
+
+The compiler keeps the first rule index when repeated global declarations cover the same areas. Four-cell support uses an exhaustive digit-group lookup. Exact validation, candidate propagation, counting and completion enforce the rule even when its logical technique is disabled. The `global-entropy` technique costs 24 points at the Easy tier under scoring version 8. Its constraint evidence records the original rule index, four cells and input domains.
+
+Three practice positions and the named technique work with custom solve orders, rating, replay and generation targets. A fixed Global Entropy template can use `requiredRule: "global-entropy"`. App generation presets require separate calibration. Mathematical instructions outside a Coach export remain part of the source contract and cannot be discarded to accept its encoded subset.

@@ -1507,3 +1507,12 @@ node --experimental-strip-types scripts/bench-xv-rating.mjs /tmp/main-wasm/engin
 node --experimental-strip-types scripts/bench-exact-houses.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --generation-only --legacy-order --recipes=/tmp/retained-recipes.json
 node --experimental-strip-types --test scripts/bench-entropic-app.mts
 ```
+
+
+## Global Entropy integration evidence
+
+`global-entropy-newman.json` records Philip Newman’s twenty-given Ordered Entropy puzzle, its inspected puzzle/solution PDFs and their hashes. `global-entropy-coach.json` preserves ten original exports. Three have complete supported inventories and independently unique printed completions: A2s7, CJhv and AdoP. The other seven retain their authored-rule, companion, geometry or format gaps. Raw positive payloads do not establish complete authored-source support.
+
+The independent counter directly enumerates digits and houses without production support tables. CJhv also retains two direct completion witnesses after removing only Global Entropy. Proof replay enumerates every four-cell numeric assignment from the declared domains. All eight square symmetries preserve complete source rules and exact completions through actual Wasm.
+
+The [Global Entropy audit](../../SUDOKU_GLOBAL_ENTROPY_AUDIT.md) records the source contract, 24-point Easy technique, full and partial logical paths, package costs, all 26 retained performance controls, four new-source caller measurements, 140 matching old-generation outcomes and twenty new independently checked puzzles. The shared app benchmark accepts `SUDOKU_BENCH_FAMILY=global-entropy`; its old Entropic default stays available. Final CI and merge are tracked in [issue 60](https://github.com/coder13/sudoku-app/issues/60).

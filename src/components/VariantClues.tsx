@@ -1,6 +1,6 @@
 import { useId, useMemo } from 'react'
 import type { VariantRule } from '../sudoku/engine'
-import { extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
+import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, sharedPalindromeEdges } from '../sudoku/line-geometry'
 
 const x = (cell: number) => cell % 9
@@ -151,6 +151,7 @@ function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [n
 }
 
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
+  const disjoint = useMemo(() => disjointGroupRuleIndices(rules), [rules])
   const marker = useId()
   const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
   const coloredLanes = useMemo(() => coloredLineOverlapLanes(rules), [rules])
@@ -240,7 +241,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           return <line key={index} className="variant-diagonal" x1={rule.diagonal === 'main' ? 0 : 9} y1="0"
             x2={rule.diagonal === 'main' ? 9 : 0} y2="9" />
         case 'extra-house':
-          return <ExtraRegion key={index} cells={rule.cells} />
+          return disjoint.has(index) ? null : <ExtraRegion key={index} cells={rule.cells} />
         case 'killer-cages':
           return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} {...cage}
             captionInset={cageLabelInset(Math.min(...cage.cells), rules)} />)}</g>

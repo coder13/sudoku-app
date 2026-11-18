@@ -63,7 +63,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
     match deduction.technique {
         Parity | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
         Clone | Palindrome => 8 + span + choices,
-        Kropki | Xv | AdjacentTotal | Thermometer | Between | Whispers | Entropic | Quadruple => 14 + span + choices,
+        Kropki | Xv | AdjacentTotal | Thermometer | Between | Whispers | Entropic | GlobalEntropy | Quadruple => 14 + span + choices,
         CageCombinations | Arrow | LittleKiller => 24 + span + 2 * choices,
         Renban | RegionSum => 28 + span + 2 * choices,
         CageHouseSum => 34 + 18 + 3 * cages + span + 2 * choices,

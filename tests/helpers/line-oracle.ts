@@ -12,10 +12,17 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
   ]
   const edges: OracleRelation[] = [...extraRelations]
   const sets: { cells: readonly number[]; sum?: number }[] = []
+  const entropyAreas: number[][] = []
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
-    if (rule.type === 'renban') sets.push({ cells: rule.cells })
+    if (rule.type === 'global-entropy') {
+      for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++) {
+        const cell = row * 9 + col
+        entropyAreas.push([cell, cell + 1, cell + 9, cell + 10])
+      }
+    }
+    else if (rule.type === 'renban') sets.push({ cells: rule.cells })
     else if (rule.type === 'killer-cages') sets.push(...rule.cages)
     else if (rule.type === 'parity') rule.cells.forEach(cell => edges.push([cell, cell, (a,b) => a === b && a % 2 === (rule.parity === 'odd' ? 1 : 0)]))
     else if (rule.type === 'entropic') {
@@ -63,6 +70,17 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
     for (let a = 0; a < 81; a++) for (const b of [a % 9 < 8 ? a + 1 : -1, a < 72 ? a + 9 : -1]) {
       if (b >= 0 && !marked.some(([x, y]) => x === a && y === b || x === b && y === a)) edges.push([a, b, (a, b) => a + b !== sum])
     }
+  }
+  // One cache entry per fixed clue. A changed domain always reruns the
+  // independent digit enumeration. No engine support or membership tables are used.
+  const lastSupport = new Map<object, { key: string; supported: Set<number>[] }>()
+  function supportFor(scope: object, cells: readonly number[], domains: number[][], enumerate: () => Set<number>[]) {
+    const key = cells.map(cell => domains[cell].join('')).join('/')
+    const previous = lastSupport.get(scope)
+    if (previous?.key === key) return previous.supported
+    const supported = enumerate()
+    lastSupport.set(scope, { key, supported })
+    return supported
   }
   let count = 0, nodes = 0, solution: string | undefined
   const solutions: string[] = []
@@ -112,23 +130,53 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
           changed ||= keep.length !== domains[cell].length; domains[cell] = keep
         })
       }
-      for (const clue of quadruples) {
-        const supported = clue.cells.map(() => new Set<number>())
-        const assigned: number[] = []
-        function enumerate(index: number) {
-          if (index === 4) {
-            for (let digit = 1; digit <= 9; digit++) {
-              if (assigned.filter(value => value === digit).length < clue.digits.filter(value => value === digit).length) return
+      for (const area of entropyAreas) {
+        const supported = supportFor(area, area, domains, () => {
+          const supported = area.map(() => new Set<number>())
+          const assigned: number[] = []
+          function enumerate(index: number) {
+            if (index === 4) {
+              if (!assigned.some(digit => digit <= 3) || !assigned.some(digit => digit >= 4 && digit <= 6)
+                || !assigned.some(digit => digit >= 7)) return
+              assigned.forEach((digit, i) => supported[i].add(digit))
+              return
             }
-            assigned.forEach((digit, i) => supported[i].add(digit))
-            return
+            for (const digit of domains[area[index]]) {
+              if (assigned.some((value, i) => value === digit && houses.some(house => house.includes(area[index]) && house.includes(area[i])))) continue
+              assigned[index] = digit
+              enumerate(index + 1)
+              assigned.length = index
+            }
           }
-          for (const digit of domains[clue.cells[index]]) {
-            if (assigned.some((value, i) => value === digit && houses.some(house => house.includes(clue.cells[index]) && house.includes(clue.cells[i])))) continue
-            assigned[index] = digit; enumerate(index + 1); assigned.length = index
+          enumerate(0)
+          return supported
+        })
+        area.forEach((cell, i) => {
+          const keep = domains[cell].filter(digit => supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length
+          domains[cell] = keep
+        })
+      }
+      for (const clue of quadruples) {
+        const supported = supportFor(clue, clue.cells, domains, () => {
+          const supported = clue.cells.map(() => new Set<number>())
+          const assigned: number[] = []
+          function enumerate(index: number) {
+            if (index === 4) {
+              for (let digit = 1; digit <= 9; digit++) {
+                if (assigned.filter(value => value === digit).length < clue.digits.filter(value => value === digit).length) return
+              }
+              assigned.forEach((digit, i) => supported[i].add(digit))
+              return
+            }
+            for (const digit of domains[clue.cells[index]]) {
+              if (assigned.some((value, i) => value === digit && houses.some(house => house.includes(clue.cells[index]) && house.includes(clue.cells[i])))) continue
+              assigned[index] = digit; enumerate(index + 1); assigned.length = index
+            }
           }
-        }
-        enumerate(0)
+          enumerate(0)
+          return supported
+        })
         clue.cells.forEach((cell, i) => {
           const keep = domains[cell].filter(digit => supported[i].has(digit))
           changed ||= keep.length !== domains[cell].length; domains[cell] = keep

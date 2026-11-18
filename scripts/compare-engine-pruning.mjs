@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -25,6 +25,7 @@ const updated = await after({ type: 'techniques', variant: true })
 const additionsExpected = [
   ...(options.includes('--adjacent-total') ? [{ id: 'adjacent-total', aliases: [], cost: 20, difficulty: 'easy', requiresUniqueSolution: false }] : []),
   ...(options.includes('--entropic') ? [{ id: 'entropic', aliases: [], cost: 27, difficulty: 'medium', requiresUniqueSolution: false }] : []),
+  ...(options.includes('--global-entropy') ? [{ id: 'global-entropy', aliases: [], cost: 24, difficulty: 'easy', requiresUniqueSolution: false }] : []),
 ]
 if (additionsExpected.length) {
   const additions = updated.techniques.filter(item => !old.techniques.some(before => before.id === item.id))

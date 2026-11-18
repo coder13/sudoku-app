@@ -1,5 +1,6 @@
 import { STARTER } from './formats.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
+import { globalEntropyState } from './global-entropy.ts'
 import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
@@ -175,6 +176,7 @@ export function conflictsOf(values: string, puzzle?: VariantPuzzle): Set<number>
       }
     }
   }
+  for (const cell of globalEntropyState(puzzle, values)?.conflicts ?? []) conflicts.add(cell)
   return conflicts
 }
 
@@ -339,8 +341,10 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
         const clearCandidates = (mask: number, i: number) => editable.reduce((remaining, cell) =>
           remaining & ~((peer(cell, i, game.variant?.puzzle) ? bit : 0) |
             variantDigitExclusions(game.variant?.puzzle, cell, i, value)), mask)
-        center = center.map(clearCandidates)
-        corner = corner.map(clearCandidates)
+        const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
+        const areaMasks = globalEntropyState(game.variant?.puzzle, values)?.allowed
+        center = center.map((mask, i) => clearCandidates(mask, i) & (areaMasks?.[i] ?? 511))
+        corner = corner.map((mask, i) => clearCandidates(mask, i) & (areaMasks?.[i] ?? 511))
       } else {
         center = center.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
         corner = corner.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
@@ -445,6 +449,14 @@ export function fillEntries(game: Game, nextValues: string): Game {
     changed = true
   }
 
+  if (changed) {
+    const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
+    const areaMasks = globalEntropyState(game.variant?.puzzle, values)?.allowed
+    if (areaMasks) for (let cell = 0; cell < 81; cell++) {
+      center[cell] &= areaMasks[cell]
+      corner[cell] &= areaMasks[cell]
+    }
+  }
   return changed ? move(game, { ...game.position, entries: entries.join(''), center, corner }) : game
 }
 

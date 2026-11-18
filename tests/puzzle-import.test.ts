@@ -135,12 +135,12 @@ test('reports unsupported or damaged codes without treating them as Classic', as
   await assert.rejects(detectPuzzle('SCv7_32_0000'), /could not be opened/)
   await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/DMnw'), /Copy → Puzzle/)
   await assert.rejects(detectPuzzle('https://sudokupad.app/example-share-id'), /does not contain the puzzle data/)
-  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalEntropy', segments: [] }] })), /not supported yet.*globalEntropy/)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalModularity', segments: [] }] })), /not supported yet.*globalModularity/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'cage', segments: [] }] })), /no Killer cages/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [
     { type: 'antiKnight', segments: [] },
-    { type: 'globalEntropy', segments: [] },
-  ] })), /not supported yet.*globalEntropy/)
+    { type: 'globalModularity', segments: [] },
+  ] })), /not supported yet.*globalModularity/)
   await assert.rejects(detectPuzzle('x'.repeat(MAX_IMPORT_LENGTH + 1)), /one puzzle at a time/)
 })
 
