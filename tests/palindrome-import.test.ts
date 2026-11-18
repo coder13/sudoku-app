@@ -51,7 +51,7 @@ test('mirrored equality differs from peers and leaves the odd center unrestricte
   assert.equal(filled.position.center[80], 1 << 3); assert.equal(filled.position.corner[80], 1 << 3)
 })
 
-test('real Coach combined lines preserve every rule and unsupported companions reject', async () => {
+test('real Coach combined lines preserve every rule and inequality companions', async () => {
   const { examples } = load('coach')
   const imported = await detectPuzzle(examples[0].code)
   assert.equal(imported.variant?.id, 'mixed')
@@ -61,7 +61,10 @@ test('real Coach combined lines preserve every rule and unsupported companions r
   assertVariantCompletion(puzzle, examples[0].solution)
   const counted = countLineSolutions(puzzle)
   assert.equal(counted.count, 1); assert.equal(counted.solution, examples[0].solution)
-  await assert.rejects(detectPuzzle(examples[1].code), /greaterLess/)
+  const mixed = (await detectPuzzle(examples[1].code)).variant!.puzzle
+  assert.equal(mixed.rules!.filter(rule => rule.type === 'inequality').length, 7)
+  assert.equal(mixed.rules!.filter(rule => rule.type === 'palindrome').length, 3)
+  assert.equal(mixed.rules!.filter(rule => rule.type === 'kropki').length, 1)
 })
 
 test('Coach normalization follows connected components and preserves raw drawings', async () => {

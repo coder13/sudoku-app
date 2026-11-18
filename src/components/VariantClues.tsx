@@ -74,12 +74,28 @@ function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly 
   </>
 }
 
+function InequalityClue({ less, greater, withDot }: { less: number; greater: number; withDot: boolean }) {
+  const [ax, ay] = center(less), [bx, by] = center(greater)
+  const length = Math.hypot(bx - ax, by - ay)
+  const ux = (bx - ax) / length, uy = (by - ay) / length
+  const offset = withDot ? .24 : 0
+  const cx = (ax + bx) / 2 - uy * offset, cy = (ay + by) / 2 + ux * offset
+  // The vertex faces the smaller cell, regardless of orientation.
+  const sign = `${cx + ux * .09 - uy * .12},${cy + uy * .09 + ux * .12} ${cx - ux * .09},${cy - uy * .09} ${cx + ux * .09 + uy * .12},${cy + uy * .09 - ux * .12}`
+  return <g className="variant-inequality" data-less={less} data-greater={greater}>
+    {length > 1.01 && <line className="variant-inequality-connector"
+      x1={ax + ux * .35} y1={ay + uy * .35} x2={bx - ux * .35} y2={by - uy * .35} />}
+    <polyline className="variant-inequality-halo" points={sign} />
+    <polyline className="variant-inequality-sign" points={sign} />
+  </g>
+}
+
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const marker = useId()
   const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : 0
+    rule.type === 'inequality' ? 2 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: false, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: true, layer: .5 }] : []),
@@ -106,6 +122,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         {shared.get(index)!.map((edge, i) => <polyline key={i} points={points(edge)} />)}
       </g>
       switch (rule.type) {
+        case 'inequality':
+          return <InequalityClue key={index} {...rule} withDot={dots.has(pairKey(rule.less, rule.greater))} />
         case 'parity':
           return <g key={index} className={`variant-parity variant-parity-${rule.parity}`}>
             {rule.cells.map(cell => rule.parity === 'odd'
@@ -171,6 +189,10 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
   const labels: string[][] = Array.from({ length: 81 }, () => [])
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
+      case 'inequality':
+        labels[rule.less].push(`inequality, smaller than ${reference(rule.greater)}`)
+        labels[rule.greater].push(`inequality, larger than ${reference(rule.less)}`)
+        break
       case 'non-consecutive':
         for (const [a, b] of rule.except ?? []) {
           labels[a].push(`Non-Consecutive exception with ${reference(b)}`)

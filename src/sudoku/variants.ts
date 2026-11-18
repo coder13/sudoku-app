@@ -64,6 +64,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Palindrome',
     rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
   },
+  inequality: {
+    name: 'Inequality',
+    rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
+  },
   quadruple: {
     name: 'Quadruple',
     rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
@@ -172,6 +176,7 @@ export function variantHouseMasks(puzzle: VariantPuzzle, values: string, elimina
 export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: number): boolean {
   if (!puzzle || a === b) return false
   return (puzzle.rules ?? []).some((rule) => {
+    if (rule.type === 'inequality') return a === rule.less && b === rule.greater || a === rule.greater && b === rule.less
     if (rule.type === 'diagonal') {
       const line = rule.diagonal === 'main' ? mainDiagonal : antiDiagonal
       return line.includes(a) && line.includes(b)
@@ -211,6 +216,11 @@ export function palindromePartner(cells: readonly number[], cell: number) {
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
   let excluded = 0
   for (const rule of puzzle?.rules ?? []) {
+    if (rule.type === 'inequality' && (from === rule.less && to === rule.greater || from === rule.greater && to === rule.less)) {
+      for (let other = 1; other <= 9; other++) {
+        if (from === rule.less ? other <= digit : other >= digit) excluded |= 1 << (other - 1)
+      }
+    }
     if (rule.type === 'palindrome' && palindromePartner(rule.cells, from) === to) {
       excluded |= 511 & ~(1 << (digit - 1))
     }
@@ -259,6 +269,7 @@ function validJigsawRegions(regions: unknown): boolean {
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
   switch (rule.type) {
+    case 'inequality': return validCells([rule.less, rule.greater], 2)
     case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
     case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
@@ -317,6 +328,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
 }
 
 const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+  inequality: PUZZLE_VARIANTS.inequality.name,
   'extra-house': 'Extra regions',
   diagonal: VARIANTS.diagonal.name,
   'killer-cages': VARIANTS['killer-cages'].name,
@@ -349,6 +361,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'inequality':
+        descriptions.push(PUZZLE_VARIANTS.inequality.rule)
+        break
       case 'non-consecutive':
         descriptions.push(nonConsecutiveDescription(puzzle, rule))
         break

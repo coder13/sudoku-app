@@ -760,6 +760,52 @@ node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm aft
 The remaining 230 ms app-order rating still needs work in the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88). The geometric cache cannot replace actual numeric rules or prove an unknown candidate impossible. Keep improvements to the remaining expert searches separate and preserve their positive proofs.
 
 
+## Inequality app integration
+
+[CodeNameVerity's Palindrome 14, Coach FzzD](https://sudoku.coach/en/s/FzzD) combines zero givens, three Palindrome paths, seven directed inequalities and five white dots. The unmodified export is `palindrome-coach.json`, example 1; the complete native definition and independently verified completion are in `inequality-palindrome14.json`. [The original published diagram](https://sudoku.coach/open_graph_images/FzzD.png) was inspected on 2026-11-18. Its SHA-256 is `ce241d481d35ed65b3b6aee192a3acd10f22b6d1c47025671d726fed806c5a85`. Every sign direction, dot and line matches the export. Exact house propagation in [PR 143](https://github.com/coder13/sudoku-app/pull/143) made its verification practical without increasing the default budget.
+
+The app decodes each ordered `greaterLess` pair as `less < greater`, preserving all companion rules. It rejects invalid endpoints, parameters and unknown semantics. A sign's vertex faces the smaller cell after every grid transformation. Distant endpoints have a connecting line. A sign sharing a pair with a dot is offset so both clues remain visible. Cell labels identify the smaller and larger partners. Actual SVG component paths were rasterized at 900 and 360 pixels and compared with the published diagram. This is static clue review; live viewport interaction review remains separate.
+
+Input and note cleanup use the directed relation in both directions. All 81 digit pairs are checked, including equal digits and the 1/9 boundaries. Tests preserve unrelated notes, compatible notes, undo, redo and bulk entries. The complete published puzzle imports through the actual preview service, saves and reloads, preserves its shared definition, replays proofs and exposes several hints and Finder counts. Every inequality proof is independently checked by enumerating allowed digit pairs. The three existing practice exercises retain their eight-point cost and checked answers.
+
+The app order retains the 98-point, nine-step stalled logical path and seven opening hint choices. Its exact verified completion remains the published grid. A partial walkthrough is reported as stalled. This integration does not claim a complete logical solve of FzzD. Inequality is available for imported and shared puzzles; New puzzle recipes remain conditional on calibration.
+
+Validation passes 423 app tests, 258 Wasm contracts, TypeScript and the 159-route production/offline build. An expanded fixed-clue test checks 16,384 family selections with Palindrome present: 12,288 compatible selections pass and 4,096 deliberately contradictory selections reject. These are bounded fixtures, not a claim that arbitrary family combinations are feasible. The eight transformations preserve every directed endpoint and companion rule. Native code and the released engine artifact are unchanged.
+
+Measurements use Node 26.13.0 on macOS arm64. The same engine artifact runs on both sides of the paired control. Fixed engine calls use five warmups/twenty samples; exhaustive pages use two/ten. Both exact operations complete under the unchanged one-million-node budget. Values are median/p95 milliseconds for the integration build. They include serialization and exclude worker startup, transfer and rendering. Identical binaries and small timing differences do not establish an engine speedup.
+
+| Engine request | Median/p95 ms |
+| --- | --- |
+| Candidates | 0.048/0.127 |
+| Unique analysis | 480.125/486.529 |
+| Exact solve | 392.463/396.248 |
+| Native-order rating | 0.113/0.128 |
+| App-order rating | 5.936/6.018 |
+| Ten-hint request | 5.744/5.860 |
+| Exhaustive first page | 5.674/5.707 |
+
+Both hint requests expose seven choices. The committed Wasm buffer is 1.50 MiB in this sequence. Buffer size is not RSS or live allocation.
+
+A second benchmark exercises the real app callers through the in-process test transport. It excludes browser worker startup, transfers, layout and paint. Preview uses two warmups/five samples, so its p95 is the maximum; the other callers use five/twenty. Server rendering starts after module loading. Assertions are outside the timed regions. The nondedicated host had no identified compiler or engine test running during measurement.
+
+| App caller | Median/p95 ms |
+| --- | --- |
+| Decode, verify, solve and prepare preview | 909.715/913.208 |
+| Play candidates | 0.036/0.045 |
+| Ten hints | 5.770/6.007 |
+| Partial solution walkthrough | 6.258/6.705 |
+| Enter a digit with both note types populated | 0.048/0.055 |
+| Board server rendering | 1.752/2.787 |
+
+App Wasm stays at 3,366,959 raw / 899,869 gzip bytes with SHA-256 `fae4f83d56e56392a4f4685721d6b01edf60efdbca25b3c2f1bdc4b9a2c06547`. Across all fourteen generated client JavaScript assets, the build grows from 1,980,133 raw / 483,458 gzip bytes to 1,981,956 / 484,035, an increase of 1,823 raw and 577 gzip bytes. This sum is not a per-route transfer measurement. Gzip uses Python's default compression with a fixed timestamp in both builds.
+
+Repeat after building the app:
+
+```sh
+node --experimental-strip-types --test scripts/bench-inequality-app.mts
+node --experimental-strip-types scripts/bench-engine-pruning.mjs main.wasm app.wasm inequality-palindrome14
+```
+
 ## Exact house propagation for sparse mixed puzzles
 
 [Issue 139](https://github.com/coder13/sudoku-app/issues/139) compares main `9d298af` with search-only house propagation. The source-linked `inequality-palindrome14.json` preserves CodeNameVerity's [Palindrome 14, Coach FzzD](https://sudoku.coach/en/s/FzzD). Its zero-given definition contains three Palindrome paths, seven directed inequalities and five white dots. The original export remains in `palindrome-coach.json`. No answer digits enter the search definition.
