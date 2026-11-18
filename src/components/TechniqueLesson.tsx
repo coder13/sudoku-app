@@ -15,7 +15,6 @@ import { LessonWorkbench } from './LessonWorkbench'
 import { LearnHeading, LessonDifficulty } from './LearnHeading'
 import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
-import { ConceptCheck } from './ConceptCheck'
 import { FoundationVisual } from './FoundationVisual'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
@@ -274,7 +273,6 @@ export function ExplanationBlock({ block, index, drills }: { block: LessonBlock;
       <thead><tr>{block.columns.map((column, i) => <th scope="col" key={i}>{column}</th>)}</tr></thead>
       <tbody>{block.rows.map((row, i) => <tr key={i}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody>
     </table></div>
-    case 'concept-check': return <div data-lesson-block={index}><ConceptCheck block={block} /></div>
     case 'foundation-visual': return <div data-lesson-block={index}><FoundationVisual visual={block.visual} /></div>
     default: return null
   }

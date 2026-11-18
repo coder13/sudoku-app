@@ -126,9 +126,6 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
           element.querySelectorAll('thead th').forEach((cell, index) => property(cell, 'Column heading', block.columns, index))
           element.querySelectorAll('tbody tr').forEach((row, rowIndex) => row.querySelectorAll('td').forEach((cell, index) => property(cell, 'Table cell', block.rows[rowIndex], index)))
           break
-        case 'concept-check':
-          property(element.querySelector('h2'), 'Concept check heading', block, 'title')
-          break
         case 'practice': {
           field(element.querySelector('.lesson-trainer-title'), 'Trainer subtitle', (value) => {
             if (value) block.title = value

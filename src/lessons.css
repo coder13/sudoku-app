@@ -183,13 +183,6 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-table caption { padding-bottom: var(--space-8); text-align: left; font-weight: 700; }
 .lesson-table :is(th, td) { padding: var(--space-10); text-align: left; border-bottom: 1px solid var(--border); }
 .lesson-table th { color: var(--muted); font-weight: 600; }
-.lesson-concept-check { display: grid; gap: var(--space-12); min-width: 0; }
-.concept-progress { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.concept-choices { display: grid; gap: var(--space-8); min-width: 0; margin: 0; padding: 0; border: 0; }
-.concept-choices legend { margin-bottom: var(--space-12); font-weight: 600; }
-.concept-choices .button { min-height: 44px; justify-content: start; text-align: left; white-space: normal; }
-.concept-choices .button[aria-pressed="true"] { background: var(--selected-bg); border-color: var(--selected-border); color: var(--dark-purple); }
-.concept-feedback { block-size: 6.6em; overflow: auto; font-size: 14px; line-height: 1.65; }
 .lesson-diagram {
   display: grid;
   gap: var(--space-12);
@@ -207,11 +200,9 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-proof summary { color: var(--dark-purple); font-weight: 700; cursor: pointer; }
 .lesson-proof > div { margin-top: var(--space-8); }
 .lesson-proof ol { margin: 7px 0; padding-inline-start: 1.5em; }
-.lesson-practice, .lesson-worked-examples, .lesson-concept-check {
+.lesson-practice, .lesson-worked-examples {
   border-block-start: 1px solid var(--border);
   padding-block-start: var(--space-20);
-}
-.lesson-practice, .lesson-worked-examples {
   display: grid;
   gap: var(--space-16);
   min-width: 0;

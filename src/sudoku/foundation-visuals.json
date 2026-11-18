@@ -202,6 +202,58 @@
             "kind": "result"
           }
         ]
+      },
+      {
+        "title": "The same removal can leave two choices",
+        "description": "Now R3C6 also has a candidate 6. The pair still uses 2 and 8 in row 3. Remove 2 and 8 from R3C6. Both 5 and 6 can still go there.",
+        "candidates": {
+          "21": [
+            2,
+            8
+          ],
+          "22": [
+            2,
+            8
+          ],
+          "23": [
+            2,
+            5,
+            6,
+            8
+          ]
+        },
+        "marks": [
+          {
+            "cell": 21,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 21,
+            "digit": 8,
+            "kind": "pattern"
+          },
+          {
+            "cell": 22,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 22,
+            "digit": 8,
+            "kind": "pattern"
+          },
+          {
+            "cell": 23,
+            "digit": 2,
+            "kind": "removal"
+          },
+          {
+            "cell": 23,
+            "digit": 8,
+            "kind": "removal"
+          }
+        ]
       }
     ],
     "region": {
@@ -2919,6 +2971,53 @@
         ],
         "states": [
           "Remove 5 from R4C4"
+        ]
+      },
+      {
+        "title": "A fourth column gives the rows another choice",
+        "description": "Add a possible 5 at R3C6. The three rows can use R3C6, R5C7, and R7C3. That leaves room for 5 in R4C4, so keep that candidate.",
+        "candidates": {
+          "20": [
+            5
+          ],
+          "21": [
+            5
+          ],
+          "39": [
+            5
+          ],
+          "42": [
+            5
+          ],
+          "56": [
+            5
+          ],
+          "60": [
+            5
+          ],
+          "30": [
+            5
+          ],
+          "23": [
+            5
+          ]
+        },
+        "marks": [
+          {
+            "cell": 23,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 42,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 56,
+            "digit": 5,
+            "kind": "pattern"
+          }
         ]
       }
     ]

@@ -140,6 +140,8 @@ test('both fish placements use every cover and exclude the marked candidate', ()
   const layouts = digitLayouts(visual.candidates!, [[20, 21], [39, 42], [56, 60]])
   assert.deepEqual(layouts, [[21, 42, 56], [20, 39, 60]])
   assert.ok(layouts.every(layout => !layout.includes(30)))
+  const withFourthColumn = digitLayouts(visual.steps.at(-1)!.candidates!, [[20, 21, 23], [39, 42], [56, 60]])
+  assert.ok(withFourthColumn.some(layout => layout.includes(30)))
 })
 
 test('pointing and claiming rule out their targets from either placement in the overlap', () => {

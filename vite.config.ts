@@ -19,10 +19,9 @@ function prerenderPages() {
   if (missing.length) throw new Error(`Add Learn articles for these hint techniques: ${missing.join(', ')}`)
   for (const lesson of lessons) {
     const drills = lesson.blocks.flatMap((block) => block.type === 'practice' ? block.drills : [])
-    const conceptPractice = lesson.kind === 'foundation' && lesson.blocks.some((block) =>
-      block.type === 'concept-check' && block.questions.length >= 2)
-    if ((!drills.length && !conceptPractice) || drills.some(({ example }) => !isDifficulty(lessonDifficulties[example]))) {
-      throw new Error(`Each lesson needs rated puzzle practice or foundation questions. Check ${lesson.id}.`)
+    const hasFoundationVisual = lesson.kind === 'foundation' && lesson.blocks.some((block) => block.type === 'foundation-visual')
+    if ((!drills.length && !hasFoundationVisual) || drills.some(({ example }) => !isDifficulty(lessonDifficulties[example]))) {
+      throw new Error(`Each lesson needs rated puzzle practice or a foundation visual. Check ${lesson.id}.`)
     }
   }
   return [
