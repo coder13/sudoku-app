@@ -1,54 +1,16 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, Check, Copy, Link2Off, QrCode, X } from 'lucide-react'
+import { ArrowLeft, Check, Copy, QrCode, X } from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import qrcode from 'qrcode-generator'
+import { LinkedDeviceRow } from './LinkedDeviceRow'
+import { useMobileLayout } from './mobile-layout'
 import { deviceSync, recoveryStorage } from '../sudoku/device-sync'
 
 type Invitation = { link: string; expires: number; image: string }
 type LinkedDevice = Awaited<ReturnType<typeof deviceSync.devices>>[number]
 
-function DeviceRow({ device, current, working, rename, unlink }: {
-  device: LinkedDevice
-  current: boolean
-  working: boolean
-  rename: (name: string) => Promise<boolean>
-  unlink: () => void
-}) {
-  const [mode, setMode] = useState<'view' | 'rename' | 'unlink'>('view')
-  const [draft, setDraft] = useState('')
-  const renameButton = useRef<HTMLButtonElement>(null)
-  const unlinkButton = useRef<HTMLButtonElement>(null)
-  function close() {
-    const trigger = mode === 'rename' ? renameButton : unlinkButton
-    setMode('view')
-    requestAnimationFrame(() => trigger.current?.focus())
-  }
-  const label = device.name + (current ? ' (this device)' : '')
-  if (mode === 'rename') return <li><form className="sync-rename" onSubmit={async event => {
-    event.preventDefault()
-    if (await rename(draft)) close()
-  }} onKeyDown={event => { if (event.key === 'Escape' && !working) close() }}>
-    <label className="sr-only" htmlFor={'name-' + device.id}>Device name</label>
-    <input id={'name-' + device.id} autoFocus autoComplete="off" maxLength={60} placeholder="Automatic name"
-      value={draft} onFocus={event => event.target.select()} onChange={event => setDraft(event.target.value)} />
-    <button className="button primary" disabled={working}>Save</button>
-    <button className="icon-button borderless" type="button" aria-label="Cancel rename" title="Cancel" disabled={working} onClick={close}><X size={18} /></button>
-  </form></li>
-  return <li>
-    <div className="sync-device-label"><strong>{device.name}</strong>{current && <small>This device</small>}</div>
-    {mode === 'unlink' ? <>
-      <button className="button danger" disabled={working} onClick={unlink}>Confirm unlink</button>
-      <button className="icon-button borderless" aria-label="Cancel unlink" title="Cancel" disabled={working} onClick={close}><X size={18} /></button>
-    </> : <>
-      <button className="button borderless" disabled={working} aria-label={'Rename ' + label} ref={renameButton}
-        onClick={() => { setDraft(device.name); setMode('rename') }}>Rename</button>
-      <button className="icon-button borderless" disabled={working} aria-label={'Unlink ' + label} title={'Unlink ' + device.name}
-        ref={unlinkButton} onClick={() => setMode('unlink')}><Link2Off size={17} /></button>
-    </>}
-  </li>
-}
-
 export function DeviceSyncPage() {
+  const mobile = useMobileLayout()
   const status = useSyncExternalStore(deviceSync.subscribe, deviceSync.getSnapshot, deviceSync.getServerSnapshot)
   const [ticket, setTicket] = useState(() => typeof window === 'undefined' ? null : new URLSearchParams(window.location.hash.slice(1)).get('pair'))
   const [key, setKey] = useState(() => {
@@ -155,7 +117,7 @@ export function DeviceSyncPage() {
         setCopied(false); setManualCopy(false); setInvite({ link: link.href, expires, image: code.createDataURL(4) })
       })}><QrCode size={18} />Link another device</button>}
       <section><h2>Linked devices</h2><ul className="sync-devices">{devices.map(device =>
-        <DeviceRow key={device.id} device={device} current={device.id === deviceSync.credentials()?.id} working={working}
+        <LinkedDeviceRow key={device.id} device={device} mobile={mobile} current={device.id === deviceSync.credentials()?.id} working={working}
           rename={name => action(async () => {
             const result = await deviceSync.rename(device.id, name)
             listVersion.current++
