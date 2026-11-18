@@ -27,7 +27,7 @@ function retryGuidance(attempt: DeductionAction, answers: readonly DeductionActi
   const address = cellName(cell)
   const movesHere = answers.filter((answer) => ('place' in answer ? answer.place : answer.eliminate).cell === cell)
   if (!movesHere.length) {
-    return `There’s no ${technique} move in ${address}. Keep looking in the rest of the grid.`
+    return `Try a different cell. The ${technique} moves in this exercise are elsewhere.`
   }
   if (!movesHere.some((answer) => ('place' in answer) === placing)) {
     return placing
@@ -35,8 +35,8 @@ function retryGuidance(attempt: DeductionAction, answers: readonly DeductionActi
       : `In ${address}, look for a digit to place with ${technique}.`
   }
   return placing
-    ? `Look for a different digit to place in ${address} with ${technique}.`
-    : `Look for a different candidate to remove from ${address} with ${technique}.`
+    ? `This cell has a ${technique} placement. Try a different digit in ${address}.`
+    : `This cell has a ${technique} removal. Try a different candidate in ${address}.`
 }
 
 export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }: {
@@ -44,7 +44,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
 }) {
   const canPlace = puzzle.answers.some((answer) => 'place' in answer)
   const canRemove = puzzle.answers.some((answer) => 'eliminate' in answer)
-  const defaultInstruction = canPlace && canRemove ? 'Find one placement or candidate removal.'
+  const defaultInstruction = canPlace && canRemove ? 'Place one digit or remove one candidate.'
     : canPlace ? 'Find one digit you can place.' : 'Use Pencil mode to remove a candidate.'
   const [result, setResult] = useState<{ actions: DeductionAction[]; revealed: boolean } | null>(null)
   const [guidance, setGuidance] = useState<string>()
@@ -94,7 +94,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
         <DeductionOutcome removals={describeHintRemovals(puzzle.deduction, { cellReferenceStyle: 'concise' })}
           text={describeHint(puzzle.deduction, { cellReferenceStyle: 'concise' }).text} />
         <DeductionExplanation explanation={[solutionDiagram.description, ...(solutionDiagram.reasonSteps ? [] : [
-          (puzzle.variantPuzzle || !solutionDiagram.reason) ? practiceGuide?.reason ?? solutionDiagram.reason : solutionDiagram.reason,
+          solutionDiagram.reason || practiceGuide?.reason || '',
         ])].filter(Boolean)}
           explanationSteps={solutionDiagram.reasonSteps} trace={solutionDiagram.trace} />
       </>}

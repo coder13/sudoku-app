@@ -4,13 +4,13 @@ import { foundationBoard, foundationVisuals, visualColors, type FoundationVisual
 import { Board } from './Board'
 
 const keyLabels: Record<VisualKey, string> = {
-  pattern: 'Blue ring: part of the pattern.',
-  accent: 'Amber ring: a second group or role.',
-  removal: 'Red strike: candidate ruled out.',
-  result: 'Green ring: digit proved to go here.',
-  strong: 'Solid line: strong link. At least one is true.',
-  weak: 'Dashed line: weak link. At most one is true.',
-  arrow: 'Arrow: direction of this implication.',
+  pattern: 'A blue ring marks a candidate in the pattern.',
+  accent: 'An amber ring marks a second group.',
+  removal: 'A red strike marks a candidate to remove.',
+  result: 'A green ring marks a digit to place.',
+  strong: 'A solid line is a strong link. At least one end is true.',
+  weak: 'A dashed line is a weak link. At most one end is true.',
+  arrow: 'An arrow points from an assumption to what follows.',
 }
 
 function VisualKey({ kind }: { kind: VisualKey }) {

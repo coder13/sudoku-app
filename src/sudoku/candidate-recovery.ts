@@ -54,7 +54,7 @@ const list = new Intl.ListFormat('en')
 export function explainCandidateRecovery(game: Game, candidate: Candidate, style: CellReferenceStyle): string {
   const reference = (cell: number) => cellReference(cell, style, game.difficulty ?? undefined)
   const { cell, digit } = candidate
-  const fallback = `The solution needs ${digit} in ${reference(cell)}. Add it back as a candidate to continue.`
+  const fallback = `The solution uses ${digit} in ${reference(cell)}. Restore that candidate.`
   if (game.variant) return fallback
 
   const values = valuesOf(game)
@@ -74,11 +74,11 @@ export function explainCandidateRecovery(game: Game, candidate: Candidate, style
     const placements = [...new Set(blockers)]
     if (placements.includes(-1) || placements.length > 2) continue
 
-    const assumption = `If ${reference(cell)} were ${alternative},`
-    const result = `${variantHouseName(house, puzzle)} would have nowhere to put a ${digit}`
+    const assumption = `Suppose ${reference(cell)} is ${alternative}.`
+    const result = `That leaves no place for ${digit} in ${variantHouseName(house, puzzle)}`
     if (!placements.length) return `${assumption} ${result}. ${reference(cell)} needs ${digit}.`
     const forced = list.format(placements.map(reference))
-    return `${assumption} ${forced} would have to be ${digit}, and ${result}. ${reference(cell)} needs ${digit}.`
+    return `${assumption} This forces ${digit} in ${forced}. ${result}. ${reference(cell)} needs ${digit}.`
   }
   return fallback
 }

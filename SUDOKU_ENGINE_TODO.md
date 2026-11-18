@@ -53,7 +53,7 @@ This stage reached main at `8439f6d` through [PR 112](https://github.com/coder13
 
 ### Non-Consecutive deduction and training follow-up
 
-This pass is isolated on `codex/sudoku-nonconsecutive-deductions` from main at `36add07`. [Deduction and training issue](https://github.com/coder13/sudoku-app/issues/111)
+This pass is isolated on `codex/sudoku-nonconsecutive-deductions` from main at `36add07` and includes the lesson/hint rewrite in main `da339cf` ([PR 99](https://github.com/coder13/sudoku-app/pull/99)). [Deduction and training issue](https://github.com/coder13/sudoku-app/issues/111)
 
 - [x] Implement two-cell and three-cell house locks, bivalue and trivalue neighbors using the existing binary relation tables, explicit exceptions and all declared houses.
 - [x] Add typed exhaustive-alternative proofs, rule and house provenance, and independent case replay. Cover positive moves, missing edges, extra candidates, digit boundaries, Jigsaw and extra houses. Reproduce the six researched removals at the archived Coach stall.

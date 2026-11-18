@@ -199,7 +199,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   return <div className="lesson-workbench" data-ready={ready} data-preview={preview || undefined} role="group" aria-label={preview ? label : `${label} and input tools`} onKeyDown={keyDown} style={{ '--board-font-scale': preferences.appearance.gridTextScale } as CSSProperties}>
     <div className="lesson-board" style={region ? { '--diagram-columns': region.columns } as CSSProperties : undefined}>
       <Board givens={puzzle.givens} values={values} position={shownGame.position} region={region} errors={errors} variantPuzzle={puzzle.variantPuzzle}
-        annotations={showAnnotations ? annotations : undefined} showGuides={Boolean(region) || preferences.appearance.showGuides}
+        annotations={showAnnotations ? annotations : undefined} showGuides
         label={label} selected={preview ? [] : selected} active={active} boardRef={board} onCell={interactive ? select : undefined}
         dragSelect={highlightMode}
         onCellPointerDown={interactive && highlightMode ? (cell, event) => {

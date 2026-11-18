@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
-import { LearnBreadcrumbs } from '../components/LearnBreadcrumbs'
+import { LearnHeading } from '../components/LearnHeading'
 import { lessonDifficultyLabels, lessonsByVariant } from '../sudoku/lesson-difficulties'
 import { learnFundamentals, learnOverview } from '../sudoku/lessons'
 
@@ -12,14 +12,12 @@ export const Route = createFileRoute('/learn/')({
 export function LessonOverview() {
   return (
     <article className="lesson-overview">
-      <header className="lesson-heading">
-        <LearnBreadcrumbs />
-        <p>{learnOverview.intro}</p>
+      <LearnHeading summary={learnOverview.intro}>
         <p className="lesson-overview-basics">
           <span>{learnOverview.fundamentalsNote}</span>{' '}
           <Link to="/learn/$technique" params={{ technique: learnFundamentals.id }}>{learnFundamentals.title}</Link>.
         </p>
-      </header>
+      </LearnHeading>
       <section className="lesson-overview-section" data-lesson-difficulty>
         <h2 className="article-subheading">{learnOverview.difficultyTitle}</h2>
         {learnOverview.difficultyParagraphs.map((paragraph, index) => <p className="article-paragraph" key={index}>{paragraph}</p>)}

@@ -39,7 +39,7 @@ test('hint copy uses Sudoku terms and one-based cell coordinates', () => {
     actions: [{ place: { cell: 40, digit: 5 } }],
   }), {
     title: 'Hidden single',
-    text: 'Place digit 5 in row 5, column 5.',
+    text: 'Place 5 in row 5, column 5.',
   })
 
   const elimination = {
@@ -50,7 +50,7 @@ test('hint copy uses Sudoku terms and one-based cell coordinates', () => {
   for (const difficulty of ['hard', 'unfair', 'extreme'] as const) {
     assert.deepEqual(describeHint(elimination, { difficulty }), {
       title: 'X-wing',
-      text: 'Remove digit 7 from the candidates in r1c9.',
+      text: 'Remove 7 from r1c9.',
     })
   }
   assert.match(describeHint(elimination, { difficulty: 'medium' }).text, /row 1, column 9/)
@@ -59,7 +59,9 @@ test('hint copy uses Sudoku terms and one-based cell coordinates', () => {
 })
 
 test('technique labels preserve common Sudoku capitalization', () => {
+  assert.equal(techniqueLabel('3d-medusa'), '3D Medusa')
   assert.equal(techniqueLabel('als-xz'), 'ALS-XZ')
+  assert.equal(techniqueLabel('hidden-single-box'), 'Hidden single in a box')
   assert.equal(techniqueLabel('naked-pair'), 'Naked pair')
 })
 
@@ -72,15 +74,15 @@ test('hints describe all removals so deductions with the same first removal look
   }
   assert.notEqual(describeHint(single).text, describeHint(multiple).text)
   assert.equal(describeHint(multiple, { cellReferenceStyle: 'concise' }).text,
-    'Remove digit 2 from the candidates in r1c1 and r1c2. Remove digit 5 from the candidates in r1c2.')
+    'Remove 2 from r1c1 and r1c2. Remove 5 from r1c2.')
 })
 
 test('single fallback uses the same cell and digit terminology', () => {
   assert.deepEqual(describeSingleHint([40, 5]), {
     title: 'Single',
-    text: 'Place digit 5 in row 5, column 5.',
+    text: 'Place 5 in row 5, column 5.',
   })
-  assert.equal(describeSingleHint([40, 5], 'concise').text, 'Place digit 5 in r5c5.')
+  assert.equal(describeSingleHint([40, 5], 'concise').text, 'Place 5 in r5c5.')
 })
 
 test('structured removals group cells by digit and preserve reference preferences', () => {

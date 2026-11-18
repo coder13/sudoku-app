@@ -5,6 +5,7 @@ import { createElement, isValidElement, type ReactElement, type ReactNode } from
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import { isSolved, makeGame } from '../src/sudoku/game.ts'
+import { HINT_CANDIDATES_ERROR, HINT_ERROR } from '../src/sudoku/hints.ts'
 import { PUZZLE_VARIANTS, type PuzzleVariantId } from '../src/sudoku/variants.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { describeHint, type CellReferenceStyle } from '../src/sudoku/hints.ts'
@@ -50,7 +51,7 @@ test('rendered hints and desktop/mobile solution lists share the selected cell n
       hint, explanation: [diagram.description, diagram.reason], onClose() {},
     }))
     assert.ok(card.includes(`${expected} has an odd circle`))
-    assert.ok(card.includes(`Remove digit 8 from the candidates in ${expected}.`))
+    assert.ok(card.includes(`Remove 8 from ${expected}.`))
     if (cellReferenceStyle !== 'concise') assert.doesNotMatch(card, /\br9c9\b/i)
 
     const props = { state: { status: 'ready', trace: { steps: [parity.deduction], rating: { status: { solved: 'easy' } } } },
@@ -120,11 +121,11 @@ test('the variant finder explains invalid candidates and entries before showing 
   game.position.eliminations[2] = 1 << 3
   const candidates = renderToStaticMarkup(createElement(PuzzleAnalysisContents, { game }))
   assert.match(candidates, /role="alert"/)
-  assert.match(candidates, /current candidates rule out the solution/)
+  assert.ok(candidates.includes(HINT_CANDIDATES_ERROR.text))
   game.position.entries = '009' + '0'.repeat(78)
   const entries = renderToStaticMarkup(createElement(PuzzleAnalysisContents, { game }))
-  assert.match(entries, /Resolve any conflicts/)
-  assert.doesNotMatch(entries, /current candidates rule out the solution/)
+  assert.ok(entries.includes(HINT_ERROR.text))
+  assert.ok(!entries.includes(HINT_CANDIDATES_ERROR.text))
 })
 
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {

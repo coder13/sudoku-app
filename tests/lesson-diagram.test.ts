@@ -50,7 +50,7 @@ test('AIC location reveals the endpoint candidates without revealing links or th
   }
   const clue = hintLocation(hint, 'concise')
   assert.ok(clue)
-  assert.equal(clue.text, 'Chain starts at 4 in r1c4. It ends at 6 in r3c9.')
+  assert.equal(clue.text, 'Start at 4 in r1c4. The other end is 6 in r3c9.')
   assert.deepEqual([...clue.annotations.cells!.keys()], [3, 26])
   assert.equal(clue.annotations.candidates?.get(3)?.get(4)?.label, 'chain start')
   assert.equal(clue.annotations.candidates?.get(26)?.get(6)?.label, 'chain end')
@@ -68,7 +68,7 @@ test('Grouped AIC location shows all candidates in an endpoint group', () => {
   }
   const clue = hintLocation(hint, 'concise')
   assert.ok(clue)
-  assert.equal(clue.text, 'Chain starts at 4 in r1c1 or r1c2. It ends at 4 in r1c3.')
+  assert.equal(clue.text, 'Start at 4 in r1c1 or r1c2. The other end is 4 in r1c3.')
   const marks = clue.annotations.candidates
   assert.equal(marks?.get(0)?.get(4)?.label, 'chain start')
   assert.equal(marks?.get(1)?.get(4)?.label, 'chain start')

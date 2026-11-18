@@ -76,7 +76,7 @@ test('variant source context survives serialization and formats parity and Anti-
   const options = { cellReferenceStyle: 'verbose' } as const
   const long = lessonDiagram(normalized, normalized.pattern, options)
   assert.equal(long.description, 'row 9, column 9 has an odd circle, so it can contain only 1, 3, 5, 7, or 9.')
-  assert.equal(describeHint(parity.deduction, options).text, 'Remove digit 8 from the candidates in row 9, column 9.')
+  assert.equal(describeHint(parity.deduction, options).text, 'Remove 8 from row 9, column 9.')
   assert.deepEqual(long.results, ['Remove 8 from row 9, column 9.'])
   assert.equal(lessonDiagram(parity).description, 'r9c9 has an odd circle, so it can contain only 1, 3, 5, 7, or 9.')
   assert.deepEqual(lessonDiagram(parity).results, ['Remove 8 from R9C9.'])

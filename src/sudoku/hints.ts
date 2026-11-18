@@ -32,17 +32,18 @@ export function isCellReferenceStyle(value: unknown): value is CellReferenceStyl
 }
 
 export const NO_HINT: PuzzleHint = {
-  title: 'No hint available', text: 'No supported logical step is available for the current grid.',
+  title: 'No hint available', text: 'The solver found no logical move with the current settings and candidates.',
 }
 export const HINT_ERROR: PuzzleHint = {
-  title: 'Hint unavailable', text: 'Resolve any conflicts in the grid, then try again.',
+  title: 'Hint unavailable', text: 'Check the grid for conflicting digits, then try the hint again.',
 }
 export const HINT_CANDIDATES_ERROR: PuzzleHint = {
   title: 'Review your candidates',
-  text: 'The current candidates rule out the solution. Restore any candidates you removed by mistake, or generate all candidates again.',
+  text: 'A digit the solution needs is missing from your candidates. Restore the missing candidate or generate all candidates again.',
 }
 
 const TECHNIQUE_LABELS: Record<string, string> = {
+  '3d-medusa': '3D Medusa',
   'non-consecutive-locked-candidates-2': 'Non-Consecutive locked candidates (2 cells)',
   'non-consecutive-locked-candidates-3': 'Non-Consecutive locked candidates (3 cells)',
   'non-consecutive-bivalue': 'Non-Consecutive bivalue',
@@ -53,24 +54,34 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'als-discontinuous-nice-loop': 'ALS discontinuous Nice Loop',
   'als-continuous-nice-loop': 'ALS continuous Nice Loop',
   'als-xz': 'ALS-XZ',
+  'als-xy-wing': 'ALS-XY-Wing',
   'bug-plus-one': 'BUG+1',
   'death-blossom': 'Death Blossom',
   'empty-rectangle': 'Empty rectangle',
+  'finned-x-wing': 'Finned X-wing',
+  'firework-aic': 'Firework AIC',
+  'firework-als-wing': 'Firework ALS-Wing',
+  'firework-l-wing': 'Firework L-Wing',
+  'firework-w-wing': 'Firework W-Wing',
   'grouped-aic': 'Grouped alternating inference chain',
+  'hidden-single-box': 'Hidden single in a box',
   'multi-sector-locked-sets': 'Multi-sector locked sets',
   'sk-loop': 'SK loop',
+  'sashimi-x-wing': 'Sashimi X-wing',
   'sue-de-coq': 'Sue de Coq',
   'pattern-overlay': 'Pattern Overlay',
   'pairwise-pattern-overlay': 'Two-digit Pattern Overlay',
   'triple-pattern-overlay': 'Three-digit Pattern Overlay',
   'quadruple-pattern-overlay': 'Four-digit Pattern Overlay',
   'quintuple-pattern-overlay': 'Five-digit Pattern Overlay',
+  'tridagon-aic': 'Tridagon AIC',
   'unique-rectangle-aic': 'Unique Rectangle alternating inference chain',
   'unique-rectangle-discontinuous-nice-loop': 'Unique Rectangle discontinuous Nice Loop',
   'unique-rectangle-continuous-nice-loop': 'Unique Rectangle continuous Nice Loop',
   'w-wing': 'W-wing',
   'wxyz-wing': 'WXYZ-Wing',
   'x-chain': 'X-chain',
+  'xv': 'XV pairs',
   'x-wing': 'X-wing',
   'xy-chain': 'XY-chain',
   'xy-wing': 'XY-wing',
@@ -120,22 +131,22 @@ export function describeHint(deduction: Deduction, {
 }: { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle } = {}): PuzzleHint {
   const title = techniqueLabel(deduction.technique)
   const action = deduction.actions[0]
-  if (!action) return { title, text: 'Study the current grid for this technique.' }
+  if (!action) return { title, text: 'Look for this technique in the current grid.' }
 
   const location = (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
   if ('place' in action) {
     const { cell, digit } = action.place
-    return { title, text: `Place digit ${digit} in ${location(cell)}.` }
+    return { title, text: `Place ${digit} in ${location(cell)}.` }
   }
 
   const text = describeHintRemovals(deduction, { difficulty, cellReferenceStyle }).map(({ digit, cells }) =>
-    `Remove digit ${digit} from the candidates in ${locationList.format(cells)}.`).join(' ')
+    `Remove ${digit} from ${locationList.format(cells)}.`).join(' ')
   return { title, text }
 }
 
 export function describeSingleHint([cell, digit]: [number, number], style: CellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE): PuzzleHint {
   return {
     title: 'Single',
-    text: `Place digit ${digit} in ${cellReference(cell, style, 'easy')}.`,
+    text: `Place ${digit} in ${cellReference(cell, style, 'easy')}.`,
   }
 }

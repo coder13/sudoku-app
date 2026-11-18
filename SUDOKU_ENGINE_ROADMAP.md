@@ -6,7 +6,7 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `36add07`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, Odd/Even, Anti-King, Non-Consecutive, consistent cell references, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `da339cf`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, Odd/Even, Anti-King, Non-Consecutive, consistent cell references, the revised lesson layout, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
