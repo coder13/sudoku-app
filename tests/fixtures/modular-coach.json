@@ -1,0 +1,646 @@
+{
+  "compiler": {
+    "url": "https://sudoku.coach/js/jCfXtZs-1776367508519.js",
+    "sha256": "567c7f9023cfff3a7f8feb4f8393d3b10a1f85f9539ef48f31c577b105ad521f"
+  },
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/Hu9m",
+      "title": "Entropy 7/13",
+      "author": "DavidW",
+      "published": "2026-07-31 23:35:41",
+      "code": "SCv7_32_f2e8qlebdq1j047s2ufuf06n5vg5ltembe75a3tkm4k153s8n2mt4a7vroimikvhm3i0m0hk7f5ootsmmekceplvdevbqa0bh2tfjt7tof81vgqo6lujh2niv4m9lf98ck312jg78q4rk7aulfrb23v3e0s0j253lstnvgtu9h7i2d3tpl7ufio5nv2v4ngsnq30fntmne7msnjp2pnvoulqic2igot28cqld78ffqeahh4h1d57epfs0d90calmg59cr44i41ah4p8sn2g39k39lkqkoij7jc3261aadhm228sk1ci5ik2iedik0dg5l0al9min699564j50oip701pehi2k5ja1bk3prdc3lm49to2d4mlpmjh7ec4hso5i1g96t2j1qcq9mqod2bg4b10scsoo9cttp4uv1nt8tdoqjqdtthl3jpjn012t1v5dc3bmqln7g397gok60cr9h3l4ag7g2ack42qqshr5f7c0sjiq15fi375r1mgb9r01k64fn2276k7pgtgf7bdgaasusb7hlfhss87hbmnh67dn9nu2vibm7trs5d15cqd6fur81pm08v3f32dja90hf8asdebbg9kn2lh2nqeljhhpb46er709nhq2ou8k6s6omqenevmm45cq47t5v4arvu2lmia8dftpfigf2656akg",
+      "solution": "176894325528163947934275816749532681613748259285619473862951734391427568457386192",
+      "imageUrl": "https://sudoku.coach/open_graph_images/Hu9m.png",
+      "imageSha256": "5f8fed5585421c2642f2be467811636a5b04c49e6ddef692f59d570a3d08e24e",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {
+            "type": "global-entropy"
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              19,
+              20
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              20,
+              29
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              12,
+              13
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              22,
+              13
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              5,
+              4
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              14,
+              5
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              6,
+              5
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              23,
+              24
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              16,
+              15
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              26,
+              25
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              35,
+              26
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              43,
+              34
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              43,
+              42
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              40,
+              31
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              48,
+              49
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              39,
+              48
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              57,
+              66
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              66,
+              75
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              67,
+              58
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              62,
+              61
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              28,
+              19
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              56,
+              47
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              9,
+              10
+            ],
+            "sum": 7
+          },
+          {
+            "type": "modular",
+            "cells": [
+              80,
+              79,
+              78,
+              69,
+              70,
+              60
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              57,
+              58,
+              59,
+              50,
+              41,
+              40,
+              31,
+              30,
+              22,
+              13,
+              23
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              0,
+              9,
+              18,
+              27
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              72,
+              63,
+              73,
+              65,
+              55,
+              46,
+              37,
+              38,
+              47
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              1,
+              10,
+              19,
+              20,
+              11,
+              2,
+              12,
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              42,
+              33,
+              24,
+              15
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              51,
+              43,
+              34,
+              44
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              75,
+              66,
+              76
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              67,
+              77,
+              68
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              7,
+              6,
+              16,
+              8,
+              17
+            ]
+          },
+          {
+            "type": "kropki",
+            "ratioTwo": {
+              "pairs": [
+                [
+                  11,
+                  20
+                ]
+              ],
+              "negative": false
+            }
+          }
+        ]
+      },
+      "description": "Inspired by Krill to use 7 and 13 sums.  You don't need to use entropy, btw; the modular lines and the thermos suffice."
+    },
+    {
+      "url": "https://sudoku.coach/en/s/9ZMr",
+      "title": "Modular Curtain",
+      "author": "Bluejay",
+      "published": "2025-09-21 22:41:39",
+      "code": "SCv7_32_f2e9alidhv9j047t5vjfl43chsvp4nk13c90fe517la8iktc9n9ilj925lavuev3mao583a6id9m5fb7htjttf69b7mudn3vpovp5mlka2tvofadtvpisbp7ml8vlph1ln6qvdv6cn2rcqs0v2t64rrnq3leb13ngvkr9j6r7iam7fkuanndbhj8l3ivji3hl3uq2voqmvpsef15cqed4rkvfohrmd4esl6q71b9c0hihg3pf23k127m07lbh7dnveqa96bhsv5gbbt40ojc41kggtpv1130246hknb574c85d900eju2mno0ogi51hape02up2qr0319o82nh3n122kclchg0tbc5dl00ons41o4hrkakbc2m2o0f9a05leg67gg0ehatchthm12b4c46bo1nfi4d48m750kc0uqq0ghjm23c28rk126pald109m0fe9o08roh1gh4dr3fb67iaombiajtruamgthrdiubmflg7at6nb1vhu0qb6h6u1h1jfh4uskor4ilufj5trosk9r6e1p2tisv4pvd7c7g9rl765lem7ecapju12mcvgsgsqqfavqkr3e16l2vni6tqnkiaq55agrrim8las71kksbav2qr4l7gpld42ajoqqrg0ra5d0b9g23t4vqlknh0p4t7f100pln488hs3eca8hlemis0prq4f5jj6435jpmk18npca594u4agffdiso5pt1i0i72c4hgv4nsvdhfu4ml2vdp7n5nv2li97n2o69fm5m3irq4lsb9h4fckd4msijsos29nua2i9s9kv647ifucl34jon7o4lui5ouqh385ptv0rvlvdtq3mcvovfp15g2i8v5",
+      "solution": "147258369825693471936714825471582936258369147693471582714825693582936714369147258",
+      "imageUrl": "https://sudoku.coach/open_graph_images/9ZMr.png",
+      "imageSha256": "549821952bc85f867e46de63f85b9eda66af9699fb1adb1613ed1782a8dbbb63",
+      "deferred": "The original thirty-six white circles require a difference of three, not consecutive digits. Preserve that General Difference companion for issue 85.",
+      "description": "Est time:  15-30 min. \n\nHint in comments for those new to mod lines. You may find the difficulty \"easy\" if you do a lot of mod or entropy puzzles or the patterns come naturally."
+    },
+    {
+      "url": "https://sudoku.coach/en/s/HCHW",
+      "title": "Modular VII/XIII 2",
+      "author": "cyboogie",
+      "published": "2026-07-05 14:23:57",
+      "code": "SCv7_32_f2e8qkubdq1j047s2ufuf06vo0qtfnjilgsa1o109cu24s2imm47vbs9qiq0ssf5hdiqqpj7aspr62r94vdhprcn45ig3kmqjccgtopgnekrd0sr97srs46ri296c87eufh53h3thg3t6te7dd7k0pmjurj0eu7isnmsed5ol902ttakuv39ji8n2spfn1iilslnt0a28q0p81q8iq1haack7g77p8gk38h6re2gs0t6ae33s0q0ji61b0h912hkgn096s0s26v71c3421ko8ak79h9loct811jjgn1ht248t55edequbjhp7eq5nveuf77igvb4mgfpmqqn9tnncc5hi3pcqvi817klvvufjvjga6qhv05q01dm3jna447qa206efg6s0to6gq604l425co7s1f2gnc62190k6gv1vkmrsqkb81il01du5t4k5rgj3uaoofv4d7mfkrp46afa3qjpdev3v79tfvjgl7dbugda12dlqg",
+      "solution": "357612948416859723892734165125348679638971452749265381983426517261597834574183296",
+      "imageUrl": "https://sudoku.coach/open_graph_images/HCHW.png",
+      "imageSha256": "cbed8eb975dadf7b39b1b73a42de358e9aa43155c802a98384107c09fe92239d",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {
+            "type": "adjacent-total",
+            "cells": [
+              27,
+              36
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              45,
+              36
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              28,
+              29
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              38,
+              29
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              47,
+              46
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              46,
+              37
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              22,
+              31
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              23,
+              22
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              23,
+              14
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              2,
+              3
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              3,
+              4
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              52,
+              43
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              68,
+              59
+            ],
+            "sum": 13
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              72,
+              63
+            ],
+            "sum": 7
+          },
+          {
+            "type": "adjacent-total",
+            "cells": [
+              62,
+              71
+            ],
+            "sum": 11
+          },
+          {
+            "type": "modular",
+            "cells": [
+              37,
+              46,
+              55,
+              56,
+              57,
+              48
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              1,
+              10,
+              19,
+              28,
+              27
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              29,
+              30,
+              31,
+              32
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              14,
+              15,
+              16,
+              25,
+              34,
+              43
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              52,
+              61,
+              70,
+              69,
+              68,
+              67,
+              66
+            ]
+          },
+          {
+            "type": "kropki",
+            "consecutive": {
+              "pairs": [
+                [
+                  67,
+                  76
+                ]
+              ],
+              "negative": false
+            }
+          }
+        ]
+      },
+      "description": "Found this one pretty tough. I needed to use colours and symbols to track the VII/XIII colours AND the modular level. I also had to switch colour schemes partway through. Let me know if you find a simpler/different solve path :)"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Cmki",
+      "title": "Entropic Runaround",
+      "author": "FatPhil",
+      "published": "2026-02-03 09:50:02",
+      "code": "SCv7_32_f2e7qkebdq1j047sivmna3ru004losvd5n3ok0s21mqg81gpqek4bv3rqt79ml1kh53r5lmilhjmcts1qqcucq5u1250pgahdc33mgfh4rog5hcgj0pc5b9gc6i138ee4ba4vbf39d3otfl08hkcq1up0fvuknb5lg7pubr038ka8g7gjshingvprl626ea0j2kerqcnal9tf19a9157dgqiti42a93ag4l436d39gocf13lor55afbpebeb3b1brrd1ahq8e77gi17ricd1advfa2pkn3khkd9fvmubc32nmouru23cd72esj4ddr2m4fa46duchq6rul7h83a8n8f46ma3u3o7epo9puu7n6idgim3oju25n9qn04qhaq07sq76ltpathuj4a2j0bquhpvju7oggtt6e2jv91ttoo7nig83c9fellh9l9atns83mvha",
+      "solution": "614325246531462153351264135642523416",
+      "imageUrl": "https://sudoku.coach/open_graph_images/Cmki.png",
+      "imageSha256": "7b4203e499e36bf8e88ca238112560e1d845a2033ee6a079b8c80a028958824d",
+      "deferred": "The original export uses a 6×6 grid. Preserve it for larger model/format work.",
+      "description": "More like a 2/10, just a little amuse-bouche."
+    },
+    {
+      "url": "https://sudoku.coach/en/s/GYTv",
+      "title": "Modular Colouring",
+      "author": "cyboogie",
+      "published": "2026-06-19 23:12:33",
+      "code": "SCv7_32_f2e9b4pvdu1j0465nu5uedr0jvvg0qumdocqm3083hi2j408jha6r57frohl4q8rgaiip5k7ruenrrttne57c26d6pu7ik8m21mrhu3uefmcee2kk67q6a6vlsh398kk352fof1h4mt66spuaj1lnq5tg0c7rmvp3upfd1u3egls1f1ck1p910tm6035dgvid5ghqr0ebfm20jmla1qjtuk1henbe6ru7d80d4h00kmq3u94i233540mbg796b3m0q73i1sn4ssia88l53eknghan065c9hpplpudk2fkrd4q8m533t7cblq5cl6ehbb2redfpu8sajl8pfphg2juh79m5c66svv1mijaph3pjq6bq1cpnij01acopfa9e826q1pi32be99jdkkt70q69ktms24gcqqaldcui9ncutvf0vdt5ap7975hovb7vqqavafi3hp9fu0tfivc4pk4nf1n5vo39re95evlek4bvgjnhng3ms4da8tvco1sqdm4hvhocerepvepk3c6c0b2i4h32voe4b4vr3ers0cifq5hg",
+      "solution": "849125376623947158571836294362798415784351629915462783196573842257684931438219567",
+      "imageUrl": "https://sudoku.coach/open_graph_images/GYTv.png",
+      "imageSha256": "46e95ba0337fde9f22c772d3f2ebe8d167f60d4ad0d60dc910f28e179be21fb7",
+      "deferred": "Consecutive Lines (issue 89) and seven General Difference circles labelled 3 (issue 85) remain unsupported. Preserve every Modular path and the printed XI total.",
+      "description": ""
+    },
+    {
+      "url": "https://sudoku.coach/en/s/7rs9",
+      "title": "220V",
+      "author": "vajrajames",
+      "published": "2025-06-01 17:45:09",
+      "code": "SCv7_32_f2e9alabhudj047u5vn7b2n2u45n4nflaqkl4trflcui8o2iqg224ghaml8vsuu7gfhup0p5nc9457vh7iv7ic97m7kpnqluv7jsbcg0m5kvtu7mlplgugtvdbde284mhsjt2l3254bi11lvfe914renioie3iv383905h61dtr7s53u1ajm2q6q1mektppj8hmpnd29m3nvcjfpnlklvqcu8jkrfms03i156o79q5g0q63q5jk9p37favumlpo7rsjv65otnc086o14j02mg155cuin208i04iqg190noanq6c752tmqtvch7upfmlf9ddh1s9du5vvhlckntdnu80pmjhqerrdumhqsian5ivhk47blqnnpvqc9pfn78ii9pr5qteslrtbj53004l0fre0q0ppu2d507msr42uucntts4nafuf6arvifs9fnc13j6tft2hcs2uhj1s04gpf4316gdkv51akaucip225agm0ja5dc0rj15ebpik5qkjvonjcj5ic690r4ts0pluk6bi14asj5vs82m2dcds8gk67l336h2olk2db1trutfbeliuah7b9rahj0bv1gvvr8erqae7fbaoj9lujtf799nj7pa2u3q2dqhmif4ajg1hfmsgmaearlsb462e6rf2jfiju57f5nd8ktcgv8sucouoouknnfjnl67s0mdv519vp5tf7191969d7b7310kkc191773082pe1j2kli1h6a26tma55pib0hlh2114c1dn1aahid0nbf32ckgpgpe32klholaacgu6s80ahm7miq8fsg2c4r378q9r789r5ce51ltj1p6lm1bs7b8oj0cb177909m1pi4s233f39hcrjo1re6qojamcehmmnilpa349lejqh4f2s33lceii7kif1l1maqqvqtnoc85luulft84v347jcc8vsejfmttkfrketetuck7k4vvlqusc2d9nnjf93lvte4r3ce970t1t1sr7neud521r4en3bmr9c1ecqinj8s2kpiljj6aq75524oiufdk8jn6hiqctvo1vtt7qtg",
+      "solution": "173694258948352716526817493261573849485926371739148625357481962692735184814269537",
+      "imageUrl": "https://sudoku.coach/open_graph_images/7rs9.png",
+      "imageSha256": "aca87d331e5c859e288f770afd2a77cd1ba6527ba6dbdc2efefcde23de5d5bac",
+      "deferred": "Region Sum Lines and mathematical cosmetic lines remain unsupported; the author explicitly includes the cosmetic blue paths in the sum rule.",
+      "description": "Orange = entropy, brown = modular, blue = regional sum (including the cosmetic lines)."
+    },
+    {
+      "url": "https://sudoku.coach/en/s/7hzU",
+      "title": "kicking modular lines while they're down",
+      "author": "vajrajames",
+      "published": "2025-05-14 17:49:36",
+      "code": "SCv7_32_f2e9b3u1hq140346ruiue7n8dg8c7ldtlkrrq68f2dkccpj1431mhogirpukmt3hh63c8edlpnrnffnms2198evpc74571609oddugbu70h3hedgvsa2ek87i365tuh8s576sd0ogcajvok73qi8970ighs6qt9pb0fuaitsaeu66lvj1ktosncc7bbqs7o6njjmhiml9lsqsr6ohbjnjd47galmlb0i9h8h7d2299qm2qs3lksn562mvq0p88ddi4v30gvj1j75r86i3vrieadu7lrjkc7km0pp77dqgij9aoiphsbaqcis5ldumq9fejvh31mgnhuh0695gpfpsnl77o",
+      "solution": "5234141523234151523434152",
+      "imageUrl": "https://sudoku.coach/open_graph_images/7hzU.png",
+      "imageSha256": "28212b1d6057848c78e33dfb8fec7eb0f347a8be814d3d821a0bb8db965652f8",
+      "deferred": "The original Latin-square export uses a 5×5 grid. Preserve its relaxed regions and complete rule list.",
+      "description": "Thin lines = entropic, thick = modular"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Fnxt",
+      "title": "Skipping through the fog",
+      "author": "ThatOneEspeon",
+      "published": "2026-05-27 02:22:51",
+      "code": "SCv7_32_f2ear51rdu1j0764nu5ue6vg3dcbmtmbb1iq1gd5ir146g0qml8rsust8u4s161gei4ggekvtvvv768j55d9mrvchsgmi0iir0nl7fekanbrf6ddva7a8rp7c9pp5kg8kjvmt74afja0a0f99h8pkfu5prmff5p7omri0jemcqiuijfbrqectpvd8ndvfdhadrvn2dt4gdgprpvvc740dgv3kvmhlks69mgg957klnoh0q815mgh952uqg4giaemgvi47i1mtdmhr2l837ud3rqba8r0l81kciu4tih4l1d2fp8khimn8v921mgh00savpcbue5jpmglof1idu7ssbbgpkeab48egsvu7b1ij41jf9v413m2rhp032k7uq1n8csqaat2eldj6s0qrgu88lged0esjdjetjndalh60hbgki6nc82rin3l2q1mik4fj47s3polpql8db5rlg46ct0na5thftm646ctsht142u4jrjkovaqa2aok0166lq7ig4n03he40c291fk5dvlrhv2u2kfksfp9nqpsld1c6nj6b2ikooh4k5f8b9ntao85a0psedha327h22oqrsm37tl9f2h26hs0prrujuin8nk814m5j3sb3696jjfdv0bqj42tcg",
+      "solution": "732418695641295387589367241915632478468971523327584169853746912194823756276159834",
+      "imageUrl": "https://sudoku.coach/open_graph_images/Fnxt.png",
+      "imageSha256": "dd58df4925f1ed588671b9d2d310195e96111557c43eae45020adca87dadcbde",
+      "deferred": "Fog of War remains unsupported. Preserve the fog reveal and every companion rule.",
+      "description": ""
+    }
+  ],
+  "officialDemo": {
+    "code": "SCv7_32_f2ear4211e1j0345vt5ss4ekeqdnltdqre7c6gthk42b8igr0udvhnqn37dmalu9sm2npro5ro52tc5tu65q1a8h3gvshdsjhs90ous9q3e5eo0b9m8i7i3j9oa8p4qt0o9qtr0920hbj4duch7s7c1bel0lb8daa7jqg2uk4llda8ec4qc93122cbb6rqrmms47nturit4a2j91lnopdb8h98bshct3kr8efb5cpfm59q9vfnc9el4at4vpqrbfkl7lj6o",
+    "data": {
+      "gridSize": 9,
+      "givenConstraints": [
+        {
+          "id": 10,
+          "type": "modularLine",
+          "segments": [
+            {
+              "cells": [
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43
+              ],
+              "parameters": {}
+            }
+          ],
+          "settings": {}
+        }
+      ],
+      "userCellCandidates": "0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-146-292-584-146-292-584-146-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0-0",
+      "acid": 10
+    }
+  }
+}

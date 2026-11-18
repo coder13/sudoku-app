@@ -13,7 +13,7 @@ useWasmWorker()
 // each new family, each pair of companions, and the full set of companions.
 // This bounds test cost as the catalog grows. These are compatibility witnesses,
 // not a claim that every arrangement is feasible or each clue is essential.
-test('Entropic composes with every current family, every companion pair and their full inventory', async () => {
+for (const groupLine of ['entropic', 'modular'] as const) test(`${groupLine} composes with each family, each companion pair and their full inventory`, async () => {
   const { cases } = JSON.parse(
     readFileSync(new URL('./fixtures/nonconsecutive-combined.json', import.meta.url), 'utf8')
   )
@@ -36,6 +36,7 @@ test('Entropic composes with every current family, every companion pair and thei
     'xv',
     'adjacent-total',
     'renban',
+    ...(groupLine === 'modular' ? ['entropic'] : []),
   ]
   const selections = [
     [],
@@ -43,7 +44,7 @@ test('Entropic composes with every current family, every companion pair and thei
     ...families.flatMap((a, i) => families.slice(i + 1).map((b) => [a, b])),
     families,
   ]
-  assert.equal(selections.length, 173)
+  assert.equal(selections.length, groupLine === 'modular' ? 192 : 173)
   const sourceFamily: Record<string, string> = {
     nonconsecutive: 'non-consecutive',
     antiKing: 'anti-king',
@@ -88,6 +89,7 @@ test('Entropic composes with every current family, every companion pair and thei
     }
     return {
       entropic: find((d) => new Set(d.map((d) => Math.floor((d - 1) / 3))).size === 3),
+      modular: find((d) => new Set(d.map((d) => d % 3)).size === 3),
       renban: find((d) => new Set(d).size === 3 && Math.max(...d) - Math.min(...d) === 2),
       palindrome: find((d) => d[0] === d[2]),
       whispers: find((d) => Math.abs(d[0] - d[1]) >= 5 && Math.abs(d[1] - d[2]) >= 5),
@@ -114,7 +116,8 @@ test('Entropic composes with every current family, every companion pair and thei
     const rules: VariantRule[] = [
       ...sample.puzzle.rules.filter((r: VariantRule) => enabled.has(r.type)),
       ...(both ? [{ type: 'anti-knight' as const }] : []),
-      { type: 'entropic', cells: line.entropic },
+      { type: groupLine, cells: line[groupLine] },
+      ...(enabled.has('entropic') ? [{ type: 'entropic' as const, cells: line.entropic }] : []),
       ...(enabled.has('renban') ? [{ type: 'renban' as const, cells: line.renban }] : []),
       ...(enabled.has('palindrome')
         ? [{ type: 'palindrome' as const, cells: line.palindrome }]
@@ -144,10 +147,11 @@ test('Entropic composes with every current family, every companion pair and thei
         ),
         ...(both ? [{ type: 'antiKnight', segments: [], settings: {} }] : []),
         {
-          type: 'entropicLine',
+          type: groupLine === 'entropic' ? 'entropicLine' : 'modularLine',
           settings: {},
-          segments: [{ cells: line.entropic, parameters: {} }],
+          segments: [{ cells: line[groupLine], parameters: {} }],
         },
+        ...(enabled.has('entropic') ? [{ type: 'entropicLine', settings: {}, segments: [{ cells: line.entropic, parameters: {} }] }] : []),
         ...(enabled.has('renban')
           ? [{ type: 'renban', settings: {}, segments: [{ cells: line.renban, parameters: {} }] }]
           : []),
@@ -213,5 +217,5 @@ test('Entropic composes with every current family, every companion pair and thei
     assert.ok((await puzzleHints(game)).choices.length > 1)
     valid++
   }
-  assert.deepEqual({ valid, conflicting }, { valid: 171, conflicting: 2 })
+  assert.deepEqual({ valid, conflicting }, { valid: groupLine === 'modular' ? 190 : 171, conflicting: 2 })
 })

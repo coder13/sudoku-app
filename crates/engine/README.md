@@ -446,6 +446,27 @@ Coach compiles each connected component within a Renban layer as one set.
 Separate layers retain independent constraints even when their paths overlap.
 Generation preserves fixed Renban rules and their drawing geometry through the existing template API.
 
+Entropic and Modular lines preserve their ordered walks, including repeated cells and closed paths.
+An Entropic line uses the groups {1, 2, 3}, {4, 5, 6} and {7, 8, 9}.
+A Modular line uses {1, 4, 7}, {2, 5, 8} and {3, 6, 9}.
+Every three successive positions must use all three groups.
+Two-cell paths need different groups; a one-cell path is unrestricted.
+Positions three steps apart share a group and can contain different digits.
+Each original path remains independent when it touches another path.
+
+```json
+{"type":"modular","cells":[0,10,20,30]}
+```
+
+Both rules share a private six-order support kernel with separate digit partitions.
+The kernel intersects cell domains with all viable group orders without enumerating digit assignments.
+Repeated references must agree with their original phase; an inconsistent walk has no completion.
+The `modular` technique costs 27 points at Medium, calibrated against three practice proofs.
+Its evidence retains the original rule index, distinct cells in first-visit order and their domains.
+Exact solving enforces the rule with any technique order, including an empty list.
+The existing generation template API retains fixed paths and supports clue, given, score, dependency and first-technique targets.
+App presets require separate difficulty calibration.
+
 With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via Serde. A `variant` worker request takes the position, operation, and optional `maxNodes` for exact search. `normalize` validates the definition and returns a complete position record. `candidates` returns 81 candidate masks. `analyze` distinguishes conflicts, impossible puzzles, uniqueness, multiple solutions, and search limits. `solve` returns one completion or an error. Unsupported rule IDs and format versions have distinct error codes.
 
 ```json

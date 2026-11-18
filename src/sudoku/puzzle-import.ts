@@ -146,7 +146,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'palindromeLine', 'renban', 'entropicLine'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'palindromeLine', 'renban', 'entropicLine', 'modularLine'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -258,19 +258,20 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
         return segment.cells as number[]
       })
       for (const line of coachConnectedLines(paths)) rules.push({ type: constraint.type === 'renban' ? 'renban' : 'palindrome', ...line })
-    } else if (constraint.type === 'entropicLine') {
+    } else if (constraint.type === 'entropicLine' || constraint.type === 'modularLine') {
+      const name = constraint.type === 'entropicLine' ? 'Entropic' : 'Modular'
       if (hasData(constraint.settings) && (!record(constraint.settings) || Object.keys(constraint.settings).some(key => !LINE_STYLING.has(key)))) {
-        throw new Error('This Sudoku Coach Entropic line uses unsupported settings.')
+        throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
       }
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Entropic cells.')
-      // Coach jX1r7.jX61 compiles each segment independently. Touching paths
+      if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no ${name} cells.`)
+      // Coach jX1r7/jX1r8 compile each segment independently. Touching paths
       // must not use the connected-component grouping of Renban/Palindrome.
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length || hasData(segment.parameters) ||
           segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= 81)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Entropic path.')
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${name} path.`)
         }
-        rules.push({ type: 'entropic', cells: segment.cells })
+        rules.push({ type: constraint.type === 'entropicLine' ? 'entropic' : 'modular', cells: segment.cells })
       }
     } else if (constraint.type === 'whisper') {
       const settings = constraint.settings

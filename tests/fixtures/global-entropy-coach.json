@@ -423,9 +423,9 @@
       "published": "2026-07-31 23:35:41",
       "code": "SCv7_32_f2e8qlebdq1j047s2ufuf06n5vg5ltembe75a3tkm4k153s8n2mt4a7vroimikvhm3i0m0hk7f5ootsmmekceplvdevbqa0bh2tfjt7tof81vgqo6lujh2niv4m9lf98ck312jg78q4rk7aulfrb23v3e0s0j253lstnvgtu9h7i2d3tpl7ufio5nv2v4ngsnq30fntmne7msnjp2pnvoulqic2igot28cqld78ffqeahh4h1d57epfs0d90calmg59cr44i41ah4p8sn2g39k39lkqkoij7jc3261aadhm228sk1ci5ik2iedik0dg5l0al9min699564j50oip701pehi2k5ja1bk3prdc3lm49to2d4mlpmjh7ec4hso5i1g96t2j1qcq9mqod2bg4b10scsoo9cttp4uv1nt8tdoqjqdtthl3jpjn012t1v5dc3bmqln7g397gok60cr9h3l4ag7g2ack42qqshr5f7c0sjiq15fi375r1mgb9r01k64fn2276k7pgtgf7bdgaasusb7hlfhss87hbmnh67dn9nu2vibm7trs5d15cqd6fur81pm08v3f32dja90hf8asdebbg9kn2lh2nqeljhhpb46er709nhq2ou8k6s6omqenevmm45cq47t5v4arvu2lmia8dftpfigf2656akg",
       "solution": "176894325528163947934275816749532681613748259285619473862951734391427568457386192",
-      "deferred": "Modular Lines remain unsupported. Keep Global Entropy, every sum, thermometer and ratio marker intact.",
       "imageUrl": "https://sudoku.coach/open_graph_images/Hu9m.png",
-      "imageSha256": "5f8fed5585421c2642f2be467811636a5b04c49e6ddef692f59d570a3d08e24e"
+      "imageSha256": "5f8fed5585421c2642f2be467811636a5b04c49e6ddef692f59d570a3d08e24e",
+      "resolved": "Complete import covered by tests/fixtures/modular-coach.json after Modular Lines integration; retain all 35 rules."
     },
     {
       "url": "https://sudoku.coach/en/s/2j53",

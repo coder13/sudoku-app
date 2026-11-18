@@ -1,5 +1,6 @@
 import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
 import { DIGITS, onlyCandidate } from './game.ts'
+import { lineGroups } from './line-groups.ts'
 import { cellReference, type CellReferenceOptions } from './hints.ts'
 import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName } from './variants.ts'
 
@@ -143,12 +144,16 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'arrow':
       return { description: `The ${rule.cells.length === 1 ? 'digit on the arrow equals' : 'digits on the arrow add to'} the digit in ${at(rule.circle)}.`,
         reason: 'With the current candidates, no matching sum uses a crossed-out digit in its marked cell.' }
-    case 'entropic': {
-      const group = (mask: number) => [7, 56, 448].map((bits, i) => mask & bits ? i : -1).filter(i => i >= 0)
-      const names = ['low (1–3)', 'medium (4–6)', 'high (7–9)']
+    case 'entropic': case 'modular': {
+      const { masks, names } = lineGroups[rule.type]
+      const group = (mask: number) => masks.map((bits, i) => mask & bits ? i : -1).filter(i => i >= 0)
       const known = cells.flatMap((cell, i) => group(domains[i]).length === 1 ? [`${at(cell)} is ${names[group(domains[i])[0]]}`] : [])
-      return { description: rule.cells.length === 2 ? 'These two positions must use different low, medium or high groups.'
-        : 'Every three successive positions on this Entropic line need one low, one medium and one high digit.',
+      const description = rule.type === 'entropic'
+        ? rule.cells.length === 2 ? 'These two positions must use different low, medium or high groups.'
+          : 'Every three successive positions on this Entropic line need one low, one medium and one high digit.'
+        : rule.cells.length === 2 ? 'These two positions must use different remainder groups: {1, 4, 7}, {2, 5, 8} or {3, 6, 9}.'
+          : 'Every three successive positions on this Modular line need one digit from each group: {1, 4, 7}, {2, 5, 8} and {3, 6, 9}.'
+      return { description,
         reason: `${known.length ? 'Along this line, ' + known.slice(0, 3).join(' and ') + '. ' : ''}The groups repeat every three positions. A crossed-out candidate fits no group order allowed by every highlighted cell. Cells three positions apart share a group, not necessarily a digit.` }
     }
     case 'renban':

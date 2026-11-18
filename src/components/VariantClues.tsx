@@ -200,8 +200,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
     </defs>}
     {drawingOrder.map(({ rule, index, overlay }) => {
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
-      if (overlay === 'colored-line') return <g key={`${index}-line-overlap`} className={rule.type === 'entropic' ? 'variant-entropic-overlap' : 'variant-renban-overlap'} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
-        {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} color={rule.type === 'entropic' ? '#bc6c27' : renbanColor(index)} />)}
+      if (overlay === 'colored-line') return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
+        {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} color={rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : renbanColor(index)} />)}
       </g>
       if (overlay === 'palindrome') return <g key={`${index}-overlap`} className="variant-palindrome-overlap">
         {shared.get(index)!.map((edge, i) => <polyline key={i} points={points(edge)} />)}
@@ -254,8 +254,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           return <g key={index} className="variant-palindrome">
             {(rule.segments ?? [rule.cells]).map((path, part) => <polyline key={part} points={points(path)} />)}
           </g>
-        case 'entropic':
-          return <g key={index} className="variant-entropic">
+        case 'entropic': case 'modular':
+          return <g key={index} className={`variant-${rule.type}`}>
             {rule.cells.length === 1 ? <circle cx={center(rule.cells[0])[0]} cy={center(rule.cells[0])[1]} r=".12" />
               : <polyline points={points(rule.cells)} />}
           </g>
@@ -355,6 +355,11 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
       case 'entropic': {
         const number = rules.slice(0, index + 1).filter(rule => rule.type === 'entropic').length
         for (const cell of new Set(rule.cells)) labels[cell].push(`Entropic line ${number}, ${rule.cells.length === 1 ? 'one-cell path, any digit 1–9' : rule.cells.length === 2 ? 'two positions from different low (1–3), medium (4–6) or high (7–9) groups' : 'every three successive positions contain a low (1–3), medium (4–6) and high (7–9) digit'}`)
+        break
+      }
+      case 'modular': {
+        const number = rules.slice(0, index + 1).filter(rule => rule.type === 'modular').length
+        for (const cell of new Set(rule.cells)) labels[cell].push(`Modular line ${number}, ${rule.cells.length === 1 ? 'one-cell path, any digit 1–9' : rule.cells.length === 2 ? 'two positions from different groups {1, 4, 7}, {2, 5, 8} or {3, 6, 9}' : 'every three successive positions contain one digit from each group {1, 4, 7}, {2, 5, 8} and {3, 6, 9}'}`)
         break
       }
       case 'renban':
