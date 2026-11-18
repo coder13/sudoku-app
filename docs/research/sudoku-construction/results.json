@@ -1,0 +1,411 @@
+{
+  "classic": {
+    "byTier": {
+      "beginner": {
+        "distances": {
+          "clues": [
+            2.2857142857142856,
+            1.3571428571428572,
+            1.0714285714285714
+          ],
+          "first": [
+            3.142857142857143,
+            1,
+            1.1428571428571428
+          ],
+          "opening": [
+            1.8571428571428572,
+            1.4285714285714286,
+            1.0714285714285714
+          ],
+          "sameClues": [
+            2,
+            1.2857142857142858,
+            0.9285714285714286
+          ]
+        },
+        "medianWidths": [
+          11.0,
+          12.0,
+          11.0
+        ],
+        "n": 14
+      },
+      "easy": {
+        "distances": {
+          "clues": [
+            6.085714285714285,
+            3.5714285714285716,
+            1.5714285714285714
+          ],
+          "first": [
+            6.571428571428571,
+            3.657142857142857,
+            1.6285714285714286
+          ],
+          "opening": [
+            4.8,
+            1.7714285714285714,
+            1.7714285714285714
+          ],
+          "sameClues": [
+            5.885714285714286,
+            3.5428571428571427,
+            1.6285714285714286
+          ]
+        },
+        "medianWidths": [
+          3,
+          4,
+          4
+        ],
+        "n": 35
+      },
+      "medium": {
+        "distances": {
+          "clues": [
+            3.522727272727273,
+            1.9090909090909092,
+            1.2272727272727273
+          ],
+          "first": [
+            4.409090909090909,
+            2.2954545454545454,
+            1.1590909090909092
+          ],
+          "opening": [
+            2.340909090909091,
+            1.25,
+            1.1590909090909092
+          ],
+          "sameClues": [
+            3.159090909090909,
+            1.9772727272727273,
+            1.1818181818181819
+          ]
+        },
+        "medianWidths": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "n": 44
+      },
+      "tricky": {
+        "distances": {
+          "clues": [
+            4.857142857142857,
+            3.5714285714285716,
+            1.2857142857142858
+          ],
+          "first": [
+            4.142857142857143,
+            2.857142857142857,
+            1.1428571428571428
+          ],
+          "opening": [
+            3.2857142857142856,
+            2.4285714285714284,
+            0.8571428571428571
+          ],
+          "sameClues": [
+            4.428571428571429,
+            3.142857142857143,
+            1.4285714285714286
+          ]
+        },
+        "medianWidths": [
+          2,
+          0,
+          0
+        ],
+        "n": 7
+      }
+    },
+    "catalog": {
+      "app": {
+        "masks": 400,
+        "n": 400,
+        "rotational": 0,
+        "structures": 400,
+        "tiers": {
+          "beginner": 56,
+          "easy": 140,
+          "medium": 176,
+          "tricky": 28
+        }
+      },
+      "exchange": {
+        "masks": 60,
+        "n": 60,
+        "rotational": 36,
+        "structures": 60,
+        "tiers": {
+          "beginner": 12,
+          "expert": 7,
+          "hard": 8,
+          "master": 5,
+          "medium": 12,
+          "tricky": 6,
+          "very-hard": 10
+        }
+      },
+      "nikoli": {
+        "masks": 95,
+        "n": 100,
+        "rotational": 100,
+        "structures": 100,
+        "tiers": {
+          "beginner": 14,
+          "easy": 35,
+          "medium": 44,
+          "tricky": 7
+        }
+      }
+    },
+    "coding": {
+      "bits": [
+        2.3486768267728655,
+        1.635729920237318,
+        1.5583449733967412,
+        1.4875229522882594
+      ],
+      "bootstrap95": [
+        -0.0015853293289025507,
+        0.14534567332792614
+      ],
+      "gain": 0.07082202110848179,
+      "groups": 49,
+      "n": 80
+    },
+    "example": {
+      "grid": "046003010000080007001000600000007100010040905359000000000000080700000009090050200",
+      "holdoutId": "nhk2311h1",
+      "pool": [
+        {
+          "clues": 26,
+          "seed": 1244761025,
+          "slot": 0,
+          "w": [
+            7,
+            2,
+            2
+          ]
+        },
+        {
+          "clues": 30,
+          "seed": 3138901061,
+          "slot": 1,
+          "w": [
+            8,
+            4,
+            0
+          ]
+        },
+        {
+          "clues": 25,
+          "seed": 983065607,
+          "slot": 2,
+          "w": [
+            5,
+            1,
+            0
+          ]
+        },
+        {
+          "clues": 23,
+          "seed": 1307258809,
+          "slot": 3,
+          "w": [
+            3,
+            1,
+            2
+          ]
+        }
+      ],
+      "selected": 3,
+      "target": [
+        1,
+        0,
+        0
+      ],
+      "trainingId": "nhk1911h2"
+    },
+    "exchangeCoding": {
+      "bits": [
+        2.409531023802461,
+        2.6968519374340327,
+        3.141344283235305,
+        3.2442963808808116
+      ],
+      "bootstrap95": [
+        -0.2371338759207767,
+        0.03476209100564548
+      ],
+      "gain": -0.1029520976455065,
+      "groups": 30,
+      "n": 30
+    },
+    "holdoutGroups": 51,
+    "maxGroup": 7,
+    "meanDistance": {
+      "clues": [
+        4.187824675324675,
+        2.6022727272727275,
+        1.2889610389610389
+      ],
+      "first": [
+        4.566558441558442,
+        2.452435064935065,
+        1.2683441558441557
+      ],
+      "opening": [
+        3.0709415584415583,
+        1.719642857142857,
+        1.2147727272727273
+      ],
+      "sameClues": [
+        3.868344155844156,
+        2.4871753246753245,
+        1.2918831168831169
+      ]
+    },
+    "poolSupport": {
+      "exactTargetPair": 2,
+      "sameClueChoice": 32,
+      "targetAbovePool": 3,
+      "targetBelowPool": 83
+    },
+    "priorSensitivity": {
+      "4": 0.05686921270372425,
+      "16": 0.07468004502032244
+    }
+  },
+  "externalHuman": {
+    "correlations": {
+      "combined": {
+        "clues": -0.20345305765973404,
+        "width": -0.5295958100056714,
+        "withinCountAndTier": -0.38270146332818544
+      },
+      "time": {
+        "clues": -0.27461685421110366,
+        "width": -0.5827614974279687,
+        "withinCountAndTier": -0.437875757956043
+      }
+    },
+    "n": 344,
+    "rowsInRepeatedStrata": 336,
+    "stalled": 0,
+    "strata": 29
+  },
+  "mediumEdits": {
+    "arms": {
+      "drawOrder": {
+        "changed": 1,
+        "distances": [
+          4.386363636363637,
+          2.2045454545454546,
+          1.1818181818181819
+        ],
+        "distinct": 44,
+        "meanTargetError": 6.681818181818182,
+        "passingEdits": 16
+      },
+      "guided": {
+        "changed": 6,
+        "distances": [
+          4.136363636363637,
+          2.1363636363636362,
+          1.0909090909090908
+        ],
+        "distinct": 44,
+        "meanTargetError": 6.363636363636363,
+        "passingEdits": 9
+      },
+      "start": {
+        "changed": 0,
+        "distances": [
+          4.409090909090909,
+          2.2954545454545454,
+          1.1590909090909092
+        ],
+        "distinct": 44,
+        "meanTargetError": 6.795454545454546,
+        "passingEdits": 0
+      }
+    },
+    "checksPerArmPerStart": 8,
+    "distinctChecksAcrossArms": 649,
+    "n": 44,
+    "proposalsPerStart": 64
+  },
+  "variants": {
+    "jigsaw/easy": {
+      "definitions": 11,
+      "fallbackSeeds": 3,
+      "firstTechniques": {
+        "full-house": 2,
+        "naked-single": 10
+      },
+      "givensRange": [
+        31,
+        34
+      ],
+      "increase": 12,
+      "medianBase": 5.0,
+      "medianFull": 15.0,
+      "n": 12
+    },
+    "jigsaw/medium": {
+      "definitions": 9,
+      "fallbackSeeds": 7,
+      "firstTechniques": {
+        "hidden-single": 7,
+        "naked-single": 5
+      },
+      "givensRange": [
+        21,
+        29
+      ],
+      "increase": 12,
+      "medianBase": 0.0,
+      "medianFull": 5.5,
+      "n": 12
+    },
+    "killer-cages/easy": {
+      "definitions": 12,
+      "fallbackSeeds": 1,
+      "firstTechniques": {
+        "cage-combinations": 1,
+        "hidden-single": 1,
+        "hidden-single-box": 10
+      },
+      "givensRange": [
+        24,
+        24
+      ],
+      "increase": 12,
+      "medianBase": 3.0,
+      "medianFull": 31.0,
+      "n": 12
+    },
+    "killer-cages/medium": {
+      "definitions": 12,
+      "fallbackSeeds": 1,
+      "firstTechniques": {
+        "cage-combinations": 11,
+        "hidden-single-box": 1
+      },
+      "givensRange": [
+        6,
+        11
+      ],
+      "increase": 12,
+      "medianBase": 0.0,
+      "medianFull": 3.5,
+      "n": 12
+    }
+  },
+  "wasmSha256": "16a4b9eeeecc2e7b4293148816e5e5cdd85acac094199cb2480a803af48cff45"
+}

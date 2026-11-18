@@ -1,0 +1,46 @@
+[
+  {
+    "family": "classic",
+    "puzzles": 100,
+    "counts": {
+      "beginner": 10,
+      "easy": 10,
+      "medium": 10,
+      "tricky": 10,
+      "hard": 10,
+      "very-hard": 10,
+      "expert": 10,
+      "master": 10,
+      "extreme": 10,
+      "impossible": 10
+    },
+    "maxIndependentSearchNodes": 66418
+  },
+  {
+    "family": "killer",
+    "puzzles": 50,
+    "counts": {
+      "easy": 10,
+      "medium": 10,
+      "hard": 10,
+      "very-hard": 10,
+      "master": 10
+    },
+    "maxIndependentSearchNodes": 517626
+  },
+  {
+    "family": "x",
+    "puzzles": 80,
+    "counts": {
+      "easy": 10,
+      "medium": 10,
+      "tricky": 10,
+      "hard": 10,
+      "very-hard": 10,
+      "expert": 10,
+      "master": 10,
+      "extreme": 10
+    },
+    "maxIndependentSearchNodes": 6031
+  }
+]

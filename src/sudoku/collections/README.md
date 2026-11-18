@@ -1,9 +1,19 @@
 # Downloadable puzzle collections
 
-The app bundles collection metadata and **zero collection grids**. Each grid is
-an optional 81-byte text file. All 160 hosted grids have exactly one solution and a complete logical
-solve in the current engine. Each record retains its source ID and original givens.
+The app bundles collection metadata and **zero collection grids**. Classic collections use individual text grids. Sinclair libraries download 100 puzzles per level. Each record retains its source ID and original givens.
 Downloaded grids are separate from player progress, which uses the existing game store.
+
+## Sinclair library
+
+The library includes 100 puzzles at each selectable difficulty in New Puzzle. The 66 source packs are in `data/sinclair`. The collection build writes one file per level under `public/collections/sinclair-library-*`. Each filename includes a hash of its contents. New Puzzle and Collections share the same download and offline storage. The app keeps played puzzle IDs in this browser so removing a saved game preserves its deal history. [Construction and release checks](../../../scripts/sinclair/README.md#the-downloadable-library)
+
+## Sinclair playtest
+
+Sinclair Classic, Sinclair Killer and Sinclair X Sudoku contain 100, 50 and 80
+puzzles respectively. There are ten puzzles at every selectable level for each
+variant. Only the static definitions and catalog metadata enter the app. The
+[research report](../../../docs/research/sinclair/README.md) describes the
+offline model, the independent checks and the feedback codes.
 
 ## Nikoli Classics
 

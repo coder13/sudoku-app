@@ -80,6 +80,7 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
+      if (value.source !== 'generated' || value.generationStyle !== 'sinclair') delete value.generationStyle
       const attempt = value.ratingAttempt
       if (attempt !== undefined && (value.source === 'draft' || !isRatingAttempt(attempt) ||
         (attempt.outcome && (attempt.outcome.gameId !== id || attempt.outcome.givens !== value.givens ||

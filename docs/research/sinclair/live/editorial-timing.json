@@ -1,0 +1,32 @@
+{
+  "cpu": "Apple M3",
+  "platform": "macOS arm64",
+  "jobs": 3,
+  "corpus": "docs/research/sinclair/reference-traces.jsonl.gz",
+  "releases": {
+    "sinclair-classic.json": {
+      "puzzles": 100,
+      "sha256": "18b56dc1ba27ffca17671ef6754004e4701570a8f57f16c2038520d708d787e7"
+    },
+    "sinclair-killer.json": {
+      "puzzles": 50,
+      "sha256": "a908564971dd2d0fc8bfea50a680bd6cf40a052d2a82522061dd76e6c5663116"
+    },
+    "sinclair-x.json": {
+      "puzzles": 80,
+      "sha256": "5d6d1b00c6415c4e95648c87c9410cdb9ad5eccf7c2ea32b73898eb93fcb0168"
+    }
+  },
+  "runs": {
+    "emptyCandidateDirectory": {
+      "realSeconds": 1728.07,
+      "userSeconds": 3203.63,
+      "sysSeconds": 50.22
+    },
+    "verifiedCandidateCache": {
+      "realSeconds": 55.27,
+      "userSeconds": 81.27,
+      "sysSeconds": 1.81
+    }
+  }
+}

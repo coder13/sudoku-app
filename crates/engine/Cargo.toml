@@ -45,6 +45,10 @@ name = "quality_audit"
 required-features = ["wasm-api", "generation", "teaching"]
 
 [[example]]
+name = "sinclair"
+required-features = ["wasm-api", "generation", "variants"]
+
+[[example]]
 name = "quality_recheck"
 required-features = ["wasm-api", "generation", "teaching"]
 

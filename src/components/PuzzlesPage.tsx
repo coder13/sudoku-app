@@ -1,4 +1,5 @@
 import { DifficultySelector } from './DifficultySelector'
+import { SinclairOption } from './SinclairOption'
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentType } from 'react'
 import { getRouteApi, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
@@ -124,7 +125,7 @@ function NewPuzzleSection({ preference, save, done }: {
   save: (preference: NewPuzzlePreference) => void
   done: () => void
 }) {
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, busyLabel, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
   const [variant, setVariant] = useState<VariantId>(preference.variant)
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
@@ -147,9 +148,10 @@ function NewPuzzleSection({ preference, save, done }: {
     </header>
     <VariantSelector value={variant} onChange={setVariant} busy={busy} />
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+    <SinclairOption disabled={busy} />
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button primary main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
-      <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
+      <Dices size={18} aria-hidden="true" /> {busy ? busyLabel : selected === 'auto'
         ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
     </button>
   </section>
@@ -223,7 +225,9 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     : routeId === sectionRoutes.new ? 'new'
       : routeId === sectionRoutes.statistics ? 'statistics'
         : routeId === sectionRoutes.collections ? 'collections' : null
-  const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
+  const requestedCollection = collectionRoute.useSearch({ shouldThrow: false })
+  // The static page is built without a query string, including the offline copy.
+  const collectionSearch = preferencesReady ? requestedCollection : undefined
   const collection = getCollection(collectionSearch?.collection)
   const collectionPuzzle = getCollectionPuzzle(collectionSearch?.collection, collectionSearch?.puzzle)?.puzzle
   const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
@@ -254,7 +258,8 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
 
   function content(current: Section) {
     if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} select={selectPuzzle} manage={setManagingId} />
-    if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`} games={games} onPlay={play} />
+    if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`}
+      search={collectionSearch ?? {}} games={games} onPlay={play} />
     if (current === 'new') return preferencesReady && <NewPuzzleSection preference={newPuzzlePreference} save={savePuzzlePreference} done={play} />
     return <Statistics games={games} />
   }
@@ -270,11 +275,12 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
 
   return <main className={`puzzles-page ${section ? 'puzzles-subscreen' : ''}`}>
     <header className="puzzles-page-heading">
-      {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"
+      {section === 'collections' && (collectionSearch?.collection || collectionSearch?.variant) ? <Link to="/puzzles/collections"
         search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
-          : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
+          : collectionDifficulty ? { variant: collection?.variant, collection: collectionSearch.collection }
+            : collection ? { variant: collection.variant } : {}}
         className="icon-button puzzles-back" aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
-          : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
+          : collectionDifficulty ? 'Change collection difficulty' : collection ? 'Choose another collection' : 'Choose another variant'}><ChevronLeft size={21} /></Link>
         : backToStart ? <Link to="/puzzles/new" search={{}} replace
           className="icon-button puzzles-back" aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
           : section && <Link to="/puzzles" className="icon-button puzzles-back" aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}

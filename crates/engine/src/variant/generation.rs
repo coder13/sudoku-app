@@ -28,6 +28,10 @@ pub struct VariantGenerationOptions {
     pub derived_clues: Vec<VariantClueLayout>,
     /// Inclusive range of given counts in the resulting puzzle.
     pub givens: RangeInclusive<usize>,
+    /// Prefer half-turn pairs when removing givens and choosing derived markers.
+    pub half_turn_clues: bool,
+    /// If supplied, test exactly these given positions against the sampled solution.
+    pub given_mask: Option<[bool; CELLS]>,
     /// Inclusive range of constraint clue counts, independent of the number of givens.
     pub variant_clues: Option<RangeInclusive<usize>>,
     /// Require a complete logical path within this score range or at this difficulty.
@@ -52,6 +56,8 @@ impl VariantGenerationOptions {
             template,
             derived_clues: Vec::new(),
             givens,
+            half_turn_clues: false,
+            given_mask: None,
             variant_clues: None,
             rating: None,
             technique: None,
@@ -214,7 +220,7 @@ fn attempt(
 ) -> Option<GeneratedVariant> {
     let empty = [0; CELLS];
     let (layouts, extra_peers) =
-        layouts::prepare(&options.template, &options.derived_clues, random)?;
+        layouts::prepare(&options.template, &options.derived_clues, random, options.half_turn_clues || options.given_mask.is_some())?;
     let seed = random.next();
     let solution = if extra_peers.is_empty() {
         base.solve_seeded(&empty, &[0; CELLS], options.max_nodes, seed)
@@ -231,8 +237,17 @@ fn attempt(
     let mut puzzle = options.template.clone();
     puzzle
         .rules
-        .extend(layouts::build(layouts, &solution, random)?);
+        .extend(layouts::build(layouts, &solution, random, options.half_turn_clues)?);
     puzzle.givens = solution;
+    if let Some(mask) = &options.given_mask {
+        for (digit, &keep) in puzzle.givens.iter_mut().zip(mask) {
+            if !keep { *digit = 0; }
+        }
+    }
+    let mut remaining = puzzle.givens.iter().filter(|&&d| d != 0).count();
+    if options.given_mask.is_some() && !options.givens.contains(&remaining) {
+        return None;
+    }
     let variant_clues = puzzle.variant_clue_count();
     if options
         .variant_clues
@@ -250,9 +265,7 @@ fn attempt(
         None => None,
     };
     let mut without = without;
-    let mut order: [usize; CELLS] = std::array::from_fn(|index| index);
-    random.shuffle(&mut order);
-    let mut remaining = CELLS;
+    let order = if options.given_mask.is_some() { Vec::new() } else { removal_order(random, options.half_turn_clues) };
     let mut last_checked = None;
     for next in order.into_iter().map(Some).chain(std::iter::once(None)) {
         if options.givens.contains(&remaining) && last_checked != Some(remaining) {
@@ -270,19 +283,54 @@ fn attempt(
                 });
             }
         }
-        let Some(cell) = next else { break };
+        let Some((first, second)) = next else { break };
         if remaining == *options.givens.start() {
             break;
         }
-        compiled.givens[cell] = 0;
+        let count = if first == second { 1 } else { 2 };
+        if remaining - count < *options.givens.start() {
+            continue;
+        }
+        compiled.givens[first] = 0;
+        compiled.givens[second] = 0;
         if compiled.analyze(&empty, &[0; CELLS], options.max_nodes) == Ok(Analysis::Unique) {
-            remaining -= 1;
-            puzzle.givens[cell] = 0;
+            remaining -= count;
+            puzzle.givens[first] = 0;
+            puzzle.givens[second] = 0;
         } else {
-            compiled.givens[cell] = solution[cell];
+            compiled.givens[first] = solution[first];
+            compiled.givens[second] = solution[second];
         }
     }
     None
+}
+
+fn removal_order(random: &mut Random, paired: bool) -> Vec<(usize, usize)> {
+    let mut cells: [usize; CELLS] = std::array::from_fn(|i| i);
+    random.shuffle(&mut cells);
+    if !paired {
+        return cells.into_iter().map(|cell| (cell, cell)).collect();
+    }
+    let mut groups = Vec::with_capacity(46);
+    let mut seen = [false; CELLS];
+    let mut exceptions = 4;
+    for cell in cells {
+        let opposite = CELLS - 1 - cell;
+        if seen[cell] {
+            continue;
+        }
+        if exceptions > 0 && cell != opposite {
+            groups.push((cell, cell));
+            groups.push((opposite, opposite));
+            exceptions -= 1;
+        } else {
+            groups.push((cell, opposite));
+        }
+        seen[cell] = true;
+        seen[opposite] = true;
+    }
+    random.shuffle(&mut groups);
+    groups
 }
 
 fn accept(

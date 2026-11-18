@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { isDifficulty } from '../sudoku/difficulty'
 import type { Difficulty } from '../sudoku/engine'
-import type { CollectionPuzzleStatus } from '../sudoku/collections'
+import { isCollectionVariant, type CollectionVariant, type CollectionPuzzleStatus } from '../sudoku/collections'
 
 export type CollectionSearch = {
+  variant?: CollectionVariant
   collection?: string
   puzzle?: string
   difficulty?: Difficulty
@@ -12,6 +13,7 @@ export type CollectionSearch = {
 
 export const Route = createFileRoute('/puzzles/collections')({
   validateSearch: (search): CollectionSearch => ({
+    variant: isCollectionVariant(search.variant) ? search.variant : undefined,
     collection: typeof search.collection === 'string' && /^[a-z0-9-]{1,64}$/.test(search.collection) ? search.collection : undefined,
     puzzle: typeof search.puzzle === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(search.puzzle) ? search.puzzle : undefined,
     difficulty: isDifficulty(search.difficulty) ? search.difficulty : undefined,

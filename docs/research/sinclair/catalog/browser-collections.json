@@ -1,0 +1,21 @@
+{
+  "browser": "157.0.8103.79",
+  "packResponses": [
+    {
+      "path": "/collections/sinclair-library-killer-cages/hard-cbbb7a92dd9dcc902305ea40f44a7c627e1dacc9e34007184d62fdfcb62d56fc.json",
+      "status": 200
+    }
+  ],
+  "offlineCollection": {
+    "title": "Sinclair Killer Hard 001",
+    "collection": {
+      "collectionId": "sinclair-library-killer-cages",
+      "puzzleId": "hard-022a3e65"
+    },
+    "variant": "killer-cages",
+    "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "rowsInPack": 100,
+  "coldOfflineError": true,
+  "standardOfflineVariant": "jigsaw"
+}

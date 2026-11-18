@@ -21,7 +21,7 @@ export async function generateClassic(difficulty: Difficulty, seed: number, prog
         type: 'generate-constrained', includeRating: true, seed, maxAttempts: 32, clues: [24, 36], difficulty, technique: focus, techniqueOrder, exclude: previousPuzzles,
       })
       if (rating.status !== 'stalled' && rating.status.solved === difficulty && rating.score.counts[focus]) {
-        return { board, rating, canonical: rating }
+        return { board, rating, canonical: rating, focus }
       }
     } catch (error) {
       if (!(error instanceof EngineError && error.code === 'search-limit')) throw error

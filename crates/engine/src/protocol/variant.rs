@@ -18,7 +18,7 @@ use crate::{
 use crate::{HintAction, variant_practice_examples};
 #[cfg(feature = "generation")]
 use crate::{
-    VariantClueLayout, VariantGenerationError, VariantGenerationOptions, VariantPuzzle,
+    CELLS, VariantClueLayout, VariantGenerationError, VariantGenerationOptions, VariantPuzzle,
     start_variant_generation,
 };
 
@@ -112,6 +112,9 @@ pub(super) struct GenerationRequest {
     #[serde(default)]
     derived_clues: Vec<VariantClueLayout>,
     givens: ClueCount,
+    #[serde(default)]
+    half_turn_clues: bool,
+    given_mask: Option<String>,
     variant_clues: Option<ClueCount>,
     required_rule: Option<String>,
     score: Option<[u32; 2]>,
@@ -126,6 +129,12 @@ pub(super) struct GenerationRequest {
 impl GenerationRequest {
     pub(super) fn start(self) -> ResultValue<(GenerationProfile, ActiveGeneration)> {
         let order = technique_order(self.technique_order.as_deref())?;
+        let given_mask = self.given_mask.map(|mask| {
+            if mask.len() != CELLS || !mask.bytes().all(|b| matches!(b, b'0' | b'1')) {
+                return Err(("invalid-clue-mask", "A clue mask needs 81 zeroes or ones."));
+            }
+            Ok(std::array::from_fn(|i| mask.as_bytes()[i] == b'1'))
+        }).transpose()?;
         let technique = self
             .technique
             .map(|technique| {
@@ -142,6 +151,8 @@ impl GenerationRequest {
             template: self.template,
             derived_clues: self.derived_clues,
             givens: self.givens.range(),
+            half_turn_clues: self.half_turn_clues,
+            given_mask,
             variant_clues: self.variant_clues.map(ClueCount::range),
             rating: rating_target(self.score, self.difficulty)?,
             required_rule: self.required_rule,

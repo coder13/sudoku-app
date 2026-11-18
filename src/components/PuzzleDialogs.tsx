@@ -1,4 +1,5 @@
 import { DifficultySelector } from './DifficultySelector'
+import { SinclairOption } from './SinclairOption'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Dices, FileUp, PencilLine, Trash2 } from 'lucide-react'
 import type { DifficultyPreference } from '../sudoku/difficulty'
@@ -71,7 +72,7 @@ export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDif
   onCreate: () => void
   onImport: () => void
 }) {
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, busyLabel, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
   const [variant, setVariant] = useState<VariantId>(initialVariant)
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
@@ -94,9 +95,10 @@ export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDif
         <VariantSelector value={variant} onChange={setVariant} busy={busy} />
         <div className="new-puzzle-setup">
           <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+          <SinclairOption disabled={busy} />
           {error && <p className="form-error" role="alert">{error}</p>}
           <button type="submit" className="button primary puzzle-start-button" disabled={busy}>
-            <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
+            <Dices size={18} /> {busy ? busyLabel : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
           </button>
         </div>
         <div className="new-options">

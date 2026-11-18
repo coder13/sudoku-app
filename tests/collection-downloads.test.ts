@@ -1,12 +1,37 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { collectionDownloadBytes, collectionDownloadUrl, createCollectionDownloadStore } from '../src/sudoku/collection-downloads.ts'
+import { collectionDownloadBytes, collectionDownloadUrl, createCollectionDownloadStore, validCollectionGrid } from '../src/sudoku/collection-downloads.ts'
+import { collectionPuzzleData, decodeCollectionData } from '../src/sudoku/collection-data.ts'
 import { makeGame } from '../src/sudoku/game.ts'
 import { fullCollections, MemoryStorage, puzzleResponse } from './collection-fixtures.ts'
 
 const collection = fullCollections[0]
 const puzzles = collection.puzzles.slice(0, 7)
 Object.defineProperty(globalThis, 'window', { value: { addEventListener() {}, removeEventListener() {} }, configurable: true })
+
+test('variant downloads preserve all clues, detect changed clues, and reload offline', async () => {
+  const storage = new MemoryStorage()
+  const store = createCollectionDownloadStore(() => storage, puzzleResponse)
+  for (const collection of fullCollections.filter(collection => collection.variant !== 'classic')) {
+    const [first, second] = collection.puzzles
+    assert.equal(await store.download(collection, [first, second]), 2)
+    const data = store.grids(collection)[first.id]
+    assert.deepEqual(decodeCollectionData(first, data), { givens: first.givens, puzzle: first.puzzle })
+    assert.equal(validCollectionGrid(first, collectionPuzzleData(second)), false)
+    assert.equal(validCollectionGrid(first, first.givens), false)
+    const changed = { ...first.puzzle!, rules: [] }
+    assert.equal(validCollectionGrid(first, JSON.stringify(changed)), false)
+  }
+  const offline = createCollectionDownloadStore(() => storage, async () => { throw new Error('Must not fetch') })
+  const close = offline.connect()
+  try {
+    for (const collection of fullCollections.filter(collection => collection.variant !== 'classic')) {
+      assert.deepEqual(offline.grids(collection), Object.fromEntries(collection.puzzles.slice(0, 2)
+        .map(puzzle => [puzzle.id, collectionPuzzleData(puzzle)])))
+      assert.equal(await offline.download(collection, collection.puzzles.slice(0, 2)), 0)
+    }
+  } finally { close() }
+})
 
 test('zero default downloads, exact chosen batches, no repeats, and offline reload', async () => {
   const storage = new MemoryStorage()

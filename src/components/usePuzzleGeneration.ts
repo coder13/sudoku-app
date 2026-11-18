@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
+import { usesSinclair } from '../sudoku/generator-preference'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
@@ -15,28 +16,41 @@ export function usePlayerRating() {
 }
 
 export function usePuzzleGeneration() {
-  const [busy, setBusy] = useState(false)
+  const [busyLabel, setBusyLabel] = useState('')
   const [error, setError] = useState('')
   const pending = useRef(false)
+  const controller = useRef<AbortController | null>(null)
   const mounted = useRef(false)
 
   useEffect(() => {
     mounted.current = true
-    return () => { mounted.current = false }
+    return () => { mounted.current = false; controller.current?.abort() }
   }, [])
 
   async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: VariantId = 'classic') {
     if (pending.current) return
     pending.current = true
-    setBusy(true)
+    const generation = new AbortController()
+    controller.current = generation
+    const sinclair = usesSinclair()
+    setBusyLabel(sinclair ? 'Loading puzzle…' : 'Generating…')
     setError('')
     try {
       const auto = preference === 'auto'
       const difficulty = variantDifficulty(variant, auto ? roomStore.getSnapshot().playerRating.recommended : preference)
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+      if (sinclair) {
+        const { dealSinclair } = await import('../sudoku/sinclair-deal')
+        const progress = auto && variant === 'classic' ? await techniqueHistory.readProgress() : undefined
+        await dealSinclair(variant, difficulty, seed, auto, progress, () => roomStore.getSnapshot().games,
+          game => roomStore.add(game), generation.signal)
+        if (mounted.current && !generation.signal.aborted) onGenerated?.()
+        return
+      }
       if (variant !== 'classic') {
-        const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games)
-        if (!mounted.current) return
+        const games = roomStore.getSnapshot().games
+        const result = await generatePlayableVariant(variant, difficulty, seed, games)
+        if (!mounted.current || generation.signal.aborted) return
         const title = nextPuzzleTitle(`${VARIANTS[variant].name} `)
         const game = makeGame(createGameId(), title, result.puzzle.givens, 'generated')
         game.variant = { id: variant, puzzle: result.puzzle, solution: result.solution }
@@ -52,8 +66,9 @@ export function usePuzzleGeneration() {
         return
       }
       const previousPuzzles = roomStore.getSnapshot().games.filter(game => !game.variant).map(game => game.givens)
-      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, auto ? await techniqueHistory.readProgress() : undefined, previousPuzzles)
-      if (!mounted.current) return
+      const progress = auto ? await techniqueHistory.readProgress() : undefined
+      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, progress, previousPuzzles)
+      if (!mounted.current || generation.signal.aborted) return
       const game = makeGame(createGameId(), nextPuzzleTitle(), givens, 'generated')
       if (auto) game.generatedWithAuto = true
       if (rating && rating.status !== 'stalled') {
@@ -67,18 +82,19 @@ export function usePuzzleGeneration() {
       roomStore.add({ ...game, difficulty: game.difficulty ?? difficulty })
       onGenerated?.()
     } catch (reason) {
-      if (mounted.current) {
+      if (mounted.current && !generation.signal.aborted) {
         setError(reason instanceof EngineError && reason.code === 'search-limit'
           ? 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.'
           : (reason as Error).message)
       }
     } finally {
       pending.current = false
-      if (mounted.current) setBusy(false)
+      controller.current = null
+      if (mounted.current) setBusyLabel('')
     }
   }
 
-  return { busy, error, generate }
+  return { busy: Boolean(busyLabel), busyLabel, error, generate }
 }
 
 

@@ -89,6 +89,8 @@ export type VariantGenerationRequest = {
   template: VariantPuzzle
   derivedClues?: readonly VariantClueLayout[]
   givens: number | readonly [number, number]
+  halfTurnClues?: boolean
+  givenMask?: string
   variantClues?: number | readonly [number, number]
   requiredRule?: string
   technique?: TechniqueTarget
@@ -133,6 +135,7 @@ export type EngineRequest =
   | { type: 'capabilities' }
   | VariantRequest
   | { type: 'canonical-puzzles'; values: readonly string[] }
+  | { type: 'accepts-difficulty'; values: string; difficulty: Difficulty }
   | { type: 'impossible-templates' }
   | { type: 'analyze'; values: string }
   | { type: 'notes'; values: string }
@@ -496,6 +499,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
   T extends { type: 'canonical-puzzles' | 'impossible-templates' } ? string[] :
+  T extends { type: 'accepts-difficulty' } ? boolean :
   T extends { type: 'solve' } ? string | null :
   T extends { type: 'rate' } ? PuzzleRating :
   T extends { type: 'logical-solve' } ? LogicalSolution :
@@ -604,6 +608,7 @@ function connectionFor(request: EngineRequest, options: WorkerOptions) {
     case 'generation-advance':
     case 'generation-cancel':
     case 'impossible-templates':
+    case 'accepts-difficulty':
     case 'canonical-puzzles':
       return generationEngine
     case 'technique-count': return techniqueEngine

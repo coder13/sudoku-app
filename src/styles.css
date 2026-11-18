@@ -2076,6 +2076,11 @@ svg { flex-shrink: 0; }
 .completion-actions .button { white-space: normal; }
 .completion-next { grid-column: 1 / -1; }
 .difficulty-choice { align-content: start; overflow: auto; }
+.sinclair-option { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
+.sinclair-option input { accent-color: var(--purple); }
+.sinclair-option strong, .sinclair-option small { display: block; }
+.sinclair-option strong { font-size: 0.875rem; }
+.sinclair-option small { margin-top: 2px; color: var(--muted); font-size: 0.75rem; }
 .difficulty-heading {
   position: relative;
   min-height: 45px;

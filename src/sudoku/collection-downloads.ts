@@ -1,6 +1,9 @@
 import { COLLECTIONS, findCollectionGame, type CollectionPuzzleInfo, type PuzzleCollection } from './collections.ts'
-import { collectionGridHash } from './collection-integrity.ts'
+import { collectionGameData, collectionPuzzleData, decodeCollectionData } from './collection-data.ts'
 import type { Game } from './game.ts'
+import { libraryFamily, libraryLevel } from './sinclair-catalog.ts'
+import { sinclairDownloads } from './sinclair-download.ts'
+import { definitionOf, puzzleCode } from './sinclair-format.ts'
 
 const PREFIX = 'sudoku-app:v1:collection-download:'
 type Grids = Readonly<Record<string, string>>
@@ -8,7 +11,9 @@ type Downloads = Readonly<Record<string, Grids>>
 const empty: Downloads = {}
 
 export function collectionDownloadUrl(collection: PuzzleCollection, puzzle: CollectionPuzzleInfo) {
-  return `/collections/${collection.id}/${puzzle.id}-${puzzle.givensHash}.txt`
+  const family = libraryFamily(collection.id)
+  if (family && puzzle.difficulty) return libraryLevel(family, puzzle.difficulty).url
+  return `/collections/${collection.id}/${puzzle.id}-${puzzle.variantHash ?? puzzle.givensHash}.txt`
 }
 
 export function formatCollectionBytes(bytes: number) {
@@ -20,11 +25,23 @@ export function collectionDownloadBytes(puzzles: readonly CollectionPuzzleInfo[]
 }
 
 export function validCollectionGrid(puzzle: CollectionPuzzleInfo, value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9]{81}$/.test(value) && collectionGridHash(value) === puzzle.givensHash
+  return Boolean(decodeCollectionData(puzzle, value))
 }
 
 export async function fetchCollectionGrid(collection: PuzzleCollection, puzzle: CollectionPuzzleInfo,
   signal?: AbortSignal, request = fetch) {
+  const family = libraryFamily(collection.id)
+  if (family && puzzle.difficulty) {
+    const pack = await sinclairDownloads.load(family, puzzle.difficulty, signal)
+    const level = libraryLevel(family, puzzle.difficulty)
+    const index = level.rows.findIndex(([givens, variant]) => puzzleCode(pack.difficulty, variant ?? givens) === puzzle.id)
+    const row = pack.puzzles[index]
+    if (!row) throw Error('This puzzle is missing from the Sinclair download.')
+    const definition = definitionOf(row)
+    const data = collectionPuzzleData({ givens: definition.givens, puzzle: family === 'classic' ? undefined : definition })
+    if (!validCollectionGrid(puzzle, data)) throw Error('The Sinclair puzzle data is invalid. Download this difficulty again.')
+    return data
+  }
   const unavailable = 'This puzzle could not load. Connect to the internet and try again.'
   let givens: string
   try {
@@ -50,7 +67,9 @@ export function createCollectionDownloadStore(storage: () => Pick<Storage, 'getI
 
   function read(collection: PuzzleCollection): Record<string, string> {
     try {
-      const value: unknown = JSON.parse(storage().getItem(PREFIX + collection.id) ?? '{}')
+      const text = storage().getItem(PREFIX + collection.id)
+      if (!text) return {}
+      const value: unknown = JSON.parse(text)
       if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
       return Object.fromEntries(collection.puzzles.flatMap(puzzle => {
         const givens = (value as Record<string, unknown>)[puzzle.id]
@@ -72,17 +91,30 @@ export function createCollectionDownloadStore(storage: () => Pick<Storage, 'getI
       function reload() { publish(Object.fromEntries(COLLECTIONS.map(collection => [collection.id, read(collection)]))) }
       function changed(event: StorageEvent) { if (!event.key || event.key.startsWith(PREFIX)) reload() }
       reload()
+      const unsubscribe = sinclairDownloads.subscribe(() => publish({ ...snapshot }))
+      void sinclairDownloads.discover()
       window.addEventListener('storage', changed)
-      return () => window.removeEventListener('storage', changed)
+      return () => { unsubscribe(); window.removeEventListener('storage', changed) }
     },
     grids(collection: PuzzleCollection, games: readonly Game[] = []): Grids {
       const grids = { ...snapshot[collection.id] }
       // Keep puzzles from earlier app versions and matching imports playable offline.
       for (const puzzle of collection.puzzles) {
         const existing = findCollectionGame(puzzle, games)
-        if (existing) grids[puzzle.id] = existing.givens
+        if (existing) grids[puzzle.id] = collectionGameData(existing)
       }
       return grids
+    },
+    available(collection: PuzzleCollection, games: readonly Game[] = []): Set<string> {
+      const ids = new Set(Object.keys(store.grids(collection, games)))
+      const family = libraryFamily(collection.id)
+      if (family) {
+        const levels = new Set(collection.puzzles.map(p => p.difficulty).filter(t => t !== null))
+        for (const tier of levels) if (sinclairDownloads.ready(libraryLevel(family, tier).url)) {
+          for (const puzzle of collection.puzzles) if (puzzle.difficulty === tier) ids.add(puzzle.id)
+        }
+      }
+      return ids
     },
     async download(collection: PuzzleCollection, puzzles: readonly CollectionPuzzleInfo[], options: {
       games?: readonly Game[]; signal?: AbortSignal; onProgress?: (done: number, total: number) => void

@@ -1,4 +1,5 @@
 import { DifficultySelector } from './DifficultySelector'
+import { SinclairOption } from './SinclairOption'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react'
@@ -26,7 +27,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   onChooseVariant: () => void
 }) {
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, busyLabel, error, generate } = usePuzzleGeneration()
   const { recommended, results } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
   const [collectionError, setCollectionError] = useState('')
@@ -35,12 +36,13 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const online = useOnlineStatus()
   useEffect(() => () => nextRequest.current?.abort(), [game.id])
   useSyncExternalStore(collectionDownloads.subscribe, collectionDownloads.getSnapshot, collectionDownloads.getServerSnapshot)
-  const collectionEntry = getGameCollection(game)
+  // Games dealt through New Puzzle keep its difficulty preference and Auto mode.
+  const collectionEntry = game.generationStyle === 'sinclair' ? undefined : getGameCollection(game)
   const inCollection = Boolean(collectionEntry)
   const collectionDifficulty = collectionEntry?.puzzle.difficulty
   const collectionNext = collectionEntry && collectionDifficulty
     ? nextCollectionPuzzle(collectionEntry.collection, games, collectionDifficulty, collectionEntry.puzzle.id,
-      online ? undefined : new Set(Object.keys(collectionDownloads.grids(collectionEntry.collection, games)))) : undefined
+      online ? undefined : collectionDownloads.available(collectionEntry.collection, games)) : undefined
   const progress = collectionEntry && collectionDifficulty
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = generationVariant(game.variant)
@@ -138,11 +140,11 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
               : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
               : <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
               onClick={playNext}>
-              {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
+              {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? busyLabel : nextLabel}
               {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
             </button>}
             {collectionEntry ? <>
-              <Link className="button secondary" to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
+              <Link className="button secondary" to="/puzzles/collections" search={{ variant: collectionEntry.collection.variant, collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
               <Link className="button secondary" to="/puzzles">Choose a different puzzle</Link>
             </> : !needsChoice && <>
               <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
@@ -162,7 +164,7 @@ export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack 
   onChange: (difficulty: DifficultyPreference) => void
   onBack: () => void
 }) {
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, busyLabel, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
   const [selection, setSelection] = useState<DifficultyPreference>(value)
@@ -191,8 +193,9 @@ export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack 
         </header>
         {error && <p className="form-error" role="alert">{error}</p>}
         <DifficultySelector value={selection} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+        <SinclairOption disabled={busy} />
         <button type="button" className="button primary puzzle-start-button" disabled={busy} onClick={() => { void selectDifficulty(selection) }}>
-          {busy ? 'Generating…' : 'Start puzzle'} <ArrowRight size={18} aria-hidden="true" />
+          {busy ? busyLabel : 'Start puzzle'} <ArrowRight size={18} aria-hidden="true" />
         </button>
       </div>
     </section>

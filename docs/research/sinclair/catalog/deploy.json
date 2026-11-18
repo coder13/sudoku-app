@@ -1,0 +1,11 @@
+{
+  "publish": "dist/client",
+  "releaseSha256": "cf1010b10ce5f6cbd44611da3edafdd0e5f707a70f6fb379db5724447fa54275",
+  "wasmSha256": "b129d048118ccfccc1c7ff60384160f38729ee74ddce061906e4824f319a9861",
+  "packs": 66,
+  "puzzles": 6600,
+  "bytes": 4076543,
+  "collectionFilesInShellPrecache": 0,
+  "javascriptAssetsChecked": 18,
+  "libraryGridsFoundInJavaScript": 0
+}

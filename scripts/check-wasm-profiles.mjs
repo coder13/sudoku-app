@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { buildBrowserEngine } from './build-wasm.mjs'
 import { engineBuildProfiles } from './engine-build-profiles.mjs'
+import { classicSolverFingerprint } from './classic-solver-fingerprint.mjs'
 
 const root = mkdtempSync(join(tmpdir(), 'sudoku-wasm-profiles-'))
 const givens = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'
@@ -30,7 +31,9 @@ try {
     }
     const expected = { classic: true, ...Object.fromEntries(['variants', 'generation', 'teaching'].map(feature => [feature, features.includes(feature)])) }
     assert.deepEqual(request({ type: 'capabilities' }).value, expected)
-    assert.deepEqual(JSON.parse(readFileSync(join(output, 'engine-profile.json'))), { profile, features, capabilities: expected })
+    assert.deepEqual(JSON.parse(readFileSync(join(output, 'engine-profile.json'))), {
+      profile, features, capabilities: expected, classicSolverFingerprint: classicSolverFingerprint(),
+    })
     assert.equal(typeof engine.generate_board === 'function', expected.generation)
     assert.equal(existsSync(join(output, 'lesson-examples.json')), expected.teaching)
     const rate = request({ type: 'rate', values: givens })

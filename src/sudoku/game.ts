@@ -30,6 +30,7 @@ export type Game = {
   score?: number | null
   variant?: VariantGame
   generatedWithAuto?: true
+  generationStyle?: 'sinclair'
   ratingAttempt?: RatingAttempt
   analysisUsed?: true
   givens: string
@@ -93,6 +94,7 @@ export function restartGame(game: Game): Game {
     score: game.score,
     variant: game.variant,
     generatedWithAuto: game.generatedWithAuto,
+    generationStyle: game.generationStyle,
     analysisUsed: game.analysisUsed,
     ratingAttempt: game.ratingAttempt && {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
