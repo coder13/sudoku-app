@@ -2,6 +2,12 @@
 
 This integration starts from main `eb70e721`. [Issue 59](https://github.com/coder13/sudoku-app/issues/59) tracks the app-ready family. Release checks and measurements below distinguish exact solutions, human solve paths and source-format gaps.
 
+## Release
+
+Modular Lines reached main at `70ceebb4b8a10106b7fd8f98d0c06066cedd9869` through [PR 176](https://github.com/coder13/sudoku-app/pull/176) on November 18, 2026. All checks passed on reviewed head `494a9c3af9cbfe906e79aee4c8e848c1bcfa5b45`, including [CI run 44402439393](https://github.com/coder13/sudoku-app/actions/runs/44402439393) and the deployment preview. Completed CI logs confirm 360 native, 520 app and 316 Wasm tests. The sixteen capability combinations, four package profiles and strict full/reduced Cargo documentation pass. Fetched remote main contains both reviewed head and merge; its shipping engine, app, scripts, tests and package files match the reviewed head exactly. [Issue 59](https://github.com/coder13/sudoku-app/issues/59) is closed.
+
+The source and reasoning limits below remain active. Live viewport review and New puzzle preset calibration remain follow-ups.
+
 ## Rule and source fidelity
 
 A Modular line uses the digit groups {1, 4, 7}, {2, 5, 8} and {3, 6, 9}. Every three successive positions must contain one digit from each group. The group order repeats every three positions. Digits three positions apart can differ or repeat if the other rules permit them. A two-cell path requires different groups; a one-cell path adds no restriction.
@@ -70,7 +76,7 @@ The strict retained comparison preserves 11161 complete responses on 75 corpus p
 
 Main app SHA-256 is `4ab15911aae4c14c751c3fb959f4f6cf73c8b8cf3eccdbaf1cdd277bb3f24b99`; Modular is `9f61fa13458970e78a2a054a74ddef92e5c204e93b256f364b08b21a8f6a8498`. The production rebuild reproduces it. An initial accumulated local feature cache exhausted disk space before a test could execute; the repeat uses identical commands with a temporary cache per combination. No product behavior is inferred from that infrastructure failure.
 
-Performance checks are complete. Final reviewed-head CI and merge verification are pending.
+Performance, reviewed-head CI, deployment and merge verification are complete. No new public family-specific Cargo feature is introduced; use the existing reduced capability profiles.
 
 ## Paired performance
 
@@ -200,6 +206,12 @@ The reviewed main checkout and the integration each run their own complete JavaS
 | global AdoP | 1.420/2.556 → 0.831/2.026 | 0.209/0.232 → 0.239/0.265 | 2.654/3.158 → 2.689/2.722 | 0.123/0.127 → 0.124/0.139 | 1.014/1.534 → 0.834/1.432 |
 
 These measurements do not include live viewport layout, paint, worker startup or transfer. Live interaction review and New puzzle difficulty calibration remain open.
+
+## Focused HCHW follow-up
+
+[Issue 175](https://github.com/coder13/sudoku-app/issues/175) records both exact stalled positions, the reviewed source head and a diagnostic across all 121 catalog techniques. No detector offers a proof at the app stall. Preferring ALS AIC, Sue de Coq, Aligned Triplet Exclusion, Dynamic Forcing Net or Kraken Fish 2 gives different proof sequences that reach the same remaining candidates.
+
+With two warmups and seven measured samples, the three empty Unique Rectangle inference searches each cost about 92–95 ms at the opening and 34–35 ms at the app stall. `classic_proofs` creates a new Classic search per technique, whereas the three rectangle graph methods share a cache only within one search instance. Profile graph construction before extending that cache lifetime. Preserve the exact board/masks, unique-solution checks, proof ordering and all retained replies. This diagnostic identifies a candidate optimization; it does not ship one or resolve the human reasoning gap.
 
 ## Reproduce
 
