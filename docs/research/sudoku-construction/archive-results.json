@@ -1,0 +1,22 @@
+{
+  "Chaos": {
+    "budgetRetries": 2,
+    "exactAnalysis": {
+      "unique": 70
+    },
+    "n": 70,
+    "normalizedSha256": "adfae74e9b915c7dbc88e90d873b8568894721cd9096ceb2e1c92426c449cb43",
+    "withOneCellGeometry": 10,
+    "withOpening": 6
+  },
+  "Killer": {
+    "budgetRetries": 0,
+    "exactAnalysis": {
+      "unique": 60
+    },
+    "medianCages": 34.0,
+    "n": 60,
+    "normalizedSha256": "62e0db347be2dbee0fe20fff33bcecc0b9532ee82128b3393d174d6170ac7510",
+    "withOpening": 52
+  }
+}

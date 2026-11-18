@@ -1,0 +1,2503 @@
+{
+  "samples": 6600,
+  "sinclair": {
+    "count": 6600,
+    "answers": 6600,
+    "hardest": 71,
+    "meanPairing": 0.8153066587980878,
+    "medianSteps": 79,
+    "medianPoints": 1813,
+    "medianReferenceDistance": 2.6023540131152094,
+    "perfectPairing": 525
+  },
+  "normal": {
+    "count": 6599,
+    "answers": 2322,
+    "hardest": 64,
+    "meanPairing": 0.23126374243118908,
+    "medianSteps": 78,
+    "medianPoints": 1744,
+    "medianReferenceDistance": 2.633299184559364,
+    "perfectPairing": 0
+  },
+  "packBytes": {
+    "raw": 4076543,
+    "gzip": 994415,
+    "brotli": 967342
+  },
+  "index": {
+    "raw": 239229,
+    "gzip": 97670,
+    "brotli": 98045
+  },
+  "filenames": 66,
+  "minPack": 11605,
+  "maxPack": 24908,
+  "meanDealNeighbor": 0.1526478893009017,
+  "meanRandomNeighbor": 0.22505993953874573,
+  "meanBrowseNeighbor": 0.15252246875445846,
+  "families": [
+    {
+      "family": "classic",
+      "sinclair": {
+        "count": 1000,
+        "answers": 1000,
+        "hardest": 51,
+        "meanPairing": 0.7297494719558588,
+        "medianSteps": 63,
+        "medianPoints": 1218,
+        "medianReferenceDistance": 1.4595270341147075,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 999,
+        "answers": 993,
+        "hardest": 44,
+        "meanPairing": 0.32663270598381294,
+        "medianSteps": 64,
+        "medianPoints": 1346,
+        "medianReferenceDistance": 1.6016495183925923,
+        "perfectPairing": 0
+      },
+      "packs": 10
+    },
+    {
+      "family": "killer-cages",
+      "sinclair": {
+        "count": 500,
+        "answers": 500,
+        "hardest": 22,
+        "meanPairing": 0.6843865080981769,
+        "medianSteps": 154,
+        "medianPoints": 3851,
+        "medianReferenceDistance": 0.7787165142085795,
+        "perfectPairing": 16
+      },
+      "normal": {
+        "count": 500,
+        "answers": 206,
+        "hardest": 9,
+        "meanPairing": 0.22743486907345806,
+        "medianSteps": 158,
+        "medianPoints": 4474,
+        "medianReferenceDistance": 0.7815455871160664,
+        "perfectPairing": 0
+      },
+      "packs": 5
+    },
+    {
+      "family": "windoku",
+      "sinclair": {
+        "count": 1000,
+        "answers": 1000,
+        "hardest": 45,
+        "meanPairing": 0.8876939092297736,
+        "medianSteps": 76,
+        "medianPoints": 2008,
+        "medianReferenceDistance": 1.4019935683725842,
+        "perfectPairing": 162
+      },
+      "normal": {
+        "count": 1000,
+        "answers": 394,
+        "hardest": 28,
+        "meanPairing": 0.24431926711645652,
+        "medianSteps": 78,
+        "medianPoints": 1998,
+        "medianReferenceDistance": 1.3854033099811431,
+        "perfectPairing": 0
+      },
+      "packs": 10
+    },
+    {
+      "family": "diagonal",
+      "sinclair": {
+        "count": 800,
+        "answers": 800,
+        "hardest": 45,
+        "meanPairing": 0.8796088620949586,
+        "medianSteps": 70,
+        "medianPoints": 1634,
+        "medianReferenceDistance": 2.3130025616408414,
+        "perfectPairing": 97
+      },
+      "normal": {
+        "count": 800,
+        "answers": 166,
+        "hardest": 27,
+        "meanPairing": 0.23049849181245083,
+        "medianSteps": 69,
+        "medianPoints": 1502,
+        "medianReferenceDistance": 2.2968897840136244,
+        "perfectPairing": 0
+      },
+      "packs": 8
+    },
+    {
+      "family": "jigsaw",
+      "sinclair": {
+        "count": 300,
+        "answers": 300,
+        "hardest": 5,
+        "meanPairing": 0.8623224893537861,
+        "medianSteps": 58,
+        "medianPoints": 549,
+        "medianReferenceDistance": 2.7602004589669136,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 300,
+        "answers": 128,
+        "hardest": 4,
+        "meanPairing": 0.4631530082631802,
+        "medianSteps": 58,
+        "medianPoints": 510,
+        "medianReferenceDistance": 2.8127988475486987,
+        "perfectPairing": 0
+      },
+      "packs": 3
+    },
+    {
+      "family": "anti-knight",
+      "sinclair": {
+        "count": 800,
+        "answers": 800,
+        "hardest": 39,
+        "meanPairing": 0.9110266021893665,
+        "medianSteps": 106,
+        "medianPoints": 1829,
+        "medianReferenceDistance": 2.680557474606818,
+        "perfectPairing": 116
+      },
+      "normal": {
+        "count": 800,
+        "answers": 174,
+        "hardest": 20,
+        "meanPairing": 0.2559199106716481,
+        "medianSteps": 97,
+        "medianPoints": 1654,
+        "medianReferenceDistance": 2.679759138952597,
+        "perfectPairing": 0
+      },
+      "packs": 8
+    },
+    {
+      "family": "thermometer",
+      "sinclair": {
+        "count": 800,
+        "answers": 800,
+        "hardest": 37,
+        "meanPairing": 0.8773886898509964,
+        "medianSteps": 80,
+        "medianPoints": 1809,
+        "medianReferenceDistance": 2.6644837311453218,
+        "perfectPairing": 82
+      },
+      "normal": {
+        "count": 800,
+        "answers": 31,
+        "hardest": 31,
+        "meanPairing": 0.12052608362802011,
+        "medianSteps": 78,
+        "medianPoints": 1870,
+        "medianReferenceDistance": 2.6665842686855954,
+        "perfectPairing": 0
+      },
+      "packs": 8
+    },
+    {
+      "family": "arrow",
+      "sinclair": {
+        "count": 700,
+        "answers": 700,
+        "hardest": 37,
+        "meanPairing": 0.7801779397216911,
+        "medianSteps": 81,
+        "medianPoints": 1822,
+        "medianReferenceDistance": 2.650436095837832,
+        "perfectPairing": 35
+      },
+      "normal": {
+        "count": 700,
+        "answers": 36,
+        "hardest": 21,
+        "meanPairing": 0.12826828993095765,
+        "medianSteps": 79,
+        "medianPoints": 1880,
+        "medianReferenceDistance": 2.664431591507024,
+        "perfectPairing": 0
+      },
+      "packs": 7
+    },
+    {
+      "family": "kropki",
+      "sinclair": {
+        "count": 700,
+        "answers": 700,
+        "hardest": 37,
+        "meanPairing": 0.688780978447213,
+        "medianSteps": 91.5,
+        "medianPoints": 1808,
+        "medianReferenceDistance": 2.662421471051983,
+        "perfectPairing": 17
+      },
+      "normal": {
+        "count": 700,
+        "answers": 200,
+        "hardest": 22,
+        "meanPairing": 0.18211052436011727,
+        "medianSteps": 83,
+        "medianPoints": 1722,
+        "medianReferenceDistance": 2.6736248914369534,
+        "perfectPairing": 0
+      },
+      "packs": 7
+    }
+  ],
+  "groups": [
+    {
+      "family": "classic",
+      "tier": "beginner",
+      "sizes": {
+        "raw": 29387,
+        "gzip": 11605,
+        "brotli": 11482
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.7366367981909774,
+        "medianSteps": 47,
+        "medianPoints": 454,
+        "medianReferenceDistance": 0.22671321241925813,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.41039777078786366,
+        "medianSteps": 47,
+        "medianPoints": 448,
+        "medianReferenceDistance": 0.2855431134011812,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.41554731806004946,
+      "browseNeighbor": 0.3291624585770957,
+      "dealNeighbor": 0.34621928294527243
+    },
+    {
+      "family": "classic",
+      "tier": "easy",
+      "sizes": {
+        "raw": 29703,
+        "gzip": 11702,
+        "brotli": 11557
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 2,
+        "meanPairing": 0.7172632030892813,
+        "medianSteps": 49,
+        "medianPoints": 466,
+        "medianReferenceDistance": 0.29368377491783537,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 2,
+        "meanPairing": 0.3678676011940178,
+        "medianSteps": 50,
+        "medianPoints": 476,
+        "medianReferenceDistance": 0.3512699525858041,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.32198363985370115,
+      "browseNeighbor": 0.22488167717465155,
+      "dealNeighbor": 0.22411322699702138
+    },
+    {
+      "family": "classic",
+      "tier": "medium",
+      "sizes": {
+        "raw": 33344,
+        "gzip": 12251,
+        "brotli": 12126
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 6,
+        "meanPairing": 0.6951233313057127,
+        "medianSteps": 60.5,
+        "medianPoints": 822,
+        "medianReferenceDistance": 0.4435327394084187,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 6,
+        "meanPairing": 0.29617524334444933,
+        "medianSteps": 60,
+        "medianPoints": 806,
+        "medianReferenceDistance": 0.508052983732886,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.17603597438593854,
+      "browseNeighbor": 0.08173744030026397,
+      "dealNeighbor": 0.08298076248676156
+    },
+    {
+      "family": "classic",
+      "tier": "tricky",
+      "sizes": {
+        "raw": 31911,
+        "gzip": 12213,
+        "brotli": 12041
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.7043478300107602,
+        "medianSteps": 59,
+        "medianPoints": 941,
+        "medianReferenceDistance": 0.5866693516695793,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.3273623635867603,
+        "medianSteps": 59,
+        "medianPoints": 956,
+        "medianReferenceDistance": 0.6991812817737504,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.2639233835610473,
+      "browseNeighbor": 0.16538971888530996,
+      "dealNeighbor": 0.18067194708539588
+    },
+    {
+      "family": "classic",
+      "tier": "hard",
+      "sizes": {
+        "raw": 32360,
+        "gzip": 12356,
+        "brotli": 12179
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 9,
+        "meanPairing": 0.701469373187082,
+        "medianSteps": 60,
+        "medianPoints": 1034,
+        "medianReferenceDistance": 1.3569498564170495,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.3251767339048301,
+        "medianSteps": 62,
+        "medianPoints": 1147,
+        "medianReferenceDistance": 1.5480507726337513,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.24222737036366776,
+      "browseNeighbor": 0.13302512086072138,
+      "dealNeighbor": 0.1568794933106782
+    },
+    {
+      "family": "classic",
+      "tier": "very-hard",
+      "sizes": {
+        "raw": 32752,
+        "gzip": 12503,
+        "brotli": 12347
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 8,
+        "meanPairing": 0.6948485939681607,
+        "medianSteps": 63,
+        "medianPoints": 1449,
+        "medianReferenceDistance": 1.7651146787727714,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.3247855650909428,
+        "medianSteps": 65,
+        "medianPoints": 1703,
+        "medianReferenceDistance": 1.8687102041721504,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.23876676491337953,
+      "browseNeighbor": 0.13239770607888807,
+      "dealNeighbor": 0.15528761123726684
+    },
+    {
+      "family": "classic",
+      "tier": "expert",
+      "sizes": {
+        "raw": 36548,
+        "gzip": 13135,
+        "brotli": 12974
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.736711960136821,
+        "medianSteps": 70,
+        "medianPoints": 2643,
+        "medianReferenceDistance": 1.8905426381235666,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.30868070592978447,
+        "medianSteps": 71.5,
+        "medianPoints": 2772,
+        "medianReferenceDistance": 2.3170710491426374,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.34006912691230623,
+      "browseNeighbor": 0.29449920260422874,
+      "dealNeighbor": 0.2742800094103479
+    },
+    {
+      "family": "classic",
+      "tier": "master",
+      "sizes": {
+        "raw": 37843,
+        "gzip": 13576,
+        "brotli": 13390
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 9,
+        "meanPairing": 0.746166899395235,
+        "medianSteps": 75,
+        "medianPoints": 4514,
+        "medianReferenceDistance": 2.071489353516993,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 8,
+        "meanPairing": 0.3086717639830179,
+        "medianSteps": 79,
+        "medianPoints": 4605,
+        "medianReferenceDistance": 2.587626398029299,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.1774411673496873,
+      "browseNeighbor": 0.08739392823920715,
+      "dealNeighbor": 0.0897108170083473
+    },
+    {
+      "family": "classic",
+      "tier": "extreme",
+      "sizes": {
+        "raw": 38666,
+        "gzip": 13976,
+        "brotli": 13766
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.7677869019869017,
+        "medianSteps": 84,
+        "medianPoints": 9487,
+        "medianReferenceDistance": 2.9989542922115335,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 99,
+        "answers": 95,
+        "hardest": 4,
+        "meanPairing": 0.3168378851125356,
+        "medianSteps": 85,
+        "medianPoints": 6856,
+        "medianReferenceDistance": 3.065689940600511,
+        "perfectPairing": 0
+      },
+      "missed": 1,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.22343929848522529,
+      "browseNeighbor": 0.14931720878485094,
+      "dealNeighbor": 0.16300452315728609
+    },
+    {
+      "family": "classic",
+      "tier": "impossible",
+      "sizes": {
+        "raw": 36618,
+        "gzip": 13705,
+        "brotli": 13513
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 3,
+        "meanPairing": 0.7971398282876543,
+        "medianSteps": 113,
+        "medianPoints": 28906,
+        "medianReferenceDistance": 3.073037296031413,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 98,
+        "hardest": 3,
+        "meanPairing": 0.2802734786952177,
+        "medianSteps": 110,
+        "medianPoints": 25479,
+        "medianReferenceDistance": 3.0809347040233988,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.2280052064818563,
+      "browseNeighbor": 0.07530797184061089,
+      "dealNeighbor": 0.10184985486632454
+    },
+    {
+      "family": "killer-cages",
+      "tier": "easy",
+      "sizes": {
+        "raw": 132999,
+        "gzip": 24908,
+        "brotli": 25112
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.981075249526164,
+        "medianSteps": 131,
+        "medianPoints": 2607,
+        "medianReferenceDistance": 0.3557616742799383,
+        "perfectPairing": 5
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.34932741115029076,
+        "medianSteps": 66,
+        "medianPoints": 1000,
+        "medianReferenceDistance": 0.7932304900126668,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 100,
+      "randomNeighbor": 0.35745718865782694,
+      "browseNeighbor": 0.2880931869746693,
+      "dealNeighbor": 0.2845479051239211
+    },
+    {
+      "family": "killer-cages",
+      "tier": "medium",
+      "sizes": {
+        "raw": 129898,
+        "gzip": 24864,
+        "brotli": 24942
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 2,
+        "meanPairing": 0.9826316666566061,
+        "medianSteps": 149,
+        "medianPoints": 3430.5,
+        "medianReferenceDistance": 0.39246758972952545,
+        "perfectPairing": 10
+      },
+      "normal": {
+        "count": 100,
+        "answers": 98,
+        "hardest": 2,
+        "meanPairing": 0.2574742476789146,
+        "medianSteps": 119.5,
+        "medianPoints": 2502.5,
+        "medianReferenceDistance": 0.3931888417557203,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 100,
+      "randomNeighbor": 0.27899271570961237,
+      "browseNeighbor": 0.1811861476021732,
+      "dealNeighbor": 0.17552206673737217
+    },
+    {
+      "family": "killer-cages",
+      "tier": "hard",
+      "sizes": {
+        "raw": 129602,
+        "gzip": 21419,
+        "brotli": 21129
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.4870507846173304,
+        "medianSteps": 164,
+        "medianPoints": 4288,
+        "medianReferenceDistance": 0.9250573364371983,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 5,
+        "hardest": 3,
+        "meanPairing": 0.1543995714007402,
+        "medianSteps": 162,
+        "medianPoints": 4529,
+        "medianReferenceDistance": 0.7074491392902627,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 100,
+      "randomNeighbor": 0.23821362528875123,
+      "browseNeighbor": 0.13921072469387744,
+      "dealNeighbor": 0.14325189034694621
+    },
+    {
+      "family": "killer-cages",
+      "tier": "very-hard",
+      "sizes": {
+        "raw": 130911,
+        "gzip": 21432,
+        "brotli": 21009
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 4,
+        "meanPairing": 0.4858058841713776,
+        "medianSteps": 160,
+        "medianPoints": 4254,
+        "medianReferenceDistance": 0.951680933201102,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 1,
+        "hardest": 1,
+        "meanPairing": 0.17241379310344837,
+        "medianSteps": 158,
+        "medianPoints": 4474,
+        "medianReferenceDistance": 0.7815455871160664,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 100,
+      "randomNeighbor": 0.27152604611695064,
+      "browseNeighbor": 0.1840664478814646,
+      "dealNeighbor": 0.21884280913797274
+    },
+    {
+      "family": "killer-cages",
+      "tier": "master",
+      "sizes": {
+        "raw": 125629,
+        "gzip": 19986,
+        "brotli": 18075
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 8,
+        "meanPairing": 0.48536895551941145,
+        "medianSteps": 173,
+        "medianPoints": 5234,
+        "medianReferenceDistance": 1.1698841868152683,
+        "perfectPairing": 1
+      },
+      "normal": {
+        "count": 100,
+        "answers": 2,
+        "hardest": 2,
+        "meanPairing": 0.20355932203389807,
+        "medianSteps": 186,
+        "medianPoints": 5713,
+        "medianReferenceDistance": 1.6543394706989099,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 100,
+      "randomNeighbor": 0.2480145936506975,
+      "browseNeighbor": 0.1568705077802134,
+      "dealNeighbor": 0.1676746338729542
+    },
+    {
+      "family": "windoku",
+      "tier": "beginner",
+      "sizes": {
+        "raw": 58706,
+        "gzip": 12664,
+        "brotli": 12122
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.9440017130088889,
+        "medianSteps": 43.5,
+        "medianPoints": 609,
+        "medianReferenceDistance": 1.3102439473867238,
+        "perfectPairing": 7
+      },
+      "normal": {
+        "count": 100,
+        "answers": 89,
+        "hardest": 1,
+        "meanPairing": 0.44663995163951997,
+        "medianSteps": 42,
+        "medianPoints": 588,
+        "medianReferenceDistance": 1.3056407335001812,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.5404867783472862,
+      "browseNeighbor": 0.47192541831309015,
+      "dealNeighbor": 0.4673057780260624
+    },
+    {
+      "family": "windoku",
+      "tier": "easy",
+      "sizes": {
+        "raw": 59327,
+        "gzip": 12573,
+        "brotli": 12098
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 3,
+        "meanPairing": 0.9239347208951482,
+        "medianSteps": 52,
+        "medianPoints": 701,
+        "medianReferenceDistance": 1.2481487346714153,
+        "perfectPairing": 8
+      },
+      "normal": {
+        "count": 100,
+        "answers": 94,
+        "hardest": 3,
+        "meanPairing": 0.3675511083878444,
+        "medianSteps": 51,
+        "medianPoints": 704,
+        "medianReferenceDistance": 1.2613480962747503,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3555564044619658,
+      "browseNeighbor": 0.26538338771211417,
+      "dealNeighbor": 0.2533445658816344
+    },
+    {
+      "family": "windoku",
+      "tier": "medium",
+      "sizes": {
+        "raw": 62642,
+        "gzip": 12751,
+        "brotli": 12229
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 4,
+        "meanPairing": 0.8935403971678213,
+        "medianSteps": 62,
+        "medianPoints": 934,
+        "medianReferenceDistance": 1.2557333402434323,
+        "perfectPairing": 18
+      },
+      "normal": {
+        "count": 100,
+        "answers": 75,
+        "hardest": 3,
+        "meanPairing": 0.28977968041808444,
+        "medianSteps": 61,
+        "medianPoints": 924,
+        "medianReferenceDistance": 1.3149753302558504,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.31907043033231647,
+      "browseNeighbor": 0.2771555602618793,
+      "dealNeighbor": 0.25480727128941205
+    },
+    {
+      "family": "windoku",
+      "tier": "tricky",
+      "sizes": {
+        "raw": 63086,
+        "gzip": 12989,
+        "brotli": 12467
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.9067912047387064,
+        "medianSteps": 71,
+        "medianPoints": 1532,
+        "medianReferenceDistance": 1.0162768965401519,
+        "perfectPairing": 16
+      },
+      "normal": {
+        "count": 100,
+        "answers": 13,
+        "hardest": 4,
+        "meanPairing": 0.13655650097029415,
+        "medianSteps": 76,
+        "medianPoints": 1718,
+        "medianReferenceDistance": 0.9004594445097219,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.2065842918262604,
+      "browseNeighbor": 0.12122048931048461,
+      "dealNeighbor": 0.13146580857875292
+    },
+    {
+      "family": "windoku",
+      "tier": "hard",
+      "sizes": {
+        "raw": 63624,
+        "gzip": 13188,
+        "brotli": 12720
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 9,
+        "meanPairing": 0.9109244268122906,
+        "medianSteps": 75,
+        "medianPoints": 1897,
+        "medianReferenceDistance": 1.249912197380982,
+        "perfectPairing": 16
+      },
+      "normal": {
+        "count": 100,
+        "answers": 12,
+        "hardest": 4,
+        "meanPairing": 0.22275077268194773,
+        "medianSteps": 80,
+        "medianPoints": 1998,
+        "medianReferenceDistance": 1.4263453119613123,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.19717647786434625,
+      "browseNeighbor": 0.08895599451614722,
+      "dealNeighbor": 0.11561574607649092
+    },
+    {
+      "family": "windoku",
+      "tier": "very-hard",
+      "sizes": {
+        "raw": 65374,
+        "gzip": 13451,
+        "brotli": 12922
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.8884629034924626,
+        "medianSteps": 79,
+        "medianPoints": 2211,
+        "medianReferenceDistance": 1.5304927290611798,
+        "perfectPairing": 17
+      },
+      "normal": {
+        "count": 100,
+        "answers": 11,
+        "hardest": 3,
+        "meanPairing": 0.22785451359287637,
+        "medianSteps": 71,
+        "medianPoints": 1744,
+        "medianReferenceDistance": 1.238686588072896,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.18342072808155158,
+      "browseNeighbor": 0.10540768127483523,
+      "dealNeighbor": 0.11022623765347578
+    },
+    {
+      "family": "windoku",
+      "tier": "expert",
+      "sizes": {
+        "raw": 65484,
+        "gzip": 13409,
+        "brotli": 12931
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.872348031095749,
+        "medianSteps": 82,
+        "medianPoints": 2820,
+        "medianReferenceDistance": 1.6885505942022545,
+        "perfectPairing": 18
+      },
+      "normal": {
+        "count": 100,
+        "answers": 23,
+        "hardest": 1,
+        "meanPairing": 0.22572343874424208,
+        "medianSteps": 81,
+        "medianPoints": 3226,
+        "medianReferenceDistance": 1.353336340558882,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3124942300361471,
+      "browseNeighbor": 0.25684670680986005,
+      "dealNeighbor": 0.24461262675151574
+    },
+    {
+      "family": "windoku",
+      "tier": "master",
+      "sizes": {
+        "raw": 66544,
+        "gzip": 13840,
+        "brotli": 13391
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.8801009483031286,
+        "medianSteps": 87,
+        "medianPoints": 4208,
+        "medianReferenceDistance": 2.2523149306871106,
+        "perfectPairing": 22
+      },
+      "normal": {
+        "count": 100,
+        "answers": 19,
+        "hardest": 5,
+        "meanPairing": 0.18164147886184495,
+        "medianSteps": 79,
+        "medianPoints": 3678,
+        "medianReferenceDistance": 2.216701633006391,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.15108236035413025,
+      "browseNeighbor": 0.07671909433931665,
+      "dealNeighbor": 0.06565948818357613
+    },
+    {
+      "family": "windoku",
+      "tier": "extreme",
+      "sizes": {
+        "raw": 67199,
+        "gzip": 14036,
+        "brotli": 13567
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.8294764528616854,
+        "medianSteps": 96,
+        "medianPoints": 7435,
+        "medianReferenceDistance": 2.7106388345971055,
+        "perfectPairing": 19
+      },
+      "normal": {
+        "count": 100,
+        "answers": 14,
+        "hardest": 2,
+        "meanPairing": 0.16930688050825338,
+        "medianSteps": 95,
+        "medianPoints": 15198,
+        "medianReferenceDistance": 2.703994100957849,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.1712793222199694,
+      "browseNeighbor": 0.07851460615794538,
+      "dealNeighbor": 0.06772302839474605
+    },
+    {
+      "family": "windoku",
+      "tier": "impossible",
+      "sizes": {
+        "raw": 68211,
+        "gzip": 14387,
+        "brotli": 13890
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 3,
+        "meanPairing": 0.8273582939218683,
+        "medianSteps": 98.5,
+        "medianPoints": 10756,
+        "medianReferenceDistance": 2.7601491990743625,
+        "perfectPairing": 21
+      },
+      "normal": {
+        "count": 100,
+        "answers": 58,
+        "hardest": 2,
+        "meanPairing": 0.17538834535964024,
+        "medianSteps": 91,
+        "medianPoints": 7562,
+        "medianReferenceDistance": 2.7334635795139426,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.1991908149424702,
+      "browseNeighbor": 0.07770566828309472,
+      "dealNeighbor": 0.0606783362308917
+    },
+    {
+      "family": "diagonal",
+      "tier": "easy",
+      "sizes": {
+        "raw": 43675,
+        "gzip": 12201,
+        "brotli": 11903
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 3,
+        "meanPairing": 0.9357338900757195,
+        "medianSteps": 53,
+        "medianPoints": 705,
+        "medianReferenceDistance": 0.4795879370677407,
+        "perfectPairing": 9
+      },
+      "normal": {
+        "count": 100,
+        "answers": 93,
+        "hardest": 3,
+        "meanPairing": 0.3435032418467202,
+        "medianSteps": 53,
+        "medianPoints": 709,
+        "medianReferenceDistance": 0.4801231939392473,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3354864171450842,
+      "browseNeighbor": 0.2354841544353255,
+      "dealNeighbor": 0.2227174640582683
+    },
+    {
+      "family": "diagonal",
+      "tier": "medium",
+      "sizes": {
+        "raw": 46773,
+        "gzip": 12497,
+        "brotli": 12191
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 4,
+        "meanPairing": 0.8578132891517326,
+        "medianSteps": 61,
+        "medianPoints": 936,
+        "medianReferenceDistance": 0.966984443314804,
+        "perfectPairing": 5
+      },
+      "normal": {
+        "count": 100,
+        "answers": 41,
+        "hardest": 4,
+        "meanPairing": 0.26811781696564274,
+        "medianSteps": 57,
+        "medianPoints": 820,
+        "medianReferenceDistance": 0.5742552453373317,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.2706742669642529,
+      "browseNeighbor": 0.20292832772019517,
+      "dealNeighbor": 0.21272179590912835
+    },
+    {
+      "family": "diagonal",
+      "tier": "tricky",
+      "sizes": {
+        "raw": 47587,
+        "gzip": 12714,
+        "brotli": 12372
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.9283191229060787,
+        "medianSteps": 65,
+        "medianPoints": 1229,
+        "medianReferenceDistance": 1.7236270542491847,
+        "perfectPairing": 18
+      },
+      "normal": {
+        "count": 100,
+        "answers": 6,
+        "hardest": 3,
+        "meanPairing": 0.2141633728590252,
+        "medianSteps": 66,
+        "medianPoints": 1346,
+        "medianReferenceDistance": 1.6335290247141323,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.19715439972473453,
+      "browseNeighbor": 0.09824897989757182,
+      "dealNeighbor": 0.12361439155120103
+    },
+    {
+      "family": "diagonal",
+      "tier": "hard",
+      "sizes": {
+        "raw": 48204,
+        "gzip": 12926,
+        "brotli": 12588
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 10,
+        "meanPairing": 0.9148447584706161,
+        "medianSteps": 66,
+        "medianPoints": 1362,
+        "medianReferenceDistance": 2.080781266812936,
+        "perfectPairing": 9
+      },
+      "normal": {
+        "count": 100,
+        "answers": 8,
+        "hardest": 5,
+        "meanPairing": 0.2554753484501765,
+        "medianSteps": 69,
+        "medianPoints": 1662,
+        "medianReferenceDistance": 2.5925121594378155,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.16949869049786864,
+      "browseNeighbor": 0.0940796254752672,
+      "dealNeighbor": 0.07961214824130183
+    },
+    {
+      "family": "diagonal",
+      "tier": "very-hard",
+      "sizes": {
+        "raw": 49365,
+        "gzip": 12955,
+        "brotli": 12630
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 8,
+        "meanPairing": 0.8650534670008355,
+        "medianSteps": 73.5,
+        "medianPoints": 1882,
+        "medianReferenceDistance": 2.8288393286989333,
+        "perfectPairing": 12
+      },
+      "normal": {
+        "count": 100,
+        "answers": 6,
+        "hardest": 4,
+        "meanPairing": 0.197142857142857,
+        "medianSteps": 73,
+        "medianPoints": 2104,
+        "medianReferenceDistance": 2.5510850082076257,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.16046216267400182,
+      "browseNeighbor": 0.0755518094643103,
+      "dealNeighbor": 0.05983834289808826
+    },
+    {
+      "family": "diagonal",
+      "tier": "expert",
+      "sizes": {
+        "raw": 49415,
+        "gzip": 13243,
+        "brotli": 12921
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.8499713256636119,
+        "medianSteps": 75.5,
+        "medianPoints": 2486,
+        "medianReferenceDistance": 3.0875022323163446,
+        "perfectPairing": 9
+      },
+      "normal": {
+        "count": 100,
+        "answers": 9,
+        "hardest": 1,
+        "meanPairing": 0.14911161302465648,
+        "medianSteps": 69,
+        "medianPoints": 1667,
+        "medianReferenceDistance": 2.493060987886381,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.31010185628263054,
+      "browseNeighbor": 0.26500014899574775,
+      "dealNeighbor": 0.24071172244398076
+    },
+    {
+      "family": "diagonal",
+      "tier": "master",
+      "sizes": {
+        "raw": 50720,
+        "gzip": 13440,
+        "brotli": 13120
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 9,
+        "meanPairing": 0.8233649810801512,
+        "medianSteps": 82,
+        "medianPoints": 3648,
+        "medianReferenceDistance": 3.246200066208906,
+        "perfectPairing": 18
+      },
+      "normal": {
+        "count": 100,
+        "answers": 4,
+        "hardest": 4,
+        "meanPairing": 0.16194736842105248,
+        "medianSteps": 74,
+        "medianPoints": 2758,
+        "medianReferenceDistance": 3.1147927146443335,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.1299856593857455,
+      "browseNeighbor": 0.05103715938339261,
+      "dealNeighbor": 0.04287907182644024
+    },
+    {
+      "family": "diagonal",
+      "tier": "extreme",
+      "sizes": {
+        "raw": 51836,
+        "gzip": 13906,
+        "brotli": 13593
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.861770062410929,
+        "medianSteps": 87,
+        "medianPoints": 6634,
+        "medianReferenceDistance": 3.335219351292604,
+        "perfectPairing": 17
+      },
+      "normal": {
+        "count": 100,
+        "answers": 4,
+        "hardest": 3,
+        "meanPairing": 0.25452631578947327,
+        "medianSteps": 85,
+        "medianPoints": 5766,
+        "medianReferenceDistance": 3.1356487286363395,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.17033046643090516,
+      "browseNeighbor": 0.06342372875836526,
+      "dealNeighbor": 0.05794642919130071
+    },
+    {
+      "family": "jigsaw",
+      "tier": "easy",
+      "sizes": {
+        "raw": 64056,
+        "gzip": 16134,
+        "brotli": 15426
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 2,
+        "meanPairing": 0.860509291437801,
+        "medianSteps": 48,
+        "medianPoints": 204,
+        "medianReferenceDistance": 2.595908869585213,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 78,
+        "hardest": 2,
+        "meanPairing": 0.48040026563050575,
+        "medianSteps": 47,
+        "medianPoints": 193,
+        "medianReferenceDistance": 2.5995358571672424,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3023817130768437,
+      "browseNeighbor": 0.17512911811181286,
+      "dealNeighbor": 0.1575608718153523
+    },
+    {
+      "family": "jigsaw",
+      "tier": "medium",
+      "sizes": {
+        "raw": 65496,
+        "gzip": 16462,
+        "brotli": 15735
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.8707775293032906,
+        "medianSteps": 58,
+        "medianPoints": 560,
+        "medianReferenceDistance": 2.9008654066939776,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 47,
+        "hardest": 1,
+        "meanPairing": 0.4690805151807884,
+        "medianSteps": 58,
+        "medianPoints": 510,
+        "medianReferenceDistance": 2.8276033696108707,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3828253602021458,
+      "browseNeighbor": 0.3345603227089701,
+      "dealNeighbor": 0.3205233665036664
+    },
+    {
+      "family": "jigsaw",
+      "tier": "tricky",
+      "sizes": {
+        "raw": 65532,
+        "gzip": 16471,
+        "brotli": 15769
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 2,
+        "meanPairing": 0.8556806473202685,
+        "medianSteps": 68,
+        "medianPoints": 1059,
+        "medianReferenceDistance": 2.7966237039657695,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 3,
+        "hardest": 1,
+        "meanPairing": 0.4399782439782433,
+        "medianSteps": 61,
+        "medianPoints": 886,
+        "medianReferenceDistance": 2.8716259781253517,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.33650653455154084,
+      "browseNeighbor": 0.29298851422633304,
+      "dealNeighbor": 0.28314728263228145
+    },
+    {
+      "family": "anti-knight",
+      "tier": "easy",
+      "sizes": {
+        "raw": 39470,
+        "gzip": 12288,
+        "brotli": 11959
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 2,
+        "meanPairing": 0.9305426501566666,
+        "medianSteps": 60,
+        "medianPoints": 742,
+        "medianReferenceDistance": 2.588582248195678,
+        "perfectPairing": 5
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 2,
+        "meanPairing": 0.3697560252132,
+        "medianSteps": 59,
+        "medianPoints": 730,
+        "medianReferenceDistance": 2.5958871386936995,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3573331989992455,
+      "browseNeighbor": 0.3004154686228426,
+      "dealNeighbor": 0.27515331875371485
+    },
+    {
+      "family": "anti-knight",
+      "tier": "medium",
+      "sizes": {
+        "raw": 41351,
+        "gzip": 12249,
+        "brotli": 11958
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.9098331039565114,
+        "medianSteps": 94,
+        "medianPoints": 1204,
+        "medianReferenceDistance": 2.731936014495963,
+        "perfectPairing": 15
+      },
+      "normal": {
+        "count": 100,
+        "answers": 32,
+        "hardest": 4,
+        "meanPairing": 0.2645012130170022,
+        "medianSteps": 88,
+        "medianPoints": 1116,
+        "medianReferenceDistance": 2.7942862428292106,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.2410464351895824,
+      "browseNeighbor": 0.18717646547859465,
+      "dealNeighbor": 0.17623788658585973
+    },
+    {
+      "family": "anti-knight",
+      "tier": "tricky",
+      "sizes": {
+        "raw": 41821,
+        "gzip": 12493,
+        "brotli": 12199
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.8837843480086712,
+        "medianSteps": 98,
+        "medianPoints": 1459,
+        "medianReferenceDistance": 2.70834183517443,
+        "perfectPairing": 8
+      },
+      "normal": {
+        "count": 100,
+        "answers": 6,
+        "hardest": 3,
+        "meanPairing": 0.23770186335403742,
+        "medianSteps": 92,
+        "medianPoints": 1500,
+        "medianReferenceDistance": 2.7559414451123496,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.1826029779706347,
+      "browseNeighbor": 0.11297570603466472,
+      "dealNeighbor": 0.10855991936806342
+    },
+    {
+      "family": "anti-knight",
+      "tier": "hard",
+      "sizes": {
+        "raw": 42091,
+        "gzip": 12586,
+        "brotli": 12275
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 6,
+        "meanPairing": 0.9199923885510094,
+        "medianSteps": 100,
+        "medianPoints": 1616,
+        "medianReferenceDistance": 2.631084981559572,
+        "perfectPairing": 16
+      },
+      "normal": {
+        "count": 100,
+        "answers": 5,
+        "hardest": 2,
+        "meanPairing": 0.25845849802371507,
+        "medianSteps": 97,
+        "medianPoints": 1654,
+        "medianReferenceDistance": 2.556454664410014,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.19062627472013519,
+      "browseNeighbor": 0.09183496216697634,
+      "dealNeighbor": 0.08487113701341044
+    },
+    {
+      "family": "anti-knight",
+      "tier": "very-hard",
+      "sizes": {
+        "raw": 42241,
+        "gzip": 12759,
+        "brotli": 12441
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.9151124491263802,
+        "medianSteps": 110,
+        "medianPoints": 2026,
+        "medianReferenceDistance": 2.658057846452219,
+        "perfectPairing": 14
+      },
+      "normal": {
+        "count": 100,
+        "answers": 8,
+        "hardest": 3,
+        "meanPairing": 0.2667272727272728,
+        "medianSteps": 105,
+        "medianPoints": 1748,
+        "medianReferenceDistance": 2.667540408497068,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.15703577585107364,
+      "browseNeighbor": 0.07869459494672267,
+      "dealNeighbor": 0.07369910618017608
+    },
+    {
+      "family": "anti-knight",
+      "tier": "expert",
+      "sizes": {
+        "raw": 42443,
+        "gzip": 12759,
+        "brotli": 12490
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.9240573001130268,
+        "medianSteps": 115,
+        "medianPoints": 2827,
+        "medianReferenceDistance": 2.679243779545951,
+        "perfectPairing": 17
+      },
+      "normal": {
+        "count": 100,
+        "answers": 13,
+        "hardest": 1,
+        "meanPairing": 0.13668126197847555,
+        "medianSteps": 110,
+        "medianPoints": 2292,
+        "medianReferenceDistance": 2.689000600473923,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.30005625449679496,
+      "browseNeighbor": 0.23797049467164197,
+      "dealNeighbor": 0.2271580449506449
+    },
+    {
+      "family": "anti-knight",
+      "tier": "master",
+      "sizes": {
+        "raw": 42642,
+        "gzip": 13067,
+        "brotli": 12765
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 6,
+        "meanPairing": 0.886557502267254,
+        "medianSteps": 123,
+        "medianPoints": 4354,
+        "medianReferenceDistance": 2.703253437836664,
+        "perfectPairing": 23
+      },
+      "normal": {
+        "count": 100,
+        "answers": 6,
+        "hardest": 3,
+        "meanPairing": 0.3297979797979797,
+        "medianSteps": 111,
+        "medianPoints": 2704,
+        "medianReferenceDistance": 2.7127575114504534,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.15149691154738765,
+      "browseNeighbor": 0.06318017711720825,
+      "dealNeighbor": 0.05005587090028787
+    },
+    {
+      "family": "anti-knight",
+      "tier": "extreme",
+      "sizes": {
+        "raw": 43523,
+        "gzip": 13278,
+        "brotli": 12999
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.9183330753353972,
+        "medianSteps": 124,
+        "medianPoints": 7358,
+        "medianReferenceDistance": 2.723551371122252,
+        "perfectPairing": 18
+      },
+      "normal": {
+        "count": 100,
+        "answers": 4,
+        "hardest": 2,
+        "meanPairing": 0.1837351712614871,
+        "medianSteps": 124,
+        "medianPoints": 7526,
+        "medianReferenceDistance": 2.679759138952597,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.17682302986034534,
+      "browseNeighbor": 0.07624830911564126,
+      "dealNeighbor": 0.0707674572927864
+    },
+    {
+      "family": "thermometer",
+      "tier": "easy",
+      "sizes": {
+        "raw": 65033,
+        "gzip": 15719,
+        "brotli": 15142
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.894244590722177,
+        "medianSteps": 55,
+        "medianPoints": 760,
+        "medianReferenceDistance": 0.9786361315791968,
+        "perfectPairing": 5
+      },
+      "normal": {
+        "count": 100,
+        "answers": 8,
+        "hardest": 1,
+        "meanPairing": 0.16692529437357018,
+        "medianSteps": 55.5,
+        "medianPoints": 768,
+        "medianReferenceDistance": 1.096205573571229,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3373182961665821,
+      "browseNeighbor": 0.3029856474576951,
+      "dealNeighbor": 0.31678056530703314
+    },
+    {
+      "family": "thermometer",
+      "tier": "medium",
+      "sizes": {
+        "raw": 71251,
+        "gzip": 16230,
+        "brotli": 15600
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.9183597646550364,
+        "medianSteps": 71,
+        "medianPoints": 1170,
+        "medianReferenceDistance": 2.5701240359249593,
+        "perfectPairing": 11
+      },
+      "normal": {
+        "count": 100,
+        "answers": 8,
+        "hardest": 6,
+        "meanPairing": 0.1183719965026971,
+        "medianSteps": 69.5,
+        "medianPoints": 1080,
+        "medianReferenceDistance": 2.6914279620808004,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.15581866580160136,
+      "browseNeighbor": 0.1096630809469761,
+      "dealNeighbor": 0.12147921980685668
+    },
+    {
+      "family": "thermometer",
+      "tier": "tricky",
+      "sizes": {
+        "raw": 70664,
+        "gzip": 16270,
+        "brotli": 15675
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.8904100840773174,
+        "medianSteps": 74,
+        "medianPoints": 1408,
+        "medianReferenceDistance": 2.7130238260814425,
+        "perfectPairing": 10
+      },
+      "normal": {
+        "count": 100,
+        "answers": 4,
+        "hardest": 3,
+        "meanPairing": 0.14009857025760916,
+        "medianSteps": 70,
+        "medianPoints": 1276,
+        "medianReferenceDistance": 1.9416004651996321,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.13783796812550678,
+      "browseNeighbor": 0.08817971072799574,
+      "dealNeighbor": 0.10896514760014067
+    },
+    {
+      "family": "thermometer",
+      "tier": "hard",
+      "sizes": {
+        "raw": 72639,
+        "gzip": 16605,
+        "brotli": 15965
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 6,
+        "meanPairing": 0.8981262088706222,
+        "medianSteps": 75,
+        "medianPoints": 1513,
+        "medianReferenceDistance": 2.6103910011239773,
+        "perfectPairing": 13
+      },
+      "normal": {
+        "count": 100,
+        "answers": 5,
+        "hardest": 4,
+        "meanPairing": 0.10002939909061194,
+        "medianSteps": 78,
+        "medianPoints": 1594,
+        "medianReferenceDistance": 2.6665842686855954,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.12531322082944563,
+      "browseNeighbor": 0.047976607639660634,
+      "dealNeighbor": 0.05241529484004572
+    },
+    {
+      "family": "thermometer",
+      "tier": "very-hard",
+      "sizes": {
+        "raw": 75172,
+        "gzip": 16994,
+        "brotli": 16393
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.8698755796577008,
+        "medianSteps": 82,
+        "medianPoints": 2120,
+        "medianReferenceDistance": 2.649259619107745,
+        "perfectPairing": 11
+      },
+      "normal": {
+        "count": 100,
+        "answers": 7,
+        "hardest": 7,
+        "meanPairing": 0.10667007188717711,
+        "medianSteps": 80,
+        "medianPoints": 2212,
+        "medianReferenceDistance": 2.657328037984183,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.11806185087615816,
+      "browseNeighbor": 0.03292250191219836,
+      "dealNeighbor": 0.020465666857081982
+    },
+    {
+      "family": "thermometer",
+      "tier": "expert",
+      "sizes": {
+        "raw": 75833,
+        "gzip": 17135,
+        "brotli": 16616
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.8342791721951939,
+        "medianSteps": 87,
+        "medianPoints": 3212,
+        "medianReferenceDistance": 2.679933729802065,
+        "perfectPairing": 9
+      },
+      "normal": {
+        "count": 100,
+        "answers": 3,
+        "hardest": 1,
+        "meanPairing": 0.1302870657034743,
+        "medianSteps": 78,
+        "medianPoints": 2816,
+        "medianReferenceDistance": 2.6502147136533765,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.24758230044792187,
+      "browseNeighbor": 0.2274315653906625,
+      "dealNeighbor": 0.21433237146531062
+    },
+    {
+      "family": "thermometer",
+      "tier": "master",
+      "sizes": {
+        "raw": 75992,
+        "gzip": 17502,
+        "brotli": 16889
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.8415490564646914,
+        "medianSteps": 99,
+        "medianPoints": 5215,
+        "medianReferenceDistance": 2.696934331756805,
+        "perfectPairing": 9
+      },
+      "normal": {
+        "count": 100,
+        "answers": 2,
+        "hardest": 6,
+        "meanPairing": 0.06393643869030859,
+        "medianSteps": 95.5,
+        "medianPoints": 5250,
+        "medianReferenceDistance": 2.6667344535277246,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.0921950560734516,
+      "browseNeighbor": 0.04074848861283644,
+      "dealNeighbor": 0.049194842586287875
+    },
+    {
+      "family": "thermometer",
+      "tier": "extreme",
+      "sizes": {
+        "raw": 77104,
+        "gzip": 17725,
+        "brotli": 17148
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.8722650621652166,
+        "medianSteps": 105.5,
+        "medianPoints": 9928,
+        "medianReferenceDistance": 2.7290923157869953,
+        "perfectPairing": 14
+      },
+      "normal": {
+        "count": 100,
+        "answers": 1,
+        "hardest": 3,
+        "meanPairing": 0.13788983251870265,
+        "medianSteps": 100,
+        "medianPoints": 5328,
+        "medianReferenceDistance": 2.7315896603955525,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.11657591350596308,
+      "browseNeighbor": 0.04356731823106629,
+      "dealNeighbor": 0.061288626307713694
+    },
+    {
+      "family": "arrow",
+      "tier": "easy",
+      "sizes": {
+        "raw": 67575,
+        "gzip": 16345,
+        "brotli": 15899
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.7701274592817655,
+        "medianSteps": 50.5,
+        "medianPoints": 716,
+        "medianReferenceDistance": 0.8647328994792666,
+        "perfectPairing": 2
+      },
+      "normal": {
+        "count": 100,
+        "answers": 12,
+        "hardest": 1,
+        "meanPairing": 0.17783236341136618,
+        "medianSteps": 52,
+        "medianPoints": 742,
+        "medianReferenceDistance": 0.9349753077435254,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3574760135751069,
+      "browseNeighbor": 0.3298932385787182,
+      "dealNeighbor": 0.3447174932336682
+    },
+    {
+      "family": "arrow",
+      "tier": "medium",
+      "sizes": {
+        "raw": 73182,
+        "gzip": 16630,
+        "brotli": 16128
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.7916041752738824,
+        "medianSteps": 77,
+        "medianPoints": 1403,
+        "medianReferenceDistance": 2.730287505799847,
+        "perfectPairing": 5
+      },
+      "normal": {
+        "count": 100,
+        "answers": 9,
+        "hardest": 4,
+        "meanPairing": 0.14258902156607095,
+        "medianSteps": 80,
+        "medianPoints": 1500,
+        "medianReferenceDistance": 2.757969387093766,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.13989092258394503,
+      "browseNeighbor": 0.09014668551500078,
+      "dealNeighbor": 0.10866970629053767
+    },
+    {
+      "family": "arrow",
+      "tier": "tricky",
+      "sizes": {
+        "raw": 70714,
+        "gzip": 16463,
+        "brotli": 15964
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.8073214692159368,
+        "medianSteps": 77,
+        "medianPoints": 1606,
+        "medianReferenceDistance": 2.672836830675685,
+        "perfectPairing": 7
+      },
+      "normal": {
+        "count": 100,
+        "answers": 2,
+        "hardest": 3,
+        "meanPairing": 0.1341648785996612,
+        "medianSteps": 77,
+        "medianPoints": 1664,
+        "medianReferenceDistance": 2.7005486537712136,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.13090077847647646,
+      "browseNeighbor": 0.07053053509373679,
+      "dealNeighbor": 0.09581022791890727
+    },
+    {
+      "family": "arrow",
+      "tier": "hard",
+      "sizes": {
+        "raw": 72108,
+        "gzip": 16725,
+        "brotli": 16204
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 9,
+        "meanPairing": 0.7932033730803082,
+        "medianSteps": 80,
+        "medianPoints": 1736,
+        "medianReferenceDistance": 2.6132082194388406,
+        "perfectPairing": 5
+      },
+      "normal": {
+        "count": 100,
+        "answers": 1,
+        "hardest": 4,
+        "meanPairing": 0.09039029391660973,
+        "medianSteps": 79,
+        "medianPoints": 1900,
+        "medianReferenceDistance": 2.658005038149468,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.09254944721944268,
+      "browseNeighbor": 0.03259235996958433,
+      "dealNeighbor": 0.031262783402281884
+    },
+    {
+      "family": "arrow",
+      "tier": "very-hard",
+      "sizes": {
+        "raw": 74701,
+        "gzip": 17027,
+        "brotli": 16495
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 7,
+        "meanPairing": 0.7673753118656366,
+        "medianSteps": 86,
+        "medianPoints": 2201,
+        "medianReferenceDistance": 2.651416986886865,
+        "perfectPairing": 4
+      },
+      "normal": {
+        "count": 100,
+        "answers": 6,
+        "hardest": 4,
+        "meanPairing": 0.10953059118384183,
+        "medianSteps": 83,
+        "medianPoints": 2114,
+        "medianReferenceDistance": 2.65458359514652,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.10527380456619975,
+      "browseNeighbor": 0.03736340790977332,
+      "dealNeighbor": 0.028478785757708673
+    },
+    {
+      "family": "arrow",
+      "tier": "expert",
+      "sizes": {
+        "raw": 73043,
+        "gzip": 16944,
+        "brotli": 16477
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.7437685717275504,
+        "medianSteps": 89,
+        "medianPoints": 2801,
+        "medianReferenceDistance": 2.6754024697066354,
+        "perfectPairing": 6
+      },
+      "normal": {
+        "count": 100,
+        "answers": 6,
+        "hardest": 1,
+        "meanPairing": 0.12525281340606415,
+        "medianSteps": 89,
+        "medianPoints": 3088,
+        "medianReferenceDistance": 2.667845192219109,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.24613086734352463,
+      "browseNeighbor": 0.22949751560906437,
+      "dealNeighbor": 0.2148796291008566
+    },
+    {
+      "family": "arrow",
+      "tier": "master",
+      "sizes": {
+        "raw": 74283,
+        "gzip": 17305,
+        "brotli": 16757
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 9,
+        "meanPairing": 0.7878452176067603,
+        "medianSteps": 93.5,
+        "medianPoints": 3696,
+        "medianReferenceDistance": 2.699481410239283,
+        "perfectPairing": 6
+      },
+      "normal": {
+        "count": 100,
+        "answers": 2,
+        "hardest": 4,
+        "meanPairing": 0.11811806743308285,
+        "medianSteps": 80,
+        "medianPoints": 2085,
+        "medianReferenceDistance": 2.6661835030831034,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.08251890075950394,
+      "browseNeighbor": 0.0314163534183267,
+      "dealNeighbor": 0.027368191257202742
+    },
+    {
+      "family": "kropki",
+      "tier": "easy",
+      "sizes": {
+        "raw": 66639,
+        "gzip": 17795,
+        "brotli": 17349
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.6269615502744581,
+        "medianSteps": 56,
+        "medianPoints": 753,
+        "medianReferenceDistance": 1.4027787711650375,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.23370986300199909,
+        "medianSteps": 56,
+        "medianPoints": 747,
+        "medianReferenceDistance": 1.7828328438124372,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.3495196525301937,
+      "browseNeighbor": 0.316281593586712,
+      "dealNeighbor": 0.3299312496881155
+    },
+    {
+      "family": "kropki",
+      "tier": "medium",
+      "sizes": {
+        "raw": 64304,
+        "gzip": 16376,
+        "brotli": 16038
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.6517010952658417,
+        "medianSteps": 93,
+        "medianPoints": 1462,
+        "medianReferenceDistance": 2.66191049455633,
+        "perfectPairing": 4
+      },
+      "normal": {
+        "count": 100,
+        "answers": 49,
+        "hardest": 5,
+        "meanPairing": 0.1485165090645134,
+        "medianSteps": 91,
+        "medianPoints": 1464,
+        "medianReferenceDistance": 2.686405136215888,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.16256164797291495,
+      "browseNeighbor": 0.12572274302118092,
+      "dealNeighbor": 0.12940026948000258
+    },
+    {
+      "family": "kropki",
+      "tier": "tricky",
+      "sizes": {
+        "raw": 58521,
+        "gzip": 15435,
+        "brotli": 15034
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 5,
+        "meanPairing": 0.8432451835566651,
+        "medianSteps": 77,
+        "medianPoints": 1390,
+        "medianReferenceDistance": 2.7117727326961063,
+        "perfectPairing": 3
+      },
+      "normal": {
+        "count": 100,
+        "answers": 1,
+        "hardest": 1,
+        "meanPairing": 0.17391304347826123,
+        "medianSteps": 73,
+        "medianPoints": 1352,
+        "medianReferenceDistance": 2.7603087098659524,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.1265056196772067,
+      "browseNeighbor": 0.06393646135779307,
+      "dealNeighbor": 0.08006403909200253
+    },
+    {
+      "family": "kropki",
+      "tier": "hard",
+      "sizes": {
+        "raw": 63929,
+        "gzip": 16594,
+        "brotli": 16193
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 10,
+        "meanPairing": 0.6408762051909145,
+        "medianSteps": 98,
+        "medianPoints": 1726,
+        "medianReferenceDistance": 2.6186949417073144,
+        "perfectPairing": 1
+      },
+      "normal": {
+        "count": 100,
+        "answers": 12,
+        "hardest": 5,
+        "meanPairing": 0.2246315595159988,
+        "medianSteps": 79,
+        "medianPoints": 1722,
+        "medianReferenceDistance": 2.632265130024225,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.09839133057883838,
+      "browseNeighbor": 0.04903908681556349,
+      "dealNeighbor": 0.05390426359471049
+    },
+    {
+      "family": "kropki",
+      "tier": "very-hard",
+      "sizes": {
+        "raw": 65076,
+        "gzip": 16854,
+        "brotli": 16449
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 6,
+        "meanPairing": 0.66695546530876,
+        "medianSteps": 104.5,
+        "medianPoints": 2254,
+        "medianReferenceDistance": 2.657046817172086,
+        "perfectPairing": 0
+      },
+      "normal": {
+        "count": 100,
+        "answers": 13,
+        "hardest": 4,
+        "meanPairing": 0.2437377131513288,
+        "medianSteps": 86,
+        "medianPoints": 1988,
+        "medianReferenceDistance": 2.6651948823393883,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.11268513811940231,
+      "browseNeighbor": 0.04025837993913325,
+      "dealNeighbor": 0.034388113382512187
+    },
+    {
+      "family": "kropki",
+      "tier": "expert",
+      "sizes": {
+        "raw": 60848,
+        "gzip": 16057,
+        "brotli": 15653
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 1,
+        "meanPairing": 0.7441231226204136,
+        "medianSteps": 94.5,
+        "medianPoints": 2531,
+        "medianReferenceDistance": 2.6803856289466257,
+        "perfectPairing": 7
+      },
+      "normal": {
+        "count": 100,
+        "answers": 13,
+        "hardest": 1,
+        "meanPairing": 0.11620038453978074,
+        "medianSteps": 90,
+        "medianPoints": 2364,
+        "medianReferenceDistance": 2.667702539838407,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.2523810549520306,
+      "browseNeighbor": 0.23041090259864302,
+      "dealNeighbor": 0.21261355861126868
+    },
+    {
+      "family": "kropki",
+      "tier": "master",
+      "sizes": {
+        "raw": 61323,
+        "gzip": 16338,
+        "brotli": 15961
+      },
+      "sinclair": {
+        "count": 100,
+        "answers": 100,
+        "hardest": 9,
+        "meanPairing": 0.6476042269134379,
+        "medianSteps": 102,
+        "medianPoints": 3754,
+        "medianReferenceDistance": 2.695635749968005,
+        "perfectPairing": 2
+      },
+      "normal": {
+        "count": 100,
+        "answers": 12,
+        "hardest": 5,
+        "meanPairing": 0.13406459776893195,
+        "medianSteps": 85,
+        "medianPoints": 2152,
+        "medianReferenceDistance": 2.6969044168292866,
+        "perfectPairing": 0
+      },
+      "missed": 0,
+      "emptyStarts": 0,
+      "randomNeighbor": 0.08605391554770667,
+      "browseNeighbor": 0.046616630873361126,
+      "dealNeighbor": 0.03429929937288626
+    }
+  ]
+}

@@ -18,7 +18,7 @@ function latestModified(path) {
     latestModified(resolve(path, entry.name))))
 }
 
-const sources = ['Cargo.lock', 'Cargo.toml', 'crates/engine', 'scripts/build-wasm.mjs', 'scripts/engine-build-profiles.mjs'].map((path) => resolve(path))
+const sources = ['Cargo.lock', 'Cargo.toml', 'crates/engine', 'scripts/build-wasm.mjs', 'scripts/engine-build-profiles.mjs', 'scripts/classic-solver-fingerprint.mjs'].map((path) => resolve(path))
 function hasAppProfile() {
   try {
     const manifest = JSON.parse(readFileSync(resolve('src/sudoku/generated/engine-profile.json'), 'utf8'))

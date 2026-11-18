@@ -1,0 +1,9 @@
+{"step":"standard generate","ms":2543.115875}
+{"step":"layout search","ms":5.6990420000001905}
+{"step":"solve original","ms":2288.476792}
+{"step":"score","ms":1.7654170000005251}
+{"i":0,"board":"300008070000400500002000001800030040031000006050000200000079000700300090060084000","points":34758,"hardest":"quintuple-pattern-overlay","steps":115,"bytes":310039}
+{"step":"quality checks","ms":1935.1931670000004}
+{"step":"solve rearranged","ms":1825.6015000000007}
+{"step":"score","ms":0.751416999999492}
+{"i":1,"board":"300008007000040050002000100000709000700030009060804000031000600050000020800300004","points":32658,"hardest":"quintuple-pattern-overlay","steps":122,"bytes":291138}

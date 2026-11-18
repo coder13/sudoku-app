@@ -246,6 +246,7 @@ pub(super) fn prepare(
     template: &VariantPuzzle,
     layouts: &[VariantClueLayout],
     random: &mut Random,
+    bend_cages: bool,
 ) -> Option<(Vec<VariantClueLayout>, Vec<u128>)> {
     let mut occupied = fixed_cage_mask(template);
     let mut peers = Vec::new();
@@ -265,7 +266,7 @@ pub(super) fn prepare(
     let mut resolved = Vec::with_capacity(layouts.len());
     for layout in layouts {
         if let VariantClueLayout::KillerCageSizes { sizes, cover_grid } = layout {
-            let cages = partition(sizes, occupied, random)?;
+            let cages = partition(sizes, occupied, random, bend_cages)?;
             for cage in &cages {
                 let mask = cell_mask(cage)?;
                 occupied |= mask;
@@ -282,11 +283,12 @@ pub(super) fn prepare(
     Some((resolved, peers))
 }
 
-// Consecutive cells in a row snake are orthogonally adjacent. Taking a cage
-// from an end of a free run keeps the remaining cells available for later cages.
-fn partition(sizes: &[usize], occupied: u128, random: &mut Random) -> Option<Vec<Vec<usize>>> {
+// Rewire a grid-spanning path at its ends before dividing it into cages. Every
+// segment stays connected, but cages can bend in both directions across boxes
+// instead of repeating the same row or column strips throughout the grid.
+fn partition(sizes: &[usize], occupied: u128, random: &mut Random, bend_cages: bool) -> Option<Vec<Vec<usize>>> {
     let symmetry = SquareTransform::ALL[random.index(SquareTransform::ALL.len())];
-    let snake: Vec<_> = (0..CELLS)
+    let mut snake: Vec<_> = (0..CELLS)
         .map(|index| {
             let (row, column) = (index / 9, index % 9);
             let column = if row.is_multiple_of(2) {
@@ -297,6 +299,9 @@ fn partition(sizes: &[usize], occupied: u128, random: &mut Random) -> Option<Vec
             symmetry.cell(9 * row + column)
         })
         .collect();
+    if bend_cages {
+        bend_cage_path(&mut snake, random);
+    }
     let mut runs: Vec<_> = snake
         .split(|&cell| occupied & (1u128 << cell) != 0)
         .filter(|run| !run.is_empty())
@@ -328,10 +333,35 @@ fn partition(sizes: &[usize], occupied: u128, random: &mut Random) -> Option<Vec
     Some(cages)
 }
 
+fn bend_cage_path(snake: &mut [usize], random: &mut Random) {
+    for _ in 0..CELLS * 20 {
+        if random.index(2) == 0 {
+            snake.reverse();
+        }
+        let end = snake[0];
+        let neighbors: Vec<_> = [
+            end.checked_sub(9),
+            (end < 72).then_some(end + 9),
+            (end % 9 > 0).then(|| end - 1),
+            (end % 9 < 8).then_some(end + 1),
+        ]
+        .into_iter()
+        .flatten()
+        .filter_map(|neighbor| snake.iter().position(|&cell| cell == neighbor))
+        .filter(|&index| index > 1)
+        .collect();
+        if !neighbors.is_empty() {
+            let index = neighbors[random.index(neighbors.len())];
+            snake[..index].reverse();
+        }
+    }
+}
+
 pub(super) fn build(
     layouts: Vec<VariantClueLayout>,
     solution: &Board,
     random: &mut Random,
+    half_turn: bool,
 ) -> Option<Vec<PuzzleRule>> {
     let mut rules = Vec::new();
     for layout in layouts {
@@ -389,7 +419,7 @@ pub(super) fn build(
                 family,
                 negative,
                 count,
-            } => make_markers(family, negative, count, solution, random)?,
+            } => make_markers(family, negative, count, solution, random, half_turn)?,
             VariantClueLayout::Outside {
                 clue,
                 cells,
@@ -407,6 +437,7 @@ fn make_markers(
     count: Option<usize>,
     solution: &Board,
     random: &mut Random,
+    half_turn: bool,
 ) -> Option<PuzzleRule> {
     let relations = match family {
         MarkerFamily::Kropki => pairs::KROPKI,
@@ -427,6 +458,21 @@ fn make_markers(
             return None;
         }
         random.shuffle(&mut marks);
+        if half_turn {
+            // Only use a reflected dot when the solution supports the same relation there.
+            let mut paired = Vec::with_capacity(count);
+            for &(kind, [a, b]) in &marks {
+                let opposite = (kind, [CELLS - 1 - b, CELLS - 1 - a]);
+                if paired.len() + 2 <= count && marks.contains(&opposite) && !paired.contains(&(kind, [a, b])) {
+                    paired.extend([(kind, [a, b]), opposite]);
+                }
+            }
+            for mark in marks {
+                if paired.len() == count { break; }
+                if !paired.contains(&mark) { paired.push(mark); }
+            }
+            marks = paired;
+        }
         marks.truncate(count);
     }
     let mut result = negative.map(|negative| MarkedPairs {
@@ -501,5 +547,56 @@ fn outside(
                 count,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod cage_layout_tests {
+    use super::*;
+
+    #[test]
+    fn mixed_cages_cover_the_grid_with_connected_varied_shapes() {
+        let sizes: Vec<_> = [vec![2; 8], vec![3; 7], vec![4; 6], vec![5; 4]].concat();
+        let mut layouts = std::collections::HashSet::new();
+        for seed in 1..=40 {
+            let cages = partition(&sizes, 0, &mut Random::from_seed(seed), true).unwrap();
+            let mut covered = 0u128;
+            let mut bent = 0;
+            let mut across_boxes = 0;
+            for (cage, &size) in cages.iter().zip(&sizes) {
+                assert_eq!(cage.len(), size);
+                let mask = cell_mask(cage).unwrap();
+                assert_eq!(covered & mask, 0);
+                covered |= mask;
+                assert!(cage.windows(2).all(|pair| {
+                    (pair[0] / 9).abs_diff(pair[1] / 9) + (pair[0] % 9).abs_diff(pair[1] % 9) == 1
+                }));
+                if cage.iter().any(|&cell| cell / 9 != cage[0] / 9)
+                    && cage.iter().any(|&cell| cell % 9 != cage[0] % 9)
+                {
+                    bent += 1;
+                }
+                let box_at = |cell: usize| cell / 27 * 3 + cell % 9 / 3;
+                if cage.iter().any(|&cell| box_at(cell) != box_at(cage[0])) {
+                    across_boxes += 1;
+                }
+            }
+            assert_eq!(covered.count_ones(), CELLS as u32);
+            assert!(bent >= 6, "seed {seed} has only {bent} bent cages");
+            assert!(across_boxes >= 4, "seed {seed} stays within boxes");
+            layouts.insert(cages);
+        }
+        assert_eq!(layouts.len(), 40);
+    }
+
+    #[test]
+    fn reserved_cells_are_never_in_generated_cages() {
+        let reserved = (1 << 0) | (1 << 40) | (1 << 80);
+        let cages = partition(&[1; 78], reserved, &mut Random::from_seed(41), true).unwrap();
+        let covered = cages
+            .iter()
+            .fold(0, |mask, cage| mask | cell_mask(cage).unwrap());
+        assert_eq!(covered & reserved, 0);
+        assert_eq!(covered.count_ones(), 78);
     }
 }

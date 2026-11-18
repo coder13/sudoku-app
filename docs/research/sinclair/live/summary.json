@@ -1,0 +1,2804 @@
+{
+  "machine": {
+    "cpu": "Apple M3",
+    "node": "v26.13.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "wasmSha256": "0f48152d96d725546a33f1dfcb1141b815795bd2642ce4c27c5968eabb9969ff"
+  },
+  "allTiers": 4,
+  "mediumTier": 12,
+  "requests": 672,
+  "balanced": {
+    "standard": {
+      "requests": 264,
+      "returned": 264,
+      "medianMs": 55.84435400000075,
+      "p90Ms": 624.1613213999838,
+      "maxMs": 9809.003874999995,
+      "meanPairing": 0.22128237443442572,
+      "meanGivenPairing": 0.24683556136062423,
+      "meanShapes": 0.12986367781781757,
+      "meanGivenExcess": -0.017117257971941947,
+      "meanDistance": 2.0900658288430063,
+      "meanSteps": 83,
+      "methods": {}
+    },
+    "sinclair": {
+      "requests": 264,
+      "returned": 264,
+      "medianMs": 121.03256299998611,
+      "p90Ms": 1102.8327455999913,
+      "maxMs": 33249.04012500003,
+      "meanPairing": 0.5571464583039353,
+      "meanGivenPairing": 0.6222400639923662,
+      "meanShapes": 0.36222032109878477,
+      "meanGivenExcess": 0.35617754001844987,
+      "meanDistance": 2.042268228067179,
+      "meanSteps": 81.89015151515152,
+      "methods": {
+        "paired-carving": 83,
+        "rearranged": 33,
+        "edited-givens": 122,
+        "recipe": 26
+      }
+    },
+    "betterPairing": {
+      "sinclair": 239,
+      "tied": 23,
+      "standard": 2
+    }
+  },
+  "medium": {
+    "standard": {
+      "requests": 108,
+      "returned": 108,
+      "medianMs": 28.890083499980392,
+      "p90Ms": 164.04498729998005,
+      "maxMs": 882.0381669999915,
+      "meanPairing": 0.2439382656200437,
+      "meanGivenPairing": 0.245826206107279,
+      "meanShapes": 0.20324189159917766,
+      "meanGivenExcess": -0.007924379921788021,
+      "meanDistance": 1.7950342597302642,
+      "meanSteps": 77.26851851851852,
+      "methods": {}
+    },
+    "sinclair": {
+      "requests": 108,
+      "returned": 108,
+      "medianMs": 65.6863960000046,
+      "p90Ms": 273.6102125000019,
+      "maxMs": 1036.269666999986,
+      "meanPairing": 0.7210600436887719,
+      "meanGivenPairing": 0.7740970694654462,
+      "meanShapes": 0.593045571536234,
+      "meanGivenExcess": 0.5243632471538409,
+      "meanDistance": 1.7934126638217667,
+      "meanSteps": 79.45370370370371,
+      "methods": {
+        "rearranged": 12,
+        "paired-carving": 62,
+        "edited-givens": 31,
+        "recipe": 3
+      }
+    },
+    "betterPairing": {
+      "sinclair": 106,
+      "tied": 2
+    }
+  },
+  "mediumFamilies": {
+    "classic": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 22.19404150002856,
+        "p90Ms": 306.9990291999799,
+        "maxMs": 362.1724589999649,
+        "meanPairing": 0.30999922929913815,
+        "meanGivenPairing": 0.30999922929913815,
+        "meanShapes": null,
+        "meanGivenExcess": -0.01384043314811922,
+        "meanDistance": 0.5033724594031138,
+        "meanSteps": 60,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 54.50039600000309,
+        "p90Ms": 297.2555997000207,
+        "maxMs": 1036.269666999986,
+        "meanPairing": 0.6846177751460404,
+        "meanGivenPairing": 0.6846177751460404,
+        "meanShapes": null,
+        "meanGivenExcess": 0.36183296501945816,
+        "meanDistance": 0.4865858854567085,
+        "meanSteps": 59.583333333333336,
+        "methods": {
+          "rearranged": 12
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "killer-cages": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 32.43347950000316,
+        "p90Ms": 94.98658359999246,
+        "maxMs": 298.330541000003,
+        "meanPairing": 0.24672638374786243,
+        "meanGivenPairing": 0.07268518518518519,
+        "meanShapes": 0.4207675823105397,
+        "meanGivenExcess": -0.013812705110173464,
+        "meanDistance": 0.3873276712063576,
+        "meanSteps": 123.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 166.41039549998823,
+        "p90Ms": 238.95867560004265,
+        "maxMs": 378.4623750000028,
+        "meanPairing": 0.964157070083467,
+        "meanGivenPairing": 0.9376623376623376,
+        "meanShapes": 0.9870909842378955,
+        "meanGivenExcess": 0.8789741903665954,
+        "meanDistance": 0.4494625644910313,
+        "meanSteps": 133.41666666666666,
+        "methods": {
+          "paired-carving": 10,
+          "edited-givens": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "windoku": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 8.639812499983236,
+        "p90Ms": 52.01594199997489,
+        "maxMs": 67.00433299998986,
+        "meanPairing": 0.2820808663093403,
+        "meanGivenPairing": 0.2820808663093403,
+        "meanShapes": null,
+        "meanGivenExcess": 0.0046547059717875735,
+        "meanDistance": 1.2323857753973544,
+        "meanSteps": 61.583333333333336,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 23.030687000020407,
+        "p90Ms": 71.1447833999584,
+        "maxMs": 74.12287500000093,
+        "meanPairing": 0.9440093119440945,
+        "meanGivenPairing": 0.9440093119440945,
+        "meanShapes": null,
+        "meanGivenExcess": 0.6708025608892423,
+        "meanDistance": 1.0386709280045072,
+        "meanSteps": 66.75,
+        "methods": {
+          "paired-carving": 12
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "diagonal": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 32.51447949997237,
+        "p90Ms": 54.306982800000696,
+        "maxMs": 86.32312500005355,
+        "meanPairing": 0.27180602006688964,
+        "meanGivenPairing": 0.27180602006688964,
+        "meanShapes": null,
+        "meanGivenExcess": -0.03410115292889097,
+        "meanDistance": 0.5432063142624252,
+        "meanSteps": 57.833333333333336,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 42.6477705000143,
+        "p90Ms": 86.52193809997989,
+        "maxMs": 99.16645900002914,
+        "meanPairing": 0.6753614346049398,
+        "meanGivenPairing": 0.6753614346049398,
+        "meanShapes": null,
+        "meanGivenExcess": 0.38844160338131106,
+        "meanDistance": 0.7853527533485245,
+        "meanSteps": 59.333333333333336,
+        "methods": {
+          "paired-carving": 6,
+          "edited-givens": 6
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "jigsaw": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 9.558688000019174,
+        "p90Ms": 44.71327559999772,
+        "maxMs": 96.81529200001387,
+        "meanPairing": 0.4401131816142284,
+        "meanGivenPairing": 0.3174573702159909,
+        "meanShapes": 0.562768993012466,
+        "meanGivenExcess": 0.008385640258184987,
+        "meanDistance": 2.8005715644992013,
+        "meanSteps": 58.083333333333336,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 48.91147899997304,
+        "p90Ms": 69.14270029999462,
+        "maxMs": 101.2527499999851,
+        "meanPairing": 0.8429219228758482,
+        "meanGivenPairing": 0.8592919613934107,
+        "meanShapes": 0.8265518843582859,
+        "meanGivenExcess": 0.5481105267942545,
+        "meanDistance": 2.8287747995893735,
+        "meanSteps": 58.333333333333336,
+        "methods": {
+          "edited-givens": 2,
+          "paired-carving": 10
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "anti-knight": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 88.74197899999126,
+        "p90Ms": 155.62839589997893,
+        "maxMs": 180.97504099999787,
+        "meanPairing": 0.2983573525240192,
+        "meanGivenPairing": 0.2983573525240192,
+        "meanShapes": null,
+        "meanGivenExcess": 0.007218112017690082,
+        "meanDistance": 2.7857284636069846,
+        "meanSteps": 86.83333333333333,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 169.28862500000105,
+        "p90Ms": 275.95946249999105,
+        "maxMs": 319.87979100004304,
+        "meanPairing": 0.7257995245495246,
+        "meanGivenPairing": 0.7257995245495246,
+        "meanShapes": null,
+        "meanGivenExcess": 0.4473185118912967,
+        "meanDistance": 2.76247581092579,
+        "meanSteps": 95,
+        "methods": {
+          "edited-givens": 7,
+          "paired-carving": 5
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "thermometer": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 14.168916500013438,
+        "p90Ms": 102.9265794000123,
+        "maxMs": 131.45891699998174,
+        "meanPairing": 0.0976724903754955,
+        "meanGivenPairing": 0.195344980750991,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.07047780405913559,
+        "meanDistance": 2.446227466809007,
+        "meanSteps": 69.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 27.53389550000429,
+        "p90Ms": 56.01165810002713,
+        "maxMs": 132.46100000001024,
+        "meanPairing": 0.5225026292675033,
+        "meanGivenPairing": 0.5688147823445306,
+        "meanShapes": 0.47619047619047616,
+        "meanGivenExcess": 0.2987725882517036,
+        "meanDistance": 2.383101265058267,
+        "meanSteps": 68.33333333333333,
+        "methods": {
+          "paired-carving": 6,
+          "recipe": 3,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "sinclair": 10,
+        "tied": 2
+      }
+    },
+    "arrow": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 28.05093799997121,
+        "p90Ms": 744.7643369000231,
+        "maxMs": 882.0381669999915,
+        "meanPairing": 0.13851247902137995,
+        "meanGivenPairing": 0.2770249580427599,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.04073803821153627,
+        "meanDistance": 2.7475275091664897,
+        "meanSteps": 80.66666666666667,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 312.4607705000162,
+        "p90Ms": 900.7217041999918,
+        "maxMs": 961.682833000028,
+        "meanPairing": 0.447695402794087,
+        "meanGivenPairing": 0.7291871018844703,
+        "meanShapes": 0.16620370370370371,
+        "meanGivenExcess": 0.5055584099013479,
+        "meanDistance": 2.7178789385343123,
+        "meanSteps": 84,
+        "methods": {
+          "edited-givens": 8,
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "kropki": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 23.047208000032697,
+        "p90Ms": 85.15459129998344,
+        "maxMs": 270.4259580000071,
+        "meanPairing": 0.1101763876220398,
+        "meanGivenPairing": 0.1876798925711969,
+        "meanShapes": 0.032672882672882674,
+        "meanGivenExcess": -8.38205089718549e-05,
+        "meanDistance": 2.7089611132214446,
+        "meanSteps": 97.16666666666667,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 62.325687499993364,
+        "p90Ms": 78.19462560003159,
+        "maxMs": 143.05866600002628,
+        "meanPairing": 0.6824753219334422,
+        "meanGivenPairing": 0.8557598346760751,
+        "meanShapes": 0.5091908091908092,
+        "meanGivenExcess": 0.6490087798237544,
+        "meanDistance": 2.6884110289873866,
+        "meanSteps": 90.33333333333333,
+        "methods": {
+          "paired-carving": 9,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    }
+  },
+  "tiers": {
+    "anti-knight/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1.667250000013155,
+        "p90Ms": 2.2607420999964236,
+        "maxMs": 2.48704199999338,
+        "meanPairing": 0.350148312940304,
+        "meanGivenPairing": 0.350148312940304,
+        "meanShapes": null,
+        "meanGivenExcess": -0.016940294654632676,
+        "meanDistance": 1.9201628431751314,
+        "meanSteps": 56,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 8.016271500004223,
+        "p90Ms": 51.679942100001796,
+        "maxMs": 70.24891700000444,
+        "meanPairing": 0.9585836114200964,
+        "meanGivenPairing": 0.9585836114200964,
+        "meanShapes": null,
+        "meanGivenExcess": 0.5883304468631344,
+        "meanDistance": 1.8110954387150064,
+        "meanSteps": 56.25,
+        "methods": {
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "anti-knight/expert": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 145.64368749999267,
+        "p90Ms": 190.61149620000214,
+        "maxMs": 193.76220900000772,
+        "meanPairing": 0,
+        "meanGivenPairing": 0,
+        "meanShapes": null,
+        "meanGivenExcess": -0.2436708860759494,
+        "meanDistance": 2.6627940699883896,
+        "meanSteps": 106.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 298.280749499987,
+        "p90Ms": 399.13804110000495,
+        "maxMs": 432.04229100001976,
+        "meanPairing": 0.1976190476190476,
+        "meanGivenPairing": 0.1976190476190476,
+        "meanShapes": null,
+        "meanGivenExcess": -0.04605183845690176,
+        "meanDistance": 2.651719777312727,
+        "meanSteps": 107.5,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "anti-knight/extreme": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1192.219957999987,
+        "p90Ms": 2034.2565711999982,
+        "maxMs": 2384.044458999997,
+        "meanPairing": 0.14642857142857144,
+        "meanGivenPairing": 0.14642857142857144,
+        "meanShapes": null,
+        "meanGivenExcess": -0.09724231464737795,
+        "meanDistance": 2.6825795777214645,
+        "meanSteps": 121.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 5864.161061999999,
+        "p90Ms": 9148.95185429999,
+        "maxMs": 9493.351166999986,
+        "meanPairing": 0.2714285714285714,
+        "meanGivenPairing": 0.2714285714285714,
+        "meanShapes": null,
+        "meanGivenExcess": 0.027757685352622047,
+        "meanDistance": 2.69340662110541,
+        "meanSteps": 126.25,
+        "methods": {
+          "recipe": 1,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "tied": 1,
+        "sinclair": 3
+      }
+    },
+    "anti-knight/hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 87.67091599998821,
+        "p90Ms": 104.43480419999833,
+        "maxMs": 109.1179170000105,
+        "meanPairing": 0.2608695652173913,
+        "meanGivenPairing": 0.2608695652173913,
+        "meanShapes": null,
+        "meanGivenExcess": -0.017611447440836536,
+        "meanDistance": 2.556454664410014,
+        "meanSteps": 97,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 174.63012499999604,
+        "p90Ms": 231.5279080000066,
+        "maxMs": 252.40783300000476,
+        "meanPairing": 0.5,
+        "meanGivenPairing": 0.5,
+        "meanShapes": null,
+        "meanGivenExcess": 0.22151898734177217,
+        "meanDistance": 2.58160639736258,
+        "meanSteps": 96.25,
+        "methods": {
+          "edited-givens": 3,
+          "recipe": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 3,
+        "tied": 1
+      }
+    },
+    "anti-knight/master": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 375.07708350001485,
+        "p90Ms": 430.25615009999746,
+        "maxMs": 451.13249999999243,
+        "meanPairing": 0.17424242424242425,
+        "meanGivenPairing": 0.17424242424242425,
+        "meanShapes": null,
+        "meanGivenExcess": -0.053605677023398544,
+        "meanDistance": 2.7173278305576125,
+        "meanSteps": 110,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 862.2207085000118,
+        "p90Ms": 1042.225225099994,
+        "maxMs": 1098.5491249999905,
+        "meanPairing": 0.22474747474747475,
+        "meanGivenPairing": 0.22474747474747475,
+        "meanShapes": null,
+        "meanGivenExcess": -0.003100626518348047,
+        "meanDistance": 2.7304618622892747,
+        "meanSteps": 111.5,
+        "methods": {
+          "edited-givens": 2,
+          "recipe": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 2,
+        "tied": 2
+      }
+    },
+    "anti-knight/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 88.74197899999126,
+        "p90Ms": 155.62839589997893,
+        "maxMs": 180.97504099999787,
+        "meanPairing": 0.2983573525240192,
+        "meanGivenPairing": 0.2983573525240192,
+        "meanShapes": null,
+        "meanGivenExcess": 0.007218112017690082,
+        "meanDistance": 2.7857284636069846,
+        "meanSteps": 86.83333333333333,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 169.28862500000105,
+        "p90Ms": 275.95946249999105,
+        "maxMs": 319.87979100004304,
+        "meanPairing": 0.7257995245495246,
+        "meanGivenPairing": 0.7257995245495246,
+        "meanShapes": null,
+        "meanGivenExcess": 0.4473185118912967,
+        "meanDistance": 2.76247581092579,
+        "meanSteps": 95,
+        "methods": {
+          "edited-givens": 7,
+          "paired-carving": 5
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "anti-knight/tricky": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 73.2814165000018,
+        "p90Ms": 94.47517060000683,
+        "maxMs": 103.17808300000615,
+        "meanPairing": 0.21195652173913043,
+        "meanGivenPairing": 0.21195652173913043,
+        "meanShapes": null,
+        "meanGivenExcess": -0.07285360484314804,
+        "meanDistance": 2.7421714537246102,
+        "meanSteps": 89.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 169.16887499998847,
+        "p90Ms": 195.14253389998484,
+        "maxMs": 204.94508399999177,
+        "meanPairing": 0.4447463768115942,
+        "meanGivenPairing": 0.4447463768115942,
+        "meanShapes": null,
+        "meanGivenExcess": 0.15993625022931574,
+        "meanDistance": 2.683938668618931,
+        "meanSteps": 88.75,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "anti-knight/very-hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 75.91399999998248,
+        "p90Ms": 103.03827939998591,
+        "maxMs": 107.10779199999524,
+        "meanPairing": 0.39285714285714285,
+        "meanGivenPairing": 0.39285714285714285,
+        "meanShapes": null,
+        "meanGivenExcess": 0.14602169981916815,
+        "meanDistance": 2.6700490771446255,
+        "meanSteps": 100,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 194.56718750001164,
+        "p90Ms": 219.49243310003075,
+        "maxMs": 221.19570800004294,
+        "meanPairing": 0.5392857142857143,
+        "meanGivenPairing": 0.5392857142857143,
+        "meanShapes": null,
+        "meanGivenExcess": 0.2924502712477396,
+        "meanDistance": 2.6570799122462425,
+        "meanSteps": 101,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "arrow/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 5.514895500004059,
+        "p90Ms": 6.52143750001269,
+        "maxMs": 6.6311250000144355,
+        "meanPairing": 0.14148745519713263,
+        "meanGivenPairing": 0.28297491039426526,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.04930357061839301,
+        "meanDistance": 1.8318243215619514,
+        "meanSteps": 60.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 23.974604000002728,
+        "p90Ms": 434.94925420000516,
+        "maxMs": 610.2415420000034,
+        "meanPairing": 0.72316653934301,
+        "meanGivenPairing": 0.961484593837535,
+        "meanShapes": 0.4848484848484848,
+        "meanGivenExcess": 0.5785732014324717,
+        "meanDistance": 1.246342228119077,
+        "meanSteps": 53.25,
+        "methods": {
+          "edited-givens": 1,
+          "paired-carving": 3
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "arrow/expert": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 286.1664369999926,
+        "p90Ms": 542.8144586999814,
+        "maxMs": 625.879208999977,
+        "meanPairing": 0.14304029304029303,
+        "meanGivenPairing": 0.28608058608058606,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.06456159873881392,
+        "meanDistance": 2.623864688038613,
+        "meanSteps": 88.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 342.9904164999898,
+        "p90Ms": 424.4799044000218,
+        "maxMs": 441.1321670000325,
+        "meanPairing": 0.4051470588235294,
+        "meanGivenPairing": 0.5602941176470588,
+        "meanShapes": 0.25,
+        "meanGivenExcess": 0.3292814594192107,
+        "meanDistance": 2.613842686071211,
+        "meanSteps": 86.25,
+        "methods": {
+          "edited-givens": 1,
+          "recipe": 2,
+          "paired-carving": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 3,
+        "tied": 1
+      }
+    },
+    "arrow/hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 77.68531250001979,
+        "p90Ms": 94.71387489999907,
+        "maxMs": 95.30087500000081,
+        "meanPairing": 0.09090909090909091,
+        "meanGivenPairing": 0.18181818181818182,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.08400460299194473,
+        "meanDistance": 2.658005038149468,
+        "meanSteps": 79,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 185.75587449999148,
+        "p90Ms": 485.10484620000506,
+        "maxMs": 587.8403340000077,
+        "meanPairing": 0.19318181818181818,
+        "meanGivenPairing": 0.38636363636363635,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.1205408515535098,
+        "meanDistance": 2.634541315162416,
+        "meanSteps": 79.5,
+        "methods": {
+          "recipe": 1,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "tied": 1,
+        "sinclair": 3
+      }
+    },
+    "arrow/master": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 429.2371875000026,
+        "p90Ms": 1938.3243170000092,
+        "maxMs": 2503.254917000013,
+        "meanPairing": 0.10891812865497075,
+        "meanGivenPairing": 0.2178362573099415,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.038492856614109124,
+        "meanDistance": 2.6866426342032663,
+        "meanSteps": 83.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 914.6811874999839,
+        "p90Ms": 1119.464732999992,
+        "maxMs": 1167.2478330000013,
+        "meanPairing": 0.3615288220551378,
+        "meanGivenPairing": 0.5087719298245614,
+        "meanShapes": 0.21428571428571427,
+        "meanGivenExcess": 0.24927825893848543,
+        "meanDistance": 2.689219712465432,
+        "meanSteps": 87.5,
+        "methods": {
+          "paired-carving": 1,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "arrow/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 28.05093799997121,
+        "p90Ms": 744.7643369000231,
+        "maxMs": 882.0381669999915,
+        "meanPairing": 0.13851247902137995,
+        "meanGivenPairing": 0.2770249580427599,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.04073803821153627,
+        "meanDistance": 2.7475275091664897,
+        "meanSteps": 80.66666666666667,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 312.4607705000162,
+        "p90Ms": 900.7217041999918,
+        "maxMs": 961.682833000028,
+        "meanPairing": 0.447695402794087,
+        "meanGivenPairing": 0.7291871018844703,
+        "meanShapes": 0.16620370370370371,
+        "meanGivenExcess": 0.5055584099013479,
+        "meanDistance": 2.7178789385343123,
+        "meanSteps": 84,
+        "methods": {
+          "edited-givens": 8,
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "arrow/tricky": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 61.63587500002177,
+        "p90Ms": 101.96156250001513,
+        "maxMs": 107.96100000001024,
+        "meanPairing": 0.131683108025819,
+        "meanGivenPairing": 0.263366216051638,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.016530773013663347,
+        "meanDistance": 2.6976151731321947,
+        "meanSteps": 80,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 295.2238125000149,
+        "p90Ms": 399.610103800011,
+        "maxMs": 424.04416600000695,
+        "meanPairing": 0.3053830227743271,
+        "meanGivenPairing": 0.6107660455486542,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.35127237466257827,
+        "meanDistance": 2.7121028091503847,
+        "meanSteps": 77.25,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "arrow/very-hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 243.50835399999778,
+        "p90Ms": 808.7872456000348,
+        "maxMs": 1015.1027080000495,
+        "meanPairing": 0.10131578947368422,
+        "meanGivenPairing": 0.20263157894736844,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.03471019320453031,
+        "meanDistance": 2.666305142317831,
+        "meanSteps": 80.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 547.3525414999967,
+        "p90Ms": 780.803478600028,
+        "maxMs": 863.4955410000402,
+        "meanPairing": 0.1513157894736842,
+        "meanGivenPairing": 0.3026315789473684,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.06528980679546968,
+        "meanDistance": 2.646441451509732,
+        "meanSteps": 79,
+        "methods": {
+          "edited-givens": 3,
+          "recipe": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 3,
+        "tied": 1
+      }
+    },
+    "classic/beginner": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1.2831044999979326,
+        "p90Ms": 3.964621400016461,
+        "maxMs": 4.976084000023548,
+        "meanPairing": 0.43003565062388593,
+        "meanGivenPairing": 0.43003565062388593,
+        "meanShapes": null,
+        "meanGivenExcess": 0.015478688598569462,
+        "meanDistance": 0.27056426741380746,
+        "meanSteps": 46.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 10.341854000005696,
+        "p90Ms": 13.540912500000445,
+        "maxMs": 14.523374999999987,
+        "meanPairing": 0.9701298701298702,
+        "meanGivenPairing": 0.9701298701298702,
+        "meanShapes": null,
+        "meanGivenExcess": 0.5587374650665791,
+        "meanDistance": 0.2318519738609333,
+        "meanSteps": 47,
+        "methods": {
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "classic/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 2.033645500003388,
+        "p90Ms": 6.5640997999798865,
+        "maxMs": 8.337874999968335,
+        "meanPairing": 0.38760903928341434,
+        "meanGivenPairing": 0.38760903928341434,
+        "meanShapes": null,
+        "meanGivenExcess": -0.0016314670456996153,
+        "meanDistance": 0.30892745622545664,
+        "meanSteps": 48.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 10.588145999980043,
+        "p90Ms": 25.306237599993157,
+        "maxMs": 31.51750000000004,
+        "meanPairing": 0.9078185328185329,
+        "meanGivenPairing": 0.9078185328185329,
+        "meanShapes": null,
+        "meanGivenExcess": 0.5185780264894189,
+        "meanDistance": 0.2888418999999938,
+        "meanSteps": 49,
+        "methods": {
+          "paired-carving": 3,
+          "rearranged": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "classic/expert": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 54.91829200000211,
+        "p90Ms": 130.80797059999819,
+        "maxMs": 160.7775829999996,
+        "meanPairing": 0.29824074074074075,
+        "meanGivenPairing": 0.29824074074074075,
+        "meanShapes": null,
+        "meanGivenExcess": -0.00872128457571495,
+        "meanDistance": 2.248579336793153,
+        "meanSteps": 75.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 117.45483349999995,
+        "p90Ms": 495.8472500000034,
+        "maxMs": 644.9078750000003,
+        "meanPairing": 0.6799999999999999,
+        "meanGivenPairing": 0.6799999999999999,
+        "meanShapes": null,
+        "meanGivenExcess": 0.3762025316455696,
+        "meanDistance": 2.183592814735821,
+        "meanSteps": 73.5,
+        "methods": {
+          "rearranged": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "classic/extreme": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 892.8398749999906,
+        "p90Ms": 2488.085049999998,
+        "maxMs": 3121.5576249999995,
+        "meanPairing": 0.3076834455866714,
+        "meanGivenPairing": 0.3076834455866714,
+        "meanShapes": null,
+        "meanGivenExcess": -0.02775959238801215,
+        "meanDistance": 3.1105739260843213,
+        "meanSteps": 82.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1762.5751460000029,
+        "p90Ms": 4781.152183099997,
+        "maxMs": 5990.260958,
+        "meanPairing": 0.7076840185676392,
+        "meanGivenPairing": 0.7076840185676392,
+        "meanShapes": null,
+        "meanGivenExcess": 0.36274730970687974,
+        "meanDistance": 3.12725999204937,
+        "meanSteps": 82.75,
+        "methods": {
+          "rearranged": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "classic/hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 25.860396000003675,
+        "p90Ms": 44.53262950000138,
+        "maxMs": 51.13229200000001,
+        "meanPairing": 0.383795987311004,
+        "meanGivenPairing": 0.383795987311004,
+        "meanShapes": null,
+        "meanGivenExcess": 0.04202383541226981,
+        "meanDistance": 1.2270340917637632,
+        "meanSteps": 59.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 37.51274999997986,
+        "p90Ms": 75.76379999998507,
+        "maxMs": 89.626125,
+        "meanPairing": 0.6950183331273432,
+        "meanGivenPairing": 0.6950183331273432,
+        "meanShapes": null,
+        "meanGivenExcess": 0.35324618122860896,
+        "meanDistance": 1.2106181821762005,
+        "meanSteps": 59.25,
+        "methods": {
+          "rearranged": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "classic/impossible": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 5826.28929149999,
+        "p90Ms": 8898.045149799997,
+        "maxMs": 9809.003874999995,
+        "meanPairing": 0.25565217391304346,
+        "meanGivenPairing": 0.25565217391304346,
+        "meanShapes": null,
+        "meanGivenExcess": -0.029157952669235,
+        "meanDistance": 3.0763956289180934,
+        "meanSteps": 118.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 25406.208437000005,
+        "p90Ms": 31304.27679990002,
+        "maxMs": 33249.04012500003,
+        "meanPairing": 0.7481818181818182,
+        "meanGivenPairing": 0.7481818181818182,
+        "meanShapes": null,
+        "meanGivenExcess": 0.47286536248561567,
+        "meanDistance": 3.103354111808229,
+        "meanSteps": 116,
+        "methods": {
+          "rearranged": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "classic/master": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 152.36891649999598,
+        "p90Ms": 1179.3211329999976,
+        "maxMs": 1606.1953329999997,
+        "meanPairing": 0.2922893772893773,
+        "meanGivenPairing": 0.2922893772893773,
+        "meanShapes": null,
+        "meanGivenExcess": -0.021001761951129044,
+        "meanDistance": 2.2945780510594798,
+        "meanSteps": 75.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 215.5579164999872,
+        "p90Ms": 1072.1701249999928,
+        "maxMs": 1417.1494999999995,
+        "meanPairing": 0.7305952380952381,
+        "meanGivenPairing": 0.7305952380952381,
+        "meanShapes": null,
+        "meanGivenExcess": 0.4236332127787824,
+        "meanDistance": 2.360325571540559,
+        "meanSteps": 75.25,
+        "methods": {
+          "rearranged": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "classic/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 22.19404150002856,
+        "p90Ms": 306.9990291999799,
+        "maxMs": 362.1724589999649,
+        "meanPairing": 0.30999922929913815,
+        "meanGivenPairing": 0.30999922929913815,
+        "meanShapes": null,
+        "meanGivenExcess": -0.01384043314811922,
+        "meanDistance": 0.5033724594031138,
+        "meanSteps": 60,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 54.50039600000309,
+        "p90Ms": 297.2555997000207,
+        "maxMs": 1036.269666999986,
+        "meanPairing": 0.6846177751460404,
+        "meanGivenPairing": 0.6846177751460404,
+        "meanShapes": null,
+        "meanGivenExcess": 0.36183296501945816,
+        "meanDistance": 0.4865858854567085,
+        "meanSteps": 59.583333333333336,
+        "methods": {
+          "rearranged": 12
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "classic/tricky": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 110.43106250002165,
+        "p90Ms": 249.1302418999976,
+        "maxMs": 297.83791699999995,
+        "meanPairing": 0.3075,
+        "meanGivenPairing": 0.3075,
+        "meanShapes": null,
+        "meanGivenExcess": 0.013196202531645565,
+        "meanDistance": 0.843732227380878,
+        "meanSteps": 62.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 136.74497900001006,
+        "p90Ms": 332.5691830999992,
+        "maxMs": 403.3275829999998,
+        "meanPairing": 0.6666666666666666,
+        "meanGivenPairing": 0.6666666666666666,
+        "meanShapes": null,
+        "meanGivenExcess": 0.3755274261603375,
+        "meanDistance": 0.8570690174985198,
+        "meanSteps": 62.25,
+        "methods": {
+          "rearranged": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "classic/very-hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 121.17424999999639,
+        "p90Ms": 429.20756610000024,
+        "maxMs": 558.6141660000003,
+        "meanPairing": 0.31357831185417395,
+        "meanGivenPairing": 0.31357831185417395,
+        "meanShapes": null,
+        "meanGivenExcess": -0.050345738778737464,
+        "meanDistance": 2.065409007821901,
+        "meanSteps": 59.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 120.66012500000215,
+        "p90Ms": 646.5517624999999,
+        "maxMs": 860.15825,
+        "meanPairing": 0.6747447954344507,
+        "meanGivenPairing": 0.6747447954344507,
+        "meanShapes": null,
+        "meanGivenExcess": 0.31398530176356454,
+        "meanDistance": 2.0590341719833725,
+        "meanSteps": 60,
+        "methods": {
+          "rearranged": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "diagonal/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 2.1262920000008307,
+        "p90Ms": 2.4088170000119136,
+        "maxMs": 2.4964170000166632,
+        "meanPairing": 0.3199724923862855,
+        "meanGivenPairing": 0.3199724923862855,
+        "meanShapes": null,
+        "meanGivenExcess": -0.002812317740296791,
+        "meanDistance": 0.44219208583198666,
+        "meanSteps": 54.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 20.436103999993065,
+        "p90Ms": 35.24347939998843,
+        "maxMs": 40.47466700000223,
+        "meanPairing": 0.9364851304506476,
+        "meanGivenPairing": 0.9364851304506476,
+        "meanShapes": null,
+        "meanGivenExcess": 0.5978775355139389,
+        "meanDistance": 0.45127493201226504,
+        "meanSteps": 52.75,
+        "methods": {
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "diagonal/expert": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 77.34754200000316,
+        "p90Ms": 90.09347520000301,
+        "maxMs": 92.4438749999972,
+        "meanPairing": 0.15730284208545078,
+        "meanGivenPairing": 0.15730284208545078,
+        "meanShapes": null,
+        "meanGivenExcess": -0.1116844996867011,
+        "meanDistance": 2.3588800839628132,
+        "meanSteps": 70,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 146.91622899998038,
+        "p90Ms": 177.84238759998115,
+        "maxMs": 183.2041249999893,
+        "meanPairing": 0.39539808018068884,
+        "meanGivenPairing": 0.39539808018068884,
+        "meanShapes": null,
+        "meanGivenExcess": 0.1327398523325876,
+        "meanDistance": 2.595220833551158,
+        "meanSteps": 72.75,
+        "methods": {
+          "recipe": 2,
+          "paired-carving": 1,
+          "edited-givens": 1
+        }
+      },
+      "betterPairing": {
+        "tied": 2,
+        "sinclair": 2
+      }
+    },
+    "diagonal/extreme": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 511.54985449999367,
+        "p90Ms": 597.8088171000214,
+        "maxMs": 629.6996670000372,
+        "meanPairing": 0.20526315789473684,
+        "meanGivenPairing": 0.20526315789473684,
+        "meanShapes": null,
+        "meanGivenExcess": -0.025749500333111255,
+        "meanDistance": 3.177974683527188,
+        "meanSteps": 86.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1005.5861869999935,
+        "p90Ms": 2239.59418740001,
+        "maxMs": 2725.9908750000177,
+        "meanPairing": 0.2578947368421053,
+        "meanGivenPairing": 0.2578947368421053,
+        "meanShapes": null,
+        "meanGivenExcess": 0.026882078614257163,
+        "meanDistance": 3.1932638106356075,
+        "meanSteps": 83.25,
+        "methods": {
+          "edited-givens": 3,
+          "recipe": 1
+        }
+      },
+      "betterPairing": {
+        "tied": 2,
+        "sinclair": 2
+      }
+    },
+    "diagonal/hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 35.827250000002095,
+        "p90Ms": 41.479966300004165,
+        "maxMs": 42.7119160000002,
+        "meanPairing": 0.07894736842105263,
+        "meanGivenPairing": 0.07894736842105263,
+        "meanShapes": null,
+        "meanGivenExcess": -0.1963690872751499,
+        "meanDistance": 2.7900753490128216,
+        "meanSteps": 73.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 76.0273959999904,
+        "p90Ms": 106.6661958000157,
+        "maxMs": 108.77583300002152,
+        "meanPairing": 0.4540427154843631,
+        "meanGivenPairing": 0.4540427154843631,
+        "meanShapes": null,
+        "meanGivenExcess": 0.18189081675018587,
+        "meanDistance": 2.248106197531599,
+        "meanSteps": 69.75,
+        "methods": {
+          "edited-givens": 3,
+          "paired-carving": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "diagonal/master": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 214.77952049998567,
+        "p90Ms": 269.6402498999843,
+        "maxMs": 285.2317499999772,
+        "meanPairing": 0.17763157894736842,
+        "meanGivenPairing": 0.17763157894736842,
+        "meanShapes": null,
+        "meanGivenExcess": -0.05971019320453031,
+        "meanDistance": 2.796894498780905,
+        "meanSteps": 74,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 455.1700835000229,
+        "p90Ms": 696.7555920000159,
+        "maxMs": 764.330667000002,
+        "meanPairing": 0.25263157894736843,
+        "meanGivenPairing": 0.25263157894736843,
+        "meanShapes": null,
+        "meanGivenExcess": 0.015289806795469686,
+        "meanDistance": 3.1546363333304646,
+        "meanSteps": 79,
+        "methods": {
+          "edited-givens": 2,
+          "recipe": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 2,
+        "tied": 2
+      }
+    },
+    "diagonal/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 32.51447949997237,
+        "p90Ms": 54.306982800000696,
+        "maxMs": 86.32312500005355,
+        "meanPairing": 0.27180602006688964,
+        "meanGivenPairing": 0.27180602006688964,
+        "meanShapes": null,
+        "meanGivenExcess": -0.03410115292889097,
+        "meanDistance": 0.5432063142624252,
+        "meanSteps": 57.833333333333336,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 42.6477705000143,
+        "p90Ms": 86.52193809997989,
+        "maxMs": 99.16645900002914,
+        "meanPairing": 0.6753614346049398,
+        "meanGivenPairing": 0.6753614346049398,
+        "meanShapes": null,
+        "meanGivenExcess": 0.38844160338131106,
+        "meanDistance": 0.7853527533485245,
+        "meanSteps": 59.333333333333336,
+        "methods": {
+          "paired-carving": 6,
+          "edited-givens": 6
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "diagonal/tricky": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 24.369937000010395,
+        "p90Ms": 46.5303292000157,
+        "maxMs": 55.48116700000537,
+        "meanPairing": 0.172266139657444,
+        "meanGivenPairing": 0.172266139657444,
+        "meanShapes": null,
+        "meanGivenExcess": -0.10937942996280915,
+        "meanDistance": 1.9428367488232479,
+        "meanSteps": 65,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 68.08306200000516,
+        "p90Ms": 92.89958299998544,
+        "maxMs": 97.98683299997356,
+        "meanPairing": 0.5537714097496707,
+        "meanGivenPairing": 0.5537714097496707,
+        "meanShapes": null,
+        "meanGivenExcess": 0.2721258401294175,
+        "meanDistance": 1.8028142730048238,
+        "meanSteps": 63.25,
+        "methods": {
+          "paired-carving": 1,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "diagonal/very-hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 43.10237450004206,
+        "p90Ms": 64.30985429999419,
+        "maxMs": 71.27741699997569,
+        "meanPairing": 0.16666666666666666,
+        "meanGivenPairing": 0.16666666666666666,
+        "meanShapes": null,
+        "meanGivenExcess": -0.08016877637130804,
+        "meanDistance": 2.2715062006464493,
+        "meanSteps": 69,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 51.9208335000003,
+        "p90Ms": 89.26294549999585,
+        "maxMs": 98.92020799999591,
+        "meanPairing": 0.19047619047619047,
+        "meanGivenPairing": 0.19047619047619047,
+        "meanShapes": null,
+        "meanGivenExcess": -0.05635925256178423,
+        "meanDistance": 2.2417160214852947,
+        "meanSteps": 69.25,
+        "methods": {
+          "recipe": 3,
+          "edited-givens": 1
+        }
+      },
+      "betterPairing": {
+        "tied": 3,
+        "sinclair": 1
+      }
+    },
+    "jigsaw/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1.4894374999930733,
+        "p90Ms": 4.272003800013045,
+        "maxMs": 5.310041000018828,
+        "meanPairing": 0.5096537862055196,
+        "meanGivenPairing": 0.4113046978322121,
+        "meanShapes": 0.6080028745788271,
+        "meanGivenExcess": 0.00940596365499688,
+        "meanDistance": 2.6089476495990986,
+        "meanSteps": 47.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 18.060167000025103,
+        "p90Ms": 30.673675099991673,
+        "maxMs": 34.522999999986496,
+        "meanPairing": 0.9288989773667193,
+        "meanGivenPairing": 0.9676930596285436,
+        "meanShapes": 0.8901048951048951,
+        "meanGivenExcess": 0.5752879963374042,
+        "meanDistance": 2.5182265047313077,
+        "meanSteps": 48.75,
+        "methods": {
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "jigsaw/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 9.558688000019174,
+        "p90Ms": 44.71327559999772,
+        "maxMs": 96.81529200001387,
+        "meanPairing": 0.4401131816142284,
+        "meanGivenPairing": 0.3174573702159909,
+        "meanShapes": 0.562768993012466,
+        "meanGivenExcess": 0.008385640258184987,
+        "meanDistance": 2.8005715644992013,
+        "meanSteps": 58.083333333333336,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 48.91147899997304,
+        "p90Ms": 69.14270029999462,
+        "maxMs": 101.2527499999851,
+        "meanPairing": 0.8429219228758482,
+        "meanGivenPairing": 0.8592919613934107,
+        "meanShapes": 0.8265518843582859,
+        "meanGivenExcess": 0.5481105267942545,
+        "meanDistance": 2.8287747995893735,
+        "meanSteps": 58.333333333333336,
+        "methods": {
+          "edited-givens": 2,
+          "paired-carving": 10
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "jigsaw/tricky": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 27.340103999995335,
+        "p90Ms": 45.871408100030386,
+        "maxMs": 47.0288330000476,
+        "meanPairing": 0.4354946904946905,
+        "meanGivenPairing": 0.42518518518518517,
+        "meanShapes": 0.4458041958041958,
+        "meanGivenExcess": 0.10872948898265353,
+        "meanDistance": 2.855038093651025,
+        "meanSteps": 59.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 65.65433350001695,
+        "p90Ms": 91.14813330002363,
+        "maxMs": 98.65158300002804,
+        "meanPairing": 0.5071114996114996,
+        "meanGivenPairing": 0.5684188034188035,
+        "meanShapes": 0.4458041958041958,
+        "meanGivenExcess": 0.24563399329222116,
+        "meanDistance": 2.8445981034975967,
+        "meanSteps": 60.5,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "killer-cages/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 4.56947950002359,
+        "p90Ms": 5.688383200012322,
+        "maxMs": 6.0977080000157,
+        "meanPairing": 0.30476051609656774,
+        "meanGivenPairing": 0.2509057971014493,
+        "meanShapes": 0.35861523509168625,
+        "meanGivenExcess": -0.037068886442854526,
+        "meanDistance": 0.8584847435953941,
+        "meanSteps": 66.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 26.53285399999004,
+        "p90Ms": 37.967682899997456,
+        "maxMs": 41.51058299999568,
+        "meanPairing": 0.9564912309121147,
+        "meanGivenPairing": 0.9257246376811594,
+        "meanShapes": 0.9872578241430701,
+        "meanGivenExcess": 0.6440790680609063,
+        "meanDistance": 0.7135075975048696,
+        "meanSteps": 70.75,
+        "methods": {
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "killer-cages/hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 188.50245850000647,
+        "p90Ms": 340.7413206999773,
+        "maxMs": 403.8227079999633,
+        "meanPairing": 0.15677966101694915,
+        "meanGivenPairing": 0,
+        "meanShapes": 0.3135593220338983,
+        "meanGivenExcess": -0.015822784810126583,
+        "meanDistance": 0.7511267582840225,
+        "meanSteps": 172.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 621.2541875000097,
+        "p90Ms": 932.6093919000195,
+        "maxMs": 1002.334542000026,
+        "meanPairing": 0.2817796610169492,
+        "meanGivenPairing": 0.25,
+        "meanShapes": 0.3135593220338983,
+        "meanGivenExcess": 0.22468354430379747,
+        "meanDistance": 0.7405536556388248,
+        "meanSteps": 168.5,
+        "methods": {
+          "edited-givens": 2,
+          "recipe": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 2,
+        "tied": 2
+      }
+    },
+    "killer-cages/master": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 485.76241650000156,
+        "p90Ms": 665.6160910999839,
+        "maxMs": 676.206790999975,
+        "meanPairing": 0.2033898305084746,
+        "meanGivenPairing": 0,
+        "meanShapes": 0.4067796610169492,
+        "meanGivenExcess": 0.0,
+        "meanDistance": 1.6543394706989099,
+        "meanSteps": 186,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 527.856500000009,
+        "p90Ms": 844.1429590000189,
+        "maxMs": 950.2349590000231,
+        "meanPairing": 0.7033898305084746,
+        "meanGivenPairing": 1,
+        "meanShapes": 0.4067796610169492,
+        "meanGivenExcess": 0.9873417721518988,
+        "meanDistance": 1.8722030112432264,
+        "meanSteps": 173,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "killer-cages/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 32.43347950000316,
+        "p90Ms": 94.98658359999246,
+        "maxMs": 298.330541000003,
+        "meanPairing": 0.24672638374786243,
+        "meanGivenPairing": 0.07268518518518519,
+        "meanShapes": 0.4207675823105397,
+        "meanGivenExcess": -0.013812705110173464,
+        "meanDistance": 0.3873276712063576,
+        "meanSteps": 123.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 166.41039549998823,
+        "p90Ms": 238.95867560004265,
+        "maxMs": 378.4623750000028,
+        "meanPairing": 0.964157070083467,
+        "meanGivenPairing": 0.9376623376623376,
+        "meanShapes": 0.9870909842378955,
+        "meanGivenExcess": 0.8789741903665954,
+        "meanDistance": 0.4494625644910313,
+        "meanSteps": 133.41666666666666,
+        "methods": {
+          "paired-carving": 10,
+          "edited-givens": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "killer-cages/very-hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 159.9141460000028,
+        "p90Ms": 389.25830820002886,
+        "maxMs": 484.36008300003596,
+        "meanPairing": 0.1724137931034483,
+        "meanGivenPairing": 0,
+        "meanShapes": 0.3448275862068966,
+        "meanGivenExcess": -0.05063291139240506,
+        "meanDistance": 0.7815455871160664,
+        "meanSteps": 158,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 420.71333349998895,
+        "p90Ms": 611.1127287999698,
+        "maxMs": 652.5984159999643,
+        "meanPairing": 0.5105250340931229,
+        "meanGivenPairing": 0.5166666666666666,
+        "meanShapes": 0.5043834015195792,
+        "meanGivenExcess": 0.4470464135021097,
+        "meanDistance": 0.9667338775415373,
+        "meanSteps": 155.25,
+        "methods": {
+          "edited-givens": 3,
+          "paired-carving": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "kropki/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 2.5869165000040084,
+        "p90Ms": 4.662804400011374,
+        "maxMs": 5.214667000007466,
+        "meanPairing": 0.20671962186688694,
+        "meanGivenPairing": 0.29712222741675753,
+        "meanShapes": 0.11631701631701633,
+        "meanGivenExcess": -0.0414853675199513,
+        "meanDistance": 2.4843016263016438,
+        "meanSteps": 61,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 8.001687500000116,
+        "p90Ms": 14.583645600001912,
+        "maxMs": 16.583582999999635,
+        "meanPairing": 0.8107569952397539,
+        "meanGivenPairing": 0.9821200510855683,
+        "meanShapes": 0.6393939393939394,
+        "meanGivenExcess": 0.6403478991868341,
+        "meanDistance": 1.161746442029593,
+        "meanSteps": 56.5,
+        "methods": {
+          "paired-carving": 2,
+          "edited-givens": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "kropki/expert": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 54.54902050000237,
+        "p90Ms": 108.77818750001899,
+        "maxMs": 125.90800000002491,
+        "meanPairing": 0.11334586466165414,
+        "meanGivenPairing": 0.22669172932330828,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.010650042828590472,
+        "meanDistance": 2.669321539945981,
+        "meanSteps": 89.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 127.13972900001681,
+        "p90Ms": 137.10732109998935,
+        "maxMs": 139.2613339999807,
+        "meanPairing": 0.4201754385964912,
+        "meanGivenPairing": 0.6403508771929824,
+        "meanShapes": 0.2,
+        "meanGivenExcess": 0.406173662003109,
+        "meanDistance": 2.6796084212716607,
+        "meanSteps": 88,
+        "methods": {
+          "edited-givens": 3,
+          "paired-carving": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "kropki/hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 20.000854000012623,
+        "p90Ms": 53.967199800000536,
+        "maxMs": 67.41824999998789,
+        "meanPairing": 0.15942317916002124,
+        "meanGivenPairing": 0.29106858054226475,
+        "meanShapes": 0.027777777777777776,
+        "meanGivenExcess": 0.13284073244099892,
+        "meanDistance": 2.6512601163780514,
+        "meanSteps": 111.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 76.03627050000068,
+        "p90Ms": 145.7546166999935,
+        "maxMs": 173.58854199998314,
+        "meanPairing": 0.477538543328017,
+        "meanGivenPairing": 0.763157894736842,
+        "meanShapes": 0.1919191919191919,
+        "meanGivenExcess": 0.5669553630912725,
+        "meanDistance": 2.620177837756783,
+        "meanSteps": 103.5,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "kropki/master": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 242.2486874999886,
+        "p90Ms": 298.7201580999972,
+        "maxMs": 312.5113330000022,
+        "meanPairing": 0.14133986928104575,
+        "meanGivenPairing": 0.2826797385620915,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.07065442210639529,
+        "meanDistance": 2.723374253284497,
+        "meanSteps": 88.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 190.79158350000216,
+        "p90Ms": 419.88662940002985,
+        "maxMs": 510.74479200004134,
+        "meanPairing": 0.28816526610644255,
+        "meanGivenPairing": 0.5049019607843137,
+        "meanShapes": 0.07142857142857142,
+        "meanGivenExcess": 0.29920575825266815,
+        "meanDistance": 2.7074460422928555,
+        "meanSteps": 90.75,
+        "methods": {
+          "recipe": 1,
+          "paired-carving": 1,
+          "edited-givens": 2
+        }
+      },
+      "betterPairing": {
+        "tied": 1,
+        "sinclair": 3
+      }
+    },
+    "kropki/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 23.047208000032697,
+        "p90Ms": 85.15459129998344,
+        "maxMs": 270.4259580000071,
+        "meanPairing": 0.1101763876220398,
+        "meanGivenPairing": 0.1876798925711969,
+        "meanShapes": 0.032672882672882674,
+        "meanGivenExcess": -8.38205089718549e-05,
+        "meanDistance": 2.7089611132214446,
+        "meanSteps": 97.16666666666667,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 62.325687499993364,
+        "p90Ms": 78.19462560003159,
+        "maxMs": 143.05866600002628,
+        "meanPairing": 0.6824753219334422,
+        "meanGivenPairing": 0.8557598346760751,
+        "meanShapes": 0.5091908091908092,
+        "meanGivenExcess": 0.6490087798237544,
+        "meanDistance": 2.6884110289873866,
+        "meanSteps": 90.33333333333333,
+        "methods": {
+          "paired-carving": 9,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "kropki/tricky": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 27.62691649999033,
+        "p90Ms": 42.148629299964526,
+        "maxMs": 44.074541999958456,
+        "meanPairing": 0.17391304347826086,
+        "meanGivenPairing": 0.34782608695652173,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.0693450742982939,
+        "meanDistance": 2.7603087098659524,
+        "meanSteps": 73,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 32.222146000000066,
+        "p90Ms": 43.573049899998296,
+        "maxMs": 47.785250000000815,
+        "meanPairing": 0.45991847826086957,
+        "meanGivenPairing": 0.7698369565217391,
+        "meanShapes": 0.15000000000000002,
+        "meanGivenExcess": 0.5230015134837644,
+        "meanDistance": 2.6610728058855546,
+        "meanSteps": 81,
+        "methods": {
+          "edited-givens": 2,
+          "paired-carving": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "kropki/very-hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 23.621604000014486,
+        "p90Ms": 25.627404400003435,
+        "maxMs": 26.323416999992332,
+        "meanPairing": 0.3101898101898102,
+        "meanGivenPairing": 0.3214285714285714,
+        "meanShapes": 0.29895104895104896,
+        "meanGivenExcess": 0.17902350813743217,
+        "meanDistance": 2.6738006400497483,
+        "meanSteps": 117.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 71.68231249999371,
+        "p90Ms": 87.52338309996412,
+        "maxMs": 91.16533299995353,
+        "meanPairing": 0.43086080586080583,
+        "meanGivenPairing": 0.6309523809523809,
+        "meanShapes": 0.23076923076923078,
+        "meanGivenExcess": 0.4347498493068113,
+        "meanDistance": 2.6499780133453283,
+        "meanSteps": 102.75,
+        "methods": {
+          "edited-givens": 3,
+          "recipe": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 3,
+        "tied": 1
+      }
+    },
+    "thermometer/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1.6387289999838686,
+        "p90Ms": 2.102091799999471,
+        "maxMs": 2.2426670000131708,
+        "meanPairing": 0.18358876117496808,
+        "meanGivenPairing": 0.36717752234993617,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.019076256527151336,
+        "meanDistance": 1.0358589675825143,
+        "meanSteps": 55.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 9.192999999999302,
+        "p90Ms": 10.0605338999987,
+        "maxMs": 10.424708999998984,
+        "meanPairing": 0.9448852233334992,
+        "meanGivenPairing": 0.9482120051085569,
+        "meanShapes": 0.9415584415584415,
+        "meanGivenExcess": 0.6064398532098226,
+        "meanDistance": 0.8667824645305501,
+        "meanSteps": 55.5,
+        "methods": {
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "thermometer/expert": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 59.435311999994155,
+        "p90Ms": 84.57322930000956,
+        "maxMs": 92.1505420000176,
+        "meanPairing": 0.15538847117794485,
+        "meanGivenPairing": 0.3107769423558897,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.07659972716601629,
+        "meanDistance": 2.652678773609857,
+        "meanSteps": 83.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 123.14360450000095,
+        "p90Ms": 177.70560009999028,
+        "maxMs": 185.23037499998463,
+        "meanPairing": 0.20802005012531327,
+        "meanGivenPairing": 0.41604010025062654,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.18186288506075313,
+        "meanDistance": 2.6565002147798724,
+        "meanSteps": 82.5,
+        "methods": {
+          "recipe": 1,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "tied": 1,
+        "sinclair": 3
+      }
+    },
+    "thermometer/extreme": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 600.758187499996,
+        "p90Ms": 1102.6590287999963,
+        "maxMs": 1167.2200409999932,
+        "meanPairing": 0.15520833333333334,
+        "meanGivenPairing": 0.3104166666666667,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.09839135021097045,
+        "meanDistance": 2.7345666167910814,
+        "meanSteps": 99.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1981.2554374999963,
+        "p90Ms": 5852.728212599981,
+        "maxMs": 7210.543874999974,
+        "meanPairing": 0.2,
+        "meanGivenPairing": 0.4,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.15949367088607594,
+        "meanDistance": 2.7392176278916742,
+        "meanSteps": 98.25,
+        "methods": {
+          "edited-givens": 2,
+          "recipe": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 3,
+        "standard": 1
+      }
+    },
+    "thermometer/hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 11.196895500004757,
+        "p90Ms": 48.36148740000354,
+        "maxMs": 61.48200000000361,
+        "meanPairing": 0.13749176548089592,
+        "meanGivenPairing": 0.27498353096179184,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.005996189189639942,
+        "meanDistance": 2.6337568542237992,
+        "meanSteps": 72.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 47.780958499992266,
+        "p90Ms": 65.30534989999141,
+        "maxMs": 71.36037499998929,
+        "meanPairing": 0.4127552700922266,
+        "meanGivenPairing": 0.5755105401844532,
+        "meanShapes": 0.25,
+        "meanGivenExcess": 0.3001940844882507,
+        "meanDistance": 2.5083919888755837,
+        "meanSteps": 72.75,
+        "methods": {
+          "edited-givens": 3,
+          "paired-carving": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "thermometer/master": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 183.81960450002225,
+        "p90Ms": 290.82620820001176,
+        "maxMs": 310.7032080000208,
+        "meanPairing": 0.06527777777777778,
+        "meanGivenPairing": 0.13055555555555556,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.10362165963431787,
+        "meanDistance": 2.669583400518948,
+        "meanSteps": 101.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 362.8581455000094,
+        "p90Ms": 470.1064750000049,
+        "maxMs": 488.79812500000116,
+        "meanPairing": 0.1125,
+        "meanGivenPairing": 0.225,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.015506329113924057,
+        "meanDistance": 2.6585618937928825,
+        "meanSteps": 97.25,
+        "methods": {
+          "edited-givens": 3,
+          "recipe": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 3,
+        "standard": 1
+      }
+    },
+    "thermometer/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 14.168916500013438,
+        "p90Ms": 102.9265794000123,
+        "maxMs": 131.45891699998174,
+        "meanPairing": 0.0976724903754955,
+        "meanGivenPairing": 0.195344980750991,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.07047780405913559,
+        "meanDistance": 2.446227466809007,
+        "meanSteps": 69.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 27.53389550000429,
+        "p90Ms": 56.01165810002713,
+        "maxMs": 132.46100000001024,
+        "meanPairing": 0.5225026292675033,
+        "meanGivenPairing": 0.5688147823445306,
+        "meanShapes": 0.47619047619047616,
+        "meanGivenExcess": 0.2987725882517036,
+        "meanDistance": 2.383101265058267,
+        "meanSteps": 68.33333333333333,
+        "methods": {
+          "paired-carving": 6,
+          "recipe": 3,
+          "edited-givens": 3
+        }
+      },
+      "betterPairing": {
+        "sinclair": 10,
+        "tied": 2
+      }
+    },
+    "thermometer/tricky": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 12.759041499972227,
+        "p90Ms": 18.87382499999367,
+        "maxMs": 21.00075000000652,
+        "meanPairing": 0.1375870506305289,
+        "meanGivenPairing": 0.2751741012610578,
+        "meanShapes": 0,
+        "meanGivenExcess": 0.009351316450931207,
+        "meanDistance": 2.524971811807432,
+        "meanSteps": 74.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 61.543353999979445,
+        "p90Ms": 89.66162119999645,
+        "maxMs": 99.60208400001284,
+        "meanPairing": 0.37681159420289856,
+        "meanGivenPairing": 0.5263504611330698,
+        "meanShapes": 0.22727272727272727,
+        "meanGivenExcess": 0.26052767632294327,
+        "meanDistance": 2.2316000997718812,
+        "meanSteps": 71.5,
+        "methods": {
+          "edited-givens": 2,
+          "paired-carving": 1,
+          "recipe": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 3,
+        "tied": 1
+      }
+    },
+    "thermometer/very-hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 37.7585834999918,
+        "p90Ms": 78.93460010000855,
+        "maxMs": 94.31862500001444,
+        "meanPairing": 0.09761904761904762,
+        "meanGivenPairing": 0.19523809523809524,
+        "meanShapes": 0,
+        "meanGivenExcess": -0.054761904761904776,
+        "meanDistance": 2.6423475637980656,
+        "meanSteps": 77.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 57.43037550000736,
+        "p90Ms": 63.98546700000734,
+        "maxMs": 64.31704200000968,
+        "meanPairing": 0.4083333333333333,
+        "meanGivenPairing": 0.5666666666666667,
+        "meanShapes": 0.25,
+        "meanGivenExcess": 0.3324894514767932,
+        "meanDistance": 2.64380872296235,
+        "meanSteps": 80,
+        "methods": {
+          "edited-givens": 2,
+          "paired-carving": 1,
+          "recipe": 1
+        }
+      },
+      "betterPairing": {
+        "sinclair": 3,
+        "tied": 1
+      }
+    },
+    "windoku/beginner": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1.3901249999762513,
+        "p90Ms": 3.13685369999148,
+        "maxMs": 3.817791000008583,
+        "meanPairing": 0.4338942307692308,
+        "meanGivenPairing": 0.4338942307692308,
+        "meanShapes": null,
+        "meanGivenExcess": -0.028131085686465426,
+        "meanDistance": 1.301487102489088,
+        "meanSteps": 42.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 11.350583000006736,
+        "p90Ms": 32.80242490002421,
+        "maxMs": 41.90500000002794,
+        "meanPairing": 0.9640605809960648,
+        "meanGivenPairing": 0.9640605809960648,
+        "meanShapes": null,
+        "meanGivenExcess": 0.5368453911226472,
+        "meanDistance": 1.3185503253315856,
+        "meanSteps": 45.75,
+        "methods": {
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "windoku/easy": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 3.6600834999990184,
+        "p90Ms": 4.306787599992822,
+        "maxMs": 4.443124999990687,
+        "meanPairing": 0.3482842389092389,
+        "meanGivenPairing": 0.3482842389092389,
+        "meanShapes": null,
+        "meanGivenExcess": 0.0033475300484794163,
+        "meanDistance": 1.0921699905178126,
+        "meanSteps": 52.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 11.075625000004948,
+        "p90Ms": 61.90503320000718,
+        "maxMs": 82.97745800000848,
+        "meanPairing": 0.9556650246305419,
+        "meanGivenPairing": 0.9556650246305419,
+        "meanShapes": null,
+        "meanGivenExcess": 0.6107283157697824,
+        "meanDistance": 0.9944456806407957,
+        "meanSteps": 52.5,
+        "methods": {
+          "paired-carving": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "windoku/expert": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 118.6532500000103,
+        "p90Ms": 265.28447940003247,
+        "maxMs": 315.87154200003715,
+        "meanPairing": 0.20789473684210524,
+        "meanGivenPairing": 0.20789473684210524,
+        "meanShapes": null,
+        "meanGivenExcess": -0.02311792138574284,
+        "meanDistance": 2.268280901026918,
+        "meanSteps": 87.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 190.21360400000412,
+        "p90Ms": 415.8453875000036,
+        "maxMs": 496.7465000000084,
+        "meanPairing": 0.6352941176470588,
+        "meanGivenPairing": 0.6352941176470588,
+        "meanShapes": null,
+        "meanGivenExcess": 0.41061057334326134,
+        "meanDistance": 2.004948707265429,
+        "meanSteps": 83.5,
+        "methods": {
+          "paired-carving": 2,
+          "edited-givens": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "windoku/extreme": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 1186.6920619999946,
+        "p90Ms": 2510.519774899987,
+        "maxMs": 2769.3511249999865,
+        "meanPairing": 0.11805555555555555,
+        "meanGivenPairing": 0.11805555555555555,
+        "meanShapes": null,
+        "meanGivenExcess": -0.1414381153305204,
+        "meanDistance": 2.6974827568856634,
+        "meanSteps": 102,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 2762.131499999996,
+        "p90Ms": 3901.099904300012,
+        "maxMs": 4323.143792000017,
+        "meanPairing": 0.6095693779904306,
+        "meanGivenPairing": 0.6095693779904306,
+        "meanShapes": null,
+        "meanGivenExcess": 0.34374659318030404,
+        "meanDistance": 2.588038788694688,
+        "meanSteps": 89.75,
+        "methods": {
+          "paired-carving": 2,
+          "edited-givens": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "windoku/hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 35.978770999994595,
+        "p90Ms": 118.62027069996695,
+        "maxMs": 153.33583299996099,
+        "meanPairing": 0.17687747035573123,
+        "meanGivenPairing": 0.17687747035573123,
+        "meanShapes": null,
+        "meanGivenExcess": -0.09210987141642066,
+        "meanDistance": 1.5449252544606455,
+        "meanSteps": 73.25,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 98.46695850000106,
+        "p90Ms": 118.98210869996255,
+        "maxMs": 119.86695899994811,
+        "meanPairing": 0.4329710144927536,
+        "meanGivenPairing": 0.4329710144927536,
+        "meanShapes": null,
+        "meanGivenExcess": 0.15132544487250046,
+        "meanDistance": 0.876578961608228,
+        "meanSteps": 65.75,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "windoku/impossible": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 783.6837290000258,
+        "p90Ms": 2012.1629794000419,
+        "maxMs": 2473.5572920000413,
+        "meanPairing": 0.1701388888888889,
+        "meanGivenPairing": 0.1701388888888889,
+        "meanShapes": null,
+        "meanGivenExcess": -0.04188642756680733,
+        "meanDistance": 2.4880440010804197,
+        "meanSteps": 105,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 4659.275020999987,
+        "p90Ms": 5434.846270600002,
+        "maxMs": 5553.167833000014,
+        "meanPairing": 0.6023391812865497,
+        "meanGivenPairing": 0.6023391812865497,
+        "meanShapes": null,
+        "meanGivenExcess": 0.3808201939447775,
+        "meanDistance": 2.3410190164999056,
+        "meanSteps": 94.5,
+        "methods": {
+          "paired-carving": 2,
+          "edited-givens": 2
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "windoku/master": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 159.4977704999983,
+        "p90Ms": 167.21556689998835,
+        "maxMs": 169.91029199998593,
+        "meanPairing": 0.185,
+        "meanGivenPairing": 0.185,
+        "meanShapes": null,
+        "meanGivenExcess": -0.10613924050632911,
+        "meanDistance": 2.225972858346428,
+        "meanSteps": 80.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 593.5495210000081,
+        "p90Ms": 1358.801392000029,
+        "maxMs": 1661.1929170000367,
+        "meanPairing": 0.2875,
+        "meanGivenPairing": 0.2875,
+        "meanShapes": null,
+        "meanGivenExcess": -0.006803797468354439,
+        "meanDistance": 2.0826691095693035,
+        "meanSteps": 79.75,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "windoku/medium": {
+      "standard": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 8.639812499983236,
+        "p90Ms": 52.01594199997489,
+        "maxMs": 67.00433299998986,
+        "meanPairing": 0.2820808663093403,
+        "meanGivenPairing": 0.2820808663093403,
+        "meanShapes": null,
+        "meanGivenExcess": 0.0046547059717875735,
+        "meanDistance": 1.2323857753973544,
+        "meanSteps": 61.583333333333336,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 12,
+        "returned": 12,
+        "medianMs": 23.030687000020407,
+        "p90Ms": 71.1447833999584,
+        "maxMs": 74.12287500000093,
+        "meanPairing": 0.9440093119440945,
+        "meanGivenPairing": 0.9440093119440945,
+        "meanShapes": null,
+        "meanGivenExcess": 0.6708025608892423,
+        "meanDistance": 1.0386709280045072,
+        "meanSteps": 66.75,
+        "methods": {
+          "paired-carving": 12
+        }
+      },
+      "betterPairing": {
+        "sinclair": 12
+      }
+    },
+    "windoku/tricky": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 45.48797899998317,
+        "p90Ms": 52.324054500015336,
+        "maxMs": 52.42579200002365,
+        "meanPairing": 0.21363636363636362,
+        "meanGivenPairing": 0.21363636363636362,
+        "meanShapes": null,
+        "meanGivenExcess": -0.05218642117376293,
+        "meanDistance": 1.0390134647519773,
+        "meanSteps": 73.75,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 100.39691699999821,
+        "p90Ms": 144.64116260000446,
+        "maxMs": 156.2131250000093,
+        "meanPairing": 0.34505175983436853,
+        "meanGivenPairing": 0.34505175983436853,
+        "meanShapes": null,
+        "meanGivenExcess": 0.0728998611001913,
+        "meanDistance": 0.8998802893885736,
+        "meanSteps": 73.5,
+        "methods": {
+          "edited-givens": 4
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    },
+    "windoku/very-hard": {
+      "standard": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 58.61191699999472,
+        "p90Ms": 119.01152129998083,
+        "maxMs": 137.53545899997698,
+        "meanPairing": 0.22,
+        "meanGivenPairing": 0.22,
+        "meanShapes": null,
+        "meanGivenExcess": -0.05215189873417722,
+        "meanDistance": 1.216574050789942,
+        "meanSteps": 74.5,
+        "methods": {}
+      },
+      "sinclair": {
+        "requests": 4,
+        "returned": 4,
+        "medianMs": 75.90731249997043,
+        "p90Ms": 120.74206690000138,
+        "maxMs": 129.63629200001014,
+        "meanPairing": 0.7595238095238095,
+        "meanGivenPairing": 0.7595238095238095,
+        "meanShapes": null,
+        "meanGivenExcess": 0.5126883664858348,
+        "meanDistance": 1.3157946005254941,
+        "meanSteps": 83.5,
+        "methods": {
+          "edited-givens": 1,
+          "paired-carving": 3
+        }
+      },
+      "betterPairing": {
+        "sinclair": 4
+      }
+    }
+  },
+  "illustratedSeeds": {
+    "classic": 340891861,
+    "killer-cages": 4200784346,
+    "windoku": 659295209,
+    "diagonal": 3330625127,
+    "jigsaw": 936527880,
+    "anti-knight": 3795273233,
+    "thermometer": 918104314,
+    "arrow": 2753889852,
+    "kropki": 4198762923
+  }
+}

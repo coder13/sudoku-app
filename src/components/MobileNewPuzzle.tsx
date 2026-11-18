@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { DifficultyPreference } from '../sudoku/difficulty'
 import { DifficultySelector } from './DifficultySelector'
+import { SinclairOption } from './SinclairOption'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Check, ChevronRight, Dices, FileUp, Gauge, PencilLine } from 'lucide-react'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
@@ -19,7 +20,7 @@ export function MobileNewPuzzle({ screen, variant, preference, remember, done, o
   onCreate: () => void
 }) {
   const navigate = useNavigate()
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, busyLabel, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
   const selected = variantDifficulty(variant, selection ?? preference.difficulty)
@@ -72,10 +73,11 @@ export function MobileNewPuzzle({ screen, variant, preference, remember, done, o
         <ChevronRight size={18} aria-hidden="true" />
       </Link>
     </div>
+    <SinclairOption disabled={busy} />
     {error && <p className="form-error" role="alert">{error}</p>}
     <button type="button" className="button primary puzzle-start-button" disabled={busy}
       onClick={() => { void generate(selected, () => done({ variant, difficulty: selected }), variant) }}>
-      <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : 'Start puzzle'}
+      <Dices size={18} aria-hidden="true" /> {busy ? busyLabel : 'Start puzzle'}
     </button>
     {createButton}
   </section>

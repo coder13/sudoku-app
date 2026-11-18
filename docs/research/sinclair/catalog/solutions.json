@@ -1,0 +1,18 @@
+{
+  "solver": "Z3 version 5.1.0 - 64 bit",
+  "uniquePuzzles": 6600,
+  "exactPublishedSolutions": 6600,
+  "requireVariantRule": 5600,
+  "byVariant": {
+    "anti-knight": 800,
+    "arrow": 700,
+    "classic": 1000,
+    "diagonal": 800,
+    "jigsaw": 300,
+    "killer-cages": 500,
+    "kropki": 700,
+    "thermometer": 800,
+    "windoku": 1000
+  },
+  "verifiedDefinitionAndSolutionSHA256": "e142ed7edf8086239a217acc48c628ac4ce8576ad61b7352d250a1d25b97c429"
+}

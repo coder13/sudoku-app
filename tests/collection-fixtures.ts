@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { COLLECTIONS, type CollectionPuzzle } from '../src/sudoku/collections.ts'
+import { COLLECTION_FILES } from '../src/sudoku/collection-files.ts'
 
 // Source grids are test/build inputs only, never client imports.
-export const fullCollections = COLLECTIONS.map((collection, index) => {
-  const file = index === 0 ? 'nikoli-100' : 'sudoku-exchange'
+export const fullCollections = COLLECTIONS.filter(c => Object.hasOwn(COLLECTION_FILES, c.id)).map((collection) => {
+  const file = COLLECTION_FILES[collection.id]
   const source = JSON.parse(readFileSync(new URL(`../src/sudoku/collections/${file}.json`, import.meta.url), 'utf8')) as CollectionPuzzle[]
-  return { ...collection, puzzles: collection.puzzles.map(info => ({ ...info, givens: source.find(puzzle => puzzle.id === info.id)!.givens })) }
+  return { ...collection, puzzles: collection.puzzles.map(info => ({ ...source.find(puzzle => puzzle.id === info.id)!, ...info })) }
 })
 
 export class MemoryStorage {

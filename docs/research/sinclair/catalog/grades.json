@@ -1,0 +1,337 @@
+{
+  "wasmSha256": "5e1af132bdbe59f05e529c67b30d8f3712ff42a12fbf057bb8b2d6b30feded67",
+  "releaseSha256": "37986d3ffe8f4b62de749ecea51a61a3a213613d7e0addfcc3118f689fe0e9b2",
+  "puzzles": 6600,
+  "groups": [
+    {
+      "file": "anti-knight/easy.json",
+      "sha256": "d36a227bdfc70f0746c6d5880730091dbc52cc0cf9ff159b77b8f0c31daf89c0",
+      "count": 100
+    },
+    {
+      "file": "anti-knight/expert.json",
+      "sha256": "ef2699be08a3d02b595020de208367498b47c7d920ef8ec7677c3c2feb7f3d67",
+      "count": 100
+    },
+    {
+      "file": "anti-knight/extreme.json",
+      "sha256": "91aa57b710f9ec71b435bf165eb3b910cc1a78f054796581c27c2df38ac994f6",
+      "count": 100
+    },
+    {
+      "file": "anti-knight/hard.json",
+      "sha256": "630b4219d76e5e2068fb1173d2d546df97ed3fa3f4c2a2c873d5e8a694d57605",
+      "count": 100
+    },
+    {
+      "file": "anti-knight/master.json",
+      "sha256": "c008e3bff71871f6b23ad9bcf1f1ceb1b5f0e2069d0889a9a296c8f7f7d9c555",
+      "count": 100
+    },
+    {
+      "file": "anti-knight/medium.json",
+      "sha256": "09ee3c9c92f8142f5f54d12cfaf672a79b341f753d9b7145451c539f90d7ed14",
+      "count": 100
+    },
+    {
+      "file": "anti-knight/tricky.json",
+      "sha256": "1e44d11ea64bfbd09901028badefa13267f1ac8d4ff29cc4b3cf50f1dae63e80",
+      "count": 100
+    },
+    {
+      "file": "anti-knight/very-hard.json",
+      "sha256": "3a99e466e8a553ad1d146a74dc6d919b7cc3c8325a502965902476191f1c424c",
+      "count": 100
+    },
+    {
+      "file": "arrow/easy.json",
+      "sha256": "d6670345c0d4ac51f14816d803f54935de683110e50cab47793a9a0c906db097",
+      "count": 100
+    },
+    {
+      "file": "arrow/expert.json",
+      "sha256": "9c2303c138fdf44d941c9d2e3bc3ef1176fbae38fd30b790647a30267ac36237",
+      "count": 100
+    },
+    {
+      "file": "arrow/hard.json",
+      "sha256": "44c3fdbb45e766d7748c4ac5b2251ce432c2f51c2373d206bbc4928c773ab233",
+      "count": 100
+    },
+    {
+      "file": "arrow/master.json",
+      "sha256": "5635b3d3088c8e6e2b9b5387b04892235f32ae6a2f7f669fd46db7a6e70b77c9",
+      "count": 100
+    },
+    {
+      "file": "arrow/medium.json",
+      "sha256": "2e5655228851417fae5c69644906c1a52affdbf4856b42706d431d0b20d5dc07",
+      "count": 100
+    },
+    {
+      "file": "arrow/tricky.json",
+      "sha256": "03c8143188474cde4c8b9b5183943137d550da4f25f1893e9d5d11040dd4b86e",
+      "count": 100
+    },
+    {
+      "file": "arrow/very-hard.json",
+      "sha256": "6025b67c4036b4c347dab27b17bafd0a282ed3f9efc1f311cf5dd4d7e5f0a6e7",
+      "count": 100
+    },
+    {
+      "file": "classic/beginner.json",
+      "sha256": "1186a0948c7496ed428240abd7971bf18b5e7e041f88fd7f1a19627479531c8a",
+      "count": 100
+    },
+    {
+      "file": "classic/easy.json",
+      "sha256": "b3bfec904cd479baa9a22fb7fa1afeec485a3cde0bf7e7df4e025e8dcb80f547",
+      "count": 100
+    },
+    {
+      "file": "classic/expert.json",
+      "sha256": "50b360cf75b693dd25f3d03e5cc677c95a05f180bab8e9d0c595a5450a294384",
+      "count": 100
+    },
+    {
+      "file": "classic/extreme.json",
+      "sha256": "5442c30c73f0d67a5c6d13012bf4eec5c7ee81e3f76489388a1d21382e243d19",
+      "count": 100
+    },
+    {
+      "file": "classic/hard.json",
+      "sha256": "07ccd419b493216e7b3d5e6c2234e0fd9e5dd3fac0090c481d342815793674cc",
+      "count": 100
+    },
+    {
+      "file": "classic/impossible.json",
+      "sha256": "4035e54b309905dd40c383cd1e4bd6562168822e4012ed7ace7e1412b7f575f0",
+      "count": 100
+    },
+    {
+      "file": "classic/master.json",
+      "sha256": "b73dd9459dd8206fd16b6c2a63819eead0d6ef5c5f76ab4d1bc6f8476ed3d5bf",
+      "count": 100
+    },
+    {
+      "file": "classic/medium.json",
+      "sha256": "487c9d69f3b57e5d3907c1e3e0de4240bdad3c414db3e7355ca9486c49149a52",
+      "count": 100
+    },
+    {
+      "file": "classic/tricky.json",
+      "sha256": "f7817421bb8f46f9b6603aa406f94c90fe9bca3433aae23d2f0abf28ace0bb34",
+      "count": 100
+    },
+    {
+      "file": "classic/very-hard.json",
+      "sha256": "b724eab042a8b79b16e4bbc2b636d61a9651a6c9321cb332c44fd4ff65226fbb",
+      "count": 100
+    },
+    {
+      "file": "diagonal/easy.json",
+      "sha256": "21d09ea88e2c6f9a30f2a405f1ccd6b2a844981b48ce5f4f0dcdb22f3febdc71",
+      "count": 100
+    },
+    {
+      "file": "diagonal/expert.json",
+      "sha256": "10c94f0895c0e491fc099d1094c002ac9733b3810c0387f77196773cd414e146",
+      "count": 100
+    },
+    {
+      "file": "diagonal/extreme.json",
+      "sha256": "41a847be8ab75ef557c22c302b881ca24b82ebe4dd2df19d89c3c3c15f1c19ee",
+      "count": 100
+    },
+    {
+      "file": "diagonal/hard.json",
+      "sha256": "59b63d75c29257fb3324b93bfe5cc52f4c9ed7327a76da62cf3749c6f392bbaf",
+      "count": 100
+    },
+    {
+      "file": "diagonal/master.json",
+      "sha256": "dbeda637b3f1da580fcf9dd811dcfbd3f29527172940c86f665372540da25677",
+      "count": 100
+    },
+    {
+      "file": "diagonal/medium.json",
+      "sha256": "7445fe9da833fa78fb89aa511cc28bc887b4c6acbc1340b975db1929deefa980",
+      "count": 100
+    },
+    {
+      "file": "diagonal/tricky.json",
+      "sha256": "aec9de80e1c1eb9b9326fca6b39fbd87b581be752db0691a7cdef52fac7a0415",
+      "count": 100
+    },
+    {
+      "file": "diagonal/very-hard.json",
+      "sha256": "02052e03273fbeb7550497bbe4cb0135c80c7d014c1f81ea19562fb5a00133a6",
+      "count": 100
+    },
+    {
+      "file": "jigsaw/easy.json",
+      "sha256": "a1e94813f27adde91281f7959bfc10afe5f737541aa5346f005c0a72a9521b96",
+      "count": 100
+    },
+    {
+      "file": "jigsaw/medium.json",
+      "sha256": "bbd843e7165367793cbca6641e00b6ff3223e636e758055eacf51e3d6dcea895",
+      "count": 100
+    },
+    {
+      "file": "jigsaw/tricky.json",
+      "sha256": "edd4cb005e06003d62cd3fad2c1090dab3919d63fafb0f93d223c9923e92a04d",
+      "count": 100
+    },
+    {
+      "file": "killer-cages/easy.json",
+      "sha256": "8498826114e4ff480def1a18d84599b0f6e465fa1c47b4d560ca61d6dd2f481b",
+      "count": 100
+    },
+    {
+      "file": "killer-cages/hard.json",
+      "sha256": "7d99d5366b24bc1fa8232ecb0918d90e7f580393d2bfe01de55d2a43c725a450",
+      "count": 100
+    },
+    {
+      "file": "killer-cages/master.json",
+      "sha256": "e0619695b646cb4385561bdac1a318aca667d169e0702582b4d2bdcf5aea00a5",
+      "count": 100
+    },
+    {
+      "file": "killer-cages/medium.json",
+      "sha256": "a068bf8c0d9e02a35ec4cae7301b19c87d40e07fb5aba29254a5d1fd256d130c",
+      "count": 100
+    },
+    {
+      "file": "killer-cages/very-hard.json",
+      "sha256": "510b2963ad25bdbfaf4dc6d12cc9b5579ed246fc6b4809fda4b1edfd02274be7",
+      "count": 100
+    },
+    {
+      "file": "kropki/easy.json",
+      "sha256": "ba0e2fe4d5f6c8fed9d82867fd4d506350b8a7d78f49d6de2397d1f50b31f8b2",
+      "count": 100
+    },
+    {
+      "file": "kropki/expert.json",
+      "sha256": "bca572786501b4f69ec22504deca269f1a0c77c61656dbb72c185693f228e863",
+      "count": 100
+    },
+    {
+      "file": "kropki/hard.json",
+      "sha256": "85bce32e26abcca23af0e4748963c917c2a7309d4d9977dcee1616a08dd9c9e5",
+      "count": 100
+    },
+    {
+      "file": "kropki/master.json",
+      "sha256": "78bb427c38adff3792f32592eeb934f354a104d24370681048aee00f1235147e",
+      "count": 100
+    },
+    {
+      "file": "kropki/medium.json",
+      "sha256": "037e46f7c215a0e5f857ba9f3f6c77789470fe7b01ef12bca3ae905918eba297",
+      "count": 100
+    },
+    {
+      "file": "kropki/tricky.json",
+      "sha256": "cda78d0ff2f94fc8329bcc27b15e785d2db35bab180f39ed6fe22eb38b4fde23",
+      "count": 100
+    },
+    {
+      "file": "kropki/very-hard.json",
+      "sha256": "7bb4d6a7bb5369ca1075d4b22ca52c73e5c2f218f460388e1e6481297e2aaa78",
+      "count": 100
+    },
+    {
+      "file": "thermometer/easy.json",
+      "sha256": "054318cfecf3c065be72af1ab4bbc096659c54b93c2f23bf9c552a56431f7ac8",
+      "count": 100
+    },
+    {
+      "file": "thermometer/expert.json",
+      "sha256": "afad3d15f556c03644c579ad8e9d9077a8370761f6ab68aad83d0b476dbc5d21",
+      "count": 100
+    },
+    {
+      "file": "thermometer/extreme.json",
+      "sha256": "75992f2c0c0bf30b86379b3ed63bf4cb6759c2e0cc664695af7797c88c138f74",
+      "count": 100
+    },
+    {
+      "file": "thermometer/hard.json",
+      "sha256": "71c97493810f7217869978e4ee89b7a6dbf3b3027bdf119f3a033cfe6a3bfa76",
+      "count": 100
+    },
+    {
+      "file": "thermometer/master.json",
+      "sha256": "d513b6a10303137de4614d8126b6984a106416d25362a7563edccc6b478b345f",
+      "count": 100
+    },
+    {
+      "file": "thermometer/medium.json",
+      "sha256": "9a3080a41a2502be57f8de7978fac5c959302aa9b7e19d6f6a2a3d3df603f189",
+      "count": 100
+    },
+    {
+      "file": "thermometer/tricky.json",
+      "sha256": "77cc2d4e1add1a4bb4f53d0da08ff03cd7e1912a84fb239840fcdc393628f1e0",
+      "count": 100
+    },
+    {
+      "file": "thermometer/very-hard.json",
+      "sha256": "651eb1e61b6636d2bc3eae20988ed6d61c972c9dceed84e28e55406e6699de4a",
+      "count": 100
+    },
+    {
+      "file": "windoku/beginner.json",
+      "sha256": "83fe7027aa0184c814aae1b597b2148ff54d5d92aabdb8608706a469095614aa",
+      "count": 100
+    },
+    {
+      "file": "windoku/easy.json",
+      "sha256": "2551be5bebdec5e13af9195a92ce92ad8327aa22966c42965a91160d44e613a1",
+      "count": 100
+    },
+    {
+      "file": "windoku/expert.json",
+      "sha256": "ea026de3b306cacd4f2bb7d9c9eb84aba05e50b8bbef5455c9b086bc5ae2965a",
+      "count": 100
+    },
+    {
+      "file": "windoku/extreme.json",
+      "sha256": "7f15850917efe3a112ab819817de461883f3e766f60cfa3d45eab76d4ba4684b",
+      "count": 100
+    },
+    {
+      "file": "windoku/hard.json",
+      "sha256": "0f1a5fe4980a723eefceb88d8099e253c3b0b4d9ce485e15afa2ef6e960d347f",
+      "count": 100
+    },
+    {
+      "file": "windoku/impossible.json",
+      "sha256": "e059e80d195f6ca28ab33ee58239eb7fb33a513df07c4951a0e76cb1e7f3264f",
+      "count": 100
+    },
+    {
+      "file": "windoku/master.json",
+      "sha256": "be0301e76867a0a0108b26295c79d2df703920a815ed7112d9da8ecf61afed32",
+      "count": 100
+    },
+    {
+      "file": "windoku/medium.json",
+      "sha256": "a540fc9ba9d15669bf1f4bb61ccb2fe240dfda73cd9f4be5da36a13aac597d8e",
+      "count": 100
+    },
+    {
+      "file": "windoku/tricky.json",
+      "sha256": "1dc3576d03f3462684b9d63d447befabdac56cdfdbc3c9a1b08a37df7ce41e82",
+      "count": 100
+    },
+    {
+      "file": "windoku/very-hard.json",
+      "sha256": "5a912080b06046ed554a5230ef7ef68409a25f6b3b6bf93913e35600d6edd07d",
+      "count": 100
+    }
+  ]
+}

@@ -52,6 +52,8 @@ enum Request {
         values: Vec<String>,
     },
     #[cfg(feature = "generation")]
+    AcceptsDifficulty { values: String, difficulty: Difficulty },
+    #[cfg(feature = "generation")]
     ImpossibleTemplates,
     #[cfg(feature = "variants")]
     Variant {
@@ -958,6 +960,10 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 .collect::<Vec<_>>()
         )),
         #[cfg(feature = "generation")]
+        Request::AcceptsDifficulty { values, difficulty } => {
+            Ok(json!(super::generation::accepts_difficulty(&board(&values)?, difficulty)))
+        }
+        #[cfg(feature = "generation")]
         Request::CanonicalPuzzles { values } => values
             .iter()
             .map(|text| board(text).map(|board| grid_string(puzzle_key(board))))
@@ -1508,6 +1514,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
         && matches!(
             kind,
             "canonical-puzzles"
+                | "accepts-difficulty"
                 | "impossible-templates"
                 | "generate-targeted"
                 | "generate-constrained"

@@ -1,0 +1,27 @@
+Sinclair Library and first playtest
+
+The library contains 100 puzzles at each of 66 variant and difficulty choices.
+The first playtest contains 230 additional puzzles. Sinclair compares the
+order of deductions with published puzzles and credited player replays.
+Gridroom grades each puzzle in the orientation that appears on the board.
+
+Research sources
+
+Nikoli and SakanaAI — handmade classic Sudoku
+https://huggingface.co/datasets/SakanaAI/sudoku-bench-nikoli
+
+Janko archive — original puzzle authors and replay solvers credited on each page
+https://www.janko.at/Raetsel/Sudoku/index.htm
+https://www.janko.at/Raetsel/Sudoku/Killer/index.htm
+
+World Puzzle Federation Sudoku Grand Prix — competition test puzzles
+https://www.janko.at/Raetsel/Sudoku/Grand-Prix/index.htm
+
+Sudoku Exchange — independently generated comparison puzzles
+https://github.com/grantm/sudoku-exchange-puzzle-bank
+
+Some upper-level Classic puzzles use positions from the Enjoy Sudoku Players
+Forum collection in Tdoku. Sinclair rearranges these positions, and sometimes
+adds or exchanges starting digits. The library includes each underlying
+completed grid once. The BSD 2-Clause notice for Tdoku is at /licenses/tdoku.txt.
+https://github.com/t-dillon/tdoku/blob/af426180dc53aef89b82868e7b3fdfcf42165654/benchmarks/README.md

@@ -1,0 +1,975 @@
+{
+  "browser": "157.0.8103.79",
+  "study": "impossible",
+  "draws": 96,
+  "rows": [
+    {
+      "mode": "sinclair",
+      "draw": 0,
+      "elapsedMs": 109,
+      "title": "Sinclair Puzzle 1",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "006004300070000008300020090000102000005060100000405003080000076900000030004200500"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 1,
+      "elapsedMs": 40,
+      "title": "Sinclair Puzzle 2",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000002001000300020004060500007800005050070040600009700005090800010008000300700009"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 2,
+      "elapsedMs": 41.10000038146973,
+      "title": "Sinclair Puzzle 3",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000060300007004002040800090000000100050040060002000003090006080700980000001050000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 3,
+      "elapsedMs": 57.799999713897705,
+      "title": "Sinclair Puzzle 4",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001003020040060005200004000070100000003020800900005908000080060500700500000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 4,
+      "elapsedMs": 39.200000286102295,
+      "title": "Sinclair Puzzle 5",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "007008050040070000060500007000001000004060005000300020200009030006080090090200100"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 5,
+      "elapsedMs": 40.19999980926514,
+      "title": "Sinclair Puzzle 6",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000001000002040300050000061000004500800050039005900020670008050008030900000700000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 6,
+      "elapsedMs": 39.90000009536743,
+      "title": "Sinclair Puzzle 7",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000102003002000040050060060804000000070006700500080070040050400900300109000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 7,
+      "elapsedMs": 77.7999997138977,
+      "title": "Sinclair Puzzle 8",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002000030040006100800500004001000020600050007030000400700005008006870040000900700"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 8,
+      "elapsedMs": 38.90000009536743,
+      "title": "Sinclair Puzzle 9",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001003002040050040600080003100700000005009400080008030020060800000370209000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 9,
+      "elapsedMs": 38.5,
+      "title": "Sinclair Puzzle 10",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002000300050004060007006008060050070100907600070600040003005200800040000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 10,
+      "elapsedMs": 39.09999990463257,
+      "title": "Sinclair Puzzle 11",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000070040008005300700100005001000020500010006030000400600001009002960000080750060"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 11,
+      "elapsedMs": 38.89999961853027,
+      "title": "Sinclair Puzzle 12",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "001000200030001040600050003800009000065080020003500008300060002040700080000002700"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 12,
+      "elapsedMs": 38.5,
+      "title": "Sinclair Puzzle 13",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "005030100060000000100006073000304200000010000004205001700900008080000009002050300"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 13,
+      "elapsedMs": 39.59999990463257,
+      "title": "Sinclair Puzzle 14",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000001000000300012004020500009000008070090040450002900007050800630008000000200006"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 14,
+      "elapsedMs": 40.69999980926514,
+      "title": "Sinclair Puzzle 15",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001003002400060050870800006040607040500040500000070060080006901300900000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 15,
+      "elapsedMs": 35.40000009536743,
+      "title": "Sinclair Puzzle 16",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000201000010300003004050008400002030090080500008400000600700005043020362700000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 16,
+      "elapsedMs": 72.30000019073486,
+      "title": "Sinclair Puzzle 17",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001000002030004050600007008000540070090060500700006080900080300002100400080"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 17,
+      "elapsedMs": 40.19999980926514,
+      "title": "Sinclair Puzzle 18",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002040300010007060600000008000203100000010000001405020700000009080904030004030500"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 18,
+      "elapsedMs": 39,
+      "title": "Sinclair Puzzle 19",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001000002340003100520001004005090010080700600000002001003060700000800090000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 19,
+      "elapsedMs": 39.59999990463257,
+      "title": "Sinclair Puzzle 20",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "001000200030000040000005006000008090900050007020907000800700009040060010002000300"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 20,
+      "elapsedMs": 39.69999980926514,
+      "title": "Sinclair Puzzle 21",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002030400050601000009800007030090040200003900300000060004020700800005000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 21,
+      "elapsedMs": 39,
+      "title": "Sinclair Puzzle 22",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000007060005030100680000007000304200000010000003205001090000008002050400010900000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 22,
+      "elapsedMs": 39.59999990463257,
+      "title": "Sinclair Puzzle 23",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000007060005020400870000000000304200000010000003205001500002089004050300090600000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 23,
+      "elapsedMs": 40.30000019073486,
+      "title": "Sinclair Puzzle 24",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001003020400160005002005004007030050040600200500000900080006030700390008000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 24,
+      "elapsedMs": 39.69999980926514,
+      "title": "Sinclair Puzzle 25",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000001020000300001004050600006000070850070006040006800005080700300005009090200000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 25,
+      "elapsedMs": 41.19999980926514,
+      "title": "Sinclair Puzzle 26",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000001000001300002040060050080000500406050008509800040060090080700002300000600700"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 26,
+      "elapsedMs": 41.200000286102295,
+      "title": "Sinclair Puzzle 27",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000001200003000004050060070000007050500090800080605009060070090400000300001200000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 27,
+      "elapsedMs": 30.40000009536743,
+      "title": "Sinclair Puzzle 28",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002000100040007080800500006001000020600050007030000400900005008000690030000780900"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 28,
+      "elapsedMs": 34.40000009536743,
+      "title": "Sinclair Puzzle 29",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "009000001002900030050040690007094060900065003060800900000080010040009800700000020"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 29,
+      "elapsedMs": 39.69999980926514,
+      "title": "Sinclair Puzzle 30",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000001000000003021004060500009005004040090010200600900000050100380000007070800000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 30,
+      "elapsedMs": 40.40000009536743,
+      "title": "Sinclair Puzzle 31",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "001020400060000007040009080000304200000010000003502000080000090700000006004050100"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 31,
+      "elapsedMs": 39.19999980926514,
+      "title": "Sinclair Puzzle 32",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000301000002040300010000065003402007000070030700800200500000090004080700060900000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 32,
+      "elapsedMs": 39.5,
+      "title": "Sinclair Puzzle 33",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000007100080050003900400050030000004001000200600005070000004002400070060008906000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 33,
+      "elapsedMs": 40.09999990463257,
+      "title": "Sinclair Puzzle 34",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002000003050004060007509000060080090900406300040900080000008100700000002"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 34,
+      "elapsedMs": 55.40000009536743,
+      "title": "Sinclair Puzzle 35",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000010000420300004005602000700080005060400890004000700900500002040003010000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 35,
+      "elapsedMs": 39.799999713897705,
+      "title": "Sinclair Puzzle 36",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000001200001000003040050060060804007000070600700500080050080040300000900002900000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 36,
+      "elapsedMs": 44.90000009536743,
+      "title": "Sinclair Puzzle 37",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001000002034002050600001800000250010006090005100006080900000704000730000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 37,
+      "elapsedMs": 39,
+      "title": "Sinclair Puzzle 38",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002000000040302050008000040400807503030004700080705030000000605900020000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 38,
+      "elapsedMs": 38.09999990463257,
+      "title": "Sinclair Puzzle 39",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000102000003004100020050004010005009007000600300000080800090030006000700000400005"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 39,
+      "elapsedMs": 39.30000019073486,
+      "title": "Sinclair Puzzle 40",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002030400040201050000003600800060072006700004050900000008040700900008000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 40,
+      "elapsedMs": 39.80000019073486,
+      "title": "Sinclair Puzzle 41",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000105003002004060500020005908001090020050700605000050006082400250300007000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 41,
+      "elapsedMs": 40.30000019073486,
+      "title": "Sinclair Puzzle 42",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000070010008004300600500004001000020400050006030000400900005007000790200080600000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 42,
+      "elapsedMs": 40.700000286102295,
+      "title": "Sinclair Puzzle 43",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002050400060000007800000090000304200000010000003205004090000008700006040004030100"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 43,
+      "elapsedMs": 41.799999713897705,
+      "title": "Sinclair Puzzle 44",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000010003002400050040006080200060002030800070809040700000050008400900010003000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 44,
+      "elapsedMs": 40.89999961853027,
+      "title": "Sinclair Puzzle 45",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000100002000003050004060000409007090080050200506009060900040300000700000008001"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 45,
+      "elapsedMs": 41.59999990463257,
+      "title": "Sinclair Puzzle 46",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "407030500060001007801000090000304200000010000003205040070000008900000060004050100"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 46,
+      "elapsedMs": 42,
+      "title": "Sinclair Puzzle 47",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002000300050004060200008000040050080001400007090800050000006700300095800"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 47,
+      "elapsedMs": 48.19999980926514,
+      "title": "Sinclair Puzzle 48",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000001000001300002040060050060000005809050600400000090080090040700002300000700500"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 48,
+      "elapsedMs": 40.09999990463257,
+      "title": "Sinclair Puzzle 49",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002000100800005009000780030001000020600050007030000400040068000900500006000009800"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 49,
+      "elapsedMs": 40.69999980926514,
+      "title": "Sinclair Puzzle 50",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002030400050081060008302000000070008070804200080900050007040800600000009"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 50,
+      "elapsedMs": 39.89999961853027,
+      "title": "Sinclair Puzzle 51",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000100002003004050600030000708009080030050400500000060007080900000206001060000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 51,
+      "elapsedMs": 40,
+      "title": "Sinclair Puzzle 52",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002003400030500060007006008060050020100802600080005090006200004700090000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 52,
+      "elapsedMs": 39,
+      "title": "Sinclair Puzzle 53",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "001000200030000040600005007002906000800050006060807400700500009000070010003008700"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 53,
+      "elapsedMs": 40.60000038146973,
+      "title": "Sinclair Puzzle 54",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "005040300060000007800000090000304200000010000003205000070000006900007080004050001"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 54,
+      "elapsedMs": 40.09999990463257,
+      "title": "Sinclair Puzzle 55",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002000307080007400000020080003002040000000001610500000090060000008904070500070900"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 55,
+      "elapsedMs": 39.5,
+      "title": "Sinclair Puzzle 56",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001003020400060005020001000004020050070700006800070500090008069000300072000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 56,
+      "elapsedMs": 40.200000286102295,
+      "title": "Sinclair Puzzle 57",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000002001003050004020700060005009008090070050300000900060007040400060100008420000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 57,
+      "elapsedMs": 40,
+      "title": "Sinclair Puzzle 58",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000060700620004008009580060000000100150040006002000030090028000280400005001050000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 58,
+      "elapsedMs": 40.19999980926514,
+      "title": "Sinclair Puzzle 59",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "500006007206705040070040000000000100050401002002000030000010080020504006900608000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 59,
+      "elapsedMs": 40.5,
+      "title": "Sinclair Puzzle 60",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "003002400060000007800000090000304200000001000001520000090000008700010060005200300"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 60,
+      "elapsedMs": 41.40000009536743,
+      "title": "Sinclair Puzzle 61",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "005020400260000000700006080000304200020010000003205001080900027300000094002040300"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 61,
+      "elapsedMs": 39.700000286102295,
+      "title": "Sinclair Puzzle 62",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000100003020004060005020000802001080060090700509600050200080007000300004006002"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 62,
+      "elapsedMs": 39.299999713897705,
+      "title": "Sinclair Puzzle 63",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000070001008005002040900050000000100050040060002000300070004090300600007800790000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 63,
+      "elapsedMs": 39.90000009536743,
+      "title": "Sinclair Puzzle 64",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002030400060007000800500090000304200000010000003205010070000008900000060004050100"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 64,
+      "elapsedMs": 40.5,
+      "title": "Sinclair Puzzle 65",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000013003020400560301029009604030000090000040203900800700005006030200070000080"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 65,
+      "elapsedMs": 40.59999990463257,
+      "title": "Sinclair Puzzle 66",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000080040800007009002690000001000020600050007030000400006070300700900008010005000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 66,
+      "elapsedMs": 39.19999980926514,
+      "title": "Sinclair Puzzle 67",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002030500050006000700200060000304200000010000004502001080000009900800070001020300"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 67,
+      "elapsedMs": 40.09999990463257,
+      "title": "Sinclair Puzzle 68",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "600050100002000003050004060007605009090080040300409000080500090700000200000006001"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 68,
+      "elapsedMs": 40.09999990463257,
+      "title": "Sinclair Puzzle 69",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "005020300060000000700006080000304200000010000003205001050900007800000090002050400"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 69,
+      "elapsedMs": 40.40000009536743,
+      "title": "Sinclair Puzzle 70",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000020300005003070300800004000050201050006030003040000500007090076900100009080000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 70,
+      "elapsedMs": 56.09999990463257,
+      "title": "Sinclair Puzzle 71",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000800007040006085300050009000002100020060050003400000002080001050600020700000900"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 71,
+      "elapsedMs": 38.299999713897705,
+      "title": "Sinclair Puzzle 72",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002003400050640070004068100010400080085030600000080090008300200500020000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 72,
+      "elapsedMs": 41.10000038146973,
+      "title": "Sinclair Puzzle 73",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000100003002400060500020000209001020050060700608200080005090490800300007000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 73,
+      "elapsedMs": 40,
+      "title": "Sinclair Puzzle 74",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000007006002040100680000040000304200000010000003502010030000098005030400970000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 74,
+      "elapsedMs": 41.5,
+      "title": "Sinclair Puzzle 75",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000010000000003002001500340000700060007050800910008000078005400204800006090040080"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 75,
+      "elapsedMs": 46,
+      "title": "Sinclair Puzzle 76",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "070000008300007600002500090000000010003002400460050000030006900007900001900200080"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 76,
+      "elapsedMs": 40.59999990463257,
+      "title": "Sinclair Puzzle 77",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000010000002004003040600050003000009050060040900000700080006010100500200000180007"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 77,
+      "elapsedMs": 41.5,
+      "title": "Sinclair Puzzle 78",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "004000030020007100500800002001000020600050007030000400900005008000680090000900200"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 78,
+      "elapsedMs": 40.10000038146973,
+      "title": "Sinclair Puzzle 79",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002030060040506070006000040004607805080004700060803050009000600300060000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 79,
+      "elapsedMs": 39.90000009536743,
+      "title": "Sinclair Puzzle 80",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "001004300060000007800000090000340200000001000003052001090000008700000060005200400"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 80,
+      "elapsedMs": 41.60000038146973,
+      "title": "Sinclair Puzzle 81",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000010000102003014050600009000046600090008050000900005060800000307000720000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 81,
+      "elapsedMs": 38.90000009536743,
+      "title": "Sinclair Puzzle 82",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000007060005020400860000000000304200000010000004205001900000080003050100070900300"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 82,
+      "elapsedMs": 39.59999990463257,
+      "title": "Sinclair Puzzle 83",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002060500000007006690850010001000020000040051030000400070009000800600000005030100"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 83,
+      "elapsedMs": 39.59999990463257,
+      "title": "Sinclair Puzzle 84",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000100002001003030040050090403008008090000300805090080050040000600207706000000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 84,
+      "elapsedMs": 40.40000009536743,
+      "title": "Sinclair Puzzle 85",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "400000001002000300050004760000905008090060040100407000040700090003000800200006400"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 85,
+      "elapsedMs": 38.19999980926514,
+      "title": "Sinclair Puzzle 86",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "007000010040500006900080700000000001050400060003002000002090004800003050070600100"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 86,
+      "elapsedMs": 39,
+      "title": "Sinclair Puzzle 87",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "003070000080006070000580009000000100050040060002000003100004900040700050200060700"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 87,
+      "elapsedMs": 39,
+      "title": "Sinclair Puzzle 88",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "005030400060007000700000086000304200000010000004205001090000003800900020002050100"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 88,
+      "elapsedMs": 39,
+      "title": "Sinclair Puzzle 89",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001003020400050001060040200900300090040009408070090600004004080200700000005"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 89,
+      "elapsedMs": 38.40000009536743,
+      "title": "Sinclair Puzzle 90",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000010003020400050001006080002900300090008009804000700000050008040300630700000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 90,
+      "elapsedMs": 56.799999713897705,
+      "title": "Sinclair Puzzle 91",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002000300000007010180500007001000020400050006030000400800005009010800000004960080"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 91,
+      "elapsedMs": 39.5,
+      "title": "Sinclair Puzzle 92",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "500070002080004050903500000000000100050040060002000003009008000060400070100067008"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 92,
+      "elapsedMs": 39.799999713897705,
+      "title": "Sinclair Puzzle 93",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001000201030004050600007000040500070068060005700006040800020900000900003000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 93,
+      "elapsedMs": 39.69999980926514,
+      "title": "Sinclair Puzzle 94",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000010000000304020004205001002050030900000006070000800800500900060008007005020000"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 94,
+      "elapsedMs": 39.30000019073486,
+      "title": "Sinclair Puzzle 95",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "002004500060000070800090030000102000005040200000005043030000006700000080001400300"
+    },
+    {
+      "mode": "sinclair",
+      "draw": 95,
+      "elapsedMs": 39.80000019073486,
+      "title": "Sinclair Puzzle 96",
+      "tier": "impossible",
+      "id": "classic",
+      "style": "sinclair",
+      "givens": "000000001002030400050001030006300070000060000340002600080900000004070200900005080"
+    }
+  ],
+  "mobileOffline": {
+    "elapsedMs": 123,
+    "title": "Sinclair Puzzle 1",
+    "tier": "impossible",
+    "id": "classic",
+    "style": "sinclair",
+    "givens": "000001200001000003040050060060804007000070600700500080050080040300000900002900000"
+  }
+}

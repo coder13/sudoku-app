@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { appEngineProfile, featuresForProfile } from './engine-build-profiles.mjs'
+import { classicSolverFingerprint } from './classic-solver-fingerprint.mjs'
 
 export async function buildBrowserEngine(profile = appEngineProfile, outputDirectory = 'src/sudoku/generated') {
   const features = featuresForProfile(profile)
@@ -55,7 +56,8 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
       rmSync(resolve(outputDirectory, `${name}.json`), { force: true })
     }
   }
-  writeFileSync(resolve(outputDirectory, 'engine-profile.json'), `${JSON.stringify({ profile, features, capabilities })}\n`)
+  const manifest = { profile, features, capabilities, classicSolverFingerprint: classicSolverFingerprint() }
+  writeFileSync(resolve(outputDirectory, 'engine-profile.json'), `${JSON.stringify(manifest)}\n`)
   return { profile, capabilities, bytes: bytes.length }
 }
 

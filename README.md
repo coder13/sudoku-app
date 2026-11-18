@@ -57,7 +57,9 @@ On mobile, press and hold a card for five seconds to rearrange the cards. Drag a
 
 Use **Create by hand** to enter givens for Classic Sudoku. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
 
-Open **Puzzles → Collections** to browse Nikoli Classics (100 handmade puzzles) or Sudoku Exchange Selection (60 generated puzzles). Choose a difficulty, then play the next puzzle or preview a grid and save it for later. Opening a puzzle you already have resumes that game. After you finish, choose **Next puzzle in collection** to continue at the same difficulty. You can also change the collection difficulty or return to Puzzles to choose a different puzzle. The app includes both collections in its offline download and shows creator credits and reuse terms. Random generation remains available under **New puzzle**. See the [collection sources and update steps](src/sudoku/collections/README.md).
+Open **Puzzles → Collections** to browse collections such as Nikoli Classics or Sudoku Exchange Selection. Choose a difficulty, then play the next puzzle or preview a grid and save it for later. Opening a puzzle you already have resumes that game. After you finish, choose **Next puzzle in collection** to continue at the same difficulty. The app downloads puzzles on demand and shows creator credits and reuse terms. [Collection sources and update steps](src/sudoku/collections/README.md)
+
+In **New puzzle**, Standard generates a puzzle on your device. Choose **Sinclair collection** to draw from 100 checked puzzles at the selected level. The nine Sinclair libraries cover all 66 variant and difficulty choices. Once you download a level, you can play it offline. [Sinclair research, comparisons and download sizes](docs/research/sinclair/catalog/REPORT.md)
 
 Open **Learn** for technique articles with diagrams and practice puzzles. In a practice puzzle, select an empty cell and a digit, then check your move.
 

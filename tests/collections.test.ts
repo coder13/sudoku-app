@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
+import packedIndex from '../src/sudoku/generated/collection-index.json' with { type: 'json' }
+import { COLLECTION_FILES } from '../src/sudoku/collection-files.ts'
+import { packPuzzleInfo } from '../src/sudoku/collection-index.ts'
 import {
   COLLECTIONS as CATALOG, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus,
   findCollectionGame, getGameCollection,
   nextCollectionPuzzle, type CollectionPuzzleInfo,
 } from '../src/sudoku/collections.ts'
 import { isCollectionReference } from '../src/sudoku/collection-reference.ts'
-import { EMPTY, enter, makeGame, restartGame } from '../src/sudoku/game.ts'
+import { EMPTY, enter, makeGame, restartGame, puzzleIdentity } from '../src/sudoku/game.ts'
+import { collectionPuzzleData, collectionVariantHash } from '../src/sudoku/collection-data.ts'
+import { variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { openCollectionPuzzle, openNextCollectionPuzzle } from '../src/sudoku/collection-play.ts'
 import { roomStore } from '../src/sudoku/storage.ts'
 import { collectionDownloads } from '../src/sudoku/collection-downloads.ts'
@@ -20,24 +25,52 @@ const reference = { collectionId: collection.id, puzzleId: puzzle.id }
 // Independently published Nikoli solution, not derived from the stored catalog.
 const solution = '745613928312987546986542137239168754174395682658724391527836419461259873893471265'
 
-test('collection IDs and puzzle grids are unique, with explicit source licenses', () => {
+test('collection IDs and puzzle grids are unique, with credits and external source licenses', () => {
   assert.equal(new Set(COLLECTIONS.map(set => set.id)).size, COLLECTIONS.length)
   const grids = new Set<string>()
   for (const set of COLLECTIONS) {
-    assert.match(set.sourceRevision, /^[a-f0-9]{40}$/)
-    assert.ok(set.creator && set.license && set.changes)
-    assert.equal(new URL(set.sourceUrl).protocol, 'https:')
-    assert.equal(new URL(set.licenseUrl).protocol, 'https:')
+    assert.match(set.sourceRevision, /^(?:[a-f0-9]{40}|\d{4}-\d{2}-\d{2})$/)
+    assert.ok(set.creator && set.changes)
+    if (set.id.startsWith('sinclair-')) {
+      assert.equal(set.sourceUrl, '/sinclair-credits.txt')
+      assert.equal(set.kind, 'generated')
+    } else {
+      assert.ok(set.license && set.licenseUrl)
+      assert.equal(new URL(set.sourceUrl).protocol, 'https:')
+      assert.equal(new URL(set.licenseUrl).protocol, 'https:')
+    }
     assert.equal(new Set(set.puzzles.map(puzzle => puzzle.id)).size, set.puzzles.length)
     for (const puzzle of set.puzzles) {
       assert.ok(isCollectionReference({ collectionId: set.id, puzzleId: puzzle.id }))
       assert.match(puzzle.givens, /^[0-9]{81}$/)
       assert.ok(puzzle.title.length > 0 && puzzle.title.length <= 72)
-      assert.ok(!grids.has(puzzle.givens), 'Repeated puzzle: ' + puzzle.id)
-      grids.add(puzzle.givens)
+      const kind = puzzle.puzzle && variantIdForPuzzle(puzzle.puzzle)
+      const identity = puzzleIdentity({ givens: puzzle.givens, variant: puzzle.puzzle && {
+        id: kind && kind !== 'classic' ? kind : 'mixed', puzzle: puzzle.puzzle,
+      } })
+      assert.ok(!grids.has(identity), 'Repeated puzzle: ' + puzzle.id)
+      grids.add(identity)
     }
   }
   assert.equal(collection.puzzles.length, 100)
+})
+
+test('Sinclair offers ten puzzles per selectable level with stable codes for feedback', () => {
+  for (const [name, variant, prefix] of [
+    ['classic', 'classic', 'C'], ['killer', 'killer-cages', 'K'], ['x', 'diagonal', 'X'],
+  ] as const) {
+    const set = COLLECTIONS.find(c => c.id === `sinclair-${name}`)!
+    assert.equal(set.variant, variant)
+    const levels = variantDifficulties(variant).filter(d => d !== 'auto')
+    assert.deepEqual(collectionDifficulties(set), levels)
+    assert.equal(set.puzzles.length, levels.length * 10)
+    for (const level of levels) assert.equal(collectionPuzzles(set, level).length, 10)
+    set.puzzles.forEach((p, i) => {
+      const code = prefix + String(i + 1).padStart(3, '0')
+      assert.equal(p.id, code.toLowerCase())
+      assert.equal(p.title, 'Sinclair ' + code)
+    })
+  }
 })
 
 test('progress counts actual solved grids and recognizes earlier imports', () => {
@@ -81,11 +114,13 @@ test('difficulty groups cover each catalog without mixing levels', () => {
 
 test('the client catalog contains metadata and zero bundled puzzle grids', () => {
   assert.ok(CATALOG.every(collection => collection.puzzles.every(puzzle => !('givens' in puzzle))))
+  const catalogText = JSON.stringify(CATALOG)
   for (const full of COLLECTIONS) {
     for (const puzzle of full.puzzles) {
       assert.equal(puzzle.givensHash, collectionGridHash(puzzle.givens))
-      assert.equal(puzzle.bytes, Buffer.byteLength(puzzle.givens))
-      assert.ok(!JSON.stringify(CATALOG).includes(puzzle.givens))
+      assert.equal(puzzle.bytes, Buffer.byteLength(collectionPuzzleData(puzzle)))
+      assert.equal(puzzle.variantHash, puzzle.puzzle ? collectionVariantHash(puzzle.puzzle) : undefined)
+      assert.ok(!catalogText.includes(puzzle.givens))
     }
   }
   assert.equal(nextCollectionPuzzle(collection, [], 'easy', undefined, new Set()), undefined)
@@ -98,8 +133,12 @@ test('offline difficulty labels reflect the available puzzles', () => {
   assert.deepEqual(collectionDifficulties(collection, new Set(available.map(puzzle => puzzle.id))), ['medium'])
 })
 
-test('the metadata catalog stays within 12 KiB compressed and 64 KiB uncompressed', () => {
-  const data = Buffer.from(JSON.stringify(CATALOG))
+test('the individual-download metadata stays within 12 KiB compressed and 64 KiB uncompressed', () => {
+  const headers = CATALOG.filter(c => Object.hasOwn(COLLECTION_FILES, c.id)).map(({ puzzles, ...header }) => {
+    assert.deepEqual(puzzles.map(packPuzzleInfo), packedIndex[header.id as keyof typeof packedIndex])
+    return header
+  })
+  const data = Buffer.from(JSON.stringify([headers, packedIndex]))
   assert.ok(data.byteLength <= 64 * 1024, `Catalog is ${data.byteLength} bytes`)
   const compressed = gzipSync(data).byteLength
   assert.ok(compressed <= 12 * 1024, `Compressed catalog is ${compressed} bytes`)
