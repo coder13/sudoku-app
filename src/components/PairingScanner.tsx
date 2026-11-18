@@ -85,7 +85,6 @@ export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => voi
     } finally { URL.revokeObjectURL(url) }
   }
   return <section className="sync-scanner">
-    <h2>Scan QR code</h2>
     <p>On your linked device, open Device sync and choose <strong>Link another device</strong>.</p>
     <video ref={video} className="sync-camera" hidden={Boolean(cameraError)} muted playsInline autoPlay aria-label="QR scanner camera" />
     {cameraError ? <p role="status">{cameraError}</p> : !cameraReady && <p role="status">Opening camera…</p>}

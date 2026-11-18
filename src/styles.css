@@ -3389,20 +3389,15 @@ a.game-row { text-decoration: none; color: inherit; }
 .device-sync-page summary { align-content: center; cursor: pointer; }
 .device-sync-page details form { display: grid; gap: var(--space-8); }
 .sync-panel { padding: var(--space-16); border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
-.device-sync-page .sync-invitation {
-  display: grid; grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: "code heading" "code actions"; gap: var(--space-12) var(--space-16);
-  align-items: center; align-content: center;
+.sync-panel.sync-invitation {
+  box-sizing: border-box; width: min(100%, 19rem); align-self: flex-start;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-12);
 }
-.sync-invitation .sync-panel-heading { grid-area: heading; align-self: end; }
-.sync-invitation h2, .sync-invitation p { margin: 0; }
-.sync-invitation-actions { grid-area: actions; display: flex; align-items: center; gap: var(--space-12); align-self: start; flex-wrap: wrap; }
-.sync-invitation-actions .button { flex-shrink: 0; }
-.sync-invitation > label { grid-column: 1 / -1; }
+.sync-invitation .sync-panel-heading { justify-content: space-between; gap: var(--space-4); }
+.sync-invitation .sync-panel-heading h2 { margin: 0; }
 .sync-code-frame {
-  grid-area: code; justify-self: center; width: min(100%, 196px); padding: 6px; box-sizing: border-box;
+  width: min(100%, 196px); padding: 6px; box-sizing: border-box;
   border: 1px solid #626873; background-color: #f8f9fb;
-  /* Only the outer rim shows the nine cells and heavier box divisions. */
   background-image: linear-gradient(to right, #626873 2px, transparent 2px),
     linear-gradient(to bottom, #626873 2px, transparent 2px),
     linear-gradient(to right, #aab0ba 1px, transparent 1px),
@@ -3410,11 +3405,9 @@ a.game-row { text-decoration: none; color: inherit; }
   background-size: calc(100% / 3) 100%, 100% calc(100% / 3), calc(100% / 9) 100%, 100% calc(100% / 9);
 }
 .sync-code { display: block; width: 100%; height: auto; background: white; image-rendering: pixelated; }
-@media (max-width: 560px) {
-  .device-sync-page .sync-invitation { grid-template-columns: minmax(0, 1fr); grid-template-areas: "heading" "code" "actions"; gap: var(--space-12); }
-  .sync-invitation-actions { justify-content: space-between; flex-wrap: nowrap; gap: var(--space-8); }
-  .sync-invitation-actions p { font-size: 0.875rem; }
-}
+.sync-invitation-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.sync-invitation-actions p { margin: 0; font-size: 0.875rem; }
+.sync-invitation-actions .button { flex: none; }
 .sync-devices { list-style: none; padding: 0; margin: 0; }
 .sync-devices li { display: flex; align-items: center; gap: var(--space-8); min-height: 58px; padding-block: var(--space-6); border-bottom: 1px solid var(--border); }
 .sync-device-label { min-width: 0; flex: 1; overflow-wrap: anywhere; }

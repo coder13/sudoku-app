@@ -67,7 +67,8 @@ Search by component name or browse the sections below.
 | --- | --- |
 | [Settings](../../../../src/components/Settings.tsx) | `Settings` composes the settings modal and its sections. `GeneralSettings` renders the selected play or hint settings. `AppearanceSettings` groups appearance and workspace choices. `ThemePreview` shows a palette sample. `ThemeSettings` selects palettes. `SizeSettings` adjusts text and input sizes. `GuideSetting` controls grid guides. `HighlightSettings` configures related cells, digits, and candidates. `PuzzleTimingSettings` controls the timer, pause button, and time tracking. |
 | [KeyboardShortcutsPage](../../../../src/components/KeyboardShortcutsPage.tsx) | `KeyboardShortcutsPage` reviews, edits, and restores keyboard bindings. |
-| [DeviceSyncPage](../../../../src/components/DeviceSyncPage.tsx) | `DeviceSyncPage` owns enrollment, invites, joining, recovery, and linked-device management. |
+| [DeviceSyncPage](../../../../src/components/DeviceSyncPage.tsx) | `DeviceSyncPage` owns enrollment, invites, joining, recovery, and linked-device management. Use its header for step navigation. |
+| [PairingInvitation](../../../../src/components/PairingInvitation.tsx) | Use `PairingInvitation` on the inviting device to show the single-use code, expiry, and copy action. The close control belongs in its top-right corner. |
 | [PairingScanner](../../../../src/components/PairingScanner.tsx) | `PairingScanner` reads a device-link QR code from the camera or a saved photo and returns a ticket for confirmation. |
 | [LinkedDeviceRow](../../../../src/components/LinkedDeviceRow.tsx) | `LinkedDeviceRow` displays a private device label and handles rename and unlink. Its `DeviceActionMenu` groups those actions on narrow screens and manages menu keyboard focus. |
 

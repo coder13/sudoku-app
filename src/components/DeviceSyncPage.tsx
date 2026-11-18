@@ -1,15 +1,15 @@
 import { Button, ChoiceButton, IconButton, iconButtonClassName } from './Button'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, Check, Copy, Link2, QrCode, X } from 'lucide-react'
+import { ArrowLeft, KeyRound, Link2, QrCode } from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import qrcode from 'qrcode-generator'
+import { PairingInvitation } from './PairingInvitation'
 import { PairingScanner } from './PairingScanner'
 import { pairingTicket } from '../sudoku/pairing-link'
 import { LinkedDeviceRow } from './LinkedDeviceRow'
 import { useMobileLayout } from './mobile-layout'
 import { deviceSync, recoveryStorage } from '../sudoku/device-sync'
 
-type Invitation = { link: string; expires: number; image: string }
+type Invitation = { link: string; expires: number }
 type LinkedDevice = Awaited<ReturnType<typeof deviceSync.devices>>[number]
 
 export function DeviceSyncPage() {
@@ -26,9 +26,8 @@ export function DeviceSyncPage() {
   const [listError, setListError] = useState('')
   const [working, setWorking] = useState(false)
   const [error, setError] = useState('')
-  const [copied, setCopied] = useState(false)
-  const [manualCopy, setManualCopy] = useState(false)
   const listVersion = useRef(0)
+  const inviteButton = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!status.linked) { setDevices([]); setListError(''); setInvite(null); return }
     async function refresh() {
@@ -65,9 +64,7 @@ export function DeviceSyncPage() {
     const { ticket, expires } = await deviceSync.invite()
     const link = new URL('/sync', location.origin)
     link.hash = 'pair=' + ticket
-    const code = qrcode(0, 'M')
-    code.addData(link.href); code.make()
-    setCopied(false); setManualCopy(false); setInvite({ link: link.href, expires, image: code.createDataURL(4) })
+    setInvite({ link: link.href, expires })
   }
   function changeStep(next: typeof step) {
     if (location.hash.startsWith('#pair=')) history.replaceState(history.state, '', location.pathname)
@@ -83,18 +80,32 @@ export function DeviceSyncPage() {
     })
   }
 
+  const screen = status.linked ? 'start' : ticket ? 'confirm' : step
+  const heading = useRef<HTMLHeadingElement>(null)
+  const previousScreen = useRef(screen)
+  useEffect(() => {
+    if (previousScreen.current !== screen) heading.current?.focus({ preventScroll: true })
+    previousScreen.current = screen
+  }, [screen])
+  const headings = { start: 'Device sync', scan: 'Scan QR code', recover: 'Recover sync', confirm: 'Link this device?' }
+  const backToScanner = screen === 'recover' || (screen === 'confirm' && step === 'scan')
+  function closeInvitation() {
+    setInvite(null)
+    requestAnimationFrame(() => inviteButton.current?.focus())
+  }
   return <main className="page sync-page device-sync-page">
     <header className="sync-heading">
-      <Link to="/" search={{}} className={iconButtonClassName('quiet')} aria-label="Return to puzzles" title="Return to puzzles"><ArrowLeft size={20} /></Link>
-      <h1>Device sync</h1>
+      {screen === 'start'
+        ? <Link to="/" search={{}} className={iconButtonClassName('quiet')} aria-label="Return to puzzles" title="Return to puzzles"><ArrowLeft size={20} /></Link>
+        : <IconButton variant="quiet" disabled={working} aria-label={backToScanner ? 'Back to scanner' : 'Back to device sync'}
+            onClick={() => changeStep(backToScanner ? 'scan' : 'start')}><ArrowLeft size={20} /></IconButton>}
+      <h1 ref={heading} tabIndex={-1}>{headings[screen]}</h1>
     </header>
     {status.message && <p role="status">{status.message}</p>}
     {(error || listError) && <p className="workspace-error" role="alert">{error || listError}</p>}
     {!status.linked && status.ready && (ticket ? <>
-      <h2>Link this device?</h2>
       <p>Puzzles from both devices will appear together. Your settings will sync too.</p>
       <Button variant="primary" disabled={working} onClick={() => enroll('join')}>Link this device</Button>
-      <Button disabled={working} onClick={() => changeStep('scan')}>Back to scanner</Button>
     </> : step === 'start' ? <div className="sync-choices">
       <ChoiceButton disabled={working} onClick={() => enroll('libraries')}>
         <Link2 aria-hidden size={22} /><span><strong>Set up new sync</strong><small>Start here on your first device.</small></span>
@@ -105,27 +116,15 @@ export function DeviceSyncPage() {
     </div> : <>
       {step === 'scan' ? <>
         <PairingScanner onTicket={setTicket} />
-        <Button variant="quiet" onClick={() => changeStep('recover')}>Use a recovery key instead</Button>
+        <Button onClick={() => changeStep('recover')}><KeyRound size={16} aria-hidden />Use a recovery key</Button>
       </> : <form className="sync-recover" onSubmit={event => { event.preventDefault(); enroll('recover') }}>
-        <h2>Recover sync</h2>
         <label>Recovery key<input autoComplete="off" spellCheck={false} value={recovery} onChange={e => setRecovery(e.target.value)} /></label>
         <Button variant="primary" type="submit" disabled={working || !recovery.trim()}>Recover puzzles and settings</Button>
       </form>}
-      <Button disabled={working} onClick={() => changeStep(step === 'scan' ? 'start' : 'scan')}>Back</Button>
     </>)}
     {status.linked && <>
       {ticket && <p>This device is already linked.</p>}
-      {invite ? <section className="sync-panel sync-invitation">
-        <div className="sync-panel-heading"><h2>Scan on your other device</h2>
-          <IconButton variant="quiet" aria-label="Close pairing code" title="Close" onClick={() => setInvite(null)}><X size={18} /></IconButton>
-        </div>
-        <div className="sync-code-frame"><img className="sync-code" width="196" height="196" src={invite.image} alt="QR code to link a device" /></div>
-        <div className="sync-invitation-actions"><p>Expires at {new Date(invite.expires).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
-        <Button onClick={async () => {
-          try { await navigator.clipboard.writeText(invite.link); setCopied(true) } catch { setManualCopy(true) }
-        }}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copied' : 'Copy link'}</Button></div>
-        {manualCopy && <label>Pairing link<input readOnly autoFocus value={invite.link} onFocus={event => event.target.select()} /></label>}
-      </section> : <Button variant="primary" disabled={working} onClick={() => void action(showCode)}><QrCode size={18} />Link another device</Button>}
+      {invite ? <PairingInvitation key={invite.link} link={invite.link} expires={invite.expires} onClose={closeInvitation} /> : <Button ref={inviteButton} variant="primary" disabled={working} onClick={() => void action(showCode)}><QrCode size={18} />Link another device</Button>}
       {key && <details><summary>Save recovery key</summary>
         <p>Keep this key somewhere private. Use it if you lose access to your linked devices.</p>
         <input aria-label="Recovery key" readOnly value={key} onFocus={event => event.target.select()} />

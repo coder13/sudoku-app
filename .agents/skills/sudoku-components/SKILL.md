@@ -14,6 +14,12 @@ Find the intended interaction in the [component catalog](references/components.m
 - Use `buttonClassName` or `iconButtonClassName` on a router link or file-picker label when that element needs button styling. Keep the native element’s navigation or file-selection behavior.
 - The keypad, grid candidates, swatches, tabs, menu items and drag handles have specialized sizing or keyboard interactions. Extend their owning component when changing those patterns.
 
+## Place actions on a screen
+
+Put Back at the leading edge of a step’s heading. Give the arrow an accessible name that describes its destination. When the step changes in place, move keyboard focus to the new heading.
+
+Put a dismissible card’s close control in its top-right corner. Align its heading, content, and supporting text to the leading edge. Supporting text and its action can share a row below the content. When a player closes the card, return focus to the control that opens it.
+
 ## Interaction states
 
 Raised controls get a subtle shadow on hover-capable pointers. Quiet controls get a surface tint. Keep the hit target in place in every state. Preserve the visible keyboard focus ring, pressed selection, disabled state, and reduced-motion support. Make every action available to touch and keyboard users. State guidance follows [MDN’s hover media feature](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/hover), [WCAG Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html), and [Carbon’s button states](https://carbondesignsystem.com/components/button/style/).
