@@ -6,6 +6,8 @@
 use crate::{Board, CELLS, Candidate};
 #[cfg(feature = "variants")]
 use crate::{DIGITS, Units};
+#[cfg(feature = "variants")]
+use super::super::completions::complete;
 
 #[cfg(feature = "variants")]
 const NODES_PER_PROBE: u32 = 128;
@@ -105,50 +107,6 @@ impl<'a> Probes<'a> {
         }
         found
     }
-}
-
-#[cfg(feature = "variants")]
-fn complete(
-    board: &mut Board,
-    units: &mut Units,
-    allowed: &[u16; CELLS],
-    budget: &mut u32,
-) -> bool {
-    let Some(remaining) = budget.checked_sub(1) else {
-        return false;
-    };
-    *budget = remaining;
-    let mut next = None;
-    let mut fewest = 10;
-    for (cell, &digit) in board.iter().enumerate() {
-        if digit != 0 {
-            continue;
-        }
-        let mask = units.available(cell) & allowed[cell];
-        let count = mask.count_ones();
-        if count == 0 {
-            return false;
-        }
-        if count < fewest {
-            next = Some((cell, mask));
-            fewest = count;
-        }
-    }
-    let Some((cell, mut choices)) = next else {
-        return true;
-    };
-    while choices != 0 && *budget != 0 {
-        let bit = choices & choices.wrapping_neg();
-        choices ^= bit;
-        board[cell] = bit.trailing_zeros() as u8 + 1;
-        units.toggle(cell, bit);
-        if complete(board, units, allowed, budget) {
-            return true;
-        }
-        units.toggle(cell, bit);
-    }
-    board[cell] = 0;
-    false
 }
 
 #[cfg(all(test, feature = "variants"))]

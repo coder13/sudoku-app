@@ -35,9 +35,9 @@ The Wasm audit now measures candidates, uniqueness verification, exact solving, 
 
 The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
-### Non-Consecutive integration in progress
+### Non-Consecutive integration merged
 
-This stage is isolated on `codex/sudoku-nonconsecutive-integration` and includes main at `cda93a3`. [Non-Consecutive issue](https://github.com/coder13/sudoku-app/issues/44)
+This stage reached main at `8439f6d` through [PR 112](https://github.com/coder13/sudoku-app/pull/112). The reviewed worktree remains available on `codex/sudoku-nonconsecutive-integration`. [Non-Consecutive issue](https://github.com/coder13/sudoku-app/issues/44)
 
 - [x] Verify Philip Newman's published Literally No One puzzle and completion against the rendered PDFs. Independently prove its 21-given puzzle is unique with the rule and has multiple completions without it.
 - [x] Add explicit exempt edges to the native Non-Consecutive rule. Preserve omitted-field JSON, the eight-point technique and ordinary rule behavior. Check candidates, positive dots, malformed geometry, all grid symmetries and wire roundtrips with five public-API tests.
@@ -48,8 +48,19 @@ This stage is isolated on `codex/sudoku-nonconsecutive-integration` and includes
 - [x] Verify three independently counted 30-given generated puzzles that need Non-Consecutive, plus a mixed white-dot template that retains all exceptions.
 - [x] Measure candidates, validation, solving, rating, ordinary/exhaustive hints and generation. Preserve retained responses and complete nested proofs on eleven fixtures against main. The published puzzle rates at 0.345/0.431 ms; the two-given Coach path remains stalled at 2,516.019/2,526.339 ms. [Methods and limits](tests/fixtures/README.md#non-consecutive-sources-and-app-coverage)
 - [ ] Add Non-Consecutive locked and multi-candidate deductions. The real two-given Coach fixture imports with its exact completion, while the current logical path stalls. Track proof, scoring, training and performance work separately in [issue 111](https://github.com/coder13/sudoku-app/issues/111).
-- [ ] Pass CI and merge the app-ready variant in its own focused PR.
+- [x] Pass CI's native release suite, feature matrix, four Wasm profiles, app/Wasm contracts, strict Cargo documentation and deployment checks; merge the app-ready variant in [PR 112](https://github.com/coder13/sudoku-app/pull/112).
 - [ ] Review live viewport behavior and calibrate generation recipes before offering Non-Consecutive in New puzzle.
+
+### Pattern Overlay support performance
+
+This pass is isolated on `codex/sudoku-pattern-overlay-pruning` from main at `8439f6d`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/113)
+
+- [x] Profile Consecudoku's empty expert searches and retain all per-technique proof lists. Five-digit and four-digit Pattern Overlay cost 750.684 and 293.104 ms median while finding no deductions.
+- [x] Prototype bounded completion witnesses for the detector's masks, houses and equal-digit exclusions, with checked digit permutations. Seed exact support and retain the original search when witnesses are incomplete. Share the masked-completion primitive with the existing forcing probes; keep new code gated by `variants`.
+- [x] Compare all 107 per-technique proof lists on the measured fixture. Prototype five-digit and four-digit scans fall to 0.577 and 0.569 ms with identical proofs. Existing independent replay checks pass all five overlay sizes, Jigsaw, extra houses and knight exclusions.
+- [x] Add independent mask, renaming, topology, exhausted-budget, fallback and cache-edit coverage. Match exhaustive assignments on a small ambiguous grid with extra houses and excluded pairs; check a valid Jigsaw Latin grid that violates standard boxes. Pass the shared forcing-probe tests and all 265 native tests including doctests.
+- [x] Compare retained APIs, full app traces, shared forcing proofs, all five overlay proof lists and every hint page across the Classic/variant corpus. Compare all 107 detector outputs on Consecudoku separately. Measure paired latency, memory and all profile sizes. [Methods and limits](tests/fixtures/README.md#pattern-overlay-support-performance)
+- [x] Pass local native/app/Wasm/build, capability-matrix, Wasm-profile and Cargo documentation gates. Require successful CI on the reviewed PR head before the separate main-branch merge.
 
 ### Quadruple integration merged
 

@@ -185,3 +185,34 @@ Against main at `cda93a3`, complete retained API responses and complete Nested F
 App Wasm measures 3,292,003 raw / 851,248 gzip bytes, compared with main's 3,291,239 / 857,637. The solver-only and Classic profiles remain 2,040,103 / 556,087 and 2,555,726 / 662,305; variant-solver measures 2,537,575 / 678,728. Local gates pass 258 Rust tests including doctests, 379 app tests, 227 Wasm tests, all 16 capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the production/offline build.
 
 The per-technique profile of Consecudoku's starting position uses one warmup and five measured calls per detector, retaining every proof. The largest medians are 750.684 ms for five-digit Pattern Overlay, 293.104 ms for four-digit Pattern Overlay and 237.137 ms for Nested Forcing Net; all three return no deductions. This identifies a follow-up search target, rather than a performance improvement in this integration. Normalize the stored Coach export with `detectPuzzle` and run `scripts/profile-variant-hints.mjs` on its native puzzle definition to repeat the profile.
+
+## Pattern Overlay support performance
+
+This comparison uses main at `8439f6d` and `codex/sudoku-pattern-overlay-pruning`. Bounded completions certify support for the overlay detector's candidate masks, houses and equal-digit exclusions. Restricting one completion to any selected digit group gives compatible, disjoint layouts for that group. Other numeric variant rules need not hold: these witnesses certify detector support and are never returned as puzzle solutions. Failed or exhausted probes certify nothing. The original exact layout search checks any remaining support. Checked digit permutations can extend a witness only when every supplied mask permits them.
+
+The starting-position profile preserves all 107 per-technique proof lists. Five-digit Pattern Overlay falls from 750.684 to 0.577 ms median and four-digit from 293.104 to 0.569 ms. All return no deductions on this position. Seven added native cases check masks, renaming, Jigsaw geometry, extra houses and exclusions, incomplete budgets, fallback behavior and cache invalidation. Existing independent replay tests cover all five overlay sizes and published positive deductions.
+
+Paired Node/Wasm requests on Darwin arm64, Node 26.13.0, use fresh instances for each fixture, two warmups and ten measured samples per engine, alternating execution order. Timing includes request encoding and decoding, and excludes comparison assertions, worker startup, transfer and rendering. Values are milliseconds median/p95.
+
+| Exhaustive first hint page | Main | Support witnesses |
+| --- | ---: | ---: |
+| Quadruple | 858.868 / 865.300 | 566.594 / 585.301 |
+| Odd/Even | 65.328 / 66.269 | 53.188 / 53.475 |
+| Anti-King | 95.750 / 101.572 | 97.761 / 110.028 |
+| Non-Consecutive | 44.336 / 44.685 | 41.299 / 41.728 |
+| Two-given Consecudoku | 1,421.277 / 1,443.266 | 674.777 / 681.206 |
+
+Consecudoku's app rating falls from 2,521.482/2,538.418 to 1,029.411/1,069.526 ms. Its ordinary ten-hint request falls from 1,423.073/1,435.236 to 673.679/686.600 ms. The same four hints and stalled status remain; missing human deductions are still tracked in [issue 111](https://github.com/coder13/sudoku-app/issues/111). Rating and ordinary hints for the other four fixtures remain below 2 ms in these samples. Anti-King has no demonstrated exhaustive speedup: a separate repeat measured 96.723/114.704 → 96.992/99.882 ms, with all 438 choices unchanged.
+
+Committed Wasm linear memory after the measured requests falls from 10.81 to 6.56 MiB for Consecudoku and from 4.06 to 3.69 MiB for the published Non-Consecutive puzzle. Quadruple, Odd/Even and Anti-King remain at 5.88, 3.56 and 10.44 MiB. These are committed buffer sizes, not process RSS or live allocation measurements.
+
+The complete differential corpus includes 30 positive practice positions and 13 Classic/variant positions. Comparisons preserve candidates, validation, exact completions, complete shared forcing and overlay proofs, app traces/ratings, catalogs, all ranked hints and every page, including scoring version 6. All 265 native tests including doctests, 379 app tests, 227 Wasm tests, TypeScript, all 16 capability combinations, four Wasm profile contracts, strict full/reduced Cargo documentation and the production/offline build pass locally.
+
+| Wasm profile | Main raw/gzip bytes | Support witnesses raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,040,103 / 556,087 | 2,040,103 / 556,090 |
+| variant-solver | 2,537,575 / 678,728 | 2,544,268 / 690,303 |
+| classic | 2,555,726 / 662,305 | 2,555,726 / 662,307 |
+| app | 3,292,003 / 851,248 | 3,314,899 / 881,343 |
+
+The app adds 30,095 gzip bytes for the measured latency reduction. New probes compile only with `variants`; solver and Classic raw sizes are unchanged. Repeat the paired requests with `node --experimental-strip-types scripts/bench-overlay-engines.mjs before.wasm after.wasm`; optional fixture names select narrower runs. Use `scripts/compare-overlay-engines.mjs before.wasm after.wasm` for the complete differential corpus and `scripts/profile-variant-hints.mjs` for individual detector proofs and timings.

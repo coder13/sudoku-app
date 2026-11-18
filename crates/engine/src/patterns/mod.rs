@@ -14,6 +14,8 @@ mod als;
 mod chains;
 mod coloring;
 mod complex_fish;
+#[cfg(feature = "variants")]
+mod completions;
 mod exocet;
 mod fireworks;
 mod fish;
