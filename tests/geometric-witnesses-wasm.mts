@@ -44,3 +44,19 @@ test('shared geometric witnesses preserve nested proofs across candidate and pla
   assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: whispers }, maxNodes: 4096 }), 'search-limit')
   assert.deepEqual(await runEngine(request), proofs)
 })
+
+test('symmetric geometric support preserves numeric Whispers hints without certifying uniqueness', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8'))
+  const position = { puzzle: fixture.puzzle as VariantPuzzle }
+  const request = { type: 'variant', operation: 'hints', position, techniqueOrder: ['whispers-house-support'], limit: 0xffff_ffff } as const
+  const before = await runEngine(request)
+  assert.ok(before.length > 0)
+  assert.deepEqual(await runEngine({ ...request, techniqueOrder: ['nested-forcing-net'] }), [])
+  assert.deepEqual(await runEngine(request), before)
+  for (const proof of before) for (const action of proof.actions) {
+    if ('place' in action) assert.equal(Number(fixture.solution[action.place.cell]), action.place.digit)
+    else assert.notEqual(Number(fixture.solution[action.eliminate.cell]), action.eliminate.digit)
+  }
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 4096 }), 'search-limit')
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 100_000 }), 'unique')
+})

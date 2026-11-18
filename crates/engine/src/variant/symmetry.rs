@@ -58,7 +58,7 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
 }
 
 #[derive(Clone, Copy)]
-pub(super) struct SquareTransform(usize);
+pub(crate) struct SquareTransform(usize);
 
 impl SquareTransform {
     pub const ALL: [Self; 8] = [
@@ -96,7 +96,7 @@ impl SquareTransform {
         position.eliminations = self.grid(position.eliminations);
     }
 
-    fn grid<T: Copy>(self, original: [T; CELLS]) -> [T; CELLS] {
+    pub(crate) fn grid<T: Copy>(self, original: [T; CELLS]) -> [T; CELLS] {
         let mut result = original;
         for (cell, value) in original.into_iter().enumerate() {
             result[self.cell(cell)] = value;

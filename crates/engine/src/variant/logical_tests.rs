@@ -415,6 +415,11 @@ fn completion_pruning_keeps_all_twelve_nested_forcing_proofs_on_ai_escargot() {
         .unwrap();
     assert_eq!(compiled.explain(&position, technique), actual);
     assert!(
+        !compiled
+            .overlay_search(&position)
+            .known_full_completion_support()
+    );
+    assert!(
         position
             .overlay
             .get()
@@ -467,7 +472,7 @@ fn completion_pruning_keeps_all_twelve_nested_forcing_proofs_on_ai_escargot() {
 
 #[cfg(feature = "wasm-api")]
 #[test]
-fn partial_geometric_witnesses_leave_uncovered_whispers_candidates_unproven() {
+fn symmetric_geometric_witnesses_keep_whispers_hints_and_uniqueness_separate() {
     let fixture: serde_json::Value = serde_json::from_str(include_str!(
         "../../../../tests/fixtures/whispers-brain-zaps.json"
     ))
@@ -475,7 +480,7 @@ fn partial_geometric_witnesses_leave_uncovered_whispers_candidates_unproven() {
     let puzzle: VariantPuzzle = serde_json::from_value(fixture["puzzle"].clone()).unwrap();
     let compiled = puzzle.compile().unwrap();
     let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
-    assert!(!compiled.classic_search_is_empty(&position, Technique::NestedForcingNet));
+    assert!(compiled.classic_search_is_empty(&position, Technique::NestedForcingNet));
     let support = compiled
         .overlay_search(&position)
         .known_completion_support()
@@ -490,7 +495,13 @@ fn partial_geometric_witnesses_leave_uncovered_whispers_candidates_unproven() {
         }
     }
     let total: u32 = position.masks.iter().map(|mask| mask.count_ones()).sum();
-    assert!(covered > 0 && covered < total);
+    assert_eq!(total, 642);
+    assert_eq!(covered, total);
+    assert!(
+        compiled
+            .overlay_search(&position)
+            .known_full_completion_support()
+    );
     assert!(
         compiled
             .explain(

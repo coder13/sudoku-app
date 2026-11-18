@@ -100,7 +100,20 @@ This pass reached main at `d9e4ee9` through [PR 128](https://github.com/coder13/
 - [x] Measure paired ordinary/exhaustive hints, selected techniques, retained fixtures, memory and every package profile. Keep eight Whispers choices and 31 Quadruple choices. App Wasm saves 2,980 gzip bytes. Record the large Whispers timing tails and slower native-rating samples. [Methods and limits](tests/fixtures/README.md#shared-partial-geometric-witnesses)
 - [x] Pass 298 native tests including doctests, 397 app tests, 245 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build. Recheck app integration with main's puzzle-switching changes from [PR 127](https://github.com/coder13/sudoku-app/pull/127).
 - [x] Pass CI on reviewed head `bc1a01f`, merge through [PR 128](https://github.com/coder13/sudoku-app/pull/128) and verify the reviewed optimization and PR 127 app work on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44254728829)
-- [ ] Evaluate checked grid/digit symmetries for bounded candidate support in [issue 129](https://github.com/coder13/sudoku-app/issues/129). Check every transformed grid against the current masks, placements and actual geometric premises before accepting support.
+- [x] Evaluate checked grid/digit symmetries for bounded candidate support in [issue 129](https://github.com/coder13/sudoku-app/issues/129). Check every transformed grid against the current masks, placements and actual geometric premises before accepting support. [Implementation and validation](#checked-geometric-symmetries)
+
+### Checked geometric symmetries
+
+This pass starts from main `d99b8fb` in `codex/sudoku-symmetric-witnesses`. [Symmetry research issue](https://github.com/coder13/sudoku-app/issues/129)
+
+- [x] Reuse the existing eight grid transformations. Infer a bijective digit mapping from every fixed domain and reject both mapping conflicts.
+- [x] Validate transformed grids against actual houses and directed peer exclusions. Check every final digit cycle against all candidate masks. Keep the cache local to one proof position and preserve numeric-rule and uniqueness checks.
+- [x] Bound nonidentity transformations to 64 attempts per support query, independently of the existing 4,096 exact nodes and 128 nodes per probe. Preserve original seed support when the transform budget expires.
+- [x] Pass independent fixed-domain, forbidden-candidate, extra-house, directed-peer and irregular-Jigsaw tests. Preserve partial support and all complete AI Escargot proofs after edits.
+- [x] Match 3,419 complete responses across nineteen corpus positions, all 117 detectors and all 351 positive practice positions against current main. Preserve every page, rating, trace and custom profile.
+- [x] Measure paired latency, memory and all Wasm profile sizes. Whispers keeps eight choices while its ordinary median falls from 472.566 to 5.949 ms. Record slower retained samples, concurrent research workers and the 255-byte app gzip increase. [Methods and limits](tests/fixtures/README.md#checked-geometric-symmetries)
+- [x] Pass 302 native tests including doctests, 397 app tests, 246 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build.
+- [ ] Pass exact-head CI, merge the focused change and verify the reviewed commit on remote main.
 
 ### Complete candidate-support performance merged
 
