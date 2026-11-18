@@ -40,6 +40,8 @@ mod wings;
 pub(super) struct PatternSearch<'a> {
     pub(super) verified_solution: Option<&'a Board>,
     pub(super) completion_probe_nodes: u32,
+    #[cfg(feature = "variants")]
+    pub(super) completion_support: Option<&'a [u128; 9]>,
     board: &'a Board,
     masks: &'a [u16; CELLS],
     positions: OnceCell<[u128; 9]>,
@@ -65,6 +67,8 @@ impl<'a> PatternSearch<'a> {
         Self {
             verified_solution: None,
             completion_probe_nodes: 0,
+            #[cfg(feature = "variants")]
+            completion_support: None,
             board,
             masks,
             positions: OnceCell::new(),

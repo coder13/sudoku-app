@@ -1059,10 +1059,18 @@ impl CompiledVariant {
                 self.solve(&position.board, &eliminations, COMPLETION_PROBE_NODES).ok()
             })
             .flatten();
+        let completion_support = (technique == Technique::NestedForcingNet)
+            .then(|| {
+                position.overlay.get().and_then(|overlay| {
+                    overlay.borrow().known_completion_support().copied()
+                })
+            })
+            .flatten();
         let search = DeductionSearch::with_verified_solution(
             &position.board, &position.masks, solution.as_ref(),
         )
-        .with_completion_probes(ALTERNATIVE_WITNESS_NODES);
+        .with_completion_probes(ALTERNATIVE_WITNESS_NODES)
+        .with_completion_support(completion_support.as_ref());
         for hint in search.hints(technique) {
             let swap_cells = if technique.requires_unique_solution() {
                 let cells = match &hint.evidence {

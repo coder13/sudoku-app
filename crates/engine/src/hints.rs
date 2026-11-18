@@ -1741,6 +1741,15 @@ impl<'a> DeductionSearch<'a> {
         self
     }
 
+    /// Reuse candidate witnesses checked against this board, masks and all
+    /// standard houses. Each bit certifies one positive/negative assumption;
+    /// the union does not certify simultaneous assignments or uniqueness.
+    #[cfg(feature = "variants")]
+    pub(crate) fn with_completion_support(mut self, support: Option<&'a [u128; 9]>) -> Self {
+        self.patterns.completion_support = support;
+        self
+    }
+
     pub(crate) fn first(&self, technique: Technique) -> Option<Deduction> {
         self.find(technique, |_| true)
     }

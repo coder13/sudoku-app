@@ -153,6 +153,8 @@ impl ForcingGraph {
         let mut witnesses = witnesses::Search::new(
             search.board, search.masks, search.verified_solution, search.completion_probe_nodes,
         );
+        #[cfg(feature = "variants")]
+        witnesses.seed(search.completion_support);
         for &id in &self.available {
             for assumption in [id * 2 + 1, id * 2] {
                 // Any compatible completion rules out a contradiction for this

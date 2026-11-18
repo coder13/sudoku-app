@@ -36,6 +36,22 @@ for (const file of ['combined-families', 'quadruple-clover', 'parity-big-eight',
 const coach = (await read('../tests/fixtures/nonconsecutive-coach.json')).examples[0]
 fixtures.push({ name: 'nc-white-dots', position: { puzzle: (await detectPuzzle(coach.code)).variant.puzzle } })
 fixtures.push({ name: 'archived-nc-stall', position: (await read('../tests/fixtures/nonconsecutive-locked.json')).position })
+const ai = { puzzle: { version: 1,
+  givens: '100007090030020008009600500005300900010080002600004000300000010041000007007000300' } }
+fixtures.push({ name: 'ai-escargot', position: ai })
+const aiSolution = await before({ type: 'variant', operation: 'solve', position: ai, maxNodes: 20_000 })
+assert.equal(typeof aiSolution, 'string')
+const aiProofs = await before({ type: 'variant', operation: 'hints', position: ai, techniqueOrder: ['nested-forcing-net'], limit: 0xffff_ffff })
+assert.equal(aiProofs.length, 12)
+const removal = aiProofs.flatMap(proof => proof.actions).find(action => 'eliminate' in action)?.eliminate
+assert.ok(removal)
+assert.notEqual(Number(aiSolution[removal.cell]), removal.digit)
+const eliminations = Array(81).fill(0)
+eliminations[removal.cell] = 1 << (removal.digit - 1)
+fixtures.push({ name: 'ai-escargot-removal', position: { ...ai, eliminations } })
+const entries = Array(81).fill('0'), firstEmpty = ai.puzzle.givens.indexOf('0')
+entries[firstEmpty] = aiSolution[firstEmpty]
+fixtures.push({ name: 'ai-escargot-placement', position: { ...ai, entries: entries.join('') } })
 // Keep earlier scoring-version comparisons reproducible while including the
 // complete Whispers family whenever the compared catalog supports it.
 if (detectors.includes('whispers-house-support')) {
@@ -55,8 +71,11 @@ for (const { name, position } of fixtures) {
   if (name === 'whispers-brain-zaps') for (const operation of ['analyze', 'solve']) {
     await compare({ type: 'variant', operation, position, maxNodes: 100_000 }, `${name}: completed ${operation}`)
   }
-  for (const technique of detectors) await compare({ type: 'variant', operation: 'hints', position,
-    techniqueOrder: [technique], limit: 0xffff_ffff }, `${name}: complete ${technique} proofs`)
+  for (const technique of detectors) {
+    const proofs = await compare({ type: 'variant', operation: 'hints', position,
+      techniqueOrder: [technique], limit: 0xffff_ffff }, `${name}: complete ${technique} proofs`)
+    if (name === 'ai-escargot' && technique === 'nested-forcing-net') assert.equal(proofs.length, 12)
+  }
   for (const order of [old.defaultOrder, techniqueOrder]) for (const operation of ['trace', 'rate']) {
     await compare({ type: 'variant', operation, position, techniqueOrder: order }, `${name}: retained ${operation}`)
   }

@@ -390,26 +390,39 @@ fn completion_pruning_keeps_all_twelve_nested_forcing_proofs_on_ai_escargot() {
     let compiled = VariantPuzzle::classic(board).compile().unwrap();
     let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
     let technique = VariantTechnique::Classic(Technique::NestedForcingNet);
-    let expected: Vec<_> = DeductionSearch::new(&position.board, &position.masks)
-        .hints(Technique::NestedForcingNet)
-        .into_iter()
-        .map(|hint| {
-            let mut actions = hint.actions;
-            actions.sort_unstable();
-            VariantDeduction {
-                technique,
-                actions,
-                evidence: VariantEvidence::Classic {
-                    proof: Box::new(hint.evidence),
-                    swap_cells: Vec::new(),
-                },
-            }
-        })
-        .collect();
+    let reference = |position: &ProofPosition<'_>| -> Vec<_> {
+        DeductionSearch::new(&position.board, &position.masks)
+            .hints(Technique::NestedForcingNet)
+            .into_iter()
+            .map(|hint| {
+                let mut actions = hint.actions;
+                actions.sort_unstable();
+                VariantDeduction {
+                    technique,
+                    actions,
+                    evidence: VariantEvidence::Classic {
+                        proof: Box::new(hint.evidence),
+                        swap_cells: Vec::new(),
+                    },
+                }
+            })
+            .collect()
+    };
+    let expected = reference(&position);
     assert_eq!(expected.len(), 12);
     let actual = compiled
         .deductions(&[0; CELLS], &[0; CELLS], technique)
         .unwrap();
+    assert_eq!(compiled.explain(&position, technique), actual);
+    assert!(
+        position
+            .overlay
+            .get()
+            .unwrap()
+            .borrow()
+            .known_completion_support()
+            .is_some()
+    );
     assert_eq!(
         actual, expected,
         "Pruning must preserve every action and its complete proof"
@@ -424,4 +437,74 @@ fn completion_pruning_keeps_all_twelve_nested_forcing_proofs_on_ai_escargot() {
             matches!(action, HintAction::Place(_))
         );
     }
+    let removal = actual
+        .iter()
+        .flat_map(|proof| &proof.actions)
+        .find_map(|action| {
+            if let HintAction::Eliminate(candidate) = action {
+                Some(*candidate)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    let mut removals = [0u16; CELLS];
+    removals[removal.cell] = digit_bit(removal.digit);
+    let mut entries = [0; CELLS];
+    let cell = board.iter().position(|&digit| digit == 0).unwrap();
+    entries[cell] = answer[cell];
+    for (entries, removals) in [([0; CELLS], removals), (entries, [0; CELLS])] {
+        let changed = compiled.proof_position(&entries, &removals).unwrap();
+        let expected = reference(&changed);
+        assert!(!expected.is_empty());
+        assert_eq!(
+            compiled.explain(&changed, technique),
+            expected,
+            "Edited positions retain every proof from the unpruned search"
+        );
+    }
+}
+
+#[cfg(feature = "wasm-api")]
+#[test]
+fn partial_geometric_witnesses_leave_uncovered_whispers_candidates_unproven() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/fixtures/whispers-brain-zaps.json"
+    ))
+    .unwrap();
+    let puzzle: VariantPuzzle = serde_json::from_value(fixture["puzzle"].clone()).unwrap();
+    let compiled = puzzle.compile().unwrap();
+    let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
+    assert!(!compiled.classic_search_is_empty(&position, Technique::NestedForcingNet));
+    let support = compiled
+        .overlay_search(&position)
+        .known_completion_support()
+        .copied()
+        .unwrap();
+    let mut covered = 0;
+    for (cell, &mask) in position.masks.iter().enumerate() {
+        for (digit, &sites) in support.iter().enumerate() {
+            if mask & (1 << digit) != 0 && sites & (1 << cell) != 0 {
+                covered += 1;
+            }
+        }
+    }
+    let total: u32 = position.masks.iter().map(|mask| mask.count_ones()).sum();
+    assert!(covered > 0 && covered < total);
+    assert!(
+        compiled
+            .explain(
+                &position,
+                VariantTechnique::Classic(Technique::NestedForcingNet)
+            )
+            .is_empty()
+    );
+    assert!(position.uniqueness.get().is_none());
+    assert!(
+        !compiled
+            .explain(&position, VariantTechnique::WhispersHouseSupport)
+            .is_empty()
+    );
+    let fresh = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
+    assert!(fresh.overlay.get().is_none());
 }

@@ -48,6 +48,7 @@ for (const { name, puzzle } of fixtures) {
   if (name === 'whispers') operations.push(...[
     'unique-rectangle-1', 'unique-loop', 'bug-plus-one', 'unique-rectangle-aic',
     'unique-rectangle-continuous-nice-loop', 'unique-rectangle-discontinuous-nice-loop',
+    'nested-forcing-net',
   ].map(id => `proof:${id}`))
   for (const operation of operations) {
     const technique = operation.startsWith('proof:') ? operation.slice(6) : undefined
