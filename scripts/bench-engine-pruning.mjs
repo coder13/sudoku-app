@@ -36,6 +36,8 @@ for (const [name, file] of [['palindrome', 'palindrome-clover'], ['palindrome-kn
 }
 if (selected.includes('palindrome-whispers')) fixtures.push({ name: 'palindrome-whispers',
   puzzle: (await detectPuzzle((await load('palindrome-coach')).examples[0].code)).variant.puzzle })
+if (selected.includes('inequality-palindrome14')) fixtures.push({ name: 'inequality-palindrome14',
+  puzzle: (await detectPuzzle((await load('palindrome-coach')).examples[1].code)).variant.puzzle })
 for (const name of selected) assert.ok(fixtures.some(fixture => fixture.name === name), `Unknown fixture ${name}`)
 const summary = values => {
   const sorted = values.toSorted((a, b) => a - b)
@@ -73,7 +75,7 @@ for (const { name, puzzle } of fixtures) {
   ].map(id => `proof:${id}`))
   for (const operation of operations) {
     const technique = operation.startsWith('proof:') ? operation.slice(6) : undefined
-    const options = pair.map(engine => ({ type: 'variant', position: technique ? proofPosition : { puzzle }, maxNodes: name === 'whispers' ? 100_000 : name === 'palindrome-whispers' ? 1_000_000 : 20_000,
+    const options = pair.map(engine => ({ type: 'variant', position: technique ? proofPosition : { puzzle }, maxNodes: name === 'whispers' ? 100_000 : ['palindrome-whispers', 'inequality-palindrome14'].includes(name) ? 1_000_000 : 20_000,
       operation: technique || operation.endsWith('hints') || operation === 'exhaustive' ? 'hints' : operation.endsWith('rate') ? 'rate' : operation,
       techniqueOrder: technique ? [technique] : operation === 'native-rate' ? engine.nativeOrder : engine.appOrder,
       ...(technique && { limit: 0xffff_ffff }),

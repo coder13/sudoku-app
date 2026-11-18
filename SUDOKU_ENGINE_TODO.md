@@ -65,9 +65,22 @@ The next family remains open in [issue 47](https://github.com/coder13/sudoku-app
 - [x] Identify the exact-search limit at both 20,000 and 1,000,000 nodes. Track a separate measured repair in [issue 139](https://github.com/coder13/sudoku-app/issues/139).
 - [x] Establish a larger-budget baseline. Two million nodes still exhaust. Ten million nodes prove uniqueness in about 6.8 seconds and find the published completion in about 5.7 seconds. These are single local observations.
 - [x] Isolate house Hidden Singles in the independent counter. Without them, 100,000 calls find no completion. With them, 52,244 calls prove uniqueness. Keep those counts separate from native node accounting.
-- [ ] Finish published clue review and the complete app flow before integrating inequalities. Preserve directed endpoints under every grid transformation.
+- [x] Inspect the original FzzD published image. Match all seven sign directions, five white dots and three Palindrome paths to the preserved export.
+- [x] Finish the complete app flow before integrating inequalities. Preserve directed endpoints under every grid transformation. Require CI on the reviewed family PR before merging.
 - [x] Make sparse mixed-rule validation practical while keeping honest search-limit outcomes in [issue 139](https://github.com/coder13/sudoku-app/issues/139). Merge the measured repair through [PR 143](https://github.com/coder13/sudoku-app/pull/143).
 - [x] Test exact-search house propagation. Preserve public candidate and logical-profile behavior. Check boundary budgets, ambiguous completions and seeded generation before selecting the implementation.
+
+### Inequality app integration in progress
+
+The isolated worktree is `codex/sudoku-inequality-integration`, based on main `b60cd52`. [Inequality issue](https://github.com/coder13/sudoku-app/issues/47)
+
+- [x] Decode ordered Coach `greaterLess` pairs without dropping companion rules. Validate distinct endpoints and reject unknown semantics. Preserve direction through all eight grid transformations.
+- [x] Draw oriented signs with contrast halos and accessible smaller/larger cell labels. Show connectors for distant endpoints and keep dots visible on a shared pair. Check actual component paths at desktop and mobile sizes against the published diagram.
+- [x] Add strict directed candidate cleanup, note cleanup and conflict checks. Cover all 81 digit pairs in both directions, boundary digits, unrelated cells, undo and redo.
+- [x] Verify the full FzzD import, native completion, partial walkthrough, independent inequality proof replay, multiple hints, pages, Finder counts, all three practice exercises, checked answers and actual save/reload.
+- [x] Pass 423 app tests, 258 Wasm contracts, TypeScript and the production/offline build. Preserve the exact released engine artifact. Check 16,384 fixed-clue family selections: 12,288 compatible samples pass and 4,096 contradictory samples reject. These counts do not prove arbitrary family combinations feasible.
+- [x] Record app and engine request costs, provenance and remaining limits. Preview uses 909.715/913.208 ms and ten hints 5.770/6.007 ms through the in-process app transport. Preserve the released Wasm hash and record the 577-byte client JavaScript gzip increase. [Methods and limits](tests/fixtures/README.md#inequality-app-integration)
+- [ ] Pass CI on the reviewed head and merge the app-ready family separately. Keep New puzzle recipes conditional on calibration and keep the partial 98-point FzzD logical path explicit.
 
 ### Sparse mixed-rule exact search merged
 

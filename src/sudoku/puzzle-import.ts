@@ -183,6 +183,14 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
       else if (constraint.type === 'antiKing') rules.push({ type: 'anti-king' })
       else if (constraint.type === 'nonconsecutive') rules.push({ type: 'non-consecutive' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })
+    } else if (constraint.type === 'greaterLess') {
+      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no inequality signs.')
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid inequality sign.')
+        }
+        rules.push({ type: 'inequality', less: segment.cells[0], greater: segment.cells[1] })
+      }
     } else if (constraint.type === 'difference' || constraint.type === 'ratio') {
       const kind = constraint.type
       const settings = constraint.settings
