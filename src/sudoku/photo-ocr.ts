@@ -6,6 +6,7 @@ import { photoCell } from './photo-image'
 
 const SINGLE_DIGIT = /^[1-9]$/
 const LINE_RETRY = { rotateAuto: false, tessedit_pageseg_mode: PSM.SINGLE_LINE }
+const RAW_RETRY = { rotateAuto: false, tessedit_pageseg_mode: PSM.RAW_LINE }
 
 async function openWorker(signal: AbortSignal): Promise<Worker> {
   signal.throwIfAborted()
@@ -57,10 +58,20 @@ export async function readPuzzlePhoto(pixels: Uint8ClampedArray, signal: AbortSi
       signal.throwIfAborted()
       if (!cell.canvas) continue
       let { data } = await worker.recognize(cell.canvas)
-      if (!SINGLE_DIGIT.test(data.text.trim())) {
+      const first = data.text.trim()
+      if (!SINGLE_DIGIT.test(first) || data.confidence < 85) {
         signal.throwIfAborted()
-        data = (await worker.recognize(cell.alternate(), LINE_RETRY)).data
-        review.add(index)
+        const alternative = (await worker.recognize(cell.alternate(), LINE_RETRY)).data
+        const second = alternative.text.trim()
+        if (second !== first) review.add(index)
+        if (SINGLE_DIGIT.test(second) && (!SINGLE_DIGIT.test(first) || alternative.confidence > data.confidence)) data = alternative
+      }
+      if (!SINGLE_DIGIT.test(data.text.trim()) || data.confidence < 76) {
+        signal.throwIfAborted()
+        const alternative = (await worker.recognize(cell.grayscale(), RAW_RETRY)).data
+        const digit = alternative.text.trim()
+        if (digit !== data.text.trim()) review.add(index)
+        if (SINGLE_DIGIT.test(digit) && (!SINGLE_DIGIT.test(data.text.trim()) || alternative.confidence > data.confidence)) data = alternative
       }
       const digit = data.text.trim()
       if (SINGLE_DIGIT.test(digit)) givens[index] = digit

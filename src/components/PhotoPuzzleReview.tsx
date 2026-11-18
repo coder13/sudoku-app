@@ -1,43 +1,11 @@
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { conflictsOf } from '../sudoku/game'
-import { MIN_GRID_SIZE, type GridCrop } from '../sudoku/photo-grid'
+import type { PhotoCrop } from '../sudoku/photo-crop'
 import { cropPuzzlePhoto, openPuzzlePhoto } from '../sudoku/photo-image'
+import { PhotoCropEditor } from './PhotoCropEditor'
 
 type Photo = Awaited<ReturnType<typeof openPuzzlePhoto>>
-type Review = { givens: string[]; review: Set<number>; url: string }
-const CROP_EDGES = ['left', 'top', 'right', 'bottom'] as const
-
-function CropControls({ photo, crop, setCrop, disabled }: {
-  photo: Photo; crop: GridCrop; setCrop: (crop: GridCrop) => void; disabled: boolean
-}) {
-  const { width, height } = photo.canvas
-  const limits = {
-    left: [0, crop.right - MIN_GRID_SIZE],
-    top: [0, crop.bottom - MIN_GRID_SIZE],
-    right: [crop.left + MIN_GRID_SIZE, width],
-    bottom: [crop.top + MIN_GRID_SIZE, height],
-  }
-  return <>
-    <div className="photo-crop-image">
-      <img src={photo.url} width={width} height={height} alt="Selected puzzle image" />
-      <div className="photo-crop-frame" aria-hidden="true" style={{
-        left: `${crop.left / width * 100}%`, top: `${crop.top / height * 100}%`,
-        right: `${(width - crop.right) / width * 100}%`, bottom: `${(height - crop.bottom) / height * 100}%`,
-      }} />
-    </div>
-    <details className="photo-crop-controls" open={!photo.detected || undefined}>
-      <summary>Adjust crop</summary>
-      <div className="photo-crop-edges">
-        {CROP_EDGES.map(edge => (
-          <label key={edge}>{edge} edge
-            <input type="range" min={limits[edge][0]} max={limits[edge][1]} value={crop[edge]}
-              disabled={disabled} onChange={event => setCrop({ ...crop, [edge]: event.target.valueAsNumber })} />
-          </label>
-        ))}
-      </div>
-    </details>
-  </>
-}
+type Review = { givens: string[]; review: Set<number>; url: string; crop: PhotoCrop }
 
 export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, checkError, visible }: {
   image: Blob
@@ -49,56 +17,86 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
   visible: boolean
 }) {
   const [photo, setPhoto] = useState<Photo>()
-  const [crop, setCrop] = useState<GridCrop>()
+  const [crop, setCrop] = useState<PhotoCrop>()
   const [result, setResult] = useState<Review>()
+  const [adjusting, setAdjusting] = useState(false)
   const [error, setError] = useState('')
   const [reading, setReading] = useState(false)
   const [activeCell, setActiveCell] = useState(0)
   const pending = useRef<AbortController | null>(null)
   const instructions = useRef<HTMLParagraphElement>(null)
   const keyboardHelp = useId()
-  const hasPhoto = Boolean(photo)
-  const reviewing = Boolean(result)
+  const reviewing = adjusting || reading ? undefined : result
+  const editingCrop = reviewing || reading || !photo ? undefined : crop
 
-  useEffect(() => {
-    let closed = false
-    void openPuzzlePhoto(image).then(opened => {
-      if (closed) return
-      setPhoto(opened)
-      setCrop(opened.crop)
-    }, reason => {
-      if (!closed) setError(reason instanceof Error ? reason.message : 'The image could not be opened.')
-    })
-    return () => {
-      closed = true
-      pending.current?.abort()
-    }
-  }, [image])
+  const cancelScan = useCallback(() => {
+    const work = pending.current
+    pending.current = null
+    work?.abort()
+  }, [])
 
-  useEffect(() => {
-    if (visible && hasPhoto) instructions.current?.focus()
-  }, [visible, hasPhoto, reviewing])
-
-  async function scan() {
-    if (!photo || !crop || pending.current) return
+  const scan = useCallback(async (source: Photo, selection: PhotoCrop, automatic = false) => {
+    if (pending.current) return
     const work = new AbortController()
     pending.current = work
     setError('')
     setReading(true)
     try {
-      const { canvas, pixels } = cropPuzzlePhoto(photo.canvas, crop)
       const { readPuzzlePhoto } = await import('../sudoku/photo-ocr')
+      work.signal.throwIfAborted()
+      const { canvas, pixels } = cropPuzzlePhoto(source.canvas, selection)
       const { givens, review } = await readPuzzlePhoto(pixels, work.signal)
       if (!work.signal.aborted) {
+        if (automatic && givens.filter(digit => digit !== '0').length < 10) {
+          setError('Only a few digits came through. Check the crop and try again.')
+          return
+        }
         setActiveCell(review.values().next().value ?? 0)
-        setResult({ givens, review, url: canvas.toDataURL('image/jpeg', 0.93) })
+        setResult({ givens, review, url: canvas.toDataURL('image/jpeg', 0.93), crop: selection })
+        setAdjusting(false)
       }
     } catch (reason) {
       if (!work.signal.aborted) setError(reason instanceof Error ? reason.message : 'The image could not be read.')
     } finally {
-      pending.current = null
-      if (!work.signal.aborted) setReading(false)
+      if (pending.current === work) {
+        pending.current = null
+        setReading(false)
+      }
     }
+  }, [])
+
+  useEffect(() => {
+    const open = new AbortController()
+    void openPuzzlePhoto(image, open.signal).then(photo => {
+      if (open.signal.aborted) return
+      setPhoto(photo)
+      setCrop(photo.crop)
+      if (photo.detected) void scan(photo, photo.detected, true)
+    }, reason => {
+      if (!open.signal.aborted) setError(reason instanceof Error ? reason.message : 'The image could not be opened.')
+    })
+    return () => {
+      open.abort()
+      cancelScan()
+    }
+  }, [image, scan, cancelScan])
+
+  const showInstructions = Boolean(reviewing || editingCrop)
+  const inReview = Boolean(reviewing)
+  useEffect(() => {
+    if (visible && showInstructions) instructions.current?.focus()
+  }, [visible, showInstructions, inReview])
+
+  function back() {
+    if (!result) {
+      onBack()
+      return
+    }
+    cancelScan()
+    setCrop(result.crop)
+    setError('')
+    setReading(false)
+    setAdjusting(false)
   }
 
   function changeCell(index: number, digit: string) {
@@ -124,20 +122,20 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
     event.currentTarget.parentElement?.querySelector<HTMLInputElement>(`[data-cell="${next}"]`)?.focus()
   }
 
-  const conflicts = result && conflictsOf(result.givens.join(''))
+  const conflicts = reviewing && conflictsOf(reviewing.givens.join(''))
   return <section className="photo-import" hidden={!visible}>
-    {result ? <>
+    {reviewing ? <>
       <p ref={instructions} tabIndex={-1}>Compare the grid with the image and correct any digits. Check highlighted cells
         and clear any player-placed digits or candidates. If the image shows extra rules, use a puzzle code or link.</p>
       <p className="sr-only" id={keyboardHelp}>Use the arrow keys to move between cells.</p>
       <div className="photo-review">
-        <img src={result.url} alt="Cropped puzzle image" width={576} height={576} />
+        <img src={reviewing.url} alt="Cropped puzzle image" width={576} height={576} />
         <div className="photo-edit-grid" role="group" aria-label="Edit Classic Sudoku givens" aria-describedby={keyboardHelp}>
-          {result.givens.map((digit, cell) => (
+          {reviewing.givens.map((digit, cell) => (
             <input key={cell} type="text" inputMode="numeric" autoComplete="off"
-              aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}${result.review.has(cell) ? ', needs review' : ''}`}
+              aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}${reviewing.review.has(cell) ? ', needs review' : ''}`}
               aria-invalid={conflicts?.has(cell) || undefined}
-              data-review={result.review.has(cell) || undefined} data-cell={cell} tabIndex={activeCell === cell ? 0 : -1}
+              data-review={reviewing.review.has(cell) || undefined} data-cell={cell} tabIndex={activeCell === cell ? 0 : -1}
               disabled={checking} value={digit === '0' ? '' : digit}
               onFocus={event => { setActiveCell(cell); event.currentTarget.select() }}
               onKeyDown={event => moveCell(event, cell)}
@@ -148,22 +146,23 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
       {checkError && <p className="form-error" role="alert">{checkError}</p>}
       <div className="dialog-actions photo-actions">
         <button type="button" className="button secondary" disabled={checking}
-          onClick={() => { setResult(undefined); onEdit() }}>Change crop</button>
-        <button type="button" className="button primary" disabled={checking || !result.givens.some(digit => digit !== '0')}
-          onClick={() => onCheck(result.givens.join(''))}>{checking ? 'Checking puzzle…' : 'Preview puzzle'}</button>
+          onClick={() => { setAdjusting(true); onEdit() }}>Adjust crop</button>
+        <button type="button" className="button primary" disabled={checking || !reviewing.givens.some(digit => digit !== '0')}
+          onClick={() => onCheck(reviewing.givens.join(''))}>{checking ? 'Checking puzzle…' : 'Preview puzzle'}</button>
       </div>
     </> : <>
-      {photo && crop && <>
-        <p ref={instructions} tabIndex={-1}>{photo.detected ? 'Make sure the crop matches the full 9 × 9 grid.'
-          : 'A grid was not detected. Adjust the crop around the full 9 × 9 grid or try a clearer image.'}</p>
-        <CropControls photo={photo} crop={crop} setCrop={setCrop} disabled={reading} />
+      {editingCrop && photo && <>
+        <p ref={instructions} tabIndex={-1}>Drag the frame to move it. Line up the four corners with the full 9 × 9 grid.</p>
+        <PhotoCropEditor url={photo.url} width={photo.canvas.width} height={photo.canvas.height}
+          crop={editingCrop} onChange={setCrop} />
       </>}
-      {!photo && !error && <p role="status">Opening image…</p>}
+      {!photo && !error && <p role="status">Finding the grid…</p>}
       {reading && <p role="status">Reading digits…</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="dialog-actions photo-actions">
-        <button type="button" className="button secondary" onClick={onBack}>Choose another source</button>
-        {photo && <button type="button" className="button primary" onClick={() => void scan()} disabled={reading}>Read digits</button>}
+        <button type="button" className="button secondary" onClick={back}>{result ? 'Back to review' : 'Choose another source'}</button>
+        {editingCrop && photo && <button type="button" className="button primary"
+          onClick={() => void scan(photo, editingCrop)}>Read digits</button>}
       </div>
     </>}
   </section>
