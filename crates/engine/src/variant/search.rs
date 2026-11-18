@@ -19,6 +19,13 @@ pub(super) struct SearchPosition {
     pub masks: [u16; CELLS],
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum SearchMode {
+    PropagateHouses,
+    // Keep calibrated sampling and bounded proof eligibility stable.
+    PreserveTraversal,
+}
+
 impl CompiledVariant {
     /// Combine the givens and placed digits and compute legal candidate masks.
     ///
@@ -37,18 +44,51 @@ impl CompiledVariant {
     ///
     /// Returns a direct conflict as [`Analysis::Conflict`]. Invalid removal masks
     /// are reported separately. The node budget includes the starting position.
+    /// Search-only house propagation can complete counts within budgets that
+    /// previously exhausted. It does not change [`Self::candidates`].
     pub fn analyze(
         &self,
         entries: &Board,
         eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Analysis, VariantPositionError> {
+        self.analyze_with_mode(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PropagateHouses,
+        )
+    }
+
+    // Earlier uniqueness success can trigger expensive empty graph searches.
+    // Preserve this computational gate while public exact checks grow stronger.
+    pub(super) fn analyze_for_proof(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Analysis, VariantPositionError> {
+        self.analyze_with_mode(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PreserveTraversal,
+        )
+    }
+
+    fn analyze_with_mode(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
         mut max_nodes: u32,
+        mode: SearchMode,
     ) -> Result<Analysis, VariantPositionError> {
         let position = match self.prepare(entries, eliminations) {
             Ok(position) => position,
             Err(VariantPositionError::Puzzle(analysis)) => return Ok(analysis),
             Err(error) => return Err(error),
         };
-        let count = self.search(position, 2, &mut max_nodes, &mut None, &mut digits);
+        let count = self.search(position, 2, &mut max_nodes, &mut None, mode, &mut digits);
         Ok(match count {
             None => Analysis::SearchLimit,
             Some(0) => Analysis::Unsolvable,
@@ -67,13 +107,21 @@ impl CompiledVariant {
         eliminations: &[u16; CELLS],
         max_nodes: u32,
     ) -> Result<Board, VariantPositionError> {
-        self.complete(entries, eliminations, max_nodes, digits)
+        self.complete(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PropagateHouses,
+            digits,
+        )
     }
 
     /// Find one rule-compliant completion by trying candidate digits in seeded order.
     ///
     /// The same position, seed, and node limit give the same result. This can
     /// sample solutions for generation. It does not test uniqueness.
+    /// Sampling preserves its established traversal rather than using the
+    /// additional house propagation of verification and deterministic solving.
     pub fn solve_seeded(
         &self,
         entries: &Board,
@@ -82,16 +130,22 @@ impl CompiledVariant {
         seed: u32,
     ) -> Result<Board, VariantPositionError> {
         let mut random = Random::from_seed(seed);
-        self.complete(entries, eliminations, max_nodes, |mask| {
-            // Each recursive call owns its digit order.
-            let mut order = [0; 9];
-            let len = mask.count_ones() as usize;
-            for (slot, digit) in order.iter_mut().zip(digits(mask)) {
-                *slot = digit;
-            }
-            random.shuffle(&mut order[..len]);
-            order.into_iter().take(len)
-        })
+        self.complete(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PreserveTraversal,
+            |mask| {
+                // Each recursive call owns its digit order.
+                let mut order = [0; 9];
+                let len = mask.count_ones() as usize;
+                for (slot, digit) in order.iter_mut().zip(digits(mask)) {
+                    *slot = digit;
+                }
+                random.shuffle(&mut order[..len]);
+                order.into_iter().take(len)
+            },
+        )
     }
 
     fn complete<D: Iterator<Item = u8>>(
@@ -99,11 +153,12 @@ impl CompiledVariant {
         entries: &Board,
         eliminations: &[u16; CELLS],
         mut max_nodes: u32,
+        mode: SearchMode,
         mut order: impl FnMut(u16) -> D,
     ) -> Result<Board, VariantPositionError> {
         let position = self.prepare(entries, eliminations)?;
         let mut solution = None;
-        match self.search(position, 1, &mut max_nodes, &mut solution, &mut order) {
+        match self.search(position, 1, &mut max_nodes, &mut solution, mode, &mut order) {
             None => Err(VariantPositionError::Puzzle(Analysis::SearchLimit)),
             Some(_) => solution.ok_or(VariantPositionError::Puzzle(Analysis::Unsolvable)),
         }
@@ -199,13 +254,22 @@ impl CompiledVariant {
 
     fn search<D: Iterator<Item = u8>>(
         &self,
-        position: SearchPosition,
+        mut position: SearchPosition,
         limit: u8,
         nodes: &mut u32,
         solution: &mut Option<Board>,
+        mode: SearchMode,
         order: &mut impl FnMut(u16) -> D,
     ) -> Option<u8> {
         *nodes = nodes.checked_sub(1)?;
+        // MRV already selects a forced cell next. Place it before repeating
+        // the complete house scan, which is useful at genuine branch points.
+        if mode == SearchMode::PropagateHouses
+            && !position.masks.iter().any(|mask| mask.is_power_of_two())
+            && !self.restrict_search_houses(&mut position)
+        {
+            return Some(0);
+        }
         let next = position
             .board
             .iter()
@@ -226,12 +290,62 @@ impl CompiledVariant {
                 child.masks[peer] &= !bit;
             }
             self.restrict_domains(&mut child);
-            count += self.search(child, limit - count, nodes, solution, order)?;
+            count += self.search(child, limit - count, nodes, solution, mode, order)?;
             if count == limit {
                 break;
             }
         }
         Some(count)
+    }
+
+    // Exact search can use forced house domains without changing public
+    // candidates or deciding which human techniques the logical solver uses.
+    fn restrict_search_houses(&self, position: &mut SearchPosition) -> bool {
+        loop {
+            if (0..CELLS).any(|cell| position.board[cell] == 0 && position.masks[cell] == 0) {
+                return false;
+            }
+            let mut changed = false;
+            for &index in &self.search_houses {
+                let house = &self.houses[index];
+                let (mut placed, mut supported, mut repeated) = (0, 0, 0);
+                for &cell in &house.cells {
+                    let digit = position.board[cell];
+                    if digit != 0 {
+                        placed |= digit_bit(digit);
+                    }
+                    let mask = position.masks[cell];
+                    repeated |= supported & mask;
+                    supported |= mask;
+                }
+                let missing = DIGITS & !placed;
+                if missing & !supported != 0 {
+                    return false;
+                }
+                let singles = missing & !repeated;
+                if singles == 0 {
+                    continue;
+                }
+                for &cell in &house.cells {
+                    let forced = position.masks[cell] & singles;
+                    if forced != 0 {
+                        // Two missing digits cannot both occupy this one cell.
+                        if !forced.is_power_of_two() {
+                            return false;
+                        }
+                        if position.masks[cell] == forced {
+                            continue;
+                        }
+                        position.masks[cell] = forced;
+                        changed = true;
+                    }
+                }
+            }
+            if !changed {
+                return true;
+            }
+            self.restrict_domains(position);
+        }
     }
 
     fn restrict_domains(&self, position: &mut SearchPosition) {
@@ -288,6 +402,39 @@ impl CompiledVariant {
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod exact_house_tests {
+    use super::*;
+    use crate::{PuzzleRule, VariantPuzzle};
+
+    #[test]
+    fn retained_regions_do_not_reintroduce_removed_distinctness() {
+        let solution = std::array::from_fn(|cell| ((cell / 9 + cell % 9) % 9 + 1) as u8);
+        let mut definition = VariantPuzzle::classic(solution);
+        // Region 1 contributes 1+2, and region 6 contributes 3. The Latin
+        // completion respects this sum line but repeats digits in its boxes.
+        definition.rules.push(PuzzleRule::RegionSum {
+            cells: vec![0, 1, 35],
+            group_by_region: false,
+        });
+        let reduced = definition.compile_with_regions(false).unwrap();
+        assert_eq!(reduced.houses.len(), 27);
+        assert_eq!(reduced.search_houses.len(), 18);
+        assert_eq!(
+            reduced.analyze(&[0; CELLS], &[0; CELLS], 1),
+            Ok(Analysis::Unique)
+        );
+        assert_eq!(reduced.solve(&[0; CELLS], &[0; CELLS], 1), Ok(solution));
+        assert_eq!(
+            definition
+                .compile()
+                .unwrap()
+                .analyze(&[0; CELLS], &[0; CELLS], 1),
+            Ok(Analysis::Conflict)
+        );
     }
 }
 

@@ -73,6 +73,10 @@ fn overlay_benchmark() {
 }
 
 fn main() {
+    if std::env::args().any(|arg| arg == "--exact-search") {
+        exact_search_benchmark();
+        return;
+    }
     if std::env::args().any(|arg| arg == "--pattern-overlay") {
         overlay_benchmark();
         return;
@@ -155,4 +159,40 @@ fn main() {
             matches
         );
     }
+}
+
+fn exact_search_benchmark() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/inequality-palindrome14.json"
+    ))
+    .unwrap();
+    let puzzle: VariantPuzzle = serde_json::from_value(fixture["puzzle"].clone()).unwrap();
+    let expected = sudoku_app_engine::parse_givens(fixture["solution"].as_str().unwrap()).unwrap();
+    let compiled = puzzle.compile().unwrap();
+    let empty = [0; 81];
+    let removed = [0; 81];
+    let budget = 1_000_000;
+    assert_eq!(
+        compiled.analyze(&empty, &removed, budget),
+        Ok(Analysis::Unique)
+    );
+    assert_eq!(compiled.solve(&empty, &removed, budget), Ok(expected));
+    println!(
+        "Native FzzD, {} {}, 5 warmups / {SAMPLES} samples; median/p95 ms.",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+    println!("compile {}", sample(|| puzzle.compile().unwrap()));
+    println!(
+        "prepared candidates {}",
+        sample(|| compiled.candidates(&empty, &removed).unwrap())
+    );
+    println!(
+        "exact analysis {}",
+        sample(|| compiled.analyze(&empty, &removed, budget).unwrap())
+    );
+    println!(
+        "exact solve {}",
+        sample(|| compiled.solve(&empty, &removed, budget).unwrap())
+    );
 }

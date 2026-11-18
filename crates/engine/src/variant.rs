@@ -493,6 +493,7 @@ impl VariantPuzzle {
             classic_boxes: matches!(self.regions, RegionLayout::Boxes),
             houses: Vec::new(),
             house_masks: Vec::new(),
+            search_houses: Vec::new(),
             memberships: std::array::from_fn(|_| Vec::new()),
             peers: [0; CELLS],
             cages: Vec::new(),
@@ -577,6 +578,17 @@ impl VariantPuzzle {
             }
         }
         pairs.finish(&mut compiled);
+        // Region geometry can remain available for sum lines after a generation
+        // dependency check removes its distinctness rule. Propagate only houses
+        // whose cells are actually pairwise excluded by the compiled topology.
+        compiled.search_houses = compiled.house_masks.iter().enumerate()
+            .filter_map(|(index, &mask)| {
+                cells_in(mask).all(|cell| {
+                    let others = mask & !(1u128 << cell);
+                    compiled.peers[cell] & others == others
+                }).then_some(index)
+            })
+            .collect();
         compiled.extra_rule_cells = compiled.house_masks[27..]
             .iter()
             .copied()
@@ -712,6 +724,7 @@ pub struct CompiledVariant {
     classic_boxes: bool,
     houses: Vec<VariantHouse>,
     house_masks: Vec<u128>,
+    search_houses: Vec<usize>,
     memberships: [Vec<usize>; CELLS],
     peers: [u128; CELLS],
     cages: Vec<CompiledCage>,

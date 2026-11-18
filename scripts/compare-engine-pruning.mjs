@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -82,15 +82,49 @@ if (options.includes('--palindrome-trace')) {
     }
   }
 }
-let comparisons = 0, positive = 0
+if (options.includes('--exact-houses')) fixtures.push({ name: 'inequality-palindrome14', position: { puzzle: (await read('../tests/fixtures/inequality-palindrome14.json')).puzzle } })
+let comparisons = 0, positive = 0, improvedBudgets = 0, alternativeCompletions = 0
+const exhausted = result => result === 'search-limit' || result?.engineError === 'search-limit'
 async function compare(request, label) {
   const expected = await before(request), actual = await after(request)
+  if (options.includes('--exact-houses') && request.type === 'variant' && request.seed === undefined && ['analyze', 'solve'].includes(request.operation) && JSON.stringify(actual) !== JSON.stringify(expected)) {
+    assert.ok(!exhausted(actual), `${label}: an improved search must not lose a completed result`)
+    const reference = await before({ ...request, maxNodes: 10_000_000 })
+    if (request.operation === 'analyze') {
+      assert.ok(exhausted(expected), `${label}: complete solution counts cannot change`)
+      assert.deepEqual(actual, reference, `${label}: larger-budget baseline`)
+    } else {
+      assert.match(actual, /^[1-9]{81}$/, `${label}: complete grid`)
+      const { puzzle, entries, eliminations } = request.position
+      for (let cell = 0; cell < 81; cell++) {
+        if (entries?.[cell] && entries[cell] !== '0') assert.equal(actual[cell], entries[cell])
+        if (puzzle.givens[cell] === '0' && (!entries?.[cell] || entries[cell] === '0')) {
+          assert.equal((eliminations?.[cell] ?? 0) & (1 << (Number(actual[cell]) - 1)), 0)
+        }
+      }
+      assert.equal(await before({ type: 'variant', operation: 'analyze', position: { puzzle, entries: actual }, maxNodes: 1 }), 'unique', `${label}: original engine validates every completed rule`)
+      if (actual !== reference) {
+        assert.equal(await before({ type: 'variant', operation: 'analyze', position: request.position, maxNodes: 10_000_000 }), 'multiple', `${label}: different completions require ambiguity`)
+      }
+    }
+    if (exhausted(expected)) improvedBudgets++
+    else alternativeCompletions++
+    comparisons++
+    console.log(`${label}: verified ${exhausted(expected) ? 'improved budget outcome' : 'alternative valid completion'}`)
+    return actual
+  }
   assert.deepEqual(actual, expected, label)
   comparisons++
   return actual
 }
 for (const { name, position } of fixtures) {
   for (const operation of ['candidates', 'analyze', 'solve']) await compare({ type: 'variant', operation, position, maxNodes: 20_000 }, `${name}: ${operation}`)
+  if (options.includes('--exact-houses')) {
+    for (const seed of [17, 41]) await compare({ type: 'variant', operation: 'solve', position, seed, maxNodes: 20_000 }, `${name}: retained seeded completion ${seed}`)
+    if (name === 'inequality-palindrome14') for (const operation of ['analyze', 'solve']) {
+      await compare({ type: 'variant', operation, position, maxNodes: 1_000_000 }, `${name}: default-budget ${operation}`)
+    }
+  }
   if (name === 'whispers-brain-zaps') for (const operation of ['analyze', 'solve']) {
     await compare({ type: 'variant', operation, position, maxNodes: 100_000 }, `${name}: completed ${operation}`)
   }
@@ -132,7 +166,9 @@ for (const technique of detectors) {
     positive++
   }
 }
-console.log(`${comparisons} complete responses match on ${fixtures.length} corpus positions and ${positive} positive practice positions; ${detectors.length} detector IDs, unchanged catalogs/scoring and every hint page.`)
+console.log(options.includes('--exact-houses')
+  ? `${comparisons} responses checked: ${comparisons - improvedBudgets - alternativeCompletions} match exactly, ${improvedBudgets} verified budget improvements, ${alternativeCompletions} validated alternative completions. ${fixtures.length} corpus positions, ${positive} positive practice positions, ${detectors.length} detector IDs and every hint page.`
+  : `${comparisons} complete responses match on ${fixtures.length} corpus positions and ${positive} positive practice positions; ${detectors.length} detector IDs, unchanged catalogs/scoring and every hint page.`)
 
 if (options.includes('--classic-tridagon')) {
   const start = comparisons
