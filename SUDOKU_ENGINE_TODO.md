@@ -35,6 +35,16 @@ The Wasm audit now measures candidates, uniqueness verification, exact solving, 
 
 The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
+### Palindrome source audit
+
+The next family remains open in [issue 49](https://github.com/coder13/sudoku-app/issues/49). These checks use the engine merged through PR 131. App integration remains unfinished.
+
+- [x] Render and inspect Clover's Palindrome and Newman's Anti-Knight Palindrome puzzle and completion PDFs. Independently prove unique completions and multiple completions after removing Palindrome. Both native default logical profiles complete, with six and ten opening choices.
+- [x] Retrieve unmodified Coach `FgZb` and `FzzD` exports. Preserve their complete companion-rule inventories. Independently verify the one-given Whispers/Palindrome completion and its Palindrome dependency. Its native default profile still stalls, and its 20,000-node exact check reaches the budget limit.
+- [x] Audit the versioned source compiler. Record connected-segment grouping and insertion-ordered cell deduplication before Palindrome compilation. Verify the Greater/Less pair direction against the published completion.
+- [ ] Commit source-linked regression fixtures and complete Palindrome import, visible clues, accessible rules, candidates, conflicts, save/reload, sharing, hints, Finder and walkthroughs.
+- [ ] Check original drawing geometry separately from normalized logical cells. Complete app-order proof replay, combined-rule regressions and the performance audit before a focused merge.
+
 ### Non-Consecutive integration merged
 
 This stage reached main at `8439f6d` through [PR 112](https://github.com/coder13/sudoku-app/pull/112). The reviewed worktree remains available on `codex/sudoku-nonconsecutive-integration`. [Non-Consecutive issue](https://github.com/coder13/sudoku-app/issues/44)
@@ -100,11 +110,11 @@ This pass reached main at `d9e4ee9` through [PR 128](https://github.com/coder13/
 - [x] Measure paired ordinary/exhaustive hints, selected techniques, retained fixtures, memory and every package profile. Keep eight Whispers choices and 31 Quadruple choices. App Wasm saves 2,980 gzip bytes. Record the large Whispers timing tails and slower native-rating samples. [Methods and limits](tests/fixtures/README.md#shared-partial-geometric-witnesses)
 - [x] Pass 298 native tests including doctests, 397 app tests, 245 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build. Recheck app integration with main's puzzle-switching changes from [PR 127](https://github.com/coder13/sudoku-app/pull/127).
 - [x] Pass CI on reviewed head `bc1a01f`, merge through [PR 128](https://github.com/coder13/sudoku-app/pull/128) and verify the reviewed optimization and PR 127 app work on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44254728829)
-- [x] Evaluate checked grid/digit symmetries for bounded candidate support in [issue 129](https://github.com/coder13/sudoku-app/issues/129). Check every transformed grid against the current masks, placements and actual geometric premises before accepting support. [Implementation and validation](#checked-geometric-symmetries)
+- [x] Evaluate checked grid/digit symmetries for bounded candidate support in [issue 129](https://github.com/coder13/sudoku-app/issues/129). Check every transformed grid against the current masks, placements and actual geometric premises before accepting support. [Implementation and validation](#checked-geometric-symmetries-merged)
 
-### Checked geometric symmetries
+### Checked geometric symmetries merged
 
-This pass starts from main `d99b8fb` in `codex/sudoku-symmetric-witnesses`. [Symmetry research issue](https://github.com/coder13/sudoku-app/issues/129)
+This pass reached main at `0c15503` through [PR 131](https://github.com/coder13/sudoku-app/pull/131), including PR 132's hint-card changes. All CI and deployment checks passed on reviewed head `d5bbf9f`. The reviewed worktree remains on `codex/sudoku-symmetric-witnesses`. [Symmetry research issue](https://github.com/coder13/sudoku-app/issues/129)
 
 - [x] Reuse the existing eight grid transformations. Infer a bijective digit mapping from every fixed domain and reject both mapping conflicts.
 - [x] Validate transformed grids against actual houses and directed peer exclusions. Check every final digit cycle against all candidate masks. Keep the cache local to one proof position and preserve numeric-rule and uniqueness checks.
@@ -112,8 +122,8 @@ This pass starts from main `d99b8fb` in `codex/sudoku-symmetric-witnesses`. [Sym
 - [x] Pass independent fixed-domain, forbidden-candidate, extra-house, directed-peer and irregular-Jigsaw tests. Preserve partial support and all complete AI Escargot proofs after edits.
 - [x] Match 3,419 complete responses across nineteen corpus positions, all 117 detectors and all 351 positive practice positions against current main. Preserve every page, rating, trace and custom profile.
 - [x] Measure paired latency, memory and all Wasm profile sizes. Whispers keeps eight choices while its ordinary median falls from 472.566 to 5.949 ms. Record slower retained samples, concurrent research workers and the 255-byte app gzip increase. [Methods and limits](tests/fixtures/README.md#checked-geometric-symmetries)
-- [x] Pass 302 native tests including doctests, 397 app tests, 246 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build.
-- [ ] Pass exact-head CI, merge the focused change and verify the reviewed commit on remote main.
+- [x] Pass 302 native tests including doctests, 397 app tests, 246 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build. Repeat TypeScript, app/Wasm and production checks after integrating [PR 132](https://github.com/coder13/sudoku-app/pull/132). The measured Wasm hash remains unchanged.
+- [x] Pass CI on reviewed head `d5bbf9f`, merge through [PR 131](https://github.com/coder13/sudoku-app/pull/131) and verify the reviewed optimization and PR 132 app changes on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44264333333)
 
 ### Complete candidate-support performance merged
 
