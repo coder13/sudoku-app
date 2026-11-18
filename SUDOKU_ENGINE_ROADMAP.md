@@ -6,7 +6,7 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `d9e4ee9`. It includes capability packaging, mixed rules, UAT fixes, engine performance work, variant hint repairs and the Colors panel. Quadruple, Odd/Even, Anti-King, Non-Consecutive and Whispers have complete app integrations. Cell references and lessons use the revised presentation. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `0c15503`. It includes capability packaging, mixed rules, UAT fixes, engine performance work, variant hint repairs and the Colors panel. Quadruple, Odd/Even, Anti-King, Non-Consecutive and Whispers have complete app integrations. Cell references and lessons use the revised presentation. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
@@ -25,8 +25,8 @@ This inventory uses main at `d9e4ee9`. It includes capability packaging, mixed r
 | Non-Consecutive locks and candidate alternatives | In main through [PR 115](https://github.com/coder13/sudoku-app/pull/115) | Preserve versioned profiles, complete alternatives and independent case checks; expand training against published positions |
 | Complete geometric candidate support | In main through [PR 118](https://github.com/coder13/sudoku-app/pull/118) | Preserve bounded support, singleton and uniqueness safety. Retain the broader expert-search and worker audit in [issue 88](https://github.com/coder13/sudoku-app/issues/88) |
 | Earlier bounded uniqueness eligibility | In main through [PR 124](https://github.com/coder13/sudoku-app/pull/124) | Preserve complete proofs and cheap selected searches. Retain the broader detector and timing audit in [issue 88](https://github.com/coder13/sudoku-app/issues/88) |
-| Shared partial geometric witnesses | In main through [PR 128](https://github.com/coder13/sudoku-app/pull/128) | Preserve complete proofs and position-local caches. Evaluate checked symmetries in [issue 129](https://github.com/coder13/sudoku-app/issues/129), and profile remaining Tridagon and worker costs |
-| Checked grid and digit witnesses | Validated in the focused [issue 129](https://github.com/coder13/sudoku-app/issues/129) change | Preserve actual geometry, bounded work and unknown-case fallback. [Measured results](tests/fixtures/README.md#checked-geometric-symmetries) |
+| Shared partial geometric witnesses | In main through [PR 128](https://github.com/coder13/sudoku-app/pull/128) | Preserve complete proofs, position-local caches and checked symmetries from [PR 131](https://github.com/coder13/sudoku-app/pull/131). Profile remaining Tridagon and worker costs |
+| Checked grid and digit witnesses | In main through [PR 131](https://github.com/coder13/sudoku-app/pull/131), with PR 132 app integration | Preserve actual geometry, bounded work and unknown-case fallback. [Measured results](tests/fixtures/README.md#checked-geometric-symmetries) |
 | Whispers paths and shared-house deductions | In main through [PR 121](https://github.com/coder13/sudoku-app/pull/121) | Preserve minimum differences, closed walks and explicit house proofs. Review live viewports and calibrate app generation recipes. Continue the exhaustive-scan audit in [issue 88](https://github.com/coder13/sudoku-app/issues/88) |
 | Additional rule families and shading | Research on `codex/sudoku-engine-integration` | Port one app-ready family from current main through [issue 35](https://github.com/coder13/sudoku-app/issues/35) |
 | Proof explorer and expert lesson work | Open in [PR 14](https://github.com/coder13/sudoku-app/pull/14) | Reconcile its diff with current main and the research branch before integration |
