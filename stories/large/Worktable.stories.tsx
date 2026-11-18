@@ -1,6 +1,6 @@
 import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fireEvent, fn, waitFor } from 'storybook/test'
+import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
 import { EMPTY, makeGame, paintCells, replaceCandidates } from '../../src/sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
@@ -216,30 +216,37 @@ export const HintWithGrid: Story = {
     })
     await userEvent.click(viewHint)
     const hint = await canvas.findByRole('complementary', { name: 'Puzzle hint' }, { timeout: 5000 })
+    const outcomeText = /Place [1-9] in|Remove [1-9] from|Remove candidates/
     await canvas.findByRole('button', { name: 'Show digits' })
-    await expect(canvas.queryByRole('radiogroup', { name: 'Grid visuals' })).not.toBeInTheDocument()
-    await expect(hint).not.toHaveTextContent(/Place digit|Remove digit|Look for digit/)
+    await expect(within(hint).queryByRole('button', { name: 'Hint visuals' })).not.toBeInTheDocument()
+    await expect(hint).not.toHaveTextContent(outcomeText)
+    await expect(hint).not.toHaveTextContent(/Look for digit/)
     await expect(canvas.getByRole('group', { name: 'Hint navigation' })).toHaveTextContent('1/10')
     await userEvent.click(canvas.getByRole('button', { name: 'Show digits' }))
     await expect(hint).toHaveTextContent(/Look for digit/)
-    await expect(hint).not.toHaveTextContent(/Look in|Place digit|Remove digit/)
+    await expect(hint).not.toHaveTextContent(outcomeText)
+    await expect(hint).not.toHaveTextContent(/Look in/)
     await userEvent.click(canvas.getByRole('button', { name: 'Show location' }))
     await expect(hint).toHaveTextContent(/Look in|Look at the highlighted cells/)
-    await expect(hint).not.toHaveTextContent(/Place digit|Remove digit/)
+    await expect(hint).not.toHaveTextContent(outcomeText)
     const coloredCell = canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
-    await expect(canvas.getByRole('radio', { name: 'Hint visuals' })).toBeChecked()
+    const visuals = within(hint).getByRole('button', { name: 'Hint visuals' })
+    await expect(visuals).toHaveAttribute('aria-pressed', 'true')
     await expect(coloredCell).not.toHaveClass('color-1')
-    await userEvent.click(canvas.getByText('My visuals', { selector: 'label' }))
+    await userEvent.click(visuals)
+    await expect(visuals).toHaveAttribute('aria-pressed', 'false')
     await expect(coloredCell).toHaveClass('color-1')
     await userEvent.click(canvas.getByRole('button', { name: 'Show explanation' }))
-    await expect(canvas.getByRole('radio', { name: 'My visuals' })).toBeChecked()
-    await expect(hint).toHaveTextContent(/Place digit|Remove digit/)
+    await expect(visuals).toHaveAttribute('aria-pressed', 'false')
+    await expect(hint).toHaveTextContent(outcomeText)
     await expect(canvas.getByRole('button', { name: 'Apply hint' })).toBeVisible()
-    await userEvent.click(canvas.getByText('Hint visuals', { selector: 'label' }))
+    await userEvent.click(visuals)
+    await expect(visuals).toHaveAttribute('aria-pressed', 'true')
     await expect(coloredCell).not.toHaveClass('color-1')
     await userEvent.click(canvas.getByRole('button', { name: 'Next hint' }))
     await expect(canvas.getByRole('button', { name: 'Show digits' })).toBeVisible()
-    await expect(hint).not.toHaveTextContent(/Place digit|Remove digit/)
+    await expect(visuals).not.toBeInTheDocument()
+    await expect(hint).not.toHaveTextContent(outcomeText)
   },
 }
 

@@ -212,7 +212,6 @@ export function Worktable({
   useActionHistory(game)
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
   const modeBadgeId = useId()
-  const gridVisualsId = useId()
   const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('cardModeBadgePosition')
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
@@ -528,7 +527,7 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .puzzle-visuals, .desktop-insight-panel, .chains-panel')
+    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .chains-panel')
       || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
@@ -703,7 +702,7 @@ export function Worktable({
 
   useLayoutEffect(() => {
     if (paintingCandidates) {
-      if (!document.activeElement?.closest('.puzzle-visuals')) {
+      if (!document.activeElement?.closest('.hint-card-visuals')) {
         boardRef.current?.querySelector<HTMLElement>('.paint-candidate[tabindex="0"]')?.focus({ preventScroll: true })
       }
     } else if (restoreCellFocus.current !== null) {
@@ -1628,6 +1627,10 @@ export function Worktable({
         }) : undefined}
         onClose={() => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)}
         onShown={!solutionHintPanel && deduction ? markHintVisible : undefined}
+        visuals={availableHintAnnotations && !disabled && !solved ? {
+          visible: !playerVisualsSelected,
+          onToggle: () => changeHintVisuals(playerVisualsSelected ? 'hint' : 'player'),
+        } : undefined}
         action={hintAction}
         lessDetail={hasHintDetails ? { disabled: hintStage === 'technique', onClick: () => changeHintDetail(-1) } : undefined}
         secondaryAction={!solutionHintPanel && recoveryLocationVisible && recovery.movesAgo
@@ -1893,12 +1896,6 @@ export function Worktable({
           {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
             {formatTime(game.elapsed)}
           </span>}
-        </div>}
-        {availableHintAnnotations && !disabled && !solved && <div className="puzzle-visuals" role="radiogroup" aria-label="Grid visuals">
-          <label><input className="sr-only" type="radio" name={gridVisualsId} checked={!playerVisualsSelected}
-            onChange={() => changeHintVisuals('hint')} />Hint visuals</label>
-          <label><input className="sr-only" type="radio" name={gridVisualsId} checked={playerVisualsSelected}
-            onChange={() => changeHintVisuals('player')} />My visuals</label>
         </div>}
         <div className="puzzle-actions">
           {presentationDraft ? (
