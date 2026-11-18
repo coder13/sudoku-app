@@ -114,7 +114,9 @@ fn assign<const ALL: bool>(
     peers: &[u8; 4],
     supported: &mut [u16; 4],
 ) -> bool {
-    if domains.contains(&0) {
+    // Keep this fixed-size check inside the recursive hot path instead of
+    // relying on the compiler to inline a general slice membership search.
+    if domains[0] == 0 || domains[1] == 0 || domains[2] == 0 || domains[3] == 0 {
         return false;
     }
     if open.is_power_of_two() {
@@ -171,6 +173,12 @@ mod tests {
             let mut counts = [0; 10];
             for &digit in required {
                 counts[usize::from(digit)] += 1;
+            }
+            for empty in 0..4 {
+                let mut domains = [DIGITS; 4];
+                domains[empty] = 0;
+                assert_eq!(clue.support(domains), [0; 4]);
+                assert!(!clue.has_assignment(domains));
             }
             for sample in 0..200 {
                 let domains = if sample == 0 {
