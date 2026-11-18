@@ -3178,6 +3178,21 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-quadruple text { fill: var(--board-ink); font-size: .19px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
 
 
+.variant-palindrome polyline {
+  fill: none;
+  stroke: var(--board-ink);
+  stroke-width: .22;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .5;
+}
+.variant-palindrome-overlap polyline {
+  fill: none;
+  stroke: var(--board-ink);
+  stroke-width: .055;
+  stroke-dasharray: .14 .14;
+  opacity: .8;
+}
 .variant-whispers polyline {
   fill: none;
   stroke: #72a54e;

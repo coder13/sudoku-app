@@ -277,8 +277,13 @@ rules! {
     }
     /// Require an ordered line to read the same in both directions.
     Palindrome => "palindrome" {
-        /// Cell indices in line order.
+        /// Distinct cell indices in logical order, paired from opposite ends.
         cells: Vec<usize>,
+        /// Optional drawing paths when the visible clue has several segments.
+        /// Their union must equal `cells`; they do not change the mirrored pairs.
+        /// Drawing paths may revisit cells.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        segments: Option<Vec<Vec<usize>>>,
     }
     /// Require neighboring digits along the line to differ by a given amount.
     Whispers => "whispers" {

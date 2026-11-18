@@ -205,8 +205,15 @@ impl SquareTransform {
                 *circle = self.cell(*circle);
                 self.path(cells);
             }
+            Palindrome { cells, segments } => {
+                self.path(cells);
+                if let Some(segments) = segments {
+                    for segment in segments {
+                        self.path(segment);
+                    }
+                }
+            }
             Thermometer { cells }
-            | Palindrome { cells }
             | Whispers { cells, .. }
             | Renban { cells }
             | Between { cells }

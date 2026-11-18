@@ -60,6 +60,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Whispers',
     rule: 'Digits in neighboring cells along a line must differ by at least the line’s minimum. German Whispers uses a minimum of 5; Dutch Whispers uses 4.',
   },
+  palindrome: {
+    name: 'Palindrome',
+    rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
+  },
   quadruple: {
     name: 'Quadruple',
     rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
@@ -197,10 +201,19 @@ export function cellsShareEdge(a: number, b: number) {
   return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) + Math.abs(a % 9 - b % 9) === 1
 }
 
+export function palindromePartner(cells: readonly number[], cell: number) {
+  const index = cells.indexOf(cell)
+  if (index < 0 || index === cells.length - 1 - index) return undefined
+  return cells[cells.length - 1 - index]
+}
+
 /** Extra pairwise exclusions beyond the same-digit peers used by the player. */
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
   let excluded = 0
   for (const rule of puzzle?.rules ?? []) {
+    if (rule.type === 'palindrome' && palindromePartner(rule.cells, from) === to) {
+      excluded |= 511 & ~(1 << (digit - 1))
+    }
     if (rule.type === 'non-consecutive' && cellsShareEdge(from, to) && !hasMarkedPair(rule.except, from, to)) {
       excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
     }
@@ -259,6 +272,11 @@ function isPlayableRule(rule: VariantRule): boolean {
       rule.cells.every((cell, i) => Number.isInteger(cell) && cell >= 0 && cell < 81 && (i === 0 || cell !== rule.cells[i - 1])) &&
       Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
+    case 'palindrome': return validCells(rule.cells, 2) && (rule.segments === undefined ||
+      Array.isArray(rule.segments) && rule.segments.length > 0 &&
+      rule.segments.every(path => Array.isArray(path) && path.length > 0 &&
+        path.every(cell => Number.isInteger(cell) && rule.cells.includes(cell))) &&
+      new Set(rule.segments.flat()).size === rule.cells.length)
     case 'arrow': return validCells([rule.circle, ...(Array.isArray(rule.cells) ? rule.cells : [])], 2)
     case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
       cage && validCells(cage.cells, 1) && Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45)
@@ -307,6 +325,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   arrow: VARIANTS.arrow.name,
   kropki: VARIANTS.kropki.name,
   whispers: PUZZLE_VARIANTS.whispers.name,
+  palindrome: PUZZLE_VARIANTS.palindrome.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
   parity: PUZZLE_VARIANTS.parity.name,
   'anti-king': PUZZLE_VARIANTS['anti-king'].name,
@@ -346,6 +365,14 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         descriptions.push(`Whispers line from ${at(rule.cells[0])} to ${at(rule.cells.at(-1)!)}: neighboring digits along it must differ by at least ${rule.minDifference}. Cells farther apart on the line may repeat a digit if the other rules allow it.`)
         break
       }
+      case 'palindrome':
+        descriptions.push(PUZZLE_VARIANTS.palindrome.rule)
+        if (rule.segments) descriptions.push(`This Palindrome clue pairs ${new Intl.ListFormat('en', { type: 'conjunction' }).format(
+          rule.cells.slice(0, Math.floor(rule.cells.length / 2)).map((cell, i) => {
+            const at = (site: number) => `r${Math.floor(site / 9) + 1}c${site % 9 + 1}`
+            return `${at(cell)} with ${at(rule.cells[rule.cells.length - 1 - i])}`
+          }))}.`)
+        break
       case 'quadruple':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)
         break

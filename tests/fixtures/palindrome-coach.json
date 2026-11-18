@@ -1,0 +1,23 @@
+{
+  "description": "Unmodified SCv7 exports. Preserve every companion rule and the source compiler normalization.",
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/FgZb",
+      "title": "Whisper Lines",
+      "author": "funnyamliy",
+      "code": "SCv7_32_f2ear42f9f230465nv5ppnp1vuj6iuqldu10f3tigthb6degpmb38a2qvbekq5in2raeth91gh6f48vjrpdmh25ufvq1v3mq0oqfglondruu1kqc5m4n6afh7t2lu4rehpgktcfjk667imm8uva4k2aatt9tcgbf5tv9sn6cujm8d0praf7ms76bh4lpg6i680lihco39leuo3hen6c5v5rlok2sla0cljf89345mp80qp2ue89ta365i26boq9816usqms6llv15ev25gihv1miqfk87eobvn1nt7rfl5avbqcfacke4eskl75lg7sf0trpvsdvm98gdkgkdkp6e8sa56eq7cn0bta5puiiq0d4d085n0nf3clt2q2d2o09dp85im5ucopffqp7bo5rh50",
+      "solution": "146972538253184769987356214531497826698521347724863951462739185819245673375618492",
+      "deferred": []
+    },
+    {
+      "url": "https://sudoku.coach/en/s/FzzD",
+      "title": "Palindrome 14",
+      "author": "CodeNameVerity",
+      "code": "SCv7_32_f2e8b4qfdf1j0365nu5svrog97v17ptqddnjr3gu8bhgcgsrioi0pdmitsv7bc5ebdd0v11hsp4ntvi97qdntj6t79vi9kq4j0vbv9f1sks4psuospgpsj7jf8rbicodakof7uq9anjd9rnjq26segqqskghj619um3v8beukruvtegj0uor05iec02oto9bf216e122h2k2m11th7o3an44ldgi6r0dh680klk3c0ci442t176600ari21ke039v06t9jmo3r99ohltulubjo678b83m1a1och3g16d1bo02jm3ofleko1toi1g6h535qb660hh5g2a9eo8lr03ae1eicr5e9njji3vsln4hcgtq67mcdl5bfiaqfq0p82j087mlnopaaj8t2gatk0bn8k2mgtua4klo8npfk6uig2h3t00tkpkkv53qjitqbkdd7c3t79ijk45lu5vptluh5sltf82qnijq35q61gnuhfeev81nigdf7p1vvtfu2raefsg88oc4up0",
+      "solution": "459273186618459372327618549846135927195726438732984651264597813973841265581362794",
+      "deferred": [
+        "greaterLess"
+      ]
+    }
+  ]
+}

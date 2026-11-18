@@ -604,3 +604,80 @@ Independent tests reject both forms of conflicting fixed-domain mappings, forbid
 The final comparison preserves 3,419 complete responses across nineteen corpus positions, all 117 detectors and all 351 positive practice positions. It covers every page, full proofs, traces, ratings, custom orders and exact search-limit outcomes. The actual Wasm worker checks candidate/placement edits, puzzle alternation and numeric hints. Its 4,096-node Brain Zaps analysis still returns `search-limit`, while 100,000 nodes proves uniqueness.
 
 All 302 native tests including seven doctests, 397 app tests and 246 Wasm tests pass. TypeScript, sixteen capability combinations, four Wasm profiles and strict full/reduced Cargo documentation pass. The production/offline build renders 159 routes and reproduces the measured app hash.
+
+## Palindrome app integration
+
+Clover’s Palindrome Sudoku (GAS S5 P094, 2025-09-08) supplies 15 givens and four six-cell lines. Philip Newman’s Anti-Knight Palindrome (GAS S5 P111, 2025-09-25) supplies eight givens and eight lines. Puzzle and completion PDFs were rendered and visually checked. Their extracted completion rows run in reverse vertical order, so transcriptions follow the visible grids. Newman’s paths also match the PDF vectors.
+
+The fixture files retain source pages, PDF links, rule definitions and printed completions. An independent digit-set solver checks standard houses, knight exclusions and mirrored equality. Both puzzles have one completion matching the source. Removing Palindrome yields at least two completions. Native default logical solves finish at 762 and 1,156 points. App-order solves finish at 1,042 and 1,496 points. All four ratings are Easy at scoring version 8.
+
+- [Clover source](https://www.gmpuzzles.com/blog/2025/09/palindrome-sudoku-by-clover/) and [fixture](palindrome-clover.json).
+- [Newman source](https://www.gmpuzzles.com/blog/2025/09/anti-knight-palindrome-sudoku-by-philip-newman/) and [fixture](palindrome-newman.json).
+- [Coach FgZb, “Whisper Lines”](https://sudoku.coach/en/s/FgZb) and [unmodified exports](palindrome-coach.json). This one-given puzzle has five Whispers and three Palindrome lines.
+- [Coach FzzD, “Palindrome 14”](https://sudoku.coach/en/s/FzzD) also contains Greater/Less and Difference markers. Full import still rejects its unsupported inequalities. [Inequality issue](https://github.com/coder13/sudoku-app/issues/47).
+
+Coach’s Palindrome compiler groups segments sharing any cell, then collects their cells in insertion order without duplicates. Each connected component becomes one logical line. A transitively connected segment can extend the component on a later scan. The app matches this order and preserves raw drawing segments separately, including branches and revisits. Different constraint layers remain separate.
+
+The audited [versioned compiler](https://sudoku.coach/js/jCfXtZs-1776367508519.js) maps `palindromeLine` to `jX1r9`. It compiles `jX25b()` through `jX2ih()`, `jX3l9()` and the ordered `jX2ia` container. Its solver pairs `cells[i]` with `cells[numCells - 1 - i]` using equality. Source SHA-256 is `567c7f9023cfff3a7f8feb4f8393d3b10a1f85f9539ef48f31c577b105ad521f`. No downloaded site JavaScript was executed.
+
+The native `palindrome` rule keeps distinct logical `cells` and optional drawing `segments`. The drawing-cell union must equal the logical cell set. Drawing paths can revisit cells, but their order never changes the mirrored equalities. Old JSON omits the new field. Ordinary Rust definitions set `segments: None`. All rotations and reflections transform both representations.
+
+Grid clues draw the original paths and name each cell’s actual partner. Odd middle cells have no extra restriction. Paired cells retain the same digit during candidate cleanup and flag different placed digits as conflicts. They are not same-digit peers. Shared line edges use a narrow dashed overlay to keep both clue families visible, with dots in front. Static SVG exports from the actual clue component were inspected with light and dark colors. This review does not replace a live viewport interaction review.
+
+Component checks cover desktop/mobile grids, original geometry, overlaps, sharing, lessons, naming preferences, hint cards and solution lists. Worker checks cover complete app-order traces, every action against the independent solution, direct mirror-proof replay, selected hints, pages, Finder counts and practice. Drawn and ordinary definitions retain identical complete step lists and rating values. Saved geometry and history survive reload, undo and redo. Native generation preserves drawing paths, targets 30 givens and independently requires Palindrome. New puzzle presets remain behind separate difficulty calibration.
+
+The combination audit keeps Palindrome active while selecting every subset of thirteen other rendered families, including optional Whispers. Across 8,192 fixed-clue selections, 6,144 validate and preserve all selected rules. The other 2,048 intentionally contradict the fixed completion’s diagonal/knight requirements and reject import. This is a fixed-fixture combination audit, not a claim to test every possible clue configuration. Sparse published and real Coach fixtures independently test rule dependence.
+
+Paired measurements use Node 26.13.0 on macOS arm64 against main `74248c7`. No compiler, engine test or identified generation worker was active at the timing start. The machine remains nondedicated. Engines alternate execution order. Fixed requests use five warmups and twenty measured samples. Exhaustive first pages use two warmups and ten samples. Times are milliseconds, median/p95. Brain Zaps uses its existing 100,000-node bound. The mixed Palindrome/Whispers fixture uses 1,000,000 exact nodes, and other fixtures use 20,000.
+
+| Fixture | Candidates, main → integration | Exact analysis, main → integration | Exact solving, main → integration |
+| --- | ---: | ---: | ---: |
+| Clover Palindrome | 0.028/0.032 → 0.028/0.039 | 0.062/0.079 → 0.064/0.098 | 0.049/0.053 → 0.047/0.055 |
+| Newman Anti-Knight Palindrome | 0.021/0.027 → 0.022/0.031 | 0.069/0.077 → 0.069/0.073 | 0.041/0.044 → 0.041/0.047 |
+| Coach Palindrome/Whispers | 0.023/0.028 → 0.023/0.024 | 26.747/28.156 → 26.826/27.253 | 26.144/26.343 → 26.157/26.504 |
+
+| Fixture | Native rate, main → integration | App rate, main → integration | Ten hints, main → integration | Exhaustive page, main → integration |
+| --- | ---: | ---: | ---: | ---: |
+| Clover Palindrome | 0.123/0.188 → 0.190/0.234 | 0.140/0.157 → 0.139/0.184 | 40.573/43.093 → 40.651/41.477 | 40.232/40.486 → 40.250/40.423 |
+| Newman Anti-Knight Palindrome | 0.849/0.869 → 0.833/0.861 | 0.874/0.879 → 0.872/0.877 | 0.138/0.145 → 0.138/0.144 | 304.949/310.962 → 305.943/315.208 |
+| Coach Palindrome/Whispers | 0.798/0.818 → 0.810/0.845 | 411.890/417.557 → 410.672/414.719 | 0.220/0.243 → 0.218/0.241 | 2.338/2.416 → 2.369/2.495 |
+
+Every measured response matches exactly. Exhaustive requests retain seven Clover, 48 Newman and ten Coach choices. Ordinary bounded requests return seven, ten and ten choices. Committed Wasm buffers remain 3.38, 5.06 and 8.31 MiB respectively. Buffer size is not RSS or live allocation. Cold first requests are available from the reproducible benchmark and exclude module instantiation, catalog queries, worker startup and rendering.
+
+
+| Fresh-instance first request | App rate, main → integration ms | Ten hints, main → integration ms | Exhaustive page, main → integration ms |
+| --- | ---: | ---: | ---: |
+| Clover Palindrome | 0.841 → 0.699 | 63.775 → 63.729 | 41.141 → 41.485 |
+| Newman Anti-Knight Palindrome | 0.985 → 0.989 | 0.527 → 0.528 | 298.586 → 295.669 |
+| Coach Palindrome/Whispers | 413.392 → 410.528 | 0.621 → 0.437 | 2.532 → 2.588 |
+
+The app-order rating on the real Coach combination remains stalled at 527 points and about 411 ms in both engines. The native default enables 31 techniques, while the app profile enables 112. Ordinary hints remain about 0.22 ms. [Issue 134](https://github.com/coder13/sudoku-app/issues/134) tracks per-technique profiling under the unchanged app order. The integration does not fix that existing bottleneck. Slower native Clover rating samples are also retained in the table.
+
+| Retained fixture | App rate, main → integration | Ten hints, main → integration | Exhaustive page, main → integration |
+| --- | ---: | ---: | ---: |
+| Quadruple | 1.190/1.218 → 1.165/1.201 | 0.225/0.234 → 0.221/0.230 | 146.666/150.891 → 146.844/150.083 |
+| Odd/Even | 0.167/0.179 → 0.167/0.177 | 0.080/0.086 → 0.079/0.083 | 50.814/51.896 → 50.525/51.499 |
+| Anti-King | 0.155/0.167 → 0.155/0.166 | 0.115/0.123 → 0.114/0.120 | 97.296/99.710 → 96.306/100.025 |
+| Published Non-Consecutive | 0.387/0.394 → 0.385/0.391 | 0.079/0.083 → 0.080/0.084 | 35.436/36.215 → 35.112/36.146 |
+| Two-given Consecudoku | 1.002/1.018 → 1.012/1.025 | 0.303/0.314 → 0.307/0.322 | 0.305/0.321 → 0.313/0.320 |
+
+Retained responses, proof choices and committed memory match. Small timing differences and slower samples remain observational. These runs include request encoding and decoding, and exclude comparison assertions, worker startup, transfer and rendering.
+
+Reproduce after building both artifacts:
+
+```sh
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm palindrome palindrome-knight palindrome-whispers
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm
+```
+
+| Wasm profile | Main raw/gzip bytes | Palindrome integration raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,040,103 / 556,086 | 2,040,103 / 556,086 |
+| variant-solver | 2,592,614 / 697,355 | 2,593,462 / 696,489 |
+| classic | 2,555,726 / 662,311 | 2,555,726 / 662,311 |
+| app | 3,340,960 / 893,387 | 3,366,184 / 898,283 |
+
+The app adds 25,224 raw / 4,896 gzip bytes. Variant-solver adds 848 raw bytes and saves 866 gzip bytes. Solver-only and Classic sizes remain identical. Before SHA-256 is `635869d77ae31823b15a55da1fdbf5ec6cc56b1de62ae88da87c0a8a4f88b465`. After is `2446be93ddd6f4c8fba9ade266d60f63d60a19d53a7e60609e35d96ec04b0812`.
+
+All 3,419 complete retained responses match across nineteen corpus positions, 117 detectors and 351 positive practice positions. Proofs, pages, traces, ratings, custom profiles and exact search-limit outcomes remain unchanged. Local validation passes 307 native tests including seven doctests, 413 app tests, 253 Wasm tests, sixteen capability combinations, four package profiles and strict full/reduced Cargo documentation. TypeScript and the 159-route production/offline build pass.

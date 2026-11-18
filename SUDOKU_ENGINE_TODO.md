@@ -35,15 +35,21 @@ The Wasm audit now measures candidates, uniqueness verification, exact solving, 
 
 The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
-### Palindrome source audit
+### Palindrome integration in progress
 
 The next family remains open in [issue 49](https://github.com/coder13/sudoku-app/issues/49). These checks use the engine merged through PR 131. App integration remains unfinished.
 
 - [x] Render and inspect Clover's Palindrome and Newman's Anti-Knight Palindrome puzzle and completion PDFs. Independently prove unique completions and multiple completions after removing Palindrome. Both native default logical profiles complete, with six and ten opening choices.
 - [x] Retrieve unmodified Coach `FgZb` and `FzzD` exports. Preserve their complete companion-rule inventories. Independently verify the one-given Whispers/Palindrome completion and its Palindrome dependency. Its native default profile still stalls, and its 20,000-node exact check reaches the budget limit.
 - [x] Audit the versioned source compiler. Record connected-segment grouping and insertion-ordered cell deduplication before Palindrome compilation. Verify the Greater/Less pair direction against the published completion.
-- [ ] Commit source-linked regression fixtures and complete Palindrome import, visible clues, accessible rules, candidates, conflicts, save/reload, sharing, hints, Finder and walkthroughs.
-- [ ] Check original drawing geometry separately from normalized logical cells. Complete app-order proof replay, combined-rule regressions and the performance audit before a focused merge.
+- [x] Add source-linked Clover, Newman and unmodified Coach fixtures. Import Palindrome and Whispers combinations while explicitly retaining rejection of unsupported inequality companions.
+- [x] Preserve connected-component logical order and original drawing segments separately. Validate the drawing-cell union, transform all references and preserve old JSON. Add five native geometry, symmetry and wire-contract tests.
+- [x] Add visible clues, paired-cell labels, odd-center explanations, conflicts and candidate cleanup. Preserve overlapping line colors and foreground dots. Pass desktop/mobile component, sharing and lesson tests.
+- [x] Replay complete app-order solves on both published puzzles. Check every action against the independent completion, replay Palindrome proofs from mirrored domains, and verify hints, pages, Finder, practice, save/reload, undo and redo through Wasm.
+- [x] Verify native generation with exact clue targets, preserved drawing geometry and independent rule dependence. Keep New puzzle presets behind separate difficulty calibration.
+- [x] Pass 307 native tests, 413 app tests, 253 Wasm tests, sixteen capability combinations, four package profiles, strict full/reduced documentation, TypeScript and the 159-route production/offline build. Preserve all 3,419 retained responses. Verify 8,192 fixed-clue family selections, including intentional contradictory selections.
+- [x] Record paired performance, unchanged choices and the 4,896-byte app gzip increase. Keep the slow app-order Coach rating in [issue 134](https://github.com/coder13/sudoku-app/issues/134). [Measurements and limits](tests/fixtures/README.md#palindrome-app-integration)
+- [ ] Pass final CI and merge the app-ready family into main.
 
 ### Non-Consecutive integration merged
 

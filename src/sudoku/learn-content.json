@@ -7520,7 +7520,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find the first and last cells on the palindrome. The sequence must read the same in both directions. Match the two ends, then move one cell inward on each side. An odd-length line has a middle cell that matches itself.",
+                "Find the first and last cells on the palindrome. The sequence must read the same in both directions. Match the two ends, then move one cell inward on each side. An odd-length line has an unpaired middle cell. The Palindrome rule places no extra restriction on that cell.",
                 "For each matched pair, keep the digits that appear in both cells. If one end already has a digit, the other end needs that digit too."
               ]
             },
@@ -7541,7 +7541,7 @@
               ],
               "guide": {
                 "start": "Find the first and last cells on the palindrome. The sequence must read the same in both directions.",
-                "check": "Match the two ends, then move one cell inward on each side. An odd-length line has a middle cell that matches itself.",
+                "check": "Match the two ends, then move one cell inward on each side. An odd-length line has an unpaired middle cell. The Palindrome rule places no extra restriction on that cell.",
                 "reason": "For each matched pair, keep the digits that appear in both cells. If one end already has a digit, the other end needs that digit too."
               }
             }

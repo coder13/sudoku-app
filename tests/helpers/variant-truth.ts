@@ -46,6 +46,9 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
       case 'whispers':
         rule.cells.slice(1).forEach((cell, i) => assert.ok(Math.abs(digits[rule.cells[i]] - digits[cell]) >= rule.minDifference))
         break
+      case 'palindrome':
+        rule.cells.forEach((cell, i) => assert.equal(digits[cell], digits[rule.cells[rule.cells.length - 1 - i]]))
+        break
       case 'thermometer':
         rule.cells.slice(1).forEach((cell, i) => assert.ok(digits[rule.cells[i]] < digits[cell]))
         break

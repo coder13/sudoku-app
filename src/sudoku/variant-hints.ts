@@ -6,7 +6,7 @@ import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName }
 type ConstraintEvidence = Extract<VariantDeduction['evidence'], { type: 'constraint' }>
 const alternatives = new Intl.ListFormat('en', { type: 'disjunction' })
 
-function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at: (cell: number) => string) {
+function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at: (cell: number) => string, focus: readonly { cell: number }[]) {
   const { cells, domains } = evidence
   const rules = evidence.rules.map(index => puzzle.rules?.[index])
   const rule = rules[0]
@@ -75,9 +75,14 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'thermometer':
       return { description: `The thermometer rises from ${at(a)} to ${at(cells[cells.length - 1])}.`,
         reason: 'Each digit must exceed the one before it. No increasing sequence through these cells includes the crossed-out candidates.' }
-    case 'palindrome':
-      return { description: `Match the cells inward from ${at(a)} and ${at(cells[cells.length - 1])}.`,
+    case 'palindrome': {
+      const pairs = rule.cells.slice(0, Math.floor(rule.cells.length / 2))
+        .map((left, i) => [left, rule.cells[rule.cells.length - 1 - i]] as const)
+      const affected = pairs.filter(pair => focus.some(({ cell }) => pair.includes(cell)))
+      return { description: `On this Palindrome, ${new Intl.ListFormat('en', { type: 'conjunction' }).format(
+        (affected.length ? affected : pairs).map(([left, right]) => `${at(left)} and ${at(right)} must match`))}.`,
         reason: 'Cells the same distance from opposite ends must match. A digit missing from one cannot go in its partner.' }
+    }
     case 'between': {
       const last = cells.length - 1
       const firstDigit = onlyCandidate(domains[0])
@@ -228,7 +233,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
     }
     case 'constraint': {
       cells = evidence.cells
-      const clue = constraintClue(evidence, puzzle, nameCell)
+      const clue = constraintClue(evidence, puzzle, nameCell, focus)
       description = clue.description
       reason = clue.reason
       switch (technique) {
