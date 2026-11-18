@@ -1015,7 +1015,7 @@ Every action in these traced paths agrees with the independently counted complet
 
 The expanded fixed-clue fixture checks 32,768 selections of fifteen optional families with Palindrome present. It accepts 24,576 compatible selections and rejects 8,192 deliberate contradictions. The fixture is near complete, so this tests interchange and composition rather than arbitrary hard mixed-rule geometry. Three native marker recipes, seeds 17, 43 and 227, independently retain 30 givens, twenty XV clues and a dependence on XV for uniqueness. These recipes are compatibility cases. New puzzle does not offer XV until difficulty calibration is ready.
 
-The integration passes 437 app tests, 265 Wasm tests, TypeScript and the 159-route production/offline build. Seven focused component tests also pass after replacing CSS paint order with explicit XV halo and ink layers. Rust source, costs, default orders and scoring version 8 are unchanged. The measured app artifact is 3,367,009 raw / 899,884 gzip bytes with SHA-256 `bce78b16ef10f2163d47615586847cc1b6eee412ffbb00c5da149337782e1758`. It is a fresh rebuild, so do not describe it as byte-identical to the earlier release artifact. Across fourteen generated client JavaScript assets, raw bytes grow from 1,981,956 to 1,985,338 and gzip bytes from 483,869 to 484,999, an increase of 3,382 raw / 1,130 gzip bytes. Gzip uses Node's default compression for both sides. This sum is not a per-route transfer measurement.
+The integration passes 437 app tests, 265 Wasm tests, TypeScript and the 159-route production/offline build. Seven focused component tests also pass after replacing CSS paint order with explicit XV halo and ink layers. Rust source, costs, default orders and scoring version 8 are unchanged. The measured app artifact is 3,367,009 raw / 899,884 gzip bytes with SHA-256 `bce78b16ef10f2163d47615586847cc1b6eee412ffbb00c5da149337782e1758`. This was a local artifact from a shared Cargo target. A later control found cache reuse between checkouts. Treat the following latency and local asset totals as historical observations for that hash. The fresh main control in the guardian audit below supersedes it for performance comparisons. Across fourteen generated client JavaScript assets, raw bytes grow from 1,981,956 to 1,985,338 and gzip bytes from 483,869 to 484,999, an increase of 3,382 raw / 1,130 gzip bytes. Gzip uses Node's default compression for both sides. This sum is not a per-route transfer measurement.
 
 Measurements use Node 26.13.0 on macOS arm64. Candidates, exact checks, entry and SSR use five warmups/twenty samples. Ratings, hints, exhaustive pages, preview and solution use two/five, so their p95 is the maximum sample. Timed requests include serialization; assertions are outside timing. The nondedicated host had no identified compiler or engine test running. Raw requests use the app technique order without progress preferences. The app callers use their actual hint order, difficulty and progress policy through an in-process Wasm worker transport. They exclude browser worker startup, transfers, layout and paint. These are absolute measurements, not a paired engine speedup.
 
@@ -1044,5 +1044,111 @@ Committed raw-engine Wasm memory after the fixed request sequence is xv-clover: 
 Repeat after building the app:
 
 ```sh
+node --experimental-strip-types --test scripts/bench-xv-app.mts
+```
+
+## Packed guardian checks in Tridagon refutations
+
+[Issue 147](https://github.com/coder13/sudoku-app/issues/147) isolates the slow original Coach 63Jk rating after the XV integration. A five-second native sample over eight repeated ratings records 3,544 samples. Branch settlement accounts for about 45.5% of top-of-stack samples and Tridagon visits for 35.4%. Sampled ARM instructions identify repeated guardian-state checks in the refutation loop. These proportions describe a sampling window, not exact attribution of a complete rating. Two guardian-count experiments gave no diagnostic Wasm benefit and are excluded.
+
+A guardian clause can advance a settled branch only when none of its alternatives is already true and at most one remains unremoved. The detector now packs its false literals into nonempty machine words. It checks satisfied alternatives and counts remaining alternatives with word operations. Original candidate indices, assumption order, ordinary propagation and proof construction remain intact. Costs, default technique orders, enabled detectors, scoring version 8 and exact-search budgets are unchanged.
+
+Independent truth checks cover every one of the 729 candidate IDs and 258,048 assignment/subset combinations across word boundaries. They include unknown, false, true and contradictory states, unrelated facts, satisfied clauses and zero/one/multiple surviving alternatives. Existing inference replay checks still verify every step and branch of positive proofs.
+
+Fresh main and candidate builds use separate Cargo target directories. A shared-target control had reused another checkout's output and was discarded. The earlier local XV integration artifact `bce78b16...` is not the final main control. The verified artifacts below are rebuilt from their respective sources and compared without response normalization:
+
+- Main: 3,366,959 raw / 899,869 gzip bytes, SHA-256 `fae4f83d56e56392a4f4685721d6b01edf60efdbca25b3c2f1bdc4b9a2c06547`.
+- Packed checks: 3,368,233 raw / 901,985 gzip bytes, SHA-256 `8253cf0082f087dd6412a6b12e0d0254412f08e31113372613735d291bfeaa11`.
+
+The strict comparison preserves 7,143 complete variant responses on 47 corpus positions and 351 positive practice positions. It checks all 117 detector lists, full traces, ratings, custom profiles and every hint page. Another 148 complete Classic responses match on nine Tridagon practice positions. The six XV traces retain 151/123/27/170/199/6 steps and their complete or partial status. Validation passes 322 native tests, 437 app tests, 265 Wasm contracts, sixteen feature combinations, four profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build.
+
+| Profile | Fresh main raw/gzip bytes | Packed checks raw/gzip bytes |
+| --- | --- | --- |
+| Solver | 2,060,183 / 562,832 | 2,061,762 / 563,437 |
+| Variant solver | 2,608,333 / 704,013 | 2,582,819 / 702,288 |
+| Classic | 2,556,987 / 672,461 | 2,563,763 / 663,682 |
+| App | 3,366,959 / 899,869 | 3,368,233 / 901,985 |
+
+The app adds 1,274 raw and 2,116 gzip bytes. Solver adds 1,579 raw and 605 gzip. The variant solver saves 25,514 raw and 1,725 gzip. Classic adds 6,776 raw but saves 8,779 gzip. These are measured compiler outputs, not source-size estimates. No client JavaScript source changes in this optimization.
+
+Final measurements use Node 26.13.0 on macOS arm64. Engines alternate execution order. Fixed candidates, exact checks, native ratings and ten-hint requests use five warmups/twenty samples. App ratings and exhaustive pages use two/five, so p95 is the maximum. Serialization is timed and full response checks are outside timing. Instantiation, browser worker startup, transfer and rendering are excluded. No identified compiler or engine test was active during this paired pass. The host is not dedicated.
+
+| Puzzle | Main app rate | Packed app rate | Native rate, main → packed |
+| --- | --- | --- | --- |
+| xv-clover | 5.743/5.988 | 5.980/6.489 | 0.303/0.444 → 0.310/0.459 |
+| xv-quadruple-clover | 0.294/0.304 | 0.292/0.316 | 0.247/0.269 → 0.245/0.262 |
+| 7v7n | 89.333/91.016 | 89.383/90.892 | 0.109/0.115 → 0.109/0.116 |
+| FCeS | 7.026/7.197 | 7.192/7.206 | 0.517/0.560 → 0.513/0.587 |
+| 63Jk | 6847.856/6964.237 | 4022.262/4042.819 | 0.917/0.922 → 0.918/0.931 |
+| Chcs | 258.958/262.342 | 261.225/263.040 | 20.120/20.521 → 20.167/20.713 |
+
+| Puzzle | Ten hints, main → packed | Exhaustive page, main → packed | Choices, ten/exhaustive | Unchanged memory, MiB |
+| --- | --- | --- | --- | --- |
+| xv-clover | 0.121/0.146 → 0.121/0.148 | 127.142/132.468 → 125.750/127.175 | 10/22 | 2.13 |
+| xv-quadruple-clover | 0.139/0.156 → 0.138/0.154 | 137.652/137.847 → 137.712/138.208 | 10/26 | 1.88 |
+| 7v7n | 276.600/285.950 → 275.797/285.981 | 282.733/288.564 → 287.389/294.665 | 8/8 | 4.69 |
+| FCeS | 0.117/0.126 → 0.117/0.125 | 0.802/0.823 → 0.826/0.828 | 10/17 | 2.31 |
+| 63Jk | 0.107/0.111 → 0.107/0.115 | 384.142/384.902 → 381.463/387.268 | 10/24 | 6.31 |
+| Chcs | 297.182/306.266 → 296.543/305.495 | 302.659/305.116 → 302.892/304.400 | 5/5 | 1.50 |
+
+| Puzzle | Candidates, main → packed | Unique analysis, main → packed | Exact solve, main → packed |
+| --- | --- | --- | --- |
+| xv-clover | 0.022/0.026 → 0.022/0.026 | 0.070/0.075 → 0.070/0.075 | 0.046/0.050 → 0.046/0.049 |
+| xv-quadruple-clover | 0.028/0.030 → 0.028/0.033 | 0.117/0.127 → 0.117/0.123 | 0.117/0.122 → 0.116/0.119 |
+| 7v7n | 0.016/0.017 → 0.016/0.018 | 0.393/0.395 → 0.392/0.394 | 0.123/0.124 → 0.122/0.127 |
+| FCeS | 0.021/0.024 → 0.021/0.024 | 0.081/0.084 → 0.082/0.087 | 0.082/0.091 → 0.084/0.087 |
+| 63Jk | 0.010/0.013 → 0.010/0.012 | 0.044/0.049 → 0.044/0.049 | 0.037/0.038 → 0.037/0.038 |
+| Chcs | 0.024/0.026 → 0.024/0.027 | 1.275/1.403 → 1.387/1.530 | 0.711/0.746 → 0.784/0.801 |
+
+All times are median/p95 milliseconds. The 63Jk app-rating median falls by 41.3%. Both results retain 27,358 points, the Impossible rating and the complete 199-step trace. Native default remains a 592-point partial result. Small increases on other puzzles remain in the tables. This change does not make every request faster, and the remaining four-second rating stays in the broader performance audit. Memory is committed Wasm buffer capacity after the documented sequence, not RSS, browser heap or live allocation.
+
+The retained-fixture pass uses five warmups/twenty samples for fixed requests and two/ten for exhaustive pages, alternating engines. Complete responses, including first requests, match outside timing. Values below are median/p95 milliseconds. Separate selected searches use their documented final-position scan caches, so they are not additive attribution of one rating.
+
+| Retained fixture | App rate, main → packed | Ten hints, main → packed | Exhaustive page, main → packed |
+| --- | --- | --- | --- |
+| quadruple | 1.177/1.199 → 1.175/1.195 | 0.231/0.267 → 0.224/0.248 | 146.504/149.873 → 146.013/149.270 |
+| parity | 0.169/0.175 → 0.172/0.189 | 0.078/0.082 → 0.079/0.081 | 52.455/55.442 → 45.838/53.462 |
+| anti-king | 0.149/0.158 → 0.151/0.158 | 0.116/0.120 → 0.117/0.121 | 96.952/102.593 → 97.194/102.071 |
+| non-consecutive | 0.400/0.480 → 0.395/0.430 | 0.086/0.198 → 0.085/0.140 | 34.826/36.639 → 34.291/36.892 |
+| nc-white-dots | 1.033/1.070 → 1.014/1.018 | 0.311/0.428 → 0.317/0.329 | 0.318/0.323 → 0.320/0.332 |
+| whispers | 0.304/0.319 → 0.303/0.314 | 3.163/3.197 → 3.125/3.153 | 3.188/3.306 → 3.142/3.280 |
+| palindrome | 0.119/0.124 → 0.120/0.125 | 40.335/41.475 → 39.446/40.279 | 40.215/41.462 → 39.340/40.175 |
+| palindrome-knight | 0.894/0.907 → 0.894/0.901 | 0.127/0.129 → 0.128/0.130 | 205.676/210.389 → 187.393/193.726 |
+| palindrome-whispers | 100.600/102.447 → 100.737/102.354 | 0.217/0.239 → 0.217/0.263 | 2.335/2.390 → 2.328/2.384 |
+
+Generation alternates engines over seeds 1–20 per family, with six attempts and 20,000 nodes per exact check. There are no warmups. All five families match twenty of twenty seeds per engine and retain identical puzzle/solution/rating outcomes for all 100 seed runs. Both engines validate uniqueness and the baseline independently checks each completed result. These controls do not establish faster generation of very hard XV puzzles.
+
+| Generation family | Main median/p95 ms | Packed median/p95 ms |
+| --- | --- | --- |
+| classic | 0.583/0.796 | 0.592/0.778 |
+| x-sudoku | 0.568/0.693 | 0.568/0.699 |
+| killer | 2.608/3.077 | 2.598/3.034 |
+| jigsaw-killer | 2.442/2.551 | 2.450/2.690 |
+| windoku | 0.777/2.133 | 0.789/2.101 |
+
+An absolute after-build pass uses the real app callers with the verified packed artifact. Preview, ordinary hints and solution use two warmups/five samples. Values are median/p95 milliseconds. It includes source decoding, rule verification, solution lookup, rating and presentation conversion as each caller requires. It excludes browser worker startup, transfers, layout and paint. These app values are not a paired comparison with the historical cached integration artifact. App hints use actual game difficulty and preferences, which differ from the medium-difficulty raw control.
+
+| Puzzle | Preview including rating | Ordinary app hints | Solution walkthrough |
+| --- | --- | --- | --- |
+| xv-clover | 5.491/5.572 | 0.199/0.212 | 7.849/8.627 |
+| xv-quadruple-clover | 0.594/0.608 | 0.210/0.232 | 1.985/2.481 |
+| 7v7n | 89.272/90.615 | 278.008/279.066 | 92.594/94.992 |
+| FCeS | 7.375/7.434 | 0.789/0.804 | 8.835/10.114 |
+| 63Jk | 4085.376/4139.267 | 403.558/404.294 | 4122.222/4164.520 |
+| Chcs | 274.814/276.773 | 315.629/330.882 | 267.027/272.750 |
+
+The remaining rating and hint latency, propagation and browser-worker costs stay in [issue 88](https://github.com/coder13/sudoku-app/issues/88). Keep the measured regressions and package costs alongside the gains.
+
+Build each checkout with its own Cargo target directory and output directory, then repeat from the candidate checkout:
+
+```sh
+# Main checkout
+CARGO_TARGET_DIR=/tmp/main-cargo node scripts/build-wasm.mjs app /tmp/main-wasm
+# Candidate checkout
+CARGO_TARGET_DIR=/tmp/packed-cargo node scripts/build-wasm.mjs app /tmp/packed-wasm
+node --experimental-strip-types scripts/compare-engine-pruning.mjs /tmp/main-wasm/engine.wasm /tmp/packed-wasm/engine.wasm --palindrome-trace --classic-tridagon --xv
+node --experimental-strip-types scripts/bench-xv-rating.mjs /tmp/main-wasm/engine.wasm /tmp/packed-wasm/engine.wasm
+node --experimental-strip-types scripts/bench-engine-pruning.mjs /tmp/main-wasm/engine.wasm /tmp/packed-wasm/engine.wasm quadruple parity anti-king non-consecutive nc-white-dots whispers palindrome palindrome-knight palindrome-whispers
+node --experimental-strip-types scripts/bench-exact-houses.mjs /tmp/main-wasm/engine.wasm /tmp/packed-wasm/engine.wasm --generation-only
 node --experimental-strip-types --test scripts/bench-xv-app.mts
 ```
