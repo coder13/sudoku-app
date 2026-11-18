@@ -1,14 +1,16 @@
 import type { VariantPuzzle } from '../../src/sudoku/engine.ts'
 
+export type OracleRelation = readonly [number, number, (a: number, b: number) => boolean]
+
 /** Direct digit-set search, independent of the engine's domains and support code. */
-export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
+export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extraRelations: readonly OracleRelation[] = []) {
   const regions = puzzle.regions?.type === 'jigsaw' ? puzzle.regions.regions :
     Array.from({ length: 9 }, (_, box) => Array.from({ length: 9 }, (_, i) => Math.floor(box / 3) * 27 + box % 3 * 3 + Math.floor(i / 3) * 9 + i % 3))
   const houses: (readonly number[])[] = [
     ...Array.from({ length: 9 }, (_, r) => Array.from({ length: 9 }, (_, c) => 9 * r + c)),
     ...Array.from({ length: 9 }, (_, c) => Array.from({ length: 9 }, (_, r) => 9 * r + c)), ...regions,
   ]
-  const edges: [number, number, (a: number, b: number) => boolean][] = []
+  const edges: OracleRelation[] = [...extraRelations]
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
@@ -26,6 +28,13 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
       if (rule.consecutive?.negative || rule.ratioTwo?.negative) throw new Error('Independent line counter does not implement negative Kropki markers')
       for (const [a, b] of rule.consecutive?.pairs ?? []) edges.push([a, b, (a, b) => Math.abs(a - b) === 1])
       for (const [a, b] of rule.ratioTwo?.pairs ?? []) edges.push([a, b, (a, b) => a === b * 2 || b === a * 2])
+    }
+    else if (rule.type === 'non-consecutive') {
+      for (let a = 0; a < 81; a++) for (const b of [a % 9 < 8 ? a + 1 : -1, a < 72 ? a + 9 : -1]) {
+        if (b >= 0 && !(rule.except ?? []).some(([x, y]) => x === a && y === b || x === b && y === a)) {
+          edges.push([a, b, (a, b) => Math.abs(a - b) !== 1])
+        }
+      }
     }
     else if (rule.type === 'anti-knight' || rule.type === 'anti-king') {
       for (let a = 0; a < 81; a++) for (let b = a + 1; b < 81; b++) {

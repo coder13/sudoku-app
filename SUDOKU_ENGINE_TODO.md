@@ -19,6 +19,9 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
 
+- [x] Audit the original Coach 99Eu sum-15 export and inspect its Roman XV clue. Independently verify its unique completion, redundant sum and essential authored control. Confirm that general totals need a native rule as well as UI. [Source audit and port requirements](SUDOKU_ADJACENT_SUM_AUDIT.md)
+- [ ] Integrate general adjacent totals with complete native and app support through [issue 72](https://github.com/coder13/sudoku-app/issues/72). Preserve the full source while imports remain explicitly unsupported.
+
 - [x] Restore Solution and Technique Finder access for every built-in variant, including Jigsaw, in both desktop workspaces. Share the current-position hint path and preserve all regions, rules, entries, and removals. Keep variant scans on a background worker with separate interactive proof requests and rule-specific caches. [Hint and solution parity](https://github.com/coder13/sudoku-app/issues/97)
 - [x] Add mobile solution walkthroughs with a read-only grid, explanations, and step navigation. Cover rendered controls and the app help services for all 56 offered variant/difficulty combinations, progressed Jigsaw region proofs, combined rules, preferences, and complete solution replay.
 - [x] Integrate the performance changes from [PR 100](https://github.com/coder13/sudoku-app/pull/100). Preserve paged exhaustive hints for Classic and variants, per-position scan sharing and cancellation, independent history/generation workers, and batched singles. Test page boundaries, proof ordering, completed-count caching, and cancellation without interrupting other help.

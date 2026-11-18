@@ -1,0 +1,56 @@
+{
+  "description": "Source audit only. basePuzzle excludes additionalSums for the independent counter; it is not a complete importable definition.",
+  "source": {
+    "url": "https://sudoku.coach/en/s/99Eu",
+    "title": "May the Sudoku Be With You",
+    "author": "Dariao142",
+    "published": "2025-08-30 21:05:41",
+    "code": "SCv7_32_f2e8r3hv1u130465nv5sq78g6g52mrkehi3a30d6bo18bd478qdnsttf9947148eivf9vnrrpu1rdm2mv1951p026jf9aed38pp50g5iulipv6nunm1tj88shghinka4jelger51r2ig5q1pe87911ngc98dv201ktqavfk7enm8hk38tpu0goh6utlp5turn1me3j303b7a96k973fjdulgq3q1gimlenat9bq91s6ovovfii467ji2keqb4lt4dia05ho0te2f0qqhgsrpmubtho",
+    "imageUrl": "https://sudoku.coach/open_graph_images/99Eu.png",
+    "imageSha256": "c7548bfe0ead59ad889a72381144039c07aab70378e69ef3d74536e9f0ffce14"
+  },
+  "basePuzzle": {
+    "version": 1,
+    "givens": "000000000000000000000000000000000000000003000002000000000000000000000000000000000",
+    "rules": [
+      {
+        "type": "anti-knight"
+      },
+      {
+        "type": "anti-king"
+      },
+      {
+        "type": "non-consecutive"
+      }
+    ]
+  },
+  "additionalSums": [
+    {
+      "cells": [
+        80,
+        79
+      ],
+      "total": 15
+    }
+  ],
+  "solution": "639285741174639285528174639963528174417963528852417963396852417741396852285741396",
+  "requiresSumForUniqueness": false,
+  "authoredControl": {
+    "description": "A four-cell 6/7 rectangle in a standard complete grid. The extra total selects one of its two completions.",
+    "basePuzzle": {
+      "version": 1,
+      "givens": "534008912672195348198342567859001423426853791713924856961537284287419635345286179"
+    },
+    "additionalSums": [
+      {
+        "cells": [
+          30,
+          39
+        ],
+        "total": 15
+      }
+    ],
+    "solution": "534678912672195348198342567859761423426853791713924856961537284287419635345286179",
+    "alternative": "534768912672195348198342567859671423426853791713924856961537284287419635345286179"
+  }
+}
