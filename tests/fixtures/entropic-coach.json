@@ -794,7 +794,7 @@
       "published": "2026-10-29 01:15:06",
       "code": "SCv7_32_f2e8b4ub9r1j0425vv2unevghjftq0hreom525t1mkh4m8dda85qih7teue552gacac8bpchtqeses9ildv2lmt7uafdaai1uniir3vnkknvb82m99fi6qfq9oqenmrgvb7khiohppbqnddqeisdn3c779qman6q7j7qkr6lh8q58fferceak7rm5vev0c6md6rjudmf47rqvuajndfb4mmbr2rmofkte0ot7lcspurb4u9ccevfbjjaie3m3eap1l5n1racm08idgb8321e2ljvrt6tqqtef6t7du5i341sms04lvgh4n441do1sdm8mo44so0d4p8se31mc05ncc0mqr032f11d3s28ejtgg7v07mup4t0m9pbli3p3dv11156hbulj29sp2ocp211pi430asdatlgdk307jo86a6qg4f4ll1k1s08u91c28gob78i0duk1ms5pibom268c8n4h4dj9v7jh6gu34ev200v3dv2su7r2fjt00066b3n",
       "solution": "527963184496128537138475296952637841374851629861249375285714963643592718719386452",
-      "deferred": "Global Entropy and additional source content remain unsupported. Preserve the whole source."
+      "deferred": "The source description adds forbidden connections at spiral breaks. The original export contains Global Entropy and 18 positive Entropic paths, but does not encode those negative connections. See issue 168."
     },
     {
       "url": "https://sudoku.coach/en/s/7nms",
@@ -803,7 +803,7 @@
       "published": "2025-05-23 08:00:26",
       "code": "SCv7_32_f2e9b4qhde1j0545vv5nqfhb4oor3uhq0ptuhm63uoqej0tj8415d2r6ceevhnrndkrq27adt65hhu5uef10qtt0l9ppm5vndkkkmgclveqcqveruiv2mn73ff5f50esgop130fsfr3h8lblvdfd83sdtvddr7i0nmmrdtm8lqjp7ttel7s39313fpij3ivmk2sn5p8qffl0sl6qnaffsh0alphkihgsn0lrkojbnnmudi1v9on224p80eag8ebdk0qko353gee8l804cbvadoeu31146668e2f5tgh4615ugs4usp98im21pcg2e90kn1dvr9pe1lfct0pfref7iltur8nnuqfgn5f6hn251eujsrp07tkhifeip66v5645ug37s2i73g89tjg41q3rt0afdqu91e62lv77gtbd8a9n1ugqgs6nmqurtnpge0uj58o7jn1o2cojpvg0g0821so",
       "solution": "834196257769542813521837649385764192472918536196253784617389425948625371253471968",
-      "deferred": "Global Entropy and additional source content remain unsupported. Preserve the whole source."
+      "deferred": "Outside L/M/H letters order digit groups from the clue direction. These mathematical clues are stored as cosmetic text and remain unsupported. See issue 169."
     }
   ]
 }

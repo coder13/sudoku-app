@@ -5,6 +5,7 @@ use crate::{Board, CELLS, DIGITS};
 #[cfg(any(feature = "generation", test))]
 mod generation;
 mod lines;
+mod global_entropy;
 mod logical;
 mod pairs;
 #[cfg(any(feature = "teaching", test))]
@@ -323,6 +324,8 @@ rules! {
         /// One position is unrestricted. Every reference must be in the grid.
         cells: Vec<usize>,
     }
+    /// Require low (1–3), middle (4–6) and high (7–9) digits in every 2 × 2 area.
+    GlobalEntropy => "global-entropy" {}
     /// Require each interior digit to fall strictly between the endpoint digits.
     Between => "between" {
         /// Cell indices in line order, including both endpoints.
@@ -529,6 +532,7 @@ impl VariantPuzzle {
             pairs: Vec::new(),
             lines: Vec::new(),
             quadruples: Vec::new(),
+            global_entropy: None,
             pair_clues: Vec::new(),
             pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
             parity_clues: Vec::new(),
@@ -586,6 +590,9 @@ impl VariantPuzzle {
                     {
                         return Err(VariantDefinitionError::IncompleteCages);
                     }
+                }
+                PuzzleRule::GlobalEntropy {} => {
+                    compiled.global_entropy.get_or_insert(index);
                 }
                 PuzzleRule::Quadruple { top_left, digits } => {
                     let clue =
@@ -648,6 +655,9 @@ impl VariantPuzzle {
             )
             .chain(compiled.parity_clues.iter().map(|clue| 1u128 << clue.cell))
             .fold(0, |cells, scope| cells | scope);
+        if compiled.global_entropy.is_some() {
+            compiled.extra_rule_cells = (1u128 << CELLS) - 1;
+        }
         Ok(compiled)
     }
 }
@@ -762,6 +772,7 @@ pub struct CompiledVariant {
     pairs: Vec<PairConstraint>,
     lines: Vec<LineConstraint>,
     quadruples: Vec<Quadruple>,
+    global_entropy: Option<usize>,
     pair_clues: Vec<PairClue>,
     pair_clue_memberships: [Vec<usize>; CELLS],
     parity_clues: Vec<ParityClue>,

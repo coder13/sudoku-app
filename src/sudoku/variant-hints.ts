@@ -13,6 +13,25 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
   const [a, b] = cells
   const pair = b === undefined ? at(a) : `${at(a)} and ${at(b)}`
   switch (rule?.type) {
+    case 'global-entropy': {
+      const names = ['low (1–3)', 'medium (4–6)', 'high (7–9)']
+      const groups = [7, 56, 448]
+      const locks: string[] = []
+      for (let subset = 1; subset < 7; subset++) {
+        const selected = groups.flatMap((mask, group) => subset & (1 << group) ? [{ mask, group }] : [])
+        const mask = selected.reduce((mask, item) => mask | item.mask, 0)
+        const sites = cells.filter((_, i) => domains[i] & mask)
+        if (sites.length !== selected.length || !focus.some(candidate => sites.includes(candidate.cell)
+          && !(mask & (1 << (candidate.digit - 1))))) continue
+        const locations = new Intl.ListFormat('en', { type: 'conjunction' }).format(sites.map(at))
+        const required = new Intl.ListFormat('en', { type: 'conjunction' }).format(selected.map(item => names[item.group]))
+        locks.push(selected.length === 1 ? `Only ${locations} can supply a ${required} digit.`
+          : `Only ${locations} can supply ${required} digits. These two cells must supply one from each group.`)
+      }
+      return { description: `The 2 × 2 area from ${at(cells[0])} to ${at(cells[3])} needs a low, a medium and a high digit.`,
+        reason: locks.length ? `${locks.join(' ')} Remove candidates from other groups in those cells.`
+          : 'Each group needs a separate cell. A crossed-out candidate leaves no way to fit all three groups in these four cells.' }
+    }
     case 'quadruple':
       return { description: `The circle requires ${rule.digits.join(', ')} among its four surrounding cells.`,
         reason: 'Each printed digit needs a separate cell. No arrangement that uses a crossed-out candidate can fit all the printed digits.' }

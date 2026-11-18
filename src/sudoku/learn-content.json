@@ -7729,6 +7729,54 @@
           "difficulty": "medium"
         },
         {
+          "id": "global-entropy",
+          "title": "Global Entropy",
+          "summary": "Every 2 × 2 area needs a low digit (1–3), a medium digit (4–6) and a high digit (7–9). If only one cell can provide a missing group, remove its candidates from the other groups. One of the three groups appears twice.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "find-the-missing-group",
+              "title": "Find a group that has only one place"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Inspect four cells that form a 2 × 2 area. Include areas that cross box or region borders. Identify the groups of placed digits and cells whose candidates all belong to one group.",
+                "Each group needs its own cell. If two groups are confined to the same two cells, those cells must provide one from each group. Remove candidates from the third group in those cells.",
+                "A repeated group is required because four cells use three groups. Equal digits can repeat diagonally across box boundaries if all other puzzle rules allow it."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "global-entropy",
+              "copy": {
+                "description": "R1C8 is 9 and R2C9 is 7, both high digits. R1C9 can only be 6, a medium digit. The area needs a low digit in R2C8. Remove 4 and 6, leaving 3."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "global-entropy",
+                  "title": "Global Entropy"
+                }
+              ],
+              "guide": {
+                "start": "Inspect each digit group in the highlighted 2 × 2 area.",
+                "check": "Find a group with one possible cell, or two groups confined to two cells.",
+                "reason": "Every group needs a separate cell, so those cells cannot use candidates from another group."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Published Ordered Entropy puzzle by Philip Newman",
+              "href": "https://www.gmpuzzles.com/blog/2026/04/entropy-sudoku-by-philip-newman/"
+            }
+          ],
+          "difficulty": "easy"
+        },
+        {
           "id": "entropic",
           "title": "Entropic lines",
           "summary": "An Entropic line repeats three digit groups: low (1–3), medium (4–6) and high (7–9). Once you know two groups, the next position needs the third. Positions three steps apart share a group, but can contain different digits.",

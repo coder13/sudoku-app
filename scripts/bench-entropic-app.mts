@@ -17,24 +17,27 @@ import { countLineSolutions } from '../tests/helpers/line-oracle.ts'
 import { useWasmWorker } from '../tests/helpers/wasm-worker.ts'
 const wasmPath = process.env.SUDOKU_BENCH_WASM
 useWasmWorker(wasmPath)
+const family = process.env.SUDOKU_BENCH_FAMILY ?? 'entropic'
+assert.ok(['entropic', 'global-entropy'].includes(family), 'Choose entropic or global-entropy')
+const variantClues = family === 'entropic' ? 8 : 0
 
-test('measure Entropic engine requests, actual app callers and fixed-template generation', async () => {
+test(`measure ${family} engine requests, actual app callers and fixed-template generation`, async () => {
   const load = async (name: string) =>
     JSON.parse(
-      await readFile(new URL(`../tests/fixtures/entropic-${name}.json`, import.meta.url), 'utf8')
+      await readFile(new URL(`../tests/fixtures/${family}-${name}.json`, import.meta.url), 'utf8')
     )
-  const clover = await load('clover'),
+  const base = await load(family === 'entropic' ? 'clover' : 'newman'),
     share = (puzzle: VariantPuzzle) =>
       '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
   const cases = [
-    { name: 'clover', code: share(clover.puzzle), solution: clover.solution, complete: true },
+    { name: family === 'entropic' ? 'clover' : 'newman', code: share(base.puzzle), solution: base.solution, complete: true },
     ...(await load('coach')).examples
-      .filter((s: { deferred?: string }) => !s.deferred)
+      .filter((s: { puzzle?: VariantPuzzle }) => s.puzzle)
       .map((s: { url: string; code: string; solution: string }) => ({
         name: s.url.split('/').at(-1),
         code: s.code,
         solution: s.solution,
-        complete: !['Hyk5', 'Hafj'].some((id) => s.url.endsWith(id)),
+        complete: !(family === 'entropic' ? ['Hyk5', 'Hafj'] : ['A2s7', 'CJhv']).some((id) => s.url.endsWith(id)),
       })),
   ]
   const bytes = await readFile(wasmPath ?? new URL('../src/sudoku/generated/engine.wasm', import.meta.url)),
@@ -204,11 +207,13 @@ test('measure Entropic engine requests, actual app callers and fixed-template ge
               values: game.givens,
             })
           ),
-        (result) =>
+        (result) => {
           assert.equal(
             [...result.matchAll(/class="variant-entropic"/g)].length,
             puzzle.rules!.filter((r) => r.type === 'entropic').length
           )
+          if (family === 'global-entropy') assert.match(result, /Global Entropy: every 2 × 2 area/)
+        }
       )
       console.log(
         JSON.stringify({
@@ -219,7 +224,7 @@ test('measure Entropic engine requests, actual app callers and fixed-template ge
         })
       )
     }
-    const template = { ...clover.puzzle, givens: '0'.repeat(81) },
+    const template = { ...base.puzzle, givens: '0'.repeat(81) },
       times: number[] = [],
       failedSeeds: number[] = [],
       distinct = new Set<string>()
@@ -231,8 +236,8 @@ test('measure Entropic engine requests, actual app callers and fixed-template ge
           maxNodes: 20_000,
           template,
           givens: 30,
-          variantClues: 8,
-          requiredRule: 'entropic',
+          variantClues,
+          requiredRule: family,
         },
         start = performance.now(),
         result = await handle({ id: ++id, request: message })
@@ -246,7 +251,7 @@ test('measure Entropic engine requests, actual app callers and fixed-template ge
       }
       const generated = result.value
       assert.equal(generated.givens, 30)
-      assert.equal(generated.variantClues, 8)
+      assert.equal(generated.variantClues, variantClues)
       assert.deepEqual(generated.puzzle.rules, template.rules)
       const counted = countLineSolutions(generated.puzzle)
       assert.equal(counted.count, 1)
@@ -256,7 +261,7 @@ test('measure Entropic engine requests, actual app callers and fixed-template ge
     }
     console.log(
       JSON.stringify({
-        generation: 'entropic',
+        generation: family,
         seeds: 20,
         successes: 20 - failedSeeds.length,
         failedSeeds,

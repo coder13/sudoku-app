@@ -125,6 +125,7 @@ impl VariantPuzzle {
                 PuzzleRule::Xv { five, ten } => marks(five, ten),
                 PuzzleRule::AntiKing {}
                 | PuzzleRule::AntiKnight {}
+                | PuzzleRule::GlobalEntropy {}
                 | PuzzleRule::NonConsecutive { .. } => 0,
                 _ => 1,
             })

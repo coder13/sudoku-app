@@ -64,6 +64,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Palindrome',
     rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
   },
+  'global-entropy': {
+    name: 'Global Entropy',
+    rule: 'Every 2 × 2 area contains a low digit (1–3), a medium digit (4–6) and a high digit (7–9). This includes areas across box or region borders. One group appears twice. Equal digits can repeat diagonally if all other puzzle rules allow it.',
+  },
   entropic: {
     name: 'Entropic Lines',
     rule: 'Each three successive positions on an Entropic line contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',
@@ -333,6 +337,7 @@ function isPlayableRule(rule: VariantRule): boolean {
     case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
+    case 'global-entropy': return Object.keys(rule).every(key => key === 'type')
     case 'anti-knight': case 'anti-king': return true
     case 'non-consecutive': return rule.except === undefined || Array.isArray(rule.except) && rule.except.every(pair =>
       validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
@@ -399,6 +404,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
 
 const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   entropic: PUZZLE_VARIANTS.entropic.name,
+  'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
   renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
   xv: PUZZLE_VARIANTS.xv.name,
@@ -435,6 +441,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'global-entropy':
+        descriptions.push(PUZZLE_VARIANTS['global-entropy'].rule)
+        break
       case 'entropic':
         descriptions.push(PUZZLE_VARIANTS.entropic.rule)
         break

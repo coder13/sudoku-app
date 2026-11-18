@@ -49,6 +49,16 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
       case 'palindrome':
         rule.cells.forEach((cell, i) => assert.equal(digits[cell], digits[rule.cells[rule.cells.length - 1 - i]]))
         break
+      case 'global-entropy': {
+        for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++) {
+          const first = row * 9 + col
+          const area = [first, first + 1, first + 9, first + 10].map(cell => digits[cell])
+          assert.ok(area.some(digit => digit <= 3))
+          assert.ok(area.some(digit => digit >= 4 && digit <= 6))
+          assert.ok(area.some(digit => digit >= 7))
+        }
+        break
+      }
       case 'entropic': {
         for (let i = 0; i < rule.cells.length; i++) for (let j = i + 1; j < Math.min(i + 3, rule.cells.length); j++) {
           assert.notEqual(Math.floor((digits[rule.cells[i]] - 1) / 3), Math.floor((digits[rule.cells[j]] - 1) / 3))

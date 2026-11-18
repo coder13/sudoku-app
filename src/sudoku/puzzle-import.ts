@@ -177,9 +177,10 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
       })
       if (!cages.length) throw new Error('This Sudoku Coach puzzle has no Killer cages.')
       rules.push({ type: 'killer-cages', cages })
-    } else if (constraint.type === 'diagonalPositive' || constraint.type === 'diagonalNegative' || constraint.type === 'antiKnight' || constraint.type === 'antiKing' || constraint.type === 'nonconsecutive') {
+    } else if (constraint.type === 'diagonalPositive' || constraint.type === 'diagonalNegative' || constraint.type === 'antiKnight' || constraint.type === 'antiKing' || constraint.type === 'nonconsecutive' || constraint.type === 'globalEntropy') {
       if (constraint.segments.length) throw new Error(`This Sudoku Coach puzzle uses unsupported cells for ${constraint.type}.`)
-      if (constraint.type === 'antiKnight') rules.push({ type: 'anti-knight' })
+      if (constraint.type === 'globalEntropy') rules.push({ type: 'global-entropy' })
+      else if (constraint.type === 'antiKnight') rules.push({ type: 'anti-knight' })
       else if (constraint.type === 'antiKing') rules.push({ type: 'anti-king' })
       else if (constraint.type === 'nonconsecutive') rules.push({ type: 'non-consecutive' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })

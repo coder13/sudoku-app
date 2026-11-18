@@ -19,6 +19,11 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
 
+- [x] Audit Global Entropy against Newman's published twenty-given puzzle/solution PDFs and ten preserved Coach exports. Independently verify three complete combined exports. Identify authored rules absent from positive payloads and keep legacy, geometry and companion gaps explicit. [Source audit](SUDOKU_GLOBAL_ENTROPY_AUDIT.md)
+- [x] Add the native four-cell coverage rule, a calibrated 24-point technique, three exercises, typed import, placed-digit conflicts and Pencil cleanup, accessible global rules, human explanations and a Learn article in the isolated integration worktree. Pass the focused actual-Wasm and desktop/mobile component contracts.
+- [ ] Finish Global Entropy's prerequisite symmetry repair, full native/package/app gates, retained-response checks, performance measurements and CI before merging its own family PR. [Issue 60](https://github.com/coder13/sudoku-app/issues/60)
+- [ ] Support authored forbidden Entropic connections and directed outside digit-group order clues. Keep LEjN and 7nms's complete original sources and additional mathematical rules intact. [Forbidden connections](https://github.com/coder13/sudoku-app/issues/168) · [Group order](https://github.com/coder13/sudoku-app/issues/169)
+
 - [x] Audit Entropic Lines against Clover's published puzzle/solution PDFs, five complete original Coach exports and two deferred Global Entropy combinations. Preserve independent touching paths, closed walks and the redundant Ksy3 clue. [Source and integration contract](SUDOKU_ENTROPIC_AUDIT.md)
 - [x] Merge native/app Entropic integration through [PR 163](https://github.com/coder13/sudoku-app/pull/163). All checks passed on reviewed head `49d54c1`; main contains the release at `dded30a`. [Issue 58](https://github.com/coder13/sudoku-app/issues/58) is closed. Human solve coverage, live viewport review and New puzzle calibration remain follow-ups.
 
