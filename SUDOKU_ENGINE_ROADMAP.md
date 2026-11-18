@@ -6,7 +6,7 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `0c15503`. It includes capability packaging, mixed rules, UAT fixes, engine performance work, variant hint repairs and the Colors panel. Quadruple, Odd/Even, Anti-King, Non-Consecutive and Whispers have complete app integrations. Cell references and lessons use the revised presentation. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `c38cc2b`. It includes capability packaging, mixed rules, UAT fixes, engine performance work, variant hint repairs and the Colors panel. Quadruple, Odd/Even, Anti-King, Non-Consecutive, Whispers and Palindrome have complete app integrations. Cell references and lessons use the revised presentation. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
@@ -28,7 +28,8 @@ This inventory uses main at `0c15503`. It includes capability packaging, mixed r
 | Shared partial geometric witnesses | In main through [PR 128](https://github.com/coder13/sudoku-app/pull/128) | Preserve complete proofs, position-local caches and checked symmetries from [PR 131](https://github.com/coder13/sudoku-app/pull/131). Profile remaining Tridagon and worker costs |
 | Checked grid and digit witnesses | In main through [PR 131](https://github.com/coder13/sudoku-app/pull/131), with PR 132 app integration | Preserve actual geometry, bounded work and unknown-case fallback. [Measured results](tests/fixtures/README.md#checked-geometric-symmetries) |
 | Whispers paths and shared-house deductions | In main through [PR 121](https://github.com/coder13/sudoku-app/pull/121) | Preserve minimum differences, closed walks and explicit house proofs. Review live viewports and calibrate app generation recipes. Continue the exhaustive-scan audit in [issue 88](https://github.com/coder13/sudoku-app/issues/88) |
-| Palindrome imports, visible clues, mirrored proofs and mixed rules | Validated in the focused [issue 49](https://github.com/coder13/sudoku-app/issues/49) integration | Preserve Coach grouping and original segments. Finish live viewport review and generation calibration. Profile app-order ratings in [issue 134](https://github.com/coder13/sudoku-app/issues/134) |
+| Palindrome imports, visible clues, mirrored proofs and mixed rules | In main through [PR 135](https://github.com/coder13/sudoku-app/pull/135) | Preserve Coach grouping, original segments and paired-cell explanations. Finish live viewport review and generation calibration. [Measurements and limits](tests/fixtures/README.md#palindrome-app-integration) |
+| App-order rating of the published Palindrome/Whispers puzzle | Measured bottleneck in [issue 134](https://github.com/coder13/sudoku-app/issues/134) | Profile every trace position. Preserve all 112 enabled techniques, their order and complete responses before merging a measured improvement |
 | Additional rule families and shading | Research on `codex/sudoku-engine-integration` | Port one app-ready family from current main through [issue 35](https://github.com/coder13/sudoku-app/issues/35) |
 | Proof explorer and expert lesson work | Open in [PR 14](https://github.com/coder13/sudoku-app/pull/14) | Reconcile its diff with current main and the research branch before integration |
 | Uncommitted proof, technique, and lesson edits | Preserved in the original R&D worktree | Compare each change with current main and the research branch before porting it |

@@ -35,9 +35,9 @@ The Wasm audit now measures candidates, uniqueness verification, exact solving, 
 
 The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
-### Palindrome integration in progress
+### Palindrome integration merged
 
-The next family remains open in [issue 49](https://github.com/coder13/sudoku-app/issues/49). These checks use the engine merged through PR 131. App integration remains unfinished.
+This family reached main at `c38cc2b` through [PR 135](https://github.com/coder13/sudoku-app/pull/135). All CI and deployment checks passed on reviewed head `4504284`. The reviewed worktree remains on `codex/sudoku-palindrome-integration`. [Palindrome issue](https://github.com/coder13/sudoku-app/issues/49)
 
 - [x] Render and inspect Clover's Palindrome and Newman's Anti-Knight Palindrome puzzle and completion PDFs. Independently prove unique completions and multiple completions after removing Palindrome. Both native default logical profiles complete, with six and ten opening choices.
 - [x] Retrieve unmodified Coach `FgZb` and `FzzD` exports. Preserve their complete companion-rule inventories. Independently verify the one-given Whispers/Palindrome completion and its Palindrome dependency. Its native default profile still stalls, and its 20,000-node exact check reaches the budget limit.
@@ -49,7 +49,11 @@ The next family remains open in [issue 49](https://github.com/coder13/sudoku-app
 - [x] Verify native generation with exact clue targets, preserved drawing geometry and independent rule dependence. Keep New puzzle presets behind separate difficulty calibration.
 - [x] Pass 307 native tests, 413 app tests, 253 Wasm tests, sixteen capability combinations, four package profiles, strict full/reduced documentation, TypeScript and the 159-route production/offline build. Preserve all 3,419 retained responses. Verify 8,192 fixed-clue family selections, including intentional contradictory selections.
 - [x] Record paired performance, unchanged choices and the 4,896-byte app gzip increase. Keep the slow app-order Coach rating in [issue 134](https://github.com/coder13/sudoku-app/issues/134). [Measurements and limits](tests/fixtures/README.md#palindrome-app-integration)
-- [ ] Pass final CI and merge the app-ready family into main.
+- [x] Pass CI on reviewed head `4504284`, merge through [PR 135](https://github.com/coder13/sudoku-app/pull/135) and confirm its ancestry on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44275164358)
+- [x] Profile selected expert searches at the stalled Coach position. Record bounded digit-matching research without changing the shipped engine or claiming a rating speedup. [Rating audit](https://github.com/coder13/sudoku-app/issues/134)
+- [ ] Finish live viewport interaction review. Static clue images and desktop/mobile component tests passed.
+- [ ] Calibrate difficulty recipes before offering Palindrome in New puzzle. Native generation and exact clue targets already pass.
+- [ ] Improve the existing slow app-order Coach rating through the separate measured optimization in [issue 134](https://github.com/coder13/sudoku-app/issues/134).
 
 ### Non-Consecutive integration merged
 
