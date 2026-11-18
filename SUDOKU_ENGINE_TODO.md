@@ -122,6 +122,18 @@ This pass reached main at `d9e4ee9` through [PR 128](https://github.com/coder13/
 - [x] Pass CI on reviewed head `bc1a01f`, merge through [PR 128](https://github.com/coder13/sudoku-app/pull/128) and verify the reviewed optimization and PR 127 app work on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44254728829)
 - [x] Evaluate checked grid/digit symmetries for bounded candidate support in [issue 129](https://github.com/coder13/sudoku-app/issues/129). Check every transformed grid against the current masks, placements and actual geometric premises before accepting support. [Implementation and validation](#checked-geometric-symmetries-merged)
 
+### Mask-constrained digit witnesses in progress
+
+This isolated pass starts from main `1539f74` in `codex/sudoku-matched-witnesses`. [Rating bottleneck](https://github.com/coder13/sudoku-app/issues/134)
+
+- [x] Profile all 112 app techniques at nineteen positions of the published Coach trace. Preserve the positive Firework AIC and ALS AIC proofs.
+- [x] Add bounded bijective digit matchings that obey every candidate mask. Preserve actual houses, directed peers, fixed digits and the original search for unknown support.
+- [x] Compare every three-digit domain matrix with independently enumerated bijections. Test a nine-digit displacement cycle, independent swaps, forbidden candidates and exhausted budgets. Pass 310 native and 413 app tests.
+- [x] Compare 6,210 complete responses across forty positions, including every Palindrome/Whispers trace position. Preserve all 117 detector lists, hint pages and 351 positive practice cases.
+- [x] Pass 310 native tests, 413 app tests, 253 Wasm tests, sixteen capability combinations, four package profiles, strict full/reduced documentation, TypeScript and the 159-route production/offline build.
+- [x] Measure nine fixtures with complete response checks. Reduce the Coach app-order median from 413.446 to 229.884 ms. Preserve scores, choices and memory. Record slower samples and the 5,013-byte app gzip increase. [Methods and limits](tests/fixtures/README.md#mask-constrained-digit-witnesses)
+- [ ] Pass exact-head CI, then merge the measured improvement separately.
+
 ### Checked geometric symmetries merged
 
 This pass reached main at `0c15503` through [PR 131](https://github.com/coder13/sudoku-app/pull/131), including PR 132's hint-card changes. All CI and deployment checks passed on reviewed head `d5bbf9f`. The reviewed worktree remains on `codex/sudoku-symmetric-witnesses`. [Symmetry research issue](https://github.com/coder13/sudoku-app/issues/129)

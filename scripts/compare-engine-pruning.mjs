@@ -4,8 +4,9 @@ import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
-const [beforePath, afterPath] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm')
+const [beforePath, afterPath, ...options] = process.argv.slice(2)
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace]')
+assert.ok(options.every(option => option === '--palindrome-trace'), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -58,6 +59,28 @@ if (detectors.includes('whispers-house-support')) {
   fixtures.push({ name: 'whispers-brain-zaps', position: { puzzle: (await read('../tests/fixtures/whispers-brain-zaps.json')).puzzle } })
   fixtures.push({ name: 'closed-whispers-walk', position: { puzzle: { version: 1, givens: '0'.repeat(81),
     rules: [{ type: 'whispers', cells: [0, 10, 20, 0], minDifference: 4 }] } } })
+}
+// Opt in to preserve the historical corpus and its response counts. Replay
+// every established removal instead of treating each grid as fresh givens.
+if (options.includes('--palindrome-trace')) {
+  for (const file of ['palindrome-clover', 'palindrome-newman']) {
+    fixtures.push({ name: file, position: { puzzle: (await read(`../tests/fixtures/${file}.json`)).puzzle } })
+  }
+  const coach = (await read('../tests/fixtures/palindrome-coach.json')).examples[0]
+  const puzzle = (await detectPuzzle(coach.code)).variant.puzzle
+  const trace = await before({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder })
+  assert.equal(trace.rating.status, 'stalled')
+  assert.equal(trace.rating.points, 527)
+  assert.equal(trace.steps.length, 18)
+  const entries = Array(81).fill('0'), eliminations = Array(81).fill(0)
+  for (let step = 0; step <= trace.steps.length; step++) {
+    fixtures.push({ name: `palindrome-coach-step-${step}`, position: { puzzle,
+      entries: entries.join(''), eliminations: [...eliminations] } })
+    if (step < trace.steps.length) for (const action of trace.steps[step].actions) {
+      if ('place' in action) entries[action.place.cell] = String(action.place.digit)
+      else eliminations[action.eliminate.cell] |= 1 << (action.eliminate.digit - 1)
+    }
+  }
 }
 let comparisons = 0, positive = 0
 async function compare(request, label) {
