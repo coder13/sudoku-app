@@ -22,7 +22,9 @@ The fixtures store the PDF URLs and SHA-256 hashes. These independent reference 
 
 All three original diagrams were inspected. The source fixture records their hashes and publication dates. No given, line or companion is removed to obtain a passing import.
 
-The remaining originals expose broader gaps. [Ksy3](https://sudoku.coach/en/s/Ksy3) also contains Entropic Line, Palindrome, general totals and a ratio dot. Its full definition remains explicitly unsupported until its Entropic companion is ready. [9uMo](https://sudoku.coach/en/s/9uMo) uses a 6×6 grid and general-difference markers. [5NW](https://sudoku.coach/en/s/5NW) uses legacy SCv4 interchange and a Consecutive Line companion. These originals remain preserved and rejected for those specific gaps. They are not partial imports.
+The original Renban release deferred [Ksy3](https://sudoku.coach/en/s/Ksy3) for its Entropic companion. [PR 163](https://github.com/coder13/sudoku-app/pull/163) now imports its complete definition on main `dded30a`. It preserves all Renban, Palindrome, general-total, ratio-dot and Entropic clues. [Subsequent source audit and full/partial paths](SUDOKU_ENTROPIC_AUDIT.md)
+
+The other originals still expose broader gaps. [9uMo](https://sudoku.coach/en/s/9uMo) uses a 6×6 grid and general-difference markers. [5NW](https://sudoku.coach/en/s/5NW) uses legacy SCv4 interchange and a Consecutive Line companion. These originals remain preserved and rejected for those specific gaps. They are not partial imports.
 
 ## Compiler and drawing semantics
 
