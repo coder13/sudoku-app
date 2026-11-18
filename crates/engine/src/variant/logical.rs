@@ -11,7 +11,7 @@ use super::{
 use crate::{
     Analysis, Board, CELLS, Candidate, DIGITS, Difficulty, HintAction, HintEvidence, SolveStatus,
     Technique,
-    hints::{Deduction, DeductionSearch, OverlaySearch, digit_bit, digits},
+    hints::{Deduction, DeductionSearch, OverlaySearch, RectangleInferenceCache, digit_bit, digits},
 };
 
 #[cfg(test)]
@@ -531,6 +531,7 @@ pub(super) struct ProofPosition<'a> {
     board: Board,
     pub masks: [u16; CELLS],
     uniqueness: OnceCell<bool>,
+    rectangle_inference: RectangleInferenceCache,
     overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
 }
 
@@ -830,6 +831,7 @@ impl CompiledVariant {
             board,
             masks,
             uniqueness: OnceCell::new(),
+            rectangle_inference: RectangleInferenceCache::default(),
             overlay: OnceCell::new(),
         }
     }
@@ -1089,7 +1091,8 @@ impl CompiledVariant {
             &position.board, &position.masks, solution.as_ref(),
         )
         .with_completion_probes(ALTERNATIVE_WITNESS_NODES)
-        .with_completion_support(completion_support.as_ref());
+        .with_completion_support(completion_support.as_ref())
+        .with_rectangle_inference(&position.rectangle_inference);
         for hint in search.hints(technique) {
             let swap_cells = if technique.requires_unique_solution() {
                 let cells = match &hint.evidence {

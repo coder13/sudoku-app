@@ -22,6 +22,10 @@ mod fish;
 mod forcing;
 mod guardians;
 mod inference;
+#[cfg(feature = "variants")]
+mod inference_cache;
+#[cfg(feature = "variants")]
+pub(crate) use inference_cache::RectangleInferenceCache;
 mod inference_graph;
 mod kraken;
 mod links;
@@ -42,6 +46,8 @@ pub(super) struct PatternSearch<'a> {
     pub(super) completion_probe_nodes: u32,
     #[cfg(feature = "variants")]
     pub(super) completion_support: Option<&'a [u128; 9]>,
+    #[cfg(feature = "variants")]
+    pub(super) shared_rectangle_inference: Option<&'a RectangleInferenceCache>,
     board: &'a Board,
     masks: &'a [u16; CELLS],
     positions: OnceCell<[u128; 9]>,
@@ -69,6 +75,8 @@ impl<'a> PatternSearch<'a> {
             completion_probe_nodes: 0,
             #[cfg(feature = "variants")]
             completion_support: None,
+            #[cfg(feature = "variants")]
+            shared_rectangle_inference: None,
             board,
             masks,
             positions: OnceCell::new(),
@@ -143,12 +151,7 @@ impl<'a> PatternSearch<'a> {
                     .as_deref(),
                 Technique::UniqueRectangleAic
                 | Technique::UniqueRectangleDiscontinuousNiceLoop
-                | Technique::UniqueRectangleContinuousNiceLoop => self
-                    .rectangle_inference
-                    .get_or_init(|| {
-                        inference_graph::InferenceGraph::for_unique_rectangles(self).map(Box::new)
-                    })
-                    .as_deref(),
+                | Technique::UniqueRectangleContinuousNiceLoop => self.rectangle_graph(),
                 _ => Some(self.inference_graph()),
             };
             return graph.map_or(ControlFlow::Continue(()), |graph| rule.visit(graph, visit));
@@ -259,6 +262,20 @@ impl<'a> PatternSearch<'a> {
         self.inference.get_or_init(|| {
             inference_graph::InferenceGraph::new(self.masks, *self.positions_by_digit())
         })
+    }
+
+    fn rectangle_graph(&self) -> Option<&inference_graph::InferenceGraph> {
+        #[cfg(feature = "variants")]
+        if let Some(shared) = self.shared_rectangle_inference
+            && let Some(graph) = shared.graph_for(self)
+        {
+            return graph.as_deref();
+        }
+        self.rectangle_inference
+            .get_or_init(|| {
+                inference_graph::InferenceGraph::for_unique_rectangles(self).map(Box::new)
+            })
+            .as_deref()
     }
 
     fn als(&self) -> &als::AlsSearch {

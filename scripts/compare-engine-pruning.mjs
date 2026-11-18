@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy] [--global-entropy-corpus] [--modular]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy', '--global-entropy-corpus', '--modular'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy] [--global-entropy-corpus] [--modular] [--modular-corpus]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy', '--global-entropy-corpus', '--modular', '--modular-corpus'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -140,6 +140,31 @@ if (options.includes('--global-entropy-corpus')) {
   fixtures.push({ name: 'global-entropy-newman', position: { puzzle: (await read('../tests/fixtures/global-entropy-newman.json')).puzzle } })
   for (const source of (await read('../tests/fixtures/global-entropy-coach.json')).examples.filter(source => source.puzzle)) {
     fixtures.push({ name: `global-entropy-coach-${source.url.split('/').pop()}`, position: { puzzle: source.puzzle } })
+  }
+}
+if (options.includes('--modular-corpus')) {
+  fixtures.push({ name: 'modular-newman', position: { puzzle: (await read('../tests/fixtures/modular-newman.json')).puzzle } })
+  for (const source of (await read('../tests/fixtures/modular-coach.json')).examples.filter(source => source.puzzle)) {
+    const name = `modular-coach-${source.url.split('/').pop()}`
+    const position = { puzzle: source.puzzle }
+    fixtures.push({ name, position })
+    if (source.url.endsWith('/HCHW')) {
+      const native = await before({ type: 'variant', operation: 'trace', position, techniqueOrder: old.defaultOrder })
+      const app = await before({ type: 'variant', operation: 'trace', position, techniqueOrder })
+      assert.equal(native.rating.points, 420)
+      assert.equal(native.steps.length, 21)
+      assert.equal(app.rating.points, 2000)
+      assert.equal(app.steps.length, 25)
+      assert.equal(native.rating.status, 'stalled')
+      assert.equal(app.rating.status, 'stalled')
+      fixtures.push({ name: `${name}-native-stall`, position: native.end })
+      for (let stepIndex = 22; stepIndex < app.steps.length; stepIndex++) {
+        const replay = await before({ type: 'variant', operation: 'replay-step', position, techniqueOrder, stepIndex })
+        assert.ok(replay)
+        fixtures.push({ name: `${name}-app-step-${stepIndex}`, position: replay.before })
+      }
+      fixtures.push({ name: `${name}-app-stall`, position: app.end })
+    }
   }
 }
 let comparisons = 0, positive = 0, improvedBudgets = 0, alternativeCompletions = 0
