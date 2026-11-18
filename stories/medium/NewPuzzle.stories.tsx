@@ -8,12 +8,11 @@ const meta = {
   title: 'Medium/Dialogs/New puzzle',
   component: NewPuzzle,
   tags: ['!autodocs'],
-  args: { close: fn(), difficulty: 'easy', onDifficultyChange: fn(), onCreate: fn() },
+  args: { close: fn(), difficulty: 'easy', onDifficultyChange: fn(), onCreate: fn(), onImport: fn() },
   render: (args) => {
     const [difficulty, setDifficulty] = useState(args.difficulty)
     return <DialogStory label="New puzzle">{(close) =>
-      <NewPuzzle difficulty={difficulty} close={() => { args.close(); close() }}
-        onCreate={args.onCreate}
+      <NewPuzzle {...args} difficulty={difficulty} close={() => { args.close(); close() }}
         onDifficultyChange={(value) => { args.onDifficultyChange(value); setDifficulty(value) }} />
     }</DialogStory>
   },
@@ -22,3 +21,5 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Easy: Story = {}
 export const Extreme: Story = { args: { difficulty: 'extreme' } }
+export const Windoku: Story = { args: { initialVariant: 'windoku', difficulty: 'medium' } }
+export const AutomaticDifficulty: Story = { args: { difficulty: 'auto' } }

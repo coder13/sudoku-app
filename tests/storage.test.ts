@@ -410,6 +410,55 @@ test('saving an imported puzzle for later preserves the selected puzzle', async 
   }
 })
 
+test('switching and stopping save progress for later, including undo and redo after reload', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?save-on-switch')
+    const first = enter(makeGame('first', 'First puzzle', EMPTY, 'imported'), [0], 'value', 1)
+    roomStore.add(first)
+    const played = { ...undo(enter(enter(first, [1], 'corner', 3), [2], 'color', 1)), elapsed: 48 }
+    // Another tab saved this position before the current tab received its storage event.
+    local.setItem('sudoku-app:v1:game:first', JSON.stringify(played))
+    const expected = JSON.parse(JSON.stringify(played))
+    const stored = (id: string) => JSON.parse(local.getItem('sudoku-app:v1:game:' + id)!)
+
+    const second = enter(makeGame('second', 'Second puzzle', STARTER_GAME.givens, 'generated'), [2], 'corner', 4)
+    roomStore.add(second)
+    assert.equal(roomStore.getSnapshot().active, second.id)
+    assert.deepEqual(stored(first.id), { ...expected, savedForLater: true })
+    roomStore.select(first.id)
+    assert.deepEqual(stored(first.id), expected)
+    assert.equal(stored(second.id).savedForLater, true)
+
+    roomStore.saveForLater(first.id)
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?save-on-stop-reload')
+    assert.equal(reloaded.getSnapshot().active, null)
+    assert.equal(reloaded.getSnapshot().stoppedPlaying, true)
+    assert.deepEqual(stored(first.id), { ...expected, savedForLater: true })
+    reloaded.select(first.id)
+    const resumed = reloaded.getSnapshot().games.find(game => game.id === first.id)!
+    assert.equal(reloaded.getSnapshot().active, first.id)
+    assert.equal(resumed.savedForLater, undefined)
+    assert.equal(resumed.elapsed, 48)
+    assert.deepEqual(undo(resumed).position, undo(played).position)
+    assert.deepEqual(redo(resumed).position, redo(played).position)
+    assert.deepEqual(stored(first.id), expected)
+
+    local.setItem('sudoku-app:v1:game:first', JSON.stringify({ ...expected, savedForLater: true }))
+    reloaded.update(first.id, game => ({ ...game, elapsed: game.elapsed + 1 }))
+    assert.equal(stored(first.id).savedForLater, true, 'a timer tick preserves a save from another tab')
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
 test('an untimed solve stays untimed in the library and counts toward player rating', async () => {
   const local = new MemoryStorage()
   Object.defineProperties(globalThis, {

@@ -44,7 +44,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const progress = collectionEntry && collectionDifficulty
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = generationVariant(game.variant)
-  const needsChoice = Boolean(game.variant && !recipe)
+  const needsChoice = !inCollection && Boolean(game.variant && !recipe)
   const nextDifficulty = variantDifficulty(recipe, preferredDifficulty)
   const nextLabel = needsChoice ? 'Choose another puzzle' : nextDifficulty === 'auto'
     ? `Next ${variantDifficultyLabel(recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`

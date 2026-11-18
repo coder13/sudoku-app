@@ -13,7 +13,7 @@ type Props = {
   variantPuzzle?: VariantPuzzle
   givens: string
   values: string
-  position?: Pick<Position, 'center' | 'corner' | 'colors' | 'candidateColors'>
+  position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors'>>
   errors?: ReadonlySet<number>
   candidateLayout?: CandidateLayout
   candidates?: readonly number[]
@@ -164,7 +164,7 @@ export function Board({
                 const visibleGridCandidates = (previewSlotted && withPreview) || gridCandidates
                 const visibleCenterCandidates = (!previewSlotted && withPreview) || centerCandidates
                 const candidateColors = candidates ? undefined : position?.candidateColors?.[index]
-                const color = position?.colors[index]
+                const color = position?.colors?.[index]
                 const inSelection = selected.includes(index)
                 const error = errors?.has(index)
                 const cellAnnotation = annotations?.cells?.get(index)

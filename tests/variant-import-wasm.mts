@@ -18,6 +18,24 @@ useWasmWorker()
 
 const link = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.stringify({ id: 'mixed', puzzle }))
 
+test('a text grid preview includes its play rating and reuses an existing displayed rating', async () => {
+  const rows = ['090040000', '005700100', '603000009', '060901030', '300060400', '007400001', '000009007', '502000040', '000050200']
+  const input = rows.join('\n')
+  const { game } = await prepareImportedPuzzle(input)
+  const { difficultyOrder } = await runEngine({ type: 'techniques' })
+  const rating = await runEngine({ type: 'rate', values: rows.join(''), techniqueOrder: difficultyOrder })
+  assert.ok(rating.status !== 'stalled')
+  assert.equal(game.difficulty, rating.status.solved)
+  assert.equal(game.score, rating.score.points)
+  assert.equal(game.ratingAttempt?.grade.points, game.score)
+
+  const previous = { ...game, difficulty: 'unfair' as const, score: 1600 }
+  const cached = await prepareImportedPuzzle(input, [previous])
+  assert.equal(cached.game.difficulty, previous.difficulty)
+  assert.equal(cached.game.score, previous.score)
+  assert.equal(cached.grade, undefined)
+})
+
 for (const [name, fixture] of Object.entries(mixedFixtures)) test(`${name} imports, plays, rates, and replays with every rule intact`, async () => {
   const { game } = await prepareImportedPuzzle(fixture.coach)
   assert.equal(game.variant?.id, 'mixed')
@@ -54,7 +72,9 @@ for (const [name, fixture] of Object.entries(mixedFixtures)) test(`${name} impor
   assert.deepEqual(redo(undo(changed)).position, changed.position)
   assert.deepEqual(changed.variant, game.variant)
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  assert.notEqual(trace.rating.status, 'stalled')
+  assert.ok(trace.rating.status !== 'stalled')
+  assert.equal(game.difficulty, trace.rating.status.solved)
+  assert.equal(game.score, trace.rating.points)
   const path = variantSolutionPath(trace)
   assert.equal(path.board, fixture.solution)
   assert.deepEqual(trace.rating, await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder }))

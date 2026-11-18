@@ -1,10 +1,11 @@
 import { runEngine } from './engine.ts'
 import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
 import { detectPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
+import { applyPuzzleGrade, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
 import { validation } from './puzzle-validation.ts'
 import { variantName } from './variants.ts'
 
-export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] }
+export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format']; grade?: PuzzleGrade | null }
 
 export function findImportedPuzzle(games: readonly Game[], { givens, variant }: Pick<ImportedPuzzle, 'givens' | 'variant'>) {
   const identity = puzzleIdentity({ givens, variant })
@@ -30,6 +31,14 @@ export async function prepareImportedPuzzle(input: string, games: readonly Game[
     const solution = existing?.variant?.solution ??
       await runEngine({ type: 'variant', operation: 'solve', position: { puzzle: variant.puzzle } })
     game.variant = { ...variant, solution }
+  }
+  game.difficulty = existing?.difficulty
+  game.score = existing?.score
+  if (game.difficulty === undefined || game.score === undefined) {
+    try {
+      const grade = existing?.ratingAttempt?.grade ?? await ratePuzzle(givens, game.variant)
+      return { game: applyPuzzleGrade(game, grade), grade, format }
+    } catch { /* A validated puzzle can still be imported if rating is unavailable. */ }
   }
   return { game, format }
 }
