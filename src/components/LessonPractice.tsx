@@ -2,19 +2,13 @@ import { ArrowLeft, X } from 'lucide-react'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { DeductionAction } from '../sudoku/engine'
 import { describeHint, describeHintRemovals } from '../sudoku/hints'
-import { cellName, lessonDiagram } from '../sudoku/lesson-diagram'
+import { cellName, lessonActionText as actionText, lessonDiagram } from '../sudoku/lesson-diagram'
 import { practiceClueAnnotations, practiceSearch } from '../sudoku/lesson-guidance'
 import type { PracticeGuide } from '../sudoku/lesson-content'
 import type { LessonExercise } from '../sudoku/lesson-examples'
 import { DeductionExplanation, DeductionOutcome } from './HintCard'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardAnnotations } from './BoardAnnotations'
-
-function actionText(action: DeductionAction) {
-  return 'place' in action
-    ? `Place ${action.place.digit} in ${cellName(action.place.cell)}.`
-    : `Remove ${action.eliminate.digit} from ${cellName(action.eliminate.cell)}.`
-}
 
 function sameAction(a: DeductionAction, b: DeductionAction) {
   if ('place' in a) return 'place' in b && a.place.cell === b.place.cell && a.place.digit === b.place.digit

@@ -1,8 +1,11 @@
 use super::hints::{DeductionSearch, checked_position, digit_bit};
+use super::position::Position;
 use super::{
     Analysis, CELLS, Candidate, Hint, HintAction, HintError, PositionSnapshot, Technique,
     parse_givens,
 };
+#[cfg(feature = "wasm-api")]
+use super::{ProofPattern, hints::ordered_hint_techniques};
 
 #[path = "practice/examples.rs"]
 mod examples;
@@ -20,6 +23,14 @@ pub fn check_practice_move(
 ) -> Result<Option<Hint>, HintError> {
     let board = snapshot.values().map_err(HintError::Puzzle)?;
     let position = checked_position(&board, snapshot.removals())?;
+    Ok(match_action(&position, [technique], action))
+}
+
+fn match_action(
+    position: &Position,
+    techniques: impl IntoIterator<Item = Technique>,
+    action: HintAction,
+) -> Option<Hint> {
     let candidate = action.candidate();
     if !(1..=9).contains(&candidate.digit)
         || position
@@ -27,12 +38,38 @@ pub fn check_practice_move(
             .get(candidate.cell)
             .is_none_or(|mask| mask & digit_bit(candidate.digit) == 0)
     {
-        return Ok(None);
+        return None;
     }
     let search = DeductionSearch::new(position.board(), position.masks());
-    Ok(search
-        .find(technique, |step| step.actions().contains(&action))
-        .map(Hint::from))
+    techniques.into_iter().find_map(|technique| {
+        search
+            .find(technique, |step| step.actions().contains(&action))
+            .map(Hint::from)
+    })
+}
+
+#[cfg(feature = "wasm-api")]
+pub(crate) fn practice_proof(
+    snapshot: &PositionSnapshot,
+    preferred: Option<Technique>,
+    action: HintAction,
+) -> Result<Option<(Hint, ProofPattern)>, HintError> {
+    let board = snapshot.values().map_err(HintError::Puzzle)?;
+    let position = checked_position(&board, snapshot.removals())?;
+    let ordered = ordered_hint_techniques(&[]);
+    let techniques = preferred.into_iter().chain(
+        ordered
+            .into_iter()
+            .filter(|&technique| Some(technique) != preferred),
+    );
+    Ok(match_action(&position, techniques, action).map(|hint| {
+        let pattern = ProofPattern::from_evidence(
+            &hint.evidence,
+            hint.actions[0].candidate(),
+            position.masks(),
+        );
+        (hint, pattern)
+    }))
 }
 
 /// A curated position and the expected actions for a technique.

@@ -1567,7 +1567,7 @@ fn singles_progress(mut position: Position) -> usize {
 }
 
 #[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
-fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
+pub(crate) fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
     let mut techniques: Vec<_> = Technique::ALL
         .into_iter()
         .filter(|technique| !disabled.contains(technique))

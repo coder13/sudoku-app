@@ -19,6 +19,7 @@ export type TechniqueProgress = {
   technique: string
   withoutHints: number
   withHints: number
+  hintedPuzzles: number
   puzzles: number
   independence: number | null
 }
@@ -93,6 +94,7 @@ export function summarizeTechniques(history: readonly PuzzleTechniqueHistory[]):
       technique,
       withoutHints: samples.reduce((sum, puzzle) => sum + puzzle.withoutHints, 0),
       withHints: samples.reduce((sum, puzzle) => sum + puzzle.withHints, 0),
+      hintedPuzzles: samples.filter(({ withHints }) => withHints > 0).length,
       puzzles: samples.length,
       independence: samples.length < MIN_TECHNIQUE_PUZZLES ? null : Math.round(100 * evidence / samples.length),
     }

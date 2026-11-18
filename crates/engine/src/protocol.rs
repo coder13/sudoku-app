@@ -14,6 +14,8 @@ use serde_json::{Value, json};
 use super::generation::{MatchedPath, start_builtin_pool, start_matching_path, start_targeted_path};
 use super::hints::technique_counts::TechniqueCountScan;
 use super::hints::{checked_position, classify_actions, rank_position, rank_useful_position};
+#[cfg(feature = "teaching")]
+use super::practice::practice_proof;
 use super::{
     Analysis, Board, Candidate, DEFAULT_HINT_LIMIT, DeductionMatch, Difficulty, Hint, HintAction,
     HintError, HintStages, PositionSnapshot, ProofPattern, RankDiscovery, RankDiscoveryScan,
@@ -121,6 +123,14 @@ enum Request {
         entries: Option<String>,
         eliminations: Option<Vec<u16>>,
         technique: String,
+        action: HintAction,
+    },
+    #[cfg(feature = "teaching")]
+    PracticeProof {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        preferred_technique: Option<String>,
         action: HintAction,
     },
     HintPage { collection: u32, index: usize },
@@ -1137,6 +1147,17 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             let position = starting_position(&values, entries.as_deref(), eliminations)?;
             let proof = check_practice_move(&position, technique, action).map_err(hint_error)?;
             Ok(json!(proof))
+        }
+        #[cfg(feature = "teaching")]
+        Request::PracticeProof { values, entries, eliminations, preferred_technique, action } => {
+            let preferred = preferred_technique
+                .as_deref()
+                .map(|id| Technique::from_id(id).ok_or(INVALID_TECHNIQUE))
+                .transpose()?;
+            let position = starting_position(&values, entries.as_deref(), eliminations)?;
+            Ok(practice_proof(&position, preferred, action)
+                .map_err(hint_error)?
+                .map_or(Value::Null, |(hint, pattern)| json!(HintWithPattern { hint, pattern })))
         }
         Request::HintPage { collection, index } => {
             return hint_pages::read(collection, index).map(ResponseValue::HintPage);

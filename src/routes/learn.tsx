@@ -82,6 +82,7 @@ export function TechniqueNavigation() {
       <nav className="learn-nav-panel" id="technique-navigation" aria-label="Sudoku articles">
         <div className="learn-nav-intro">
           <Link to="/learn" activeOptions={activeOptions} className="learn-nav-link" onClick={select}>Overview</Link>
+          <Link to="/learn/practice" activeOptions={activeOptions} className="learn-nav-link" onClick={select}>Practice</Link>
           <Link to="/learn/$technique" params={{ technique: learnFundamentals.id }} activeOptions={activeOptions}
             className="learn-nav-link" onClick={select}>{learnFundamentals.title}</Link>
         </div>

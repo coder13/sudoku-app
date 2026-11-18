@@ -5,7 +5,6 @@ import { generateClassic } from '../sudoku/classic-generation'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
-import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
 import { VARIANTS, variantDifficulty, type VariantId } from '../sudoku/variants'
 
@@ -52,7 +51,7 @@ export function usePuzzleGeneration() {
         return
       }
       const previousPuzzles = roomStore.getSnapshot().games.filter(game => !game.variant).map(game => game.givens)
-      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, auto ? await techniqueHistory.readProgress() : undefined, previousPuzzles)
+      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, undefined, previousPuzzles)
       if (!mounted.current) return
       const game = makeGame(createGameId(), nextPuzzleTitle(), givens, 'generated')
       if (auto) game.generatedWithAuto = true

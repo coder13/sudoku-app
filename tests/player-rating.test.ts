@@ -6,7 +6,7 @@ import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, calculateP
 function outcome(index: number, settings: Partial<RatingEvent> = {}): RatingEvent {
   return {
     id: `outcome-${index}`, gameId: `puzzle-${index}`, givens: String(index).padStart(81, '0'),
-    at: index, ratingVersion: PLAYER_RATING_VERSION, difficulty: 'medium', finish: 'solved', elapsed: 0, viewed: 0, applied: 0, ...settings,
+    at: index, ratingVersion: 2, difficulty: 'medium', finish: 'solved', elapsed: 0, viewed: 0, applied: 0, ...settings,
   }
 }
 
@@ -46,10 +46,53 @@ test('new attempts and hint evidence use versioned rules while old saves remain 
   assert.equal(requested.ratingVersion, PLAYER_RATING_VERSION)
   assert.equal(requested.lastHintAt, 3)
   assert.ok(isRatingEvent(outcome(1, { ratingVersion: undefined })))
-  for (const invalid of [0, 1, 3, '2']) {
+  for (const invalid of [0, 1, 4, '2']) {
     assert.equal(isRatingEvent({ ...outcome(1), ratingVersion: invalid }), false)
     assert.equal(isRatingAttempt({ ...attempt, ratingVersion: invalid }), false)
   }
+})
+
+test('current Auto moves up after several independent puzzles and down after repeated struggle', () => {
+  const current = (index: number, overrides: Partial<RatingEvent> = {}) => outcome(index, {
+    ratingVersion: PLAYER_RATING_VERSION, ...overrides,
+  })
+  const clean = [1, 2, 3, 4].map(index => current(index, { elapsed: 90 }))
+  assert.equal(calculatePlayerRating(clean.slice(0, 1)).recommended, 'medium')
+  assert.equal(calculatePlayerRating(clean.slice(0, 3)).recommended, 'medium')
+  assert.equal(calculatePlayerRating(clean).recommended, 'tricky')
+
+  const assisted = [1, 2].map(index => current(index, { finish: 'hints', viewed: 3, hintsRequested: 3, analysisUsed: true }))
+  assert.equal(calculatePlayerRating(assisted.slice(0, 1)).recommended, 'medium')
+  assert.equal(calculatePlayerRating(assisted).recommended, 'easy')
+})
+
+test('an accepted difficulty check starts Auto at its recommendation with the same rating', () => {
+  const prior = [outcome(1, { elapsed: 90 }), outcome(2, { difficulty: 'tricky', finish: 'solution' })]
+  const previous = calculatePlayerRating(prior)
+  const placement = { difficulty: 'easy' as const, at: 2 }
+  const placed = calculatePlayerRating(prior, placement)
+  assert.equal(placed.rating, previous.rating)
+  assert.equal(placed.recommended, 'easy')
+  assert.deepEqual(placed.results, previous.results)
+
+  const struggle = { ratingVersion: PLAYER_RATING_VERSION, difficulty: 'easy', hintsRequested: 2, viewed: 2 } as const
+  const helped = outcome(3, struggle)
+  assert.equal(calculatePlayerRating([...prior, helped], placement).recommended, 'easy')
+  assert.equal(calculatePlayerRating([...prior, helped, outcome(4, struggle)], placement).recommended, 'beginner')
+})
+
+test('reopening a hint counts once per explicit opening and Finder adds to the penalty', () => {
+  const attempt = ratingAttemptFor({ difficulty: 'medium', points: 500, scoringVersion: 11, techniqueOrder: ['pointing'] })
+  const open = { openingId: 'open-1', position: 'same-grid', at: 10 }
+  const first = addRatingHints(attempt, ['first'], false, open)
+  const alternate = addRatingHints(first, ['alternate'], false, open)
+  assert.deepEqual(alternate.openedHints, ['open-1'])
+  const reopened = addRatingHints(alternate, ['first'], false, { ...open, openingId: 'open-2', at: 11 })
+  assert.deepEqual(reopened.openedHints, ['open-1', 'open-2'])
+  assert.deepEqual(reopened.requested, ['same-grid'])
+  const result = outcome(1, { ratingVersion: PLAYER_RATING_VERSION, viewed: 1, hintsRequested: 1, hintsOpened: 3 })
+  assert.equal(calculatePlayerRating([result]).rating, STARTING_PLAYER_RATING - 8)
+  assert.equal(calculatePlayerRating([{ ...result, analysisUsed: true }]).rating, STARTING_PLAYER_RATING - 16)
 })
 
 test('Auto starts at Medium and a fast independent early solve raises the next tier', () => {

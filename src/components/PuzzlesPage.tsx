@@ -10,6 +10,7 @@ import { techniqueLabel } from '../sudoku/hints'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
+import { isPracticeTopic, recommendedPractice } from '../sudoku/practice'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
 import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId, type PuzzleVariantId } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
@@ -147,6 +148,7 @@ function NewPuzzleSection({ preference, save, done }: {
     </header>
     <VariantSelector value={variant} onChange={setVariant} busy={busy} />
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+    <Link className="button secondary" to="/find-difficulty" disabled={busy}>Find my difficulty</Link>
     {error && <p className="form-error" role="alert">{error}</p>}
     <button className="button primary main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
@@ -186,16 +188,22 @@ function Statistics({ games }: { games: Game[] }) {
 
 function TechniqueStatistics() {
   const progress = useSyncExternalStore(techniqueHistory.subscribe, techniqueHistory.getSnapshot, techniqueHistory.getServerSnapshot)
+  const suggested = recommendedPractice(progress)
   const heading = useId()
   return <section className="technique-statistics" aria-labelledby={heading}>
     <h3 id={heading}>Solving techniques</h3>
+    {suggested && <Link to="/learn/practice" search={{ technique: suggested.technique }}>
+      Practice {techniqueLabel(suggested.technique)}
+    </Link>}
     {progress.length === 0 ? <p>As you play, moves with a clear explanation will appear here.</p> : <>
       <p>Each move counts toward the simplest technique that explains it. Each puzzle counts equally toward a technique estimate.</p>
       <table aria-labelledby={heading}>
         <thead><tr><th scope="col">Technique</th><th scope="col">On your own</th><th scope="col">With hints</th><th scope="col">Estimate</th></tr></thead>
         <tbody>{progress.map(({ technique, withoutHints, withHints, puzzles, independence }) =>
           <tr key={technique}>
-            <th scope="row">{techniqueLabel(technique)}</th>
+            <th scope="row">{isPracticeTopic(technique)
+              ? <Link to="/learn/practice" search={{ technique }}>{techniqueLabel(technique)}</Link>
+              : techniqueLabel(technique)}</th>
             <td>{withoutHints}</td><td>{withHints}</td>
             <td>{independence === null ? `${puzzles} of ${MIN_TECHNIQUE_PUZZLES} puzzles` : `${independence}% on your own`}</td>
           </tr>)}</tbody>

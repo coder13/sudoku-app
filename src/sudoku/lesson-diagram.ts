@@ -20,6 +20,12 @@ type Pattern = {
 
 const patternColor = 'var(--lesson-pattern)'
 const accentColor = 'var(--lesson-accent)'
+
+export function lessonActionText(action: DeductionAction) {
+  return 'place' in action
+    ? `Place ${action.place.digit} in ${cellName(action.place.cell)}.`
+    : `Remove ${action.eliminate.digit} from ${cellName(action.eliminate.cell)}.`
+}
 const resultColor = 'var(--lesson-result)'
 const removalColor = 'var(--lesson-removal)'
 const list = new Intl.ListFormat('en')

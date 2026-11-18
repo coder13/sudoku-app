@@ -127,7 +127,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
         const masks = hintEliminations(latestValues, completeCandidateMasks(latest), latest.position.eliminations)
         if (techniqueScanKey(latestValues, masks, latest.variant?.puzzle) !== snapshotKey) return latest
         const attempt = latest.ratingAttempt
-        const ratingAttempt = attempt && addAnalysisAssistance(attempt)
+        const ratingAttempt = attempt && addAnalysisAssistance(attempt, Date.now())
         return latest.analysisUsed && ratingAttempt === attempt ? latest
           : { ...latest, analysisUsed: true, ratingAttempt }
       })

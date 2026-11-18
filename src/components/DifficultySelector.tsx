@@ -76,7 +76,7 @@ export function DifficultySelector({ value, recommended, variant, disabled = fal
     </div>
     <label className="difficulty-selector-auto">
       <input type="checkbox" checked={value === 'auto'} onChange={(event) => onChange(event.target.checked ? 'auto' : selected)} />
-      Adjust difficulty automatically
+      Auto adjusts difficulty gradually
     </label>
   </fieldset>
 }

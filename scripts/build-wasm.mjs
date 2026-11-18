@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { appEngineProfile, featuresForProfile } from './engine-build-profiles.mjs'
+import { buildPracticeExercises, buildPracticeTopics } from './practice-exercises.mjs'
 
 export async function buildBrowserEngine(profile = appEngineProfile, outputDirectory = 'src/sudoku/generated') {
   const features = featuresForProfile(profile)
@@ -24,7 +25,7 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
     const length = engine.run_request()
     const response = new Uint8Array(engine.memory.buffer, engine.response_buffer(), length)
     const { value, error } = JSON.parse(new TextDecoder().decode(response))
-    if (!value) throw new Error(error ?? `The engine returned no result for ${type}.`)
+    if (error || value === undefined) throw new Error(error ?? `The engine returned no result for ${type}.`)
     return value
   }
 
@@ -47,11 +48,17 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
   mkdirSync(outputDirectory, { recursive: true })
   writeFileSync(resolve(outputDirectory, 'engine.wasm'), bytes)
   if (capabilities.teaching) {
+    const classic = request('techniques').techniques
+    const content = JSON.parse(readFileSync('src/sudoku/learn-content.json', 'utf8'))
+    const mixed = JSON.parse(readFileSync('src/sudoku/practice-positions.json', 'utf8'))
+    const practice = buildPracticeExercises(({ type, ...options }) => request(type, options), classic.map(({ id }) => id), mixed)
+    writeFileSync(resolve(outputDirectory, 'practice-topics.json'), JSON.stringify(buildPracticeTopics(classic, content)))
+    writeFileSync(resolve(outputDirectory, 'practice-exercises.json'), JSON.stringify(practice))
     writeFileSync(resolve(outputDirectory, 'lesson-examples.json'), `${JSON.stringify(examples)}\n`)
     writeFileSync(resolve(outputDirectory, 'lesson-difficulties.json'), `${JSON.stringify(difficulties)}\n`)
     writeFileSync(resolve(outputDirectory, 'lesson-aliases.json'), `${JSON.stringify(aliases)}\n`)
   } else {
-    for (const name of ['lesson-examples', 'lesson-difficulties', 'lesson-aliases']) {
+    for (const name of ['lesson-examples', 'lesson-difficulties', 'lesson-aliases', 'practice-topics', 'practice-exercises']) {
       rmSync(resolve(outputDirectory, `${name}.json`), { force: true })
     }
   }

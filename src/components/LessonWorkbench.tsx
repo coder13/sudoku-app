@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import type { Candidate, DeductionAction, PositionSnapshot, VariantPuzzle } from '../sudoku/engine'
-import { alternateColorShade, COLORS, conflictsOf, enter, onlyCandidate, paintCandidate, redo, undo, valuesOf, type ColorTarget, type Mode } from '../sudoku/game'
+import { alternateColorShade, COLORS, conflictsOf, enter, onlyCandidate, paintCandidate, redo, undo, valuesOf, type ColorTarget, type Game, type Mode } from '../sudoku/game'
 import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
 import { latestLessonActions, makeLessonGame, revealLessonAction, sameLessonDigits } from '../sudoku/lesson-workbench'
 import { variantLessonClues } from '../sudoku/lesson-examples'
@@ -18,7 +18,7 @@ export type LessonTools = {
   reveal: (action: DeductionAction) => void
 }
 
-export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, onEdit, preview = false, guide, children }: {
+export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, onEdit, preview = false, guide, collectActions, children }: {
   puzzle: Pick<PositionSnapshot, 'givens' | 'entries'> & { candidates: readonly number[]; variantPuzzle?: VariantPuzzle }
   label: string
   annotations?: BoardAnnotations
@@ -27,6 +27,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   onEdit?: () => void
   preview?: boolean
   guide?: (ready: boolean) => ReactNode
+  collectActions?: (initial: Game, game: Game) => DeductionAction[]
   children?: (tools: LessonTools) => ReactNode
 }) {
   const initial = useMemo(() => makeLessonGame(puzzle), [puzzle])
@@ -74,7 +75,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   const mode: Mode = colorMode ? 'color' : pencil
     ? preferences.advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind : 'value'
   const painting = colorMode && colorTarget === 'candidate' && selectedColor !== null
-  const actions = useMemo(() => latestLessonActions(game), [game])
+  const actions = useMemo(() => collectActions ? collectActions(initial, game) : latestLessonActions(game), [collectActions, initial, game])
 
   function commit(transform: (current: typeof game) => typeof game) {
     const next = transform(game)

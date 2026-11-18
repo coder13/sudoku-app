@@ -6,7 +6,7 @@ import { COLORS, createGameId, isSolved, markSolveUntimed, normalizePuzzleIdenti
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
-  type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
+  type AutoPlacement, type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
 } from './player-rating.ts'
 import { puzzleTiming } from './puzzle-timing.ts'
 
@@ -14,6 +14,7 @@ const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
 const GAME_PREFIX = PREFIX + 'game:'
 const RATING_PREFIX = PREFIX + 'rating-result:'
+const AUTO_PLACEMENT = PREFIX + 'auto-placement'
 const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
 const ACTIVE = PREFIX + 'active'
 const READY = PREFIX + 'initialized'
@@ -26,6 +27,7 @@ const listeners = new Set<() => void>()
 const ratingEvents = new Map<string, RatingEvent>()
 const unsavedRatingEvents = new Set<string>()
 let room = initial
+let autoPlacement: AutoPlacement | undefined
 
 function publish(next: Room) {
   room = next
@@ -80,8 +82,10 @@ function readGame(id: string, data: string | null): Game | undefined {
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
+      if (value.source !== 'generated' || value.variant || typeof value.difficultyCheck !== 'string' ||
+        !/^[a-f0-9-]{36}$/.test(value.difficultyCheck)) delete value.difficultyCheck
       const attempt = value.ratingAttempt
-      if (attempt !== undefined && (value.source === 'draft' || !isRatingAttempt(attempt) ||
+      if (attempt !== undefined && (value.source === 'draft' || value.difficultyCheck || !isRatingAttempt(attempt) ||
         (attempt.outcome && (attempt.outcome.gameId !== id || attempt.outcome.givens !== value.givens ||
           attempt.outcome.difficulty !== attempt.grade.difficulty ||
           normalizePuzzleIdentity(attempt.outcome.puzzleKey ?? attempt.outcome.givens) !== puzzleIdentity(value))))) delete value.ratingAttempt
@@ -128,12 +132,16 @@ function ratingElapsed(game: Game, attempt: RatingAttempt) {
 
 function hintEvidence(game: Game): RatingEvent | undefined {
   const attempt = game.ratingAttempt
-  if (!attempt || attempt.outcome || attempt.lastHintAt === undefined || (attempt.requested?.length ?? 0) < 2) return
+  if (!attempt || attempt.outcome || attempt.lastHintAt === undefined) return
+  const hintsRequested = attempt.requested?.length ?? 0
+  const hintsOpened = attempt.openedHints?.length
+  const strongerAssistance = attempt.ratingVersion === PLAYER_RATING_VERSION && attempt.mode === undefined
+  if (hintsRequested < 2 && !(strongerAssistance && (attempt.analysisUsed || (hintsOpened ?? 0) >= 2))) return
   return {
     id: `hints:${game.id}`, gameId: game.id, givens: game.givens, puzzleKey: puzzleIdentity(game),
     ratingVersion: attempt.ratingVersion,
     difficulty: attempt.grade.difficulty, at: attempt.lastHintAt, finish: 'hints',
-    viewed: attempt.viewed.length, applied: attempt.applied.length, hintsRequested: attempt.requested?.length,
+    viewed: attempt.viewed.length, applied: attempt.applied.length, hintsRequested, hintsOpened, mode: attempt.mode,
     analysisUsed: attempt.analysisUsed, elapsed: ratingElapsed(game, attempt),
   }
 }
@@ -142,7 +150,7 @@ function playerRatingFor(games: readonly Game[]) {
   const events = [...ratingEvents.values()]
   const known = new Set(events.map((event) => event.puzzleKey ?? event.givens))
   for (const game of games) {
-    if (game.source === 'draft') continue
+    if (game.source === 'draft' || game.difficultyCheck) continue
     const puzzleKey = puzzleIdentity(game)
     if (known.has(puzzleKey)) continue
     if (isSolved(game) && game.difficulty && !game.analysisUsed) {
@@ -157,13 +165,20 @@ function playerRatingFor(games: readonly Game[]) {
       if (evidence) events.push(evidence)
     }
   }
-  return calculatePlayerRating(events)
+  return calculatePlayerRating(events, autoPlacement)
+}
+
+function readAutoPlacement(): AutoPlacement | undefined {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUTO_PLACEMENT) ?? 'null') as AutoPlacement | null
+    if (saved && isDifficulty(saved.difficulty) && Number.isSafeInteger(saved.at) && saved.at >= 0) return saved
+  } catch { /* Saved puzzles and ratings remain available. */ }
 }
 
 function finishAttempt(game: Game, finish: RatingFinish): Game {
   const attempt = game.ratingAttempt
   if (!attempt || attempt.outcome) return game
-  let at = Date.now()
+  let at = Math.max(Date.now(), (autoPlacement?.at ?? 0) + 1)
   for (const event of ratingEvents.values()) at = Math.max(at, event.at + 1)
   const outcome: RatingEvent = {
     id: createGameId(), gameId: game.id, givens: game.givens, puzzleKey: puzzleIdentity(game), difficulty: attempt.grade.difficulty,
@@ -172,6 +187,7 @@ function finishAttempt(game: Game, finish: RatingFinish): Game {
     finish, viewed: attempt.viewed.length, applied: attempt.applied.length, elapsed: ratingElapsed(game, attempt),
   }
   if (attempt.requested || attempt.lastHintAt !== undefined) outcome.hintsRequested = attempt.requested?.length ?? 0
+  if (attempt.openedHints) outcome.hintsOpened = attempt.openedHints.length
   if (attempt.singlesAssistance) outcome.singlesAssistance = attempt.singlesAssistance
   if (attempt.analysisUsed) outcome.analysisUsed = true
   if (attempt.mode) outcome.mode = attempt.mode
@@ -192,18 +208,22 @@ function mergeStoredMetadata(game: Game): Game {
     const viewed = [...new Set([...attempt.viewed, ...saved.viewed])]
     const applied = [...new Set([...attempt.applied, ...saved.applied])]
     const requested = [...new Set([...(attempt.requested ?? []), ...(saved.requested ?? [])])]
+    const openedHints = attempt.openedHints || saved.openedHints
+      ? [...new Set([...(attempt.openedHints ?? attempt.requested ?? []), ...(saved.openedHints ?? saved.requested ?? [])])]
+      : undefined
     const singlesAssistance = saved.singlesAssistance === 'all' ? 'all' : attempt.singlesAssistance ?? saved.singlesAssistance
     const analysisUsed = attempt.analysisUsed || saved.analysisUsed ? true : undefined
     const lastHintAt = Math.max(attempt.lastHintAt ?? 0, saved.lastHintAt ?? 0) || undefined
-    const ratingVersion = attempt.ratingVersion ?? saved.ratingVersion
+    const ratingVersion = saved.ratingVersion === PLAYER_RATING_VERSION ? saved.ratingVersion : attempt.ratingVersion ?? saved.ratingVersion
     const priorElapsed = Math.max(attempt.priorElapsed, saved.priorElapsed)
     const timeUntracked = attempt.timeUntracked || saved.timeUntracked
     if (outcome !== attempt.outcome || priorElapsed !== attempt.priorElapsed ||
       timeUntracked !== attempt.timeUntracked ||
       viewed.length !== attempt.viewed.length || applied.length !== attempt.applied.length ||
+      openedHints?.length !== attempt.openedHints?.length ||
       requested.length !== (attempt.requested?.length ?? 0) || lastHintAt !== attempt.lastHintAt ||
       singlesAssistance !== attempt.singlesAssistance || analysisUsed !== attempt.analysisUsed || ratingVersion !== attempt.ratingVersion) {
-      return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, singlesAssistance, analysisUsed, outcome, priorElapsed, timeUntracked, lastHintAt, ratingVersion } }
+      return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, openedHints, singlesAssistance, analysisUsed, outcome, priorElapsed, timeUntracked, lastHintAt, ratingVersion } }
     }
   } catch { /* Keep the session's metadata when storage is unavailable. */ }
   return game
@@ -259,6 +279,7 @@ function migrateStorage(storage: Storage) {
 
 function hydrate() {
   try {
+    autoPlacement = readAutoPlacement()
     const migrated = migrateStorage(localStorage)
     const keys = Array.from(new Set(Object.keys(localStorage).map(storageKey)))
     ratingEvents.clear()
@@ -315,6 +336,11 @@ function onStorage(event: StorageEvent) {
     return
   }
   const key = storageKey(event.key)
+  if (key === AUTO_PLACEMENT) {
+    autoPlacement = readAutoPlacement()
+    publish({ ...room, playerRating: playerRatingFor(room.games) })
+    return
+  }
   if (key.startsWith(RATING_PREFIX)) {
     const id = key.slice(RATING_PREFIX.length)
     const outcome = readRatingEvent(id)
@@ -395,6 +421,14 @@ export const roomStore = {
   },
   getSnapshot: () => room,
   getServerSnapshot: () => initial,
+  setAutoPlacement(difficulty: AutoPlacement['difficulty']) {
+    let at = Date.now()
+    for (const event of ratingEvents.values()) at = Math.max(at, event.at)
+    for (const game of room.games) at = Math.max(at, game.ratingAttempt?.lastHintAt ?? 0)
+    autoPlacement = { difficulty, at }
+    const saved = persist(() => localStorage.setItem(AUTO_PLACEMENT, JSON.stringify(autoPlacement)))
+    publish({ ...room, storageAvailable: room.storageAvailable && saved, playerRating: playerRatingFor(room.games) })
+  },
   connect() {
     hydrate()
     window.addEventListener('storage', onStorage)
@@ -444,6 +478,8 @@ export const roomStore = {
     const games = room.games.map((game) => game.id === id ? next : game)
     const evidenceChanged = newOutcome || next.difficulty !== current.difficulty ||
       next.ratingAttempt?.lastHintAt !== current.ratingAttempt?.lastHintAt ||
+      next.ratingAttempt?.openedHints?.length !== current.ratingAttempt?.openedHints?.length ||
+      next.ratingAttempt?.analysisUsed !== current.ratingAttempt?.analysisUsed ||
       next.ratingAttempt?.ratingVersion !== current.ratingAttempt?.ratingVersion ||
       (!next.ratingAttempt?.outcome && next.position.entries !== current.position.entries && isSolved(next) !== isSolved(current))
     publish({ ...room, games,
