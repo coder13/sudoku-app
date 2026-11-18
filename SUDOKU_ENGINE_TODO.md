@@ -671,3 +671,16 @@ The version 3 release benchmark measured 40 rating and hint calls on each fixed 
 | X Sudoku | 26 | 0.074/0.075 | 0.019/0.021 | 0.569/0.768 | 0.058/0.062 | 0.049/0.055 | 0.555/0.711 |
 | Killer | 15 | 0.235/0.236 | 0.037/0.037 | 1.999/2.300 | 0.241/0.281 | 0.109/0.128 | 2.370/2.726 |
 | Jigsaw and Killer | 15 | 0.137/0.138 | 0.025/0.026 | 1.620/1.721 | 0.210/0.229 | 0.112/0.166 | 2.226/2.379 |
+
+## 14. Audit the next XV app integration
+
+The separate worktree is `codex/sudoku-xv-integration`. Track the family in [issue 48](https://github.com/coder13/sudoku-app/issues/48). This audit does not integrate XV into the app.
+
+- [x] Render and inspect Clover's published XV puzzle and solution PDFs from 2025-10-08. Preserve four givens, eight V marks and fourteen X marks. Independently prove the printed unique completion and multiple completions after removing XV.
+- [x] Inspect the published XV and IVs puzzle and solution PDFs from 2025-12-16. Preserve four givens, four V marks, twelve X marks and six Quadruple clues. Independently prove uniqueness and the need for both rule families.
+- [x] Check every action in both native/app traces against the independently verified grids. The pure native profile stalls at 1,076 points after 55 steps; the app profile solves at 4,538 points after 151 steps. The mixed puzzle solves under both orders at 1,540/1,870 points and 123 steps.
+- [x] Verify three generated 30-given, twenty-marker puzzles independently. Seeds 17, 43 and 227 all need XV and complete their native Easy paths. These are compatibility cases, not difficulty calibration or a generation benchmark.
+- [x] Test independent negative V/X flags and repeated Quadruple digits. The independent counter uses digit arrays and exhaustive four-cell assignments, separate from the engine's support code.
+- [x] Audit the Coach `twoCellSum` compiler: sums of 5 and 10 map to V and X; other totals need [general adjacent totals](https://github.com/coder13/sudoku-app/issues/72). Preserve or explicitly reject those parameters.
+- [ ] Obtain unmodified Coach examples before the decoder port. Finish independent proof replay, visible marks, labels, input, hints, persistence, sharing and the complete combined-rule flow.
+- [ ] Measure all request paths and package costs, pass local and exact-head CI, and merge the app-ready family separately. Keep New puzzle recipes conditional on calibration.

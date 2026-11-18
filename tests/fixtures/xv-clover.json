@@ -1,0 +1,118 @@
+{
+  "source": {
+    "title": "XV Pairs Sudoku",
+    "author": "clover!",
+    "date": "2025-10-08",
+    "page": "https://www.gmpuzzles.com/blog/2025/10/xv-pairs-sudoku-by-clover/",
+    "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/251008-XVPairsSudoku.pdf",
+    "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/251008-XVPairsSudoku-soln.pdf",
+    "puzzleSha256": "74272848e66a8dbdd10b4a3395890f101cbdba585167d7b7dd9afc1ee4c45aaa",
+    "solutionSha256": "151bda807dbd0724a4bca689d4f512457eced0acc31fca0f88668f2a2bd5cf2c"
+  },
+  "puzzle": {
+    "version": 1,
+    "givens": "000100000000000000000000000200000000000000000000000003000000000000000000000004000",
+    "rules": [
+      {
+        "type": "xv",
+        "five": {
+          "pairs": [
+            [
+              1,
+              2
+            ],
+            [
+              9,
+              18
+            ],
+            [
+              21,
+              30
+            ],
+            [
+              32,
+              33
+            ],
+            [
+              47,
+              48
+            ],
+            [
+              50,
+              59
+            ],
+            [
+              62,
+              71
+            ],
+            [
+              78,
+              79
+            ]
+          ]
+        },
+        "ten": {
+          "pairs": [
+            [
+              6,
+              15
+            ],
+            [
+              7,
+              16
+            ],
+            [
+              8,
+              17
+            ],
+            [
+              22,
+              31
+            ],
+            [
+              23,
+              32
+            ],
+            [
+              29,
+              30
+            ],
+            [
+              38,
+              39
+            ],
+            [
+              41,
+              42
+            ],
+            [
+              50,
+              51
+            ],
+            [
+              48,
+              57
+            ],
+            [
+              49,
+              58
+            ],
+            [
+              63,
+              72
+            ],
+            [
+              64,
+              73
+            ],
+            [
+              65,
+              74
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  "solution": "532176948479835162168249537287361459943758216651492873825613794394527681716984325"
+}

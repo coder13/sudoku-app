@@ -1,0 +1,144 @@
+{
+  "source": {
+    "title": "XV Pairs Quadruples Sudoku: XV and IVs",
+    "author": "clover!",
+    "date": "2025-12-16",
+    "page": "https://www.gmpuzzles.com/blog/2025/12/xv-pairs-quadruples-sudoku-by-clover/",
+    "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/251216-XVPairsQuadruplesSudoku-XVAndIVs.pdf",
+    "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/251216-XVPairsQuadruplesSudoku-XVAndIVs-soln.pdf",
+    "puzzleSha256": "0e713ecd308df2fc58e2e6319eec95ef632d0162387486f363e9b70a89048bda",
+    "solutionSha256": "034412b8941669909fed29082ce67758e60085be83621fde359c3435c5f0bd57"
+  },
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000000000000000900000003000000000000000000000300000002000000000000000000000",
+    "rules": [
+      {
+        "type": "xv",
+        "five": {
+          "pairs": [
+            [
+              10,
+              11
+            ],
+            [
+              23,
+              24
+            ],
+            [
+              56,
+              57
+            ],
+            [
+              69,
+              70
+            ]
+          ]
+        },
+        "ten": {
+          "pairs": [
+            [
+              1,
+              2
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              9,
+              18
+            ],
+            [
+              10,
+              19
+            ],
+            [
+              24,
+              33
+            ],
+            [
+              26,
+              35
+            ],
+            [
+              45,
+              54
+            ],
+            [
+              47,
+              56
+            ],
+            [
+              61,
+              70
+            ],
+            [
+              62,
+              71
+            ],
+            [
+              73,
+              74
+            ],
+            [
+              78,
+              79
+            ]
+          ]
+        }
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 0,
+        "digits": [
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 2,
+        "digits": [
+          6,
+          8
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 28,
+        "digits": [
+          2,
+          5
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 42,
+        "digits": [
+          4,
+          7
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 68,
+        "digits": [
+          7,
+          9
+        ]
+      },
+      {
+        "type": "quadruple",
+        "topLeft": 70,
+        "digits": [
+          6,
+          7,
+          8
+        ]
+      }
+    ]
+  },
+  "solution": "982615734741823659365974128853741962127396845496258371674182593238569417519437286"
+}
