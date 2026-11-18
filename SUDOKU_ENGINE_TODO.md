@@ -707,6 +707,8 @@ The isolated worktree is `codex/sudoku-xv-rating-audit`, based on the XV release
 - [x] Preserve 7,291 complete responses: 7,143 variant responses on 47 corpus positions and 351 positive practice positions, plus 148 Classic responses on nine Tridagon positions. Cover all 117 detectors, full traces, ratings and every hint page.
 - [x] Pass 437 app tests, 265 Wasm contracts, TypeScript and the 159-route production/offline build on the final artifact.
 - [x] Rebuild main and candidate in separate target directories. The fresh 63Jk paired rating falls from 6,847.856/6,964.237 to 4,022.262/4,042.819 ms median/p95, a 41.3% median gain. Preserve all 100 generation outcomes across five families and report all profile costs, retained regressions and actual app caller latency. [Final measurements](tests/fixtures/README.md#packed-guardian-checks-in-tridagon-refutations)
-- [ ] Pass exact-head CI and merge the focused optimization.
+- [x] Pass exact-head CI and merge the focused optimization through [PR 150](https://github.com/coder13/sudoku-app/pull/150).
+
+The packed guardian checks reached main at `e37a21f`. Native, feature, Wasm, app, documentation and deployment checks passed on reviewed head `414e830` in run `44319355287`. The reviewed worktree remains pinned to that head. [Issue 147](https://github.com/coder13/sudoku-app/issues/147) is closed; remaining latency and worker work continue under [issue 88](https://github.com/coder13/sudoku-app/issues/88). The next adjacent-total source audit is isolated under [issue 72](https://github.com/coder13/sudoku-app/issues/72) and is not integrated into the app.
 
 This change preserves scoring version 8, technique costs and enabled techniques. The four-second rating, Maelstrom/Chcs hint latency, branch propagation and browser-worker costs remain part of the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88).
