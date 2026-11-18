@@ -2,6 +2,8 @@
 
 This audit compares main `68684c6` with `codex/sudoku-entropic-rating-audit`. [Issue 165](https://github.com/coder13/sudoku-app/issues/165) tracks the change.
 
+The change reached main at `54c75b6` through [PR 166](https://github.com/coder13/sudoku-app/pull/166). Native, feature, Wasm/app, strict documentation and deployment checks pass on reviewed head `8bf317f` in [run 44369897495](https://github.com/coder13/sudoku-app/actions/runs/44369897495). Both commits are ancestors of remote main. The source worktree remains pinned to the reviewed head.
+
 ## Problem and implementation
 
 Hyk5, Entropic Loop, spends most of its rating time on searches that return no deduction. Its final position has no Nested Forcing Net proof. A five-second native sample places 3,734 of 3,794 samples inside branch propagation. The dominant instruction offsets scan locked-candidate premises during inner branch trials.
