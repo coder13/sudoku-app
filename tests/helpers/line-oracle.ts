@@ -10,6 +10,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
   ]
   const edges: [number, number, (a: number, b: number) => boolean][] = []
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
+  const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
     if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
@@ -19,9 +20,6 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
     else if (rule.type === 'xv') {
       for (const [sum, marks] of [[5, rule.five], [10, rule.ten]] as const) {
         for (const [a, b] of marks?.pairs ?? []) edges.push([a, b, (a, b) => a + b === sum])
-        if (marks?.negative) for (let a = 0; a < 81; a++) for (const b of [a % 9 < 8 ? a + 1 : -1, a < 72 ? a + 9 : -1]) {
-          if (b >= 0 && !marks.pairs?.some(([x, y]) => x === a && y === b || x === b && y === a)) edges.push([a, b, (a, b) => a + b !== sum])
-        }
       }
     }
     else if (rule.type === 'kropki') {
@@ -38,6 +36,13 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
     else if (rule.type === 'extra-house') houses.push(rule.cells)
     else if (rule.type === 'diagonal') houses.push(Array.from({ length: 9 }, (_, i) => rule.diagonal === 'main' ? i * 10 : i * 8 + 8))
     else throw new Error(`Independent line counter does not implement ${rule.type}`)
+  }
+  for (const [sum, layers] of [[5, xv.map(rule => rule.five)], [10, xv.map(rule => rule.ten)]] as const) {
+    if (!layers.some(marks => marks?.negative)) continue
+    const marked = layers.flatMap(marks => marks?.pairs ?? [])
+    for (let a = 0; a < 81; a++) for (const b of [a % 9 < 8 ? a + 1 : -1, a < 72 ? a + 9 : -1]) {
+      if (b >= 0 && !marked.some(([x, y]) => x === a && y === b || x === b && y === a)) edges.push([a, b, (a, b) => a + b !== sum])
+    }
   }
   let count = 0, nodes = 0, solution: string | undefined
   const solutions: string[] = []

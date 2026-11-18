@@ -69,7 +69,11 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           const matches = (a: number, b: number) => rule.type === 'xv' ? digits[a] + digits[b] === (kind === 0 ? 5 : 10) : kind === 0 ? Math.abs(digits[a] - digits[b]) === 1 :
             digits[a] === digits[b] * 2 || digits[b] === digits[a] * 2
           for (const [a, b] of marks?.pairs ?? []) assert.ok(matches(a, b))
-          if (marks?.negative) for (const [a, b] of adjacent) if (!marked(marks.pairs, a, b)) assert.ok(!matches(a, b))
+          if (marks?.negative) {
+            const pairs = rule.type === 'xv' ? puzzle.rules!.flatMap(other => other.type === 'xv'
+              ? (kind === 0 ? other.five?.pairs : other.ten?.pairs) ?? [] : []) : marks.pairs
+            for (const [a, b] of adjacent) if (!marked(pairs, a, b)) assert.ok(!matches(a, b))
+          }
         }
         break
       default: throw new Error(`Independent completion check does not support ${rule.type}`)

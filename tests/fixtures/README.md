@@ -982,3 +982,67 @@ node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm aft
 ```
 
 The remaining rating cost, profile sizes and worker behavior stay in the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88). Sparse FzzD validation remains separate in [issue 139](https://github.com/coder13/sudoku-app/issues/139). This optimization changes computational work rather than human difficulty or hint policy.
+
+## XV app integration
+
+The XV fixtures preserve two published Clover puzzle/solution pairs and four unmodified Coach exports. `xv-clover.json` and `xv-quadruple-clover.json` record the original PDF URLs and SHA-256 hashes. The original puzzle and solution pages were rendered and inspected. `xv-coach.json` preserves the original codes, published solutions, authors and publication dates. The corresponding Coach diagrams were inspected on 2026-11-18.
+
+| Published puzzle | Givens | XV marks | Companion rules | Independent count |
+| --- | ---: | --- | --- | --- |
+| [Clover, XV Pairs, 2025-10-08](https://www.gmpuzzles.com/blog/2025/10/xv-pairs-sudoku-by-clover/) | 4 | 8 V, 14 X | None | Unique in 7 calls; multiple without XV in 47 |
+| [Clover, XV and IVs, 2025-12-16](https://www.gmpuzzles.com/blog/2025/12/xv-pairs-quadruples-sudoku-by-clover/) | 4 | 4 V, 12 X | 6 Quadruple circles | Unique in 1 call; multiple without XV in 50, without Quadruple in 108 |
+| [Raumplaner, XV Maelstrom, 7v7n](https://sudoku.coach/en/s/7v7n) | 0 | 20 | 3 white dots | Unique in 309 calls; multiple without XV in 44 |
+| [Ce, Anti-King diagonal xv, FCeS](https://sudoku.coach/en/s/FCeS) | 0 | 20 | Both diagonals, Anti-King, 11 black dots, 1 inequality | Unique in 3 calls; multiple without XV in 2,487 |
+| [Ugleh, XV(anti)K, 63Jk](https://sudoku.coach/en/s/63Jk) | 3 | 5 | Anti-Knight, Anti-King | Unique in 96 calls; multiple without XV in 131 |
+| [cyboogie, Whisper Colouring 15, Chcs](https://sudoku.coach/en/s/Chcs) | 0 | 7 X | 6 minimum-4 and 3 minimum-5 Whispers paths, 2 white dots, 1 black dot | Unique in 95 calls; also unique without XV in 241,048 |
+
+Independent calls are array-of-digits solver calls, not native nodes. The counter uses explicit sum relations and enumerated Quadruple assignments with actual house relationships. It does not share the engine's candidate-support or exact-search code. Removing XV from Chcs still leaves a unique puzzle. Its marks remain part of the original definition even though that family is redundant for uniqueness.
+
+Coach `twoCellSum` segments carry `parameters.sum`. The decoder preserves 5 as V and 10 as X, along with every companion rule. Other totals remain unsupported. The preserved [Dariao142 sum-15 control, 99Eu](https://sudoku.coach/en/s/99Eu), must reject explicitly; its Roman numeral XV means 15. It must never become two separate V/X constraints. [Issue 72](https://github.com/coder13/sudoku-app/issues/72) tracks general adjacent totals. Unknown parameters, nonadjacent endpoints and unsupported settings also reject. Native/shared positive marks and independent negative V/X flags survive imports, transformations, storage and sharing. Flags and exemptions apply across all XV rule layers.
+
+The app renders V/X glyphs with explicit contrast halos and accessible sum/partner labels. Dots and directed inequalities occupy separate positions on a shared edge under all eight transforms. Actual clue components were rasterized at 900 and 360 pixels and compared with the source diagrams. This verifies static geometry and glyph visibility. Live viewport testing remains separate. Both candidate types, conflict checks, bulk entries, undo/redo and compatible candidates are covered by exhaustive pair checks.
+
+| Puzzle | Native default steps / points | App-order steps / points | App result |
+| --- | --- | --- | --- |
+| Clover XV | 55 / 1,076, partial | 151 / 4,538 | Expert, complete |
+| Clover XV and IVs | 123 / 1,540 | 123 / 1,870 | Medium, complete |
+| Maelstrom | — | 27 / 940 | Partial |
+| FCeS | — | 170 / 3,186 | Master, complete |
+| 63Jk | — | 199 / 27,358 | Impossible, complete |
+| Chcs | — | 6 / 160 | Partial |
+
+Every action in these traced paths agrees with the independently counted completion. Every XV proof is replayed by independently enumerating permitted digit pairs from its cited rules and evidence domains, including the shared house's distinctness rule. Selected replay steps, disabled logical profiles, multiple hints, exhaustive pages, Technique Finder, three practice exercises and accepted/rejected practice answers use the real Wasm adapter. Partial paths remain partial, even when the exact solver supplies a verified completion.
+
+The expanded fixed-clue fixture checks 32,768 selections of fifteen optional families with Palindrome present. It accepts 24,576 compatible selections and rejects 8,192 deliberate contradictions. The fixture is near complete, so this tests interchange and composition rather than arbitrary hard mixed-rule geometry. Three native marker recipes, seeds 17, 43 and 227, independently retain 30 givens, twenty XV clues and a dependence on XV for uniqueness. These recipes are compatibility cases. New puzzle does not offer XV until difficulty calibration is ready.
+
+The integration passes 437 app tests, 265 Wasm tests, TypeScript and the 159-route production/offline build. Seven focused component tests also pass after replacing CSS paint order with explicit XV halo and ink layers. Rust source, costs, default orders and scoring version 8 are unchanged. The measured app artifact is 3,367,009 raw / 899,884 gzip bytes with SHA-256 `bce78b16ef10f2163d47615586847cc1b6eee412ffbb00c5da149337782e1758`. It is a fresh rebuild, so do not describe it as byte-identical to the earlier release artifact. Across fourteen generated client JavaScript assets, raw bytes grow from 1,981,956 to 1,985,338 and gzip bytes from 483,869 to 484,999, an increase of 3,382 raw / 1,130 gzip bytes. Gzip uses Node's default compression for both sides. This sum is not a per-route transfer measurement.
+
+Measurements use Node 26.13.0 on macOS arm64. Candidates, exact checks, entry and SSR use five warmups/twenty samples. Ratings, hints, exhaustive pages, preview and solution use two/five, so their p95 is the maximum sample. Timed requests include serialization; assertions are outside timing. The nondedicated host had no identified compiler or engine test running. Raw requests use the app technique order without progress preferences. The app callers use their actual hint order, difficulty and progress policy through an in-process Wasm worker transport. They exclude browser worker startup, transfers, layout and paint. These are absolute measurements, not a paired engine speedup.
+
+| Puzzle | Candidates | Unique analysis | Exact solve | App-order rate | Raw ten hints | Exhaustive page |
+| --- | --- | --- | --- | --- | --- | --- |
+| xv-clover | 0.022/0.030 | 0.071/0.078 | 0.045/0.049 | 5.377/5.492 | 0.114/0.122 | 126.448/127.724 |
+| xv-quadruple-clover | 0.025/0.028 | 0.123/0.133 | 0.122/0.136 | 0.309/0.326 | 0.077/0.082 | 137.635/137.785 |
+| 7v7n | 0.016/0.017 | 0.392/0.394 | 0.124/0.136 | 88.317/89.090 | 274.004/278.107 | 277.167/281.166 |
+| FCeS | 0.022/0.028 | 0.082/0.090 | 0.082/0.082 | 6.918/7.042 | 0.094/0.110 | 0.731/0.738 |
+| 63Jk | 0.011/0.015 | 0.043/0.050 | 0.039/0.040 | 6746.547/6777.174 | 0.074/0.080 | 370.924/378.020 |
+| Chcs | 0.026/0.031 | 1.228/1.275 | 0.687/0.712 | 261.085/261.861 | 289.924/293.177 | 291.365/293.621 |
+
+| Puzzle | Preview including rating | Play candidates | Ordinary app hints | Solution path | Entry with notes | Board SSR |
+| --- | --- | --- | --- | --- | --- | --- |
+| xv-clover | 5.538/5.883 | 0.020/0.024 | 0.193/0.212 | 8.371/8.950 | 0.015/0.050 | 1.959/2.233 |
+| xv-quadruple-clover | 0.597/0.601 | 0.025/0.031 | 0.211/0.234 | 1.926/2.446 | 0.071/0.079 | 1.874/2.608 |
+| 7v7n | 89.570/89.763 | 0.019/0.026 | 278.049/283.298 | 88.315/89.217 | 0.023/0.055 | 1.951/1.995 |
+| FCeS | 7.376/7.457 | 0.024/0.025 | 0.803/0.820 | 8.740/10.294 | 0.070/0.071 | 1.062/1.562 |
+| 63Jk | 6745.229/6774.125 | 0.014/0.021 | 368.170/371.544 | 6751.418/6770.752 | 0.031/0.059 | 1.610/1.890 |
+| Chcs | 266.030/266.254 | 0.030/0.035 | 302.825/305.204 | 261.426/264.350 | 0.199/0.299 | 1.737/1.907 |
+
+All times are median/p95 milliseconds. The slow 63Jk rating also affects import preview and the complete walkthrough. Ordinary app hints can cost more than raw ten-hint requests because they apply different ordering and preferences. Preserve both measurements. [Issue 147](https://github.com/coder13/sudoku-app/issues/147) tracks the rating and Maelstrom hint costs separately.
+
+Committed raw-engine Wasm memory after the fixed request sequence is xv-clover: 1.50 MiB; xv-quadruple-clover: 1.44 MiB; 7v7n: 4.69 MiB; FCeS: 2.31 MiB; 63Jk: 6.31 MiB; Chcs: 1.50 MiB. This is buffer capacity, not RSS, browser heap or live allocation. Generation seeds in this integration establish compatibility and rule dependence; this pass does not claim a generation speedup.
+
+Repeat after building the app:
+
+```sh
+node --experimental-strip-types --test scripts/bench-xv-app.mts
+```

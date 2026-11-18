@@ -151,7 +151,7 @@ test('native generation retains drawing geometry, clue targets and independent P
   }
 })
 
-test('all 16384 family selections preserve Palindrome and every selected fixed clue', async () => {
+test('all 32768 family selections preserve Palindrome and every selected fixed clue', async () => {
   const fixture = JSON.parse(readFileSync(new URL('./fixtures/nonconsecutive-combined.json', import.meta.url), 'utf8')) as { cases: {
     puzzle: VariantPuzzle; solution: string; coachData: { regions: number[]; givenConstraints: { type: string }[] }
   }[] }
@@ -166,7 +166,7 @@ test('all 16384 family selections preserve Palindrome and every selected fixed c
     }
     throw new Error('The fixed completion needs both eligible line clues')
   })
-  const families = ['jigsaw', 'killer-cages', 'thermometer', 'kropki', 'extra-house', 'diagonal', 'arrow', 'anti-knight', 'quadruple', 'parity', 'anti-king', 'non-consecutive', 'whispers', 'inequality']
+  const families = ['jigsaw', 'killer-cages', 'thermometer', 'kropki', 'extra-house', 'diagonal', 'arrow', 'anti-knight', 'quadruple', 'parity', 'anti-king', 'non-consecutive', 'whispers', 'inequality', 'xv']
   const sourceFamily: Record<string, string> = { nonconsecutive: 'non-consecutive', antiKing: 'anti-king', cage: 'killer-cages', thermometer: 'thermometer', difference: 'kropki', ratio: 'kropki', region: 'extra-house', diagonalNegative: 'diagonal', arrow: 'arrow', antiKnight: 'anti-knight', quadruple: 'quadruple', odd: 'parity', even: 'parity' }
   let valid = 0, conflicting = 0
   for (let mask = 0; mask < 1 << families.length; mask++) {
@@ -174,17 +174,24 @@ test('all 16384 family selections preserve Palindrome and every selected fixed c
     const both = enabled.has('diagonal') && enabled.has('anti-knight'), index = enabled.has('anti-knight') && !both ? 1 : 0
     const sample = fixture.cases[index], line = paths[index]
     const [less, greater] = Number(sample.solution[0]) < Number(sample.solution[1]) ? [0, 1] : [1, 0]
+    const edges = Array.from({ length: 81 }, (_, a) => [
+      ...(a % 9 < 8 ? [[a, a + 1] as const] : []), ...(a < 72 ? [[a, a + 9] as const] : []),
+    ]).flat()
+    const sumPair = (sum: number) => edges.find(([a, b]) => Number(sample.solution[a]) + Number(sample.solution[b]) === sum)!
+    const v = sumPair(5), x = sumPair(10)
     const puzzle: VariantPuzzle = { ...sample.puzzle, ...(enabled.has('jigsaw') ? {} : { regions: undefined }), rules: [
       ...sample.puzzle.rules!.filter(rule => enabled.has(rule.type)), ...(both ? [{ type: 'anti-knight' as const }] : []),
       { type: 'palindrome', cells: line.palindrome },
       ...(enabled.has('whispers') ? [{ type: 'whispers' as const, cells: line.whispers, minDifference: 5 }] : []),
       ...(enabled.has('inequality') ? [{ type: 'inequality' as const, less, greater }] : []),
+      ...(enabled.has('xv') ? [{ type: 'xv' as const, five: { pairs: [v] }, ten: { pairs: [x] } }] : []),
     ] }
     const input = coachCode({ ...sample.coachData, ...(enabled.has('jigsaw') ? {} : { regions: undefined }), givenConstraints: [
       ...sample.coachData.givenConstraints.filter(rule => enabled.has(sourceFamily[rule.type])), ...(both ? [{ type: 'antiKnight', segments: [], settings: {} }] : []),
       { type: 'palindromeLine', settings: {}, segments: [{ cells: line.palindrome, parameters: {} }] },
       ...(enabled.has('whispers') ? [{ type: 'whisper', settings: {}, segments: [{ cells: line.whispers, parameters: {} }] }] : []),
       ...(enabled.has('inequality') ? [{ type: 'greaterLess', settings: {}, segments: [{ cells: [less, greater], parameters: {} }] }] : []),
+      ...(enabled.has('xv') ? [{ type: 'twoCellSum', settings: {}, segments: [{ cells: v, parameters: { sum: 5 } }, { cells: x, parameters: { sum: 10 } }] }] : []),
     ] })
     assert.deepEqual((await detectPuzzle(input)).variant?.puzzle, JSON.parse(JSON.stringify(puzzle)))
     if (both) { await assert.rejects(prepareImportedPuzzle(input), /conflicting givens or rules/); conflicting++; continue }
@@ -195,5 +202,5 @@ test('all 16384 family selections preserve Palindrome and every selected fixed c
     assert.notEqual((await runEngine({ type: 'variant', operation: 'rate', position: variantPosition(game.variant!) })).status, 'stalled')
     valid++
   }
-  assert.deepEqual({ valid, conflicting }, { valid: 12288, conflicting: 4096 })
+  assert.deepEqual({ valid, conflicting }, { valid: 24576, conflicting: 8192 })
 })

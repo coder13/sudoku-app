@@ -38,6 +38,11 @@ test('independent negative XV flags apply only to their declared sum', () => {
     assert.equal(countLineSolutions({ ...puzzle, rules: [opposite] }).count, 1)
     const strict = { ...rule, ...(sum === 5 ? { five: { pairs: five.slice(1), negative: true } } : { ten: { pairs: ten.slice(1), negative: true } }) }
     assert.equal(countLineSolutions({ ...puzzle, rules: [strict] }).count, 0)
+    // A positive mark in a separate layer still exempts its edge globally.
+    const separate: VariantPuzzle = { ...puzzle, rules: [strict,
+      { type: 'xv', ...(sum === 5 ? { five: { pairs: [five[0]] } } : { ten: { pairs: [ten[0]] } }) }] }
+    assert.equal(countLineSolutions(separate).count, 1)
+    assertVariantCompletion(separate, givens)
   }
 })
 

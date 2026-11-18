@@ -68,6 +68,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
   },
+  xv: {
+    name: 'XV',
+    rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
+  },
   quadruple: {
     name: 'Quadruple',
     rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
@@ -215,7 +219,15 @@ export function palindromePartner(cells: readonly number[], cell: number) {
 /** Extra pairwise exclusions beyond the same-digit peers used by the player. */
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
   let excluded = 0
+  let v = false, x = false, negativeV = false, negativeX = false
+  const edge = cellsShareEdge(from, to)
   for (const rule of puzzle?.rules ?? []) {
+    if (rule.type === 'xv' && edge) {
+      v ||= hasMarkedPair(rule.five?.pairs, from, to)
+      x ||= hasMarkedPair(rule.ten?.pairs, from, to)
+      negativeV ||= rule.five?.negative === true
+      negativeX ||= rule.ten?.negative === true
+    }
     if (rule.type === 'inequality' && (from === rule.less && to === rule.greater || from === rule.greater && to === rule.less)) {
       for (let other = 1; other <= 9; other++) {
         if (from === rule.less ? other <= digit : other >= digit) excluded |= 1 << (other - 1)
@@ -231,6 +243,11 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
       (cell === from && rule.cells[i - 1] === to || cell === to && rule.cells[i - 1] === from))) {
       for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) < rule.minDifference) excluded |= 1 << (other - 1)
     }
+  }
+  if (v || x || negativeV || negativeX) for (let other = 1; other <= 9; other++) {
+    const sum = digit + other
+    if (v && sum !== 5 || x && sum !== 10 ||
+      !v && !x && (negativeV && sum === 5 || negativeX && sum === 10)) excluded |= 1 << (other - 1)
   }
   return excluded
 }
@@ -295,6 +312,10 @@ function isPlayableRule(rule: VariantRule): boolean {
       marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) &&
         marks.pairs.every((pair) => validCells(pair, 2) && pair.length === 2)))
+    case 'xv': return [rule.five, rule.ten].every(marks => marks === undefined ||
+      marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
+      (marks.pairs === undefined || Array.isArray(marks.pairs) && marks.pairs.every(pair =>
+        validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))))
     default: return false
   }
 }
@@ -328,6 +349,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
 }
 
 const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+  xv: PUZZLE_VARIANTS.xv.name,
   inequality: PUZZLE_VARIANTS.inequality.name,
   'extra-house': 'Extra regions',
   diagonal: VARIANTS.diagonal.name,
@@ -363,6 +385,11 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
     switch (rule.type) {
       case 'inequality':
         descriptions.push(PUZZLE_VARIANTS.inequality.rule)
+        break
+      case 'xv':
+        descriptions.push(PUZZLE_VARIANTS.xv.rule)
+        if (rule.five?.negative) descriptions.push('All V clues are given. Digits in an unmarked pair of cells sharing an edge cannot sum to 5.')
+        if (rule.ten?.negative) descriptions.push('All X clues are given. Digits in an unmarked pair of cells sharing an edge cannot sum to 10.')
         break
       case 'non-consecutive':
         descriptions.push(nonConsecutiveDescription(puzzle, rule))
