@@ -28,6 +28,9 @@ const fixtures = await Promise.all([
   ['quadruple', 'quadruple-clover'], ['parity', 'parity-big-eight'], ['anti-king', 'anti-king-newman'], ['non-consecutive', 'nonconsecutive-newman'],
 ].map(async ([name, file]) => ({ name, puzzle: (await load(file)).puzzle })))
 fixtures.push({ name: 'nc-white-dots', puzzle: (await detectPuzzle((await load('nonconsecutive-coach')).examples[0].code)).variant.puzzle })
+// Opt in so historical runs against older, stalled Whispers profiles retain
+// their original workload and sample counts.
+if (selected.includes('whispers')) fixtures.push({ name: 'whispers', puzzle: (await load('whispers-brain-zaps')).puzzle })
 for (const name of selected) assert.ok(fixtures.some(fixture => fixture.name === name), `Unknown fixture ${name}`)
 const summary = values => {
   const sorted = values.toSorted((a, b) => a - b)
@@ -41,10 +44,17 @@ console.log('Fixed requests: 5 warmups, 20 measured samples. Exhaustive first pa
 for (const { name, puzzle } of fixtures) {
   if (selected.length && !selected.includes(name)) continue
   const pair = await Promise.all(binaries.map(engine))
-  for (const operation of ['candidates', 'analyze', 'solve', 'native-rate', 'app-rate', 'ten-hints', 'exhaustive']) {
-    const options = pair.map(engine => ({ type: 'variant', position: { puzzle }, maxNodes: 20_000,
-      operation: operation.endsWith('rate') ? 'rate' : operation.endsWith('hints') || operation === 'exhaustive' ? 'hints' : operation,
-      techniqueOrder: operation === 'native-rate' ? engine.nativeOrder : engine.appOrder,
+  const operations = ['candidates', 'analyze', 'solve', 'native-rate', 'app-rate', 'ten-hints', 'exhaustive']
+  if (name === 'whispers') operations.push(...[
+    'unique-rectangle-1', 'unique-loop', 'bug-plus-one', 'unique-rectangle-aic',
+    'unique-rectangle-continuous-nice-loop', 'unique-rectangle-discontinuous-nice-loop',
+  ].map(id => `proof:${id}`))
+  for (const operation of operations) {
+    const technique = operation.startsWith('proof:') ? operation.slice(6) : undefined
+    const options = pair.map(engine => ({ type: 'variant', position: { puzzle }, maxNodes: name === 'whispers' ? 100_000 : 20_000,
+      operation: technique || operation.endsWith('hints') || operation === 'exhaustive' ? 'hints' : operation.endsWith('rate') ? 'rate' : operation,
+      techniqueOrder: technique ? [technique] : operation === 'native-rate' ? engine.nativeOrder : engine.appOrder,
+      ...(technique && { limit: 0xffff_ffff }),
       ...(operation === 'ten-hints' && { limit: 10, preferProgress: true, difficulty: 'medium' }),
       ...(operation === 'exhaustive' && { limit: 0xffff_ffff, collection: 111, preferProgress: true, difficulty: 'medium' }),
     }))
@@ -69,7 +79,7 @@ for (const { name, puzzle } of fixtures) {
     }
     console.log(`${name} ${operation}: ${summary(times[0])} -> ${summary(times[1])}`)
     if (operation.endsWith('rate')) console.log(`  ${JSON.stringify(expected.map(rating => ({ status: rating.status, points: rating.points, scoringVersion: rating.scoringVersion })))}`)
-    if (operation.endsWith('hints') || operation === 'exhaustive') console.log(`  choices ${expected.map(result => Array.isArray(result) ? result.length : result.available).join(' -> ')}`)
+    if (technique || operation.endsWith('hints') || operation === 'exhaustive') console.log(`  choices ${expected.map(result => Array.isArray(result) ? result.length : result.available).join(' -> ')}`)
   }
   console.log(`${name} committed Wasm memory after requests: ${pair.map(engine => (engine.memory() / 1024 / 1024).toFixed(2)).join(' -> ')} MiB`)
 }

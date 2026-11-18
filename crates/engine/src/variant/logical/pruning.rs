@@ -1,6 +1,9 @@
-//! Support certificates concern the geometric premises of Classic detectors.
+//! Check Classic detector eligibility before graph construction and search.
 
-use super::{ALTERNATIVE_WITNESS_NODES, CELLS, CompiledVariant, ProofPosition, Technique};
+use super::{
+    ALTERNATIVE_WITNESS_NODES, Analysis, CELLS, CompiledVariant, ProofPosition, Technique,
+    UNIQUENESS_PROBE_NODES,
+};
 
 impl CompiledVariant {
     pub(super) fn classic_search_is_empty<'a>(
@@ -9,9 +12,16 @@ impl CompiledVariant {
         technique: Technique,
     ) -> bool {
         if technique.requires_unique_solution() {
-            // Every recognized uniqueness proof needs a nonempty swap scope.
-            // The existing proof filter excludes every such scope here.
-            return self.extra_rule_cells == (1u128 << CELLS) - 1;
+            if self.extra_rule_cells == (1u128 << CELLS) - 1 {
+                return true;
+            }
+            // Graph searches can cost more than the bounded exact check.
+            // Cheap empty scans defer that work until they have a proof.
+            // Every search can reuse a failed check from this position.
+            let unique = position.uniqueness.get().copied().or_else(|| {
+                prepare_uniqueness(technique).then(|| self.uniqueness_is_verified(position))
+            });
+            return unique == Some(false);
         }
         let probe = prepare_completion_support(technique);
         if !probe && position.overlay.get().is_none() {
@@ -33,6 +43,23 @@ impl CompiledVariant {
                 .is_some_and(|search| search.borrow().known_full_completion_support())
         }
     }
+    pub(super) fn uniqueness_is_verified(&self, position: &ProofPosition<'_>) -> bool {
+        // Candidate removals cannot establish uniqueness. Exhausting the
+        // existing budget means no uniqueness proof, not multiple solutions.
+        *position.uniqueness.get_or_init(|| {
+            self.analyze(&position.board, &[0; CELLS], UNIQUENESS_PROBE_NODES)
+                == Ok(Analysis::Unique)
+        })
+    }
+}
+
+fn prepare_uniqueness(technique: Technique) -> bool {
+    matches!(
+        technique,
+        Technique::UniqueRectangleAic
+            | Technique::UniqueRectangleDiscontinuousNiceLoop
+            | Technique::UniqueRectangleContinuousNiceLoop
+    )
 }
 
 // Pay for coverage before graph construction or branching enumeration. These

@@ -74,7 +74,19 @@ This pass reached main at `4dfeda0` through [PR 121](https://github.com/coder13/
 - [x] Measure candidates, validation, solving, rating, ordinary/exhaustive hints, generation and all package profiles. Brain Zaps app rating changes from a stalled 24,367.310/34,962.469 ms to a complete 0.886/1.560 ms path. Opening choices increase from four to eight; exhaustive scans and slower retained Quadruple samples remain performance follow-ups. Box the rare payload to keep shared evidence compact. [Methods and limits](tests/fixtures/README.md#whispers-lines-shared-houses-and-app-integration)
 - [x] Pass 291 native tests including doctests, 396 app tests, 242 Wasm tests, TypeScript, sixteen native feature combinations, four Wasm profiles, strict full/reduced Cargo documentation and the production/offline build with 159 rendered routes.
 - [x] Pass CI on reviewed head `4e95cf3` and merge the app-ready family separately through [PR 121](https://github.com/coder13/sudoku-app/pull/121). Verify the reviewed head and merge commit on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44238999616)
-- [ ] Measure earlier bounded uniqueness eligibility in [issue 122](https://github.com/coder13/sudoku-app/issues/122). Preserve complete proof lists and ratings while avoiding searches whose existing uniqueness precondition fails.
+- [x] Measure earlier bounded uniqueness eligibility in [issue 122](https://github.com/coder13/sudoku-app/issues/122). Preserve complete proof lists and ratings while avoiding searches whose existing uniqueness precondition fails.
+
+### Bounded uniqueness search performance in progress
+
+This pass is isolated on `codex/sudoku-uniqueness-pruning` from main `b5b394c`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/122)
+
+- [x] Profile empty Unique Rectangle chain searches on Brain Zaps and identify the existing late uniqueness precondition.
+- [x] Move the cached 4,096-node check before expensive rectangle-chain searches. Keep empty cheap searches lazy, candidate removals outside uniqueness analysis and the swap-scope filter intact.
+- [x] Pass focused native checks for positive uniqueness exercises, ambiguous geometric support, candidate restrictions and an exhausted probe on a genuinely unique puzzle.
+- [x] Match 2,996 complete responses across sixteen corpus positions, all 117 detectors and all 351 positive practice positions. Preserve full proofs, ratings, custom orders, every hint page, catalogs and scoring version 8.
+- [x] Measure paired ordinary/exhaustive hints, retained fixtures, committed Wasm memory and every package profile. Brain Zaps ordinary hints improve 660.803/678.451 → 486.085/514.869 ms, with eight choices unchanged. Empty cheap requests stay lazy. App Wasm adds 162 gzip bytes. [Methods and limits](tests/fixtures/README.md#earlier-bounded-uniqueness-eligibility)
+- [x] Pass 295 native tests including doctests, 396 app tests, 243 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build.
+- [ ] Pass CI on the reviewed head, merge the focused optimization and record its release.
 
 ### Complete candidate-support performance merged
 

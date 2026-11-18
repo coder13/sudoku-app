@@ -1015,8 +1015,9 @@ impl CompiledVariant {
 
     /// Whether the technique's house assumptions hold for this puzzle.
     ///
-    /// Uniqueness-dependent techniques also check the proposed swap and verify
-    /// uniqueness before returning an individual deduction.
+    /// Uniqueness-dependent techniques check each proposed swap and verify
+    /// uniqueness before returning a deduction. Expensive graph searches can
+    /// check the same cached uniqueness requirement before searching.
     pub fn supports_technique(&self, technique: VariantTechnique) -> bool {
         match technique {
             VariantTechnique::Classic(classic) if classic.pattern_overlay_width().is_some() => true,
@@ -1099,10 +1100,7 @@ impl CompiledVariant {
                 if cells
                     .iter()
                     .any(|&cell| self.extra_rule_cells & (1u128 << cell) != 0)
-                    || !*position.uniqueness.get_or_init(|| {
-                        self.analyze(&position.board, &[0; CELLS], UNIQUENESS_PROBE_NODES)
-                            == Ok(Analysis::Unique)
-                    })
+                    || !self.uniqueness_is_verified(position)
                 {
                     continue;
                 }
