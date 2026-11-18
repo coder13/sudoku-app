@@ -1,12 +1,12 @@
 import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
 import { DIGITS, onlyCandidate } from './game.ts'
-import { cellReference } from './hints.ts'
+import { cellReference, type CellReferenceOptions } from './hints.ts'
 import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName } from './variants.ts'
 
 type ConstraintEvidence = Extract<VariantDeduction['evidence'], { type: 'constraint' }>
-const at = (cell: number) => cellReference(cell, 'concise')
+const alternatives = new Intl.ListFormat('en', { type: 'disjunction' })
 
-function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle) {
+function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at: (cell: number) => string) {
   const { cells, domains } = evidence
   const rules = evidence.rules.map(index => puzzle.rules?.[index])
   const rule = rules[0]
@@ -122,8 +122,9 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle) {
   }
 }
 
-export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPuzzle): HintChoice {
+export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPuzzle, options: CellReferenceOptions = {}): HintChoice {
   const { actions, evidence, technique } = deduction
+  const nameCell = (cell: number) => cellReference(cell, options.cellReferenceStyle ?? 'concise', options.difficulty)
   const focus = actions.map((action) => 'place' in action ? action.place : action.eliminate)
   if (evidence.type === 'classic') return {
     actions, technique, evidence: evidence.proof,
@@ -139,13 +140,13 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const { candidate: { cell, digit }, house } = evidence
       cells = house ? variantHouseCells(house, puzzle) : [cell]
       if (!house) {
-        description = `Only ${digit} remains in ${at(cell)}.`
+        description = `Only ${digit} remains in ${nameCell(cell)}.`
         reason = 'Every other digit is already ruled out.'
       } else {
         const label = houseLabel(house)
         description = technique === 'full-house'
-          ? `${at(cell)} is the last empty cell in ${label}.`
-          : `Only ${at(cell)} can hold ${digit} in ${label}.`
+          ? `${nameCell(cell)} is the last empty cell in ${label}.`
+          : `Only ${nameCell(cell)} can hold ${digit} in ${label}.`
         reason = technique === 'full-house' ? `The eight filled cells contain every digit except ${digit}.`
           : `That house needs one ${digit}.`
       }
@@ -187,15 +188,44 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
     }
     case 'constraint': {
       cells = evidence.cells
-      const clue = constraintClue(evidence, puzzle)
+      const clue = constraintClue(evidence, puzzle, nameCell)
       description = clue.description
       reason = clue.reason
+      switch (technique) {
+        case 'parity': {
+          const rule = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'parity')
+          if (rule?.type === 'parity') {
+            const location = nameCell(cells[0])
+            description = rule.parity === 'odd'
+              ? `${location} has an odd circle, so it can contain only 1, 3, 5, 7, or 9.`
+              : `${location} has an even square, so it can contain only 2, 4, 6, or 8.`
+            reason = `Remove ${focus.map(({ digit }) => digit).join(', ')} from ${location}; ${rule.parity === 'odd' ? 'even' : 'odd'} digits cannot satisfy this marker.`
+          } else description = 'The odd or even marker restricts the highlighted cell.'
+          break
+        }
+        case 'anti-king': {
+          const name = nameCell
+          description = `${cells.map(name).join(' and ')} touch at a corner. Anti-King requires different digits in these cells.`
+          reason = focus.map(({ cell, digit }) => `${digit} cannot go in ${name(cell)}; ${name(cells.find(other => other !== cell)!)} is restricted to ${digit}.`).join(' ')
+          break
+        }
+        case 'non-consecutive': {
+          description = `${cells.map(nameCell).join(' and ')} share an edge. Non-Consecutive requires their digits not to differ by 1.`
+          reason = focus.map(({ cell, digit }) => {
+            const other = cells.findIndex(candidate => candidate !== cell)
+            const choices = Array.from({ length: 9 }, (_, index) => index + 1)
+              .filter(candidate => evidence.domains[other] & 1 << (candidate - 1))
+            return `${digit} cannot go in ${nameCell(cell)}; ${nameCell(cells[other])} can contain only ${alternatives.format(choices.map(String))}. Every choice would differ from ${digit} by 1.`
+          }).join(' ')
+          break
+        }
+      }
       break
     }
   }
   return {
     technique, actions,
-    evidence: { variant: { description, reason } },
+    evidence: { variant: { description, reason, source: { deduction, puzzle } } },
     pattern: { houses: [], cells: [...cells], candidates: focus },
   }
 }

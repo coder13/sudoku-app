@@ -54,7 +54,7 @@ const list = new Intl.ListFormat('en')
 export function explainCandidateRecovery(game: Game, candidate: Candidate, style: CellReferenceStyle): string {
   const reference = (cell: number) => cellReference(cell, style, game.difficulty ?? undefined)
   const { cell, digit } = candidate
-  const fallback = `The solution uses ${digit} in ${reference(cell)}. Restore that pencil mark.`
+  const fallback = `The solution uses ${digit} in ${reference(cell)}. Restore that candidate.`
   if (game.variant) return fallback
 
   const values = valuesOf(game)

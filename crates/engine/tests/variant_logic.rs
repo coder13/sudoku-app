@@ -252,7 +252,7 @@ fn each_local_rule_explains_a_candidate_that_its_relationship_excludes() {
         ),
         (PuzzleRule::AntiKnight {}, &[(10, 4)], [29, 4]),
         (PuzzleRule::AntiKing {}, &[(20, 4)], [30, 4]),
-        (PuzzleRule::NonConsecutive {}, &[(30, 4)], [31, 3]),
+        (PuzzleRule::NonConsecutive { except: vec![] }, &[(30, 4)], [31, 3]),
         (
             PuzzleRule::Inequality {
                 less: 10,

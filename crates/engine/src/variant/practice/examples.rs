@@ -175,19 +175,19 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 "038520000502000410940137050690002580004000037007000102719080000000701849480200300",
                 12,
                 6,
-                [PuzzleRule::NonConsecutive {}],
+                [PuzzleRule::NonConsecutive { except: vec![] }],
             ),
             seed(
                 "000000007794800010310000050030040002079280006800010070005360049947020300000974800",
                 0,
                 6,
-                [PuzzleRule::NonConsecutive {}],
+                [PuzzleRule::NonConsecutive { except: vec![] }],
             ),
             seed(
                 "080000009100685700072900006724106000050470630300000000800501400001004003047000100",
                 10,
                 9,
-                [PuzzleRule::NonConsecutive {}],
+                [PuzzleRule::NonConsecutive { except: vec![] }],
             ),
         ],
         Clone => [

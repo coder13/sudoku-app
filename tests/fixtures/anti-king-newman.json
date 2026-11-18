@@ -1,0 +1,22 @@
+{
+  "title": "King of Diamonds — Anti-King Sudoku by Philip Newman",
+  "source": "https://www.gmpuzzles.com/blog/2025/07/anti-king-sudoku-by-philip-newman/",
+  "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/250703-AntiKingSudoku-KingOfDiamonds.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250703-AntiKingSudoku-KingOfDiamonds-soln.pdf",
+  "coachConstraintSource": "https://sudoku.coach/js/jCfXtZs-1776367508519.js",
+  "coachConstraint": {
+    "type": "antiKing",
+    "segments": [],
+    "settings": {}
+  },
+  "puzzle": {
+    "version": 1,
+    "givens": "010000090902000503030010040000802000007000300000604000080050070701000609090000050",
+    "rules": [
+      {
+        "type": "anti-king"
+      }
+    ]
+  },
+  "solution": "418523796972486513536917842145832967867195324329674185684359271751248639293761458"
+}

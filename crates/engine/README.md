@@ -117,6 +117,8 @@ Advanced Forcing Net also looks for Naked Pair, Hidden Pair, and X-Wing after dy
 
 Nested Forcing Net tries a second assumption when dynamic propagation runs out of moves. If both truth values of the second candidate lead to contradictions, the first assumption is false. The proof stores both cases and the facts each case imports from the outer branch. [`ForcingCase`] documents how to read the step indices. Append `nested-forcing-net` to opt in at 950 points per deduction.
 
+For variant positions with standard boxes, the Classic Nested Forcing Net search can use compatible completions to skip assumptions that cannot lead to contradictions. These witnesses satisfy the standard houses, placed digits and current candidate masks; they do not establish any extra variant rule. The engine allows 128 exact-search nodes per additional probe and 4,096 across the scan. An unfinished probe leaves the original logical search active. Every returned deduction still contains its original logical proof, with the same cost and technique order. These internal probes do not replace the public exact-search budgets or uniqueness checks.
+
 A regular Tridagon uses four boxes in two bands and two stacks. Select three cells in different rows and columns within each box. The pattern can be impossible to fill with the same three digits, so at least one extra candidate must be true. The extra candidates are called guardians. `tridagon` places a sole guardian or removes a candidate that conflicts with every guardian. It costs 410 points per deduction at the Extreme tier.
 
 `tridagon-aic` uses the guardian requirement as a strong link in an alternating inference chain. The two endpoints together cover every guardian, so at least one endpoint must hold. An endpoint can be one candidate, a same-digit group, or an [`InferenceNode::MixedGroup`]. A weak link to a mixed group must conflict with each of its candidates. The search can combine these links with house, cell, Firework, and almost locked set links. [`LinkSource::Tridagon`] records the impossible core. Enable the technique in a custom profile at 540 points per deduction at the Extreme tier. [Mission Impossible worked example](https://www.reddit.com/r/sudoku/comments/1gxr5ml/trivalue_oddagon/)
@@ -408,7 +410,7 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `diagonal`, `extra-house` | Use `diagonal` with `main` or `anti`, or supply nine distinct `cells` for an extra house. |
 | `killer-cages` | Each cage specifies `cells` and `sum`. Set `coverGrid` to true if the cages must cover the full grid. |
 | `parity`, `clone` | Set `parity` to `odd` or `even` for the listed `cells`. In Clone Sudoku, each list in `groups` shares one digit. |
-| `anti-knight`, `anti-king`, `non-consecutive` | Each applies to the entire grid. Non-Consecutive applies to orthogonally adjacent cells. |
+| `anti-knight`, `anti-king`, `non-consecutive` | Each applies to the entire grid. Non-Consecutive applies to orthogonally adjacent cells; its optional `except` list exempts specified edge-sharing pairs. |
 | `inequality` | Supply the `less` and `greater` cell indices. |
 | `kropki`, `xv` | Use `consecutive` and `ratioTwo` for Kropki dots, or `five` and `ten` for XV markers. |
 | `thermometer`, `whispers`, `palindrome` | Supply `cells` in line order. Start a Thermometer at the bulb. Set `minDifference` for Whispers. |
@@ -417,6 +419,8 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `sandwich`, `x-sum`, `skyscrapers`, `little-killer` | Supply `cells` from the clue toward the far edge in the declared `direction`. Use `count` for Skyscrapers and `sum` for the other clues. |
 
 Each marker type accepts a list of adjacent `pairs` and an optional `negative` flag. With that flag, an adjacent pair without any marker from the same family cannot use the specified relationship. The default is false. A Kropki pair with digits 1 and 2 can carry either dot. [WPF Kropki rules](https://gp.worldpuzzle.org/sites/default/files/Puzzles/2020/2020_SudokuRound4.pdf)
+
+A Non-Consecutive exception removes only that rule's restriction on an edge. It does not require a difference of one or disable row, column, or region uniqueness. For a white dot exception, include both `{"type":"non-consecutive","except":[[0,1]]}` and a Kropki rule whose `consecutive.pairs` contains `[0,1]`. Native definitions always use the explicit list. Coach imports derive that list from its difference markers, whose pairs its global rule exempts. Empty or omitted lists retain the original global behavior. Rust callers use `PuzzleRule::NonConsecutive { except: vec![] }` for the ordinary rule.
 
 Outside clues use the compass directions `north`, `east`, `south`, and `west` for rows and columns. Use `north-east`, `south-east`, `south-west`, or `north-west` for Little Killer diagonals. A Little Killer diagonal can repeat digits where its other rules permit them. [Sudoku U constraint reference](https://www.sudoku-u.org/constraints)
 

@@ -23,9 +23,61 @@ The rule list deliberately interleaves families. White and black dots share an e
 
 The near-complete fixture tests interchange and app integration. It does not establish how often every constraint is essential, cover every arrangement of clues, or represent hard mixed-rule solving. Only the sparse Diagonal/Killer code has been round-tripped through the external Coach constructor; the other source codes are authored format fixtures.
 
-## Repeating the checks
+## Odd/Even sources and app coverage
 
-Run `npm test` for decoder, independent-counter, and storage contracts. Run `npm run test:wasm` for the compiled browser engine, imported-game flow, and family-subset matrix. The new suite is `../variant-import-wasm.mts`. Browser verification on 2026-11-17 covered desktop Play and preview, 390-by-844 preview and rule dialogs, overlapping dot visibility, move/undo/redo, reload, multiple hints, the full share payload, and completion returning to the puzzle chooser.
+`parity-big-eight.json` transcribes Thomas Snyder's [Big Eight](https://www.gmpuzzles.com/blog/2023/03/even-odd-sudoku-by-thomas-snyder-2/), published on 2023-03-28 from the 2022 US Sudoku Grand Prix. Its 16 givens, 13 odd circles, 10 even squares, and completion were checked visually against the linked puzzle and solution PDFs. The separate row/column/box counter in `../helpers/parity-oracle.ts` proves one completion with the markers and multiple completions without them. It shares no search, propagation, or codec implementation with the engine.
+
+`parity-coach.json` preserves the unmodified Odd and Even examples embedded in Coach's public rule serializer, retrieved on 2026-11-17. Both examples are 3 × 3 rule illustrations, which the app correctly rejects. Decoder tests reuse their unchanged constraint payloads in a 9 × 9 envelope. The Big Eight Coach input is an authored format fixture, not a constructor roundtrip. Each source marker is a single-cell segment with empty parameters; one native parity rule groups the cells of each source constraint. Known cosmetic settings do not change the rule. Unknown semantic settings are rejected.
+
+The Wasm tests check the published completion, exact candidates, multiple hints, scoring, full Play and solution replay, paged proofs, Technique Finder counts, checked practice moves, save/reload and undo/redo. Parity remains enforced when its deduction is disabled, and conflicting odd/even markers cannot produce a solution. Three generated puzzles independently satisfy the requested 30 givens, 81 derived markers and required parity dependency. A representative fixture combines parity with all 512 subsets of the nine previously rendered families, including Quadruple. This checks interchange and app services, not every clue arrangement or difficulty.
+
+Rendered desktop/mobile components check all 23 published markers and their accessible cell labels, mixed-clue drawing order, sharing the starting definition after player progress, and the completion chooser. The production build renders the Odd/Even lesson with its markers. Live desktop/mobile viewport and interaction review remains a follow-up because browser tooling is unavailable. App generation presets remain unavailable until their difficulty recipes are calibrated.
+
+The engine source and rebuilt app Wasm are unchanged from main at `44e734f` (3,284,973 raw bytes / 856,094 gzip bytes). On macOS arm64 with Node 26.13.0, five warmups and 40 samples measured the following milliseconds, median/p95, on 2026-11-17:
+
+| Big Eight operation | Median/p95 |
+| --- | --- |
+| Candidates | 0.008/0.008 |
+| Verify uniqueness | 0.171/0.177 |
+| Exact solve | 0.049/0.052 |
+| Native default rating | 0.115/0.121 |
+| Native default ten hints | 0.037/0.040 |
+| App-order rating | 0.163/0.170 |
+| App-order ten hints | 0.074/0.123 |
+| Exhaustive first page, 10 samples | 328.889/331.965 |
+| Derived parity generation, 20 seeds | 0.420/0.439 |
+
+Exhaustive collection scans all enabled techniques before transferring eight of 23 choices. Generation matched 20/20 seeds with 30 givens, markers on all 81 cells, six attempts and 20,000 nodes per attempt. These calls exclude browser startup, worker transfer and UI rendering; the timings do not establish human difficulty or calibrated app presets. Repeat with `node --experimental-strip-types scripts/bench-variants.mjs` after building the app Wasm.
+
+## Anti-King sources and app coverage
+
+`anti-king-newman.json` records Philip Newman's [King of Diamonds](https://www.gmpuzzles.com/blog/2025/07/anti-king-sudoku-by-philip-newman/), published on 2025-07-03. Its 24 givens and completion were checked visually against the linked puzzle and solution PDFs. The independent counter proves one completion with Anti-King and multiple completions without it. The Coach input is authored from the public serializer's `antiKing` mapping: a global rule with empty segments and settings. It is not a constructor roundtrip.
+
+`anti-king-combined.json` contains two authored completion witnesses, one with Diagonal and one with Anti-Knight, each also satisfying connected Jigsaw regions and the local rendered clue families. A direct completed-grid checker evaluates every active rule without engine candidates or search. Tests cover all 1,024 selections of the ten previously rendered families: 768 compatible fixed-clue samples import, offer multiple hints and rate successfully. The remaining 256 samples preserve an added knight rule that conflicts with their fixed clues and reject correctly. Those outcomes describe these fixed clues; feasibility also depends on the active regions and clue parameters.
+
+`../helpers/cell-rule-oracle.ts` shares a separate row/column/box backtracker between the parity and Anti-King tests. `../helpers/parity-oracle.ts` retains the existing parity test entry point. Neither uses engine propagation, peer tables or codec code. Further tests check all corner-neighbor coordinates, concrete conflicts across boxes, row-boundary near misses, both kinds of candidate removal, move history, enabled/disabled deductions, rule-cache separation, practice, paged proofs, Finder counts, complete logical Play, solution replay, actual storage reload, sharing and completion. Three generated puzzles independently meet 30-given and required-rule targets.
+
+Rendered desktop/mobile grids check the Anti-King label, related-cell highlighting, conflict classes and accessible feedback. Workspace controls keep the named rules, hints, solutions and Finder accessible. The generated production lesson contains its rule explanation and checked practice positions. Live desktop/mobile viewport and interaction review remains open while browser tooling is unavailable. New puzzle presets remain unavailable until difficulty recipes are calibrated.
+
+The Rust source and rebuilt app Wasm are unchanged from main at `4811a05`; the Wasm is byte-for-byte identical (3,291,239 raw / 857,637 gzip bytes). On macOS arm64 / Node 26.13.0 on 2026-11-17, the benchmark measured milliseconds, median/p95:
+
+| King of Diamonds operation | Median/p95 |
+| --- | ---: |
+| Candidates | 0.006/0.007 |
+| Verify uniqueness | 0.026/0.027 |
+| Exact solve | 0.014/0.015 |
+| Native default rating | 0.112/0.117 |
+| Native default ten hints | 0.030/0.032 |
+| App-order rating | 0.143/0.149 |
+| App-order ten hints | 0.106/0.111 |
+| Exhaustive first page | 95.539/95.698 |
+| Generation with required Anti-King | 0.520/0.667; 20/20 matches |
+
+Fixed operations use five warmups and 40 samples; exhaustive collection uses five warmups and ten samples, ranking 438 choices before transferring eight. Generation uses 20 seeds, 30 givens, the Anti-King rule required, six attempts and 20,000 nodes per attempt. Repeat with `node --experimental-strip-types scripts/bench-variants.mjs`. Direct Node/Wasm timings exclude browser startup, worker transfer and rendering. Local combined-tree checks pass 361 app tests, 220 Wasm tests, TypeScript and the production/offline build.
+
+## Repeating the mixed-rule checks
+
+Run `npm test` for decoder, independent-counter, and storage contracts. Run `npm run test:wasm` for the compiled browser engine, imported-game flow, and family-subset matrix. The original mixed-rule suite is `../variant-import-wasm.mts`; Quadruple and Odd/Even have separate suites. Browser verification of the original eight-family stage on 2026-11-17 covered desktop Play and preview, 390-by-844 preview and rule dialogs, overlapping dot visibility, move/undo/redo, reload, multiple hints, the full share payload, and completion returning to the puzzle chooser.
 
 After building Wasm, run `node --experimental-strip-types scripts/bench-variants.mjs`. The script uses five warmup calls and 40 samples per fixed operation, plus 20 seeds for configured generation recipes. Generation allows six attempts and 20,000 search nodes per attempt. All-family generation has no configured recipe; imported combinations are not promised as generation presets.
 
@@ -74,3 +126,62 @@ The published Quadruple fixture measured the following warmed request times in m
 Fixed operations use five warmups and forty samples. Exhaustive paging uses five warmups and ten samples; all 31 choices are ranked before eight proofs are transferred. Generation uses zero givens and 64 derived four-digit circles, with the Quadruple rule required. These are engine generation checks; they do not establish app difficulty recipes.
 
 The witness optimization has a separate alternating comparison against the preceding Quadruple artifact: two warmup iterations and ten samples per engine. Exhaustive first-page median/p95 fell from 2,505.034/2,712.906 ms to 1,609.606/1,694.376 ms. Every per-technique proof on the published fixture, all twelve AI Escargot nested proofs, and all retained responses across eight fixtures matched. Run `scripts/compare-variant-engines.mjs` with the two Wasm paths to repeat the comparison. No scoring costs or enabled-technique policy change for this optimization.
+
+### Additional completion witnesses
+
+The next audit starts from main at `e43ae23`. The initial Big Eight profile spent 268.020 ms in Nested Forcing Net without finding a deduction. Additional bounded probes search the Classic houses and current candidate masks. Each successful completion witnesses both the digits it uses and the alternatives it omits. Only compatible assumptions are skipped; failed or unfinished probes retain the original logical contradiction search. The extra probes use at most 128 nodes each and 4,096 per scan. This implementation compiles only with the `variants` Cargo feature. A witness does not establish any additional variant rule, and variant-specific detectors keep enforcing their rules.
+
+On macOS arm64, Node 26.13.0 and Rust 1.100.0, a quiet alternating comparison on 2026-11-17 measured these direct Wasm requests in milliseconds, median/p95. Each engine gets two warmup iterations and ten measured samples:
+
+| Exhaustive first page | Main | Additional witnesses |
+| --- | ---: | ---: |
+| Clover Quadruple | 1,596.603/1,727.721 | 857.367/890.236 |
+| Big Eight Odd/Even | 330.498/339.431 | 66.237/67.094 |
+
+The retained API responses, ratings and traces match across nine fixtures, including complete Nested Forcing Net proofs. Separate profiles compare all 107 app-order technique outputs on both published puzzles, including empty results. All twelve AI Escargot nested proofs also match the unpruned reference. Scoring version remains 6; costs, technique order, hint choices and original logical evidence are unchanged. The final individual nested scans measured 217.002 ms for Quadruple and 4.107 ms for Big Eight. Other expert detectors account for the remaining exhaustive cost. These timings exclude browser startup, worker transfer and UI rendering; normal hints and ratings do not need exhaustive collection.
+
+| Wasm profile | Main raw/gzip bytes | Additional witnesses raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,039,849 / 556,086 | 2,040,103 / 556,087 |
+| variant-solver | 2,527,133 / 676,007 | 2,544,153 / 680,275 |
+| classic | 2,539,310 / 668,892 | 2,555,726 / 662,305 |
+| app | 3,284,973 / 856,094 | 3,291,239 / 857,637 |
+
+The app adds 1,543 gzip bytes. All four profile contracts and all 16 native/wasm-api feature combinations pass. The optimized artifact also passes 253 Rust tests including doctests, 352 app tests, 214 Wasm tests, strict full/reduced Cargo docs, TypeScript and the production/offline build. Unit cases check positive and negative assumptions, candidate-mask restrictions, zero/exhausted budgets, incompatible domains, and reuse of an existing completion without new probes.
+
+Repeat the paired comparison with `node --experimental-strip-types scripts/compare-variant-engines.mjs before.wasm after.wasm tests/fixtures/parity-big-eight.json`. Additional JSON fixture paths extend both the retained-response corpus and the exhaustive app comparison. Use `scripts/profile-variant-hints.mjs` to retain the full per-technique proofs when testing another optimization.
+
+## Non-Consecutive sources and app coverage
+
+`nonconsecutive-newman.json` records Philip Newman's [Literally No One](https://www.gmpuzzles.com/blog/2025/07/nonconsecutive-sudoku-by-philip-newman/), published 2025-07-09. Its 21 givens and completion were checked against both rendered publisher PDFs. The solution PDF's extracted text runs from bottom to top; the fixture follows the visible grid. A separate set-based counter proves the published unique completion in 176 nodes and multiple completions without Non-Consecutive.
+
+`nonconsecutive-coach.json` retains unmodified SCv7 codes and independently decoded payloads from two public Coach pages. The 9 × 9 [Consecudoku](https://sudoku.coach/en/s/7RCb) has two givens and 38 white dots. The 6 × 6 [Non-consecutive Flockers](https://sudoku.coach/en/s/Cby7) remains an explicit unsupported-size fixture. Coach's [published rule compiler](https://sudoku.coach/js/jCfXtZs-1776367508519.js) exempts difference-marker pairs from its global Nonconsecutive relation. Imports therefore add explicit `except` edges to the native rule and preserve the separate positive Kropki constraints, in either source order. Black dots do not create exceptions. Native definitions keep their explicit semantics; no automatic exemption is inferred from a native dot.
+
+The published 21-given puzzle completes logically under the app order. The two-given Coach puzzle imports with its published exact completion, while its current logical path stalls after 62 deductions. Both partial ratings remain marked as stalled. Missing locked and multi-candidate deductions, proof/training support and request performance are tracked in [issue 111](https://github.com/coder13/sudoku-app/issues/111).
+
+`nonconsecutive-combined.json` contains two authored completion witnesses with 72 givens, connected Jigsaw regions and the previous rendered clue families. All 2,048 family selections retain every selected source rule. The 1,536 compatible samples pass import, hints and rating; 512 samples preserve an added knight rule and reject conflicting fixed clues. These counts concern these supplied givens and do not establish general feasibility of family combinations. A separate checker evaluates every active constraint directly on the completed digits.
+
+App coverage includes both candidate styles, non-wrapping edge conflicts, 1/9 boundaries, explicit exceptions, undo/redo, batched singles, all grid symmetries, three checked practice positions, multiple hints, selected proofs, paging, Technique Finder, complete logical Play on the published puzzle, partial-path status, sharing and actual storage reload. Rendered desktop/mobile components preserve all 38 dots and their exception labels, conflict feedback, help controls and the completion chooser. Live viewport review and calibrated New puzzle presets remain separate follow-ups.
+
+Warmed Node/Wasm timings on Darwin arm64, Node 26.13.0, milliseconds median/p95:
+
+| Operation | Literally No One | Two-given Consecudoku |
+| --- | ---: | ---: |
+| Candidates | 0.014 / 0.016 | 0.043 / 0.056 |
+| Uniqueness | 0.336 / 0.349 | 0.361 / 0.377 |
+| Exact solve | 0.253 / 0.260 | 0.361 / 0.366 |
+| Native default rating | 0.317 / 0.490 | 0.541 / 0.566, stalled |
+| Native default ten hints | 0.050 / 0.058 | 0.073 / 0.084 |
+| App-order rating | 0.345 / 0.431, solved Easy | 2,516.019 / 2,526.339, stalled |
+| App-order ten hints | 0.083 / 0.093 | 1,428.987 / 1,438.757 |
+| App exhaustive first page | 44.632 / 44.798 | 1,417.999 / 1,424.970 |
+
+Fixed operations use five warmups and 40 samples; exhaustive collections use five warmups and ten samples. The published puzzle has 66 choices with eight transferred; Consecudoku has four choices, all transferred. The app order includes 107 techniques and the existing progress preference; the native default searches its smaller order. Run `node --experimental-strip-types scripts/bench-variants.mjs non-consecutive nc-white-dots` to repeat these cases. Other fixture names select narrower audits. These calls exclude worker startup, transfer and rendering.
+
+Generation with required Non-Consecutive and 30 givens matched 17/20 seeds at 116.476/402.132 ms under six attempts and 20,000 nodes per attempt. Three separate generated puzzles pass independent clue-count, uniqueness and rule-dependency checks under 30 attempts and 50,000 nodes. A generated mixed template retains all 38 exceptions and its positive dots. These measurements do not establish human difficulty or calibrated app presets.
+
+Against main at `cda93a3`, complete retained API responses and complete Nested Forcing Net proofs match on eleven fixtures, including the published Non-Consecutive puzzle. Paired exhaustive median/p95 times are 858.485/863.936 → 854.527/862.056 ms for Quadruple, 65.722/68.416 → 65.171/67.239 ms for Odd/Even, 96.658/97.845 → 95.858/96.315 ms for Anti-King and 44.832/45.865 → 44.542/46.881 ms for Non-Consecutive. No scoring version or technique cost changes.
+
+App Wasm measures 3,292,003 raw / 851,248 gzip bytes, compared with main's 3,291,239 / 857,637. The solver-only and Classic profiles remain 2,040,103 / 556,087 and 2,555,726 / 662,305; variant-solver measures 2,537,575 / 678,728. Local gates pass 258 Rust tests including doctests, 379 app tests, 227 Wasm tests, all 16 capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the production/offline build.
+
+The per-technique profile of Consecudoku's starting position uses one warmup and five measured calls per detector, retaining every proof. The largest medians are 750.684 ms for five-digit Pattern Overlay, 293.104 ms for four-digit Pattern Overlay and 237.137 ms for Nested Forcing Net; all three return no deductions. This identifies a follow-up search target, rather than a performance improvement in this integration. Normalize the stored Coach export with `detectPuzzle` and run `scripts/profile-variant-hints.mjs` on its native puzzle definition to repeat the profile.

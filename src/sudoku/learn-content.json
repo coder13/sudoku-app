@@ -6887,7 +6887,8 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start at a placed digit near a box boundary. Look one row and one column away in each diagonal direction. Remove that digit from any empty cell you reach. A cell with only one candidate left gives you the same deduction."
+                "Start at a placed digit near a box corner. Check the cells one row and one column away.",
+                "Look for the same digit as a candidate in those cells, especially across a box or region border. Cells in the same row, column, or box already have to differ."
               ]
             },
             {
@@ -6906,13 +6907,18 @@
                 }
               ],
               "guide": {
-                "start": "Start at a placed digit near a box boundary. Look one row and one column away in each diagonal direction.",
-                "check": "A king can move one cell in any direction. Edge neighbors already share a row or column. Look for diagonal neighbors across box boundaries.",
-                "reason": "If either cell must contain a digit, its neighbor cannot contain the same digit."
+                "start": "Start at a placed digit near a box corner. Check the cells one row and one column away.",
+                "check": "Look for the same digit as a candidate in those cells, especially across a box or region border. Cells in the same row, column, or box already have to differ.",
+                "reason": "The two cells are one king’s move apart, so they must differ. The placed digit rules out its matching candidate."
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "King of Diamonds by Philip Newman",
+              "href": "https://www.gmpuzzles.com/blog/2025/07/anti-king-sudoku-by-philip-newman/"
+            }
+          ],
           "difficulty": "easy"
         }
       ]
@@ -7082,14 +7088,16 @@
             {
               "type": "text",
               "paragraphs": [
-                "Read the cell’s mark. For an odd cell, remove 2, 4, 6, and 8. For an even cell, remove 1, 3, 5, 7, and 9. Then check the row, column, and box for other digits you can rule out."
+                "A circle marks an odd cell. A square marks an even cell. Unmarked cells can contain either.",
+                "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8."
               ]
             },
             {
               "type": "diagram",
               "example": "parity",
               "copy": {
-                "description": "R9C9 is an odd cell. Remove 8 because it is even."
+                "description": "Find the marked cell. Its circle or square tells you which digits to keep.",
+                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
               }
             },
             {
@@ -7101,13 +7109,18 @@
                 }
               ],
               "guide": {
-                "start": "Find a cell marked odd or even. Read the clue to identify which digits the mark allows.",
-                "check": "An odd cell allows 1, 3, 5, 7, or 9. An even cell allows 2, 4, 6, or 8.",
-                "reason": "Remove candidates of the other kind. The usual row, column, and box rules can narrow the list further."
+                "start": "Find an odd circle or an even square.",
+                "check": "Compare the candidates with the allowed digits. Odd cells allow 1, 3, 5, 7, or 9. Even cells allow 2, 4, 6, or 8.",
+                "reason": "A digit of the other parity cannot satisfy the clue. Remove it even if the ordinary row, column, and box still allow it."
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "Big Eight by Thomas Snyder",
+              "href": "https://www.gmpuzzles.com/blog/2023/03/even-odd-sudoku-by-thomas-snyder-2/"
+            }
+          ],
           "difficulty": "easy"
         },
         {
@@ -7123,8 +7136,9 @@
             {
               "type": "text",
               "paragraphs": [
-                "Choose a placed digit and look directly above, below, left, and right of it. A neighbor across an edge cannot differ by one. Next to 5, for example, neither 4 nor 6 fits.",
-                "Near 1, the consecutive digit to remove is 2. Near 9, it is 8. Diagonal neighbors do not share an edge."
+                "Start with a placed digit. Check its neighbors above, below, left, and right.",
+                "Look for candidates one less or one more than that digit. For 1, check only 2. For 9, check only 8.",
+                "Some mixed puzzles exempt the pairs marked by white dots. Check the puzzle’s rule description before using Non-Consecutive across a dot."
               ]
             },
             {
@@ -7149,7 +7163,16 @@
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "Literally No One by Philip Newman",
+              "href": "https://www.gmpuzzles.com/blog/2025/07/nonconsecutive-sudoku-by-philip-newman/"
+            },
+            {
+              "label": "Consecudoku on Sudoku Coach",
+              "href": "https://sudoku.coach/en/s/7RCb"
+            }
+          ],
           "difficulty": "easy"
         },
         {

@@ -125,7 +125,7 @@ impl VariantPuzzle {
                 PuzzleRule::Xv { five, ten } => marks(five, ten),
                 PuzzleRule::AntiKing {}
                 | PuzzleRule::AntiKnight {}
-                | PuzzleRule::NonConsecutive {} => 0,
+                | PuzzleRule::NonConsecutive { .. } => 0,
                 _ => 1,
             })
             .sum()

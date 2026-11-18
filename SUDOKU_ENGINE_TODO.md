@@ -35,21 +35,91 @@ The Wasm audit now measures candidates, uniqueness verification, exact solving, 
 
 The expanded audit also covers a sparse Diagonal/Killer puzzle and a puzzle containing all eight rendered families. On 2026-11-17, warmed median/p95 rating times were 0.665/0.760 ms and 0.140/0.151 ms respectively; ten hints used 0.114/0.120 ms and 0.136/0.163 ms. Diagonal/Killer generation matched 20 of 20 seeds at 6.927/52.727 ms with six attempts and 20,000 nodes per attempt. These measurements extend the baseline; the native engine is unchanged in this integration. [Method and limits](tests/fixtures/README.md)
 
-### Quadruple integration in progress
+### Non-Consecutive integration in progress
 
-This stage is isolated on `codex/sudoku-quadruple-integration`. [Quadruple issue](https://github.com/coder13/sudoku-app/issues/37)
+This stage is isolated on `codex/sudoku-nonconsecutive-integration` and includes main at `cda93a3`. [Non-Consecutive issue](https://github.com/coder13/sudoku-app/issues/44)
+
+- [x] Verify Philip Newman's published Literally No One puzzle and completion against the rendered PDFs. Independently prove its 21-given puzzle is unique with the rule and has multiple completions without it.
+- [x] Add explicit exempt edges to the native Non-Consecutive rule. Preserve omitted-field JSON, the eight-point technique and ordinary rule behavior. Check candidates, positive dots, malformed geometry, all grid symmetries and wire roundtrips with five public-API tests.
+- [x] Preserve real Coach exports for a 9 × 9 Nonconsecutive/white-dot puzzle and an unsupported 6 × 6 puzzle. Inspect the source compiler's difference-marker exceptions.
+- [x] Add complete app import, rule descriptions, candidate cleanup, conflict feedback and specific explanations, including mixed white-dot exceptions and every grid symmetry.
+- [x] Verify shared/save data, help, Finder, proof paging, solution replay, practice and rendered mobile/desktop components. Preserve all 2,048 family selections: 1,536 compatible fixed-clue samples pass and 512 samples with knight conflicts reject. These counts do not establish general feasibility of family combinations.
+- [x] Pass 258 native tests including doctests, 379 app tests, 227 Wasm tests, TypeScript, the production/offline build, all 16 native capability combinations, four Wasm profiles and strict full/reduced Cargo documentation.
+- [x] Verify three independently counted 30-given generated puzzles that need Non-Consecutive, plus a mixed white-dot template that retains all exceptions.
+- [x] Measure candidates, validation, solving, rating, ordinary/exhaustive hints and generation. Preserve retained responses and complete nested proofs on eleven fixtures against main. The published puzzle rates at 0.345/0.431 ms; the two-given Coach path remains stalled at 2,516.019/2,526.339 ms. [Methods and limits](tests/fixtures/README.md#non-consecutive-sources-and-app-coverage)
+- [ ] Add Non-Consecutive locked and multi-candidate deductions. The real two-given Coach fixture imports with its exact completion, while the current logical path stalls. Track proof, scoring, training and performance work separately in [issue 111](https://github.com/coder13/sudoku-app/issues/111).
+- [ ] Pass CI and merge the app-ready variant in its own focused PR.
+- [ ] Review live viewport behavior and calibrate generation recipes before offering Non-Consecutive in New puzzle.
+
+### Quadruple integration merged
+
+This stage reached main at `fc4142f` through [PR 104](https://github.com/coder13/sudoku-app/pull/104). The reviewed worktree remains available on `codex/sudoku-quadruple-integration`. [Quadruple issue](https://github.com/coder13/sudoku-app/issues/37)
 
 - [x] Port one-to-four printed digit occurrences, exact validation, candidate restrictions, logical proofs, circle-to-house locks, symmetry, and derived clue generation.
 - [x] Verify Clover's five-given puzzle with an independent counter and store real Coach exports, including a repeated-digit circle with Diagonal and Killer rules.
 - [x] Test Quadruple with every subset of the eight existing rendered families through the app's Wasm import service.
 - [x] Add accessible circle labels, a Quadruple lesson, and three practice positions. Verify desktop preview, Play, hint text, move history, reload, and a checked practice removal.
 - [x] Verify the actual mobile panel's complete clue geometry and labels, shared starting definition, and completion action through rendered components. Reserve space for Killer totals beside a circle and paint circles above cage edges in either rule order. Live mobile viewport review remains a separate follow-up after the interrupted browser session.
-- [x] Pass the full optimized native suite (248 tests including doctests), Wasm suite (208 tests), app suite (328 tests), strict full/reduced Cargo documentation, TypeScript check, and production build against main at `562243f`.
+- [x] Pass the full optimized native suite (248 tests including doctests), Wasm suite (208 tests), app suite (344 tests), strict full/reduced Cargo documentation, TypeScript check, and production build. Local checks and CI verified the combined tree with main's Colors panel at `5484421` before merging as `fc4142f`.
 - [x] Check all 16 native feature combinations and pass the capability/omitted-operation contracts for each Wasm API combination.
 - [x] Pass the four Wasm build-profile checks and preserve the main-branch hint paging, scan cancellation, position validation, and batched singles behavior.
 - [x] Use a bounded completion witness to prune variant Nested Forcing Net assumptions. Preserve every per-technique proof on the Quadruple fixture and all twelve AI Escargot nested proofs. Keep the original search when the 512-node probe finds no completion.
 - [x] Record the paired performance baseline on the final integration artifact. Retained responses match on seven legacy fixtures; the witness comparison also checks Quadruple. Exhaustive app hints fall from about 2.51 s to 1.61 s with the same proofs. The added app Wasm costs 20.3 KiB gzip. [Method, timings, and limits](tests/fixtures/README.md#profiling-exhaustive-variant-hints)
-- [ ] Merge the complete app flow. Keep New puzzle generation presets unavailable until their difficulty recipes pass calibration.
+- [x] Merge the complete app flow in [PR 104](https://github.com/coder13/sudoku-app/pull/104).
+- [ ] Calibrate difficulty recipes before offering Quadruple in New puzzle. Native generation is available; app presets remain unavailable.
+- [ ] Review Quadruple in a live mobile viewport when browser tooling is available. Rendered component coverage does not establish live viewport fidelity.
+
+### Odd/Even integration merged
+
+This stage reached main at `e43ae23` through [PR 106](https://github.com/coder13/sudoku-app/pull/106). The reviewed worktree remains available on `codex/sudoku-parity-integration`. [Odd/Even issue](https://github.com/coder13/sudoku-app/issues/41)
+
+- [x] Reuse the existing native parity rules, deductions, practice fixtures and derived generation without changing the engine or scoring version. The rebuilt app Wasm is byte-for-byte identical.
+- [x] Verify Thomas Snyder's published Big Eight puzzle, its 16 givens and 23 markers against the puzzle and solution PDFs. Prove uniqueness and marker dependency with a separate counter.
+- [x] Decode Coach's odd/even single-cell segments, retain their order in grouped native rules, and reject unknown semantics. Keep the official 3 × 3 rule illustrations as source fixtures; test their unchanged constraint payloads in a 9 × 9 envelope.
+- [x] Draw odd circles and even squares below other clues in desktop/mobile grids. Add cell labels, specific hint explanations, and marker guidance to the existing lesson and practice exercises.
+- [x] Check candidates, conflicts, rule-cache isolation, disabled deductions, multiple hints, paged proofs, Technique Finder counts, full solution replay, sharing, save/reload, history and the completion chooser. Add parity to all 512 subsets of the nine previously rendered families.
+- [x] Measure candidates, verification, solving, rating, ordinary and exhaustive hints, and native generation. Match 20/20 generation seeds; independently check givens, marker counts and required-rule dependency on three generated puzzles. [Evidence and timing limits](tests/fixtures/README.md#oddeven-sources-and-app-coverage)
+- [x] Pass 352 app tests, 214 Wasm tests, TypeScript, the production/offline build and the generated lesson page checks.
+- [x] Pass CI's native suite, all 16 feature combinations, four Wasm profiles, app/Wasm suites and strict Cargo documentation; merge the complete app integration in [PR 106](https://github.com/coder13/sudoku-app/pull/106).
+- [ ] Review the live desktop/mobile player flow when browser tooling is available. Rendered component and production-page checks cover the available automated paths.
+- [ ] Calibrate difficulty recipes before offering Odd/Even in New puzzle. Native generation is available; app presets remain unavailable.
+
+### Exhaustive variant hint performance
+
+This performance pass is isolated on `codex/sudoku-nested-witness-pruning` from main at `e43ae23`. [Performance audit](https://github.com/coder13/sudoku-app/issues/88)
+
+- [x] Profile the published Odd/Even fixture by technique and identify the repeated Nested Forcing Net work.
+- [x] Bound additional Classic completion probes and cache the assumptions each completion satisfies. Keep the original contradiction search for unfinished probes and require the same logical evidence for every hint.
+- [x] Compare complete per-technique proofs on Quadruple and Odd/Even, all twelve AI Escargot nested proofs, and retained API results plus complete nested proofs on nine fixtures. Record paired exhaustive scans with unchanged scoring version and technique order.
+- [x] Pass 253 Rust tests, 352 app tests, 214 Wasm tests, all 16 feature combinations, four Wasm profiles, strict Cargo docs, TypeScript and the production/offline build. Compile the extra probe implementation only with `variants`.
+- [x] Reduce paired exhaustive median scans from 1,596.603 to 857.367 ms for Quadruple and 330.498 to 66.237 ms for Odd/Even. Preserve all 107 app-order per-technique outputs on both fixtures; add 1,543 app gzip bytes. [Method and limits](tests/fixtures/README.md#additional-completion-witnesses)
+- [x] Pass CI and merge the measured improvement in [PR 107](https://github.com/coder13/sudoku-app/pull/107), main at `4811a05`.
+
+### Anti-King integration merged
+
+This stage reached main at `3e0bfec` through [PR 108](https://github.com/coder13/sudoku-app/pull/108). The reviewed worktree remains available on `codex/sudoku-anti-king-integration`. [Anti-King issue](https://github.com/coder13/sudoku-app/issues/43)
+
+- [x] Reuse the existing native corner restrictions, eight-point deduction, practice positions and generation API without changing engine rules or scoring.
+- [x] Verify Philip Newman's published King of Diamonds puzzle and completion against the PDFs. Confirm uniqueness and rule dependency with a separate counter.
+- [x] Decode Coach's global `antiKing` rule, reject unsupported scopes/settings and retain it through native sharing and saved games.
+- [x] Apply corner peers to conflict highlighting, related cells, both kinds of candidate mark, and undo/redo. Check every pair of grid coordinates, including row boundaries and corners across boxes.
+- [x] Explain Anti-King hints with actual neighbor addresses and ruled-out digits. Check practice moves, multiple hints, proof paging, Finder counts, complete logical Play and solution walkthroughs.
+- [x] Check all 1,024 selections of the ten previous rendered families. Preserve all source rules; 768 compatible fixed-clue samples import and solve, while 256 samples with conflicting knight givens reject correctly. Keep the fixtures and direct completion checks independent of engine search.
+- [x] Pass 361 app tests, 220 Wasm tests, TypeScript and the production/offline build against merged main. Verify the rebuilt Wasm is byte-for-byte identical to main's engine.
+- [x] Measure candidate updates, validation, exact solving, rating, ordinary/exhaustive hints and generation. Match 20/20 seeds with 30 givens and required Anti-King. [Evidence and timing limits](tests/fixtures/README.md#anti-king-sources-and-app-coverage)
+- [x] Pass CI's native release suite, feature matrix, four Wasm profiles, app/Wasm contracts, strict Cargo documentation and deployment checks; merge the complete app flow in [PR 108](https://github.com/coder13/sudoku-app/pull/108).
+- [ ] Review the live desktop/mobile player flow when browser tooling is available. Rendered components cover grid labels, corner feedback, sharing, completion and accessible help controls.
+- [ ] Calibrate difficulty recipes before offering Anti-King in New puzzle. Native generation is available; app presets remain unavailable.
+
+### Consistent cell references in hints and solutions
+
+This repair reached main at `cda93a3` through [PR 110](https://github.com/coder13/sudoku-app/pull/110). The reviewed worktree remains available on `codex/sudoku-proof-cell-references`. [Display issue](https://github.com/coder13/sudoku-app/issues/109)
+
+- [x] Apply Concise, Verbose and Automatic to complete Classic and variant explanations, reason steps, forcing traces, solution lists and the solution chain inspector. Use each technique's difficulty for Automatic.
+- [x] Preserve typed variant deduction and puzzle context for display formatting without scanning again or rewriting arbitrary prose. Keep existing lesson defaults and legacy opaque text.
+- [x] Check all 224 shipped diagram/practice proofs for unchanged geometry and evidence and the expected naming changes. Cover serialized variant context, rendered hint cards, desktop/mobile solution lists and every chain-inspection point form.
+- [x] Pass TypeScript, 368 app tests, 220 Wasm tests and the production/offline build. Verify the Wasm artifact remains byte-for-byte identical to main.
+- [x] Pass CI's native release suite, feature matrix, four Wasm profiles, app/Wasm contracts, strict Cargo docs and deployment checks; merge the focused repair in [PR 110](https://github.com/coder13/sudoku-app/pull/110).
 
 ## 1. Share a reliable engine contract
 

@@ -3,11 +3,20 @@ import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+
+const selected = new Set(process.argv.slice(2))
+const include = name => !selected.size || selected.has(name)
 
 const fixtures = JSON.parse(await readFile(new URL('../crates/engine/benches/fixtures/variants.json', import.meta.url), 'utf8'))
 const mixed = JSON.parse(await readFile(new URL('../tests/fixtures/mixed-puzzles.json', import.meta.url), 'utf8'))
 const combined = JSON.parse(await readFile(new URL('../tests/fixtures/combined-families.json', import.meta.url), 'utf8'))
 const quadruple = JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-clover.json', import.meta.url), 'utf8'))
+const parity = JSON.parse(await readFile(new URL('../tests/fixtures/parity-big-eight.json', import.meta.url), 'utf8'))
+const antiKing = JSON.parse(await readFile(new URL('../tests/fixtures/anti-king-newman.json', import.meta.url), 'utf8'))
+const nonConsecutive = JSON.parse(await readFile(new URL('../tests/fixtures/nonconsecutive-newman.json', import.meta.url), 'utf8'))
+const nonConsecutiveExport = JSON.parse(await readFile(new URL('../tests/fixtures/nonconsecutive-coach.json', import.meta.url), 'utf8')).examples[0]
+const nonConsecutiveDots = { puzzle: (await detectPuzzle(nonConsecutiveExport.code)).variant.puzzle }
 fixtures.push({
   name: 'x-killer', position: mixed['x-killer'].puzzle,
   template: { version: 1, givens: '0'.repeat(81), rules: [
@@ -19,6 +28,21 @@ fixtures.push({
   template: { version: 1, givens: '0'.repeat(81) },
   derivedClues: Array.from({ length: 64 }, (_, i) => ({ type: 'quadruple', topLeft: Math.floor(i / 8) * 9 + i % 8, clueSize: 4 })),
   givens: 0,
+}, {
+  name: 'parity', position: parity.puzzle,
+  template: { version: 1, givens: '0'.repeat(81) },
+  derivedClues: [{ type: 'parity', cells: Array.from({ length: 81 }, (_, cell) => cell) }],
+  givens: 30,
+}, {
+  name: 'anti-king', position: antiKing.puzzle,
+  template: { version: 1, givens: '0'.repeat(81), rules: [{ type: 'anti-king' }] },
+  givens: 30,
+}, {
+  name: 'non-consecutive', position: nonConsecutive.puzzle,
+  template: { version: 1, givens: '0'.repeat(81), rules: [{ type: 'non-consecutive' }] },
+  givens: 30,
+}, {
+  name: 'nc-white-dots', position: nonConsecutiveDots.puzzle,
 })
 const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
 const { instance } = await WebAssembly.instantiate(bytes)
@@ -54,6 +78,7 @@ async function sample(input, count = samples) {
 console.log(`Wasm on ${process.platform} ${process.arch}, Node ${process.version}. Latency in ms, median/p95.`)
 console.log(`${bytes.length} raw bytes, ${gzipSync(bytes).length} gzip bytes.`)
 for (const { name, position: puzzle, template, derivedClues, givens } of fixtures) {
+  if (!include(name)) continue
   const position = { puzzle }
   assert.equal(await request({ type: 'variant', position, operation: 'analyze', maxNodes }), 'unique')
   const rating = name === 'classic'
@@ -78,7 +103,8 @@ for (const { name, position: puzzle, template, derivedClues, givens } of fixture
     const response = await handle({
       id: ++id,
       request: { type: 'generate-variant', seed, maxAttempts, maxNodes, template, derivedClues, givens,
-        ...(name === 'quadruple' && { requiredRule: 'quadruple', variantClues: 64 }) },
+        ...((name === 'quadruple' || name === 'anti-king' || name === 'non-consecutive') && { requiredRule: name }),
+        ...(name === 'quadruple' && { variantClues: 64 }) },
     })
     measurements.push(performance.now() - start)
     if ('value' in response) {
@@ -97,10 +123,15 @@ const classicCatalog = await request({ type: 'techniques' })
 const variantCatalog = await request({ type: 'techniques', variant: true })
 const appOrder = variantTechniqueOrder(variantCatalog.defaultOrder, classicCatalog.difficultyOrder,
   Object.fromEntries([...classicCatalog.techniques, ...variantCatalog.techniques].map(technique => [technique.id, technique.difficulty])))
-const appHints = { type: 'variant', operation: 'hints', position: { puzzle: quadruple.puzzle },
-  techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium' }
-const appRate = await sample({ type: 'variant', operation: 'rate', position: appHints.position, techniqueOrder: appOrder })
-const topTen = await sample({ ...appHints, limit: 10 })
-const exhaustive = await sample({ ...appHints, limit: 0xffff_ffff, collection: 100 }, 10)
-const firstPage = await request({ ...appHints, limit: 0xffff_ffff, collection: 100 })
-console.log(`quadruple app    rate ${appRate}, ten hints ${topTen} (${samples} samples); exhaustive first page ${exhaustive} (10 samples), ${firstPage.available} choices, ${firstPage.choices.length} transferred`)
+for (const [name, fixture] of [['quadruple', quadruple], ['parity', parity], ['anti-king', antiKing],
+  ['non-consecutive', nonConsecutive], ['nc-white-dots', nonConsecutiveDots]]) {
+  if (!include(name)) continue
+  const appHints = { type: 'variant', operation: 'hints', position: { puzzle: fixture.puzzle },
+    techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium' }
+  const appRate = await sample({ type: 'variant', operation: 'rate', position: appHints.position, techniqueOrder: appOrder })
+  const topTen = await sample({ ...appHints, limit: 10 })
+  const exhaustive = await sample({ ...appHints, limit: 0xffff_ffff, collection: 100 }, 10)
+  const firstPage = await request({ ...appHints, limit: 0xffff_ffff, collection: 100 })
+  const status = (await request({ type: 'variant', operation: 'rate', position: appHints.position, techniqueOrder: appOrder })).status
+  console.log(`${name} app    rate ${appRate} (${JSON.stringify(status)}), ten hints ${topTen} (${samples} samples); exhaustive first page ${exhaustive} (10 samples), ${firstPage.available} choices, ${firstPage.choices.length} transferred`)
+}

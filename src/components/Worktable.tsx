@@ -335,14 +335,14 @@ export function Worktable({
   }, [endpointMarks, game.position])
   const hintDiagram = useMemo(() => {
     if (!fullHint || !deduction || !hintCandidates) return undefined
-    return lessonDiagram({ deduction, candidates: hintCandidates }, deduction.pattern)
-  }, [fullHint, deduction, hintCandidates])
+    return lessonDiagram({ deduction, candidates: hintCandidates }, deduction.pattern, { cellReferenceStyle, difficulty: hintDifficulty })
+  }, [fullHint, deduction, hintCandidates, cellReferenceStyle, hintDifficulty])
   const hintAnnotations = hintDiagram?.annotations ?? locationClue?.annotations ?? (recoveryLocationVisible
     ? { cells: new Map([[recovery.cell, { fill: 'var(--lesson-pattern-fill)', outline: 'var(--lesson-pattern)', label: 'Check candidates' }]]) }
     : undefined)
   const hintCopy = recovery ? {
     title: HINT_CANDIDATES_ERROR.title,
-    text: hintStage === 'technique' ? 'Your placed digits match the solution. One of your pencil marks is missing.'
+    text: hintStage === 'technique' ? 'Your placed digits match the solution. A required candidate is missing.'
       : [`Check ${recoveryCell}.`, recoveryHistory].filter(Boolean).join(' '),
   } : !deduction ? visibleHint?.error ?? NO_HINT
     : fullHint ? describeHint(deduction, { difficulty: hintDifficulty, cellReferenceStyle })
@@ -447,17 +447,20 @@ export function Worktable({
   const trace = solutionPath?.status === 'ready' ? solutionPath.trace : undefined
   const previewPosition = trace?.positions?.[solutionStep]
   const replayedSolutionStep = useMemo(() => trace && replayStep(trace, solutionStep), [trace, solutionStep])
+  const solutionStepDifficulty = replayedSolutionStep ? techniqueDifficulties[replayedSolutionStep.deduction.technique] : undefined
   const stepDiagram = useMemo(() => {
     const step = replayedSolutionStep
     if (!step?.before.candidates || !step.before.pattern) return undefined
-    return lessonDiagram({ deduction: step.deduction, candidates: step.before.candidates }, step.before.pattern)
-  }, [replayedSolutionStep])
+    return lessonDiagram({ deduction: step.deduction, candidates: step.before.candidates }, step.before.pattern,
+      { cellReferenceStyle, difficulty: solutionStepDifficulty })
+  }, [replayedSolutionStep, cellReferenceStyle, solutionStepDifficulty])
   const chainInspection = previewing && replayedSolutionStep && isChainStep(replayedSolutionStep.deduction)
-    ? { deduction: replayedSolutionStep.deduction, links: stepDiagram?.annotations.links ?? [], explanation: stepDiagram?.reason }
+    ? { deduction: replayedSolutionStep.deduction, links: stepDiagram?.annotations.links ?? [], explanation: stepDiagram?.reason,
+      cellReferenceStyle, difficulty: solutionStepDifficulty }
     : undefined
   const solutionHintCopy = replayedSolutionStep
     ? describeHint(replayedSolutionStep.deduction, {
-      difficulty: techniqueDifficulties[replayedSolutionStep.deduction.technique], cellReferenceStyle,
+      difficulty: solutionStepDifficulty, cellReferenceStyle,
     })
     : trace && solutionStep === trace.steps.length
       ? { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
@@ -2016,6 +2019,7 @@ export function Worktable({
   )
   const solutionPathPanel = solutionPathRevealed && solutionPath ? (
     <SolutionPath state={solutionPath} index={solutionStep}
+      cellReferenceStyle={cellReferenceStyle} techniqueDifficulties={techniqueDifficulties}
       onSelect={selectSolutionStep} onRetry={() => { void showSolutionPath(true) }} onClose={closeSolutionPath}
       onReveal={markSolutionVisible} embedded={!advancedWorkspace} />
   ) : (
@@ -2140,6 +2144,7 @@ export function Worktable({
       </Modal>}
       {mobile && solutionPathRevealed && solutionPath && <SolutionDialog
         grid={solutionGrid} explanation={solutionHintCopy} state={solutionPath} index={solutionStep}
+        cellReferenceStyle={cellReferenceStyle} techniqueDifficulties={techniqueDifficulties}
         onSelect={selectSolutionStep} onRetry={() => { void showSolutionPath(true) }} onClose={closeSolutionPath}
         onReveal={markSolutionVisible} />}
       {analysisDialogOpen && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} onSelectTechnique={showTechniqueHints} />}

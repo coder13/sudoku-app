@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use super::{CompiledVariant, MarkedPairs, Parity, PuzzleRule, VariantDefinitionError, cell_mask};
 use crate::{
@@ -161,8 +164,20 @@ impl PairCompiler {
                     self.clues.push(pair(&source, [a, b], |a, b| a != b));
                 }
             }
-            PuzzleRule::NonConsecutive {} => {
+            PuzzleRule::NonConsecutive { except } => {
+                let mut excluded = BTreeSet::new();
+                for cells in except {
+                    valid_cells(cells, 2..=2)?;
+                    let [a, b] = *cells;
+                    if a.abs_diff(b) != 9 && !(a / 9 == b / 9 && a.abs_diff(b) == 1) {
+                        return Err(invalid);
+                    }
+                    excluded.insert([a.min(b), a.max(b)]);
+                }
                 for cells in orthogonal_pairs() {
+                    if excluded.contains(&cells) {
+                        continue;
+                    }
                     self.clues
                         .push(pair(&source, cells, |a, b| a.abs_diff(b) != 1));
                 }

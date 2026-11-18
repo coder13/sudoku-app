@@ -1,0 +1,16 @@
+{
+  "title": "Literally No One",
+  "author": "Philip Newman",
+  "published": "2025-07-09",
+  "source": "https://www.gmpuzzles.com/blog/2025/07/nonconsecutive-sudoku-by-philip-newman/",
+  "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/250709-NonconsecutiveSudoku-LiterallyNoOne.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250709-NonconsecutiveSudoku-LiterallyNoOne-soln.pdf",
+  "provenance": "Givens and completion transcribed from the rendered publisher PDFs. The solution PDF text order runs bottom to top; these rows follow the visible grid.",
+  "puzzle": {
+    "version": 1,
+    "givens": "400000007050030080000204000003000500040090060005000700000608000020070050300000006",
+    "rules": [{ "type": "non-consecutive" }]
+  },
+  "solution": "482519637159736482637284915263847591748195263915362748591628374826473159374951826",
+  "coachConstraint": { "type": "nonconsecutive", "segments": [], "settings": {} }
+}

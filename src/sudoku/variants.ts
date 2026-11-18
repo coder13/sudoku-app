@@ -44,6 +44,18 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
+  'anti-king': {
+    name: 'Anti-King',
+    rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
+  },
+  'non-consecutive': {
+    name: 'Non-Consecutive',
+    rule: 'Cells sharing an edge cannot contain consecutive digits. Diagonal neighbors are unrestricted by this rule, and 1 and 9 are not consecutive.',
+  },
+  parity: {
+    name: 'Odd/Even',
+    rule: 'Cells with a circle contain an odd digit (1, 3, 5, 7, or 9). Cells with a square contain an even digit (2, 4, 6, or 8). Unmarked cells allow either.',
+  },
   quadruple: {
     name: 'Quadruple',
     rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
@@ -161,6 +173,9 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       const columns = Math.abs(a % 9 - b % 9)
       return rows * columns === 2
     }
+    if (rule.type === 'anti-king') {
+      return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) === 1 && Math.abs(a % 9 - b % 9) === 1
+    }
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
     if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
     if (rule.type === 'thermometer') return rule.cells.includes(a) && rule.cells.includes(b)
@@ -170,6 +185,28 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
 
 export function hasMarkedPair(pairs: readonly (readonly [number, number])[] | undefined, a: number, b: number) {
   return pairs?.some(([left, right]) => (left === a && right === b) || (left === b && right === a)) ?? false
+}
+
+export function cellsShareEdge(a: number, b: number) {
+  return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) + Math.abs(a % 9 - b % 9) === 1
+}
+
+/** Extra pairwise exclusions beyond the same-digit peers used by the player. */
+export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
+  if (!puzzle || !cellsShareEdge(from, to)) return 0
+  const restricted = puzzle.rules?.some(rule => rule.type === 'non-consecutive' && !hasMarkedPair(rule.except, from, to))
+  return restricted ? (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0) : 0
+}
+
+export function nonConsecutiveDescription(puzzle: VariantPuzzle, rule: Extract<VariantRule, { type: 'non-consecutive' }>) {
+  const exceptions = rule.except ?? []
+  if (!exceptions.length) return PUZZLE_VARIANTS['non-consecutive'].rule
+  const marked = exceptions.every(([a, b]) => puzzle.rules?.some(other =>
+    other.type === 'kropki' && hasMarkedPair(other.consecutive?.pairs, a, b)))
+  const reference = (cell: number) => `r${Math.floor(cell / 9) + 1}c${cell % 9 + 1}`
+  const detail = marked ? 'The white-dot pairs are exempt from this rule.' :
+    `These pairs are exempt: ${exceptions.map(([a, b]) => `${reference(a)} and ${reference(b)}`).join('; ')}.`
+  return `${PUZZLE_VARIANTS['non-consecutive'].rule} ${detail}`
 }
 
 function validCells(list: unknown, min: number) {
@@ -195,10 +232,13 @@ function validJigsawRegions(regions: unknown): boolean {
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
   switch (rule.type) {
+    case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
     case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
-    case 'anti-knight': return true
+    case 'anti-knight': case 'anti-king': return true
+    case 'non-consecutive': return rule.except === undefined || Array.isArray(rule.except) && rule.except.every(pair =>
+      validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
     case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
     case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
     case 'thermometer': return validCells(rule.cells, 2)
@@ -250,6 +290,9 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   arrow: VARIANTS.arrow.name,
   kropki: VARIANTS.kropki.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
+  parity: PUZZLE_VARIANTS.parity.name,
+  'anti-king': PUZZLE_VARIANTS['anti-king'].name,
+  'non-consecutive': PUZZLE_VARIANTS['non-consecutive'].name,
 }
 
 /** Describe the active puzzle independently of its generation recipe. */
@@ -269,6 +312,17 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'non-consecutive':
+        descriptions.push(nonConsecutiveDescription(puzzle, rule))
+        break
+      case 'anti-king':
+        descriptions.push(PUZZLE_VARIANTS['anti-king'].rule)
+        break
+      case 'parity':
+        descriptions.push(rule.parity === 'odd'
+          ? 'Cells with a circle contain an odd digit: 1, 3, 5, 7, or 9.'
+          : 'Cells with a square contain an even digit: 2, 4, 6, or 8.')
+        break
       case 'quadruple':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)
         break

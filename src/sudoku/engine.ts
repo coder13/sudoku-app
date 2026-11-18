@@ -46,7 +46,8 @@ export type VariantRule =
   | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
   | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
   | { type: 'clone'; groups: readonly (readonly number[])[] }
-  | { type: 'anti-knight' | 'anti-king' | 'non-consecutive' }
+  | { type: 'anti-knight' | 'anti-king' }
+  | { type: 'non-consecutive'; except?: readonly (readonly [number, number])[] }
   | { type: 'inequality'; less: number; greater: number }
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
@@ -309,7 +310,11 @@ type Evidence =
       scopes: { digit: number; allowed: number[]; supported: number[] }[]
       geometry?: { houses: number[][]; excludedPairs: [number, number][] }
     } }
-  | { variant: { description: string; reason: string } }
+  | { variant: {
+      description: string; reason: string
+      /** App display context; native proof data and worker responses stay unchanged. */
+      source?: { deduction: VariantDeduction; puzzle: VariantPuzzle }
+    } }
   | { cell: number }
   | { house: House }
   | { intersection: { source: House; target: House; cells: number[] } }

@@ -24,6 +24,7 @@ export const CELL_REFERENCE_LABELS = {
   verbose: 'Verbose',
 }
 export type CellReferenceStyle = keyof typeof CELL_REFERENCE_LABELS
+export type CellReferenceOptions = { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle }
 export const DEFAULT_CELL_REFERENCE_STYLE: CellReferenceStyle = 'automatic'
 
 export function isCellReferenceStyle(value: unknown): value is CellReferenceStyle {
@@ -38,7 +39,7 @@ export const HINT_ERROR: PuzzleHint = {
 }
 export const HINT_CANDIDATES_ERROR: PuzzleHint = {
   title: 'Review your candidates',
-  text: 'A digit the solution needs is missing from your candidates. Add the missing mark or fill in all candidates again.',
+  text: 'A digit the solution needs is missing from your candidates. Restore the missing candidate or generate all candidates again.',
 }
 
 const TECHNIQUE_LABELS: Record<string, string> = {

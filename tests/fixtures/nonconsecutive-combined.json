@@ -1,0 +1,872 @@
+{
+  "description": "Authored interchange witnesses with 72 givens and connected Jigsaw regions. Completed grids come from bounded native Non-Consecutive/Anti-King/Diagonal and Non-Consecutive/Anti-King/Anti-Knight searches; independent completed-grid assertions check every rule. These are not constructor exports and do not establish general feasibility of family combinations.",
+  "cases": [
+    {
+      "name": "nonconsecutive-anti-king-diagonal",
+      "puzzle": {
+        "version": 1,
+        "givens": "035792468702468135460135792924081357681307924357920681813579046246813509579246810",
+        "regions": {
+          "type": "jigsaw",
+          "regions": [
+            [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              12,
+              13,
+              14
+            ],
+            [
+              6,
+              7,
+              8,
+              15,
+              16,
+              17,
+              24,
+              25,
+              26
+            ],
+            [
+              9,
+              10,
+              11,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23
+            ],
+            [
+              27,
+              28,
+              29,
+              36,
+              37,
+              38,
+              45,
+              46,
+              47
+            ],
+            [
+              30,
+              31,
+              32,
+              39,
+              40,
+              41,
+              48,
+              49,
+              50
+            ],
+            [
+              33,
+              34,
+              35,
+              42,
+              43,
+              44,
+              51,
+              52,
+              53
+            ],
+            [
+              54,
+              55,
+              56,
+              63,
+              64,
+              65,
+              72,
+              73,
+              74
+            ],
+            [
+              57,
+              58,
+              59,
+              66,
+              67,
+              68,
+              75,
+              76,
+              77
+            ],
+            [
+              60,
+              61,
+              62,
+              69,
+              70,
+              71,
+              78,
+              79,
+              80
+            ]
+          ]
+        },
+        "rules": [
+          {
+            "type": "non-consecutive"
+          },
+          {
+            "type": "anti-king"
+          },
+          {
+            "type": "diagonal",
+            "diagonal": "main"
+          },
+          {
+            "type": "killer-cages",
+            "cages": [
+              {
+                "cells": [
+                  0,
+                  1
+                ],
+                "sum": 4
+              }
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              0,
+              1
+            ]
+          },
+          {
+            "type": "kropki",
+            "consecutive": {
+              "pairs": [],
+              "negative": true
+            }
+          },
+          {
+            "type": "kropki",
+            "ratioTwo": {
+              "pairs": [
+                [
+                  5,
+                  6
+                ]
+              ],
+              "negative": false
+            }
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              0,
+              11,
+              22,
+              29,
+              40,
+              51,
+              58,
+              66,
+              74
+            ]
+          },
+          {
+            "type": "arrow",
+            "circle": 6,
+            "cells": [
+              0,
+              1
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 0,
+            "digits": [
+              1,
+              3,
+              7,
+              9
+            ]
+          },
+          {
+            "type": "parity",
+            "parity": "odd",
+            "cells": [
+              0
+            ]
+          },
+          {
+            "type": "parity",
+            "parity": "even",
+            "cells": [
+              5
+            ]
+          }
+        ]
+      },
+      "solution": "135792468792468135468135792924681357681357924357924681813579246246813579579246813",
+      "coachData": {
+        "gridSize": 9,
+        "givenDigits": "035792468702468135460135792924081357681307924357920681813579046246813509579246810",
+        "regions": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8,
+          9,
+          9,
+          9,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8,
+          9,
+          9,
+          9,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8,
+          9,
+          9,
+          9
+        ],
+        "givenConstraints": [
+          {
+            "type": "nonconsecutive",
+            "segments": [],
+            "settings": {}
+          },
+          {
+            "type": "antiKing",
+            "segments": [],
+            "settings": {}
+          },
+          {
+            "type": "diagonalNegative",
+            "segments": [],
+            "settings": {}
+          },
+          {
+            "type": "cage",
+            "segments": [
+              {
+                "cells": [
+                  0,
+                  1
+                ],
+                "parameters": {
+                  "sum": 4
+                }
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "thermometer",
+            "segments": [
+              {
+                "cells": [
+                  0,
+                  1
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "difference",
+            "segments": [],
+            "settings": {
+              "negativeConstraint": true
+            }
+          },
+          {
+            "type": "ratio",
+            "segments": [
+              {
+                "cells": [
+                  5,
+                  6
+                ],
+                "parameters": {
+                  "ratio": 2
+                }
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "region",
+            "segments": [
+              {
+                "cells": [
+                  0,
+                  11,
+                  22,
+                  29,
+                  40,
+                  51,
+                  58,
+                  66,
+                  74
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "arrow",
+            "segments": [
+              {
+                "cells": [
+                  6,
+                  0,
+                  1
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "quadruple",
+            "segments": [
+              {
+                "cells": [
+                  0
+                ],
+                "parameters": {
+                  "digits": "1379"
+                }
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "odd",
+            "segments": [
+              {
+                "cells": [
+                  0
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "even",
+            "segments": [
+              {
+                "cells": [
+                  5
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          }
+        ]
+      }
+    },
+    {
+      "name": "nonconsecutive-anti-king-anti-knight",
+      "puzzle": {
+        "version": 1,
+        "givens": "047582936502936471930471825471025369825309714369710258714258093258693107693147580",
+        "regions": {
+          "type": "jigsaw",
+          "regions": [
+            [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              12,
+              13,
+              14
+            ],
+            [
+              6,
+              7,
+              8,
+              15,
+              16,
+              17,
+              24,
+              25,
+              26
+            ],
+            [
+              9,
+              10,
+              11,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23
+            ],
+            [
+              27,
+              28,
+              29,
+              36,
+              37,
+              38,
+              45,
+              46,
+              47
+            ],
+            [
+              30,
+              31,
+              32,
+              39,
+              40,
+              41,
+              48,
+              49,
+              50
+            ],
+            [
+              33,
+              34,
+              35,
+              42,
+              43,
+              44,
+              51,
+              52,
+              53
+            ],
+            [
+              54,
+              55,
+              56,
+              63,
+              64,
+              65,
+              72,
+              73,
+              74
+            ],
+            [
+              57,
+              58,
+              59,
+              66,
+              67,
+              68,
+              75,
+              76,
+              77
+            ],
+            [
+              60,
+              61,
+              62,
+              69,
+              70,
+              71,
+              78,
+              79,
+              80
+            ]
+          ]
+        },
+        "rules": [
+          {
+            "type": "non-consecutive"
+          },
+          {
+            "type": "anti-king"
+          },
+          {
+            "type": "anti-knight"
+          },
+          {
+            "type": "killer-cages",
+            "cages": [
+              {
+                "cells": [
+                  0,
+                  1
+                ],
+                "sum": 5
+              }
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              0,
+              1
+            ]
+          },
+          {
+            "type": "kropki",
+            "consecutive": {
+              "pairs": [],
+              "negative": true
+            }
+          },
+          {
+            "type": "kropki",
+            "ratioTwo": {
+              "pairs": [
+                [
+                  1,
+                  10
+                ]
+              ],
+              "negative": false
+            }
+          },
+          {
+            "type": "extra-house",
+            "cells": [
+              0,
+              11,
+              19,
+              27,
+              38,
+              46,
+              54,
+              65,
+              73
+            ]
+          },
+          {
+            "type": "arrow",
+            "circle": 3,
+            "cells": [
+              0,
+              1
+            ]
+          },
+          {
+            "type": "quadruple",
+            "topLeft": 0,
+            "digits": [
+              1,
+              4,
+              5,
+              8
+            ]
+          },
+          {
+            "type": "parity",
+            "parity": "odd",
+            "cells": [
+              0
+            ]
+          },
+          {
+            "type": "parity",
+            "parity": "even",
+            "cells": [
+              1
+            ]
+          }
+        ]
+      },
+      "solution": "147582936582936471936471825471825369825369714369714258714258693258693147693147582",
+      "coachData": {
+        "gridSize": 9,
+        "givenDigits": "047582936502936471930471825471025369825309714369710258714258093258693107693147580",
+        "regions": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6,
+          6,
+          6,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8,
+          9,
+          9,
+          9,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8,
+          9,
+          9,
+          9,
+          7,
+          7,
+          7,
+          8,
+          8,
+          8,
+          9,
+          9,
+          9
+        ],
+        "givenConstraints": [
+          {
+            "type": "nonconsecutive",
+            "segments": [],
+            "settings": {}
+          },
+          {
+            "type": "antiKing",
+            "segments": [],
+            "settings": {}
+          },
+          {
+            "type": "antiKnight",
+            "segments": [],
+            "settings": {}
+          },
+          {
+            "type": "cage",
+            "segments": [
+              {
+                "cells": [
+                  0,
+                  1
+                ],
+                "parameters": {
+                  "sum": 5
+                }
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "thermometer",
+            "segments": [
+              {
+                "cells": [
+                  0,
+                  1
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "difference",
+            "segments": [],
+            "settings": {
+              "negativeConstraint": true
+            }
+          },
+          {
+            "type": "ratio",
+            "segments": [
+              {
+                "cells": [
+                  1,
+                  10
+                ],
+                "parameters": {
+                  "ratio": 2
+                }
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "region",
+            "segments": [
+              {
+                "cells": [
+                  0,
+                  11,
+                  19,
+                  27,
+                  38,
+                  46,
+                  54,
+                  65,
+                  73
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "arrow",
+            "segments": [
+              {
+                "cells": [
+                  3,
+                  0,
+                  1
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "quadruple",
+            "segments": [
+              {
+                "cells": [
+                  0
+                ],
+                "parameters": {
+                  "digits": "1458"
+                }
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "odd",
+            "segments": [
+              {
+                "cells": [
+                  0
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          },
+          {
+            "type": "even",
+            "segments": [
+              {
+                "cells": [
+                  1
+                ],
+                "parameters": {}
+              }
+            ],
+            "settings": {}
+          }
+        ]
+      }
+    }
+  ]
+}
