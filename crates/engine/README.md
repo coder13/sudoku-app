@@ -454,6 +454,12 @@ Batch rows use the same request format. Omit `type` to select `variant`, or omit
 
 Use [`CompiledVariant::solve_seeded`] or pass a `seed` with the `solve` operation to sample a completion. The seed controls the order in which the solver tries candidate digits. Use `analyze` to check whether the puzzle has one solution.
 
+Exact verification and deterministic solving also propagate Hidden Singles within enforced houses. Bitsets identify digits with no location or exactly one location. Existing forced cells proceed before another complete house scan. This work stays inside exact search. Public candidates and logical technique profiles keep their existing behavior.
+
+The compiler distinguishes enforced houses from retained region geometry. Generation can remove region uniqueness while retaining borders for Region Sum lines. Only houses whose cells remain pairwise excluded participate in exact house propagation. Rows, irregular regions, diagonals and extra houses use the same mechanism.
+
+Each recursive visit still consumes one search node, including the starting visit. Stronger propagation can complete a proof within a budget that previously exhausted. Seeded sampling and bounded logical uniqueness eligibility retain their established traversal. This keeps calibrated recipes and hint search scheduling stable. Generation's uniqueness checks use the faster verification path. Run the variant benchmark with `-- --exact-search` to measure compilation, prepared candidates, verification and solving separately.
+
 ### Variant logical solves and ratings
 
 Use [`VariantPosition::solve_logically`] for a trace or [`VariantPosition::rate`] for a score. Both use the supplied order of techniques. The rating records the regions, rules, technique order, and version of the score. A stalled solve reports the points earned before it stalled.

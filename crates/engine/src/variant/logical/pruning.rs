@@ -47,7 +47,7 @@ impl CompiledVariant {
         // Candidate removals cannot establish uniqueness. Exhausting the
         // existing budget means no uniqueness proof, not multiple solutions.
         *position.uniqueness.get_or_init(|| {
-            self.analyze(&position.board, &[0; CELLS], UNIQUENESS_PROBE_NODES)
+            self.analyze_for_proof(&position.board, &[0; CELLS], UNIQUENESS_PROBE_NODES)
                 == Ok(Analysis::Unique)
         })
     }

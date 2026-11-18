@@ -760,6 +760,98 @@ node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm aft
 The remaining 230 ms app-order rating still needs work in the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88). The geometric cache cannot replace actual numeric rules or prove an unknown candidate impossible. Keep improvements to the remaining expert searches separate and preserve their positive proofs.
 
 
+## Exact house propagation for sparse mixed puzzles
+
+[Issue 139](https://github.com/coder13/sudoku-app/issues/139) compares main `9d298af` with search-only house propagation. The source-linked `inequality-palindrome14.json` preserves CodeNameVerity's [Palindrome 14, Coach FzzD](https://sudoku.coach/en/s/FzzD). Its zero-given definition contains three Palindrome paths, seven directed inequalities and five white dots. The original export remains in `palindrome-coach.json`. No answer digits enter the search definition.
+
+The independent array-of-digits counter proves uniqueness and reproduces the published completion. Removing only inequalities yields multiple completions. It implements directed pairs in both directions, preserving the asymmetric predicate. Filled-answer tests also check the opposite inequality direction. The earlier independent propagation ablation found no completion before its 100,000-call cap without house Hidden Singles. With them it proves uniqueness in 52,244 calls. Independent calls are not native search nodes.
+
+Exact search now checks the union of candidate bits in each enforced house. A missing digit without support rejects the branch. A digit supported by one cell restricts that cell. Two missing digits forced into one cell reject the branch. Existing numeric restrictions repeat after changes. Already forced cells proceed before another complete house scan. The restrictions only remove candidates, so the propagation reaches a bounded fixpoint.
+
+The compiler derives enforced houses from the actual peer exclusions. Region borders can remain for Region Sum lines after a generation dependency check disables region distinctness. Such geometry does not restore that rule. Tests cover retained geometry, replacement Jigsaw regions, diagonals, extra houses and contradictory support. Every recursive visit still costs one node, including the starting visit. Zero-node exhaustion, direct conflicts, unsolvable positions, unique positions and ambiguous positions retain separate outcomes.
+
+Public candidate requests and logical profiles retain their previous masks and deductions. Seeded completion sampling retains its established traversal and random draws. Bounded logical uniqueness eligibility also retains its established traversal. A first prototype let stronger exact verification trigger expensive empty Unique Rectangle chain searches, raising the FgZb app rating median from 102 to 246 ms. Per-technique profiling identified those searches. A source-linked FgZb regression separates the stronger public verification result from the exhausted internal eligibility probe, preserving hint scheduling. Generation's exact uniqueness checks use the stronger propagation. FzzD now verifies and solves within the unchanged one-million-node default; 20,000 nodes still exhaust. The already playable FgZb Palindrome/Whispers combination also improves from exhausted to unique at 20,000 nodes. FzzD's logical profiles still stall after nine steps at 98 points, scoring version 8, with seven opening choices. Inequality rendering and import remain open in [issue 47](https://github.com/coder13/sudoku-app/issues/47).
+
+The final source passes 321 native tests, 415 app tests, 255 Wasm tests, sixteen native capability combinations and four Wasm profiles. TypeScript, strict full/reduced Cargo documentation and the 159-route production/offline build pass. The complete-response comparison checks 6,426 variant responses: 6,388 match exactly and 38 improve previously exhausted exact outcomes. Every improved result agrees with the original engine at a larger explicit budget. Another 148 Classic responses match exactly. These checks cover 41 corpus positions, all 351 positive practice examples, all 117 detector IDs, full proof data, custom orders, every hint page and two seeded completions per corpus position. No normalization hides a proof or score change.
+
+An optimized native prototype was profiled for five seconds at one-millisecond intervals. Debug symbols and inline-frame attribution separated 3,635 exclusive leaf samples: 1,400 numeric restriction samples (38.51%), 2,112 house propagation samples (58.10%), 122 branching/traversal samples (3.36%) and one other sample. Compilation was below that sampling resolution. Recursive inclusive counts were not added together. This was the initial complete-house-scan prototype. It motivated singleton deferral and bitset support counts; these shares do not describe the final optimized build.
+
+The final native phase benchmark uses five warmups and forty measured calls on macOS arm64. Times are median/p95 milliseconds. Compilation is 0.009/0.013, prepared public candidates 0.001/0.001, exact analysis 239.232/243.046 and exact solving 196.723/202.689. The latter two reuse the compiled puzzle at the same one-million-node budget and validate unique/published outcomes. They do not include compilation. The host is not dedicated, and sampled CPU shares are not wall-clock phase durations.
+
+Paired Wasm measurements use Node 26.13.0 on macOS arm64. Engines alternate execution order. Exact calls use two warmups and five measured samples at the same ten-million-node budget so both builds complete the same work. The p95 of five samples is the maximum. Timings include request serialization and exclude assertions, instantiation, workers, transfers and rendering. No identified compiler or engine test ran concurrently. Small differences and long tails remain observational on this nondedicated host.
+
+| FzzD completed exact operation | Main median/p95 ms | House propagation median/p95 ms |
+| --- | --- | --- |
+| Unique analysis | 6,603.088/6,712.288 | 483.132/497.071 |
+| Published completion | 5,726.990/5,784.936 | 391.986/401.016 |
+
+The medians improve by about 13.7× and 14.6×. Separate one-million-node calls exhaust in main and complete in the new build. Those different outcomes are not used as a same-work latency comparison. Both instances commit 1,441,792 bytes of Wasm memory. Committed buffer size is not RSS or live allocation.
+
+Generation uses seeds 1–20, six attempts, 20,000 nodes per exact check and no warmups. Each row produces twenty successful, distinct serialized puzzles in both builds. All twenty complete generated values, including their ratings, agree for each recipe. Distinct serialized puzzles do not establish equivalence-class yield. The original engine validates every returned full completion; the producing build verifies uniqueness at the requested budget. Times are median/p95 milliseconds.
+
+| Generation recipe | Main | House propagation | Unchanged committed bytes |
+| --- | --- | --- | ---: |
+| Classic, 30 givens | 0.501/0.734 | 0.578/0.814 | 1,441,792 |
+| X Sudoku, 26 givens | 0.549/0.771 | 0.581/0.730 | 1,441,792 |
+| Killer, 15 givens | 2.466/2.903 | 2.680/3.233 | 1,441,792 |
+| Jigsaw/Killer, 15 givens | 2.265/2.484 | 2.436/2.581 | 1,507,328 |
+| Windoku, 26 givens | 0.718/2.067 | 0.755/2.140 | 1,441,792 |
+
+These already cheap recipes show small median increases rather than a generation speedup. The target improvement is sparse exact verification. Calibrated app recipes also pass the complete Wasm suite; changing seeded sampling is outside this optimization.
+
+The retained-fixture pass uses five warmups/twenty samples for fixed requests and two/ten for exhaustive first pages. Requests alternate engines and compare complete responses outside timing. All exact operations complete in both builds at identical budgets: 100,000 nodes for Brain Zaps, one million for FgZb and 20,000 for the other fixtures. Times are median/p95 milliseconds.
+
+| Retained exact fixture | Unique analysis, main → improved | Exact solve, main → improved |
+| --- | --- | --- |
+| Quadruple | 2.777/2.812 → 0.491/0.521 | 1.253/1.266 → 0.387/0.396 |
+| Odd/Even | 0.177/0.188 → 0.027/0.028 | 0.058/0.066 → 0.027/0.042 |
+| Anti-King | 0.035/0.038 → 0.022/0.022 | 0.022/0.025 → 0.021/0.025 |
+| Non-Consecutive | 0.321/0.324 → 0.095/0.095 | 0.250/0.260 → 0.095/0.102 |
+| Coach white-dot exceptions | 0.391/0.398 → 0.348/0.354 | 0.401/0.404 → 0.349/0.353 |
+| Brain Zaps Whispers | 13.451/13.544 → 14.829/14.914 | 13.399/13.488 → 14.795/14.858 |
+| Clover Palindrome | 0.056/0.057 → 0.034/0.035 | 0.042/0.042 → 0.035/0.036 |
+| Newman Anti-Knight Palindrome | 0.068/0.068 → 0.043/0.044 | 0.040/0.041 → 0.044/0.060 |
+| Coach FgZb | 26.316/26.599 → 0.521/0.554 | 25.772/25.985 → 0.113/0.117 |
+
+| Retained fixture | App rate, main → improved | Ordinary hints, main → improved | Exhaustive page, main → improved | Committed MiB, main → improved |
+| --- | --- | --- | --- | --- |
+| Quadruple | 1.177/1.228 → 1.176/1.194 | 0.230/0.265 → 0.224/0.252 | 146.169/148.621 → 146.024/147.663 | 1.50 → 1.50 |
+| Odd/Even | 0.168/0.181 → 0.167/0.177 | 0.083/0.093 → 0.082/0.090 | 50.886/58.092 → 50.852/51.480 | 3.56 → 3.56 |
+| Anti-King | 0.151/0.162 → 0.155/0.157 | 0.116/0.122 → 0.115/0.119 | 95.614/96.043 → 95.909/96.222 | 10.44 → 10.44 |
+| Non-Consecutive | 0.386/0.448 → 0.383/0.415 | 0.080/0.084 → 0.079/0.081 | 34.591/35.287 → 34.423/35.067 | 4.06 → 3.69 |
+| Coach white-dot exceptions | 1.017/1.028 → 1.007/1.026 | 0.315/0.325 → 0.314/0.324 | 0.322/0.328 → 0.320/0.324 | 1.50 → 1.50 |
+| Brain Zaps Whispers | 0.303/0.314 → 0.305/0.319 | 3.099/3.115 → 3.080/3.115 | 3.120/3.242 → 3.097/3.217 | 1.56 → 1.56 |
+| Clover Palindrome | 0.112/0.122 → 0.116/0.124 | 40.331/40.827 → 40.358/40.771 | 40.396/41.081 → 40.610/41.119 | 3.38 → 3.38 |
+| Newman Anti-Knight Palindrome | 0.894/0.911 → 0.869/0.875 | 0.127/0.129 → 0.127/0.129 | 206.219/212.431 → 207.488/214.173 | 5.06 → 5.06 |
+| Coach FgZb | 103.285/107.736 → 100.926/104.065 | 0.217/0.260 → 0.218/0.254 | 2.335/2.404 → 2.369/2.426 | 8.31 → 8.31 |
+
+All responses and choices match. Ordinary/exhaustive choice counts remain 10/31, 10/23, 10/438, 10/70, 4/4, 8/8, 7/7, 10/48 and 10/10 in table order. The FgZb rating regression is resolved: 103.285/107.736 ms becomes 100.926/104.065 ms. Its selected final-position Direct Tridagon, Tridagon Forcing Net and Tridagon AIC proof lists remain empty.
+
+Retained costs remain visible. Brain Zaps exact analysis rises from 13.451 to 14.829 ms median and solving from 13.399 to 14.795 ms. Newman solving and exhaustive hints, Clover exhaustive hints and several cheap generation medians also rise. This is a sparse-search improvement rather than a universal speedup. Non-Consecutive commits less Wasm memory in this request sequence; the other retained buffers stay unchanged.
+
+| Wasm profile | Main raw/gzip bytes | Exact house propagation raw/gzip bytes |
+| --- | --- | --- |
+| Solver | 2,060,183 / 562,832 | 2,060,183 / 562,832 |
+| Variant solver | 2,578,311 / 699,942 | 2,608,333 / 704,013 |
+| Classic | 2,556,987 / 672,461 | 2,556,987 / 672,461 |
+| App | 3,364,670 / 900,443 | 3,366,959 / 899,869 |
+
+The app adds 2,289 raw bytes and saves 574 gzip bytes. The variant solver adds 30,022 raw bytes and 4,071 gzip bytes. Solver and Classic retain their raw and gzip sizes. The variant solver's increase remains part of [the package audit](https://github.com/coder13/sudoku-app/issues/88).
+
+Compared app SHA-256 hashes:
+
+- Main: `ae6a216997f63462d69d3e7ce590c7088d1c6bdbdf40a9488e36a1ca20e89e79`.
+- Exact house propagation: `fae4f83d56e56392a4f4685721d6b01edf60efdbca25b3c2f1bdc4b9a2c06547`.
+
+Repeat with:
+
+```sh
+cargo bench --locked -p sudoku-app-engine --all-features --bench variants -- --exact-search
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm --palindrome-trace --classic-tridagon --exact-houses
+node --experimental-strip-types scripts/bench-exact-houses.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm quadruple parity anti-king non-consecutive nc-white-dots whispers palindrome palindrome-knight palindrome-whispers
+```
+
 ## Tridagon eligibility and deferred proof data
 
 [Issue 138](https://github.com/coder13/sudoku-app/issues/138) compares main `31fd429` with the focused Tridagon optimization. The published Coach FgZb rating still spends time on empty Tridagon searches after digit matching.

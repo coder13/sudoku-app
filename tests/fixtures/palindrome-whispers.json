@@ -1,0 +1,104 @@
+{
+  "source": {
+    "title": "Whisper Lines",
+    "author": "funnyamliy",
+    "page": "https://sudoku.coach/en/s/FgZb",
+    "originalExport": "palindrome-coach.json, examples[0]"
+  },
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000200000000000000000000000000000000000000000000000000000000000000000000000",
+    "rules": [
+      {
+        "type": "whispers",
+        "cells": [
+          56,
+          48,
+          40,
+          32,
+          24
+        ],
+        "minDifference": 5
+      },
+      {
+        "type": "whispers",
+        "cells": [
+          55,
+          64,
+          73
+        ],
+        "minDifference": 5
+      },
+      {
+        "type": "whispers",
+        "cells": [
+          47,
+          37,
+          29,
+          19,
+          11
+        ],
+        "minDifference": 5
+      },
+      {
+        "type": "whispers",
+        "cells": [
+          35,
+          25,
+          15,
+          5,
+          13,
+          21,
+          31
+        ],
+        "minDifference": 5
+      },
+      {
+        "type": "whispers",
+        "cells": [
+          75,
+          76
+        ],
+        "minDifference": 5
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          24,
+          14,
+          13,
+          12,
+          20,
+          29,
+          38,
+          47,
+          56
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          32,
+          33,
+          42,
+          50,
+          58,
+          48,
+          57
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          35,
+          43,
+          51,
+          59,
+          67,
+          75
+        ]
+      }
+    ]
+  },
+  "solution": "146972538253184769987356214531497826698521347724863951462739185819245673375618492"
+}

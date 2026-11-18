@@ -105,7 +105,8 @@ test('real mixed Coach import retains its exact completion and both line familie
   const { game } = await prepareImportedPuzzle(source.code)
   assert.equal(game.variant?.id, 'mixed'); assert.equal(game.variant.solution, source.solution)
   assert.equal(game.variant.puzzle.rules!.length, 8)
-  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: variantPosition(game.variant), maxNodes: 20_000 }), 'search-limit')
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: variantPosition(game.variant), maxNodes: 1 }), 'search-limit')
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: variantPosition(game.variant), maxNodes: 20_000 }), 'unique')
   const hints = await puzzleHints(game, 10)
   assert.ok(hints.choices.length > 1)
   for (const proof of hints.choices) for (const action of proof.actions) {

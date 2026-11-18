@@ -13,6 +13,12 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
     if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
       edges.push([cell, rule.cells[rule.cells.length - 1 - i], (a, b) => a === b]))
+    else if (rule.type === 'inequality') edges.push([rule.less, rule.greater, (a, b) => a < b])
+    else if (rule.type === 'kropki') {
+      if (rule.consecutive?.negative || rule.ratioTwo?.negative) throw new Error('Independent line counter does not implement negative Kropki markers')
+      for (const [a, b] of rule.consecutive?.pairs ?? []) edges.push([a, b, (a, b) => Math.abs(a - b) === 1])
+      for (const [a, b] of rule.ratioTwo?.pairs ?? []) edges.push([a, b, (a, b) => a === b * 2 || b === a * 2])
+    }
     else if (rule.type === 'anti-knight' || rule.type === 'anti-king') {
       for (let a = 0; a < 81; a++) for (let b = a + 1; b < 81; b++) {
         const dr = Math.abs(Math.floor(a / 9) - Math.floor(b / 9)), dc = Math.abs(a % 9 - b % 9)
@@ -45,7 +51,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
         }
       }
       for (const [a, b, permits] of edges) for (const [from, to] of [[a, b], [b, a]]) {
-        const keep = domains[from].filter(digit => domains[to].some(other => permits(digit, other)))
+        const keep = domains[from].filter(digit => domains[to].some(other => from === a ? permits(digit, other) : permits(other, digit)))
         changed ||= keep.length !== domains[from].length; domains[from] = keep
       }
       if (domains.some(digits => digits.length === 0)) return

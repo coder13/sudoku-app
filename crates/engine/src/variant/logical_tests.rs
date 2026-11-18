@@ -3,6 +3,31 @@ use crate::{HintAction, VariantPuzzle, parse_givens};
 
 #[cfg(feature = "wasm-api")]
 #[test]
+fn stronger_public_verification_keeps_bounded_hint_eligibility_stable() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/fixtures/palindrome-whispers.json"
+    ))
+    .unwrap();
+    let puzzle: VariantPuzzle = serde_json::from_value(fixture["puzzle"].clone()).unwrap();
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(
+        compiled.analyze(&[0; CELLS], &[0; CELLS], UNIQUENESS_PROBE_NODES),
+        Ok(Analysis::Unique)
+    );
+    // An exhausted eligibility probe is not a claim about the solution count.
+    // It retains the established scheduling of expensive graph searches.
+    assert_eq!(
+        compiled.analyze_for_proof(&[0; CELLS], &[0; CELLS], UNIQUENESS_PROBE_NODES),
+        Ok(Analysis::SearchLimit)
+    );
+    let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
+    assert!(!compiled.uniqueness_is_verified(&position));
+    assert!(compiled.classic_search_is_empty(&position, Technique::UniqueRectangleAic));
+    assert!(compiled.explain(&position, VariantTechnique::Classic(Technique::UniqueRectangleAic)).is_empty());
+}
+
+#[cfg(feature = "wasm-api")]
+#[test]
 fn full_geometric_support_keeps_the_four_numeric_opening_hints() {
     let fixture: serde_json::Value = serde_json::from_str(include_str!(
         "../../../../tests/fixtures/nonconsecutive-locked.json"
