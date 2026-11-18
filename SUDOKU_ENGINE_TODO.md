@@ -53,7 +53,18 @@ This family reached main at `c38cc2b` through [PR 135](https://github.com/coder1
 - [x] Profile selected expert searches at the stalled Coach position. Record bounded digit-matching research without changing the shipped engine or claiming a rating speedup. [Rating audit](https://github.com/coder13/sudoku-app/issues/134)
 - [ ] Finish live viewport interaction review. Static clue images and desktop/mobile component tests passed.
 - [ ] Calibrate difficulty recipes before offering Palindrome in New puzzle. Native generation and exact clue targets already pass.
-- [ ] Improve the existing slow app-order Coach rating through the separate measured optimization in [issue 134](https://github.com/coder13/sudoku-app/issues/134).
+- [x] Improve the existing slow app-order Coach rating through [PR 137](https://github.com/coder13/sudoku-app/pull/137). Preserve all techniques, scores and choices. Continue the remaining Tridagon audit in [issue 138](https://github.com/coder13/sudoku-app/issues/138).
+
+### Inequality integration audit
+
+The next family remains open in [issue 47](https://github.com/coder13/sudoku-app/issues/47). Native support already exists. App integration remains unfinished.
+
+- [x] Audit native directed pairs, symmetry, generation, the eight-point technique and three practice fixtures against main. Identify the missing playable-rule validation, Coach decoding, clue rendering and candidate cleanup.
+- [x] Independently prove the preserved zero-given FzzD puzzle unique with all three Palindrome paths, seven inequalities and five white dots. Removing only inequalities gives multiple completions.
+- [x] Check the published completion against native rules and all twenty actions in each logical trace. Both profiles stall at 98 points after nine steps and offer seven opening choices.
+- [x] Identify the exact-search limit at both 20,000 and 1,000,000 nodes. Track a separate measured repair in [issue 139](https://github.com/coder13/sudoku-app/issues/139).
+- [ ] Finish published clue review and the complete app flow before integrating inequalities. Preserve directed endpoints under every grid transformation.
+- [ ] Make sparse mixed-rule validation practical while keeping honest search-limit outcomes in [issue 139](https://github.com/coder13/sudoku-app/issues/139).
 
 ### Non-Consecutive integration merged
 
@@ -122,9 +133,9 @@ This pass reached main at `d9e4ee9` through [PR 128](https://github.com/coder13/
 - [x] Pass CI on reviewed head `bc1a01f`, merge through [PR 128](https://github.com/coder13/sudoku-app/pull/128) and verify the reviewed optimization and PR 127 app work on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44254728829)
 - [x] Evaluate checked grid/digit symmetries for bounded candidate support in [issue 129](https://github.com/coder13/sudoku-app/issues/129). Check every transformed grid against the current masks, placements and actual geometric premises before accepting support. [Implementation and validation](#checked-geometric-symmetries-merged)
 
-### Mask-constrained digit witnesses in progress
+### Mask-constrained digit witnesses merged
 
-This isolated pass starts from main `1539f74` in `codex/sudoku-matched-witnesses`. [Rating bottleneck](https://github.com/coder13/sudoku-app/issues/134)
+This pass reached main at `799ba1e` through [PR 137](https://github.com/coder13/sudoku-app/pull/137). All CI and deployment checks passed on reviewed head `336cc49`. The reviewed worktree remains on `codex/sudoku-matched-witnesses`. [Rating bottleneck](https://github.com/coder13/sudoku-app/issues/134)
 
 - [x] Profile all 112 app techniques at nineteen positions of the published Coach trace. Preserve the positive Firework AIC and ALS AIC proofs.
 - [x] Add bounded bijective digit matchings that obey every candidate mask. Preserve actual houses, directed peers, fixed digits and the original search for unknown support.
@@ -132,7 +143,9 @@ This isolated pass starts from main `1539f74` in `codex/sudoku-matched-witnesses
 - [x] Compare 6,210 complete responses across forty positions, including every Palindrome/Whispers trace position. Preserve all 117 detector lists, hint pages and 351 positive practice cases.
 - [x] Pass 310 native tests, 413 app tests, 253 Wasm tests, sixteen capability combinations, four package profiles, strict full/reduced documentation, TypeScript and the 159-route production/offline build.
 - [x] Measure nine fixtures with complete response checks. Reduce the Coach app-order median from 413.446 to 229.884 ms. Preserve scores, choices and memory. Record slower samples and the 5,013-byte app gzip increase. [Methods and limits](tests/fixtures/README.md#mask-constrained-digit-witnesses)
-- [ ] Pass exact-head CI, then merge the measured improvement separately.
+- [x] Pass CI on reviewed head `336cc49`, merge through [PR 137](https://github.com/coder13/sudoku-app/pull/137) and confirm its ancestry on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44279709034)
+- [x] Independently enumerate all 5,832 recognized Tridagon geometries and identify a direct guardian bound. Keep this research separate from the shipped matching change.
+- [ ] Improve the remaining Tridagon searches with independently proved eligibility checks in [issue 138](https://github.com/coder13/sudoku-app/issues/138).
 
 ### Checked geometric symmetries merged
 
