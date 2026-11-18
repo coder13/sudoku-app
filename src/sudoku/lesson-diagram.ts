@@ -16,9 +16,22 @@ type Pattern = {
   reason: string
   reasonSteps?: string[]
   trace?: { assumption: string; steps: string[]; conclusion: string }[]
+  sets?: DiagramSet[]
+  linkSteps?: LinkStep[]
+  removalStep?: { candidates: Candidate[]; text?: string }
+}
+
+type DiagramSet = { cells: readonly number[]; label: string }
+type LinkStep = { label: string; text: string; candidates: Candidate[]; links: BoardLink[] }
+export type DiagramStep = {
+  label: string
+  text?: string
+  key?: { label: string; fill: string; cells: string }[]
+  annotations: BoardAnnotations
 }
 
 const patternColor = 'var(--lesson-pattern)'
+const linkColor = 'var(--lesson-link)'
 const accentColor = 'var(--lesson-accent)'
 const resultColor = 'var(--lesson-result)'
 const removalColor = 'var(--lesson-removal)'
@@ -118,6 +131,63 @@ function link(from: number, to: number, digit: number, dashed = false, arrow = f
 
 function explainSteps(reasonSteps: string[]) {
   return { reason: reasonSteps.join(' '), reasonSteps }
+}
+
+function sightLines(from: number, targets: readonly number[], nameCell: (cell: number) => string) {
+  const byHouse = new Map<string, number[]>()
+  for (const cell of new Set(targets)) {
+    const house = sharedHouse([from, cell])
+    if (!house) continue
+    const name = houseName(house)
+    const cells = byHouse.get(name) ?? []
+    cells.push(cell)
+    byHouse.set(name, cells)
+  }
+  return list.format([...byHouse].map(([house, cells]) => `${list.format(cells.map(nameCell))} through ${house}`))
+}
+
+function weakLinkStep(from: Candidate[], to: Candidate[], fromLabel: string, toLabel: string, digit: number,
+  nameCell: (cell: number) => string): LinkStep {
+  const candidates = [...from, ...to]
+  const house = sharedHouse(candidates.map(({ cell }) => cell))
+  const conflicts = house
+    ? `The ${digit} candidates in ${fromLabel} and ${toLabel} share ${houseName(house)}.`
+    : from.map(({ cell }) => `${nameCell(cell)} sees ${sightLines(cell, to.map(candidate => candidate.cell), nameCell)}.`).join(' ')
+  // Fan out from a single candidate. For two groups, a single line joins the rings on the two sides.
+  const style = { color: linkColor, dashed: true, offsetLongAligned: true }
+  const links = from.length === 1 || to.length === 1
+    ? from.flatMap(a => to.map(b => ({ from: a, to: b, ...style })))
+    : [{ from: { candidates: from }, to: { candidates: to }, ...style }]
+  return {
+    label: `Link on ${digit}`,
+    text: `${conflicts} Placing ${digit} in ${fromLabel} rules out ${digit} in ${toLabel}.`,
+    candidates, links,
+  }
+}
+
+function explainSetRemoval(target: Candidate, placements: Candidate[], nameCell: (cell: number) => string) {
+  const { cell, digit } = target
+  const locations = [...new Set(placements.map(candidate => candidate.cell))]
+  const required = locations.length === 1 ? `${nameCell(locations[0])} must be ${digit}.`
+    : `At least one of ${list.format(locations.map(nameCell))} must be ${digit}.`
+  return `${required} If ${nameCell(cell)} is ${digit}, it rules out ${digit} in ${sightLines(cell, locations, nameCell)}.`
+}
+
+function eliminationStep(actions: DeductionAction[], supporting: (target: Candidate) => Candidate[],
+  nameCell: (cell: number) => string) {
+  const eliminations = actions.flatMap(action => 'eliminate' in action ? [action.eliminate] : [])
+  const supports = eliminations.map(target => supporting(target))
+  const [first] = eliminations
+  if (!first) return undefined
+  const places = sightLines(first.cell, supports[0].map(({ cell }) => cell), nameCell)
+  const sameSightLines = eliminations.every(({ cell }, index) =>
+    cell === first.cell && sightLines(cell, supports[index].map(candidate => candidate.cell), nameCell) === places)
+  const digits = list.format([...new Set(eliminations.map(({ digit }) => digit))].map(String))
+  return {
+    candidates: supports.flat(),
+    text: places ? `${nameCell(first.cell)} sees every possible ${sameSightLines ? digits : first.digit} at ${places}.${
+      sameSightLines ? '' : ' Check the other removals the same way.'}` : undefined,
+  }
 }
 
 function explainRemoval({ cell, digit }: Candidate, placements: Candidate[], nameCell = cellName) {
@@ -258,15 +328,21 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
   }
   if ('wing' in evidence) {
     const { pivot, pincers: [a, b], digits: [x, y, z] } = evidence.wing
-    const cells = [pivot, a, b]
-    const why = `If ${nameCell(pivot)} is ${x}, ${nameCell(a)} must be ${z}. If ${nameCell(pivot)} is ${y}, ${nameCell(b)} must be ${z}.`
+    const xyz = technique === 'xyz-wing'
+    const linkSteps = [
+      weakLinkStep(marks([pivot], [x]), marks([a], [x]), 'the pivot', 'the first wing', x, nameCell),
+      weakLinkStep(marks([pivot], [y]), marks([b], [y]), 'the pivot', 'the second wing', y, nameCell),
+    ]
+    const why = [x, y].map((digit, index) => {
+      const wing = [a, b][index]
+      return `If ${nameCell(pivot)} is ${digit}, ${houseName(sharedHouse([pivot, wing])!)} rules out ${digit} in ${nameCell(wing)}, so ${nameCell(wing)} must be ${z}.`
+    })
+    const removalStep = eliminationStep(actions, () => marks(xyz ? [a, b, pivot] : [a, b], [z]), nameCell)
     return {
-      cells, candidates: marks(cells, [x, y, z]),
-      links: [link(pivot, a, x, true), link(pivot, b, y, true)],
+      sets: [{ cells: [a], label: 'First wing' }, { cells: [pivot], label: 'Pivot' }, { cells: [b], label: 'Second wing' }],
+      candidates: marks([a, pivot, b], [x, y, z]), linkSteps, removalStep,
       description: `${nameCell(pivot)} shares ${x} with ${nameCell(a)} and ${y} with ${nameCell(b)}. Both wings also allow ${z}.`,
-      reason: technique === 'xyz-wing'
-        ? `${why} The pivot can also be ${z}. ${nameCell(first.cell)} sees all three cells.`
-        : `${why} ${nameCell(first.cell)} sees both wings.`,
+      reason: [...why, xyz ? `The pivot can also be ${z}.` : '', removalStep?.text].filter(Boolean).join(' '),
     }
   }
   if ('wxyz-wing' in evidence) {
@@ -522,62 +598,79 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
   if ('als-xz' in evidence || 'als-chain' in evidence) {
     const { sets, links } = 'als-xz' in evidence ? evidence['als-xz'] : evidence['als-chain']
     const setLocation = (index: number) => list.format(sets[index].cells.map(nameCell))
-    const linkConflict = (index: number, digit: number) => {
-      const locations = marks([...sets[index].cells, ...sets[index + 1].cells], [digit]).map(({ cell }) => cell)
-      const house = sharedHouse(locations)
-      return house ? `The ${digit} candidates in sets ${index + 1} and ${index + 2} share ${houseName(house)}.`
-        : `Each ${digit} candidate in set ${index + 1} shares a row, column, or box with every ${digit} candidate in set ${index + 2}.`
-    }
     const last = sets.length - 1
-    const cells = sets.flatMap(({ cells }) => cells)
-    const pattern = {
-      cells, candidates: sets.flatMap(({ cells, digits }) => marks(cells, digits)),
-      mainLabel: 'Set candidate',
-      description: 'Each set shares one house, so its cells need different digits. Each set has one extra candidate digit and must use all the others.',
+    const xyWing = technique === 'als-xy-wing'
+    const labels = xyWing ? ['the first wing', 'the pivot', 'the second wing'] : sets.map((_, index) => `set ${index + 1}`)
+    const linkSteps = links.map((digit, index) => {
+      const left = last === 1 ? 0 : index
+      const right = left + 1
+      const [from, to] = xyWing && left === 1 ? [right, left] : [left, right]
+      return weakLinkStep(marks(sets[from].cells, [digit]), marks(sets[to].cells, [digit]), labels[from], labels[to], digit, nameCell)
+    })
+    const ends = [...new Set([...sets[0].cells, ...sets[last].cells])]
+    const doublyLinked = last === 1 && links.length === 2
+    const supporting = (target: Candidate) => {
+      if (!doublyLinked || links.includes(target.digit)) return marks(ends, [target.digit])
+      return sets.flatMap(({ cells }) => {
+        const placements = marks(cells, [target.digit])
+        return placements.every(candidate => candidatesConflict(candidate, target)) ? placements : []
+      })
     }
-    if (sets.length === 2) {
+    const pattern = {
+      sets: sets.map(({ cells }, index) => ({ cells, label: capital(labels[index].replace(/^the /, '')) })),
+      candidates: marks([...new Set(sets.flatMap(({ cells }) => cells))], DIGITS),
+      linkSteps, removalStep: eliminationStep(actions, supporting, nameCell),
+      description: 'Each almost locked set has one more candidate digit than cells in the same house. If a set loses one digit, it must use all the others.',
+    }
+    if (last === 1) {
       const setup = `Set 1 is at ${setLocation(0)}. Set 2 is at ${setLocation(1)}.`
-      const reasonSteps = [setup, ...links.map(digit => `${linkConflict(0, digit)} Placing ${digit} in one set rules it out in the other.`)]
-      if (links.length === 2) {
+      const reasonSteps = [setup, ...linkSteps.map(({ text }) => text)]
+      if (doublyLinked) {
         reasonSteps.push(`One set must skip ${links[0]} and the other must skip ${links[1]}. Each set must use all its remaining digits.`)
         const targets = actions.flatMap(action => 'eliminate' in action ? [action.eliminate] : [])
-        const linkedTarget = targets.find(({ digit }) => links.includes(digit))
-        if (linkedTarget) reasonSteps.push(nameRemoval(linkedTarget, marks(cells, [linkedTarget.digit])))
-        const otherTarget = targets.find(({ digit }) => !links.includes(digit))
-        if (otherTarget) {
-          for (const set of sets) {
-            const placements = marks(set.cells, [otherTarget.digit])
-            if (!placements.length || !placements.every(candidate => candidatesConflict(candidate, otherTarget))) continue
-            reasonSteps.push(nameRemoval(otherTarget, placements))
-            break
-          }
+        for (const target of [targets.find(({ digit }) => links.includes(digit)), targets.find(({ digit }) => !links.includes(digit))]) {
+          if (target) reasonSteps.push(explainSetRemoval(target, supporting(target), nameCell))
         }
       } else {
         reasonSteps.push(`At least one set skips ${links[0]}. That set must use its other digits, including the shared ${first.digit}.`,
-          nameRemoval(first, marks(cells, [first.digit])))
+          explainSetRemoval(first, supporting(first), nameCell))
       }
       return { ...pattern, ...explainSteps(reasonSteps) }
     }
-    const ends = [...sets[0].cells, ...sets[last].cells]
+    if (xyWing) {
+      const places = sightLines(first.cell, supporting(first).map(({ cell }) => cell), nameCell)
+      const remaining = sets[1].digits.filter(digit => !links.includes(digit))
+      const pivotCells = sets[1].cells.length === 1 ? 'its cell' : `its ${sets[1].cells.length} cells`
+      const pivotLimit = remaining.length ? `The pivot has only ${list.format(remaining.map(String))} to fill ${pivotCells}. That's too few digits.`
+        : 'The pivot has no candidates left.'
+      return { ...pattern, ...explainSteps([
+        `If ${nameCell(first.cell)} is ${first.digit}, it rules out ${first.digit} in both wings at ${places}.`,
+        `The first wing must use ${links[0]}. ${linkSteps[0].text}`,
+        `The second wing must use ${links[1]}. ${linkSteps[1].text}`,
+        `${pivotLimit} Remove ${first.digit} from ${nameCell(first.cell)}.`,
+      ]) }
+    }
     const reasonSteps = [
       `Start with set 1 at ${setLocation(0)}. If it skips ${first.digit}, it must use ${links[0]}.`,
-      ...links.map((digit, index) => `${linkConflict(index, digit)} Placing ${digit} in set ${index + 1} rules it out in set ${index + 2} (${setLocation(index + 1)}). This set must use ${links[index + 1] ?? first.digit}.`),
+      ...linkSteps.map(({ text }, index) => `${text} Set ${index + 2} at ${setLocation(index + 1)} must use ${links[index + 1] ?? first.digit}.`),
       `Either way, one of the end sets must use ${first.digit}.`,
-      nameRemoval(first, marks(ends, [first.digit])),
+      explainSetRemoval(first, supporting(first), nameCell),
     ]
     return { ...pattern, ...explainSteps(reasonSteps) }
   }
   if ('death-blossom' in evidence) {
     const { stem, petals } = evidence['death-blossom']
-    const stemDigits = petals.map(({ digit }) => digit)
+    const linkSteps = petals.map(({ digit, set }) =>
+      weakLinkStep(marks([stem], [digit]), marks(set.cells, [digit]), 'the stem', `the ${digit} petal`, digit, nameCell))
+    const supporting = ({ digit }: Candidate) => petals.flatMap(({ set }) => marks(set.cells, [digit]))
     return {
-      cells: [stem, ...petals.flatMap(({ set }) => set.cells)],
-      candidates: petals.flatMap(({ set }) => marks(set.cells, set.digits)),
-      accent: { candidates: marks([stem], stemDigits), label: 'Starting cell candidate' },
+      sets: [{ cells: [stem], label: 'Stem' }, ...petals.map(({ digit, set }) => ({ cells: set.cells, label: `${digit} petal` }))],
+      candidates: marks([...new Set([stem, ...petals.flatMap(({ set }) => set.cells)])], DIGITS),
+      linkSteps, removalStep: eliminationStep(actions, supporting, nameCell),
       description: `The stem is ${nameCell(stem)}. Each of its candidates rules out one digit throughout its own petal. That petal then needs all its other digits.`,
       ...explainSteps([
-        ...petals.map(({ digit, set }) => `If ${nameCell(stem)} is ${digit}, that rules out ${digit} in the set at ${list.format(set.cells.map(nameCell))}. That set must use ${first.digit}.`),
-        nameRemoval(first, petals.flatMap(({ set }) => marks(set.cells, [first.digit]))),
+        ...linkSteps.map(({ text }, index) => `${text} The ${petals[index].digit} petal must then use ${first.digit}.`),
+        explainSetRemoval(first, supporting(first), nameCell),
       ]),
     }
   }
@@ -756,6 +849,7 @@ function explainProof({ evidence, actions, technique }: Deduction, nameCell = ce
 export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }: Pick<LessonExample, 'deduction' | 'candidates' | 'pattern'>,
   proof = lessonPattern, options: CellReferenceOptions & { showActions?: boolean } = {}) {
   const { showActions = true } = options
+  const nameCell = displayCellName(options)
   let variant = 'variant' in deduction.evidence ? deduction.evidence.variant : undefined
   if (variant?.source && options.cellReferenceStyle !== undefined) {
     const copy = variantHintChoice(variant.source.deduction, variant.source.puzzle, options).evidence
@@ -763,41 +857,78 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   }
   const pattern: Pattern | undefined = variant
     ? proof && { ...proof, description: variant.description, reason: variant.reason }
-    : describePattern(deduction, candidates, displayCellName(options)) ?? (proof && { ...proof, description: '', reason: '', ...explainProof(deduction, displayCellName(options)) })
+    : describePattern(deduction, candidates, nameCell) ?? (proof && { ...proof, description: '', reason: '', ...explainProof(deduction, nameCell) })
   if (!pattern) throw new Error(`Missing diagram for ${deduction.technique}`)
-  const cells = new Map<number, CellAnnotation>()
-  const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
+  const baseCells = new Map<number, CellAnnotation>()
   const tint = (houses: House[] | undefined, fill: string) => {
     for (const house of houses ?? []) {
-      for (const cell of houseCells(house)) cells.set(cell, { fill })
+      for (const cell of houseCells(house)) baseCells.set(cell, { fill })
     }
-  }
-  const mark = ({ cell, digit }: Candidate, color: string, label: string, strike = false) => {
-    const marks = candidateMarks.get(cell) ?? new Map<number, CandidateAnnotation>()
-    marks.set(digit, { color, mark: strike ? 'strike' : 'ring', label })
-    candidateMarks.set(cell, marks)
   }
   tint(pattern.otherHouses, 'var(--lesson-secondary-fill)')
   tint(pattern.houses, 'var(--lesson-area-fill)')
-  for (const cell of pattern.cells ?? []) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'pattern cell' })
-  for (const candidate of pattern.candidates) mark(candidate, patternColor, pattern.mainLabel ?? 'in the pattern')
-  if (pattern.accent) {
-    for (const candidate of pattern.accent.candidates) mark(candidate, accentColor, pattern.accent.label)
-  }
-  for (const action of showActions ? deduction.actions : []) {
-    if ('place' in action) {
-      const { cell } = action.place
-      cells.set(cell, { ...cells.get(cell), outline: resultColor })
-      mark(action.place, resultColor, 'to place')
-    } else {
-      mark(action.eliminate, removalColor, 'to remove', true)
+  for (const cell of pattern.cells ?? []) baseCells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'pattern cell' })
+  const sets = pattern.sets ?? []
+  const key = sets.map(({ cells, label }, index) => ({
+    label, fill: `var(--lesson-set-${index + 1})`, cells: list.format(cells.map(nameCell)),
+  }))
+  const membership = new Map<number, { label: string; fill: string }[]>()
+  for (const [index, { cells }] of sets.entries()) {
+    for (const cell of cells) {
+      const members = membership.get(cell) ?? []
+      members.push(key[index])
+      membership.set(cell, members)
     }
   }
+  for (const [cell, members] of membership) {
+    const bands = members.map(({ fill }, index) => `${fill} ${100 * index / members.length}% ${100 * (index + 1) / members.length}%`)
+    baseCells.set(cell, {
+      fill: members[0].fill, label: list.format(members.map(({ label }) => label)),
+      fillImage: members.length > 1 ? `linear-gradient(135deg, ${bands.join(', ')})` : undefined,
+    })
+  }
+  const annotate = (marks: Candidate[], color: string, label: string, links: BoardLink[] | undefined,
+    reveal: boolean, accent?: Pattern['accent']): BoardAnnotations => {
+    const cells = new Map(baseCells)
+    const candidates = new Map<number, Map<number, CandidateAnnotation>>()
+    const mark = ({ cell, digit }: Candidate, ink: string, name: string, strike = false) => {
+      const atCell = candidates.get(cell) ?? new Map<number, CandidateAnnotation>()
+      atCell.set(digit, { color: ink, mark: strike ? 'strike' : 'ring', label: name })
+      candidates.set(cell, atCell)
+    }
+    for (const candidate of marks) mark(candidate, color, label)
+    if (accent) for (const candidate of accent.candidates) mark(candidate, accentColor, accent.label)
+    for (const action of reveal ? deduction.actions : []) {
+      if ('place' in action) {
+        const { cell } = action.place
+        cells.set(cell, { ...cells.get(cell), outline: resultColor })
+        mark(action.place, resultColor, 'to place')
+      } else {
+        mark(action.eliminate, removalColor, 'to remove', true)
+      }
+    }
+    return { cells, candidates, links }
+  }
+  const { linkSteps, removalStep } = pattern
+  let steps: DiagramStep[] | undefined
+  if (linkSteps?.length) {
+    steps = [{ label: 'Sets', key, annotations: annotate([], linkColor, '', undefined, false) },
+      ...linkSteps.map(({ label, text, candidates, links }) => ({
+        label, text, annotations: annotate(candidates, linkColor, 'linking candidate', links, false),
+      }))]
+    if (showActions && removalStep) steps.push({
+      label: 'Removals', text: removalStep.text,
+      annotations: annotate(removalStep.candidates, linkColor, 'supports a removal', undefined, true),
+    })
+  }
+  const annotations = steps ? steps[showActions ? steps.length - 1 : 0].annotations
+    : annotate(pattern.candidates, patternColor, pattern.mainLabel ?? 'in the pattern', pattern.links, showActions, pattern.accent)
   const results = deductionResults(deduction.actions, options)
-  const annotations: BoardAnnotations = { cells, candidates: candidateMarks, links: pattern.links }
   const { description, reason, reasonSteps, mainLabel = 'Pattern candidate', accent, trace } = pattern
-  const focus = [...candidateMarks.keys(), ...('house' in deduction.evidence ? houseCells(deduction.evidence.house) : [])]
-  return { annotations, region: enclosingRegion(focus.length ? focus : [...cells.keys()]), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
+  const focus = [...(annotations.candidates?.keys() ?? []), ...membership.keys(),
+    ...('house' in deduction.evidence ? houseCells(deduction.evidence.house) : [])]
+  return { annotations, steps, region: enclosingRegion(focus.length ? focus : [...baseCells.keys()]),
+    description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
 }
 
 function enclosingRegion(cells: number[]): BoardRegion {

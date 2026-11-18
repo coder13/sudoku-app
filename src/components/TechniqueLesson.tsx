@@ -17,6 +17,7 @@ import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
 import { ConceptCheck } from './ConceptCheck'
 import { FoundationVisual } from './FoundationVisual'
+import { DiagramSteps, useDiagramSteps } from './DiagramSteps'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
 const techniqueAliases: Readonly<Record<string, readonly string[]>> = aliasesJson
@@ -31,7 +32,10 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
   fallbackReason?: string
 }) {
   const { region: crop, copy, notes } = block ?? {}
-  const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
+  const diagram = useMemo(() => lessonDiagram(example), [example])
+  const { region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = diagram
+  const steps = useDiagramSteps(diagram.steps)
+  const annotations = steps?.annotations ?? diagram.annotations
   const view = crop ?? (block && !example.variantPuzzle ? region : undefined)
   const results = copy?.results ?? defaultResults
   const trace = copy?.trace ?? defaultTrace
@@ -43,6 +47,7 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
     <figure className="lesson-diagram" data-lesson-block={blockIndex}>
       <LessonWorkbench puzzle={example} region={view} annotations={annotations} label="Sudoku diagram" preview />
       <figcaption>
+        {steps && <DiagramSteps {...steps} />}
         {(summary || editorPreview) && <p className="lesson-diagram-summary">{summary}</p>}
         {reasonSteps && !copy?.reason && <ol className="lesson-reason-steps">{reasonSteps.map((step, index) => <li key={index}>{step}</li>)}</ol>}
         {(explanation || editorPreview) && <p className="lesson-diagram-reason">{explanation}</p>}
@@ -52,7 +57,7 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
         </div>}
         {results.length === 1 ? <p className="lesson-outcomes">{results[0]}</p>
           : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}>{result}</li>)}</ul>}
-        {(accentLabel || strong || weak) && <div className="lesson-legend" aria-label="Diagram key">
+        {!steps && (accentLabel || strong || weak) && <div className="lesson-legend" aria-label="Diagram key">
           {accentLabel && <>
             <span><i className="lesson-key-pattern" aria-hidden="true" /><span>{copy?.patternLabel ?? mainLabel}</span></span>
             <span><i className="lesson-key-accent" aria-hidden="true" /><span>{copy?.accentLabel ?? accentLabel}</span></span>

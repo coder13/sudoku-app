@@ -90,7 +90,7 @@ function route({ start, end, trimStart, trimEnd }: Segment, lane: number): Point
   return [trimStart ? trim(start, startBend) : start, startBend, endBend, trimEnd ? trim(end, endBend) : end]
 }
 
-export function boardLinkRoutes(links: readonly { from: BoardPoint; to: BoardPoint }[]): Point[][] {
+export function boardLinkRoutes(links: readonly { from: BoardPoint; to: BoardPoint; offsetLongAligned?: boolean }[]): Point[][] {
   const segments = links.map(({ from, to }) => {
     const endpoints = boardLinkEndpoints(from, to)
     if (!endpoints || (endpoints.start.x === endpoints.end.x && endpoints.start.y === endpoints.end.y)) return undefined
@@ -98,5 +98,13 @@ export function boardLinkRoutes(links: readonly { from: BoardPoint; to: BoardPoi
   })
   const valid = segments.filter((segment): segment is Segment => Boolean(segment))
   const offsets = laneOffsets(valid)
-  return segments.map(segment => segment ? route(segment, offsets.get(segment) ?? 0) : [])
+  return segments.map((segment, index) => {
+    if (!segment) return []
+    const { start, end } = segment
+    const aligned = start.x === end.x || start.y === end.y
+    const long = Math.abs(end.x - start.x) + Math.abs(end.y - start.y) > 15
+    // Keep long aligned links off the candidate slots in intervening cells.
+    const gutter = links[index].offsetLongAligned && aligned && long ? 1.43 : 0
+    return route(segment, offsets.get(segment) || gutter)
+  })
 }
