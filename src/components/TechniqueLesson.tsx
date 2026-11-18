@@ -2,6 +2,7 @@ import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { lessonDifficultyLabels } from '../sudoku/lesson-difficulties'
 import { Link, useLocation } from '@tanstack/react-router'
+import { isPracticeTopic } from '../sudoku/practice'
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
 import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import aliasesJson from '../sudoku/generated/lesson-aliases.json'
@@ -222,6 +223,8 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
               {drills.map(({ example, title }) => <option key={example} value={example}>{title}</option>)}
             </SelectControl>
           </label>}
+          {isPracticeTopic(chosen.example) && <Link className="button quiet" to="/learn/practice"
+            search={{ technique: chosen.example }}>Practice this technique</Link>}
           <button type="button" className="button secondary lesson-new-example" disabled={generation === 'loading'}
             aria-busy={generation === 'loading'} onClick={newExample}>
             <RefreshCw size={16} aria-hidden="true" /> New example

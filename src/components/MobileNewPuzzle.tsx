@@ -71,6 +71,11 @@ export function MobileNewPuzzle({ screen, variant, preference, remember, done, o
         <strong>Import a puzzle</strong>
         <ChevronRight size={18} aria-hidden="true" />
       </Link>
+      <Link to="/find-difficulty" disabled={busy}>
+        <span className="main-menu-icon"><Gauge size={21} aria-hidden="true" /></span>
+        <span><strong>Find my difficulty</strong><small>Try a Classic difficulty check</small></span>
+        <ChevronRight size={18} aria-hidden="true" />
+      </Link>
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
     <button type="button" className="button primary puzzle-start-button" disabled={busy}

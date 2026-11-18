@@ -26,7 +26,7 @@ test('a hint seen first stays assisted even if the player move is classified fir
   assert.equal(rememberTechniqueAction(puzzle, 'e2:4', { at: 8, technique: 'locked-pair', source: 'hint' }), true)
   assert.equal(rememberTechniqueAction(puzzle, 'e2:4', { at: 12, technique: 'naked-pair', source: 'independent' }), false)
   assert.deepEqual(summarizeTechniques([puzzle]), [
-    { technique: 'locked-pair', withoutHints: 0, withHints: 1, puzzles: 1, independence: null },
+    { technique: 'locked-pair', withoutHints: 0, withHints: 1, hintedPuzzles: 1, puzzles: 1, independence: null },
   ])
 })
 
@@ -59,7 +59,7 @@ test('independence weighs each puzzle equally and ignores moves after a solution
   const assisted = { ...practice, givens: 'another-puzzle' }
   assert.equal(summarizeTechniques([clean, practice])[0].independence, null)
   assert.deepEqual(summarizeTechniques([clean, practice, assisted]), [
-    { technique: 'naked-single', withoutHints: 9, withHints: 2, puzzles: 3, independence: 33 },
+    { technique: 'naked-single', withoutHints: 9, withHints: 2, hintedPuzzles: 2, puzzles: 3, independence: 33 },
   ])
 })
 
@@ -69,7 +69,7 @@ test('Auto uses the full technique profile and prioritizes supported techniques 
     actions: { 'e1:3': { at: index, technique: 'pointing', source: index < 4 ? 'independent' : 'hint' } },
   }))
   assert.deepEqual(summarizeTechniques(puzzles), [
-    { technique: 'pointing', withoutHints: 4, withHints: 8, puzzles: 12, independence: 33 },
+    { technique: 'pointing', withoutHints: 4, withHints: 8, hintedPuzzles: 8, puzzles: 12, independence: 33 },
   ])
   const progress = summarizeTechniques(puzzles)
   assert.equal(autoTechniqueFocus(progress, ['naked-pair', 'pointing']), 'pointing')

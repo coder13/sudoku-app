@@ -18,6 +18,7 @@ export function LessonOverview() {
           <Link to="/learn/$technique" params={{ technique: learnFundamentals.id }}>{learnFundamentals.title}</Link>.
         </p>
       </LearnHeading>
+      <Link to="/learn/practice" className="button secondary practice-entry">Practice solving techniques</Link>
       <section className="lesson-overview-section" data-lesson-difficulty>
         <h2 className="article-subheading">{learnOverview.difficultyTitle}</h2>
         {learnOverview.difficultyParagraphs.map((paragraph, index) => <p className="article-paragraph" key={index}>{paragraph}</p>)}

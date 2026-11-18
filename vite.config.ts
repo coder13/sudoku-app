@@ -34,6 +34,7 @@ function prerenderPages() {
     '/puzzles/new',
     '/puzzles/collections',
     '/puzzles/statistics',
+    '/find-difficulty',
     '/settings',
     '/settings/appearance',
     '/settings/input',
@@ -41,6 +42,7 @@ function prerenderPages() {
     '/settings/solving',
     '/settings/hints',
     '/learn',
+    '/learn/practice',
     ...[...lessonRoutes.keys()].map((id) => `/learn/${id}`),
   ].map((path) => ({ path }))
 }

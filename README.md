@@ -75,11 +75,11 @@ Preview and Play explain every active rule. Mixed puzzles retain their full defi
 
 Your player rating estimates your Sudoku skill. It starts at 855 and learns from the puzzles you play at Auto and fixed difficulties. Faster solves without hints can earn a small bonus based on your recent times at the same difficulty. Slow solves earn regular credit.
 
-Choose Auto in New puzzle to let the app adjust the difficulty as you play. Auto starts at Medium. With little history, a fast solve without hints can move you up quickly, and requests for hints at multiple positions can move you down. As the app learns from more puzzles, it adjusts one difficulty at a time. The grid and results show the actual difficulty of the puzzle you play.
+Choose Auto in New puzzle for puzzles near your current level. Auto starts at Medium and adjusts one level at a time after several results. Independent solves help you move up. If several puzzles at your current level need repeated hints, Auto can move down.
 
-In Auto, use Solve all singles to finish an Easy puzzle without hints and move on to Medium with your rating intact. On harder puzzles, you can clear singles and get credit for solving the rest yourself.
+Choose Find my difficulty in New puzzle to try a short series of Classic puzzles. Give feedback to try a nearby level or finish the difficulty check. You can mark techniques that you know and techniques that you want to practice. If the recommendation suits you, choose Apply to Auto. The number on your player rating stays the same.
 
-Open Puzzles, then Statistics to see your rating, next Auto difficulty, and progress with each solving technique. The app credits the simplest technique that explains each move it can match. Classic Auto can pick a puzzle that gives you another chance to use a technique you have needed hints for. Your progress stays in your browser.
+Open Learn, then Practice to find one move or drill a named technique in a set of five positions. Practice sets are untimed and have their own results. Open Statistics under Puzzles to see your rating, next Auto level, and progress with each technique. Your progress stays in your browser.
 
 ## Project layout
 

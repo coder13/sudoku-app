@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FindDifficultyRouteImport } from './routes/find-difficulty'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as PuzzlesRouteImport } from './routes/puzzles'
@@ -17,6 +18,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShortcutsRouteImport } from './routes/shortcuts'
 import { Route as LearnIndexRouteImport } from './routes/learn.index'
 import { Route as LearnTechniqueRouteImport } from './routes/learn.$technique'
+import { Route as LearnPracticeRouteImport } from './routes/learn.practice'
 import { Route as PuzzlesBrowseRouteImport } from './routes/puzzles.browse'
 import { Route as PuzzlesCollectionsRouteImport } from './routes/puzzles.collections'
 import { Route as PuzzlesNewRouteImport } from './routes/puzzles.new'
@@ -26,6 +28,11 @@ import { Route as SettingsSectionRouteImport } from './routes/settings.$section'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FindDifficultyRoute = FindDifficultyRouteImport.update({
+  id: '/find-difficulty',
+  path: '/find-difficulty',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImportRoute = ImportRouteImport.update({
@@ -63,6 +70,11 @@ const LearnTechniqueRoute = LearnTechniqueRouteImport.update({
   path: '/$technique',
   getParentRoute: () => LearnRoute,
 } as any)
+const LearnPracticeRoute = LearnPracticeRouteImport.update({
+  id: '/practice',
+  path: '/practice',
+  getParentRoute: () => LearnRoute,
+} as any)
 const PuzzlesBrowseRoute = PuzzlesBrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
@@ -91,12 +103,14 @@ const SettingsSectionRoute = SettingsSectionRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/find-difficulty': typeof FindDifficultyRoute
   '/import': typeof ImportRoute
   '/learn': typeof LearnRouteWithChildren
   '/puzzles': typeof PuzzlesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/shortcuts': typeof ShortcutsRoute
   '/learn/$technique': typeof LearnTechniqueRoute
+  '/learn/practice': typeof LearnPracticeRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
   '/puzzles/new': typeof PuzzlesNewRoute
@@ -106,11 +120,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/find-difficulty': typeof FindDifficultyRoute
   '/import': typeof ImportRoute
   '/puzzles': typeof PuzzlesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/shortcuts': typeof ShortcutsRoute
   '/learn/$technique': typeof LearnTechniqueRoute
+  '/learn/practice': typeof LearnPracticeRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
   '/puzzles/new': typeof PuzzlesNewRoute
@@ -121,12 +137,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/find-difficulty': typeof FindDifficultyRoute
   '/import': typeof ImportRoute
   '/learn': typeof LearnRouteWithChildren
   '/puzzles': typeof PuzzlesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/shortcuts': typeof ShortcutsRoute
   '/learn/$technique': typeof LearnTechniqueRoute
+  '/learn/practice': typeof LearnPracticeRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
   '/puzzles/new': typeof PuzzlesNewRoute
@@ -138,12 +156,14 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/find-difficulty'
     | '/import'
     | '/learn'
     | '/puzzles'
     | '/settings'
     | '/shortcuts'
     | '/learn/$technique'
+    | '/learn/practice'
     | '/puzzles/browse'
     | '/puzzles/collections'
     | '/puzzles/new'
@@ -153,11 +173,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/find-difficulty'
     | '/import'
     | '/puzzles'
     | '/settings'
     | '/shortcuts'
     | '/learn/$technique'
+    | '/learn/practice'
     | '/puzzles/browse'
     | '/puzzles/collections'
     | '/puzzles/new'
@@ -167,12 +189,14 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/find-difficulty'
     | '/import'
     | '/learn'
     | '/puzzles'
     | '/settings'
     | '/shortcuts'
     | '/learn/$technique'
+    | '/learn/practice'
     | '/puzzles/browse'
     | '/puzzles/collections'
     | '/puzzles/new'
@@ -183,6 +207,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FindDifficultyRoute: typeof FindDifficultyRoute
   ImportRoute: typeof ImportRoute
   LearnRoute: typeof LearnRouteWithChildren
   PuzzlesRoute: typeof PuzzlesRouteWithChildren
@@ -197,6 +222,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/find-difficulty': {
+      id: '/find-difficulty'
+      path: '/find-difficulty'
+      fullPath: '/find-difficulty'
+      preLoaderRoute: typeof FindDifficultyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/import': {
@@ -248,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LearnTechniqueRouteImport
       parentRoute: typeof LearnRoute
     }
+    '/learn/practice': {
+      id: '/learn/practice'
+      path: '/practice'
+      fullPath: '/learn/practice'
+      preLoaderRoute: typeof LearnPracticeRouteImport
+      parentRoute: typeof LearnRoute
+    }
     '/puzzles/browse': {
       id: '/puzzles/browse'
       path: '/browse'
@@ -288,11 +327,13 @@ declare module '@tanstack/react-router' {
 
 interface LearnRouteChildren {
   LearnTechniqueRoute: typeof LearnTechniqueRoute
+  LearnPracticeRoute: typeof LearnPracticeRoute
   LearnIndexRoute: typeof LearnIndexRoute
 }
 
 const LearnRouteChildren: LearnRouteChildren = {
   LearnTechniqueRoute: LearnTechniqueRoute,
+  LearnPracticeRoute: LearnPracticeRoute,
   LearnIndexRoute: LearnIndexRoute,
 }
 
@@ -329,6 +370,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FindDifficultyRoute: FindDifficultyRoute,
   ImportRoute: ImportRoute,
   LearnRoute: LearnRouteWithChildren,
   PuzzlesRoute: PuzzlesRouteWithChildren,

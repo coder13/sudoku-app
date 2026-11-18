@@ -37,6 +37,36 @@ test('readable puzzles remain available when initializing storage cannot write',
   }
 })
 
+test('difficulty check puzzles are unrated and the accepted Auto level survives reload', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?difficulty-check')
+    const givens = '034678912672195348198342567859761423426853791713924856961537284287419635345286179'
+    const game = {
+      ...makeGame('difficulty-check', 'Difficulty check', givens, 'generated'),
+      difficulty: 'medium' as const, score: 600, difficultyCheck: '80005e50-9e57-4fe1-ae27-ca995953794d',
+    }
+    roomStore.add(game)
+    roomStore.update(game.id, current => enter(current, [0], 'value', 5))
+    assert.equal(roomStore.getSnapshot().playerRating.count, 0)
+    roomStore.setAutoPlacement('easy')
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?difficulty-check-reload')
+    assert.equal(reloaded.getSnapshot().games[0].difficultyCheck, game.difficultyCheck)
+    assert.equal(reloaded.getSnapshot().playerRating.count, 0)
+    assert.equal(reloaded.getSnapshot().playerRating.rating, 855)
+    assert.equal(reloaded.getSnapshot().playerRating.recommended, 'easy')
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
 test('legacy library migration preserves newer records, session selection, progress, and undo', async () => {
   const local = new MemoryStorage()
   const session = new MemoryStorage()

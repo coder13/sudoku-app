@@ -144,6 +144,7 @@ export type EngineRequest =
   | ({ type: 'alternate-solve-path'; technique: string; maxPositions: number } & StartingPosition & SolverOptions)
   | ({ type: 'practice-position'; technique: string } & StartingPosition & SolverOptions)
   | ({ type: 'check-practice-move'; technique: string; action: DeductionAction } & StartingPosition)
+  | ({ type: 'practice-proof'; preferredTechnique?: string; action: DeductionAction } & StartingPosition)
   | ({ type: 'hints'; collection?: number; limit?: number | 'all'; includePatterns?: boolean; preferProgress?: boolean; difficulty?: Difficulty } & CandidatePosition & HintOptions)
   | { type: 'hint-page'; collection: number; index: number; variant?: boolean }
   | { type: 'release-hints'; collection: number }
@@ -502,6 +503,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'alternate-solve-path' } ? AlternatePath :
   T extends { type: 'practice-position' } ? LessonPosition | null :
   T extends { type: 'check-practice-move' } ? Deduction | null :
+  T extends { type: 'practice-proof' } ? HintChoice | null :
   T extends { type: 'release-hints' } ? null :
   T extends { type: 'hint-page'; variant: true } ? HintPage<VariantDeduction> :
   T extends { type: 'hint-page' } ? HintPage<HintChoice> :

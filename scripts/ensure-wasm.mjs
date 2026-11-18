@@ -9,6 +9,8 @@ const outputs = [
   'src/sudoku/generated/lesson-examples.json',
   'src/sudoku/generated/lesson-difficulties.json',
   'src/sudoku/generated/lesson-aliases.json',
+  'src/sudoku/generated/practice-topics.json',
+  'src/sudoku/generated/practice-exercises.json',
 ].map((path) => resolve(path))
 
 function latestModified(path) {
@@ -18,7 +20,8 @@ function latestModified(path) {
     latestModified(resolve(path, entry.name))))
 }
 
-const sources = ['Cargo.lock', 'Cargo.toml', 'crates/engine', 'scripts/build-wasm.mjs', 'scripts/engine-build-profiles.mjs'].map((path) => resolve(path))
+const sources = ['Cargo.lock', 'Cargo.toml', 'crates/engine', 'scripts/build-wasm.mjs', 'scripts/engine-build-profiles.mjs',
+  'scripts/practice-exercises.mjs', 'src/sudoku/learn-content.json', 'src/sudoku/practice-positions.json'].map((path) => resolve(path))
 function hasAppProfile() {
   try {
     const manifest = JSON.parse(readFileSync(resolve('src/sudoku/generated/engine-profile.json'), 'utf8'))

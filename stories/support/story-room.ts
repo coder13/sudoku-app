@@ -38,6 +38,9 @@ export const roomStore: typeof appStore = {
   },
   getSnapshot: () => room,
   getServerSnapshot: () => room,
+  setAutoPlacement(difficulty) {
+    seedPlayerRating({ ...room.playerRating, recommended: difficulty })
+  },
   connect: () => () => {},
   select(id) {
     const game = room.games.find((game) => game.id === id)

@@ -252,6 +252,25 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-practice-feedback[data-result="correct"] { color: var(--lesson-result); }
 .lesson-workbench-guide { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
 .lesson-workbench-guide ~ .lesson-workbench-tools { grid-area: 1 / 2; }
+
+.practice-page, .practice-session { display: grid; gap: var(--space-16); min-width: 0; }
+.practice-entry { justify-self: start; }
+.practice-options-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-16); }
+.practice-choice { display: grid; align-content: start; justify-items: start; gap: var(--space-12); min-width: 0; padding: var(--space-16); }
+.practice-choice :is(h2, p), .practice-position-count { margin: 0; }
+.practice-suggestion, .practice-explanation { display: grid; gap: var(--space-8); }
+.practice-explanation { padding: var(--space-12); }
+.practice-explanation :is(h3, p) { margin: 0; }
+.practice-results { display: grid; gap: var(--space-8); }
+.practice-results > div { display: flex; justify-content: space-between; gap: var(--space-12); }
+.practice-results dd { margin: 0; font-variant-numeric: tabular-nums; }
+.practice-options-menu { justify-self: end; }
+.practice-result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-16); }
+.practice-result-grid-column { display: grid; align-content: start; gap: var(--space-8); }
+
+@media (max-width: 640px) {
+  .practice-options-grid, .practice-result-grid { grid-template-columns: minmax(0, 1fr); }
+}
 .lesson-practice-guide {
   border: 1px solid var(--border);
   border-radius: 12px;

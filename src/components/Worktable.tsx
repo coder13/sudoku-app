@@ -8,7 +8,7 @@ import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
-  COLORS, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
+  COLORS, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, createGameId, enter, fillEntries,
   formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
@@ -38,6 +38,7 @@ import { CellColorPalette } from './CellColorPalette'
 import { ChainsPanel } from './ChainsPanel'
 import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
 import { Controls } from './Controls'
+import { DifficultyCheckFeedback } from './FindDifficulty'
 import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
 import { PuzzleCollectionCredit } from './PuzzleCollections'
@@ -120,6 +121,7 @@ let nextHintCollection = 0
 type HintState = {
   page?: { collection: number; offset: number; available: number }
   position: HintPosition
+  openingId: string
   choices: HintChoice[]
   candidates?: number[]
   index: number
@@ -309,6 +311,7 @@ export function Worktable({
   const hintLoading = hintRevealed && busy && !visibleHint
   const hintOpen = mobileHintOpen || hintLoading || visibleHint !== null || solutionHintOpen
   const deduction = visibleHint?.choices[visibleHint.index - (visibleHint.page?.offset ?? 0)]
+  const hintOpeningId = visibleHint?.openingId
   const hintCount = visibleHint?.page?.available ?? visibleHint?.choices.length ?? 0
   const hintStage = visibleHint?.stage
   const recovery = visibleHint?.recovery
@@ -361,7 +364,7 @@ export function Worktable({
   const { id, givens, difficulty, score, variant, generatedWithAuto } = game
   const analysisDialogOpen = analysisOpen && mobile && !draft && !solved
   const needsRating = difficulty === undefined || score === undefined
-  const needsAttempt = !solved && !game.ratingAttempt
+  const needsAttempt = !solved && !game.ratingAttempt && !game.difficultyCheck
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
@@ -488,10 +491,10 @@ export function Worktable({
       const removals = hintEliminations(hintPosition.values, completeCandidateMasks(current), current.position.eliminations)
       void observeTechniqueActions(current, deduction.actions, 'hint', removals)
       return withRatingHints(current, [hintKey(deduction.actions)], false, {
-        at: Date.now(), position: `${hintPosition.values}:${removals?.join(',') ?? ''}`,
+        at: Date.now(), position: `${hintPosition.values}:${removals?.join(',') ?? ''}`, openingId: hintOpeningId,
       })
     })
-  }, [deduction, hintPosition, id, previewing, solved])
+  }, [deduction, hintOpeningId, hintPosition, id, previewing, solved])
 
   const markSolutionVisible = useCallback(() => {
     markTechniqueSolution({ givens, variant })
@@ -1412,6 +1415,7 @@ export function Worktable({
     setHintRevealed(true)
     setBusy(true)
     const requestId = ++techniqueHintRequest.current
+    const openingId = createGameId()
     let result: HintState
     const removals = hintEliminations(values, displayedCandidates, eliminations)
     try {
@@ -1419,12 +1423,12 @@ export function Worktable({
       const { choices, candidates, available, offset } = await puzzleHints(game, limit, undefined, collection)
       const page = collection === undefined ? undefined : { collection, offset: offset ?? 0, available }
       if (!candidates) throw new Error('Missing hint candidates')
-      result = { position: hintPosition, choices, candidates, page, index: 0, stage: 'technique' }
+      result = { position: hintPosition, openingId, choices, candidates, page, index: 0, stage: 'technique' }
     } catch (error) {
       const incorrectCandidates = error instanceof EngineError && (error.code === 'invalid-eliminations' ||
         (error.code === 'unsolvable' && variant && [...values].every((digit, cell) => digit === '0' || digit === variant.solution[cell])))
       const copy = incorrectCandidates ? HINT_CANDIDATES_ERROR : HINT_ERROR
-      result = { position: hintPosition, choices: [], index: 0, stage: 'technique', error: copy }
+      result = { position: hintPosition, openingId, choices: [], index: 0, stage: 'technique', error: copy }
       if (incorrectCandidates && removals) {
         try {
           const answer = variant ? await runEngine({
@@ -1455,6 +1459,7 @@ export function Worktable({
     }
     const request = ++techniqueHintRequest.current
     const position = hintPosition
+    const openingId = createGameId()
     setHint(null)
     setHintRevealed(true)
     setBusy(true)
@@ -1463,12 +1468,12 @@ export function Worktable({
       const { choices, candidates } = await puzzleHints(game, 'all', technique)
       if (!candidates) throw new Error('Missing candidates for the selected technique.')
       result = {
-        position, choices, candidates, index: 0, stage: 'technique',
+        position, openingId, choices, candidates, index: 0, stage: 'technique',
         ...(choices.length ? {} : { error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' } }),
       }
     } catch (error) {
       result = {
-        position, choices: [], index: 0, stage: 'technique',
+        position, openingId, choices: [], index: 0, stage: 'technique',
         error: error instanceof EngineError && error.code === 'invalid-eliminations'
           ? HINT_CANDIDATES_ERROR : HINT_ERROR,
       }
@@ -1665,7 +1670,7 @@ export function Worktable({
   const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection}
     digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: setChainHighlightDigit } : undefined} />
   const completionPanel = showResults ? (
-    <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
+    game.difficultyCheck ? <DifficultyCheckFeedback game={game} solved /> : <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={!rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
       showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle} onChooseDifficulty={() => {
         if (mobile) onNewPuzzle('difficulty')
@@ -1939,6 +1944,7 @@ export function Worktable({
             </>
           )}
         </div>
+        {game.difficultyCheck && !solved && !previewing && <DifficultyCheckFeedback game={game} />}
         <div className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
           onContextMenu={preventControlClickMenu} onPointerUp={finishControlClick}
           onBlur={(event) => {
