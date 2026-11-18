@@ -4,6 +4,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { ocrAssetFileNames } from './scripts/ocr-assets.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
+import { syncPageTitles } from './src/sudoku/sync-pages.ts'
 import { lessonCatalog, type LearnContent } from './src/sudoku/lesson-content.ts'
 
 function prerenderPages() {
@@ -31,6 +32,7 @@ function prerenderPages() {
     '/puzzles',
     '/import',
     '/sync',
+    ...Object.keys(syncPageTitles).map(step => '/sync/' + step),
     '/shortcuts',
     '/puzzles/browse',
     '/puzzles/new',

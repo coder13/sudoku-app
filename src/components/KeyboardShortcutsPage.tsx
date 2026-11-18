@@ -89,7 +89,7 @@ export function KeyboardShortcutsPage() {
       </header>
 
       <p className="shortcuts-save-note" role="status" aria-live="polite">
-        {message || 'Changes save automatically on this device.'}
+        {message || 'Changes save automatically.'}
       </p>
 
       {editableSections.map((category) => {

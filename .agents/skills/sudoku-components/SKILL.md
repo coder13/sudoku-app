@@ -16,7 +16,7 @@ Find the intended interaction in the [component catalog](references/components.m
 
 ## Place actions on a screen
 
-Put Back at the leading edge of a step’s heading. Give the arrow an accessible name that describes its destination. When the step changes in place, move keyboard focus to the new heading.
+Give each step its own route so the browser's Back and Forward controls work on phones. Put Back at the leading edge of the heading and use the same history as the browser. Provide a parent destination for someone who opens the page directly. Move keyboard focus to the new heading when the step changes.
 
 Put a dismissible card’s close control in its top-right corner. Align its heading, content, and supporting text to the leading edge. Supporting text and its action can share a row below the content. When a player closes the card, return focus to the control that opens it.
 

@@ -165,7 +165,7 @@ function Statistics({ games }: { games: Game[] }) {
     return { difficulty, label: DIFFICULTY_LABELS[difficulty], solved: matching.length, best }
   })
   return <section className="main-menu-section" aria-labelledby="statistics-title">
-    <header><h2 id="statistics-title">Statistics</h2><p>Your solving history on this device.</p></header>
+    <header><h2 id="statistics-title">Statistics</h2></header>
     <dl className="main-stat-cards">
       <div><Trophy size={18} aria-hidden="true" /><dt>{count ? 'Player rating' : 'Starting rating'}</dt><dd>{Math.round(rating)}</dd></div>
       <div><Dices size={18} aria-hidden="true" /><dt>Auto difficulty</dt><dd>{DIFFICULTY_LABELS[recommended]}</dd></div>

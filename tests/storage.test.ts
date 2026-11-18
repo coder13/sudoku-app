@@ -306,6 +306,16 @@ test('rating survives reset, interrupted saves, and deleting or replaying a puzz
     assert.equal(result?.event.applied, 1)
     local.removeItem(`sudoku-app:v1:rating-result:${result!.event.id}`)
 
+    // A device receiving an already-rated solve must show its recorded result immediately.
+    const savedGame = local.getItem(`sudoku-app:v1:game:${puzzle.id}`)!
+    local.removeItem(`sudoku-app:v1:game:${puzzle.id}`)
+    const receiver = (await import('../src/sudoku/storage.ts?rating-sync')).roomStore
+    local.setItem(`sudoku-app:v1:game:${puzzle.id}`, savedGame)
+    receiver.refreshPuzzle(puzzle.id)
+    assert.deepEqual(receiver.getSnapshot().playerRating.results.get(puzzle.id), result)
+    assert.ok(local.getItem(`sudoku-app:v1:rating-result:${result!.event.id}`))
+    local.removeItem(`sudoku-app:v1:rating-result:${result!.event.id}`)
+
     const fresh = (await import('../src/sudoku/storage.ts?rating-reload')).roomStore
     assert.deepEqual(fresh.getSnapshot().playerRating.results.get(puzzle.id), result)
     assert.equal(fresh.getSnapshot().games[0].generatedWithAuto, true)

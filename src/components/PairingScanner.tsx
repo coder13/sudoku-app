@@ -1,7 +1,7 @@
 import { Button } from './Button'
 import { useEffect, useRef, useState } from 'react'
 import type jsQR from 'jsqr'
-import { pairingTicket } from '../sudoku/pairing-link'
+import { createPairingScanTracker, pairingTicket } from '../sudoku/pairing-link'
 
 function readCode(source: CanvasImageSource, width: number, height: number, decode: typeof jsQR, maxEdge: number) {
   const scale = Math.min(1, maxEdge / Math.max(width, height))
@@ -28,6 +28,9 @@ export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => voi
     let stream: MediaStream | undefined
     let timer: ReturnType<typeof setTimeout> | undefined
     let closed = false
+    const observe = createPairingScanTracker()
+    const resetScan = () => observe(null, performance.now())
+    document.addEventListener('visibilitychange', resetScan)
     function stop() {
       clearTimeout(timer)
       stream?.getTracks().forEach(track => track.stop())
@@ -45,15 +48,17 @@ export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => voi
         function scan() {
           if (closed) return
           try {
+            let ticket = null
             if (!document.hidden && element.readyState >= 2 && element.videoWidth) {
               const text = readCode(element, element.videoWidth, element.videoHeight, decode, 800)
               if (text) {
-                const ticket = pairingTicket(text, location.origin)
-                if (ticket) { stop(); onTicket(ticket); return }
-                setError('Use the code from Device sync on your other device.')
+                ticket = pairingTicket(text, location.origin)
+                setError(ticket ? '' : 'Use the code from Device sync on your other device.')
               }
             }
-            timer = setTimeout(scan, 220)
+            const confirmed = observe(ticket, performance.now())
+            if (confirmed) { stop(); onTicket(confirmed); return }
+            timer = setTimeout(scan, ticket ? 100 : 220)
           } catch { stop(); setCameraError('Camera scan unavailable. Choose a QR photo.') }
         }
         scan()
@@ -63,7 +68,12 @@ export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => voi
       }
     }
     void start()
-    return () => { closed = true; scanVersion.current++; stop() }
+    return () => {
+      closed = true
+      scanVersion.current++
+      document.removeEventListener('visibilitychange', resetScan)
+      stop()
+    }
   }, [onTicket])
 
   async function scanPhoto(photo: File) {

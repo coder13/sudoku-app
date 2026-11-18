@@ -338,13 +338,15 @@ function onStorage(event: StorageEvent) {
   if (!key.startsWith(GAME_PREFIX)) return
   const id = key.slice(GAME_PREFIX.length)
   const incoming = readGame(id, readSaved(localStorage, key))
+  const outcomeSaved = rememberOutcome(incoming?.ratingAttempt?.outcome)
   const games = room.games.filter((game) => game.id !== id)
   if (incoming) games.push(incoming)
   const sorted = orderGames(games)
   // Filing a puzzle in another tab can leave it open in this one.
   const active = room.stoppedPlaying || sorted.some((game) => game.id === room.active)
     ? room.active : sorted.find((game) => !game.savedForLater)?.id ?? null
-  publish({ ...room, games: sorted, active, playerRating: playerRatingFor(sorted) })
+  publish({ ...room, games: sorted, active, storageAvailable: room.storageAvailable && outcomeSaved,
+    playerRating: playerRatingFor(sorted) })
 }
 
 function remember(id: string | null) {
