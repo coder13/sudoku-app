@@ -47,7 +47,7 @@ function validDiagramCopy(copy) {
 function checkLesson(lesson, original, examples) {
   const context = lesson?.title || original.title
   requireValue(lesson?.id === original.id && isText(lesson.title) && isText(lesson.summary),
-    `Enter a title and subtitle for ${context}.`)
+    `Enter a title and an introduction for ${context}.`)
   requireValue(lesson.aliases === undefined || isTextList(lesson.aliases),
     `Enter a list of alternate names for ${context}.`)
   requireValue(Array.isArray(lesson.blocks) && Array.isArray(lesson.references) &&

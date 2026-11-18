@@ -45,5 +45,5 @@ test('recovery removes only the conflicting bit from recorded eliminations', () 
 
 test('candidate recovery explains the screenshot with a two-placement contradiction', () => {
   assert.equal(explainCandidateRecovery(game, { cell, digit: 2 }, 'concise'),
-    'If r2c6 were 3, r1c5 and r5c6 would have to be 2, and column 3 would have nowhere to put a 2. r2c6 needs 2.')
+    'Suppose r2c6 is 3. This forces 2 in r1c5 and r5c6. That leaves no place for 2 in column 3. r2c6 needs 2.')
 })

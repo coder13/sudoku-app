@@ -3,7 +3,7 @@ import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { lessonDifficultyLabels } from '../sudoku/lesson-difficulties'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react'
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import aliasesJson from '../sudoku/generated/lesson-aliases.json'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
@@ -12,7 +12,7 @@ import { lessonReadingOrder } from '../sudoku/lesson-difficulties'
 import { lessonRoutes, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
 import { generateLessonExercise, loadWorkedExample, readWorkedExampleNumber, saveWorkedExampleNumber, type WorkedExample } from '../sudoku/worked-examples'
 import { LessonWorkbench } from './LessonWorkbench'
-import { LearnBreadcrumbs } from './LearnBreadcrumbs'
+import { LearnHeading, LessonDifficulty } from './LearnHeading'
 import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
 import { ConceptCheck } from './ConceptCheck'
@@ -182,6 +182,7 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
   const initial = useMemo(() => lessonExample(lessonExamples[chosen.example]).practice, [chosen.example])
   const puzzle = generated ?? initial
   const grid = lessonValues(puzzle)
+  const difficulty = techniqueDifficulties[chosen.example]
 
   async function newExample() {
     const id = ++generationId.current
@@ -201,9 +202,11 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
     <section className="surface lesson-practice" aria-labelledby="trainer" data-lesson-block={blockIndex}>
       <header className="lesson-practice-heading">
         <div>
-          <h2 id="trainer">Trainer</h2>
+          <div className="lesson-title-row">
+            <h2 id="trainer">Trainer</h2>
+            {difficulty && <LessonDifficulty label={DIFFICULTY_LABELS[difficulty]} />}
+          </div>
           {(title || editorPreview) && <p className="lesson-trainer-title">{title}</p>}
-          {techniqueDifficulties[chosen.example] && <small>{DIFFICULTY_LABELS[techniqueDifficulties[chosen.example]!]}</small>}
         </div>
         <div className="lesson-practice-heading-actions">
           {drills.length > 1 && <label className="lesson-drill">
@@ -240,16 +243,24 @@ function alternateNames(id: string, title: string, extra: readonly string[] = []
     .filter(name => name.toLowerCase() !== label && `${name.toLowerCase()}s` !== label)
 }
 
+function LessonTags({ label, children }: { label: string; children: ReactNode }) {
+  return <ul className="lesson-tags" role="list" aria-label={label}>
+    <li className="lesson-tag-label" aria-hidden="true">{label}</li>
+    {children}
+  </ul>
+}
+
 function AlternateNames({ names, technique }: { names: string[]; technique?: string }) {
-  return names.length > 0 && <p className="lesson-alternate-names">
-    {technique && <strong>{technique}.</strong>}{technique && ' '}Also known as {names.join(', ')}.
-  </p>
+  if (!names.length) return null
+  return <LessonTags label={technique ? `Other names for ${technique}` : 'Also called'}>
+    {names.map(name => <li key={name}><span className="lesson-chip lesson-alias-chip">{name}</span></li>)}
+  </LessonTags>
 }
 
 export function ExplanationBlock({ block, index, drills }: { block: LessonBlock; index: number; drills: PracticeBlock['drills'] }) {
   switch (block.type) {
     case 'heading': return <>
-      <h3 className="article-subheading" id={block.id} data-lesson-block={index}>{block.title}</h3>
+      <h2 className="article-subheading" id={block.id} data-lesson-block={index}>{block.title}</h2>
       {drills.some(({ example }) => example === block.id) &&
         <AlternateNames names={alternateNames(block.id, block.title)} />}
     </>
@@ -292,21 +303,24 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
 
   return (
     <article className="technique-lesson">
-      <header className="lesson-heading">
-        <LearnBreadcrumbs current={lesson.title} />
-        <p>{lesson.summary}</p>
-        {lesson.difficulty && <p className="lesson-course-level">{lessonDifficultyLabels.get(lesson.id)}</p>}
-        {!!lesson.prerequisites?.length && <p className="lesson-prerequisites">Learn first: {lesson.prerequisites.map((id, index) => <Fragment key={id}>
-          {index > 0 && ', '}<Link to="/learn/$technique" params={{ technique: id }}>{lessonRoutes.get(id)?.title ?? id}</Link>
-        </Fragment>)}</p>}
-        <AlternateNames names={alternateNames(lesson.id, lesson.title, lesson.aliases)} />
-        {drills.filter(({ example }) => example !== lesson.id && !headings.has(example) && lesson.id !== 'fundamentals')
-          .map(({ example, title }) => <AlternateNames key={example} names={alternateNames(example, title)} technique={title} />)}
-      </header>
+      <LearnHeading title={lesson.title} difficulty={lessonDifficultyLabels.get(lesson.id)}>
+        <div className="lesson-metadata">
+          {!!lesson.prerequisites?.length && <LessonTags label="Learn first">
+            {lesson.prerequisites.map(id => <li key={id}>
+              <Link to="/learn/$technique" params={{ technique: id }} className="lesson-chip lesson-prerequisite-link">
+                <span>{lessonRoutes.get(id)?.title ?? id}</span><ArrowRight size={12} aria-hidden="true" />
+              </Link>
+            </li>)}
+          </LessonTags>}
+          <AlternateNames names={alternateNames(lesson.id, lesson.title, lesson.aliases)} />
+          {drills.filter(({ example }) => example !== lesson.id && !headings.has(example) && lesson.id !== 'fundamentals')
+            .map(({ example, title }) => <AlternateNames key={example} names={alternateNames(example, title)} technique={title} />)}
+        </div>
+      </LearnHeading>
 
       <div className="lesson-article">
-        <section className="lesson-explanation" aria-labelledby="explanation">
-          <h2 id="explanation">Explanation</h2>
+        <section className="lesson-explanation" id="explanation" aria-label="Explanation">
+          <p className="article-paragraph" data-lesson-intro>{lesson.summary}</p>
           {lesson.blocks.map((block, index) => <ExplanationBlock key={index} block={block} index={index} drills={drills} />)}
         </section>
         {practice && <>
@@ -315,7 +329,7 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
         </>}
       </div>
 
-      <section className="lesson-references" aria-labelledby="see-also-title">
+      {(lesson.references.length > 0 || Boolean(lesson.credits?.length) || editorPreview) && <section className="lesson-references" aria-labelledby="see-also-title">
         <h2 id="see-also-title">{lesson.referencesTitle ?? 'See also'}</h2>
         <ul>{lesson.references.map(({ label, href }, index) => <li key={index}>
           <a href={href}><span>{label}</span> <ArrowUpRight size={14} aria-hidden="true" /></a>
@@ -324,7 +338,7 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
           {lesson.credits?.map(({ label, href }, index) => <Fragment key={index}>
             {index > 0 && ', '}<a href={href}>{label}</a>
           </Fragment>)}.</p>}
-      </section>
+      </section>}
 
       <nav className="lesson-neighbors" aria-label="Adjacent articles">
         {previous && <Link to="/learn/$technique" params={{ technique: previous.id }} className="button secondary">

@@ -314,8 +314,8 @@ export function Worktable({
   const recoveryCell = recovery && cellReference(recovery.cell, cellReferenceStyle, game.difficulty ?? undefined)
   const recoveryLocationVisible = recovery && hintStage !== 'technique'
   const recoveryHistory = visibleHint?.reviewingRemoval && recovery?.movesAgo
-    ? recovery.movesAgo === 1 ? 'This candidate disappeared on your last move.'
-      : `This candidate disappeared ${recovery.movesAgo} moves ago.`
+    ? recovery.movesAgo === 1 ? 'Your last move removed this candidate.'
+      : `You removed this candidate ${recovery.movesAgo} moves ago.`
     : undefined
   const fullHint = hintStage === 'explanation'
   const hintDifficulty = deduction && techniqueDifficulties[deduction.technique]
@@ -342,7 +342,7 @@ export function Worktable({
     : undefined)
   const hintCopy = recovery ? {
     title: HINT_CANDIDATES_ERROR.title,
-    text: hintStage === 'technique' ? 'Your placed digits are correct. A required candidate is missing.'
+    text: hintStage === 'technique' ? 'Your placed digits match the solution. A required candidate is missing.'
       : [`Check ${recoveryCell}.`, recoveryHistory].filter(Boolean).join(' '),
   } : !deduction ? visibleHint?.error ?? NO_HINT
     : fullHint ? describeHint(deduction, { difficulty: hintDifficulty, cellReferenceStyle })
