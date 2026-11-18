@@ -62,9 +62,9 @@ This pass reached main at `6c30514` through [PR 115](https://github.com/coder13/
 - [x] Measure paired complete ratings, hints, memory, all profile sizes and retained proofs. Consecudoku app rating changes from a stalled 1,058.396/1,412.850 ms to a complete 1.067/1.600 ms path. Opening hints remain about 680 ms for four choices; app Wasm is 9,539 gzip bytes smaller. [Methods and limits](tests/fixtures/README.md#non-consecutive-locks-and-candidate-alternatives)
 - [x] Pass local native/app/Wasm/build, feature/profile and strict Cargo documentation gates. The eleven new native cases include every candidate mask at five edge/interior cells for both cell techniques, both diagonals, Jigsaw and extra houses. Require CI on the reviewed PR head before the separate merge.
 
-### Complete candidate-support performance follow-up
+### Complete candidate-support performance merged
 
-This pass is isolated on `codex/sudoku-candidate-support-pruning` from main `6c30514`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/117)
+This pass reached main at `28f3f6d` through [PR 118](https://github.com/coder13/sudoku-app/pull/118), with all CI and deployment checks passing on reviewed head `8421b3b`. The reviewed worktree remains on `codex/sudoku-candidate-support-pruning`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/117)
 
 - [x] Reuse bounded geometric completion coverage before expensive Classic detector searches. Cache certificates per position and retain the original search for incomplete or exhausted coverage. Keep computational scheduling independent of human technique costs.
 - [x] Preserve singleton placements and uniqueness assumptions. Skip unsafe swap searches only when every recognized swap fails the existing extra-rule filter; keep numeric variant techniques and public capabilities active.
@@ -72,7 +72,7 @@ This pass is isolated on `codex/sudoku-candidate-support-pruning` from main `6c3
 - [x] Match 2,712 complete responses against main across fourteen corpus positions and all 348 positive training positions. Include every one of the 116 catalog detector IDs, complete traces and ratings, disabled/custom profiles, and every hint page; preserve catalogs and scoring without normalization.
 - [x] Measure paired latency, first requests on fresh instances, memory and all profile sizes. Preserve the four Coach choices while ordinary hints change from 1,300.655/2,148.838 to 1.122/2.620 ms under host contention; committed memory falls from 6.56 to 1.50 MiB. Report the 10,046-byte variant-solver gzip increase alongside the 589-byte app saving. [Methods and limits](tests/fixtures/README.md#complete-candidate-support-pruning)
 - [x] Pass 284 native tests including doctests, 382 app tests, 233 Wasm tests, TypeScript, all sixteen feature combinations, four Wasm profiles, strict full/reduced Cargo documentation and the production/offline build with 158 rendered routes.
-- [ ] Pass CI on the reviewed PR head and merge separately into main.
+- [x] Pass the native release suite, feature matrix, Wasm/app contracts, strict Cargo documentation and deployment checks on reviewed head `8421b3b`; merge separately through [PR 118](https://github.com/coder13/sudoku-app/pull/118). [CI run](https://github.com/coder13/sudoku-app/actions/runs/44219466261)
 
 ### Pattern Overlay support performance merged
 
