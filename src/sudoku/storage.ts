@@ -178,12 +178,15 @@ function finishAttempt(game: Game, finish: RatingFinish): Game {
   return { ...game, ratingAttempt: { ...attempt, outcome } }
 }
 
-function mergeRatingAttempt(game: Game): Game {
-  const attempt = game.ratingAttempt
-  if (!attempt) return game
+function mergeStoredMetadata(game: Game): Game {
   try {
     const current = JSON.parse(localStorage.getItem(GAME_PREFIX + game.id) ?? 'null') as Game | null
-    const saved = current && puzzleIdentity(current) === puzzleIdentity(game) ? current.ratingAttempt : undefined
+    if (current?.id !== game.id) return game
+    const savedForLater = current.savedForLater === true ? true : undefined
+    if (room.storageAvailable && savedForLater !== game.savedForLater) game = { ...game, savedForLater }
+    const attempt = game.ratingAttempt
+    if (!attempt) return game
+    const saved = puzzleIdentity(current) === puzzleIdentity(game) ? current.ratingAttempt : undefined
     if (!isRatingAttempt(saved)) return game
     const outcome = attempt.outcome ?? saved.outcome
     const viewed = [...new Set([...attempt.viewed, ...saved.viewed])]
@@ -202,7 +205,7 @@ function mergeRatingAttempt(game: Game): Game {
       singlesAssistance !== attempt.singlesAssistance || analysisUsed !== attempt.analysisUsed || ratingVersion !== attempt.ratingVersion) {
       return { ...game, ratingAttempt: { ...attempt, viewed, applied, requested, singlesAssistance, analysisUsed, outcome, priorElapsed, timeUntracked, lastHintAt, ratingVersion } }
     }
-  } catch { /* The in-memory attempt still has this tab’s assistance. */ }
+  } catch { /* Keep the session's metadata when storage is unavailable. */ }
   return game
 }
 
@@ -281,11 +284,12 @@ function hydrate() {
 
     const initialized = Boolean(readSaved(localStorage, READY)) ||
       persist(() => localStorage.setItem(READY, '1'))
-    let last = readSaved(localStorage, ACTIVE)
+    let tabActive: string | null = null
     try {
       migrateStorage(sessionStorage)
-      last = readSaved(sessionStorage, ACTIVE) ?? last
+      tabActive = readSaved(sessionStorage, ACTIVE)
     } catch { /* local fallback */ }
+    const last = tabActive ?? readSaved(localStorage, ACTIVE)
     const sorted = orderGames(games)
     let outcomesSaved = true
     for (const game of games) {
@@ -293,7 +297,7 @@ function hydrate() {
     }
     publish({
       games: sorted,
-      active: last === '' ? null : sorted.find((game) => game.id === last && !game.savedForLater)?.id ??
+      active: last === '' ? null : sorted.find((game) => game.id === last && (game.id === tabActive || !game.savedForLater))?.id ??
         sorted.find((game) => !game.savedForLater)?.id ?? null,
       stoppedPlaying: last === '',
       storageAvailable: migrated && removedStarter && initialized && outcomesSaved,
@@ -325,7 +329,8 @@ function onStorage(event: StorageEvent) {
   const games = room.games.filter((game) => game.id !== id)
   if (incoming) games.push(incoming)
   const sorted = orderGames(games)
-  const active = room.stoppedPlaying || sorted.some((game) => game.id === room.active && !game.savedForLater)
+  // Filing a puzzle in another tab can leave it open in this one.
+  const active = room.stoppedPlaying || sorted.some((game) => game.id === room.active)
     ? room.active : sorted.find((game) => !game.savedForLater)?.id ?? null
   publish({ ...room, games: sorted, active, playerRating: playerRatingFor(sorted) })
 }
@@ -343,6 +348,39 @@ function rememberActive(storage: Storage, id: string | null) {
     storage.removeItem(legacyKey(ACTIVE))
     storage.removeItem(ACTIVE)
   }
+}
+
+function withSavedForLater(state: Room, game: Game, savedForLater: true | undefined): Room {
+  const key = GAME_PREFIX + game.id
+  let current = game
+  if (state.storageAvailable) {
+    // A move from another tab may have reached storage before its storage event.
+    try {
+      const stored = readSaved(localStorage, key)
+      if (stored === null) return state
+      current = readGame(game.id, stored) ?? game
+    } catch { /* Keep the session's progress when storage is unavailable. */ }
+  }
+  if (savedForLater && (current.source === 'draft' || isSolved(current))) return state
+  const updated = { ...current, savedForLater }
+  const saved = persist(() => localStorage.setItem(key, JSON.stringify(updated)))
+  return { ...state, games: state.games.map(item => item.id === game.id ? updated : item),
+    storageAvailable: state.storageAvailable && saved }
+}
+
+function publishSelection(state: Room, active: string | null) {
+  // An empty ID records an explicit stop. A missing key allows the default selection.
+  const saved = remember(active ?? '')
+  publish({ ...state, active, stoppedPlaying: active === null, storageAvailable: state.storageAvailable && saved })
+}
+
+function playPuzzle(state: Room, game: Game) {
+  const previous = state.games.find(item => item.id === state.active)
+  if (previous?.started && previous.id !== game.id && game.source !== 'draft') {
+    state = withSavedForLater(state, previous, true)
+  }
+  if (game.savedForLater) state = withSavedForLater(state, game, undefined)
+  publishSelection(state, game.id)
 }
 
 // Hydrate before React reads the store. This also keeps Vite hot replacement
@@ -364,31 +402,32 @@ export const roomStore = {
   },
   select(id: string) {
     const game = room.games.find((game) => game.id === id)
+    if (game) playPuzzle(room, game)
+  },
+  saveForLater(id: string) {
+    const game = room.games.find(item => item.id === id)
     if (!game) return
-    if (game.savedForLater) roomStore.update(id, (saved) => ({ ...saved, savedForLater: undefined }))
-    const saved = remember(id)
-    publish({ ...room, active: id, stoppedPlaying: false, storageAvailable: room.storageAvailable && saved })
+    const next = withSavedForLater(room, game, true)
+    if (next === room) return
+    if (room.active === id) publishSelection(next, null)
+    else publish(next)
   },
   stopPlaying(id: string) {
-    if (room.active !== id) return
-    // An empty ID records that the player chose to leave. A missing key keeps the default selection behavior.
-    const saved = remember('')
-    publish({ ...room, active: null, stoppedPlaying: true, storageAvailable: room.storageAvailable && saved })
+    if (room.active === id) publishSelection(room, null)
   },
   add(game: Game) {
     if (game.ratingAttempt && seenPuzzle(game)) game = { ...game, ratingAttempt: undefined }
     const seenSaved = rememberPuzzle(game)
     const saved = persist(() => localStorage.setItem(GAME_PREFIX + game.id, JSON.stringify(game)))
-    const selection = game.savedForLater ? {} : { active: game.id, stoppedPlaying: false }
-    const remembered = game.savedForLater || remember(game.id)
     const games = orderGames([game, ...room.games])
-    publish({ ...room, ...selection, games, playerRating: playerRatingFor(games),
-      storageAvailable: room.storageAvailable && saved && remembered && seenSaved })
+    const next = { ...room, games, playerRating: playerRatingFor(games), storageAvailable: room.storageAvailable && saved && seenSaved }
+    if (game.savedForLater) publish(next)
+    else playPuzzle(next, game)
   },
   update(id: string, update: (game: Game) => Game) {
     const current = room.games.find((game) => game.id === id)
     if (!current) return
-    const merged = mergeRatingAttempt(current)
+    const merged = mergeStoredMetadata(current)
     let next = update(merged)
     if (current === next) return
     if (!puzzleTiming.getSnapshot().trackTime && next.source !== 'draft' && next.started &&

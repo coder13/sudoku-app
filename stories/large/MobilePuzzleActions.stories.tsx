@@ -54,12 +54,13 @@ export const PuzzleOptionsMenu: Story = {
   play: async ({ canvas, userEvent }) => {
     const trigger = await canvas.findByRole('button', { name: 'Open puzzle options' })
     await userEvent.click(trigger)
-    const change = await canvas.findByRole('button', { name: 'Change puzzle…' })
+    const stop = await canvas.findByRole('button', { name: 'Stop playing' })
+    await expect(canvas.queryByRole('button', { name: /Change puzzle/ })).not.toBeInTheDocument()
     await expect(trigger).toHaveAttribute('aria-expanded', 'true')
     await expect(canvas.queryByRole('dialog', { name: 'Puzzle options' })).toBeNull()
     await waitFor(() => {
-      const { left, top, width, height } = change.getBoundingClientRect()
-      expect(change.contains(change.ownerDocument.elementFromPoint(left + width / 2, top + height / 2))).toBe(true)
+      const { left, top, width, height } = stop.getBoundingClientRect()
+      expect(stop.contains(stop.ownerDocument.elementFromPoint(left + width / 2, top + height / 2))).toBe(true)
     })
   },
 }

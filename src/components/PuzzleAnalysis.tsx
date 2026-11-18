@@ -79,10 +79,10 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
   const [retry, setRetry] = useState(0)
-  const [hideZero, setHideZero] = useState(false)
+  const [hideZero, setHideZero] = useState(true)
 
   useEffect(() => {
-    try { setHideZero(localStorage.getItem(HIDE_ZERO_KEY) === 'true') }
+    try { setHideZero(localStorage.getItem(HIDE_ZERO_KEY) !== 'false') }
     catch { /* The filter still works when storage is unavailable. */ }
   }, [])
 

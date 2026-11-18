@@ -125,12 +125,15 @@ export function CollectionCredits({ collection }: { collection: PuzzleCollection
 export function PuzzleCollectionCredit({ game }: { game: Game }) {
   const entry = getGameCollection(game)
   if (!entry) return null
+  const { collection, puzzle } = entry
+  // The catalog title preserves the printed code, including leading zeros.
+  const puzzleNumber = puzzle.title.match(/(?:^|\s)([\w-]*\d[\w-]*)$/)?.[1]
   return <div className="puzzle-collection-credit">
-    <Link to="/puzzles/collections" search={{ collection: entry.collection.id, difficulty: entry.puzzle.difficulty ?? undefined, puzzle: entry.puzzle.id }}>
-      <BookOpen size={14} aria-hidden="true" /> {entry.collection.title}
+    <Link to="/puzzles/collections" search={{ collection: collection.id, difficulty: puzzle.difficulty ?? undefined, puzzle: puzzle.id }}>
+      <BookOpen size={14} aria-hidden="true" /><span>{collection.title} · {puzzleNumber ?? puzzle.title}</span>
     </Link>
-    <span>By {entry.collection.creator}</span>
-    <a href={entry.collection.licenseUrl} target="_blank" rel="noreferrer">{entry.collection.license}</a>
+    <a href={collection.sourceUrl} target="_blank" rel="noreferrer">By {collection.creator}</a>
+    <a href={collection.licenseUrl} target="_blank" rel="noreferrer">{collection.license}</a>
   </div>
 }
 

@@ -1,8 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, FileUp, Play } from 'lucide-react'
+import { formatPuzzleRating } from '../sudoku/difficulty'
 import type { Game } from '../sudoku/game'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
 import { findImportedPuzzle, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
+import { applyPuzzleGrade } from '../sudoku/puzzle-rating'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { Board } from './Board'
@@ -17,9 +19,12 @@ function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
 
-function finishImport(game: Game, play: boolean) {
+function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
   const existing = existingPuzzle(game)
   if (existing) {
+    if (grade !== undefined && (existing.difficulty === undefined || existing.score === undefined)) {
+      roomStore.update(existing.id, current => applyPuzzleGrade(current, grade))
+    }
     if (play) roomStore.select(existing.id)
     return false
   }
@@ -28,8 +33,8 @@ function finishImport(game: Game, play: boolean) {
 }
 
 export async function openPuzzle(input: string, cancelled: () => boolean) {
-  const { game } = await preparePuzzle(input)
-  if (!cancelled()) finishImport(game, true)
+  const preview = await preparePuzzle(input)
+  if (!cancelled()) finishImport(preview, true)
 }
 
 export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = preparePuzzle }: {
@@ -78,8 +83,8 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     }
   }
 
-  function saveAndContinue(game: Game) {
-    const added = finishImport(game, false)
+  function saveAndContinue(puzzle: PuzzlePreview) {
+    const added = finishImport(puzzle, false)
     setPreview(undefined)
     setInput('')
     if (!added) setStatus('This puzzle is already in Your puzzles.')
@@ -92,7 +97,11 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
         <strong>{variantName(preview.game.variant)}</strong>
-        <span>{preview.format}</span>
+        <span className="import-preview-rating"><span className="sr-only">Puzzle rating </span>
+          {preview.game.difficulty ? formatPuzzleRating(preview.game.difficulty, preview.game.score)
+            : preview.game.difficulty === null ? 'Unrated' : 'Rating unavailable'}
+        </span>
+        <span className="import-preview-format">{preview.format}</span>
       </p>
       <Board label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
         variantPuzzle={preview.game.variant?.puzzle} showGuides={false} />
@@ -101,10 +110,10 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       </ul>}
       <div className="dialog-actions import-preview-actions">
         <button type="button" className="button secondary import-edit" onClick={() => setPreview(undefined)}>Edit input</button>
-        <button type="button" className="button secondary" onClick={() => saveAndContinue(preview.game)}>
+        <button type="button" className="button secondary" onClick={() => saveAndContinue(preview)}>
           <Bookmark size={17} aria-hidden="true" /> Save and import another
         </button>
-        <button type="button" className="button primary" onClick={() => { finishImport(preview.game, true); onPlay() }}>
+        <button type="button" className="button primary" onClick={() => { finishImport(preview, true); onPlay() }}>
           <Play size={17} aria-hidden="true" /> Start playing
         </button>
       </div>
