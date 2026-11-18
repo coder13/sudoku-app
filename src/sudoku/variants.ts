@@ -72,6 +72,10 @@ export const PUZZLE_VARIANTS = {
     name: 'XV',
     rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
   },
+  'adjacent-total': {
+    name: 'Two-cell sums',
+    rule: 'Digits joined by a Roman numeral have that total. For example, XV means 15. Unmarked pairs can have any total unless a negative V or X rule is stated.',
+  },
   quadruple: {
     name: 'Quadruple',
     rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
@@ -216,12 +220,24 @@ export function palindromePartner(cells: readonly number[], cell: number) {
   return cells[cells.length - 1 - index]
 }
 
+const ROMAN_TOTALS = ['III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII']
+
+/** Roman numerals used by the Coach two-cell-sum constructor. */
+export function sumLabel(sum: number) {
+  return ROMAN_TOTALS[sum - 3] ?? String(sum)
+}
+
 /** Extra pairwise exclusions beyond the same-digit peers used by the player. */
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
   let excluded = 0
   let v = false, x = false, negativeV = false, negativeX = false
   const edge = cellsShareEdge(from, to)
   for (const rule of puzzle?.rules ?? []) {
+    if (rule.type === 'adjacent-total' && (rule.cells[0] === from && rule.cells[1] === to || rule.cells[1] === from && rule.cells[0] === to)) {
+      v ||= rule.sum === 5
+      x ||= rule.sum === 10
+      for (let other = 1; other <= 9; other++) if (digit + other !== rule.sum) excluded |= 1 << (other - 1)
+    }
     if (rule.type === 'xv' && edge) {
       v ||= hasMarkedPair(rule.five?.pairs, from, to)
       x ||= hasMarkedPair(rule.ten?.pairs, from, to)
@@ -312,6 +328,8 @@ function isPlayableRule(rule: VariantRule): boolean {
       marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) &&
         marks.pairs.every((pair) => validCells(pair, 2) && pair.length === 2)))
+    case 'adjacent-total': return validCells(rule.cells, 2) && rule.cells.length === 2 && cellsShareEdge(rule.cells[0], rule.cells[1]) &&
+      Number.isInteger(rule.sum) && rule.sum >= 3 && rule.sum <= 17
     case 'xv': return [rule.five, rule.ten].every(marks => marks === undefined ||
       marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) && marks.pairs.every(pair =>
@@ -343,12 +361,15 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
   if (regions !== undefined && regions?.type !== 'boxes' &&
     !(regions?.type === 'jigsaw' && validJigsawRegions(regions.regions))) return false
-  if (rules !== undefined && (!Array.isArray(rules) || rules.length > 81 || !rules.every(isPlayableRule))) return false
+  // A 9×9 grid has 144 shared edges, so the cell count cannot cap its clues.
+  // The interchange decoders bound the encoded and decoded input sizes.
+  if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule))) return false
   const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
   return kind !== 'classic' && (id === 'mixed' || kind === id)
 }
 
 const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+  'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
   xv: PUZZLE_VARIANTS.xv.name,
   inequality: PUZZLE_VARIANTS.inequality.name,
   'extra-house': 'Extra regions',
@@ -385,6 +406,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
     switch (rule.type) {
       case 'inequality':
         descriptions.push(PUZZLE_VARIANTS.inequality.rule)
+        break
+      case 'adjacent-total':
+        descriptions.push(PUZZLE_VARIANTS['adjacent-total'].rule)
         break
       case 'xv':
         descriptions.push(PUZZLE_VARIANTS.xv.rule)

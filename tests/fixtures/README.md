@@ -1152,3 +1152,106 @@ node --experimental-strip-types scripts/bench-engine-pruning.mjs /tmp/main-wasm/
 node --experimental-strip-types scripts/bench-exact-houses.mjs /tmp/main-wasm/engine.wasm /tmp/packed-wasm/engine.wasm --generation-only
 node --experimental-strip-types --test scripts/bench-xv-app.mts
 ```
+
+
+## General adjacent totals
+
+[Issue 72](https://github.com/coder13/sudoku-app/issues/72) starts from main `856e0f6`. The native `adjacent-total` rule stores two edge-sharing cells and an integer sum from 3 through 17. Its logical technique costs 20 points at Easy. Existing scoring version 8, costs and relative technique order remain unchanged. The catalog and default profiles gain this one technique. Classic and solver-only packages retain identical bytes.
+
+[Dariao142's May the Sudoku Be With You, Coach 99Eu](https://sudoku.coach/en/s/99Eu), published on 2025-08-30, has two givens, Anti-Knight, Anti-King, Non-Consecutive and one sum of 15 between cells `[80,79]`. The diagram prints Roman XV. Preserve it as one clue, its endpoint order and every companion rule. Its original code and completion are in `adjacent-sum-coach.json`. The inspected source PNG has SHA-256 `c7548bfe0ead59ad889a72381144039c07aab70378e69ef3d74536e9f0ffce14`. The primary constructor offers totals 3..17. Its compiler uses `parameters.sum` and its renderer uses Roman numerals. [Source and implementation contract](../../SUDOKU_ADJACENT_SUM_AUDIT.md)
+
+An independent digit-array counter proves the source unique in 590 calls. Removing the sum still leaves a unique completion in 652 calls. Replacing 15 with 5 or 10 gives no completion. A separate authored 6/7 rectangle has two completions without its sum and one with it. This essential control catches a decoder or solver that ignores the clue. Reference calls are not native nodes or paired performance measurements.
+
+Generic native sums of 5/10 count as positive V/X locations under negative XV and fog completeness. They retain their own rule indices and do not create duplicate XV proofs. Dependency checks remove their arithmetic while retaining negative-rule exemptions. Otherwise removing a rule could introduce a new negative constraint. Coach 5/10 segments retain the existing XV wire format; other totals become separate rules. Mixed layers retain every clue. Unknown semantics, invalid totals and nonadjacent endpoints reject explicitly.
+
+The complete app flow covers import, preview, clues, accessible labels, input, conflicts, both note types, undo/redo, actual persistence, sharing and all eight grid transformations. Roman numerals stay upright. Shared-edge layout separates totals, dots and inequalities. Static React SVG exports at 900 and 360 pixels were inspected in light/dark themes. They include the published XV, all fifteen totals, four-letter numerals, outer edges and a valid sum-3 pair with both dots and a sign. This is static geometry review; live viewport interaction remains open. New puzzle presets require separate difficulty calibration.
+
+The published app-order path solves at 4,250 points in 212 steps, including one sum deduction. The native default stalls at 932 points after 78 steps. Every action is checked against the independent published completion. Sum proof support is also enumerated from digit pairs and shared-house distinctness. Disabled profiles still enforce the rule during exact solving. Hints, pages, selected replay, Finder and three independently unique practice exercises pass. The practice estimates are 19/20/20 points, with a median of 20. A zero-given, 144-sum fixture covers pagination and an exclusive opening request. Adding a competing Parity deduction rejects that request.
+
+Validation passes 330 native tests, 452 app tests, 273 Wasm contracts, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 160-route production/offline build. A representative fixed-clue fixture checks 65,536 family selections: 49,152 compatible cases and 16,384 intentional contradictions. These bounded fixtures do not establish arbitrary combinations as feasible.
+
+The strict legacy comparison preserves 7,143 complete variant responses on 47 corpus positions and 351 positive practice positions, plus 148 Classic responses on nine Tridagon positions. It checks all 117 legacy detectors, custom profiles, complete traces, ratings and every hint page. Those requests use explicit legacy profiles and no response normalization. New-family tests cover its three additional positive exercises separately.
+
+Fresh artifacts use distinct Cargo target directories for each source checkout. Current-main control: SHA-256 `8253cf0082f087dd6412a6b12e0d0254412f08e31113372613735d291bfeaa11`. Integration: `8f8c95c36c067560dffe768498628f97ae9529396ee969bc7a6db6a26b13c6fe`. The historical shared-target XV artifact is excluded.
+
+| Wasm profile | Main raw/gzip bytes | General totals raw/gzip bytes |
+| --- | --- | --- |
+| Solver | 2,061,762 / 563,437 | 2,061,762 / 563,437 |
+| Variant solver | 2,582,819 / 702,288 | 2,589,572 / 703,130 |
+| Classic | 2,563,763 / 663,682 | 2,563,763 / 663,682 |
+| App | 3,368,233 / 901,985 | 3,388,378 / 904,672 |
+
+The app adds 20,145 raw / 2,687 gzip bytes. The variant solver adds 6,753 raw / 842 gzip. The fourteen client JavaScript assets total 1,985,338 / 485,015 bytes before and 1,991,313 / 486,419 after, an increase of 5,975 raw / 1,404 gzip. Gzip values use the default compression level and sum each JavaScript file separately. These are measured production outputs.
+
+Absolute integration measurements use Node 26.13.0 on macOS arm64. Candidates, input and Board SSR use five warmups/twenty samples. Normalization, exact operations, rates, hints, preview and path use two/five. Values below are median/p95 milliseconds; p95 of five is the maximum. Serialization is timed and assertions run outside timing. Real app callers use the in-process worker transport. Browser worker startup, transfers, layout and paint are excluded. The host is not dedicated. No identified compiler, engine test or other benchmark ran during these measurements.
+
+| Puzzle | Normalize | Candidates | Unique analysis | Exact solve | Native rate | App rate |
+| --- | --- | --- | --- | --- | --- | --- |
+| Coach 99Eu | 0.020/0.030 | 0.018/0.022 | 11.393/11.409 | 9.902/9.923 | 2.091/2.101 | 491.960/504.057 |
+| Essential total | 0.013/0.017 | 0.012/0.015 | 0.011/0.012 | 0.011/0.012 | 0.033/0.034 | 0.052/0.056 |
+| All 144 edges | 0.204/0.213 | 0.116/0.123 | 0.183/0.189 | 0.182/0.189 | 1.632/1.655 | 1.697/1.733 |
+
+| Puzzle | Ten raw hints | Exhaustive page | Preview with rating | Ordinary app hints | Solution path |
+| --- | --- | --- | --- | --- | --- |
+| Coach 99Eu | 0.180/0.195 | 158.507/159.225 | 502.944/516.861 | 89.614/90.836 | 486.792/490.374 |
+| Essential total | 0.173/0.188 | 0.148/0.149 | 0.105/0.108 | 0.200/0.206 | 0.205/0.233 |
+| All 144 edges | 0.263/0.270 | 0.460/0.469 | 2.161/2.198 | 0.294/0.312 | 3.090/4.198 |
+
+| Puzzle | Play candidates | Entry with all notes | Board SSR |
+| --- | --- | --- | --- |
+| Coach 99Eu | 0.020/0.024 | 0.023/0.069 | 1.494/2.041 |
+| Essential total | 0.012/0.013 | 0.035/0.041 | 1.063/1.356 |
+| All 144 edges | 0.115/0.118 | 0.381/0.438 | 2.653/4.033 |
+
+Opening raw/exhaustive/app choice counts are 10/38/10 on 99Eu, 1/1/1 on the essential control and 10/144/10 on the dense puzzle. A requested limit of ten does not imply ten distinct deductions exist. Committed raw-instance memory after this request sequence is 6.5625/1.5000/2.1250 MiB respectively. This is buffer capacity, not process RSS, browser heap or live allocation. The source's roughly half-second preview and walkthrough, 90 ms ordinary app hints and 159 ms exhaustive scan remain performance follow-ups under [issue 88](https://github.com/coder13/sudoku-app/issues/88).
+
+Derived generation requests use seeds 1–20, six attempts, a 20,000-node exact budget, thirty givens and twenty sum clues. All twenty seeds match. Independent counting proves each completion unique and finds multiple completions after removing the sums. Median/p95 generation latency is 0.725/0.766 ms, with no warmups and independent checks outside timing. Seeds 17, 43 and 227 also pass the fuller app flow. These are compatibility and throughput controls, not very-hard puzzle calibration or a paired generation speedup.
+
+Paired controls alternate current main and the integration on the same host. Each uses its actual native/app default profile. The new profile contains `adjacent-total`; the old profile does not. Cross-version rating comparison removes only that declared ID from `techniqueOrder` metadata. Scores, statuses, actions, evidence, full traces and hint responses match exactly. Repeated responses are checked against each engine's complete result. This metadata comparison is separate from the unmodified legacy-profile comparison above.
+
+The six retained XV sources use five warmups/twenty samples for candidates, exact requests, native rating and ten hints; app rating and exhaustive pages use two/five. Values are median/p95 milliseconds. Compilation and other engine benchmarks were inactive. Traces retain 151/123/27/170/199/6 steps and their full or partial status.
+
+| Puzzle | App rate, main → totals | Native rate, main → totals | Ten hints, main → totals | Exhaustive, main → totals |
+| --- | --- | --- | --- | --- |
+| xv-clover | 5.589/5.858 → 5.840/5.901 | 0.299/0.414 → 0.310/0.427 | 0.119/0.192 → 0.124/0.173 | 126.413/134.201 → 126.027/126.762 |
+| xv-quadruple-clover | 0.297/0.310 → 0.299/0.305 | 0.253/0.263 → 0.252/0.263 | 0.138/0.148 → 0.132/0.148 | 136.454/136.998 → 136.854/137.993 |
+| 7v7n | 88.907/89.761 → 88.496/89.882 | 0.107/0.115 → 0.108/0.122 | 273.386/278.142 → 274.425/277.730 | 279.097/279.986 → 278.124/283.401 |
+| FCeS | 7.106/7.274 → 7.119/7.181 | 0.516/0.537 → 0.530/0.553 | 0.117/0.137 → 0.116/0.132 | 0.770/0.786 → 0.770/0.783 |
+| 63Jk | 3981.970/4006.920 → 3983.382/3989.794 | 0.984/0.995 → 1.006/1.026 | 0.108/0.154 → 0.108/0.112 | 371.035/376.861 → 371.893/372.425 |
+| Chcs | 259.298/262.688 → 257.974/260.423 | 20.105/20.245 → 20.118/20.270 | 296.686/307.601 → 296.336/301.847 | 300.767/303.442 → 300.896/301.638 |
+
+| Puzzle | Candidates, main → totals | Unique analysis, main → totals | Exact solve, main → totals |
+| --- | --- | --- | --- |
+| xv-clover | 0.022/0.026 → 0.022/0.025 | 0.072/0.076 → 0.070/0.075 | 0.045/0.048 → 0.045/0.047 |
+| xv-quadruple-clover | 0.028/0.033 → 0.028/0.032 | 0.123/0.133 → 0.120/0.129 | 0.120/0.121 → 0.117/0.117 |
+| 7v7n | 0.016/0.018 → 0.015/0.016 | 0.390/0.391 → 0.390/0.392 | 0.122/0.123 → 0.122/0.123 |
+| FCeS | 0.020/0.029 → 0.020/0.029 | 0.080/0.083 → 0.080/0.082 | 0.082/0.083 → 0.081/0.084 |
+| 63Jk | 0.010/0.013 → 0.010/0.015 | 0.041/0.046 → 0.043/0.044 | 0.035/0.036 → 0.037/0.037 |
+| Chcs | 0.026/0.031 → 0.026/0.027 | 1.272/1.309 → 1.226/1.271 | 0.679/0.683 → 0.680/0.703 |
+
+Opening ten/exhaustive choices remain 10/22, 10/26, 8/8, 10/17, 10/24 and 5/5. Committed memory remains 2.1250/1.8750/4.6875/2.3125/6.3125/1.5000 MiB. In particular, 63Jk keeps 27,358 points and its complete 199-step app path at roughly four seconds. This feature addition does not claim a rating speedup. Small retained increases and decreases remain visible in the tables.
+
+The broader retained-fixture pass uses five warmups/twenty samples, with two/ten for exhaustive pages. Fresh-instance first requests also preserve complete responses. These initial observations exclude instantiation and are not browser cold-start percentiles. Selected Whispers uniqueness and final-position Palindrome/Whispers Tridagon scans preserve their zero-proof results and existing caches; they are not additive attribution of a rating.
+
+| Retained fixture | App rate, main → totals | Ten hints, main → totals | Exhaustive, main → totals |
+| --- | --- | --- | --- |
+| quadruple | 1.178/1.202 → 1.188/1.210 | 0.222/0.242 → 0.222/0.239 | 146.358/156.919 → 146.620/149.519 |
+| parity | 0.168/0.174 → 0.168/0.177 | 0.078/0.083 → 0.076/0.079 | 44.807/47.816 → 44.830/45.527 |
+| anti-king | 0.156/0.166 → 0.155/0.162 | 0.115/0.120 → 0.114/0.116 | 97.010/99.951 → 97.047/97.327 |
+| non-consecutive | 0.383/0.397 → 0.382/0.398 | 0.080/0.091 → 0.081/0.121 | 33.866/33.933 → 33.794/33.927 |
+| nc-white-dots | 1.006/1.024 → 0.987/0.997 | 0.314/0.322 → 0.314/0.328 | 0.325/0.328 → 0.318/0.325 |
+| whispers | 0.305/0.320 → 0.308/0.321 | 3.142/3.297 → 3.127/3.276 | 3.144/3.232 → 3.119/3.154 |
+| palindrome | 0.118/0.122 → 0.120/0.127 | 39.464/39.774 → 39.409/39.767 | 39.446/40.149 → 39.405/39.577 |
+| palindrome-knight | 0.900/0.904 → 0.873/0.884 | 0.126/0.132 → 0.127/0.135 | 190.023/191.685 → 190.429/193.505 |
+| palindrome-whispers | 101.101/102.055 → 100.889/101.320 | 0.217/0.269 → 0.222/0.233 | 2.338/2.400 → 2.355/2.401 |
+
+Retained candidates and exact requests stay close to the main control. The largest exact operations in this set are Brain Zaps: unique analysis 14.270/14.649 → 14.200/14.559 ms and exact solve 14.182/14.336 → 14.067/14.232 ms. Committed capacities remain unchanged for every paired fixture. These small differences do not establish an engine improvement. Continue rating, hint and browser-worker work under [issue 88](https://github.com/coder13/sudoku-app/issues/88).
+
+Build source checkouts with different Cargo target directories, then repeat from this checkout:
+
+```sh
+node --experimental-strip-types scripts/compare-engine-pruning.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --palindrome-trace --classic-tridagon --xv --adjacent-total
+node --experimental-strip-types scripts/bench-xv-rating.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --added-technique=adjacent-total
+node --experimental-strip-types scripts/bench-engine-pruning.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm quadruple parity anti-king non-consecutive nc-white-dots whispers palindrome palindrome-knight palindrome-whispers --added-technique=adjacent-total
+node --experimental-strip-types --test scripts/bench-adjacent-totals.mts
+```

@@ -186,17 +186,20 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     } else if (constraint.type === 'twoCellSum') {
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no two-cell sum clues.')
       const five: [number, number][] = [], ten: [number, number][] = []
+      const totals: Extract<VariantRule, { type: 'adjacent-total' }>[] = []
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
           !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'sum')) {
           throw new Error('This Sudoku Coach puzzle has an invalid two-cell sum clue.')
         }
         const sum = segment.parameters.sum
-        if (sum !== 5 && sum !== 10) throw new Error(`This Sudoku Coach two-cell sum (${String(sum)}) is not supported yet. XV clues require a sum of 5 or 10.`)
+        if (typeof sum !== 'number' || !Number.isInteger(sum) || sum < 3 || sum > 17) throw new Error('This Sudoku Coach two-cell sum must be an integer from 3 through 17.')
         if (sum === 5) five.push(segment.cells as [number, number])
-        else ten.push(segment.cells as [number, number])
+        else if (sum === 10) ten.push(segment.cells as [number, number])
+        else totals.push({ type: 'adjacent-total', cells: segment.cells as [number, number], sum })
       }
-      rules.push({ type: 'xv', ...(five.length > 0 && { five: { pairs: five } }), ...(ten.length > 0 && { ten: { pairs: ten } }) })
+      if (five.length || ten.length) rules.push({ type: 'xv', ...(five.length > 0 && { five: { pairs: five } }), ...(ten.length > 0 && { ten: { pairs: ten } }) })
+      rules.push(...totals)
     } else if (constraint.type === 'greaterLess') {
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no inequality signs.')
       for (const segment of constraint.segments) {

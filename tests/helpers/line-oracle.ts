@@ -1,14 +1,16 @@
 import type { VariantPuzzle } from '../../src/sudoku/engine.ts'
 
+export type OracleRelation = readonly [number, number, (a: number, b: number) => boolean]
+
 /** Direct digit-set search, independent of the engine's domains and support code. */
-export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
+export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extraRelations: readonly OracleRelation[] = []) {
   const regions = puzzle.regions?.type === 'jigsaw' ? puzzle.regions.regions :
     Array.from({ length: 9 }, (_, box) => Array.from({ length: 9 }, (_, i) => Math.floor(box / 3) * 27 + box % 3 * 3 + Math.floor(i / 3) * 9 + i % 3))
   const houses: (readonly number[])[] = [
     ...Array.from({ length: 9 }, (_, r) => Array.from({ length: 9 }, (_, c) => 9 * r + c)),
     ...Array.from({ length: 9 }, (_, c) => Array.from({ length: 9 }, (_, r) => 9 * r + c)), ...regions,
   ]
-  const edges: [number, number, (a: number, b: number) => boolean][] = []
+  const edges: OracleRelation[] = [...extraRelations]
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
@@ -16,6 +18,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
       edges.push([cell, rule.cells[rule.cells.length - 1 - i], (a, b) => a === b]))
     else if (rule.type === 'inequality') edges.push([rule.less, rule.greater, (a, b) => a < b])
+    else if (rule.type === 'adjacent-total') edges.push([rule.cells[0], rule.cells[1], (a, b) => a + b === rule.sum])
     else if (rule.type === 'quadruple') quadruples.push({ cells: [rule.topLeft, rule.topLeft + 1, rule.topLeft + 9, rule.topLeft + 10], digits: rule.digits })
     else if (rule.type === 'xv') {
       for (const [sum, marks] of [[5, rule.five], [10, rule.ten]] as const) {
@@ -26,6 +29,13 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
       if (rule.consecutive?.negative || rule.ratioTwo?.negative) throw new Error('Independent line counter does not implement negative Kropki markers')
       for (const [a, b] of rule.consecutive?.pairs ?? []) edges.push([a, b, (a, b) => Math.abs(a - b) === 1])
       for (const [a, b] of rule.ratioTwo?.pairs ?? []) edges.push([a, b, (a, b) => a === b * 2 || b === a * 2])
+    }
+    else if (rule.type === 'non-consecutive') {
+      for (let a = 0; a < 81; a++) for (const b of [a % 9 < 8 ? a + 1 : -1, a < 72 ? a + 9 : -1]) {
+        if (b >= 0 && !(rule.except ?? []).some(([x, y]) => x === a && y === b || x === b && y === a)) {
+          edges.push([a, b, (a, b) => Math.abs(a - b) !== 1])
+        }
+      }
     }
     else if (rule.type === 'anti-knight' || rule.type === 'anti-king') {
       for (let a = 0; a < 81; a++) for (let b = a + 1; b < 81; b++) {
@@ -39,7 +49,8 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
   }
   for (const [sum, layers] of [[5, xv.map(rule => rule.five)], [10, xv.map(rule => rule.ten)]] as const) {
     if (!layers.some(marks => marks?.negative)) continue
-    const marked = layers.flatMap(marks => marks?.pairs ?? [])
+    const marked = [...layers.flatMap(marks => marks?.pairs ?? []), ...(puzzle.rules ?? []).flatMap(rule =>
+      rule.type === 'adjacent-total' && (rule.sum === 5 || rule.sum === 10) ? [rule.cells] : [])]
     for (let a = 0; a < 81; a++) for (const b of [a % 9 < 8 ? a + 1 : -1, a < 72 ? a + 9 : -1]) {
       if (b >= 0 && !marked.some(([x, y]) => x === a && y === b || x === b && y === a)) edges.push([a, b, (a, b) => a + b !== sum])
     }

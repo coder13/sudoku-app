@@ -201,6 +201,7 @@ impl SquareTransform {
                 self.markers(five);
                 self.markers(ten);
             }
+            AdjacentTotal { cells, .. } => self.unordered(cells),
             Arrow { circle, cells } => {
                 *circle = self.cell(*circle);
                 self.path(cells);

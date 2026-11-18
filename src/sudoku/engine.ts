@@ -51,6 +51,7 @@ export type VariantRule =
   | { type: 'inequality'; less: number; greater: number }
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
+  | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
   | { type: 'thermometer' | 'renban' | 'between'; cells: readonly number[] }
   | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
@@ -73,6 +74,7 @@ export type VariantClueLayout =
   | { type: 'quadruple'; topLeft: number; clueSize: number }
   | { type: 'parity'; cells: readonly number[] }
   | { type: 'inequality'; cells: readonly [number, number] }
+  | { type: 'adjacent-total'; cells: readonly [number, number] }
   | { type: 'markers'; family: 'kropki' | 'xv'; negative?: readonly [boolean, boolean]; count?: number }
   | { type: 'outside'; clue: 'sandwich' | 'x-sum' | 'skyscrapers'; direction: ClueDirection; cells: readonly number[] }
   | { type: 'outside'; clue: 'little-killer'; direction: DiagonalDirection; cells: readonly number[] }

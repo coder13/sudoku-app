@@ -63,6 +63,7 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           cells.filter(cell => digits[cell] === digit).length >= rule.digits.filter(printed => printed === digit).length)
         break
       }
+      case 'adjacent-total': assert.equal(digits[rule.cells[0]] + digits[rule.cells[1]], rule.sum); break
       case 'xv':
       case 'kropki':
         for (const [kind, marks] of (rule.type === 'xv' ? [rule.five, rule.ten] : [rule.consecutive, rule.ratioTwo]).entries()) {
@@ -71,7 +72,8 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           for (const [a, b] of marks?.pairs ?? []) assert.ok(matches(a, b))
           if (marks?.negative) {
             const pairs = rule.type === 'xv' ? puzzle.rules!.flatMap(other => other.type === 'xv'
-              ? (kind === 0 ? other.five?.pairs : other.ten?.pairs) ?? [] : []) : marks.pairs
+              ? (kind === 0 ? other.five?.pairs : other.ten?.pairs) ?? []
+              : other.type === 'adjacent-total' && (other.sum === 5 || other.sum === 10) ? [other.cells] : []) : marks.pairs
             for (const [a, b] of adjacent) if (!marked(pairs, a, b)) assert.ok(!matches(a, b))
           }
         }

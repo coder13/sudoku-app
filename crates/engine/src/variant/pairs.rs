@@ -100,6 +100,9 @@ pub(super) struct PairCompiler {
 #[derive(Default)]
 struct Markers {
     marked: BTreeMap<[usize; 2], PositiveMarker>,
+    // Generic totals of 5/10 retain their own proof source and exempt this edge
+    // from negative XV. They do not create an extra XV deduction.
+    exemptions: BTreeSet<[usize; 2]>,
     negative: [bool; 2],
     rule_indices: Vec<usize>,
 }
@@ -114,6 +117,10 @@ pub(super) const KROPKI: [Relation; 2] =
 pub(super) const XV: [Relation; 2] = [|a, b| a + b == 5, |a, b| a + b == 10];
 
 impl PairCompiler {
+    pub(super) fn exempt_xv_edges(&mut self, edges: &[[usize; 2]]) {
+        self.xv.exemptions.extend(edges.iter().map(|&[a, b]| [a.min(b), a.max(b)]));
+    }
+
     pub fn compile_rule(
         &mut self,
         puzzle: &mut CompiledVariant,
@@ -207,6 +214,21 @@ impl PairCompiler {
             }
             PuzzleRule::Xv { five, ten } => {
                 add_markers(&mut self.xv, index, [five, ten], XV, invalid)?;
+            }
+            PuzzleRule::AdjacentTotal { cells, sum } => {
+                valid_cells(cells, 2..=2)?;
+                let [a, b] = *cells;
+                if !(3..=17).contains(sum)
+                    || a.abs_diff(b) != 9 && !(a / 9 == b / 9 && a.abs_diff(b) == 1)
+                {
+                    return Err(invalid);
+                }
+                if matches!(sum, 5 | 10) {
+                    self.xv.exemptions.insert([a.min(b), a.max(b)]);
+                }
+                // Edge-sharing cells share a row or column, so two equal
+                // digits cannot support each other even for an even total.
+                self.clues.push(pair(&source, *cells, |a, b| a != b && a + b == *sum));
             }
             PuzzleRule::Thermometer { cells } => {
                 valid_cells(cells, 2..=9)?;
@@ -349,7 +371,9 @@ fn finish_markers(
             id,
             indices: markers.rule_indices,
         });
-        for cells in orthogonal_pairs().filter(|pair| !markers.marked.contains_key(pair)) {
+        for cells in orthogonal_pairs().filter(|pair| {
+            !markers.marked.contains_key(pair) && !markers.exemptions.contains(pair)
+        }) {
             clues.push(pair(&source, cells, |a, b| {
                 markers
                     .negative

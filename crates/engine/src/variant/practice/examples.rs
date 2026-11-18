@@ -509,6 +509,24 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 }],
             ),
         ],
+        AdjacentTotal => [
+            seed(
+                "974000820286930400030002009060100238390600000000003690040200017002090586653800000",
+                63, 1,
+                [PuzzleRule::AdjacentTotal { cells: [54, 63], sum: 15 }],
+            ),
+            seed(
+                "100006700590027416006080000000234901300005060014000530002803109037500000800040000",
+                18, 2,
+                [PuzzleRule::AdjacentTotal { cells: [18, 9], sum: 12 }],
+            ),
+            seed(
+                "080700030000030501031006704050064200006028400000509608000000007000093860002007309",
+                2, 4,
+                [PuzzleRule::AdjacentTotal { cells: [48, 57], sum: 7 },
+                 PuzzleRule::AdjacentTotal { cells: [3, 2], sum: 12 }],
+            ),
+        ],
         WhispersHouseSupport => [
             seed(
                 "431500762976002185258761394382157649795624813164903527617009258529876431843215976",

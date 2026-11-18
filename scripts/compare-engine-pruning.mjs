@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -21,7 +21,15 @@ async function engine(path) {
 const before = await engine(beforePath), after = await engine(afterPath)
 const classic = await before({ type: 'techniques' }), old = await before({ type: 'techniques', variant: true })
 assert.deepEqual(await after({ type: 'techniques' }), classic)
-assert.deepEqual(await after({ type: 'techniques', variant: true }), old)
+const updated = await after({ type: 'techniques', variant: true })
+if (options.includes('--adjacent-total')) {
+  const additions = updated.techniques.filter(item => !old.techniques.some(before => before.id === item.id))
+  assert.deepEqual(additions, [{ id: 'adjacent-total', aliases: [], cost: 20, difficulty: 'easy', requiresUniqueSolution: false }])
+  assert.deepEqual({ ...updated, defaultOrder: updated.defaultOrder.filter(id => id !== 'adjacent-total'),
+    difficultyOrder: updated.difficultyOrder.filter(id => id !== 'adjacent-total'),
+    techniques: updated.techniques.filter(item => item.id !== 'adjacent-total') }, old)
+  console.log('Catalog adds only adjacent-total at twenty points/Easy. All retained requests below use explicit legacy profiles, without response normalization.')
+} else assert.deepEqual(updated, old)
 const techniqueOrder = variantTechniqueOrder(old.defaultOrder, classic.difficultyOrder,
   Object.fromEntries([...classic.techniques, ...old.techniques].map(item => [item.id, item.difficulty])))
 // Include catalog entries omitted from the app's default search as well.

@@ -7499,6 +7499,48 @@
           ],
           "references": [],
           "difficulty": "easy"
+        },
+        {
+          "id": "adjacent-total",
+          "title": "Two-cell sums",
+          "summary": "A Roman numeral gives the total of two neighboring cells. XV means 15. Subtract one candidate from the total to find its required partner.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Match each candidate to its required partner"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a marked pair that has few candidates. Subtract each candidate from the total. The result must be a digit that can go in the other cell.",
+                "If the required partner is outside 1–9 or cannot go in that cell, remove the candidate. The cells share a row or column, so they cannot both contain the same digit."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "adjacent-total",
+              "copy": {
+                "description": "The XV between R7C1 and R8C1 means a total of 15. R7C1 must be 8, so R8C1 needs 7. Remove 1 from R8C1."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "adjacent-total",
+                  "title": "Two-cell sums"
+                }
+              ],
+              "guide": {
+                "start": "Find the total between the two cells. Start with the cell that has fewer candidates.",
+                "check": "Subtract a candidate from the total. Find the required partner in the other cell.",
+                "reason": "Remove the candidate if its partner cannot go in the other cell. A repeated digit is also forbidden by their shared row or column."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
         }
       ]
     },

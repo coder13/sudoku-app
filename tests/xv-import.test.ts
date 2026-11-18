@@ -38,11 +38,12 @@ test('unmodified Coach XV exports retain every marked sum and every companion ru
   }
 })
 
-test('XV validation rejects other totals, invalid geometry and unknown semantic parameters', async () => {
+test('XV keeps its wire format while Coach general totals use their own rule', async () => {
   assert.equal(isPlayablePuzzle('xv', fixture.puzzle), true)
   assert.equal(generationVariant({ id: 'xv' }), undefined)
-  await assert.rejects(detectPuzzle(examples.find(example => example.deferred.length)!.code), /two-cell sum \(15\)/)
-  for (const sum of [undefined, null, 0, 3, 4, 9, 11, 15, '5']) {
+  const general = await detectPuzzle(examples.find(example => example.deferred.length)!.code)
+  assert.deepEqual(general.variant!.puzzle.rules!.at(-1), { type: 'adjacent-total', cells: [80, 79], sum: 15 })
+  for (const sum of [undefined, null, 0, 2, 18, 15.5, '5']) {
     await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'twoCellSum', segments: [{ cells: [0, 1], parameters: { sum } }] }] })), /sum/)
   }
   for (const pair of [[0, 0], [8, 9], [0, 10], [-1, 0], [0, 81], [0, '1'], [0], [0, 1, 2]]) {

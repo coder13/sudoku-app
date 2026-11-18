@@ -83,6 +83,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'wxyz-wing': 'WXYZ-Wing',
   'x-chain': 'X-chain',
   'xv': 'XV pairs',
+  'adjacent-total': 'Two-cell sums',
   'x-wing': 'X-wing',
   'xy-chain': 'XY-chain',
   'xy-wing': 'XY-wing',

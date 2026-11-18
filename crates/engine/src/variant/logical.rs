@@ -90,6 +90,8 @@ catalog! {
     NonConsecutiveLockedPair: "non-consecutive-locked-candidates-2", 20, Easy;
     /// Apply a sum relation from XV marks.
     Xv: "xv", 20, Easy;
+    /// Apply a declared total between two edge-sharing cells.
+    AdjacentTotal: "adjacent-total", 20, Easy;
     /// Match candidates at mirrored positions on a line.
     Palindrome: "palindrome", 21, Easy;
     /// Two consecutive candidates in one cell exclude both digits from its neighbors.
@@ -966,7 +968,7 @@ impl CompiledVariant {
                 }));
             }
             AntiKing | AntiKnight | Clone | Inequality | Kropki | NonConsecutive | Palindrome
-            | Thermometer | Whispers | Xv => {
+            | Thermometer | Whispers | Xv | AdjacentTotal => {
                 let domains = std::array::from_fn(|cell| position.domain(cell));
                 for clue in self
                     .pair_clues

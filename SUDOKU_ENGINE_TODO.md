@@ -19,6 +19,9 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
 
+- [x] Audit the original Coach 99Eu sum-15 export and inspect its Roman XV clue. Independently verify its unique completion, redundant sum and essential authored control. Confirm that general totals need a native rule as well as UI. [Source audit and port requirements](SUDOKU_ADJACENT_SUM_AUDIT.md)
+- [ ] Merge general adjacent totals with complete native and app support through [issue 72](https://github.com/coder13/sudoku-app/issues/72). The isolated implementation and local gates are complete; reviewed-head CI and merge remain.
+
 - [x] Restore Solution and Technique Finder access for every built-in variant, including Jigsaw, in both desktop workspaces. Share the current-position hint path and preserve all regions, rules, entries, and removals. Keep variant scans on a background worker with separate interactive proof requests and rule-specific caches. [Hint and solution parity](https://github.com/coder13/sudoku-app/issues/97)
 - [x] Add mobile solution walkthroughs with a read-only grid, explanations, and step navigation. Cover rendered controls and the app help services for all 56 offered variant/difficulty combinations, progressed Jigsaw region proofs, combined rules, preferences, and complete solution replay.
 - [x] Integrate the performance changes from [PR 100](https://github.com/coder13/sudoku-app/pull/100). Preserve paged exhaustive hints for Classic and variants, per-position scan sharing and cancellation, independent history/generation workers, and batched singles. Test page boundaries, proof ordering, completed-count caching, and cancellation without interrupting other help.
@@ -710,5 +713,22 @@ The isolated worktree is `codex/sudoku-xv-rating-audit`, based on the XV release
 - [x] Pass exact-head CI and merge the focused optimization through [PR 150](https://github.com/coder13/sudoku-app/pull/150).
 
 The packed guardian checks reached main at `e37a21f`. Native, feature, Wasm, app, documentation and deployment checks passed on reviewed head `414e830` in run `44319355287`. The reviewed worktree remains pinned to that head. [Issue 147](https://github.com/coder13/sudoku-app/issues/147) is closed; remaining latency and worker work continue under [issue 88](https://github.com/coder13/sudoku-app/issues/88). The next adjacent-total source audit is isolated under [issue 72](https://github.com/coder13/sudoku-app/issues/72) and is not integrated into the app.
+
+## 16. Integrate general adjacent totals
+
+The isolated worktree is `codex/sudoku-adjacent-sums-audit`, based on main `856e0f6`. Track the family in [issue 72](https://github.com/coder13/sudoku-app/issues/72). [Source and implementation contract](SUDOKU_ADJACENT_SUM_AUDIT.md)
+
+- [x] Preserve Dariao142's original 99Eu export, diagram, single Roman XV total-15 clue, ordered endpoints and companion rules. Independently prove its unique completion and the sum's redundancy. Add an essential authored control with two completions without its total and one with it.
+- [x] Add the native `adjacent-total` rule and derived layout for orthogonally adjacent cells and totals 3 through 17. Reuse pair support and explicit provenance. Cover every digit assignment, local proof support, invalid geometry and even-total distinctness.
+- [x] Define generic 5/10 markers under independent negative XV flags and fog completeness. Preserve own-family evidence and avoid duplicate XV proofs. Keep dependency checks monotone when arithmetic constraints are removed.
+- [x] Import complete Coach sum layers, including mixed 5/10/general totals. Preserve source data, sharing, save/reload, history, candidate and note cleanup, conflicts and all eight grid transformations. Remove the incorrect 81-rule cap; a grid has 144 shared edges.
+- [x] Add Roman clues, accessible labels, partner-sum explanations, a lesson and three independently unique practice exercises. Check accepted and rejected answers, 20-point Easy costs and the actual Learn page. Inspect 900/360-pixel light/dark static SVG exports, including wide numerals and shared dots/signs at grid boundaries.
+- [x] Replay the published full app path and honest native partial path. Independently enumerate every sum deduction. Cover custom/disabled profiles, multiple hints, pages, Finder and dense 144-edge puzzles.
+- [x] Verify three derived generation seeds with exact targets and independent rule dependence. Check a unique zero-given, 144-sum generation with only this opening technique. A competing Parity deduction must make that exclusive request fail.
+- [x] Preserve 7,291 complete responses under explicit legacy profiles without response normalization. Cover 65,536 fixed-clue family selections: 49,152 compatible cases and 16,384 intentional contradictions. These bounded fixtures do not prove arbitrary combinations feasible.
+- [x] Pass 330 native tests, 452 app tests, 273 Wasm contracts, sixteen capability combinations, four package profiles, strict full/reduced Cargo documentation, TypeScript and the 160-route production/offline build.
+- [x] Finish paired current-main measurements and record caller latency, memory, package costs and retained regressions. Preserve all legacy scores, proofs and choices with the added default technique explicit. App Wasm adds 2,687 gzip bytes; Classic and solver packages remain byte-for-byte identical. [Methods and results](tests/fixtures/README.md#general-adjacent-totals)
+- [ ] Pass all checks on the reviewed family head, merge its focused PR and verify remote main ancestry.
+- [ ] Finish live viewport interaction review and calibrate New puzzle recipes. Static clue review and native generation are complete.
 
 This change preserves scoring version 8, technique costs and enabled techniques. The four-second rating, Maelstrom/Chcs hint latency, branch propagation and browser-worker costs remain part of the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88).
