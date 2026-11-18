@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { ArrowUpDown, Check, Eraser, Link2 } from 'lucide-react'
 import { useId, useSyncExternalStore } from 'react'
 import { alternateColorShade, COLORS, COLOR_FAMILIES, type ColorTarget } from '../sudoku/game'
@@ -46,11 +47,11 @@ export function ColorSwatches({ brush, disabled, onColor, onSwitchShade }: Pick<
         })}
       </div>)}
     </div>
-    <button type="button" className="button secondary color-shade-switch" disabled={disabled || alternate === null}
+    <Button type="button" className="color-shade-switch" disabled={disabled || alternate === null}
       title={alternate === null ? 'Choose a color first' : `Switch to ${COLORS[alternate - 1].toLowerCase()} (${shadeKey})`}
       aria-keyshortcuts={shadeKey} onClick={onSwitchShade}>
       <ArrowUpDown size={15} aria-hidden="true" /> Switch shade <kbd aria-hidden="true">{shadeKey}</kbd>
-    </button>
+    </Button>
   </div>
 }
 
@@ -71,18 +72,18 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
       <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} onSwitchShade={onSwitchShade} />
       <p className="color-pair-help">Use light and dark shades of one color to mark the two sides of a strong link.</p>
       <div className="cell-color-actions">
-        <button type="button" className="button secondary" aria-pressed={brush === 0} aria-label={`Erase ${target} color`}
-          disabled={disabled} onClick={() => onColor(0)}><Eraser size={15} aria-hidden="true" /> Erase</button>
-        <button type="button" className="button secondary" disabled={disabled || !hasColors}
-          onClick={onClear}>Clear {target} colors</button>
-        {brush !== null && <button type="button" className="button secondary" title="Stop coloring (Esc)"
-          aria-label="Stop coloring" aria-keyshortcuts="Escape" onClick={onStop}>Done</button>}
+        <Button type="button" aria-pressed={brush === 0} aria-label={`Erase ${target} color`}
+          disabled={disabled} onClick={() => onColor(0)}><Eraser size={15} aria-hidden="true" /> Erase</Button>
+        <Button type="button" disabled={disabled || !hasColors}
+          onClick={onClear}>Clear {target} colors</Button>
+        {brush !== null && <Button type="button" title="Stop coloring (Esc)"
+          aria-label="Stop coloring" aria-keyshortcuts="Escape" onClick={onStop}>Done</Button>}
       </div>
       <div className="color-link-tools">
         <p className="color-link-message" id={groupMessageId} aria-live="polite">{groupMessage}</p>
-        <button type="button" className="button secondary color-strong-links" disabled={disabled || !canContinueGroup}
+        <Button type="button" className="color-strong-links" disabled={disabled || !canContinueGroup}
           title="Follow strong links from your starting mark, keeping its color pair and existing shades."
-          aria-describedby={groupMessageId} onClick={onContinueGroup}><Link2 size={16} aria-hidden="true" /> Continue this group</button>
+          aria-describedby={groupMessageId} onClick={onContinueGroup}><Link2 size={16} aria-hidden="true" /> Continue this group</Button>
       </div>
     </section>
   )

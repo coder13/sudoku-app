@@ -1,3 +1,4 @@
+import { IconButton } from '../../src/components/Button'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { ArrowLeft } from 'lucide-react'
 import { fn } from 'storybook/test'
@@ -16,5 +17,5 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Standard: Story = {}
 export const WithBackButton: Story = {
-  args: { leading: <button className="icon-button borderless" aria-label="Back" onClick={fn()}><ArrowLeft size={18} /></button> },
+  args: { leading: <IconButton variant="quiet" aria-label="Back" onClick={fn()}><ArrowLeft size={18} /></IconButton> },
 }

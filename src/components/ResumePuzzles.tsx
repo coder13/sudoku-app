@@ -1,3 +1,4 @@
+import { buttonClassName } from './Button'
 import { Link } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
 import { valuesOf, type Game } from '../sudoku/game'
@@ -14,7 +15,7 @@ export function ResumePuzzles({ games }: { games: Game[] }) {
         </span><ChevronRight size={17} aria-hidden="true" />
       </Link></li>
     ))}</ul>
-    <Link className="button primary" to="/puzzles/new">New puzzle</Link>
-    <Link className="button secondary" to="/sync">Device sync</Link>
+    <Link className={buttonClassName('primary')} to="/puzzles/new">New puzzle</Link>
+    <Link className={buttonClassName()} to="/sync">Device sync</Link>
   </main>
 }

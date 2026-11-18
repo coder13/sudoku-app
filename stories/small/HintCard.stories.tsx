@@ -1,3 +1,4 @@
+import { Button } from '../../src/components/Button'
 import { useState, type ComponentProps } from 'react'
 import type { StoryObj } from '@storybook/react-vite'
 import { HintCard } from '../../src/components/HintCard'
@@ -46,7 +47,7 @@ function CopyGallery() {
         </SelectControl>
       </label>
     </div>
-    {dismissed.length > 0 && <div><button className="button secondary" onClick={() => setDismissed([])}>Restore dismissed hints</button></div>}
+    {dismissed.length > 0 && <div><Button onClick={() => setDismissed([])}>Restore dismissed hints</Button></div>}
     {!groups.length && <p role="status">No matching hints.</p>}
     {groups.map(({ label, items }) => <section key={label} aria-label={label}>
       <h2>{label}</h2>
@@ -73,5 +74,5 @@ export const Dismissible: Story = {
 function DismissibleCard({ hint, onClose }: ComponentProps<typeof HintCard>) {
   const [open, setOpen] = useState(true)
   return open ? <HintCard hint={hint} onClose={() => { onClose(); setOpen(false) }} />
-    : <button className="button secondary" onClick={() => setOpen(true)}>View hint</button>
+    : <Button onClick={() => setOpen(true)}>View hint</Button>
 }

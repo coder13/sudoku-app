@@ -1,3 +1,4 @@
+import { Button, IconButton } from './Button'
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import type { Difficulty, LogicalSolution, MoveAvailability } from '../sudoku/engine'
@@ -92,14 +93,14 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
           {!embedded && <h2>Solution</h2>}
           {steps && <p>{count} {count === 1 ? 'step' : 'steps'} from the givens</p>}
         </div>
-        {!embedded && <button ref={close} type="button" className="icon-button borderless" onClick={onClose} aria-label="Return to puzzle" title="Return to puzzle">
+        {!embedded && <IconButton ref={close} type="button" variant="quiet" onClick={onClose} aria-label="Return to puzzle" title="Return to puzzle">
           <X size={18} aria-hidden="true" />
-        </button>}
+        </IconButton>}
       </header>
       {state.status === 'loading' && <p className="solution-path-message" role="status">Finding the steps…</p>}
       {state.status === 'unavailable' && <div className="solution-path-message">
         <p role="status">{state.message}</p>
-        <button type="button" className="button secondary" onClick={onRetry}>Try again</button>
+        <Button type="button" onClick={onRetry}>Try again</Button>
       </div>}
       {steps && <>
         <ol className="solution-path-steps" ref={list} role="list" aria-label="Solving steps" onKeyDown={navigate}>
@@ -130,9 +131,9 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
         </ol>
         <footer className="solution-path-footer">
           <div className="solution-path-navigation">
-            <button type="button" className="icon-button" aria-label="Previous step" disabled={index === 0} onClick={() => onSelect(index - 1)}><ArrowLeft size={16} /></button>
+            <IconButton type="button" aria-label="Previous step" disabled={index === 0} onClick={() => onSelect(index - 1)}><ArrowLeft size={16} /></IconButton>
             <span role="status">{index < count ? `Step ${index + 1} of ${count}` : lastLabel}</span>
-            <button type="button" className="icon-button" aria-label="Next step" disabled={index >= count} onClick={() => onSelect(index + 1)}><ArrowRight size={16} /></button>
+            <IconButton type="button" aria-label="Next step" disabled={index >= count} onClick={() => onSelect(index + 1)}><ArrowRight size={16} /></IconButton>
           </div>
         </footer>
       </>}

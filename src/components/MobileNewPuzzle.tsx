@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { useState } from 'react'
 import type { DifficultyPreference } from '../sudoku/difficulty'
 import { DifficultySelector } from './DifficultySelector'
@@ -27,9 +28,9 @@ export function MobileNewPuzzle({ screen, variant, preference, remember, done, o
     remember({ variant, difficulty: variantDifficulty(variant, difficulty) })
     void navigate({ to: '/puzzles/new', search: {}, replace: true })
   }
-  const createButton = <button type="button" className="button secondary" disabled={busy} onClick={onCreate}>
+  const createButton = <Button type="button" disabled={busy} onClick={onCreate}>
     <PencilLine size={18} aria-hidden="true" /> Create by hand
-  </button>
+  </Button>
 
   if (screen === 'variant') return <section className="mobile-new-puzzle" aria-labelledby="puzzles-page-title">
     <div className="main-menu-mobile-list mobile-variant-list">
@@ -47,9 +48,9 @@ export function MobileNewPuzzle({ screen, variant, preference, remember, done, o
   if (screen === 'difficulty') return <section className="mobile-new-puzzle" aria-labelledby="puzzles-page-title">
     <p className="mobile-new-puzzle-variant"><VariantPreview variant={variant} />{VARIANTS[variant].name}</p>
     <DifficultySelector value={selected} recommended={recommended} variant={variant} onChange={setSelection} />
-    <button type="button" className="button primary" onClick={() => applySettings(variant, selected)}>
+    <Button type="button" variant="primary" onClick={() => applySettings(variant, selected)}>
       Done <Check size={18} aria-hidden="true" />
-    </button>
+    </Button>
   </section>
 
   return <section className="mobile-new-puzzle" aria-labelledby="puzzles-page-title">
@@ -73,10 +74,10 @@ export function MobileNewPuzzle({ screen, variant, preference, remember, done, o
       </Link>
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
-    <button type="button" className="button primary puzzle-start-button" disabled={busy}
+    <Button type="button" variant="primary" className="puzzle-start-button" disabled={busy}
       onClick={() => { void generate(selected, () => done({ variant, difficulty: selected }), variant) }}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : 'Start puzzle'}
-    </button>
+    </Button>
     {createButton}
   </section>
 }

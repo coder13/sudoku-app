@@ -1,3 +1,4 @@
+import { Button, IconButton } from './Button'
 import { Link2Off, MoreHorizontal, PencilLine, X } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
@@ -35,7 +36,7 @@ function DeviceActionMenu({ label, disabled, trigger, rename, unlink }: {
 
   return <div className="sync-device-actions" ref={container}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }}>
-    <button ref={trigger} className="icon-button borderless" disabled={disabled}
+    <IconButton ref={trigger} variant="quiet" disabled={disabled}
       aria-label={'Options for ' + label} title={'Options for ' + label}
       aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined}
       onClick={() => { focusLast.current = false; setOpen(!open) }}
@@ -44,7 +45,7 @@ function DeviceActionMenu({ label, disabled, trigger, rename, unlink }: {
         event.preventDefault()
         focusLast.current = event.key === 'ArrowUp'
         setOpen(true)
-      }}><MoreHorizontal size={20} aria-hidden="true" /></button>
+      }}><MoreHorizontal size={20} aria-hidden="true" /></IconButton>
     {open && <div id={menuId} className="app-menu sync-device-menu" role="menu" aria-label={'Options for ' + label}
       onKeyDown={event => {
         if (event.key === 'Escape' || event.key === 'Tab') {
@@ -92,20 +93,20 @@ export function LinkedDeviceRow({ device, current, mobile, working, rename, unli
     <label className="sr-only" htmlFor={'name-' + device.id}>Device name</label>
     <input id={'name-' + device.id} autoFocus autoComplete="off" maxLength={60} placeholder="Automatic name"
       value={draft} onFocus={event => event.target.select()} onChange={event => setDraft(event.target.value)} />
-    <button className="button primary" disabled={working}>Save</button>
-    <button className="icon-button borderless" type="button" aria-label="Cancel rename" title="Cancel" disabled={working} onClick={close}><X size={18} /></button>
+    <Button variant="primary" type="submit" disabled={working}>Save</Button>
+    <IconButton variant="quiet" type="button" aria-label="Cancel rename" title="Cancel" disabled={working} onClick={close}><X size={18} /></IconButton>
   </form></li>
   return <li onKeyDown={event => { if (mode === 'unlink' && event.key === 'Escape' && !working) close() }}>
     <div className="sync-device-label"><strong>{device.name}</strong>{current && <small>This device</small>}</div>
     {mode === 'unlink' ? <>
-      <button className="button danger" disabled={working} onClick={unlink}>Confirm unlink</button>
-      <button autoFocus={mobile} className="icon-button borderless" aria-label="Cancel unlink" title="Cancel" disabled={working} onClick={close}><X size={18} /></button>
+      <Button variant="danger" disabled={working} onClick={unlink}>Confirm unlink</Button>
+      <IconButton autoFocus={mobile} variant="quiet" aria-label="Cancel unlink" title="Cancel" disabled={working} onClick={close}><X size={18} /></IconButton>
     </> : mobile ? <DeviceActionMenu label={label} disabled={working} trigger={optionsButton}
       rename={startRename} unlink={() => setMode('unlink')} /> : <>
-      <button className="button borderless" disabled={working} aria-label={'Rename ' + label} ref={renameButton}
-        onClick={startRename}>Rename</button>
-      <button className="icon-button borderless" disabled={working} aria-label={'Unlink ' + label} title={'Unlink ' + device.name}
-        ref={unlinkButton} onClick={() => setMode('unlink')}><Link2Off size={17} /></button>
+      <Button variant="quiet" disabled={working} aria-label={'Rename ' + label} ref={renameButton}
+        onClick={startRename}>Rename</Button>
+      <IconButton variant="quiet" disabled={working} aria-label={'Unlink ' + label} title={'Unlink ' + device.name}
+        ref={unlinkButton} onClick={() => setMode('unlink')}><Link2Off size={17} /></IconButton>
     </>}
   </li>
 }

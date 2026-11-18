@@ -1,0 +1,1 @@
+ALTER TABLE libraries ADD COLUMN settings TEXT NOT NULL DEFAULT '{}';

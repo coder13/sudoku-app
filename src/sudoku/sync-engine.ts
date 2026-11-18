@@ -1,3 +1,4 @@
+import { syncSettings, type SettingsValues } from './sync-settings.ts'
 import type { Game } from './game.ts'
 import { activityPrefix, lastPlayed } from './puzzle-activity.ts'
 import { GAME_PREFIX, readGame } from './storage.ts'
@@ -104,8 +105,13 @@ export function createSyncEngine(storage: Storage, deviceId: string, request: Sy
 
   async function run(flushClock = false) {
     let cursor = Number(storage.getItem(cursorKey)) || 0
+    type Changes = { id: string; revision: number; sequence: number }[]
+    let settings: SettingsValues | undefined
     for (;;) {
-      const changes = await request<{ id: string; revision: number; sequence: number }[]>('changes?after=' + cursor)
+      const page = await request<Changes | { changes: Changes; settings: SettingsValues }>(
+        'changes?after=' + cursor + (settings ? '' : '&settings=1'))
+      const changes = Array.isArray(page) ? page : page.changes
+      if (!Array.isArray(page)) settings = page.settings
       for (const change of changes) {
         if (baseFor(change.id).revision < change.revision) await pull(change.id)
         cursor = change.sequence
@@ -141,6 +147,7 @@ export function createSyncEngine(storage: Storage, deviceId: string, request: Sy
         await pull(id)
       }
     }
+    if (settings) await syncSettings(storage, prefix + 'settings', request, settings)
     if (skipped) throw new Error(skipped)
   }
   return { run }

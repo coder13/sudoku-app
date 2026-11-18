@@ -78,9 +78,13 @@ async function api(request, db, url) {
     if (!result.meta.changes) throw new HttpError(403, 'The link or recovery key is invalid or expired.')
     return json({ id, token }, 201)
   }
-  if (!/^(invitations|devices(?:\/[\w-]+)?|changes|puzzles\/[\w-]+)$/.test(path)) throw new HttpError(404, 'Not found.')
+  if (!/^(invitations|devices(?:\/[\w-]+)?|settings|changes|puzzles\/[\w-]+)$/.test(path)) throw new HttpError(404, 'Not found.')
   const raw = request.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1]
-  const device = raw && await db.prepare('SELECT id, library FROM devices WHERE token_hash = ?').bind(await digest(raw)).first()
+  const includeSettings = path === 'changes' && url.searchParams.has('settings')
+  const authQuery = includeSettings
+    ? 'SELECT devices.id, library, settings FROM devices JOIN libraries ON libraries.id = devices.library WHERE token_hash = ?'
+    : 'SELECT id, library FROM devices WHERE token_hash = ?'
+  const device = raw && await db.prepare(authQuery).bind(await digest(raw)).first()
   if (!device) throw new HttpError(401, 'This device is no longer linked.')
   const { library } = device
   if (path === 'invitations' && method === 'POST') {
@@ -107,11 +111,29 @@ async function api(request, db, url) {
     await db.prepare('DELETE FROM devices WHERE library = ? AND id = ?').bind(library, path.slice(8)).run()
     return json({ ok: true })
   }
+  if (path === 'settings' && method === 'PATCH') {
+    const { seeds, edits } = await input(request, 32 * 1024)
+    for (const map of [seeds, edits]) {
+      if (!map || typeof map !== 'object' || Array.isArray(map)) throw new HttpError(400, 'Invalid settings.')
+      for (const [key, value] of Object.entries(map)) {
+        if (!/^[a-z][a-zA-Z0-9.-]{0,79}$/.test(key) || typeof value !== 'string') throw new HttpError(400, 'Invalid setting.')
+        try { JSON.parse(value) } catch { throw new HttpError(400, 'Invalid setting value.') }
+      }
+    }
+    // Existing choices win over enrollment seeds. Later edits change only their individual fields.
+    const update = 'json_patch(json_patch(?, settings), ?)'
+    const result = await db.prepare('UPDATE libraries SET settings = ' + update +
+      ' WHERE id = ? AND length(CAST(' + update + ' AS BLOB)) <= 65536 RETURNING settings')
+      .bind(JSON.stringify(seeds), JSON.stringify(edits), library, JSON.stringify(seeds), JSON.stringify(edits)).first('settings')
+    if (result == null) throw new HttpError(413, 'Settings are too large to sync.')
+    return json(JSON.parse(result))
+  }
   if (path === 'changes' && method === 'GET') {
     const after = Number(url.searchParams.get('after') ?? 0)
     if (!Number.isSafeInteger(after) || after < 0) throw new HttpError(400, 'Invalid cursor.')
-    return json((await db.prepare('SELECT id, revision, sequence FROM puzzles WHERE library = ? AND sequence > ? ORDER BY sequence LIMIT 100')
-      .bind(library, after).all()).results)
+    const changes = (await db.prepare('SELECT id, revision, sequence FROM puzzles WHERE library = ? AND sequence > ? ORDER BY sequence LIMIT 100')
+      .bind(library, after).all()).results
+    return json(includeSettings ? { changes, settings: JSON.parse(device.settings) } : changes)
   }
   if (path.startsWith('puzzles/')) {
     const id = path.slice(8)

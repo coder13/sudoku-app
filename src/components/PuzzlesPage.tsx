@@ -1,3 +1,4 @@
+import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultySelector } from './DifficultySelector'
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentType } from 'react'
 import { getRouteApi, Link, Outlet, useRouterState } from '@tanstack/react-router'
@@ -90,8 +91,8 @@ function PuzzleLibrary({ games, active, manage }: {
             <span className="game-row-copy"><strong>{game.title}</strong><small>{puzzleStatus(game)}</small></span>
             {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
           </Link>
-          {manageable && <button type="button" className="icon-button borderless game-row-options" aria-haspopup="dialog"
-            aria-label={`Options for ${game.title}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></button>}
+          {manageable && <IconButton type="button" variant="quiet" className="game-row-options" aria-haspopup="dialog"
+            aria-label={`Options for ${game.title}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></IconButton>}
         </li>
       })}
     </ul>
@@ -140,15 +141,15 @@ function NewPuzzleSection({ preference, save }: {
   return <section className="main-menu-section" aria-labelledby={`${group}-title`}>
     <header className="new-puzzle-heading">
       <h2 id={`${group}-title`}>New puzzle</h2>
-      <Link className="button secondary" to="/import" disabled={busy}><FileUp size={18} aria-hidden="true" /> Import a puzzle</Link>
+      <Link className={buttonClassName()} to="/import" disabled={busy}><FileUp size={18} aria-hidden="true" /> Import a puzzle</Link>
     </header>
     <VariantSelector value={variant} onChange={setVariant} busy={busy} />
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
-    <button className="button primary main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
+    <Button variant="primary" className="main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
         ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
-    </button>
+    </Button>
   </section>
 }
 
@@ -261,11 +262,11 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
       {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"
         search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
           : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
-        className="icon-button puzzles-back" aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
+        className={iconButtonClassName('secondary', 'puzzles-back')} aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
           : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
         : backToStart ? <Link to="/puzzles/new" search={{}} replace
-          className="icon-button puzzles-back" aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
-          : section && <Link to="/puzzles" className="icon-button puzzles-back" aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}
+          className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
+          : section && <Link to="/puzzles" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}
       <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{screen ? newPuzzleTitle[screen]
         : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? sectionItem?.label ?? 'Puzzles'}</h1>
     </header>

@@ -1,12 +1,13 @@
 import { DatabaseSync } from 'node:sqlite'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import worker from '../../cloudflare/pages/_worker.js'
 
 // Run the production Worker's SQL against an isolated SQLite database. D1
 // batches commit or roll back as a unit, including single-use ticket redemption.
 export function syncDatabase() {
   const sqlite = new DatabaseSync(':memory:')
-  sqlite.exec(readFileSync(new URL('../../cloudflare/migrations/0001_device_sync.sql', import.meta.url), 'utf8'))
+  const migrations = new URL('../../cloudflare/migrations/', import.meta.url)
+  for (const file of readdirSync(migrations).filter(name => name.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL(file, migrations), 'utf8'))
   const prepare = (sql: string, values: (number | string | null)[] = []) => ({
     bind: (...args: typeof values) => prepare(sql, args),
     first(column?: string) {

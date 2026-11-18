@@ -1,3 +1,4 @@
+import { settingsEditedEvent } from './settings-events.ts'
 import { createSyncEngine, syncRequest, SyncError, type Credentials } from './sync-engine.ts'
 import { roomStore } from './storage.ts'
 
@@ -55,7 +56,7 @@ async function sync(flushClock = false) {
   async function exchange() {
     try {
       await engine!.run(flushClock)
-      if (credentials()?.id === device!.id) publish({ linked: true, ready: true, message: 'Puzzles synced.' })
+      if (credentials()?.id === device!.id) publish({ linked: true, ready: true, message: 'Up to date.' })
     } catch (error) {
       if (credentials()?.id !== device!.id) return
       if (error instanceof SyncError && error.status === 401) {
@@ -86,6 +87,8 @@ export const deviceSync = {
       if (navigator.onLine && state.ready) publish({ ...state, message: 'Saving changes…' })
       schedule()
     })
+    const settingChanged = () => schedule()
+    window.addEventListener(settingsEditedEvent, settingChanged)
     const wake = () => { void sync(true) }
     const storageChanged = (event: StorageEvent) => { if (event.key === credentialsKey) wake() }
     wake()
@@ -99,6 +102,7 @@ export const deviceSync = {
       unsubscribe()
       clearTimeout(timer)
       window.clearInterval(interval)
+      window.removeEventListener(settingsEditedEvent, settingChanged)
       window.removeEventListener('online', wake)
       window.removeEventListener('offline', wake)
       window.removeEventListener('focus', wake)
@@ -109,8 +113,9 @@ export const deviceSync = {
   async enroll(mode: 'libraries' | 'join' | 'recover', secret?: string) {
     if (credentials()) throw new Error('This device is already linked.')
     const result = await syncRequest()<Credentials & { recovery?: string }>(mode, 'POST', { secret })
+    if (result.recovery) localStorage.setItem(recoveryStorage + result.id, result.recovery)
     localStorage.setItem(credentialsKey, JSON.stringify({ id: result.id, token: result.token }))
-    void sync()
+    await sync()
     return result.recovery
   },
   async invite() {

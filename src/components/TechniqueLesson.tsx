@@ -1,3 +1,4 @@
+import { Button, buttonClassName } from './Button'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { lessonDifficultyLabels } from '../sudoku/lesson-difficulties'
@@ -129,10 +130,10 @@ function WorkedExampleViewer({ article, technique, diagrams, fallbackReason }: {
     <div className="lesson-example-controls" role="group" aria-label="Example navigation">
       <span>Example {current.number + 1}</span>
       <div>
-        <button type="button" className="button secondary" aria-label="Previous example" disabled={loading || current.number === 0}
-          onClick={() => void showExample(current.number - 1)}>Previous</button>
-        <button type="button" className="button secondary" aria-label="Next example" disabled={loading}
-          onClick={() => void showExample(current.number + 1)}>Next</button>
+        <Button type="button" aria-label="Previous example" disabled={loading || current.number === 0}
+          onClick={() => void showExample(current.number - 1)}>Previous</Button>
+        <Button type="button" aria-label="Next example" disabled={loading}
+          onClick={() => void showExample(current.number + 1)}>Next</Button>
       </div>
     </div>
     <p role="status" className={status === 'error' ? 'lesson-new-example-error' : 'sr-only'}>
@@ -222,10 +223,10 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
               {drills.map(({ example, title }) => <option key={example} value={example}>{title}</option>)}
             </SelectControl>
           </label>}
-          <button type="button" className="button secondary lesson-new-example" disabled={generation === 'loading'}
+          <Button type="button" className="lesson-new-example" disabled={generation === 'loading'}
             aria-busy={generation === 'loading'} onClick={newExample}>
             <RefreshCw size={16} aria-hidden="true" /> New example
-          </button>
+          </Button>
         </div>
       </header>
       <p role="status" className={generation === 'error' ? 'lesson-new-example-error' : 'sr-only'}>
@@ -341,10 +342,10 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
       </section>}
 
       <nav className="lesson-neighbors" aria-label="Adjacent articles">
-        {previous && <Link to="/learn/$technique" params={{ technique: previous.id }} className="button secondary">
+        {previous && <Link to="/learn/$technique" params={{ technique: previous.id }} className={buttonClassName()}>
           <ArrowLeft size={16} aria-hidden="true" /> {previous.title}
         </Link>}
-        {next && <Link to="/learn/$technique" params={{ technique: next.id }} className="button secondary lesson-next">
+        {next && <Link to="/learn/$technique" params={{ technique: next.id }} className={buttonClassName('secondary', 'lesson-next')}>
           {next.title} <ArrowRight size={16} aria-hidden="true" />
         </Link>}
       </nav>

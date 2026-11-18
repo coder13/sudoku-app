@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { makeGame, EMPTY, enter, undo, type Game } from '../src/sudoku/game.ts'
+import { makeGame, EMPTY, enter, isSolved, undo, type Game } from '../src/sudoku/game.ts'
 import { GAME_PREFIX } from '../src/sudoku/storage.ts'
 import { activityPrefix, inProgress } from '../src/sudoku/puzzle-activity.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
@@ -158,5 +158,77 @@ test('simultaneous writes preserve both moves, while a stale unmodified device a
     a.remove('live'); await a.run(); await b.run()
     assert.equal(b.read('live'), null)
     assert.equal(b.games().length, 1)
+  } finally { sqlite.close() }
+})
+
+test('link populated devices: keep completed and ongoing attempts, including two independent attempts at the same grid', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const a = client(creator, phone), b = client(second, computer)
+    const solved = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+    for (const [device, name] of [[a, 'phone'], [b, 'computer']] as const) {
+      device.write(enter(makeGame(name + '-finished', name, '0' + solved.slice(1), 'imported'), [0], 'value', 5))
+      device.write(enter(makeGame(name + '-playing', name, EMPTY, 'imported'), [0], 'value', 1))
+    }
+    await a.run(); await b.run(); await a.run(); await b.run()
+    for (const device of [a, b]) {
+      assert.equal(device.games().length, 4)
+      assert.deepEqual(device.games().filter(isSolved).map(game => game.id).sort(), ['computer-finished', 'phone-finished'])
+      assert.deepEqual(inProgress(device.games(), device.storage).map(game => game.id).sort(), ['computer-playing', 'phone-playing'])
+    }
+  } finally { sqlite.close() }
+})
+
+test('settings seed missing choices, merge individual offline edits and reflect a reset to defaults', async () => {
+  const { sqlite, creator, phone, second, computer, anon, fetcher } = await library()
+  try {
+    const a = client(creator, phone), b = client(second, computer)
+    const appearance = 'sudoku-app:v1:appearance', timing = 'sudoku-app:v1:puzzle-timing'
+    const write = (device: typeof a, key: string, value: object) => device.storage.setItem(key, JSON.stringify(value))
+    const read = (device: typeof a, key: string) => JSON.parse(device.storage.getItem(key)!)
+    write(a, appearance, { lightTheme: 'forest', showGuides: false })
+    write(b, appearance, { lightTheme: 'ocean', showGuides: true })
+    write(a, timing, { showTimer: false, showPause: true })
+    b.storage.setItem('sudoku-app:v1:input-panel-height', '330')
+    await a.run(); await b.run(); await a.run()
+    for (const device of [a, b]) {
+      assert.equal(read(device, appearance).lightTheme, 'forest')
+      assert.equal(read(device, appearance).showGuides, true)
+      assert.equal(read(device, timing).showTimer, false)
+    }
+    assert.equal(a.storage.getItem('sudoku-app:v1:input-panel-height'), null)
+    write(a, timing, { ...read(a, timing), showTimer: true })
+    write(b, timing, { ...read(b, timing), showPause: false })
+    await Promise.all([a.run(), b.run()])
+    await a.run(); await b.run()
+    for (const device of [a, b]) {
+      assert.equal(read(device, timing).showTimer, true)
+      assert.equal(read(device, timing).showPause, false)
+    }
+    const stranger = await anon<Credentials>('libraries', 'POST')
+    const foreign = syncRequest(stranger.token, fetcher)
+    assert.deepEqual(await foreign('changes?settings=1'), { changes: [], settings: {} })
+    await assert.rejects(anon('settings', 'PATCH', { seeds: {}, edits: {} }), { status: 401 })
+    await phone('devices/' + second.id, 'DELETE')
+    await assert.rejects(computer('settings', 'PATCH', { seeds: {}, edits: {} }), { status: 401 })
+  } finally { sqlite.close() }
+})
+
+test('settings changed during an upload are still pending after a reload', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const storage = new MemoryStorage()
+    const key = 'sudoku-app:v1:error-mode'
+    storage.setItem(key, 'none')
+    const duringUpload: typeof phone = async (path, method, body) => {
+      if (path === 'settings') storage.setItem(key, 'incorrect')
+      return phone(path, method, body)
+    }
+    await client(creator, duringUpload, storage).run()
+    assert.equal(storage.getItem(key), 'incorrect')
+    await client(creator, phone, storage).run()
+    const b = client(second, computer)
+    await b.run()
+    assert.equal(b.storage.getItem(key), 'incorrect')
   } finally { sqlite.close() }
 })

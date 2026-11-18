@@ -12,6 +12,7 @@ import { describeHint, type CellReferenceStyle } from '../src/sudoku/hints.ts'
 import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
 import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 
+let Button: (props: Record<string, unknown>) => ReactNode
 let server: ViteDevServer
 let Worktable: (props: Record<string, unknown>) => ReactNode
 let SolutionDialog: (props: Record<string, unknown>) => ReactNode
@@ -27,6 +28,7 @@ before(async () => {
   server = await createServer({ configFile: false, appType: 'custom',
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] } })
+  ;({ Button } = await server.ssrLoadModule('/src/components/Button.tsx'))
   ;({ Worktable } = await server.ssrLoadModule('/src/components/Worktable.tsx'))
   ;({ SolutionDialog, SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
@@ -131,6 +133,7 @@ test('the variant finder explains invalid candidates and entries before showing 
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
   if (Array.isArray(node)) return node.flatMap(elements)
   if (!isValidElement<Record<string, unknown>>(node)) return []
+  if (node.type === Button) return elements(Button(node.props))
   return [node, ...Object.values(node.props).flatMap(elements)]
 }
 

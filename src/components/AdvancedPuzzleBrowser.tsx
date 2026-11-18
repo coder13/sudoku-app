@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Archive, ArchiveRestore, BookmarkMinus, BookmarkPlus, Dices, PencilLine, Save } from 'lucide-react'
@@ -104,11 +105,11 @@ export function AdvancedPuzzleBrowser({ games, active, view, onViewChange, onSel
       <div><h2>Puzzles</h2><p>Switch puzzles or open the puzzle editor.</p></div>
     </header>
     <div className="advanced-browser-actions">
-      <button className="button secondary" onClick={onNew}><Dices size={16} /> New puzzle</button>
-      <button className="button secondary" onClick={onCreate}><PencilLine size={16} /> Create puzzle</button>
+      <Button onClick={onNew}><Dices size={16} /> New puzzle</Button>
+      <Button onClick={onCreate}><PencilLine size={16} /> Create puzzle</Button>
       {activeGame?.source === 'draft'
-        ? <button className="button primary" onClick={onSave}><Save size={16} /> Save puzzle</button>
-        : activeGame?.source === 'custom' && <button className="button secondary" onClick={onEdit}><PencilLine size={16} /> Edit puzzle</button>}
+        ? <Button variant="primary" onClick={onSave}><Save size={16} /> Save puzzle</Button>
+        : activeGame?.source === 'custom' && <Button onClick={onEdit}><PencilLine size={16} /> Edit puzzle</Button>}
     </div>
     <div className="advanced-browser-tabs" role="tablist" aria-label="Puzzle browser views">
       {(['active', 'past', 'saved'] as const).map((item) => <button key={item} role="tab" aria-selected={view === item}

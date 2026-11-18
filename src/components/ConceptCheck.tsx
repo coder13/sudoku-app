@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { useId, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import type { LessonBlock } from '../sudoku/lesson-content'
@@ -13,15 +14,15 @@ export function ConceptCheck({ block }: { block: Extract<LessonBlock, { type: 'c
     <header className="lesson-practice-heading">
       <h2 id={`${id}-title`}>{block.title}</h2>
       <span className="concept-progress">{index + 1} of {block.questions.length}</span>
-      <button type="button" className="button secondary lesson-new-example" onClick={() => {
+      <Button type="button" className="lesson-new-example" onClick={() => {
         setIndex((index + 1) % block.questions.length)
         setAnswer(null)
-      }}><RefreshCw size={16} aria-hidden="true" /> New example</button>
+      }}><RefreshCw size={16} aria-hidden="true" /> New example</Button>
     </header>
     <fieldset className="concept-choices">
       <legend aria-live="polite">{question.prompt}</legend>
-      {question.options.map((option, optionIndex) => <button type="button" className="button secondary" key={`${index}:${optionIndex}`}
-        aria-pressed={answer === optionIndex} onClick={() => setAnswer(optionIndex)}>{option}</button>)}
+      {question.options.map((option, optionIndex) => <Button type="button" key={`${index}:${optionIndex}`}
+        aria-pressed={answer === optionIndex} onClick={() => setAnswer(optionIndex)}>{option}</Button>)}
     </fieldset>
     <div className="concept-feedback" role="status" aria-atomic="true">
       {answer !== null && <><strong>{correct ? 'Correct.' : 'Try again.'}</strong> {question.explanation}</>}

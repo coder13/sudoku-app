@@ -1,3 +1,4 @@
+import { Button, IconButton, buttonClassName } from './Button'
 import { Link, useLocation, useMatch, useNavigate } from '@tanstack/react-router'
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
@@ -11,7 +12,8 @@ import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import {
   DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, INPUT_SIZE_STEP, MAX_INPUT_SIZE,
-  MIN_INPUT_SIZE, readNewPuzzlePreference, readPanelHeight, readPreferences, saveAdvancedModes, saveAppearance, saveCellReferenceStyle, saveDifficulty, saveErrorMode,
+  ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY, ERROR_MODE_KEY, HIGHLIGHT_KEY,
+  INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, MIN_INPUT_SIZE, readNewPuzzlePreference, readPanelHeight, readPreferences, saveAdvancedModes, saveAppearance, saveCellReferenceStyle, saveDifficulty, saveErrorMode,
   saveHighlightPreferences, saveInputSize, savePanelHeight, saveWorkspaceMode, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_WORKSPACE_MODE,
   saveNewPuzzlePreference, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
 } from '../sudoku/preferences'
@@ -58,6 +60,9 @@ function saveAdvancedPanelVisibility(value: AdvancedPanelVisibility) {
   try { localStorage.setItem(ADVANCED_PANEL_VISIBILITY_KEY, JSON.stringify(value)) }
   catch { /* Panel visibility remains active for this session. */ }
 }
+
+const shellPreferenceKeys = new Set([ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY,
+  ERROR_MODE_KEY, HIGHLIGHT_KEY, INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY])
 
 const PlayContent = createContext<ReactNode>(null)
 type PuzzlesContentValue = {
@@ -167,22 +172,35 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const disconnect = roomStore.connect()
     const disconnectSync = deviceSync.connect()
     const disconnectDownloads = collectionDownloads.connect()
-    const preferences = readPreferences()
-    setAdvancedModesState(preferences.advancedModes)
-    savedAppearance.current = preferences.appearance
-    setAppearance(preferences.appearance)
-    setHighlightingState(preferences.highlighting)
-    setErrorModeState(preferences.errorMode)
-    setCellReferenceStyleState(preferences.cellReferenceStyle)
-    setInputSizeState(preferences.inputSize)
-    setDifficultyState(preferences.difficulty)
-    setNewPuzzlePreference(readNewPuzzlePreference())
-    setPreferredWorkspaceMode(preferences.workspaceMode)
+    function refreshPreferences(key: string | null) {
+      const matches = (setting: string) => key === null || key === setting
+      const preferences = readPreferences()
+      if (matches(ADVANCED_MODE_KEY)) setAdvancedModesState(preferences.advancedModes)
+      if (matches(APPEARANCE_KEY)) {
+        savedAppearance.current = preferences.appearance
+        setAppearance(preferences.appearance)
+      }
+      if (matches(HIGHLIGHT_KEY)) setHighlightingState(preferences.highlighting)
+      if (matches(ERROR_MODE_KEY)) setErrorModeState(preferences.errorMode)
+      if (matches(CELL_REFERENCE_STYLE_KEY)) setCellReferenceStyleState(preferences.cellReferenceStyle)
+      if (matches(INPUT_SIZE_KEY)) setInputSizeState(preferences.inputSize)
+      if (matches(DIFFICULTY_KEY)) setDifficultyState(preferences.difficulty)
+      if (matches(NEW_PUZZLE_KEY)) setNewPuzzlePreference(readNewPuzzlePreference())
+      if (matches(WORKSPACE_MODE_KEY)) setPreferredWorkspaceMode(preferences.workspaceMode)
+    }
+    function onStorage(event: StorageEvent) {
+      if (event.storageArea === localStorage && (event.key === null || shellPreferenceKeys.has(event.key))) refreshPreferences(event.key)
+    }
+    window.addEventListener('storage', onStorage)
+    refreshPreferences(null)
     setAdvancedPanels(readAdvancedPanelVisibility())
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
     setWorkspaceReady(true)
-    return () => { disconnect(); disconnectSync(); disconnectDownloads() }
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      disconnect(); disconnectSync(); disconnectDownloads()
+    }
   }, [])
   useEffect(() => {
     if (!workspaceReady || savedAppearance.current === appearance) return
@@ -436,12 +454,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const emptyPuzzleContent = <div className="empty-puzzle-content" role={automaticPuzzle.busy ? 'status' : undefined}>
     <h2>{automaticPuzzle.busy ? 'Generating a puzzle…' : 'Start a Sudoku'}</h2>
     {automaticPuzzle.error && <p className="workspace-error" role="alert">{automaticPuzzle.error}</p>}
-    {!automaticPuzzle.busy && <button className="button primary" onClick={() => {
+    {!automaticPuzzle.busy && <Button variant="primary" onClick={() => {
       if (stoppedPlaying || games.length || (mobile && !automaticPuzzle.error)) { openNewPuzzle(); return }
       automaticPuzzleStarted.current = true
       void automaticPuzzle.generate(difficulty)
-    }}><Plus size={18} /> {automaticPuzzle.error ? 'Try again' : 'New puzzle'}</button>}
-    {games.length > 0 && <Link className="button secondary" to="/puzzles/browse">Your puzzles</Link>}
+    }}><Plus size={18} /> {automaticPuzzle.error ? 'Try again' : 'New puzzle'}</Button>}
+    {games.length > 0 && <Link className={buttonClassName()} to="/puzzles/browse">Your puzzles</Link>}
   </div>
 
   return (
@@ -464,30 +482,30 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           </nav>
           <div className="topbar-actions" ref={menuRef}>
             {advancedShell && !settingsRoute && <div className="advanced-region-controls" role="group" aria-label="Workspace panels">
-              <button className="icon-button" aria-pressed={activeLeftPanelOpen}
+              <IconButton aria-pressed={activeLeftPanelOpen}
                 aria-label={`${activeLeftPanelOpen ? 'Collapse' : 'Expand'} left panel`}
                 title={`${activeLeftPanelOpen ? 'Collapse' : 'Expand'} ${learning ? 'articles' : 'puzzles'} panel`}
-                onClick={() => setPanelVisibility(learning ? 'articles' : 'left')}><PanelLeft size={17} /></button>
+                onClick={() => setPanelVisibility(learning ? 'articles' : 'left')}><PanelLeft size={17} /></IconButton>
               {playing && <>
-                <button className="icon-button" aria-pressed={advancedPanels.right}
+                <IconButton aria-pressed={advancedPanels.right}
                   aria-label={`${advancedPanels.right ? 'Collapse' : 'Expand'} right panel`}
                   title={`${advancedPanels.right ? 'Collapse' : 'Expand'} right panels`}
-                  onClick={() => setPanelVisibility('right')}><PanelRight size={17} /></button>
-                <button className="icon-button" aria-pressed={advancedPanels.bottom}
+                  onClick={() => setPanelVisibility('right')}><PanelRight size={17} /></IconButton>
+                <IconButton aria-pressed={advancedPanels.bottom}
                   aria-label={`${advancedPanels.bottom ? 'Collapse' : 'Expand'} bottom panel`}
                   title={`${advancedPanels.bottom ? 'Collapse' : 'Expand'} assistance panel`}
-                  onClick={() => setPanelVisibility('bottom')}><PanelBottom size={17} /></button>
+                  onClick={() => setPanelVisibility('bottom')}><PanelBottom size={17} /></IconButton>
               </>}
             </div>}
-            <button className="icon-button desktop-color-mode-toggle" onClick={cycleColorMode}
+            <IconButton className="desktop-color-mode-toggle" onClick={cycleColorMode}
               aria-label={`Color mode: ${COLOR_MODE_LABELS[appearance.colorMode]}. Switch to ${COLOR_MODE_LABELS[nextColorMode]} mode.`}
               title={`${COLOR_MODE_LABELS[appearance.colorMode]} color mode`}>
               <ColorModeIcon size={19} />
-            </button>
-            <button ref={menuButtonRef} className="icon-button app-menu-trigger" aria-label="Open options menu" title="Options"
+            </IconButton>
+            <IconButton ref={menuButtonRef} className="app-menu-trigger" aria-label="Open options menu" title="Options"
               aria-expanded={menuOpen} aria-controls="app-menu" onClick={() => setMenuOpen((open) => !open)}>
               <Menu size={20} />
-            </button>
+            </IconButton>
             <Presence open={menuOpen}>{(presence) => <div className="app-menu" id="app-menu" data-presence={presence}
               aria-hidden={presence === 'exit' || undefined} inert={presence === 'exit' || undefined}>
               <Link className="mobile-menu-only" to="/" onClick={() => setMenuOpen(false)}><Play size={17} /> Play</Link>
@@ -527,8 +545,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       ) : playRoute && showLibrary ? <ResumePuzzles games={resumable} /> : playRoute && requested && !game ? (
         <main className="page sync-page"><h1>{sync.linked && !sync.ready ? 'Loading puzzle…' : 'Puzzle unavailable on this device'}</h1>
           <p>{sync.linked ? sync.message : 'Link the device that has this puzzle to open it here.'}</p>
-          <Link className="button primary" to="/sync">Device sync</Link>
-          <Link className="button secondary" to="/" search={{}}>Return to puzzles</Link>
+          <Link className={buttonClassName('primary')} to="/sync">Device sync</Link>
+          <Link className={buttonClassName()} to="/" search={{}}>Return to puzzles</Link>
         </main>
       ) : playing ? (
         <main id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace">
@@ -567,14 +585,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       <MotionSurface>{playing && resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
         <span className="resize-session-copy"><strong>Resize input panel</strong><small>Drag the handle or adjust digit size.</small></span>
         <span className="resize-size-controls" role="group" aria-label="Digit size">
-          <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
-            onClick={() => setInputSizeState(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></button>
-          <button className="icon-button" aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
-            onClick={() => setInputSizeState(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></button>
+          <IconButton aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
+            onClick={() => setInputSizeState(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></IconButton>
+          <IconButton aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
+            onClick={() => setInputSizeState(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></IconButton>
         </span>
         <span className="resize-session-actions">
-          <button className="button secondary" onClick={cancelResize}>Cancel</button>
-          <button className="button primary" onClick={finishResize}>Save</button>
+          <Button onClick={cancelResize}>Cancel</Button>
+          <Button variant="primary" onClick={finishResize}>Save</Button>
         </span>
       </div>}</MotionSurface>
 

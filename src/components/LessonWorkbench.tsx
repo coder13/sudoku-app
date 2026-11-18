@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import type { Candidate, DeductionAction, PositionSnapshot, VariantPuzzle } from '../sudoku/engine'
 import { alternateColorShade, COLORS, conflictsOf, enter, onlyCandidate, paintCandidate, redo, undo, valuesOf, type ColorTarget, type Mode } from '../sudoku/game'
@@ -237,10 +238,10 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
         undo={() => commit(undo)} redo={() => commit(redo)} canUndo={game.past.length > 0} canRedo={game.future.length > 0}
         compact disabled={!interactive} draft={false} inputSize={preferences.inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight}
         beginResize={() => {}} multi={multi} toggleMulti={() => setMulti(!multi)} />
-      {(annotations || guide) && <button type="button" className="button quiet lesson-workbench-highlights" aria-pressed={Boolean(annotations) && showAnnotations}
-        disabled={!annotations} onClick={() => setShowAnnotations(!showAnnotations)}>{guide ? 'Grid highlights' : 'Explanation highlights'}</button>}
+      {(annotations || guide) && <Button type="button" variant="quiet" className="lesson-workbench-highlights" aria-pressed={Boolean(annotations) && showAnnotations}
+        disabled={!annotations} onClick={() => setShowAnnotations(!showAnnotations)}>{guide ? 'Grid highlights' : 'Explanation highlights'}</Button>}
       {children ? children({ actions, reset, reveal })
-        : <button type="button" className="button secondary" onClick={reset}>Reset grid</button>}
+        : <Button type="button" onClick={reset}>Reset grid</Button>}
     </div>}
   </div>
 }

@@ -1,3 +1,4 @@
+import { Button, IconButton } from './Button'
 import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
 import { useLayoutEffect, useRef } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
@@ -43,33 +44,33 @@ export function HintCard({ hint, onClose, onShown, visuals, navigation, action, 
           </a>}
         </div>
         <div className="hint-card-heading-buttons">
-          {visuals && <button type="button" className="icon-button borderless hint-card-visuals"
+          {visuals && <IconButton type="button" variant="quiet" className="hint-card-visuals"
             aria-label="Hint visuals" aria-pressed={visuals.visible} title={visuals.visible ? 'Hide hint visuals' : 'Show hint visuals'}
             onClick={visuals.onToggle}>
             {visuals.visible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
-          </button>}
-          <button type="button" className="icon-button borderless hint-card-close" aria-label="Close hint" onClick={onClose}>
+          </IconButton>}
+          <IconButton type="button" variant="quiet" className="hint-card-close" aria-label="Close hint" onClick={onClose}>
             <X size={18} aria-hidden="true" />
-          </button>
+          </IconButton>
         </div>
         {(navigation || action || secondaryAction) && <div className="hint-card-actions">
           {navigation && <div className="hint-card-navigation" role="group" aria-label="Hint navigation">
-            <button type="button" className="icon-button" aria-label="Previous hint"
+            <IconButton type="button" aria-label="Previous hint"
               disabled={navigation.index === 0} onClick={() => navigation.onMove(-1)}>
               <ArrowLeft size={16} aria-hidden="true" />
-            </button>
+            </IconButton>
             <span>{navigation.index + 1}/{navigation.count}</span>
-            <button type="button" className="icon-button" aria-label="Next hint"
+            <IconButton type="button" aria-label="Next hint"
               disabled={navigation.count < 2} onClick={() => navigation.onMove(1)}>
               <ArrowRight size={16} aria-hidden="true" />
-            </button>
+            </IconButton>
           </div>}
-          {secondaryAction && <button type="button" className="button secondary" aria-expanded={secondaryAction.expanded}
-            onClick={secondaryAction.onClick}>{secondaryAction.label}</button>}
+          {secondaryAction && <Button type="button" aria-expanded={secondaryAction.expanded}
+            onClick={secondaryAction.onClick}>{secondaryAction.label}</Button>}
           {action && <div className="hint-card-detail-actions" role="group" aria-label="Hint detail">
-            {lessDetail && <button type="button" className="button secondary" disabled={lessDetail.disabled}
-              onClick={lessDetail.onClick}>Less detail</button>}
-            <button type="button" className="button primary" onClick={action.onClick}>{action.label}</button>
+            {lessDetail && <Button type="button" disabled={lessDetail.disabled}
+              onClick={lessDetail.onClick}>Less detail</Button>}
+            <Button type="button" variant="primary" onClick={action.onClick}>{action.label}</Button>
           </div>}
         </div>}
       </div>
