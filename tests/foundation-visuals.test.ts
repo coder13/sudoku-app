@@ -81,7 +81,8 @@ function completions(visual: FoundationVisualDefinition) {
 
 test('the final marks in the multi-digit examples hold in every possible filling', () => {
   for (const id of ['candidate-elimination', 'subset-count', 'wing-cases', 'contradiction', 'loop-alternating-links', 'placement-capacity',
-    'naked-triple-count', 'naked-quadruple-count', 'locked-pair-two-houses', 'wxyz-wing-all-restricted', 'overlap-uses-two-slots'] as const) {
+    'naked-triple-count', 'naked-quadruple-count', 'locked-pair-two-houses', 'wxyz-wing-all-restricted', 'overlap-uses-two-slots',
+    'als-two-sets', 'als-four-cell-wing', 'als-three-sets', 'als-four-sets', 'forcing-three-choices', 'forcing-common-result'] as const) {
     const visual = foundationVisuals[id]
     const solutions = completions(visual)
     assert.ok(solutions.length > 0, id)
@@ -146,6 +147,17 @@ test('both fish placements use every cover and exclude the marked candidate', ()
   const layouts = digitLayouts(visual.candidates!, [[20, 21], [39, 42], [56, 60]])
   assert.deepEqual(layouts, [[21, 42, 56], [20, 39, 60]])
   assert.ok(layouts.every(layout => !layout.includes(30)))
+})
+
+test('pointing and claiming rule out their targets from either placement in the overlap', () => {
+  for (const id of ['pointing-box-to-row', 'claiming-row-to-box'] as const) {
+    const visual = foundationVisuals[id]
+    const rowBoxOverlap = [9, 11]
+    const layouts = digitLayouts(visual.candidates!, [rowBoxOverlap])
+    assert.deepEqual(layouts, [[9], [11]], id)
+    const target = visual.steps[0].marks!.find(mark => mark.kind === 'removal')!
+    assert.ok(layouts.every(layout => !layout.includes(target.cell)), id)
+  }
 })
 
 test('both color states are possible and rule out the same target', () => {

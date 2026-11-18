@@ -66,6 +66,10 @@
         ]
       },
       {
+        "type": "foundation-visual",
+        "visual": "address-and-peers"
+      },
+      {
         "type": "heading",
         "id": "candidates",
         "title": "Candidates"
@@ -638,6 +642,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "pointing-box-to-row"
+            },
+            {
               "type": "diagram",
               "example": "pointing"
             },
@@ -651,6 +659,10 @@
               "paragraphs": [
                 "For claiming, start along the line. If every possible 6 in row 4 lies in box 5, remove 6 from the other rows of box 5."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "claiming-row-to-box"
             },
             {
               "type": "diagram",
@@ -755,6 +767,10 @@
               "paragraphs": [
                 "You can also start with digits. Suppose only R6C2 and R6C6 can contain 3 or 8 in row 6. Those cells must hold 3 and 8. Remove their other candidates."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "hidden-count"
             },
             {
               "type": "table",
@@ -2449,6 +2465,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "rectangle-earlier-removal"
+            },
+            {
               "type": "practice",
               "drills": [
                 {
@@ -2756,6 +2776,10 @@
                 "Within one connected set, either all blue candidates are true or all amber candidates are true. If two blue candidates conflict, remove blue throughout that set.",
                 "A candidate that conflicts with both colors also has to go. Keep disconnected sets separate. Blue in one set can mean something different from blue in another."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "color-repeated-digit"
             },
             {
               "type": "concept-check",
@@ -3301,6 +3325,10 @@
               "paragraphs": [
                 "An almost locked set has one more possible digit than cells, all in one house. Some WXYZ-Wings split into two such sets and also have an ALS-XZ proof."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "als-four-cell-wing"
             },
             {
               "type": "practice",
@@ -4338,6 +4366,22 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "als-two-sets"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "als-four-cell-wing"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "als-three-sets"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "als-four-sets"
+            },
+            {
               "type": "text",
               "paragraphs": [
                 "In a chain of sets, a digit forced into one set can rule it out in the next. The named patterns use different numbers of sets or links."
@@ -5188,6 +5232,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "forcing-three-choices"
+            },
+            {
               "type": "concept-check",
               "title": "Check your understanding",
               "questions": [
@@ -5275,6 +5323,10 @@
               "paragraphs": [
                 "Try every candidate in one cell, every place for one digit in a house, or both states of one candidate. If all cases force the same move, you can make that move on the original grid."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "forcing-common-result"
             },
             {
               "type": "heading",

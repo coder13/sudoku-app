@@ -6312,5 +6312,803 @@
         4
       ]
     }
+  },
+  "address-and-peers": {
+    "title": "Find R2C4 and its peers",
+    "region": {
+      "row": 0,
+      "column": 3,
+      "rows": 3,
+      "columns": 3
+    },
+    "candidates": {
+      "13": [
+        3,
+        5,
+        7
+      ],
+      "21": [
+        2,
+        5,
+        8
+      ],
+      "22": [
+        1,
+        5,
+        6
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "Find R2C4 and its peers",
+        "description": "Follow row 2 across to column 4. The placed 5 in R2C4 rules out 5 in R2C5 along row 2 and in R3C4 down column 4. R3C5 is in a different row and column from R2C4, but both cells are in box 2.",
+        "marks": [
+          {
+            "cell": 13,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 21,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 22,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ],
+        "filled": {
+          "12": 5
+        }
+      }
+    ],
+    "note": "Remove 5 from R3C5 as well."
+  },
+  "pointing-box-to-row": {
+    "title": "From box 1 into row 2",
+    "region": {
+      "row": 0,
+      "column": 0,
+      "rows": 3,
+      "columns": 4
+    },
+    "candidates": {
+      "9": [
+        6
+      ],
+      "11": [
+        6
+      ],
+      "12": [
+        6
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "From box 1 into row 2",
+        "description": "The only places for 6 in box 1 are R2C1 and R2C3. Whichever cell is 6, row 2 will already have its 6 inside the box.",
+        "marks": [
+          {
+            "cell": 9,
+            "digit": 6,
+            "kind": "pattern"
+          },
+          {
+            "cell": 11,
+            "digit": 6,
+            "kind": "pattern"
+          },
+          {
+            "cell": 12,
+            "digit": 6,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Remove 6 from R2C4, which shares row 2 with both places."
+  },
+  "claiming-row-to-box": {
+    "title": "From row 2 into box 1",
+    "region": {
+      "row": 0,
+      "column": 0,
+      "rows": 3,
+      "columns": 4
+    },
+    "candidates": {
+      "9": [
+        6
+      ],
+      "11": [
+        6
+      ],
+      "1": [
+        6
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "From row 2 into box 1",
+        "description": "This time the only places for 6 in row 2 are R2C1 and R2C3. Both are in box 1. A 6 in R1C2 would rule out both places through the box and leave row 2 without a 6.",
+        "marks": [
+          {
+            "cell": 9,
+            "digit": 6,
+            "kind": "pattern"
+          },
+          {
+            "cell": 11,
+            "digit": 6,
+            "kind": "pattern"
+          },
+          {
+            "cell": 1,
+            "digit": 6,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Remove 6 from R1C2."
+  },
+  "hidden-count": {
+    "title": "Two places for 3 and 8",
+    "region": {
+      "row": 5,
+      "column": 1,
+      "rows": 1,
+      "columns": 5
+    },
+    "candidates": {
+      "46": [
+        3,
+        5,
+        8
+      ],
+      "50": [
+        3,
+        7,
+        8
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "Two places for 3 and 8",
+        "description": "The only cells in row 6 that can hold 3 or 8 are R6C2 and R6C6. Both digits must fit in those cells.",
+        "marks": [
+          {
+            "cell": 46,
+            "digit": 3,
+            "kind": "pattern"
+          },
+          {
+            "cell": 46,
+            "digit": 8,
+            "kind": "pattern"
+          },
+          {
+            "cell": 50,
+            "digit": 3,
+            "kind": "pattern"
+          },
+          {
+            "cell": 50,
+            "digit": 8,
+            "kind": "pattern"
+          },
+          {
+            "cell": 46,
+            "digit": 5,
+            "kind": "removal"
+          },
+          {
+            "cell": 50,
+            "digit": 7,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Cross out 5 in R6C2 and 7 in R6C6."
+  },
+  "rectangle-earlier-removal": {
+    "title": "One rectangle candidate was crossed out earlier",
+    "region": {
+      "row": 0,
+      "column": 1,
+      "rows": 2,
+      "columns": 3
+    },
+    "candidates": {
+      "1": [
+        4,
+        7
+      ],
+      "3": [
+        4,
+        7
+      ],
+      "10": [
+        4,
+        7
+      ],
+      "12": [
+        4,
+        9
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "One rectangle candidate was crossed out earlier",
+        "description": "The givens allow both 4 and 7 at all four corners. An earlier deduction removed 7 from R2C4. If R2C4 were 4, row 2 and column 4 would force 7 into R2C2 and R1C4, leaving 4 in R1C2. Swapping 4 and 7 at all four corners would give a second solution with the same givens.",
+        "marks": [
+          {
+            "cell": 1,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 1,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 12,
+            "digit": 4,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Remove 4 from R2C4 and place 9 there."
+  },
+  "color-repeated-digit": {
+    "title": "Two blue 5s in one box",
+    "region": {
+      "row": 0,
+      "column": 0,
+      "rows": 2,
+      "columns": 2
+    },
+    "candidates": {
+      "0": [
+        5
+      ],
+      "9": [
+        5
+      ],
+      "10": [
+        5
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "Two blue 5s in one box",
+        "description": "Column 1 has two places for 5, R1C1 and R2C1. Row 2 also has two, R2C1 and R2C2. The two blue ends, R1C1 and R2C2, both lie in box 1. Placing either blue 5 would rule out the other in that box.",
+        "marks": [
+          {
+            "cell": 0,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 9,
+            "digit": 5,
+            "kind": "accent"
+          }
+        ],
+        "links": [
+          {
+            "from": {
+              "cell": 0,
+              "digit": 5
+            },
+            "to": {
+              "cell": 9,
+              "digit": 5
+            },
+            "kind": "strong"
+          },
+          {
+            "from": {
+              "cell": 9,
+              "digit": 5
+            },
+            "to": {
+              "cell": 10,
+              "digit": 5
+            },
+            "kind": "strong"
+          }
+        ]
+      }
+    ],
+    "note": "Remove both blue 5s and place the amber 5 in R2C1."
+  },
+  "als-four-cell-wing": {
+    "title": "WXYZ-Wing · four wing cells in two sets",
+    "region": {
+      "row": 0,
+      "column": 1,
+      "rows": 2,
+      "columns": 3
+    },
+    "candidates": {
+      "1": [
+        1,
+        2
+      ],
+      "3": [
+        2,
+        3
+      ],
+      "10": [
+        1,
+        4
+      ],
+      "11": [
+        3,
+        4
+      ],
+      "2": [
+        3,
+        5,
+        8
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "WXYZ-Wing · four wing cells in two sets",
+        "description": "The blue cells in row 1 have {1, 2, 3} between them. The amber cells in row 2 have {1, 3, 4}. Their 1s share column 2, so at least one set must omit 1 and use its other two digits. That puts 3 in R1C4 or R2C3.",
+        "marks": [
+          {
+            "cell": 1,
+            "digit": 1,
+            "kind": "pattern"
+          },
+          {
+            "cell": 1,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 3,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 1,
+            "kind": "accent"
+          },
+          {
+            "cell": 10,
+            "digit": 4,
+            "kind": "accent"
+          },
+          {
+            "cell": 11,
+            "digit": 3,
+            "kind": "accent"
+          },
+          {
+            "cell": 11,
+            "digit": 4,
+            "kind": "accent"
+          },
+          {
+            "cell": 2,
+            "digit": 3,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Remove 3 from R1C3, which sees the first through row 1 and the second through column 3."
+  },
+  "als-two-sets": {
+    "title": "ALS-XZ · two sets share 2 and 5",
+    "region": {
+      "row": 0,
+      "column": 1,
+      "rows": 2,
+      "columns": 3
+    },
+    "candidates": {
+      "1": [
+        2,
+        4
+      ],
+      "3": [
+        4,
+        5
+      ],
+      "10": [
+        2,
+        5
+      ],
+      "2": [
+        3,
+        5,
+        7
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "ALS-XZ · two sets share 2 and 5",
+        "description": "The blue cells R1C2 and R1C4 have three digits between them. The amber cell R2C2 has two. Their 2s share column 2. If blue uses 2, amber must use 5 in R2C2. If blue omits 2, its cells need 4 and 5, with 5 in R1C4. R1C3 sees those 5s through box 1 and row 1.",
+        "marks": [
+          {
+            "cell": 1,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 1,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 4,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 2,
+            "kind": "accent"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 2,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Remove its 5."
+  },
+  "als-three-sets": {
+    "title": "ALS-XY-Wing · three sets joined by 2 and 7",
+    "region": {
+      "row": 1,
+      "column": 1,
+      "rows": 3,
+      "columns": 3
+    },
+    "candidates": {
+      "10": [
+        2,
+        5
+      ],
+      "12": [
+        2,
+        7
+      ],
+      "30": [
+        5,
+        7
+      ],
+      "28": [
+        3,
+        5,
+        6
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "ALS-XY-Wing · three sets joined by 2 and 7",
+        "description": "Each of these sets is one cell with two candidates. The middle cell, R2C4, can be 2 or 7. A 2 there forces 5 in R2C2 through row 2. A 7 there forces 5 in R4C4 through column 4.",
+        "marks": [
+          {
+            "cell": 10,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 30,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 12,
+            "digit": 2,
+            "kind": "accent"
+          },
+          {
+            "cell": 12,
+            "digit": 7,
+            "kind": "accent"
+          },
+          {
+            "cell": 28,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Remove 5 from R4C2, which shares column 2 with the first end and row 4 with the other."
+  },
+  "als-four-sets": {
+    "title": "ALS Chain · a longer chain changes digits at each link",
+    "region": {
+      "row": 0,
+      "column": 1,
+      "rows": 3,
+      "columns": 3
+    },
+    "candidates": {
+      "1": [
+        2,
+        5
+      ],
+      "3": [
+        2,
+        6
+      ],
+      "21": [
+        6,
+        7
+      ],
+      "19": [
+        5,
+        7
+      ],
+      "10": [
+        3,
+        5,
+        8
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "ALS Chain · a longer chain changes digits at each link",
+        "description": "If R1C2 is 5, column 2 rules out 5 in R2C2. Otherwise R1C2 is 2. Row 1 then forces 6 in R1C4, column 4 forces 7 in R3C4, and row 3 forces 5 in R3C2. Column 2 rules out 5 in R2C2 in this case too.",
+        "marks": [
+          {
+            "cell": 1,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 1,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 19,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 19,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 2,
+            "kind": "accent"
+          },
+          {
+            "cell": 3,
+            "digit": 6,
+            "kind": "accent"
+          },
+          {
+            "cell": 21,
+            "digit": 6,
+            "kind": "accent"
+          },
+          {
+            "cell": 21,
+            "digit": 7,
+            "kind": "accent"
+          },
+          {
+            "cell": 10,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Remove it."
+  },
+  "forcing-three-choices": {
+    "title": "Check all three candidates in R1C1",
+    "region": {
+      "row": 0,
+      "column": 0,
+      "rows": 2,
+      "columns": 4
+    },
+    "candidates": {
+      "0": [
+        2,
+        5,
+        8
+      ],
+      "3": [
+        2,
+        5
+      ],
+      "9": [
+        5,
+        8
+      ],
+      "1": [
+        3,
+        5,
+        7
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "Check all three candidates in R1C1",
+        "description": "If R1C1 is 2, row 1 forces 5 in R1C4, ruling out 5 in R1C2. If R1C1 is 5, row 1 rules out the same candidate directly. If R1C1 is 8, column 1 forces 5 in R2C1, which rules out 5 in R1C2 through box 1.",
+        "marks": [
+          {
+            "cell": 0,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 0,
+            "digit": 5,
+            "kind": "pattern"
+          },
+          {
+            "cell": 0,
+            "digit": 8,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 9,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 1,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Every choice rules out 5 in R1C2, so remove it."
+  },
+  "forcing-common-result": {
+    "title": "Both choices rule out 5 in R3C4",
+    "region": {
+      "row": 0,
+      "column": 0,
+      "rows": 3,
+      "columns": 4
+    },
+    "candidates": {
+      "0": [
+        2,
+        7
+      ],
+      "3": [
+        2,
+        5
+      ],
+      "18": [
+        5,
+        7
+      ],
+      "21": [
+        3,
+        5,
+        9
+      ]
+    },
+    "key": [],
+    "steps": [
+      {
+        "title": "Both choices rule out 5 in R3C4",
+        "description": "R1C1 has only 2 and 7. If it is 2, row 1 rules out 2 in R1C4, leaving 5. That 5 rules out 5 in R3C4 through column 4. If R1C1 is 7, column 1 rules out 7 in R3C1, leaving 5. Row 3 now rules out the same 5 in R3C4.",
+        "marks": [
+          {
+            "cell": 0,
+            "digit": 2,
+            "kind": "pattern"
+          },
+          {
+            "cell": 0,
+            "digit": 7,
+            "kind": "pattern"
+          },
+          {
+            "cell": 3,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 18,
+            "digit": 5,
+            "kind": "accent"
+          },
+          {
+            "cell": 21,
+            "digit": 5,
+            "kind": "removal"
+          }
+        ]
+      }
+    ],
+    "note": "Remove it."
   }
 }
