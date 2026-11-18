@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace]')
-assert.ok(options.every(option => option === '--palindrome-trace'), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -133,3 +133,38 @@ for (const technique of detectors) {
   }
 }
 console.log(`${comparisons} complete responses match on ${fixtures.length} corpus positions and ${positive} positive practice positions; ${detectors.length} detector IDs, unchanged catalogs/scoring and every hint page.`)
+
+if (options.includes('--classic-tridagon')) {
+  const start = comparisons
+  let positions = 0
+  const techniques = ['tridagon', 'tridagon-forcing-net', 'tridagon-aic']
+  for (const technique of techniques) {
+    const examples = await compare({ type: 'practice-examples', technique }, `${technique}: Classic fixtures`)
+    for (const [index, example] of examples.entries()) {
+      const { givens, entries, eliminations } = example
+      const values = [...givens].map((digit, cell) => entries?.[cell] && entries[cell] !== '0' ? entries[cell] : digit).join('')
+      const position = { values, eliminations }
+      for (const selected of techniques) {
+        const label = `${technique} ${index}: Classic ${selected}`
+        await compare({ type: 'deductions', ...position, techniqueOrder: [selected] }, `${label} complete deductions`)
+        await compare({ type: 'technique-count', ...position, technique: selected }, `${label} action count`)
+        await compare({ type: 'logical-solve', values: givens, entries, eliminations,
+          techniqueOrder: [selected], includePositions: true, includeStepDetails: true }, `${label} complete trace`)
+      }
+      const disabledTechniques = classic.techniques.map(item => item.id).filter(id => !techniques.includes(id))
+      const request = { type: 'hints', ...position, disabledTechniques, limit: 'all', includePatterns: true }
+      const all = await compare(request, `${technique} ${index}: Classic complete hints`)
+      const first = await compare({ ...request, collection: 112 }, `${technique} ${index}: Classic first page`)
+      const collected = [...first.choices]
+      while (collected.length < first.available) {
+        const page = await compare({ type: 'hint-page', collection: 112, index: collected.length }, `${technique} ${index}: Classic page ${collected.length}`)
+        assert.ok(page.choices.length)
+        collected.push(...page.choices)
+      }
+      assert.deepEqual(collected, all.choices)
+      await compare({ type: 'release-hints', collection: 112 }, `${technique} ${index}: Classic release`)
+      positions++
+    }
+  }
+  console.log(`${comparisons - start} additional complete Classic responses match on ${positions} Tridagon practice positions; deductions, counts, traces and all hint pages.`)
+}

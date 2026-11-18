@@ -49,15 +49,31 @@ console.log('Fixed requests: 5 warmups, 20 measured samples. Exhaustive first pa
 for (const { name, puzzle } of fixtures) {
   if (selected.length && !selected.includes(name)) continue
   const pair = await Promise.all(binaries.map(engine))
+  let proofPosition = { puzzle }
+  if (name === 'palindrome-whispers') {
+    const trace = await pair[0].request({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: pair[0].appOrder })
+    assert.equal(trace.rating.points, 527)
+    assert.equal(trace.steps.length, 18)
+    const entries = Array(81).fill('0'), eliminations = Array(81).fill(0)
+    for (const proof of trace.steps) for (const action of proof.actions) {
+      if ('place' in action) entries[action.place.cell] = String(action.place.digit)
+      else eliminations[action.eliminate.cell] |= 1 << (action.eliminate.digit - 1)
+    }
+    proofPosition = { puzzle, entries: entries.join(''), eliminations }
+    console.log('Selected Palindrome/Whispers proofs use the final app trace position; other requests use the opening.')
+  }
   const operations = ['candidates', 'analyze', 'solve', 'native-rate', 'app-rate', 'ten-hints', 'exhaustive']
   if (name === 'whispers') operations.push(...[
     'unique-rectangle-1', 'unique-loop', 'bug-plus-one', 'unique-rectangle-aic',
     'unique-rectangle-continuous-nice-loop', 'unique-rectangle-discontinuous-nice-loop',
     'nested-forcing-net',
   ].map(id => `proof:${id}`))
+  if (name === 'palindrome-whispers') operations.push(...[
+    'tridagon', 'tridagon-forcing-net', 'tridagon-aic',
+  ].map(id => `proof:${id}`))
   for (const operation of operations) {
     const technique = operation.startsWith('proof:') ? operation.slice(6) : undefined
-    const options = pair.map(engine => ({ type: 'variant', position: { puzzle }, maxNodes: name === 'whispers' ? 100_000 : name === 'palindrome-whispers' ? 1_000_000 : 20_000,
+    const options = pair.map(engine => ({ type: 'variant', position: technique ? proofPosition : { puzzle }, maxNodes: name === 'whispers' ? 100_000 : name === 'palindrome-whispers' ? 1_000_000 : 20_000,
       operation: technique || operation.endsWith('hints') || operation === 'exhaustive' ? 'hints' : operation.endsWith('rate') ? 'rate' : operation,
       techniqueOrder: technique ? [technique] : operation === 'native-rate' ? engine.nativeOrder : engine.appOrder,
       ...(technique && { limit: 0xffff_ffff }),

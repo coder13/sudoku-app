@@ -364,14 +364,16 @@ impl<'a> GuardianSearch<'a> {
         }
     }
 
-    pub(super) fn visit(
+    /// Recreate the same ordered alternatives for each pass. Stop enumeration
+    /// when no shared effect remains; emitted proofs still include every branch.
+    pub(super) fn visit<I: Iterator<Item = Candidate>>(
         &mut self,
-        guardians: &[Candidate],
+        guardians: impl Fn() -> I,
         useful: &mut impl FnMut(HintAction) -> bool,
         visit: &mut impl FnMut(HintAction, Vec<ForcingBranch>) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         let mut common = None;
-        for &guardian in guardians {
+        for guardian in guardians() {
             if let Some(known) = self.reached(index(guardian) * 2 + 1) {
                 let common = common.get_or_insert(*known);
                 for (word, &bits) in common.iter_mut().zip(known) {
@@ -393,9 +395,8 @@ impl<'a> GuardianSearch<'a> {
                 if !useful(action) {
                     continue;
                 }
-                let branches = guardians
-                    .iter()
-                    .map(|&guardian| {
+                let branches = guardians()
+                    .map(|guardian| {
                         let terminal = match self.branch.run(index(guardian) * 2 + 1) {
                             Some(conflict) => Terminal::Conflict(conflict),
                             None => Terminal::Effect(self.branch.seen[state]),
@@ -958,6 +959,63 @@ fn action(state: usize) -> HintAction {
 #[cfg(test)]
 mod guardian_tests {
     use super::*;
+
+    #[test]
+    fn shared_guardian_conclusions_require_a_surviving_case_and_keep_branch_order() {
+        let first = Candidate { cell: 2, digit: 1 };
+        let second = Candidate { cell: 2, digit: 3 };
+        let mut masks = [crate::DIGITS; CELLS];
+        // The two 1/2 cells need different digits. Another 1 in their row
+        // would force both to 2. The alternative 3 leaves them compatible.
+        masks[0] = 0b11;
+        masks[1] = 0b11;
+        masks[2] = 0b101;
+        let positions = super::super::candidate_positions(&masks);
+        let graph = ForcingGraph::new(&masks, &positions);
+        for guardians in [[first, second], [second, first]] {
+            let mut search = GuardianSearch::new(&graph);
+            let mut proofs = Vec::new();
+            let _ = search.visit(
+                || guardians.into_iter(),
+                &mut |action| action == HintAction::Place(second),
+                &mut |action, branches| {
+                    proofs.push((action, branches));
+                    ControlFlow::Continue(())
+                },
+            );
+            assert_eq!(proofs.len(), 1);
+            let (action, branches) = &proofs[0];
+            assert_eq!(*action, HintAction::Place(second));
+            assert_eq!(branches.len(), 2);
+            for (guardian, branch) in guardians.into_iter().zip(branches) {
+                assert_eq!(
+                    branch.assumption,
+                    ForcingLiteral {
+                        candidate: guardian,
+                        truth: true
+                    }
+                );
+                assert_eq!(branch.conflict.is_some(), guardian == first);
+            }
+        }
+        let impossible = [first, Candidate { cell: 3, digit: 1 }];
+        let mut search = GuardianSearch::new(&graph);
+        let _ = search.visit(|| impossible.into_iter(), &mut |_| true, &mut |_, _| {
+            panic!("contradictory cases cannot create a vacuous shared conclusion")
+        });
+
+        let masks = [crate::DIGITS; CELLS];
+        let positions = super::super::candidate_positions(&masks);
+        let graph = ForcingGraph::new(&masks, &positions);
+        let alternatives = [
+            Candidate { cell: 40, digit: 1 },
+            Candidate { cell: 80, digit: 2 },
+        ];
+        let mut search = GuardianSearch::new(&graph);
+        let _ = search.visit(|| alternatives.into_iter(), &mut |_| true, &mut |_, _| {
+            panic!("independent alternatives share no forced effect")
+        });
+    }
 
     #[test]
     fn a_true_guardian_satisfies_the_clause_without_removing_other_guardians() {
