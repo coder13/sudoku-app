@@ -514,6 +514,8 @@ All four profile contracts pass. Solver and Classic raw sizes are unchanged, whi
 
 The final comparison preserves 3,419 complete responses across nineteen corpus positions and all 351 positive practice positions. It covers all 117 detectors, every page, full proofs, traces, ratings, custom orders and exact search-limit outcomes. AI Escargot retains twelve nested proofs at the start, eleven after the checked removal and fifty-three after the checked placement. The actual Wasm worker also verifies puzzle alternation and restoration of the original proof list.
 
-Independent native truth checks compare both assumption polarities with actual complete grids and retain unknown cases with no probe budget. Cache tests invalidate shared support after candidate and placement edits. The unpruned nested search supplies the complete reference proofs at each AI Escargot state. The final Wasm suite passes 244 tests.
+Independent native truth checks compare both assumption polarities with actual complete grids and retain unknown cases with no probe budget. Cache tests invalidate shared support after candidate and placement edits. The unpruned nested search supplies the complete reference proofs at each AI Escargot state. The final Wasm suite passes 245 tests.
 
-All 298 native tests including seven doctests and 396 app tests pass. The sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation and TypeScript checks pass. The production/offline build renders 159 routes and reproduces the measured app hash.
+All 298 native tests including seven doctests and 397 app tests pass. The sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation and TypeScript checks pass. The production/offline build renders 159 routes and reproduces the measured app hash.
+
+The branch also incorporates main `4757a44` from PR 127. Repeated TypeScript, app/Wasm and production checks pass on the combined puzzle-switching and storage changes. The Rust engine and its build configuration are unchanged by that integration, and the app Wasm retains the measured SHA-256.

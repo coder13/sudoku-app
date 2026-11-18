@@ -98,7 +98,7 @@ This pass is isolated on `codex/sudoku-geometric-witnesses` from main `13062ad`.
 - [x] Pass 179 native unit tests, including independent positive/negative witness truth, exhausted budgets, edited-cache invalidation, partial coverage and all twelve AI Escargot nested proofs.
 - [x] Match 3,419 complete responses across nineteen corpus positions, all 117 detectors and all 351 positive practice positions. Preserve every proof, rating, page and profile. Verify candidate/placement edits and puzzle alternation through the actual Wasm worker, including all twelve, eleven and fifty-three nested proofs at the three AI Escargot states.
 - [x] Measure paired ordinary/exhaustive hints, selected techniques, retained fixtures, memory and every package profile. Keep eight Whispers choices and 31 Quadruple choices. App Wasm saves 2,980 gzip bytes. Record the large Whispers timing tails and slower native-rating samples. [Methods and limits](tests/fixtures/README.md#shared-partial-geometric-witnesses)
-- [x] Pass 298 native tests including doctests, 396 app tests, 244 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build.
+- [x] Pass 298 native tests including doctests, 397 app tests, 245 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build. Recheck app integration with main's puzzle-switching changes from [PR 127](https://github.com/coder13/sudoku-app/pull/127).
 - [ ] Pass CI on the reviewed head, merge separately and record the release.
 
 ### Complete candidate-support performance merged
