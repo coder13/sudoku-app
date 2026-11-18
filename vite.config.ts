@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
+import { ocrAssetFileNames } from './scripts/ocr-assets.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
 import { lessonCatalog, type LearnContent } from './src/sudoku/lesson-content.ts'
 
@@ -64,5 +65,5 @@ export default defineConfig(({ command }) => ({
     strictPort: true,
     allowedHosts: ['twilight'],
   },
-  build: { assetsInlineLimit: 0 },
+  build: { assetsInlineLimit: 0, rolldownOptions: { output: { assetFileNames: ocrAssetFileNames } } },
 }))

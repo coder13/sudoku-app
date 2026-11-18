@@ -37,6 +37,7 @@ export const Preview: Story = {
     await userEvent.type(await canvas.findByRole('textbox', { name: 'Puzzle text or link' }), starter.givens)
     await userEvent.click(await canvas.findByRole('button', { name: 'Preview puzzle' }))
     await expect(await canvas.findByRole('grid', { name: 'Puzzle preview' }, { timeout: 5000 })).toBeVisible()
-    await expect(canvas.getByText(/^[\w ]+ \(\d+\)$/)).toBeVisible()
+    await expect(canvas.getByText('Difficulty', { exact: true })).toBeVisible()
+    await expect(canvas.getByText('Score', { exact: true })).toBeVisible()
   },
 }
