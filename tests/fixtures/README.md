@@ -758,3 +758,89 @@ node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm aft
 ```
 
 The remaining 230 ms app-order rating still needs work in the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88). The geometric cache cannot replace actual numeric rules or prove an unknown candidate impossible. Keep improvements to the remaining expert searches separate and preserve their positive proofs.
+
+
+## Tridagon eligibility and deferred proof data
+
+[Issue 138](https://github.com/coder13/sudoku-app/issues/138) compares main `31fd429` with the focused Tridagon optimization. The published Coach FgZb rating still spends time on empty Tridagon searches after digit matching.
+
+A guardian is a candidate outside the pattern's three core digits. A direct target must conflict with every guardian, or the pattern must contain one guardian that can be placed. Across the recognized geometry, one target conflicts with at most nine guardians. The direct scan now rejects larger sets before building their proof data.
+
+Independent coordinate checks cover all 5,832 recognized geometries and every target cell and digit. They use standard house relationships rather than the detector's peer table. Bounded and unbounded direct scans also preserve complete proofs after candidate edits. Existing exhaustive three-color checks still establish the impossible core and its positive placement cases.
+
+The forcing scan keeps a pattern's cells and core digits without allocating its guardian list. It enumerates guardians until their propagated effects have no common conclusion. It rebuilds every branch only for an actual reported conclusion. Branch order and contradictory branches remain intact. An entirely contradictory set supplies no shared conclusion. The later refutation phase keeps its existing bound. No direct conflict-count bound is applied to forcing branches.
+
+The final source passes 313 native tests, 413 app tests, 253 Wasm tests, sixteen capability combinations and four package profiles. Strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build also pass. Independent forcing replay still checks every inference, guardian case and refutation. New semantic cases check surviving alternatives, contradiction-only alternatives, unrelated alternatives and original branch order.
+
+The strict comparison preserves 6,210 complete variant responses across forty corpus positions and 351 positive practice examples. It also preserves 148 Classic responses across nine Tridagon practice positions. Those 6,358 responses include detector lists, traces, counts, ratings and every hint page. Every FgZb trace position remains covered. Catalogs, enabled techniques, costs and scoring versions match main. No response normalization hides changes.
+
+Measurements use Node 26.13.0 on macOS arm64. Fixed requests use five warmups and twenty measured samples, alternating engines. Exhaustive first pages use two warmups and ten samples. Each timed request includes serialization, with complete response checks outside the timed region. First-operation timings use fresh instances after catalog loading. They exclude instantiation, worker startup, transfer and rendering. No identified compiler, engine test or generation worker was active at the start. The machine is not dedicated.
+
+Times below are median/p95 milliseconds. This table uses the same unmodified Coach FgZb export and exact-search budgets.
+
+| Coach FgZb operation | Main | Tridagon optimization |
+| --- | --- | --- |
+| Candidates | 0.022/0.023 | 0.022/0.023 |
+| Exact analysis | 26.698/27.053 | 26.732/27.182 |
+| Exact solve | 26.392/26.627 | 26.086/26.473 |
+| Native default rating | 0.792/0.802 | 0.799/0.807 |
+| App-order rating | 228.995/231.895 | 102.495/103.233 |
+| Ten-hint request | 0.213/0.266 | 0.216/0.235 |
+| Exhaustive first page | 2.345/2.380 | 2.355/2.383 |
+
+The app-order median falls by about 55%. Both profiles retain the 527-point stalled result and their eighteen-step traces. Both hint requests retain ten choices. Committed Wasm memory stays at 8.31 MiB.
+
+| Coach FgZb first operation | Main ms | Tridagon optimization ms |
+| --- | --- | --- |
+| Candidates | 0.075 | 0.071 |
+| Exact analysis | 26.170 | 26.164 |
+| Exact solve | 25.907 | 25.859 |
+| Native default rating | 0.931 | 0.879 |
+| App-order rating | 228.948 | 102.537 |
+| Ten-hint request | 0.336 | 0.320 |
+| Exhaustive first page | 2.413 | 2.428 |
+
+The selected searches below use the final stalled app position in a separate paired pass. Each returns no proofs before and after. Their separate scan caches mean these times must not be added as attribution of one rating request.
+
+| Selected final-position search | Main | Tridagon optimization |
+| --- | --- | --- |
+| Direct Tridagon | 64.627/65.066 | 0.613/0.655 |
+| Tridagon Forcing Net | 84.140/85.886 | 29.747/30.442 |
+| Tridagon AIC | 0.612/0.668 | 0.598/0.652 |
+
+| Retained fixture | App rate, main → optimized | Ordinary hints, main → optimized | Exhaustive page, main → optimized | Choices, ordinary/exhaustive | Unchanged memory, MiB |
+| --- | --- | --- | --- | --- | --- |
+| Quadruple | 1.212/1.278 → 1.199/1.210 | 0.241/0.326 → 0.245/0.375 | 147.256/151.640 → 146.448/149.435 | 10/31 | 1.50 |
+| Odd/Even | 0.171/0.179 → 0.175/0.185 | 0.082/0.089 → 0.081/0.086 | 52.323/55.840 → 52.809/54.089 | 10/23 | 3.56 |
+| Anti-King | 0.157/0.179 → 0.155/0.194 | 0.117/0.128 → 0.116/0.123 | 96.561/98.300 → 96.366/97.709 | 10/438 | 10.44 |
+| Non-Consecutive | 0.385/0.399 → 0.380/0.390 | 0.080/0.084 → 0.080/0.083 | 34.883/35.492 → 34.879/35.505 | 10/70 | 4.06 |
+| Coach white-dot exceptions | 0.982/1.028 → 1.009/1.027 | 0.312/0.328 → 0.316/0.333 | 0.323/0.330 → 0.325/0.339 | 4/4 | 1.50 |
+| Brain Zaps Whispers | 0.302/0.314 → 0.302/0.311 | 3.123/3.211 → 3.169/3.214 | 3.179/3.204 → 3.184/3.218 | 8/8 | 1.56 |
+| Clover Palindrome | 0.113/0.119 → 0.112/0.120 | 40.265/41.034 → 40.224/40.969 | 40.402/41.098 → 40.562/41.717 | 7/7 | 3.38 |
+| Newman Anti-Knight Palindrome | 0.866/0.874 → 0.869/0.877 | 0.129/0.134 → 0.129/0.135 | 301.930/310.470 → 208.677/212.351 | 10/48 | 5.06 |
+
+Newman's exhaustive-page median falls from 301.930 to 208.677 ms, about 31%. Slower samples remain visible. Odd/Even exhaustive requests rise from 52.323 to 52.809 ms median. Coach white-dot app ratings rise from 0.982 to 1.009 ms. Clover's exhaustive median also rises slightly. These results do not establish a speedup for every puzzle or request.
+
+| Wasm profile | Main raw/gzip bytes | Tridagon optimization raw/gzip bytes |
+| --- | --- | --- |
+| Solver | 2,040,103 / 556,086 | 2,060,183 / 562,832 |
+| Variant solver | 2,596,592 / 699,819 | 2,578,311 / 699,942 |
+| Classic | 2,555,726 / 662,311 | 2,556,987 / 672,461 |
+| App | 3,374,552 / 903,296 | 3,364,670 / 900,443 |
+
+The app saves 9,882 raw bytes and 2,853 gzip bytes. The other profiles have costs as well as savings. Solver grows by 20,080 raw bytes and 6,746 gzip bytes. Classic grows by 1,261 raw bytes and 10,150 gzip bytes. The variant solver saves 18,281 raw bytes but adds 123 gzip bytes. These costs remain part of the packaging audit.
+
+The compared app artifacts have SHA-256 hashes:
+
+- Main: `5f976289d3bd87964cc0e61065280e967d2ac932cd76cd563d6b8d6dcd3bff83`.
+- Tridagon optimization: `ae6a216997f63462d69d3e7ce590c7088d1c6bdbdf40a9488e36a1ca20e89e79`.
+
+Repeat with:
+
+```sh
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm --palindrome-trace --classic-tridagon
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm quadruple parity anti-king non-consecutive nc-white-dots whispers palindrome palindrome-knight palindrome-whispers
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm palindrome-whispers
+```
+
+The remaining rating cost, profile sizes and worker behavior stay in the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88). Sparse FzzD validation remains separate in [issue 139](https://github.com/coder13/sudoku-app/issues/139). This optimization changes computational work rather than human difficulty or hint policy.

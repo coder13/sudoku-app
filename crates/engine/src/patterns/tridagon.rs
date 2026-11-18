@@ -16,6 +16,9 @@ const PERMUTATIONS: [[usize; 3]; 6] = [
     [2, 1, 0],
 ];
 const PAIRS: [[usize; 2]; 3] = [[0, 1], [0, 2], [1, 2]];
+// A candidate sees at most four same-digit guardians and five other digits
+// in its own selected cell, or at most five same-digit guardians outside it.
+const DIRECT_GUARDIANS: usize = 9;
 
 const TRIPLES: [u16; 84] = {
     let mut values = [0; 84];
@@ -59,32 +62,50 @@ struct Transversal {
 
 struct Pattern {
     cells: [[usize; 3]; 4],
-    digits: [u8; 3],
-    guardians: Vec<Candidate>,
+    core: u16,
 }
 
 impl Pattern {
-    fn evidence(&self, branches: Vec<ForcingBranch>) -> HintEvidence {
+    fn digits(&self) -> [u8; 3] {
+        let mut digits = digits(self.core);
+        std::array::from_fn(|_| digits.next().unwrap())
+    }
+
+    fn guardians<'a>(
+        &'a self,
+        search: &'a PatternSearch<'_>,
+    ) -> impl Iterator<Item = Candidate> + 'a {
+        self.cells.iter().flatten().flat_map(move |&cell| {
+            digits(search.masks[cell] & !self.core).map(move |digit| Candidate { cell, digit })
+        })
+    }
+
+    fn evidence(&self, search: &PatternSearch<'_>, branches: Vec<ForcingBranch>) -> HintEvidence {
         HintEvidence::Tridagon {
             cells: self.cells,
-            digits: self.digits,
-            guardians: self.guardians.clone(),
+            digits: self.digits(),
+            guardians: self.guardians(search).collect(),
             branches,
         }
     }
 
-    fn requires_forcing(&self, action: HintAction) -> bool {
-        !matches!(action, HintAction::Eliminate(target) if self.guardians.iter().all(|&guardian| conflicts(guardian, target)))
+    fn requires_forcing(&self, search: &PatternSearch<'_>, action: HintAction) -> bool {
+        !matches!(action, HintAction::Eliminate(target) if self.guardians(search).all(|guardian| conflicts(guardian, target)))
     }
 
-    fn forcing_deduction(&self, action: HintAction, branches: Vec<ForcingBranch>) -> Deduction {
+    fn forcing_deduction(
+        &self,
+        search: &PatternSearch<'_>,
+        action: HintAction,
+        branches: Vec<ForcingBranch>,
+    ) -> Deduction {
         let actions = match action {
             HintAction::Place(_) => DeductionActions::Placement(action),
             HintAction::Eliminate(_) => DeductionActions::Eliminations(vec![action]),
         };
         Deduction {
             technique: Technique::TridagonForcingNet,
-            evidence: self.evidence(branches),
+            evidence: self.evidence(search, branches),
             actions,
         }
     }
@@ -96,23 +117,23 @@ pub(super) fn visit(
     visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
 ) -> ControlFlow<Deduction> {
     if technique == Technique::Tridagon {
-        return visit_patterns(search, usize::MAX, &mut |pattern| {
+        return visit_patterns(search, DIRECT_GUARDIANS, &mut |pattern| {
             visit_direct(search, &pattern, visit)
         });
     }
 
     let mut forcing = None;
     visit_patterns(search, usize::MAX, &mut |pattern| {
-        if pattern.guardians.len() >= 2 {
+        if pattern.guardians(search).nth(1).is_some() {
             let forcing = forcing.get_or_insert_with(|| {
                 GuardianSearch::new(search.forcing.get_or_init(|| {
                     super::forcing::ForcingGraph::new(search.masks, search.positions_by_digit())
                 }))
             });
             forcing.visit(
-                &pattern.guardians,
-                &mut |action| pattern.requires_forcing(action),
-                &mut |action, branches| visit(pattern.forcing_deduction(action, branches)),
+                || pattern.guardians(search),
+                &mut |action| pattern.requires_forcing(search, action),
+                &mut |action, branches| visit(pattern.forcing_deduction(search, action, branches)),
             )?;
         }
         ControlFlow::Continue(())
@@ -123,13 +144,14 @@ pub(super) fn visit(
     if let Some(mut forcing) = forcing {
         let maximum = forcing.maximum_guardians_to_try();
         return visit_patterns(search, maximum, &mut |pattern| {
-            if pattern.guardians.len() < 2 {
+            let guardians: Vec<_> = pattern.guardians(search).collect();
+            if guardians.len() < 2 {
                 return ControlFlow::Continue(());
             }
             forcing.visit_refutations(
-                &pattern.guardians,
-                &mut |action| pattern.requires_forcing(action),
-                &mut |action, branches| visit(pattern.forcing_deduction(action, branches)),
+                &guardians,
+                &mut |action| pattern.requires_forcing(search, action),
+                &mut |action, branches| visit(pattern.forcing_deduction(search, action, branches)),
             )
         });
     }
@@ -208,21 +230,7 @@ fn visit_patterns(
                                 {
                                     continue;
                                 }
-                                let guardians = cells
-                                    .iter()
-                                    .flatten()
-                                    .flat_map(|&cell| {
-                                        digits(search.masks[cell] & !core)
-                                            .map(move |digit| Candidate { cell, digit })
-                                    })
-                                    .collect::<Vec<_>>();
-                                let mut core_digits = digits(core);
-                                let digits = std::array::from_fn(|_| core_digits.next().unwrap());
-                                visit(Pattern {
-                                    cells,
-                                    digits,
-                                    guardians,
-                                })?;
+                                visit(Pattern { cells, core })?;
                             }
                         }
                     }
@@ -240,13 +248,14 @@ pub(super) fn visit_links(
     // Each useful group must conflict with some candidate. That candidate
     // can see at most twelve guardians of its own digit and six other
     // guardian digits in its cell.
-    let _ = visit_patterns(search, 36, &mut |mut pattern| {
-        if pattern.guardians.len() < 2 {
+    let _ = visit_patterns(search, 36, &mut |pattern| {
+        let mut guardians: Vec<_> = pattern.guardians(search).collect();
+        if guardians.len() < 2 {
             return ControlFlow::Continue(());
         }
         let mut positions = [0; 9];
         let mut digits = 0u16;
-        for guardian in &pattern.guardians {
+        for guardian in &guardians {
             let index = usize::from(guardian.digit - 1);
             positions[index] |= cell_bit(guardian.cell);
             digits |= 1 << index;
@@ -254,12 +263,12 @@ pub(super) fn visit_links(
         let source = LinkSource::Tridagon {
             // Sudoku has 81 cells. Keep this geometry compact in graph edges.
             cells: pattern.cells.map(|triple| triple.map(|cell| cell as u8)),
-            digits: pattern.digits,
+            digits: pattern.digits(),
         };
         if digits.count_ones() > 2 {
             if can_cover_other_digits(&positions, digits) {
-                pattern.guardians.sort_unstable();
-                visit_partitions(&pattern.guardians, search.positions_by_digit(), |groups| {
+                guardians.sort_unstable();
+                visit_partitions(&guardians, search.positions_by_digit(), |groups| {
                     visit(groups, source);
                 });
             }
@@ -332,18 +341,19 @@ fn visit_direct(
     pattern: &Pattern,
     visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
 ) -> ControlFlow<Deduction> {
-    let Some(&first) = pattern.guardians.first() else {
+    let mut guardians = pattern.guardians(search);
+    let Some(first) = guardians.next() else {
         return ControlFlow::Continue(());
     };
-    if pattern.guardians.len() == 1 {
+    if guardians.next().is_none() {
         return visit(Deduction {
             technique: Technique::Tridagon,
-            evidence: pattern.evidence(Vec::new()),
+            evidence: pattern.evidence(search, Vec::new()),
             actions: DeductionActions::Placement(HintAction::Place(first)),
         });
     }
     let mut targets = *search.positions_by_digit();
-    for &candidate in &pattern.guardians {
+    for candidate in pattern.guardians(search) {
         for (index, cells) in targets.iter_mut().enumerate() {
             *cells &= if index + 1 == usize::from(candidate.digit) {
                 PEERS[candidate.cell]
@@ -356,7 +366,7 @@ fn visit_direct(
         }
     }
     report_eliminations(visit, Technique::Tridagon, targets, || {
-        pattern.evidence(Vec::new())
+        pattern.evidence(search, Vec::new())
     })
 }
 
@@ -369,6 +379,91 @@ fn conflicts(a: Candidate, b: Candidate) -> bool {
 mod tests {
     use super::*;
     use std::collections::BTreeSet;
+
+    #[test]
+    fn every_recognized_geometry_obeys_the_direct_conflict_bound() {
+        let board = [0; crate::CELLS];
+        let masks = [DIGITS; crate::CELLS];
+        let search = PatternSearch::new(&board, &masks);
+        let mut geometries = BTreeSet::new();
+        let _ = visit_patterns(&search, usize::MAX, &mut |pattern| {
+            geometries.insert(pattern.cells);
+            ControlFlow::Continue(())
+        });
+        assert_eq!(geometries.len(), 5832);
+        let mut maximum = 0;
+        for cells in geometries {
+            // Independent Sudoku conflicts: no detector peer table or conflict
+            // helper. All nine target digits cover core and noncore cases.
+            for cell in 0..crate::CELLS {
+                for digit in 1..=9 {
+                    let count = cells
+                        .iter()
+                        .flatten()
+                        .flat_map(|&guardian| (4..=9).map(move |value| (guardian, value)))
+                        .filter(|&(guardian, value)| {
+                            if guardian == cell {
+                                value != digit
+                            } else {
+                                value == digit
+                                    && (guardian / 9 == cell / 9
+                                        || guardian % 9 == cell % 9
+                                        || (guardian / 27, guardian % 9 / 3)
+                                            == (cell / 27, cell % 9 / 3))
+                            }
+                        })
+                        .count();
+                    assert!(
+                        count <= DIRECT_GUARDIANS,
+                        "{cells:?}, cell {cell}, digit {digit}"
+                    );
+                    maximum = maximum.max(count);
+                }
+            }
+        }
+        assert_eq!(maximum, DIRECT_GUARDIANS);
+    }
+
+    #[test]
+    fn bounded_direct_search_retains_complete_proofs_after_candidate_edits() {
+        for example in Technique::Tridagon.practice_examples() {
+            let position = example.position().unwrap();
+            let board = position.values().unwrap();
+            let legal = crate::candidates(&board).unwrap();
+            let masks = std::array::from_fn::<_, { crate::CELLS }, _>(|cell| {
+                legal[cell] & !position.eliminations[cell]
+            });
+            for edit in std::iter::once(None)
+                .chain((0..crate::CELLS).filter(|&cell| board[cell] == 0).map(Some))
+            {
+                let mut changed = masks;
+                if let Some(cell) = edit {
+                    // Widen a domain to break a premise or introduce guardians.
+                    changed[cell] = legal[cell];
+                }
+                let search = PatternSearch::new(&board, &changed);
+                let collect = |bound| {
+                    let mut proofs = Vec::<crate::Hint>::new();
+                    let _ = visit_patterns(&search, bound, &mut |pattern| {
+                        visit_direct(&search, &pattern, &mut |proof| {
+                            proofs.push(proof.into());
+                            ControlFlow::Continue(())
+                        })
+                    });
+                    proofs
+                };
+                let reference = collect(usize::MAX);
+                if edit.is_none() {
+                    assert!(
+                        reference
+                            .iter()
+                            .any(|proof| proof.actions == example.expected_actions)
+                    );
+                }
+                assert_eq!(collect(DIRECT_GUARDIANS), reference);
+            }
+        }
+    }
 
     #[test]
     fn mixed_partitions_match_exhaustive_candidate_conflicts() {

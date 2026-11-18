@@ -147,6 +147,17 @@ This pass reached main at `799ba1e` through [PR 137](https://github.com/coder13/
 - [x] Independently enumerate all 5,832 recognized Tridagon geometries and identify a direct guardian bound. Keep this research separate from the shipped matching change.
 - [ ] Improve the remaining Tridagon searches with independently proved eligibility checks in [issue 138](https://github.com/coder13/sudoku-app/issues/138).
 
+### Tridagon eligibility and proof allocation in progress
+
+This isolated pass starts from main `31fd429` in `codex/sudoku-tridagon-eligibility`. [Tridagon performance issue](https://github.com/coder13/sudoku-app/issues/138)
+
+- [x] Prove the direct conflict bound across all 5,832 recognized geometries and every target cell and digit. Compare bounded and unbounded complete proofs after candidate edits.
+- [x] Skip direct patterns with more than nine guardians. Enumerate forcing guardians lazily while preserving original branch order, contradictory cases and the existing refutation bound.
+- [x] Compare 6,210 complete variant responses across forty corpus positions and 351 positive practice examples. Add 148 Classic responses across nine Tridagon positions, including traces, counts and every hint page.
+- [x] Pass 313 native tests, 413 app tests, 253 Wasm tests, sixteen capability combinations, four package profiles, strict full/reduced documentation, TypeScript and the 159-route production/offline build. Verify the final artifact against the complete response comparison.
+- [x] Measure nine fixtures and selected final-position searches. Reduce the Coach rating median from 228.995 to 102.495 ms and Newman's exhaustive page from 301.930 to 208.677 ms. Preserve choices and memory. Record the app savings, larger Solver/Classic packages and slower samples. [Methods and limits](tests/fixtures/README.md#tridagon-eligibility-and-deferred-proof-data)
+- [ ] Pass exact-head CI and merge this measured improvement separately.
+
 ### Checked geometric symmetries merged
 
 This pass reached main at `0c15503` through [PR 131](https://github.com/coder13/sudoku-app/pull/131), including PR 132's hint-card changes. All CI and deployment checks passed on reviewed head `d5bbf9f`. The reviewed worktree remains on `codex/sudoku-symmetric-witnesses`. [Symmetry research issue](https://github.com/coder13/sudoku-app/issues/129)
