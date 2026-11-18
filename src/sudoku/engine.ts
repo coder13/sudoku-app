@@ -52,8 +52,9 @@ export type VariantRule =
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
   | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
-  | { type: 'thermometer' | 'renban' | 'between'; cells: readonly number[] }
+  | { type: 'thermometer' | 'between'; cells: readonly number[] }
   | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
+  | { type: 'renban'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }
   | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean }

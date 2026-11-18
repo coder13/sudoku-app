@@ -1255,3 +1255,121 @@ node --experimental-strip-types scripts/bench-xv-rating.mjs /tmp/main-wasm/engin
 node --experimental-strip-types scripts/bench-engine-pruning.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm quadruple parity anti-king non-consecutive nc-white-dots whispers palindrome palindrome-knight palindrome-whispers --added-technique=adjacent-total
 node --experimental-strip-types --test scripts/bench-adjacent-totals.mts
 ```
+
+
+## Renban app integration
+
+[Issue 55](https://github.com/coder13/sudoku-app/issues/55) starts from main `69289dd`, after general two-cell sums. The native Renban technique, forty-point Medium cost, three practice positions and fixed-rule template generation already exist. The app addition preserves connected logical sets and independent drawing paths. Optional native `segments` must cover exactly the logical cells. One-cell sets are valid, unrestricted and incapable of satisfying a required-family generation target. Existing scoring version 8, catalogs, default orders and old omitted-field wire data remain unchanged. [Full source contract and known gaps](../../SUDOKU_RENBAN_AUDIT.md)
+
+Two inspected Clover puzzle/solution PDF pairs provide independently unique controls. The 2025-09-14 Renban puzzle has sixteen givens and twelve lines. Pinwheel, from 2025-12-19, has fifteen givens, twelve lines and four cages totaling ten. Removing Renban leaves multiple completions in both. Pinwheel remains unique without its cages, so structural equality must preserve those independently redundant clues. The fixtures store primary URLs, PDF hashes and printed completions.
+
+Three original Coach 9×9 exports also import intact: Jh4o, KUUo and BSms. Independent counting proves their unique printed completions in 37/31/45,690 reference calls. Removing Renban leaves multiple completions. Their inspected diagrams, publication metadata and hashes remain preserved. The full Ksy3 export retains its unsupported Entropic companion. The original 9uMo remains a 6×6/general-difference gap, and 5NW remains a legacy SCv4/Consecutive Line gap. None is presented as a partial import.
+
+The primary Coach compiler joins connected segments within each Renban layer and deduplicates logical cells. Separate layers remain independent. The renderer preserves branches and revisits without inventing bridges. It numbers accessible labels and separates shared Renban edges into lanes. The walkthrough display removes placed Renban peer digits. Range eliminations remain explained steps. A mixed-clue review also repaired Whispers minimum labels: an unmarked edge is preferred, marked labels use a leader, and explicit foreground contrast layers keep the minimum visible above other lines.
+
+Static review uses actual React clue paths/CSS with comparison grid lines, givens and cage captions. Twenty-eight light/dark SVG exports at 900/360 pixels cover the five complete sources, branch geometry and a mathematically valid overlap with Renban, Palindrome, Whispers and both dots. This is static rendering, not live viewport interaction. New puzzle presets remain conditional on difficulty calibration.
+
+All five source traces preserve their complete or partial status. Clover solves at native/app points 940/1,260 in 77 steps. Pinwheel solves at 954/1,184 in 75 steps. Jh4o stalls natively at 484/16 but the app completes at 15,870/122. KUUo stalls natively at 308/8 but the app completes at 2,744/69. BSms remains stalled at 54/2 under both profiles. Every action matches the independent completion. Every Renban proof receives a separate digit-assignment check. Exact solving, empty logical profiles, replay, hints, pages, Finder, actual storage reload, practice answers, generated score targets and rule dependence are covered.
+
+Local validation passes 337 native tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript, 466 app tests, 281 Wasm contracts and the 160-route production/offline build. The final rendering repair also passes eighteen retained line-component contracts. The native support audit checks all 262,144 two-cell domain pairs, independent three-cell masks and long sets.
+
+The strict current-main comparison preserves all 7,342 complete responses without response normalization. It includes 7,194 variant responses on 47 corpus positions and 354 positive practice positions, plus 148 Classic responses on nine Tridagon positions. All 118 detector lists, full traces, ratings and hint pages agree. The legacy 65,536-family-selection regression stays intact. New Renban coverage adds each current companion, every companion pair and the complete inventory: 153 compatible cases and two intentional contradictions. These bounded witnesses do not establish arbitrary combinations feasible.
+
+Fresh source builds use separate Cargo target directories. Baseline SHA-256 is `8f8c95c36c067560dffe768498628f97ae9529396ee969bc7a6db6a26b13c6fe`. Integration SHA-256 is `7949a66187f5e820926efc8891578f42f5f5f3ab70f260f4db0f688599523e17`. Production rebuilds retain the measured integration hash. All compressed sizes here use Node `gzipSync` at its default level. Compressor implementations can differ from the Python JavaScript totals in earlier reports.
+
+| Wasm profile | Main raw/gzip bytes | Renban integration raw/gzip bytes |
+| --- | --- | --- |
+| Solver | 2,061,762 / 563,437 | 2,061,762 / 563,437 |
+| Variant solver | 2,589,572 / 703,130 | 2,631,886 / 709,431 |
+| Classic | 2,563,763 / 663,682 | 2,563,763 / 663,682 |
+| App | 3,388,378 / 904,672 | 3,358,070 / 901,120 |
+
+Variant solver adds 42,314 raw / 6,301 gzip bytes. App saves 30,308 raw / 3,552 gzip. Solver and Classic sizes stay unchanged. Fourteen client JavaScript assets change from 1,991,313 / 486,664 to 1,994,547 / 487,886 bytes, an increase of 3,234 raw / 1,222 gzip. Each asset is compressed separately. These are measured compiler outputs, not estimated source costs.
+
+Paired measurements use Node 26.13.0 on macOS arm64. Each engine uses its actual native/app default order. Engines alternate, complete responses and ordered traces agree outside timing, and serialization is timed. Candidates, exact operations, native rates and ten raw hints use five warmups/twenty samples. App rates and exhaustive pages use two/five. Values are median/p95 milliseconds; p95 of five is the maximum. Instantiation, browser startup, worker transfer and rendering are excluded. No identified compiler, engine test or other benchmark ran during the paired measurements. The host is not dedicated.
+
+| Puzzle | Candidates, main → Renban | Unique analysis, main → Renban | Exact solve, main → Renban |
+| --- | --- | --- | --- |
+| renban-clover | 0.033/0.041 → 0.033/0.041 | 0.150/0.175 → 0.148/0.179 | 0.138/0.140 → 0.140/0.144 |
+| renban-killer-clover | 0.029/0.032 → 0.030/0.031 | 0.153/0.157 → 0.155/0.163 | 0.155/0.172 → 0.155/0.193 |
+| Jh4o | 0.042/0.043 → 0.042/0.044 | 0.812/0.829 → 0.820/0.849 | 0.238/0.282 → 0.238/0.283 |
+| KUUo | 0.016/0.020 → 0.016/0.017 | 0.121/0.122 → 0.122/0.122 | 0.056/0.057 → 0.055/0.056 |
+| BSms | 0.020/0.024 → 0.020/0.021 | 711.221/755.091 → 711.561/754.996 | 43.765/45.405 → 43.867/45.512 |
+
+| Puzzle | Native rate, main → Renban | App rate, main → Renban | Ten hints, main → Renban | Exhaustive, main → Renban |
+| --- | --- | --- | --- | --- |
+| renban-clover | 0.189/0.347 → 0.192/0.345 | 0.261/0.400 → 0.250/0.261 | 0.129/0.169 → 0.128/0.170 | 86.799/95.865 → 87.050/90.847 |
+| renban-killer-clover | 0.164/0.172 → 0.164/0.176 | 0.195/0.203 → 0.195/0.207 | 0.143/0.147 → 0.141/0.148 | 62.710/63.206 → 62.700/63.365 |
+| Jh4o | 0.181/0.187 → 0.180/0.188 | 840.122/845.591 → 844.010/853.990 | 70.655/75.108 → 70.619/71.885 | 88.618/89.505 → 87.887/89.853 |
+| KUUo | 0.079/0.093 → 0.080/0.110 | 62.593/62.949 → 62.791/63.054 | 0.085/0.087 → 0.084/0.087 | 47.617/47.766 → 47.444/47.480 |
+| BSms | 0.057/0.065 → 0.057/0.061 | 67.917/70.073 → 67.436/69.709 | 87.534/89.809 → 87.654/89.375 | 87.417/87.582 → 87.479/87.668 |
+
+| Puzzle | Ten/exhaustive choices | Committed MiB, main → Renban |
+| --- | --- | --- |
+| renban-clover | 10/57 | 4.6875 → 4.6875 |
+| renban-killer-clover | 10/40 | 3.9375 → 3.9375 |
+| Jh4o | 10/21 | 4.2500 → 4.2500 |
+| KUUo | 10/75 | 4.5625 → 4.5625 |
+| BSms | 9/9 | 6.7500 → 6.7500 |
+
+Memory means committed raw-instance Wasm capacity after the fixed request sequence, not RSS, browser heap or live allocation. Small retained increases and decreases remain visible. This integration does not claim a general engine speedup. BSms human solve coverage and Jh4o rating/hint latency remain follow-ups.
+
+The broader retained-fixture pass uses five warmups/twenty samples, and two/ten for exhaustive pages. Fresh-instance first requests also preserve full responses. These observations exclude instantiation and are not browser cold-start percentiles. Selected Whispers uniqueness and final-position Palindrome/Whispers Tridagon scans retain their zero-proof results and existing caches.
+
+| Retained fixture | App rate, main → Renban | Ten hints, main → Renban | Exhaustive, main → Renban |
+| --- | --- | --- | --- |
+| quadruple | 1.296/1.393 → 1.276/1.468 | 0.526/0.867 → 0.436/1.027 | 152.215/158.448 → 150.200/159.400 |
+| parity | 0.171/0.202 → 0.172/0.197 | 0.075/0.080 → 0.075/0.083 | 47.844/65.659 → 47.319/53.716 |
+| anti-king | 0.156/0.186 → 0.158/0.244 | 0.120/0.151 → 0.123/0.146 | 98.825/101.977 → 100.525/113.949 |
+| non-consecutive | 0.382/0.392 → 0.384/0.402 | 0.077/0.082 → 0.077/0.079 | 35.655/44.297 → 35.511/39.427 |
+| nc-white-dots | 1.001/1.077 → 0.993/1.098 | 0.315/0.357 → 0.319/0.351 | 0.317/0.323 → 0.320/0.324 |
+| whispers | 0.308/0.337 → 0.311/0.337 | 3.213/3.353 → 3.176/3.249 | 3.402/4.870 → 3.432/4.280 |
+| palindrome | 0.122/0.130 → 0.121/0.130 | 49.691/98.041 → 45.904/59.459 | 43.564/47.672 → 42.398/47.354 |
+| palindrome-knight | 0.902/0.975 → 0.894/0.945 | 0.135/0.158 → 0.135/0.158 | 190.503/349.301 → 189.949/229.933 |
+| palindrome-whispers | 102.138/121.200 → 102.009/121.776 | 0.225/0.268 → 0.227/0.325 | 2.463/2.691 → 2.439/2.751 |
+
+The six retained XV sources use the fixed-source sampling counts above. All complete traces, ratings, choices and committed capacities stay unchanged.
+
+| Retained XV source | App rate, main → Renban | Ten hints, main → Renban | Exhaustive, main → Renban |
+| --- | --- | --- | --- |
+| xv-clover | 17.239/66.431 → 53.902/252.196 | 0.509/4.614 → 0.468/1.714 | 754.971/1158.216 → 796.694/1176.621 |
+| xv-quadruple-clover | 0.504/0.585 → 0.464/7.200 | 0.228/0.634 → 0.249/8.940 | 163.276/170.182 → 161.360/204.738 |
+| 7v7n | 156.801/241.776 → 116.754/134.255 | 329.540/520.326 → 303.963/461.762 | 442.231/469.968 → 436.632/534.853 |
+| FCeS | 12.634/16.317 → 36.894/104.183 | 0.165/0.531 → 0.185/0.824 | 1.070/1.764 → 2.239/4.371 |
+| 63Jk | 4210.119/4587.934 → 4523.722/4616.272 | 0.109/0.199 → 0.112/0.163 | 384.083/495.367 → 387.328/401.139 |
+| Chcs | 258.096/263.364 → 260.437/265.067 | 298.194/303.910 → 296.748/301.537 | 306.818/309.075 → 306.053/317.655 |
+
+The initial XV pass contains large timing variation. A separate focused control repeats the two apparent rating regressions with the same artifacts and sampling counts. Clover app rating changes from 5.638/5.866 to 5.649/6.041 ms. FCeS changes from 7.273/7.352 to 7.183/7.210 ms. Complete responses and traces still agree. The earlier differences do not repeat. Keep the initial observations visible, and do not infer a speedup from either pass.
+
+Generation alternates engines on seeds 1–20 per family, with six attempts, 20,000 nodes per exact check and no warmups. All 120 outcomes match, including the common Renban seed-10 search limit. The first five families retain twenty successes and twenty distinct puzzles each. Renban retains nineteen successes and nineteen distinct puzzles. Both builds pass independent digit-array uniqueness and rule-dependence checks for every successful Renban result. Node limits and failed seeds remain explicit. These are fixed-template controls, not very-hard difficulty calibration.
+
+| Generation family | Successful seeds, main/Renban | Main median/p95 ms | Renban median/p95 ms |
+| --- | --- | --- | --- |
+| classic | 20/20 | 0.573/0.898 | 0.606/0.889 |
+| x-sudoku | 20/20 | 0.591/0.711 | 0.586/0.733 |
+| killer | 20/20 | 2.620/3.168 | 2.693/3.128 |
+| jigsaw-killer | 20/20 | 2.410/2.597 | 2.436/2.695 |
+| windoku | 20/20 | 0.795/2.155 | 0.779/2.145 |
+| renban | 19/19 | 100.652/298.329 | 101.557/299.525 |
+
+Actual app callers use the in-process worker transport. Preview, ordinary hints and walkthrough use two warmups/five samples; play candidates, input and Board SSR use five/twenty. Assertions run outside timing. Browser startup, transfers, layout and paint are excluded. Ordinary app preferences differ from the medium-difficulty raw ten-hint control. The BSms walkthrough remains explicitly partial.
+
+| Puzzle | Preview with rating | Play candidates | Ordinary app hints | Walkthrough | Input with candidates | Board SSR |
+| --- | --- | --- | --- | --- | --- | --- |
+| renban-clover | 0.792/0.862 | 0.034/0.040 | 0.219/0.230 | 1.592/2.825 | 0.055/0.063 | 1.795/2.227 |
+| renban-killer-clover | 0.626/0.692 | 0.035/0.035 | 0.228/0.329 | 1.902/2.126 | 0.077/0.208 | 1.005/1.220 |
+| Jh4o | 866.120/893.979 | 0.049/0.061 | 72.698/74.736 | 873.492/884.237 | 0.039/0.053 | 1.644/2.242 |
+| KUUo | 65.012/65.834 | 0.019/0.047 | 0.144/0.148 | 66.005/71.345 | 0.026/0.072 | 1.706/2.260 |
+| BSms | 830.783/835.031 | 0.025/0.034 | 92.767/103.790 | 67.432/68.187 | 0.057/0.079 | 1.767/2.074 |
+
+All times are median/p95 milliseconds. App opening choices are renban-clover: 10, renban-killer-clover: 10, Jh4o: 10, KUUo: 10, BSms: 9. The remaining caller costs, worker transport and package boundaries stay in [issue 88](https://github.com/coder13/sudoku-app/issues/88).
+
+Repeat after building each source checkout with its own Cargo target directory. The paired source input file has a `cases` array of `{name, position: {puzzle}, solution}` records from the five preserved Renban fixtures. A generation recipe file extends `crates/engine/benches/fixtures/variants.json` with the Clover Renban template, thirty givens, twelve clues and `requiredRule: "renban"`. Clear its givens when constructing that template.
+
+```sh
+node --experimental-strip-types scripts/compare-engine-pruning.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --palindrome-trace --classic-tridagon --xv
+node --experimental-strip-types scripts/bench-xv-rating.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm /tmp/renban-inputs.json
+node --experimental-strip-types scripts/bench-engine-pruning.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm quadruple parity anti-king non-consecutive nc-white-dots whispers palindrome palindrome-knight palindrome-whispers
+node --experimental-strip-types scripts/bench-exact-houses.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --generation-only --recipes=/tmp/renban-recipes.json
+node --experimental-strip-types --test scripts/bench-renban-app.mts
+```

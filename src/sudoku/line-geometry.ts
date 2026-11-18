@@ -2,7 +2,7 @@ import type { VariantRule } from './engine.ts'
 
 function paths(rule: VariantRule): readonly (readonly number[])[] {
   switch (rule.type) {
-    case 'palindrome': return rule.segments ?? [rule.cells]
+    case 'palindrome': case 'renban': return rule.segments ?? [rule.cells]
     case 'thermometer': case 'whispers': return [rule.cells]
     case 'arrow': return [[rule.circle, ...rule.cells]]
     default: return []
@@ -23,6 +23,28 @@ function* edges(lines: readonly (readonly number[])[]) {
       yield Math.min(left, right) * 81 + Math.max(left, right)
     }
   }
+}
+
+/** Separate independent Renban clues that use the same visible line segment. */
+export function renbanOverlapLanes(rules: readonly VariantRule[]) {
+  const owners = new Map<number, number[]>()
+  rules.forEach((rule, index) => {
+    if (rule.type !== 'renban') return
+    for (const edge of new Set(edges(paths(rule)))) {
+      const list = owners.get(edge) ?? []
+      list.push(index); owners.set(edge, list)
+    }
+  })
+  const result = new Map<number, { cells: readonly [number, number]; lane: number; count: number }[]>()
+  for (const [edge, indices] of owners) {
+    if (indices.length < 2) continue
+    indices.forEach((index, lane) => {
+      const lines = result.get(index) ?? []
+      lines.push({ cells: [Math.floor(edge / 81), edge % 81], lane, count: indices.length })
+      result.set(index, lines)
+    })
+  }
+  return result
 }
 
 /** A narrow dashed overlay keeps equality visible above another line's color. */

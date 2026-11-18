@@ -48,8 +48,8 @@ impl LineConstraint {
                 let ranges = vec![0..1, 1..cells.len()];
                 (cells, LineKind::EqualSums(ranges))
             }
-            PuzzleRule::Renban { cells } => {
-                if !(2..=9).contains(&cells.len()) {
+            PuzzleRule::Renban { cells, segments } => {
+                if !(1..=9).contains(&cells.len()) || !super::drawing_paths_cover(cells, segments) {
                     return Err(invalid);
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
@@ -332,6 +332,93 @@ impl OutsideClue {
                     (visible == target).then_some([visible, 0])
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod renban_support_tests {
+    use super::*;
+
+    // Independent digit enumeration. A valid completed set has no repeats and
+    // max − min = length − 1, regardless of the order in which cells are drawn.
+    fn enumerate(domains: &[u16]) -> Vec<u16> {
+        fn visit(domains: &[u16], chosen: &mut Vec<u8>, support: &mut [u16]) {
+            if chosen.len() == domains.len() {
+                if chosen.iter().max().unwrap() - chosen.iter().min().unwrap()
+                    == domains.len() as u8 - 1
+                {
+                    for (cell, &digit) in chosen.iter().enumerate() {
+                        support[cell] |= 1 << (digit - 1)
+                    }
+                }
+                return;
+            }
+            for digit in 1..=9 {
+                if domains[chosen.len()] & (1 << (digit - 1)) == 0 || chosen.contains(&digit) {
+                    continue;
+                }
+                chosen.push(digit);
+                visit(domains, chosen, support);
+                chosen.pop();
+            }
+        }
+        let mut support = vec![0; domains.len()];
+        visit(domains, &mut vec![], &mut support);
+        support
+    }
+
+    fn check(domains: &[u16]) {
+        let constraint = LineConstraint {
+            cells: (0..domains.len()).collect(),
+            rule_id: "renban",
+            rule_index: 0,
+            kind: LineKind::Renban,
+        };
+        let mut support = vec![0; domains.len()];
+        constraint.support(domains, &mut support);
+        assert_eq!(support, enumerate(domains), "{domains:?}");
+    }
+
+    #[test]
+    fn every_two_cell_domain_pair_matches_unordered_consecutive_digits() {
+        for left in 0..=511 {
+            for right in 0..=511 {
+                check(&[left, right])
+            }
+        }
+    }
+
+    #[test]
+    fn three_cell_domains_and_long_ranges_match_independent_assignments() {
+        for labels in [[1, 2, 3], [2, 4, 7], [7, 8, 9]] {
+            let masks: Vec<_> = (0..8)
+                .map(|subset| {
+                    labels.iter().enumerate().fold(0, |mask, (i, &digit)| {
+                        mask | if subset & (1 << i) != 0 {
+                            1 << (digit - 1)
+                        } else {
+                            0
+                        }
+                    })
+                })
+                .collect();
+            for &a in &masks {
+                for &b in &masks {
+                    for &c in &masks {
+                        check(&[a, b, c])
+                    }
+                }
+            }
+        }
+        for domains in [
+            vec![511; 9],
+            vec![3, 3, 3, 511],
+            vec![15; 4],
+            vec![1, 2, 4, 8, 16, 32, 64, 128, 256],
+            vec![384, 384, 32, 16, 8, 4, 2, 1],
+        ] {
+            check(&domains)
         }
     }
 }

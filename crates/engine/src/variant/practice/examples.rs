@@ -678,26 +678,20 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 "004027860000510070720040910583170609270009038906050100095000700000090406000000300",
                 23,
                 8,
-                [PuzzleRule::Renban {
-                    cells: vec![23, 22, 12],
-                }],
+                [PuzzleRule::Renban { cells: vec![23, 22, 12], segments: None }],
             ),
             seed(
                 "761090002025008000008100540000803004500020000010400200090081400052049008806205300",
                 56,
                 3,
-                [PuzzleRule::Renban {
-                    cells: vec![57, 56, 64, 72],
-                }],
+                [PuzzleRule::Renban { cells: vec![57, 56, 64, 72], segments: None }],
             ),
             seed(
                 "000501020000002050020746100100093075050400000009005630680000001310000962090000300",
                 13,
                 3,
                 [
-                    PuzzleRule::Renban {
-                        cells: vec![23, 31, 21, 13, 3],
-                    },
+                    PuzzleRule::Renban { cells: vec![23, 31, 21, 13, 3], segments: None },
                     PuzzleRule::Parity {
                         cells: vec![3],
                         parity: CellParity::Odd,

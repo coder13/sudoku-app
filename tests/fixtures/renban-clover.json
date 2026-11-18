@@ -1,0 +1,115 @@
+{
+  "source": {
+    "title": "Renban Sudoku",
+    "author": "clover!",
+    "date": "2025-09-14",
+    "page": "https://www.gmpuzzles.com/blog/2025/09/renban-sudoku-by-clover/",
+    "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/250914-RenbanSudoku.pdf",
+    "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250914-RenbanSudoku-soln.pdf",
+    "puzzleSha256": "8aeff0ca0fa2807e57bfdce3f1d782d11c182640c7519f0e4010e47e327038bb",
+    "solutionSha256": "ce8fa2ec45dd5feac1224bb5a75718343d6c5e69815a00b08360173c20dd8fff"
+  },
+  "puzzle": {
+    "version": 1,
+    "givens": "800000005000009000000004000128007000000000000000400289000500000000300000500000002",
+    "rules": [
+      {
+        "type": "renban",
+        "cells": [
+          18,
+          27,
+          36
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          19,
+          28,
+          37
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          20,
+          29,
+          38
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          13,
+          14,
+          15
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          22,
+          23,
+          24
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          31,
+          32,
+          33
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          47,
+          48,
+          49
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          56,
+          57,
+          58
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          65,
+          66,
+          67
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          42,
+          51,
+          60
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          43,
+          52,
+          61
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          44,
+          53,
+          62
+        ]
+      }
+    ]
+  },
+  "solution": "891623745654179823237854691128967534349285167765431289916542378472318956583796412"
+}

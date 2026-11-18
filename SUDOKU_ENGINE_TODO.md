@@ -19,6 +19,9 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
 
+- [x] Audit Renban against two published puzzle/solution PDF pairs and six original Coach exports. Independently verify five complete 9×9 fixtures. Preserve the grid-size, legacy-format and Entropic companion gaps. [Source and integration contract](SUDOKU_RENBAN_AUDIT.md)
+- [ ] Merge complete Renban native/app integration through [issue 55](https://github.com/coder13/sudoku-app/issues/55) after its final app, production, visual and performance gates.
+
 - [x] Audit the original Coach 99Eu sum-15 export and inspect its Roman XV clue. Independently verify its unique completion, redundant sum and essential authored control. Confirm that general totals need a native rule as well as UI. [Source audit and port requirements](SUDOKU_ADJACENT_SUM_AUDIT.md)
 - [x] Merge general adjacent totals with complete native and app support through [PR 153](https://github.com/coder13/sudoku-app/pull/153). All checks passed on reviewed head `7be9b5c`; main contains the release at `6ff5ffc`. [Issue 72](https://github.com/coder13/sudoku-app/issues/72) is closed. Live viewport review and New puzzle calibration remain follow-ups.
 
@@ -734,3 +737,20 @@ This family reached main at `6ff5ffc` through [PR 153](https://github.com/coder1
 - [ ] Finish live viewport interaction review and calibrate New puzzle recipes. Static clue review and native generation are complete.
 
 The new default profiles add `adjacent-total` at 20 points/Easy. Existing costs, relative order and scoring version 8 remain unchanged. Full Coach interchange, arbitrary combinations and the remaining performance work stay open in [issues 7](https://github.com/coder13/sudoku-app/issues/7), [35](https://github.com/coder13/sudoku-app/issues/35), [87](https://github.com/coder13/sudoku-app/issues/87) and [88](https://github.com/coder13/sudoku-app/issues/88).
+
+## 17. Integrate Renban into the app
+
+The isolated worktree is `codex/sudoku-renban-integration`, based on main `69289dd`. Track the family in [issue 55](https://github.com/coder13/sudoku-app/issues/55). [Source evidence, contract and limits](SUDOKU_RENBAN_AUDIT.md)
+
+- [x] Inspect Clover's Renban and Pinwheel puzzle/solution PDFs. Preserve sixteen/fifteen givens, twelve lines each and four Pinwheel cages. Independently prove both complete puzzles unique and multiple completions without Renban. Preserve the independently redundant cages.
+- [x] Preserve six original Coach exports. Prove Jh4o, KUUo and BSms unique, check their diagrams and retain every full/partial profile. Reject Ksy3's Entropic companion, the 6×6 9uMo grid and legacy SCv4 5NW for their specific remaining gaps.
+- [x] Follow the primary compiler's connected-component semantics. Share the grouping helper with Palindrome. Add optional native drawing paths, exact coverage validation, transformations and old-wire compatibility. Support the valid unrestricted one-cell set.
+- [x] Pass 337 native tests, sixteen feature combinations, four Wasm profiles and strict full/reduced Cargo documentation. Exhaust all 262,144 two-cell domain pairs and independently check three-cell and long-set support.
+- [x] Connect complete imports, clue paths, numbered labels, overlap lanes, peer feedback, candidate cleanup and both Pencil modes. Preserve logical cells and original paths through all eight grid transforms. Keep range deductions visible as explained steps in walkthroughs.
+- [x] Pass eight focused Wasm contracts for published replay, honest partial paths, hints/pages/Finder, disabled profiles, three independently checked practice positions, actual persistence and generation. Preserve given/clue counts, exact score targets, preferred first technique and independent rule dependence.
+- [x] Keep the legacy 65,536-selection regression. Add Renban with every current companion family, every companion pair and the complete inventory: 153 compatible cases and two intentional contradictions. These bounded fixtures do not prove arbitrary arrangements feasible.
+- [x] Pass 466 app tests, 281 Wasm contracts, TypeScript and the 160-route production/offline build. Preserve all 7,342 complete engine responses, unchanged catalogs/scoring, full traces and every hint page. The final rendering repair also passes eighteen focused retained line-component contracts.
+- [x] Inspect static light/dark exports at 900/360 pixels, including independent overlapping clues and mixed-family geometry. Keep minimum labels above other lines, clear of dots/signs/sums, with explicit contrast layers. Preserve the remaining live viewport review separately.
+- [x] Record paired retained/source request performance, real caller costs, generation success, memory and every package profile. Preserve all full responses and traces. All 120 generation outcomes match, including Renban seed 10 reaching its budget in both engines. Variant-solver grows by 6,301 gzip bytes while app saves 3,552 gzip bytes. [Methods, retained regressions and limits](tests/fixtures/README.md#renban-app-integration)
+- [ ] Pass reviewed-head CI/deployment checks, merge the focused family PR and verify remote main ancestry.
+- [ ] Complete live viewport interaction review and calibrate New puzzle recipes. Native template generation remains available.

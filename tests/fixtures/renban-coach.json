@@ -1,0 +1,263 @@
+{
+  "description": "Unmodified original Coach exports. Deferred sources preserve known format, grid-size and companion-rule gaps.",
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/Jh4o",
+      "title": "Renban",
+      "author": "chirag.urb",
+      "published": "2026-08-28 11:19:51",
+      "code": "SCv7_32_f2e7r46ddb1j0444rtisusuglvbv5dbtgfq5csjgcbgokeiai16q2dbuuun6j2nr0df28m0ducoqn7d95ukjn94f916g1tf95njcfl57d6i8dl2mjpal1ftbi9dinhaan4ns2r7qjs57f7fe147tef2ekl6nj3bpjoknbl380mddsrpi0uapgjrd2rphhuqbvgr9ropglgehml0err1j2r40ako1lmm03l0rfdlkissca8m6f5cr0k86b9e039k62mn85svgvc45nc03fdo0apik6lu814t3eoomqo8chi2pca91t2ndnin03b7c0qrov6cgcarg03bvm88uor1jke09m6k0om7v0u7em2l757insveji1p7oui9svbhohohchpn9ekm5qb1v8gidbsg9mffj22g",
+      "solution": "964215378315789462728364951539672184176948523842153796687531249251496837493827615",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000005709000000000000000600080070040000002000000600000000000000000090000600",
+        "rules": [
+          {
+            "type": "renban",
+            "cells": [
+              72,
+              64,
+              55,
+              47,
+              39,
+              30,
+              21,
+              12,
+              4
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              2,
+              11,
+              19,
+              28,
+              37,
+              36,
+              45,
+              54
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              73,
+              74,
+              75,
+              76,
+              77,
+              68,
+              59,
+              49,
+              40
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              13,
+              22,
+              23,
+              14,
+              5,
+              6,
+              7
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              32,
+              41,
+              42,
+              51,
+              52,
+              61,
+              70,
+              79,
+              78
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              15,
+              25,
+              34,
+              44,
+              53,
+              62,
+              71
+            ]
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/Jh4o.png",
+      "imageSha256": "97eaa36c52f601770bb0993b44cc32f8a0778b4bfb830719eb3ad12dc44b6db5"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/KUUo",
+      "title": "RENBAN 1",
+      "author": "Tofi",
+      "published": "2026-09-27 22:04:26",
+      "code": "SCv7_32_f2e6b3m11b130346rsiue76idqltnbnq0of6b1v9984motbk8n8b2tpnlk9g82rvd7p7vqcv2lee1oec5s5mr0v0v1gvr28tos2lka49t0g6la50ehl939hiuu4186dp1doqnn15a69pqgks1t5vi1tlpsddg4seeuvs9k5j9sope5bog1b12gjspqp0e17bluuheu5hdqp5vq36osorqik3cm2oagatkdn50aqk18qiln91phuug9ordk871n9mvict4m59fuh4m89hm9rnnfdt0452ijf1",
+      "solution": "451378629937612485862945713745126938319857264286439157593761842628594371174283596",
+      "puzzle": {
+        "version": 1,
+        "givens": "400070009030000080002040700000106000309050204000409000003060800020000070100080006",
+        "rules": [
+          {
+            "type": "renban",
+            "cells": [
+              46,
+              45,
+              36,
+              28,
+              29,
+              21,
+              11,
+              2,
+              12
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              42,
+              51
+            ]
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/KUUo.png",
+      "imageSha256": "1b66b6f9c42c35e67ee32e7652450316b2e7ba3eb3953f01302472890723ea22"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/BSms",
+      "title": "Renbann9",
+      "author": "funnyamliy",
+      "published": "2026-03-29 23:56:30",
+      "code": "SCv7_32_f2e7rk6dhb1i0407u1rpjsvvk271uidendnt1oui8et1a4aqbe619eh1ttf06aar99ohhhb1fose4j11ovhitvjp39t5121njuv67235ka0s85hcrr16pqt5fg6ns8vir6g6rgmn4l6ib3phllhnspka8sda804lveqrt0ti9u3j2l9sv5ofcjvktd7qftd42m684lbgc87rl3jp7jtu4srdpn5o4vp71ka866cqrf7c4gja53amc4iag9lvcje70be42tpgbn9li1v3k3lmt6meumo3qj2dr5q4cgqrm1mlv9j15ne0fd2vfutp9662aongvdblk6b0",
+      "solution": "579861423831245769462379158315928647697453281284617935723186594956734812148592376",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000003000000000000000050005000000000050000000000000003000500050000000100000000",
+        "rules": [
+          {
+            "type": "renban",
+            "cells": [
+              42,
+              52,
+              62,
+              70
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              15,
+              23,
+              33,
+              43
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              16,
+              6,
+              14,
+              22
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              11,
+              21,
+              31,
+              39
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              30,
+              38,
+              48,
+              58
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              67,
+              57,
+              47,
+              55
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              79,
+              69,
+              59,
+              51
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              54,
+              46,
+              36
+            ]
+          },
+          {
+            "type": "renban",
+            "cells": [
+              74,
+              66,
+              76
+            ]
+          }
+        ]
+      },
+      "imageUrl": "https://sudoku.coach/open_graph_images/BSms.png",
+      "imageSha256": "d2cc935f1034a3a0cfe3fe33e3dc0e11c8cc061ec9e831208292172caf1d6e54"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Ksy3",
+      "title": "palindren? renbalindrome? renbananer?",
+      "author": "carrion",
+      "published": "2026-10-14 11:33:35",
+      "code": "SCv7_32_f2eaqlebiadk037sissung5so5blusurcdl0vb4pe96hbbo2nhdotivvjobf3mhh0r12260339t38knn91ec9ccboldvo5e45ohn2q6asrafaonn2fhi3l428iahugptshsfka2f06rvdl5l4kvg0se6lm61amqt51o6rels7qp7i3j5r5u8itu0s9jqhtuvho2ib4i8d7u73hsh329b1i2o6bhogsf46686hckurstlpb5rr5sc60peolcck4pgdmq58gha4n7kuvjk1m5gum1s183opk73r0s1ann4pni1ge1a2brmhqrut3p5g3qcol2s8gnckgi3372ru2259qsfjisujgth1bfq00pisojkr072iu8coi35kgugeq9dl1kf6blfo889h26bul58uie6edrcssb81pko40so36sm8tcqeaic36p10dre8eiki5ben244ujt755h49o1hsnr1tt6cec64v9s9udmikqrd59ip9qdp1jb6adcv57usvmrni6fbk9lqls13qpgmi7cjib30in94ts3m90ssqr2n22abs53li80e9fi5gbgmpmpbh40o891ms5ktsmfu2pqa6juln43799c66a0dnmatmjkfnr9j6v1lfcs7seql9fa3giuu9heom7gjerv2ic2kk5vgiv8e10vb4j9od2ogb9v6iafgaaikuuj59k1k6q2ugu8jdg0jkeajmlpk14sh97jo2khvds2chfkgpk2cibb7c7ogj4jnto19a4p4l922ra1j84t6socri1ho7ms4sherurblmhqf6km8ef25mdejc4f2t5qap4u3km9uohjb32gcn7bj1vicr6kmbtvmtof2tet6hm3radn654ioj3oq2s2ejc9du0rg16b9s8eqg20rqqhmmrb8kmo4uvf8vrt4dvv78fe1cg7cveu2sokh1ugnub17lqvg3t5pi6d0",
+      "solution": "872146935165329784394758216913584672647912853258673491489235167736491528521867349",
+      "deferred": "Entropic companion rule remains unsupported. Preserve the whole source.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/Ksy3.png",
+      "imageSha256": "19332a55061e124eb8eeba241cc407c6096413a16fb217396130ccb12f01100b"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/9uMo",
+      "title": "Race track",
+      "author": "Bluejay",
+      "published": "2025-10-10 20:57:46",
+      "code": "SCv7_32_f2e9b46f9r1j0366rv2lova8qanfvbnc1ng3drcgml7b3q6i585kgovanfhlc0s595691rv2mjfmfvv21fq83ep7vog6g2k480uovvg4pl7e68lj5amr6lfplaqdtb1aaoiva7l1strv4mve7555uk2656mp5cu9qn6sjo0qf8a9861cvcirjeo0ev86h18gpu9u02lc7tc2vpgjul3vkcll6g64mlb3gkt4f8ug2hk4k0cpdio4f2gksjrmb7nn9co4dtntea3n3chdoupkpi0c88tgtoqri0ggupa5glpj4pb09v7ivn5uf8t4iggqodggo7c5sihpkptsebl3usimb2htt84h0mbo5ugf9p9qb76eanbdas0vp9u46tfc3g4liitvg4mmmktn71kqtkbbsfi22tutr47rfb2fstrvrpnmt5p9ufo1tlhd5bg",
+      "solution": "326514145236261345453162534621612453",
+      "deferred": "Six-by-six grid and general-difference markers remain unsupported.",
+      "imageUrl": "https://sudoku.coach/open_graph_images/9uMo.png",
+      "imageSha256": "dad414c285a4bff2b9b13e517234f839f009474157671f01018e7be96dd5d304"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/5NW",
+      "title": "Romeo and Juliet",
+      "author": "Jan Feldmann",
+      "published": null,
+      "code": "SCv4_y0a27b877Y778877Y778877Y778044Y33X44Y33X44Y330_R11I11I3R11I27I18I10R11I51I52R11I68I69R11I70I71R11I7I17R12I4I13I22I31I40I49I58I67I76R14I15I14P1R14I33I42P1R14I34I43P1R15I1I0P2R15I29I38P2R15I2I1P2R15I37I28P2R6I38I37P10R6I43I42P10R6I64I73P5R6I66I67P10R6I74I65P5R6I78I79P10R6I7I6P10_yyyyy0Ac80d0_0Ac80d0_0Ac80d0___y",
+      "solution": "421695378375481296689273451538762914164359827297148563756934182913827645842516739",
+      "deferred": "Legacy SCv4 interchange and Consecutive Line companion remain unsupported."
+    }
+  ]
+}

@@ -310,8 +310,12 @@ rules! {
     }
     /// Require a set of consecutive digits in any order without repetition.
     Renban => "renban" {
-        /// Cell indices in line order.
+        /// One through nine distinct cells in logical order.
         cells: Vec<usize>,
+        /// Optional visible paths whose union equals `cells`.
+        /// Drawing paths may revisit cells without repeating their digits.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        segments: Option<Vec<Vec<usize>>>,
     }
     /// Require each interior digit to fall strictly between the endpoint digits.
     Between => "between" {
@@ -895,6 +899,20 @@ impl CompiledVariant {
             self.peers[cell] |= mask & !(1 << cell);
         }
     }
+}
+
+// Drawing geometry must name exactly the logical cells. Repeated visits do not
+// add a second occurrence of a digit to a set or a mirrored line.
+fn drawing_paths_cover(cells: &[usize], segments: &Option<Vec<Vec<usize>>>) -> bool {
+    let Some(segments) = segments else {
+        return true;
+    };
+    !segments.is_empty()
+        && segments.iter().all(|path| {
+            !path.is_empty() && path.iter().all(|&cell| cell < CELLS)
+        })
+        && Some(segments.iter().flatten().fold(0u128, |mask, &cell| mask | (1 << cell)))
+            == cell_mask(cells)
 }
 
 fn cell_mask(cells: &[usize]) -> Option<u128> {

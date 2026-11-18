@@ -2,7 +2,7 @@ import lzString from 'lz-string'
 import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle } from './formats.ts'
 import { EMPTY } from './game.ts'
-import { coachPalindromeLines } from './coach-lines.ts'
+import { coachConnectedLines } from './coach-lines.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000
@@ -146,7 +146,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'palindromeLine'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'palindromeLine', 'renban'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -242,20 +242,21 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
         }
         rules.push({ type: 'extra-house', cells: segment.cells })
       }
-    } else if (constraint.type === 'palindromeLine') {
+    } else if (constraint.type === 'palindromeLine' || constraint.type === 'renban') {
+      const name = constraint.type === 'renban' ? 'Renban' : 'Palindrome'
       const settings = constraint.settings
       if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key)))) {
-        throw new Error('This Sudoku Coach Palindrome line uses unsupported settings.')
+        throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
       }
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Palindrome cells.')
+      if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no ${name} cells.`)
       const paths = constraint.segments.map((segment: unknown) => {
         if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length || hasData(segment.parameters) ||
           segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= 81)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Palindrome segment.')
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${name} segment.`)
         }
         return segment.cells as number[]
       })
-      for (const line of coachPalindromeLines(paths)) rules.push({ type: 'palindrome', ...line })
+      for (const line of coachConnectedLines(paths)) rules.push({ type: constraint.type === 'renban' ? 'renban' : 'palindrome', ...line })
     } else if (constraint.type === 'whisper') {
       const settings = constraint.settings
       if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => key !== 'difference' && !LINE_STYLING.has(key)))) {

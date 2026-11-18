@@ -11,10 +11,14 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
     ...Array.from({ length: 9 }, (_, c) => Array.from({ length: 9 }, (_, r) => 9 * r + c)), ...regions,
   ]
   const edges: OracleRelation[] = [...extraRelations]
+  const sets: { cells: readonly number[]; sum?: number }[] = []
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
-    if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
+    if (rule.type === 'renban') sets.push({ cells: rule.cells })
+    else if (rule.type === 'killer-cages') sets.push(...rule.cages)
+    else if (rule.type === 'parity') rule.cells.forEach(cell => edges.push([cell, cell, (a,b) => a === b && a % 2 === (rule.parity === 'odd' ? 1 : 0)]))
+    else if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
       edges.push([cell, rule.cells[rule.cells.length - 1 - i], (a, b) => a === b]))
     else if (rule.type === 'inequality') edges.push([rule.less, rule.greater, (a, b) => a < b])
@@ -79,6 +83,29 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
       for (const [a, b, permits] of edges) for (const [from, to] of [[a, b], [b, a]]) {
         const keep = domains[from].filter(digit => domains[to].some(other => from === a ? permits(digit, other) : permits(other, digit)))
         changed ||= keep.length !== domains[from].length; domains[from] = keep
+      }
+      for (const clue of sets) {
+        const supported = clue.cells.map(() => new Set<number>())
+        const assigned: number[] = []
+        function enumerate(index: number, sum: number) {
+          if (index === clue.cells.length) {
+            if (clue.sum === undefined ? Math.max(...assigned) - Math.min(...assigned) !== assigned.length - 1 : sum !== clue.sum) return
+            assigned.forEach((digit, i) => supported[i].add(digit))
+            return
+          }
+          for (const digit of domains[clue.cells[index]]) {
+            if (assigned.includes(digit)) continue
+            assigned.push(digit)
+            const possible = clue.sum === undefined ? Math.max(...assigned) - Math.min(...assigned) < clue.cells.length : sum + digit <= clue.sum
+            if (possible) enumerate(index + 1, sum + digit)
+            assigned.pop()
+          }
+        }
+        enumerate(0, 0)
+        clue.cells.forEach((cell, i) => {
+          const keep = domains[cell].filter(digit => supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        })
       }
       for (const clue of quadruples) {
         const supported = clue.cells.map(() => new Set<number>())

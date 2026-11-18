@@ -616,9 +616,7 @@ fn arrow_renban_and_between_infer_cell_specific_candidates() {
     );
 
     let mut renban = VariantPuzzle::classic(EMPTY);
-    renban.rules.push(PuzzleRule::Renban {
-        cells: vec![0, 40, 80],
-    });
+    renban.rules.push(PuzzleRule::Renban { cells: vec![0, 40, 80], segments: None });
     let renban = renban.compile().unwrap();
     let mut entries = EMPTY;
     entries[0] = 2;
@@ -832,7 +830,7 @@ fn line_and_outside_clue_definitions_require_valid_geometry_and_values() {
             circle: 0,
             cells: vec![1, 0],
         },
-        PuzzleRule::Renban { cells: vec![0] },
+        PuzzleRule::Renban { cells: vec![], segments: None },
         PuzzleRule::Between { cells: vec![0, 1] },
         PuzzleRule::RegionSum {
             cells: vec![0, 1, 2],

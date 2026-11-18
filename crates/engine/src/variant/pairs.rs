@@ -236,17 +236,8 @@ impl PairCompiler {
             }
             PuzzleRule::Palindrome { cells, segments } => {
                 valid_cells(cells, 2..=CELLS)?;
-                if let Some(segments) = segments {
-                    if segments.is_empty()
-                        || segments.iter().any(|path| {
-                            path.is_empty() || path.iter().any(|&cell| cell >= CELLS)
-                        })
-                        || Some(
-                            segments.iter().flatten().fold(0u128, |mask, &cell| mask | (1 << cell)),
-                        ) != cell_mask(cells)
-                    {
-                        return Err(invalid);
-                    }
+                if !super::drawing_paths_cover(cells, segments) {
+                    return Err(invalid);
                 }
                 let links = cells
                     .iter()

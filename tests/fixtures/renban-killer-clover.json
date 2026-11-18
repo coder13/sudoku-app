@@ -1,0 +1,161 @@
+{
+  "source": {
+    "title": "Renban Killer Sudoku",
+    "theme": "Pinwheel",
+    "author": "clover!",
+    "date": "2025-12-19",
+    "page": "https://www.gmpuzzles.com/blog/2025/12/renban-killer-sudoku-by-clover/",
+    "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/251219-RenbanKillerSudoku-Pinwheel.pdf",
+    "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/251219-RenbanKillerSudoku-Pinwheel-soln.pdf",
+    "puzzleSha256": "4dac118c7313f7db95fb26fc85bd25cab4c8ab1aeb07f5e8362b8755aae814ff",
+    "solutionSha256": "5112f30e9437356b1e44a25a9a77da32b8ef7d139a5acba07bd3c79c80a61607"
+  },
+  "puzzle": {
+    "version": 1,
+    "givens": "007000003000040000000000009000050000070413050000020000800000000000060000700000900",
+    "rules": [
+      {
+        "type": "renban",
+        "cells": [
+          19,
+          10,
+          2,
+          3
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          6,
+          7,
+          8,
+          17
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          13,
+          23,
+          32
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          20,
+          21,
+          31
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          24,
+          33,
+          41
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          30,
+          29,
+          37
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          39,
+          47,
+          56
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          43,
+          51,
+          50
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          48,
+          57,
+          67
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          49,
+          59,
+          60
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          61,
+          70,
+          78,
+          77
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          63,
+          72,
+          73,
+          74
+        ]
+      },
+      {
+        "type": "killer-cages",
+        "cages": [
+          {
+            "sum": 10,
+            "cells": [
+              11,
+              12,
+              20,
+              21
+            ]
+          },
+          {
+            "sum": 10,
+            "cells": [
+              24,
+              25,
+              33,
+              34
+            ]
+          },
+          {
+            "sum": 10,
+            "cells": [
+              46,
+              47,
+              55,
+              56
+            ]
+          },
+          {
+            "sum": 10,
+            "cells": [
+              59,
+              60,
+              68,
+              69
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "solution": "297681543351249786684375219128956437976413852543827691812794365439562178765138924"
+}
