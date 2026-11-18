@@ -37,6 +37,7 @@ pub(crate) use practice::generate_practice_example;
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
 use quadruple::Quadruple;
 pub use search::VariantPositionError;
+pub(crate) use symmetry::SquareTransform;
 pub use symmetry::canonical_variant;
 pub use visibility::{VariantVisibility, VariantVisibilityError};
 

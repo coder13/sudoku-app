@@ -519,3 +519,88 @@ Independent native truth checks compare both assumption polarities with actual c
 All 298 native tests including seven doctests and 397 app tests pass. The sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation and TypeScript checks pass. The production/offline build renders 159 routes and reproduces the measured app hash.
 
 The branch also incorporates main `4757a44` from PR 127. Repeated TypeScript, app/Wasm and production checks pass on the combined puzzle-switching and storage changes. The Rust engine and its build configuration are unchanged by that integration, and the app Wasm retains the measured SHA-256.
+
+## Checked geometric symmetries
+
+[Issue 129](https://github.com/coder13/sudoku-app/issues/129) starts from main `d99b8fb`, after shared partial witnesses and PR 127 app integration. The cache now reuses the existing eight grid transformations to diversify complete geometric witnesses. Every fixed domain constrains a bijective digit mapping. Each transformed grid must respect all actual houses and directed peer exclusions. Every final digit cycle must also satisfy every candidate mask.
+
+A query permits at most 64 nonidentity transformation attempts. Each attempt tries at most nine digit cycles. This work has a separate bound from the existing 128 exact nodes per probe and 4,096 nodes per query. Rejected or exhausted transformations preserve the original witnesses. Unknown support retains the original detector search.
+
+The Brain Zaps opening now gets complete geometric support for all 642 logical candidates within the existing node budget. These grids certify individual assumptions under the detector's geometric premises. They do not certify numeric variant rules, compound assumptions or uniqueness. Numeric hints, singleton placements, selected orders, technique costs and scoring version 8 remain unchanged.
+
+Paired measurements use Node 26.13.0 on macOS arm64. Two unrelated research workers each used roughly one CPU core when the run began. No compiler or engine test was active. This machine is not dedicated to benchmarking. Timing differences on small requests and slower samples remain observational.
+
+Each fixture uses separate engines and alternates their order. Fixed requests use five warmups and twenty measured samples. Exhaustive first pages use two warmups and ten samples. Values are milliseconds, median/p95. Exact analysis and solving permit 100,000 nodes for Brain Zaps and 20,000 for the retained fixtures.
+
+| Brain Zaps operation | Main | Checked symmetries |
+| --- | ---: | ---: |
+| Candidates | 0.047/0.062 | 0.048/0.057 |
+| Exact analysis | 25.146/29.822 | 24.730/29.571 |
+| Exact solving | 24.040/29.562 | 23.372/28.689 |
+| Native default rating | 0.701/1.658 | 0.612/0.936 |
+| App-order rating | 0.491/0.529 | 0.498/0.518 |
+| Up to ten hints | 472.566/560.877 | 5.949/12.260 |
+| Exhaustive first page | 412.087/479.896 | 6.170/8.319 |
+| Selected Nested Forcing Net | 1.916/3.053 | 0.213/0.453 |
+
+Ordinary and exhaustive requests preserve all eight choices and their complete proofs. Selected Nested Forcing Net returns no proof in both engines. Complete native/app ratings stay at 862/1,212 points. Committed Wasm linear memory falls from 9.44 to 1.56 MiB. This measures the buffer size, not RSS or live allocation.
+
+| First request on a fresh instance | Main ms | Checked symmetries ms |
+| --- | ---: | ---: |
+| Up to ten hints | 449.858 | 11.021 |
+| Exhaustive first page | 414.197 | 7.181 |
+| Selected Nested Forcing Net | 3.346 | 0.489 |
+
+Module instantiation and catalog queries precede these timers. Measurements include request encoding and decoding. They exclude comparison assertions, worker startup, worker transfer and rendering.
+
+| Selected empty Brain Zaps search | Main | Checked symmetries |
+| --- | ---: | ---: |
+| Unique Rectangle Type 1 | 0.030/0.051 | 0.030/0.061 |
+| Unique Loop | 0.030/0.039 | 0.029/0.039 |
+| BUG+1 | 0.029/0.057 | 0.029/0.037 |
+| Unique Rectangle AIC | 4.894/7.172 | 4.560/7.053 |
+| Unique Rectangle Continuous Nice Loop | 4.908/6.728 | 5.631/7.113 |
+| Unique Rectangle Discontinuous Nice Loop | 4.321/6.267 | 4.312/6.073 |
+
+| Retained fixture | App rate, main → change | Up to ten hints, main → change | Exhaustive page, main → change | Choices | Committed MiB, main → change |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Quadruple | 2.033/3.190 → 1.983/2.860 | 0.343/1.523 → 0.349/0.981 | 611.814/671.454 → 243.850/262.765 | 31 | 5.88 → 1.50 |
+| Odd/Even | 0.259/0.428 → 0.262/0.439 | 0.127/0.231 → 0.133/0.260 | 86.931/94.860 → 85.912/92.305 | 23 | 3.56 → 3.56 |
+| Anti-King | 0.245/0.280 → 0.243/0.298 | 0.181/0.195 → 0.183/0.337 | 163.824/175.212 → 164.479/177.523 | 438 | 10.44 → 10.44 |
+| Published Non-Consecutive | 0.610/0.898 → 0.607/0.902 | 0.181/0.211 → 0.178/0.191 | 56.568/62.818 → 58.198/62.018 | 70 | 4.06 → 4.06 |
+| Two-given Consecudoku | 1.523/2.984 → 1.520/2.359 | 1.026/1.149 → 0.469/0.491 | 1.112/1.160 → 0.503/0.549 | 4 | 1.50 → 1.50 |
+
+| Retained fixture | Candidates, main → change | Exact analysis, main → change | Exact solving, main → change | Native rate, main → change |
+| --- | ---: | ---: | ---: | ---: |
+| Quadruple | 0.088/0.104 → 0.089/0.110 | 4.295/6.162 → 4.515/6.320 | 1.951/2.884 → 1.966/2.864 | 1.892/2.997 → 1.900/2.870 |
+| Odd/Even | 0.040/0.052 → 0.041/0.061 | 0.264/0.393 → 0.262/0.387 | 0.086/0.135 → 0.092/0.131 | 0.193/0.374 → 0.196/0.354 |
+| Anti-King | 0.023/0.036 → 0.023/0.025 | 0.072/0.137 → 0.071/0.084 | 0.050/0.058 → 0.050/0.057 | 0.193/0.406 → 0.197/0.343 |
+| Published Non-Consecutive | 0.046/0.049 → 0.047/0.048 | 0.540/0.772 → 0.545/0.786 | 0.399/0.589 → 0.400/0.622 | 0.537/0.869 → 0.528/0.912 |
+| Two-given Consecudoku | 0.126/0.338 → 0.127/0.156 | 0.609/0.922 → 0.608/0.948 | 0.611/1.121 → 0.611/1.139 | 1.516/2.487 → 1.506/2.854 |
+
+Every measured response matches exactly. Quadruple preserves all 31 choices while its exhaustive median falls about 60 percent and committed memory falls to 1.50 MiB. Anti-King and published Non-Consecutive show slower exhaustive medians in this run. Several cheap requests and uniqueness searches also show slower samples. These measurements do not establish a universal improvement or browser startup performance.
+
+Reproduce the runs and complete-output comparison after building both artifacts:
+
+```sh
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm whispers
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm
+```
+
+The app changes from 3,350,708 raw / 893,132 gzip bytes to 3,340,960 / 893,387. It saves 9,748 raw bytes and adds 255 gzip bytes. Before SHA-256 is `dd9b4ded80fdf20edd7642b09944a8411aa0b07970dd401b3b360964e24b15aa`. After SHA-256 is `635869d77ae31823b15a55da1fdbf5ec6cc56b1de62ae88da87c0a8a4f88b465`.
+
+| Wasm profile | Main raw/gzip bytes | Checked symmetries raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,040,103 / 556,086 | 2,040,103 / 556,086 |
+| variant-solver | 2,589,380 / 696,951 | 2,592,614 / 697,355 |
+| classic | 2,555,726 / 662,311 | 2,555,726 / 662,311 |
+| app | 3,350,708 / 893,132 | 3,340,960 / 893,387 |
+
+All four profile contracts pass. Variant-solver adds 3,234 raw / 404 gzip bytes. The new support code compiles only with `variants`. Solver-only and Classic sizes remain identical.
+
+Independent tests reject both forms of conflicting fixed-domain mappings, forbidden candidates, extra-house violations, directed peer conflicts and unsafe transformations of connected irregular regions. Exhausted budgets retain seed support. Small domains still match an exhaustive assignment oracle. AI Escargot retains partial support and all twelve nested proofs, eleven after the checked removal and fifty-three after the checked placement.
+
+The final comparison preserves 3,419 complete responses across nineteen corpus positions, all 117 detectors and all 351 positive practice positions. It covers every page, full proofs, traces, ratings, custom orders and exact search-limit outcomes. The actual Wasm worker checks candidate/placement edits, puzzle alternation and numeric hints. Its 4,096-node Brain Zaps analysis still returns `search-limit`, while 100,000 nodes proves uniqueness.
+
+All 302 native tests including seven doctests, 397 app tests and 246 Wasm tests pass. TypeScript, sixteen capability combinations, four Wasm profiles and strict full/reduced Cargo documentation pass. The production/offline build renders 159 routes and reproduces the measured app hash.
