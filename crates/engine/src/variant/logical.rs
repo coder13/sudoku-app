@@ -11,7 +11,7 @@ use super::{
 use crate::{
     Analysis, Board, CELLS, Candidate, DIGITS, Difficulty, HintAction, HintEvidence, SolveStatus,
     Technique,
-    hints::{Deduction, DeductionSearch, OverlaySearch, digit_bit, digits},
+    hints::{Deduction, DeductionSearch, OverlaySearch, RectangleInferenceCache, digit_bit, digits},
 };
 
 #[cfg(test)]
@@ -112,6 +112,8 @@ catalog! {
     Whispers: "whispers", 27, Medium;
     /// Apply the repeating low, medium and high groups along an Entropic line.
     Entropic: "entropic", 27, Medium;
+    /// Apply the repeating remainder groups along a Modular line.
+    Modular: "modular", 27, Medium;
     /// Remove digits that cannot be assigned to the cells of a Killer cage.
     CageCombinations: "cage-combinations", 34, Easy;
     /// Find assignments whose path digits add to the digit in the circle.
@@ -529,6 +531,7 @@ pub(super) struct ProofPosition<'a> {
     board: Board,
     pub masks: [u16; CELLS],
     uniqueness: OnceCell<bool>,
+    rectangle_inference: RectangleInferenceCache,
     overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
 }
 
@@ -828,6 +831,7 @@ impl CompiledVariant {
             board,
             masks,
             uniqueness: OnceCell::new(),
+            rectangle_inference: RectangleInferenceCache::default(),
             overlay: OnceCell::new(),
         }
     }
@@ -1003,7 +1007,7 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
-            Arrow | Between | Entropic | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+            Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines
                     .iter()
@@ -1087,7 +1091,8 @@ impl CompiledVariant {
             &position.board, &position.masks, solution.as_ref(),
         )
         .with_completion_probes(ALTERNATIVE_WITNESS_NODES)
-        .with_completion_support(completion_support.as_ref());
+        .with_completion_support(completion_support.as_ref())
+        .with_rectangle_inference(&position.rectangle_inference);
         for hint in search.hints(technique) {
             let swap_cells = if technique.requires_unique_solution() {
                 let cells = match &hint.evidence {

@@ -1516,3 +1516,8 @@ node --experimental-strip-types --test scripts/bench-entropic-app.mts
 The independent counter directly enumerates digits and houses without production support tables. CJhv also retains two direct completion witnesses after removing only Global Entropy. Proof replay enumerates every four-cell numeric assignment from the declared domains. All eight square symmetries preserve complete source rules and exact completions through actual Wasm.
 
 The [Global Entropy audit](../../SUDOKU_GLOBAL_ENTROPY_AUDIT.md) records the source contract, 24-point Easy technique, full and partial logical paths, package costs, all 26 retained performance controls, four new-source caller measurements, 140 matching old-generation outcomes and twenty new independently checked puzzles. The shared app benchmark accepts `SUDOKU_BENCH_FAMILY=global-entropy`; its old Entropic default stays available. Final CI and merge are tracked in [issue 60](https://github.com/coder13/sudoku-app/issues/60).
+
+
+## Modular Lines native and app integration
+
+`modular-newman.json` records both inspected PDFs for Philip Newman's eighteen-given Birbs of Paradise, its six independent Entropic paths, six independent Modular paths and printed completion. `modular-coach.json` retains eight original sources, their descriptions, solutions, image hashes and the compiler's original nine-cell-wide demonstration. Three complete 9 × 9 sources have independent unique completions; removing either line family from the published puzzle yields multiple completions. Six companion/grid gaps stay explicit. The two zero-given imports preserve every sum and marker, including HCHW's printed XI total. [Source rules, app contracts, package sizes, measurements and limits](../../SUDOKU_MODULAR_AUDIT.md)

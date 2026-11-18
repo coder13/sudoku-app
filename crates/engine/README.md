@@ -446,6 +446,27 @@ Coach compiles each connected component within a Renban layer as one set.
 Separate layers retain independent constraints even when their paths overlap.
 Generation preserves fixed Renban rules and their drawing geometry through the existing template API.
 
+Entropic and Modular lines preserve their ordered walks, including repeated cells and closed paths.
+An Entropic line uses the groups {1, 2, 3}, {4, 5, 6} and {7, 8, 9}.
+A Modular line uses {1, 4, 7}, {2, 5, 8} and {3, 6, 9}.
+Every three successive positions must use all three groups.
+Two-cell paths need different groups; a one-cell path is unrestricted.
+Positions three steps apart share a group and can contain different digits.
+Each original path remains independent when it touches another path.
+
+```json
+{"type":"modular","cells":[0,10,20,30]}
+```
+
+Both rules share a private six-order support kernel with separate digit partitions.
+The kernel intersects cell domains with all viable group orders without enumerating digit assignments.
+Repeated references must agree with their original phase; an inconsistent walk has no completion.
+The `modular` technique costs 27 points at Medium, calibrated against three practice proofs.
+Its evidence retains the original rule index, distinct cells in first-visit order and their domains.
+Exact solving enforces the rule with any technique order, including an empty list.
+The existing generation template API retains fixed paths and supports clue, given, score, dependency and first-technique targets.
+App presets require separate difficulty calibration.
+
 With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via Serde. A `variant` worker request takes the position, operation, and optional `maxNodes` for exact search. `normalize` validates the definition and returns a complete position record. `candidates` returns 81 candidate masks. `analyze` distinguishes conflicts, impossible puzzles, uniqueness, multiple solutions, and search limits. `solve` returns one completion or an error. Unsupported rule IDs and format versions have distinct error codes.
 
 ```json
@@ -524,7 +545,7 @@ Cage Combinations checks which digits can occupy each cell while meeting the cag
 
 Classic detectors can run when the puzzle uses standard boxes. X-Wing, Swordfish, and Jellyfish also run with replacement regions because they use rows and columns. A uniqueness proof requires a successful check with a 4,096-node budget. That check uses the givens and placements, without candidate removals. Multiple solutions or an exhausted budget prevent uniqueness deductions. Other techniques remain available, and a later placement permits a fresh check.
 
-The engine caches that result within one proof position. Unique Rectangle AIC and both Unique Rectangle Nice Loops check it before graph search. Cheap searches defer the check until they find a proof, and all uniqueness searches reuse a cached failure. Every offered uniqueness proof must also keep all cells that can exchange digits outside every additional rule. The proof records those cells. Computational eligibility does not change technique costs, selection, order or scoring versions.
+The engine caches that result within one proof position. Unique Rectangle AIC and both Unique Rectangle Nice Loops check it before graph search. Cheap searches defer the check until they find a proof, and all uniqueness searches reuse a cached failure. Every offered uniqueness proof must also keep all cells that can exchange digits outside every additional rule. The proof records those cells. Computational eligibility does not change technique costs, selection, order or scoring versions. Within that same immutable position, the three Unique Rectangle inference techniques share their constructed graph, including a completed empty result. Each technique still searches its own paths in the original order. The private cache checks the full board and candidate masks before reuse and is discarded with the logical position. Changed entries or removals cannot inherit its links.
 
 For a `variant` request, set `operation` to `trace`, `rate`, or `hints`. Use `techniqueOrder` to choose the enabled techniques. An empty list disables all techniques, while an omitted field uses [`VariantTechnique::DEFAULT_ORDER`]. Exact validation continues to enforce every puzzle rule. Hints rank the available proofs by difficulty and cost, then by the number of cells in the proof. They return a single deduction when it is the only move available.
 

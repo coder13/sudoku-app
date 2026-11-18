@@ -7,6 +7,8 @@ use super::{Analysis, Board, CELLS, PositionSnapshot, Technique, coordinates, lo
 mod patterns;
 #[cfg(any(feature = "variants", all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))))]
 pub(crate) use patterns::OverlaySearch;
+#[cfg(feature = "variants")]
+pub(crate) use patterns::RectangleInferenceCache;
 
 #[path = "proofs.rs"]
 mod proofs;
@@ -1747,6 +1749,13 @@ impl<'a> DeductionSearch<'a> {
     #[cfg(feature = "variants")]
     pub(crate) fn with_completion_support(mut self, support: Option<&'a [u128; 9]>) -> Self {
         self.patterns.completion_support = support;
+        self
+    }
+
+    /// Share immutable rectangle links while keeping each detector's path search separate.
+    #[cfg(feature = "variants")]
+    pub(crate) fn with_rectangle_inference(mut self, cache: &'a RectangleInferenceCache) -> Self {
+        self.patterns.shared_rectangle_inference = Some(cache);
         self
     }
 

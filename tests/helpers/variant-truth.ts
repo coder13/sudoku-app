@@ -59,9 +59,10 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         }
         break
       }
-      case 'entropic': {
+      case 'entropic': case 'modular': {
         for (let i = 0; i < rule.cells.length; i++) for (let j = i + 1; j < Math.min(i + 3, rule.cells.length); j++) {
-          assert.notEqual(Math.floor((digits[rule.cells[i]] - 1) / 3), Math.floor((digits[rule.cells[j]] - 1) / 3))
+          const group = (digit: number) => rule.type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
+          assert.notEqual(group(digits[rule.cells[i]]), group(digits[rule.cells[j]]))
         }
         break
       }
