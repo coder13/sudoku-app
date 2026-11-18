@@ -106,9 +106,9 @@ export const deviceSync = {
       document.removeEventListener('visibilitychange', wake)
     }
   },
-  async enroll(mode: 'libraries' | 'join' | 'recover', name: string, secret?: string) {
+  async enroll(mode: 'libraries' | 'join' | 'recover', secret?: string) {
     if (credentials()) throw new Error('This device is already linked.')
-    const result = await syncRequest()<Credentials & { recovery?: string }>(mode, 'POST', { name, secret })
+    const result = await syncRequest()<Credentials & { recovery?: string }>(mode, 'POST', { secret })
     localStorage.setItem(credentialsKey, JSON.stringify({ id: result.id, token: result.token }))
     void sync()
     return result.recovery
@@ -118,6 +118,9 @@ export const deviceSync = {
   },
   async devices() {
     return syncRequest(credentials()?.token)<{ id: string; name: string; created: number }[]>('devices')
+  },
+  async rename(id: string, name: string) {
+    return syncRequest(credentials()?.token)<{ name: string }>('devices/' + encodeURIComponent(id), 'PATCH', { name })
   },
   async revoke(id: string) {
     await syncRequest(credentials()?.token)('devices/' + encodeURIComponent(id), 'DELETE')

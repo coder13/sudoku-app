@@ -2,6 +2,10 @@ const base = '/api/v1/'
 const secretPattern = /^[a-f0-9]{64}$/
 const idPattern = /^[a-zA-Z0-9_-]{1,128}$/
 const maxBytes = 1536 * 1024
+function deviceName(id, name = '') {
+  if (typeof name !== 'string') throw new HttpError(400, 'Invalid device name.')
+  return name.trim().slice(0, 60) || 'Device ' + id.slice(0, 6).toUpperCase()
+}
 const json = (data, status = 200) => Response.json(data, {
   status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
 })
@@ -45,10 +49,9 @@ async function api(request, db, url) {
     throw new HttpError(403, 'Unexpected request origin.')
   }
   if (method === 'POST' && ['libraries', 'join', 'recover'].includes(path)) {
-    const data = await input(request)
-    const name = typeof data.name === 'string' && data.name.trim().slice(0, 60)
-    if (!name) throw new HttpError(400, 'Give this device a name.')
+    const data = path === 'libraries' && request.body === null ? {} : await input(request)
     const id = crypto.randomUUID(), token = secret(), tokenHash = await digest(token), now = Date.now()
+    const name = deviceName(id, data.name)
     const insert = 'INSERT INTO devices(id, token_hash, name, created, library) '
     if (path === 'libraries') {
       const library = crypto.randomUUID(), recovery = secret()
@@ -90,6 +93,15 @@ async function api(request, db, url) {
   }
   if (path === 'devices' && method === 'GET') {
     return json((await db.prepare('SELECT id, name, created FROM devices WHERE library = ? ORDER BY created').bind(library).all()).results)
+  }
+  if (path.startsWith('devices/') && method === 'PATCH') {
+    const id = path.slice('devices/'.length)
+    const data = await input(request)
+    if (!Object.hasOwn(data, 'name')) throw new HttpError(400, 'Missing device name.')
+    const name = deviceName(id, data.name)
+    const result = await db.prepare('UPDATE devices SET name = ? WHERE library = ? AND id = ?').bind(name, library, id).run()
+    if (!result.meta.changes) throw new HttpError(404, 'Device not found.')
+    return json({ name })
   }
   if (path.startsWith('devices/') && method === 'DELETE') {
     await db.prepare('DELETE FROM devices WHERE library = ? AND id = ?').bind(library, path.slice(8)).run()

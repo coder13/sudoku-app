@@ -1,6 +1,6 @@
 # Device sync and Cloudflare previews
 
-Open **Options → Device sync**, name the first device, and enable sync. Save the recovery key. Use **Link another device** to generate a QR code or a one-use link that expires after ten minutes. Open it on the second device in the same preview and choose **Link this device**.
+Open **Options → Device sync**, then choose **Enable sync**. Save the recovery key. Use **Link another device** to generate a QR code or a one-use link that expires after ten minutes. Open it on the second device in the same preview and choose **Link this device**. Each device gets a short label automatically. Choose **Rename** in **Linked devices** to change it. Clearing the name restores its original label.
 
 Each puzzle has a private attempt URL such as `/?puzzle=<id>`. The home page resumes a single in-progress puzzle or lists multiple puzzles by most recent play. Ordinary puzzle sharing still gives the recipient their own board.
 

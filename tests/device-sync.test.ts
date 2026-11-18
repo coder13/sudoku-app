@@ -60,6 +60,37 @@ test('device credentials, one-use invitations, expiry, recovery, revocation and 
   } finally { sqlite.close() }
 })
 
+test('devices link without names and labels can be renamed only within the linked library', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  const anon = syncRequest(undefined, fetcher)
+  try {
+    const first = await anon<Credentials & { recovery: string }>('libraries', 'POST')
+    const phone = syncRequest(first.token, fetcher)
+    const { ticket } = await phone<{ ticket: string }>('invitations', 'POST')
+    const second = await anon<Credentials>('join', 'POST', { secret: ticket })
+    const computer = syncRequest(second.token, fetcher)
+    const third = await anon<Credentials>('recover', 'POST', { secret: first.recovery, name: '  ' })
+    const devices = () => phone<{ id: string; name: string }[]>('devices')
+    const initialLabels = new Map((await devices()).map(device => [device.id, device.name]))
+    for (const device of [first, second, third]) assert.match(initialLabels.get(device.id)!, /^Device [0-9A-F]{6}$/)
+
+    const target = 'devices/' + second.id
+    assert.deepEqual(await phone(target, 'PATCH', { name: '  My laptop  ' }), { name: 'My laptop' })
+    await computer('devices/' + first.id, 'PATCH', { name: 'My laptop' })
+    assert.equal((await devices()).filter(device => device.name === 'My laptop').length, 2)
+
+    const stranger = await anon<Credentials>('libraries', 'POST', { name: 'My laptop' })
+    await assert.rejects(syncRequest(stranger.token, fetcher)(target, 'PATCH', { name: 'Other' }), { status: 404 })
+    await assert.rejects(anon(target, 'PATCH', { name: 'Other' }), { status: 401 })
+    await assert.rejects(phone(target, 'PATCH', {}), { status: 400 })
+    assert.equal((await devices()).find(d => d.id === second.id)?.name, 'My laptop')
+
+    assert.deepEqual(await computer(target, 'PATCH', { name: '' }), { name: initialLabels.get(second.id) })
+    await phone(target, 'DELETE')
+    await assert.rejects(computer('devices/' + first.id, 'PATCH', { name: 'Other' }), { status: 401 })
+  } finally { sqlite.close() }
+})
+
 test('two devices resume full independent saves, order by play, and retain both offline versions', async () => {
   const { sqlite, creator, phone, second, computer } = await library()
   try {
