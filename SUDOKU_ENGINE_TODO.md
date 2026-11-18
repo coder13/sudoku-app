@@ -89,9 +89,9 @@ This pass reached main at `1a62a7c` through [PR 124](https://github.com/coder13/
 - [x] Pass CI on reviewed head `3e60cc8`, merge the focused optimization through [PR 124](https://github.com/coder13/sudoku-app/pull/124) and verify the reviewed head on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44244011999)
 - [x] Investigate geometric completion witnesses for the remaining nested searches in [issue 125](https://github.com/coder13/sudoku-app/issues/125). Keep the detector's premises, numeric variant validation and uniqueness certificates separate.
 
-### Shared geometric witnesses in progress
+### Shared geometric witnesses merged
 
-This pass is isolated on `codex/sudoku-geometric-witnesses` from main `13062ad`. [Witness research issue](https://github.com/coder13/sudoku-app/issues/125)
+This pass reached main at `d9e4ee9` through [PR 128](https://github.com/coder13/sudoku-app/pull/128), including PR 127's app integration. All CI and deployment checks passed on reviewed head `bc1a01f`. The reviewed worktree remains on `codex/sudoku-geometric-witnesses`. [Witness research issue](https://github.com/coder13/sudoku-app/issues/125)
 
 - [x] Profile the remaining empty nested search and verify the full variant probe's budget limit. Check geometric completions independently against houses, placements and candidate masks.
 - [x] Reuse cached partial Pattern Overlay witnesses for individual nested assumptions. Keep unknown assumptions active, existing probe budgets intact and uniqueness validation separate.
@@ -99,7 +99,8 @@ This pass is isolated on `codex/sudoku-geometric-witnesses` from main `13062ad`.
 - [x] Match 3,419 complete responses across nineteen corpus positions, all 117 detectors and all 351 positive practice positions. Preserve every proof, rating, page and profile. Verify candidate/placement edits and puzzle alternation through the actual Wasm worker, including all twelve, eleven and fifty-three nested proofs at the three AI Escargot states.
 - [x] Measure paired ordinary/exhaustive hints, selected techniques, retained fixtures, memory and every package profile. Keep eight Whispers choices and 31 Quadruple choices. App Wasm saves 2,980 gzip bytes. Record the large Whispers timing tails and slower native-rating samples. [Methods and limits](tests/fixtures/README.md#shared-partial-geometric-witnesses)
 - [x] Pass 298 native tests including doctests, 397 app tests, 245 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build. Recheck app integration with main's puzzle-switching changes from [PR 127](https://github.com/coder13/sudoku-app/pull/127).
-- [ ] Pass CI on the reviewed head, merge separately and record the release.
+- [x] Pass CI on reviewed head `bc1a01f`, merge through [PR 128](https://github.com/coder13/sudoku-app/pull/128) and verify the reviewed optimization and PR 127 app work on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44254728829)
+- [ ] Evaluate checked grid/digit symmetries for bounded candidate support in [issue 129](https://github.com/coder13/sudoku-app/issues/129). Check every transformed grid against the current masks, placements and actual geometric premises before accepting support.
 
 ### Complete candidate-support performance merged
 
