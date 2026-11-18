@@ -1,12 +1,12 @@
-import { validVariantSave } from './variants.ts'
+import { generationVariant, validVariantSave, variantDifficulties, variantDifficulty } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
-  calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
-  type AutoPlacement, type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
+  calculatePlayerRating, difficultyAfterFeedback, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
+  type AutoFeedback, type AutoPlacement, type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
 } from './player-rating.ts'
 import { puzzleTiming } from './puzzle-timing.ts'
 
@@ -15,6 +15,8 @@ const LEGACY_PREFIX = 'gridroom:v1:'
 const GAME_PREFIX = PREFIX + 'game:'
 const RATING_PREFIX = PREFIX + 'rating-result:'
 const AUTO_PLACEMENT = PREFIX + 'auto-placement'
+const AUTO_PLACEMENT_PREFIX = AUTO_PLACEMENT + ':'
+const AUTO_FEEDBACK_PREFIX = AUTO_PLACEMENT_PREFIX + 'feedback:'
 const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
 const ACTIVE = PREFIX + 'active'
 const READY = PREFIX + 'initialized'
@@ -26,8 +28,8 @@ const initial: Room = { games: [], active: null, stoppedPlaying: false, storageA
 const listeners = new Set<() => void>()
 const ratingEvents = new Map<string, RatingEvent>()
 const unsavedRatingEvents = new Set<string>()
+const autoPlacements = new Map<string, AutoPlacement>()
 let room = initial
-let autoPlacement: AutoPlacement | undefined
 
 function publish(next: Room) {
   room = next
@@ -165,20 +167,46 @@ function playerRatingFor(games: readonly Game[]) {
       if (evidence) events.push(evidence)
     }
   }
-  return calculatePlayerRating(events, autoPlacement)
+  const placements = [...autoPlacements].sort(([a], [b]) => a.localeCompare(b)).map(([, placement]) => placement)
+  return calculatePlayerRating(events, placements)
 }
 
-function readAutoPlacement(): AutoPlacement | undefined {
+function readAutoPlacement(key: string): AutoPlacement | undefined {
   try {
-    const saved = JSON.parse(localStorage.getItem(AUTO_PLACEMENT) ?? 'null') as AutoPlacement | null
-    if (saved && isDifficulty(saved.difficulty) && Number.isSafeInteger(saved.at) && saved.at >= 0) return saved
+    const saved = JSON.parse(localStorage.getItem(key) ?? 'null') as AutoPlacement | null
+    if (!saved || !isDifficulty(saved.difficulty) || !Number.isSafeInteger(saved.at) || saved.at < 0) return
+    if (key.startsWith(AUTO_FEEDBACK_PREFIX)) {
+      if (!saved.feedback || saved.feedback.gameId !== key.slice(AUTO_FEEDBACK_PREFIX.length) ||
+        (saved.feedback.choice !== 'too-easy' && saved.feedback.choice !== 'too-hard')) return
+    } else if (saved.feedback !== undefined) return
+    return saved
   } catch { /* Saved puzzles and ratings remain available. */ }
+}
+
+function isAutoPlacementKey(key: string) {
+  return key === AUTO_PLACEMENT || key.startsWith(AUTO_PLACEMENT_PREFIX)
+}
+
+function lastPlacementAt() {
+  let at = 0
+  for (const placement of autoPlacements.values()) at = Math.max(at, placement.at)
+  return at
+}
+
+function rememberAutoPlacement(key: string, selection: Omit<AutoPlacement, 'at'>) {
+  let at = Math.max(Date.now(), lastPlacementAt() + 1)
+  for (const event of ratingEvents.values()) at = Math.max(at, event.at)
+  for (const game of room.games) at = Math.max(at, game.ratingAttempt?.lastHintAt ?? 0)
+  const placement = { ...selection, at }
+  autoPlacements.set(key, placement)
+  const saved = persist(() => localStorage.setItem(key, JSON.stringify(placement)))
+  publish({ ...room, storageAvailable: room.storageAvailable && saved, playerRating: playerRatingFor(room.games) })
 }
 
 function finishAttempt(game: Game, finish: RatingFinish): Game {
   const attempt = game.ratingAttempt
   if (!attempt || attempt.outcome) return game
-  let at = Math.max(Date.now(), (autoPlacement?.at ?? 0) + 1)
+  let at = Math.max(Date.now(), lastPlacementAt() + 1)
   for (const event of ratingEvents.values()) at = Math.max(at, event.at + 1)
   const outcome: RatingEvent = {
     id: createGameId(), gameId: game.id, givens: game.givens, puzzleKey: puzzleIdentity(game), difficulty: attempt.grade.difficulty,
@@ -279,15 +307,19 @@ function migrateStorage(storage: Storage) {
 
 function hydrate() {
   try {
-    autoPlacement = readAutoPlacement()
     const migrated = migrateStorage(localStorage)
     const keys = Array.from(new Set(Object.keys(localStorage).map(storageKey)))
+    autoPlacements.clear()
     ratingEvents.clear()
     unsavedRatingEvents.clear()
     for (const key of keys) {
-      if (!key.startsWith(RATING_PREFIX)) continue
-      const event = readRatingEvent(key.slice(RATING_PREFIX.length))
-      if (event) ratingEvents.set(event.id, event)
+      if (isAutoPlacementKey(key)) {
+        const placement = readAutoPlacement(key)
+        if (placement) autoPlacements.set(key, placement)
+      } else if (key.startsWith(RATING_PREFIX)) {
+        const event = readRatingEvent(key.slice(RATING_PREFIX.length))
+        if (event) ratingEvents.set(event.id, event)
+      }
     }
     const storedGames = keys
       .filter((key) => key.startsWith(GAME_PREFIX))
@@ -336,8 +368,10 @@ function onStorage(event: StorageEvent) {
     return
   }
   const key = storageKey(event.key)
-  if (key === AUTO_PLACEMENT) {
-    autoPlacement = readAutoPlacement()
+  if (isAutoPlacementKey(key)) {
+    const placement = readAutoPlacement(key)
+    if (placement) autoPlacements.set(key, placement)
+    else autoPlacements.delete(key)
     publish({ ...room, playerRating: playerRatingFor(room.games) })
     return
   }
@@ -422,12 +456,26 @@ export const roomStore = {
   getSnapshot: () => room,
   getServerSnapshot: () => initial,
   setAutoPlacement(difficulty: AutoPlacement['difficulty']) {
-    let at = Date.now()
-    for (const event of ratingEvents.values()) at = Math.max(at, event.at)
-    for (const game of room.games) at = Math.max(at, game.ratingAttempt?.lastHintAt ?? 0)
-    autoPlacement = { difficulty, at }
-    const saved = persist(() => localStorage.setItem(AUTO_PLACEMENT, JSON.stringify(autoPlacement)))
-    publish({ ...room, storageAvailable: room.storageAvailable && saved, playerRating: playerRatingFor(room.games) })
+    rememberAutoPlacement(AUTO_PLACEMENT_PREFIX + createGameId(), { difficulty })
+  },
+  setAutoFeedback(gameId: string, choice: AutoFeedback) {
+    const game = room.games.find(item => item.id === gameId)
+    if (!game?.difficulty || game.difficultyCheck || game.collection || !isSolved(game)) return
+    const recipe = generationVariant(game.variant)
+    if (game.variant && !recipe) return
+    const key = AUTO_FEEDBACK_PREFIX + gameId
+    if (autoPlacements.has(key)) return
+    const existing = readAutoPlacement(key)
+    if (existing) {
+      autoPlacements.set(key, existing)
+      publish({ ...room, playerRating: playerRatingFor(room.games) })
+      return
+    }
+    const { recommended } = room.playerRating
+    const next = variantDifficulty(recipe, recommended)
+    const played = variantDifficulty(recipe, game.difficulty)
+    const difficulty = difficultyAfterFeedback(played, next, choice, variantDifficulties(recipe).filter(isDifficulty))
+    rememberAutoPlacement(key, { difficulty: difficulty === next ? recommended : difficulty, feedback: { gameId, choice } })
   },
   connect() {
     hydrate()

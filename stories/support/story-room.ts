@@ -1,5 +1,5 @@
 import { isSolved, STARTER_GAME, type Game } from '../../src/sudoku/game'
-import { initialPlayerRating, type PlayerRating } from '../../src/sudoku/player-rating'
+import { difficultyAfterFeedback, initialPlayerRating, type PlayerRating } from '../../src/sudoku/player-rating'
 import type { roomStore as appStore } from '../../src/sudoku/storage'
 
 type Room = ReturnType<typeof appStore.getSnapshot>
@@ -40,6 +40,14 @@ export const roomStore: typeof appStore = {
   getServerSnapshot: () => room,
   setAutoPlacement(difficulty) {
     seedPlayerRating({ ...room.playerRating, recommended: difficulty })
+  },
+  setAutoFeedback(id, choice) {
+    const game = room.games.find(item => item.id === id)
+    const { playerRating } = room
+    if (!game?.difficulty || !isSolved(game) || playerRating.feedback.has(id)) return
+    const feedback = new Map(playerRating.feedback).set(id, choice)
+    const recommended = difficultyAfterFeedback(game.difficulty, playerRating.recommended, choice)
+    seedPlayerRating({ ...playerRating, recommended, feedback })
   },
   connect: () => () => {},
   select(id) {

@@ -1,7 +1,7 @@
 import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, calculatePlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION, ratingAttemptFor, STARTING_PLAYER_RATING, type RatingEvent } from '../src/sudoku/player-rating.ts'
+import { addAnalysisAssistance, addRatingHints, addSinglesAssistance, calculatePlayerRating, difficultyAfterFeedback, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION, ratingAttemptFor, STARTING_PLAYER_RATING, type RatingEvent } from '../src/sudoku/player-rating.ts'
 
 function outcome(index: number, settings: Partial<RatingEvent> = {}): RatingEvent {
   return {
@@ -85,15 +85,42 @@ test('an accepted difficulty check starts Auto at its recommendation with the sa
   const prior = [outcome(1, { elapsed: 90 }), outcome(2, { difficulty: 'tricky', finish: 'solution' })]
   const previous = calculatePlayerRating(prior)
   const placement = { difficulty: 'easy' as const, at: 2 }
-  const placed = calculatePlayerRating(prior, placement)
+  const placed = calculatePlayerRating(prior, [placement])
   assert.equal(placed.rating, previous.rating)
   assert.equal(placed.recommended, 'easy')
   assert.deepEqual(placed.results, previous.results)
 
   const struggle = { ratingVersion: PLAYER_RATING_VERSION, difficulty: 'easy', hintsRequested: 2, viewed: 2 } as const
   const helped = outcome(3, struggle)
-  assert.equal(calculatePlayerRating([...prior, helped], placement).recommended, 'easy')
-  assert.equal(calculatePlayerRating([...prior, helped, outcome(4, struggle)], placement).recommended, 'beginner')
+  assert.equal(calculatePlayerRating([...prior, helped], [placement]).recommended, 'easy')
+  assert.equal(calculatePlayerRating([...prior, helped, outcome(4, struggle)], [placement]).recommended, 'beginner')
+})
+
+test('solve feedback holds a planned promotion, steps down or up, and respects available tiers', () => {
+  assert.equal(difficultyAfterFeedback('medium', 'tricky', 'too-hard'), 'medium')
+  assert.equal(difficultyAfterFeedback('medium', 'medium', 'too-hard'), 'easy')
+  assert.equal(difficultyAfterFeedback('medium', 'easy', 'too-hard'), 'easy')
+  assert.equal(difficultyAfterFeedback('medium', 'medium', 'too-easy'), 'tricky')
+  assert.equal(difficultyAfterFeedback('medium', 'tricky', 'too-easy'), 'tricky')
+  assert.equal(difficultyAfterFeedback('beginner', 'beginner', 'too-hard'), 'beginner')
+  assert.equal(difficultyAfterFeedback('impossible', 'impossible', 'too-easy'), 'impossible')
+  assert.equal(difficultyAfterFeedback('medium', 'medium', 'too-easy', ['easy', 'medium', 'hard']), 'hard')
+  assert.equal(difficultyAfterFeedback('easy', 'hard', 'too-hard'), 'tricky')
+  assert.equal(difficultyAfterFeedback('hard', 'easy', 'too-easy'), 'medium')
+})
+
+test('holding a promotion resets the evidence window for the current level', () => {
+  const history = Array.from({ length: 8 }, (_, index) => outcome(index + 1, { ratingVersion: PLAYER_RATING_VERSION }))
+  const promoted = calculatePlayerRating(history)
+  assert.equal(promoted.recommended, 'tricky')
+  const hold = { difficulty: 'medium', at: 8, feedback: { gameId: 'puzzle-8', choice: 'too-hard' } } as const
+  const held = calculatePlayerRating(history, [hold])
+  assert.equal(held.recommended, 'medium')
+  assert.equal(held.rating, promoted.rating)
+  assert.deepEqual(held.results, promoted.results)
+  assert.equal(held.feedback.get('puzzle-8'), 'too-hard')
+  const later = outcome(9, { ratingVersion: PLAYER_RATING_VERSION })
+  assert.equal(calculatePlayerRating([...history, later], [hold]).recommended, 'medium')
 })
 
 test('reopening a hint counts once per explicit opening and Finder adds to the penalty', () => {

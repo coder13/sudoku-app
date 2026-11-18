@@ -5,7 +5,12 @@ export const STARTING_PLAYER_RATING = 855
 export const PLAYER_RATING_VERSION = 3
 
 type RatingVersion = 2 | typeof PLAYER_RATING_VERSION
-export type AutoPlacement = { difficulty: Difficulty; at: number }
+export type AutoFeedback = 'too-easy' | 'too-hard'
+export type AutoPlacement = {
+  difficulty: Difficulty
+  at: number
+  feedback?: { gameId: string; choice: AutoFeedback }
+}
 
 const puzzleRatings: Record<Difficulty, number> = { beginner: 760, easy: 800, medium: 860, tricky: 890, hard: 920, 'very-hard': 950, expert: 980, master: 1010, extreme: 1040, impossible: 1100, unfair: 980 }
 const legacyTiers: readonly Difficulty[] = ['easy', 'medium', 'hard', 'unfair', 'extreme']
@@ -67,10 +72,22 @@ export type PlayerRating = {
   recommended: Difficulty
   count: number
   results: ReadonlyMap<string, RatedResult>
+  feedback: ReadonlyMap<string, AutoFeedback>
 }
 
 export const initialPlayerRating: PlayerRating = {
-  rating: STARTING_PLAYER_RATING, recommended: 'medium', count: 0, results: new Map(),
+  rating: STARTING_PLAYER_RATING, recommended: 'medium', count: 0, results: new Map(), feedback: new Map(),
+}
+
+export function difficultyAfterFeedback(
+  played: Difficulty, recommended: Difficulty, choice: AutoFeedback, levels: readonly Difficulty[] = DIFFICULTY_LEVELS,
+): Difficulty {
+  const playedTier = levels.indexOf(played)
+  const nextTier = levels.indexOf(recommended)
+  if (playedTier < 0 || nextTier < 0) return recommended
+  if (choice === 'too-easy' && nextTier <= playedTier) return levels[Math.min(levels.length - 1, nextTier + 1)]
+  if (choice === 'too-hard' && nextTier >= playedTier) return levels[Math.max(0, nextTier - 1)]
+  return recommended
 }
 
 export function ratingAttemptFor(grade: RatingAttempt['grade'], mode?: RatingMode): RatingAttempt {
@@ -186,7 +203,7 @@ function speedBonus(elapsed: number, pastTimes: number[]): number {
   return Math.max(0, Math.min(2, 8 * (1 - elapsed / median)))
 }
 
-export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?: AutoPlacement): PlayerRating {
+export function calculatePlayerRating(events: Iterable<RatingEvent>, placements: Iterable<AutoPlacement> = []): PlayerRating {
   // Production outcomes predate versioned events. Replay them on the ladder that
   // earned their ratings, then carry the same state into the ten-tier ladder.
   const legacy: RatingEvent[] = []
@@ -197,6 +214,8 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
   }
   const byTime = (a: RatingEvent, b: RatingEvent) => a.at - b.at || a.id.localeCompare(b.id)
   const ordered = [...legacy.sort(byTime), ...current.sort(byTime)]
+  const placementsByTime = [...placements].sort((a, b) => a.at - b.at)
+  const feedback = new Map<string, AutoFeedback>()
   const results = new Map<string, RatedResult>()
   const seen = new Set<string>()
   const cleanTimes = new Map<Difficulty, number[]>()
@@ -209,17 +228,16 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
   let recentUnaided: boolean[] = []
   let fixedEvidence: (number | undefined)[] = []
   let atTier: number[] = []
-  let placementPending = placement
+  let nextPlacement = 0
 
-  function applyPlacement() {
-    if (!placementPending) return
-    tier = DIFFICULTY_LEVELS.indexOf(currentDifficulty(placementPending.difficulty))
+  function applyPlacement(placement: AutoPlacement) {
+    tier = DIFFICULTY_LEVELS.indexOf(currentDifficulty(placement.difficulty))
     recent = []
     recentUnaided = []
     atTier = []
     fixedEvidence = []
     struggled.clear()
-    placementPending = undefined
+    if (placement.feedback) feedback.set(placement.feedback.gameId, placement.feedback.choice)
   }
 
   for (const [index, event] of ordered.entries()) {
@@ -230,7 +248,11 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
       struggled = new Set([...struggled].map(currentTier))
       tiers = DIFFICULTY_LEVELS
     }
-    if (index >= legacy.length && placementPending && event.at > placementPending.at) applyPlacement()
+    if (index >= legacy.length) {
+      while (nextPlacement < placementsByTime.length && placementsByTime[nextPlacement].at < event.at) {
+        applyPlacement(placementsByTime[nextPlacement++])
+      }
+    }
     const key = event.puzzleKey ?? event.givens
     if (seen.has(key)) continue
     seen.add(key)
@@ -335,9 +357,9 @@ export function calculatePlayerRating(events: Iterable<RatingEvent>, placement?:
     if (!gradual && fixedCalibration) result.fixedCalibration = true
     results.set(event.gameId, result)
   }
-  if (placementPending) {
+  if (nextPlacement < placementsByTime.length) {
     tiers = DIFFICULTY_LEVELS
-    applyPlacement()
+    for (const placement of placementsByTime.slice(nextPlacement)) applyPlacement(placement)
   }
-  return { rating, recommended: currentDifficulty(tiers[tier]), count: seen.size, results }
+  return { rating, recommended: currentDifficulty(tiers[tier]), count: seen.size, results, feedback }
 }

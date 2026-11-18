@@ -67,6 +67,50 @@ test('difficulty check puzzles are unrated and the accepted Auto level survives 
   }
 })
 
+test('solve feedback changes the next Auto tier once and preserves the rating history on reload', async () => {
+  const local = new MemoryStorage()
+  local.setItem('sudoku-app:v1:auto-placement', JSON.stringify({ difficulty: 'easy', at: 1 }))
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?auto-feedback')
+    const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+    function finish(id: string, difficulty: 'easy' | 'medium', cell: number) {
+      const givens = solution.slice(0, cell) + '0' + solution.slice(cell + 1)
+      const game = makeGame(id, 'Rated puzzle', givens, 'generated')
+      const ratingAttempt = ratingAttemptFor({ difficulty, points: 500, scoringVersion: 11, techniqueOrder: ['full-house'] })
+      roomStore.add({ ...game, difficulty, ratingAttempt, generatedWithAuto: true })
+      roomStore.setAutoFeedback(id, 'too-hard')
+      assert.equal(roomStore.getSnapshot().playerRating.feedback.has(id), false)
+      roomStore.update(id, current => enter(current, [cell], 'value', Number(solution[cell])))
+      return roomStore.getSnapshot().playerRating
+    }
+    const first = finish('easy-solve', 'easy', 0)
+    roomStore.setAutoFeedback('easy-solve', 'too-easy')
+    assert.equal(roomStore.getSnapshot().playerRating.recommended, 'medium')
+    assert.equal(roomStore.getSnapshot().playerRating.rating, first.rating)
+    roomStore.setAutoFeedback('easy-solve', 'too-hard')
+    assert.equal(roomStore.getSnapshot().playerRating.feedback.get('easy-solve'), 'too-easy')
+    assert.equal(roomStore.getSnapshot().playerRating.recommended, 'medium')
+
+    const second = finish('medium-solve', 'medium', 1)
+    roomStore.setAutoFeedback('medium-solve', 'too-hard')
+    const adjusted = roomStore.getSnapshot().playerRating
+    assert.equal(adjusted.recommended, 'easy')
+    assert.equal(adjusted.rating, second.rating)
+    assert.deepEqual(adjusted.results, second.results)
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?auto-feedback-reload')
+    assert.deepEqual(reloaded.getSnapshot().playerRating, adjusted)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
 test('legacy library migration preserves newer records, session selection, progress, and undo', async () => {
   const local = new MemoryStorage()
   const session = new MemoryStorage()

@@ -2075,6 +2075,10 @@ svg { flex-shrink: 0; }
 .completion-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
 .completion-actions .button { white-space: normal; }
 .completion-next { grid-column: 1 / -1; }
+.completion-feedback { display: grid; gap: var(--space-6); }
+.completion-feedback p { margin: 0; color: var(--muted); font-size: 0.8125rem; text-align: center; }
+.completion-feedback-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
+.completion-feedback-buttons .button { min-height: 44px; white-space: normal; }
 .difficulty-choice { align-content: start; overflow: auto; }
 .difficulty-heading {
   position: relative;

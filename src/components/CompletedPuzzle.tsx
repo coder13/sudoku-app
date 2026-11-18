@@ -12,6 +12,8 @@ import { ActionHistoryPanel } from './ActionHistoryPanel'
 import { collectionProgress, getGameCollection, nextCollectionPuzzle } from '../sudoku/collections'
 import { openNextCollectionPuzzle } from '../sudoku/collection-play'
 import { collectionDownloads } from '../sudoku/collection-downloads'
+import type { AutoFeedback } from '../sudoku/player-rating'
+import { roomStore } from '../sudoku/storage'
 import { useOnlineStatus } from './useOnlineStatus'
 
 export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, onChooseDifficulty, onChooseVariant }: {
@@ -27,8 +29,9 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
 }) {
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const { busy, error, generate } = usePuzzleGeneration()
-  const { recommended, results } = usePlayerRating()
+  const { recommended, results, feedback } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
+  const nextButton = useRef<HTMLButtonElement>(null)
   const [collectionError, setCollectionError] = useState('')
   const [loadingNext, setLoadingNext] = useState(false)
   const nextRequest = useRef<AbortController | null>(null)
@@ -45,7 +48,11 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = generationVariant(game.variant)
   const needsChoice = !inCollection && Boolean(game.variant && !recipe)
-  const nextDifficulty = variantDifficulty(recipe, preferredDifficulty)
+  const nextPreference = game.generatedWithAuto ? 'auto' : preferredDifficulty
+  const nextDifficulty = variantDifficulty(recipe, nextPreference)
+  const autoDifficulty = variantDifficulty(recipe, recommended)
+  const showFeedback = nextDifficulty === 'auto' && !game.collection && !needsChoice && Boolean(game.difficulty)
+  const feedbackChoice = feedback.get(game.id)
   const nextLabel = needsChoice ? 'Choose another puzzle' : nextDifficulty === 'auto'
     ? `Next ${variantDifficultyLabel(recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
   const result = results.get(game.id)
@@ -58,6 +65,11 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
       ? Math.min(best, puzzle.elapsed) : best, Infinity)
   const canGenerate = !busy && !ratingPending
   const canPlayNext = collectionEntry ? Boolean(collectionNext) && !ratingPending && !loadingNext : canGenerate
+  function submitFeedback(choice: AutoFeedback) {
+    roomStore.setAutoFeedback(game.id, choice)
+    if (roomStore.getSnapshot().playerRating.feedback.has(game.id)) nextButton.current?.focus({ preventScroll: true })
+  }
+
   const playNext = useCallback(() => {
     if (!canPlayNext) return
     if (needsChoice) {
@@ -76,8 +88,8 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(preferredDifficulty, undefined, recipe)
-  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, generate, onChooseVariant, online, preferredDifficulty])
+    } else void generate(nextPreference, undefined, recipe)
+  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, generate, onChooseVariant, online, nextPreference])
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
 
@@ -132,11 +144,24 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
             {progress.solved} {progress.solved === 1 ? 'puzzle' : 'puzzles'} solved
           </p>}
           {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
+          {showFeedback && <div className="completion-feedback">
+            {feedbackChoice ? <p role="status">
+              {feedbackChoice === 'too-hard' ? 'Marked too hard.' : 'Marked too easy.'} Next Auto puzzle will be {DIFFICULTY_LABELS[autoDifficulty]}.
+            </p> : <>
+              <p id="completion-feedback-prompt">How difficult was this puzzle?</p>
+              <div className="completion-feedback-buttons" role="group" aria-labelledby="completion-feedback-prompt">
+                <button type="button" className="button secondary" disabled={!canGenerate}
+                  onClick={() => submitFeedback('too-easy')}>Too easy</button>
+                <button type="button" className="button secondary" disabled={!canGenerate}
+                  onClick={() => submitFeedback('too-hard')}>Too hard</button>
+              </div>
+            </>}
+          </div>}
           <div className="completion-actions">
             {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
               ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
               : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
-              : <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
+              : <button ref={nextButton} className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
               onClick={playNext}>
               {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
               {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}

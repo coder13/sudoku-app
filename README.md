@@ -77,6 +77,8 @@ Your player rating estimates your Sudoku skill. It starts at 855 and learns from
 
 Choose Auto in New puzzle for puzzles near your current level. Auto starts at Medium and adjusts one level at a time. It uses six unaided solves in your last eight puzzles at your level or higher as evidence to move up. If several puzzles at your current level need repeated hints, Auto can move down.
 
+After a solve, you can choose Too easy or Too hard to adjust the next Auto puzzle. Too hard cancels a move up or asks for an easier puzzle. Too easy asks for a harder puzzle.
+
 Choose Find my difficulty in New puzzle to try a short series of Classic puzzles. Give feedback to try a nearby level or finish the difficulty check. You can mark techniques that you know and techniques that you want to practice. If the recommendation suits you, choose Apply to Auto. The number on your player rating stays the same.
 
 Open Learn, then Practice to find one move or drill a named technique in a set of five positions. Practice sets are untimed and have their own results. Open Statistics under Puzzles to see your rating, next Auto level, and progress with each technique. Your progress stays in your browser.
