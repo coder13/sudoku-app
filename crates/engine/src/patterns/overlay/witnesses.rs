@@ -4,10 +4,14 @@ use super::super::completions::{Domains, complete};
 use super::{Geometry, cell_bit, cells};
 use crate::{Board, CELLS, DIGITS, Units, variant::SquareTransform};
 
+mod renaming;
+
 const NODES_PER_PROBE: u32 = 128;
 // Each nonidentity grid mapping tries at most nine digit cycles. This budget
 // limits transform work independently of the existing exact-search nodes.
 const SPATIAL_TRANSFORMS: u8 = 64;
+// Matching work is separate from completion nodes and grid transformations.
+const DIGIT_MATCHINGS: u16 = 512;
 
 pub(super) fn support(
     allowed: &[u128; 9],
@@ -66,6 +70,7 @@ struct Coverage<'a> {
     free: Vec<u8>,
     remaining: u32,
     remaining_transforms: u8,
+    remaining_matchings: u16,
 }
 
 impl<'a> Coverage<'a> {
@@ -89,6 +94,7 @@ impl<'a> Coverage<'a> {
             supported: [0; 9],
             remaining: nodes,
             remaining_transforms: SPATIAL_TRANSFORMS,
+            remaining_matchings: DIGIT_MATCHINGS,
             free: (1..=9)
                 .filter(|digit| fixed & (1 << (digit - 1)) == 0)
                 .collect(),
@@ -123,6 +129,40 @@ impl<'a> Coverage<'a> {
                 .all(|(&digit, mask)| mask & (1 << (digit - 1)) != 0)
             {
                 self.add(&renamed);
+            }
+        }
+        self.record_matchings(board);
+    }
+
+    fn record_matchings(&mut self, board: &Board) {
+        if self.remaining_matchings == 0 || self.supported == *self.allowed {
+            return;
+        }
+        let mut limits = [DIGITS; 9];
+        let mut locations = [0; 9];
+        for (cell, &digit) in board.iter().enumerate() {
+            let from = usize::from(digit - 1);
+            limits[from] &= self.masks[cell];
+            locations[from] |= cell_bit(cell);
+        }
+        if limits.contains(&0) {
+            return;
+        }
+        for from in 0..9 {
+            for to in 0..9 {
+                if self.remaining_matchings == 0 {
+                    return;
+                }
+                if limits[from] & (1 << to) == 0 || locations[from] & !self.supported[to] == 0 {
+                    continue;
+                }
+                self.remaining_matchings -= 1;
+                if let Some(rename) = renaming::matching(&limits, from, to) {
+                    // A bijection preserves every house and equal-digit peer
+                    // exclusion of this already checked grid. The intersections
+                    // above require every occurrence to obey its current mask.
+                    self.add(&board.map(|digit| rename[usize::from(digit - 1)]));
+                }
             }
         }
     }
@@ -456,6 +496,65 @@ mod tests {
         for cell in 0..CELLS {
             assert_eq!(covered(cell) & !masks[cell], 0);
             assert_ne!(covered(cell) & (1 << (board[cell] - 1)), 0);
+        }
+    }
+
+    #[test]
+    fn mask_matching_covers_independent_swaps_that_digit_cycles_cannot_supply() {
+        let board = crate::parse_givens(X_SOLUTION).unwrap();
+        let masks = board.map(|digit| match digit {
+            1 | 2 => 0b11,
+            3 | 4 => 0b1100,
+            _ => 1 << (digit - 1),
+        });
+        let allowed = allowed(&masks);
+        let mut expected = [0; 9];
+        let mut all_houses = houses();
+        for reversed in [false, true] {
+            all_houses.push((0..9).fold(0, |sites, row| {
+                sites | cell_bit(row * 9 + if reversed { 8 - row } else { row })
+            }));
+        }
+        let mut peers = super::super::PEERS;
+        let other = (1..CELLS)
+            .find(|&cell| board[cell] != board[0] && peers[0] & cell_bit(cell) == 0)
+            .unwrap();
+        peers[other] |= cell_bit(0); // A directed exclusion outside the standard houses.
+        for swap in 0..4 {
+            let renamed = board.map(|digit| match digit {
+                1 | 2 if swap & 1 != 0 => 3 - digit,
+                3 | 4 if swap & 2 != 0 => 7 - digit,
+                _ => digit,
+            });
+            assert!(valid(&renamed, &masks, &all_houses, &peers));
+            for (cell, digit) in renamed.into_iter().enumerate() {
+                expected[usize::from(digit - 1)] |= cell_bit(cell);
+            }
+        }
+        assert_eq!(expected, allowed);
+        let mut cycles = Coverage::new(&allowed, 123);
+        cycles.remaining_transforms = 0;
+        cycles.remaining_matchings = 0;
+        cycles.record(&board, None);
+        assert_ne!(cycles.supported, expected);
+        for budget in [1, DIGIT_MATCHINGS] {
+            let mut matched = Coverage::new(&allowed, 123);
+            matched.remaining_transforms = 0;
+            matched.remaining_matchings = budget;
+            matched.record(&board, Some(&peers));
+            assert!(
+                matched
+                    .supported
+                    .iter()
+                    .zip(expected)
+                    .all(|(&sites, allowed)| sites & !allowed == 0)
+            );
+            assert_eq!(matched.remaining, 123);
+            assert_eq!(matched.remaining_transforms, 0);
+            assert!(matched.remaining_matchings < budget);
+            if budget == DIGIT_MATCHINGS {
+                assert_eq!(matched.supported, expected);
+            }
         }
     }
 

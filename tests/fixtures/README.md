@@ -681,3 +681,80 @@ node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm a
 The app adds 25,224 raw / 4,896 gzip bytes. Variant-solver adds 848 raw bytes and saves 866 gzip bytes. Solver-only and Classic sizes remain identical. Before SHA-256 is `635869d77ae31823b15a55da1fdbf5ec6cc56b1de62ae88da87c0a8a4f88b465`. After is `2446be93ddd6f4c8fba9ade266d60f63d60a19d53a7e60609e35d96ec04b0812`.
 
 All 3,419 complete retained responses match across nineteen corpus positions, 117 detectors and 351 positive practice positions. Proofs, pages, traces, ratings, custom profiles and exact search-limit outcomes remain unchanged. Local validation passes 307 native tests including seven doctests, 413 app tests, 253 Wasm tests, sixteen capability combinations, four package profiles and strict full/reduced Cargo documentation. TypeScript and the 159-route production/offline build pass.
+
+
+## Mask-constrained digit witnesses
+
+[Issue 134](https://github.com/coder13/sudoku-app/issues/134) starts from main `1539f74`, after the Palindrome app integration. The published Coach FgZb puzzle exposes a slow app-order rating. Its 112 enabled techniques remain unchanged. The native default enables 31 of those techniques.
+
+The cache now finds bijective digit mappings when the existing cycles leave candidates unsupported. A source digit can use only targets allowed at every occurrence. A matching assigns all nine source digits to distinct targets while retaining one requested assignment. Such a mapping preserves every house and equal-digit exclusion of the checked seed grid. Every resulting digit also obeys its candidate mask.
+
+Each query permits at most 512 matching attempts, separately from completion nodes and spatial transformations. Failed or exhausted attempts supply no negative evidence. Unknown candidates retain the original detector search. Numeric rule validity, singleton eligibility, simultaneous assumptions and uniqueness keep their existing boundaries.
+
+Independent enumeration checks every three-digit domain matrix, with nonadjacent labels among the nine digits. Tests also check a nine-digit displacement cycle and independent swaps that cyclic renaming cannot supply. The swap witnesses satisfy both diagonals, a directed extra exclusion and every mask. Existing tests retain forbidden candidates, irregular geometry, singleton safety, unknown support and exact fallback.
+
+The strict comparison preserves 6,210 complete responses across forty positions and 351 positive practice examples. It includes all 117 detector lists, complete traces, ratings, custom orders, search limits and every hint page. The new optional corpus replays all nineteen positions of the Coach trace. No response normalization hides changes. The historical corpus still preserves all 3,419 responses.
+
+All local gates pass: 310 native tests, 413 app tests, 253 Wasm tests, sixteen capability combinations and four package profiles. Strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build also pass. Technique costs and variant scoring version 8 remain unchanged.
+
+Measurements use Node 26.13.0 on macOS arm64. Fixed requests use five warmups and twenty measured samples, alternating the two engines. Exhaustive first pages use two warmups and ten measured samples. Fresh instances measure first requests separately. Every sample compares its complete response outside the timed region. No identified compiler, engine test or generation worker was active at the start. The machine is not dedicated.
+
+Times below are median/p95 milliseconds. The first table uses the unmodified Coach FgZb export and the same exact-search budgets.
+
+| Coach FgZb operation | Main | Digit matching |
+| --- | --- | --- |
+| Candidates | 0.021/0.026 | 0.021/0.022 |
+| Exact analysis | 27.195/27.754 | 26.425/26.578 |
+| Exact solve | 26.476/26.754 | 26.524/26.613 |
+| Native default rating | 0.829/0.838 | 0.801/0.803 |
+| App-order rating | 413.446/415.541 | 229.884/232.942 |
+| Ten-hint request | 0.216/0.229 | 0.213/0.258 |
+| Exhaustive first page | 2.393/2.434 | 2.331/2.372 |
+
+Both ratings stall at 527 points after eighteen steps. The app-order median falls by about 44%. Both hint requests retain ten choices. Committed Wasm memory stays at 8.31 MiB.
+
+| Coach FgZb first request | Main ms | Digit matching ms |
+| --- | --- | --- |
+| Candidates | 0.071 | 0.070 |
+| Exact analysis | 27.080 | 25.988 |
+| Exact solve | 26.331 | 25.583 |
+| Native default rating | 0.912 | 0.893 |
+| App-order rating | 413.377 | 232.206 |
+| Ten-hint request | 0.337 | 0.317 |
+| Exhaustive first page | 2.436 | 2.428 |
+
+| Retained fixture | App rate, main → matching | Ordinary hints, main → matching | Exhaustive page, main → matching | Choices, ordinary/exhaustive | Unchanged memory, MiB |
+| --- | --- | --- | --- | --- | --- |
+| Quadruple | 1.178/1.201 → 1.164/1.182 | 0.224/0.232 → 0.223/0.237 | 147.614/149.804 → 147.090/149.848 | 10/31 | 1.50 |
+| Odd/Even | 0.170/0.181 → 0.171/0.183 | 0.079/0.084 → 0.079/0.085 | 50.365/50.738 → 50.299/50.741 | 10/23 | 3.56 |
+| Anti-King | 0.153/0.159 → 0.150/0.154 | 0.115/0.120 → 0.113/0.119 | 96.816/97.613 → 95.974/97.782 | 10/438 | 10.44 |
+| Non-Consecutive | 0.384/0.399 → 0.381/0.389 | 0.083/0.089 → 0.081/0.087 | 34.582/34.687 → 34.585/34.663 | 10/70 | 4.06 |
+| Coach white-dot exceptions | 1.013/1.026 → 0.985/0.998 | 0.311/0.323 → 0.315/0.327 | 0.314/0.321 → 0.320/0.326 | 4/4 | 1.50 |
+| Brain Zaps Whispers | 0.307/0.331 → 0.307/0.320 | 3.250/3.275 → 3.115/3.147 | 3.268/3.279 → 3.112/3.154 | 8/8 | 1.56 |
+| Clover Palindrome | 0.116/0.124 → 0.115/0.121 | 40.362/40.854 → 40.441/41.314 | 40.250/40.402 → 40.195/40.349 | 7/7 | 3.38 |
+| Newman Anti-Knight Palindrome | 0.863/0.872 → 0.865/0.870 | 0.130/0.168 → 0.129/0.142 | 300.151/310.149 → 299.819/309.259 | 10/48 | 5.06 |
+
+The table includes slower samples. Coach white-dot exhaustive requests rise from 0.314 to 0.320 ms median. Clover's ordinary request rises from 40.362 to 40.441 ms. Odd/Even and Newman's app ratings also have slightly slower medians. These measurements do not establish a general speedup for every puzzle.
+
+| Wasm profile | Main raw/gzip bytes | Digit matching raw/gzip bytes |
+| --- | --- | --- |
+| Solver | 2,040,103 / 556,086 | 2,040,103 / 556,086 |
+| Variant solver | 2,593,462 / 696,489 | 2,596,592 / 699,819 |
+| Classic | 2,555,726 / 662,311 | 2,555,726 / 662,311 |
+| App | 3,366,184 / 898,283 | 3,374,552 / 903,296 |
+
+The app adds 8,368 raw bytes and 5,013 gzip bytes. The variant solver adds 3,130 raw bytes and 3,330 gzip bytes. Solver and Classic sizes remain identical. The matching code compiles only with `variants`.
+
+The compared app artifacts have SHA-256 hashes:
+
+- Main: `2446be93ddd6f4c8fba9ade266d60f63d60a19d53a7e60609e35d96ec04b0812`.
+- Digit matching: `5f976289d3bd87964cc0e61065280e967d2ac932cd76cd563d6b8d6dcd3bff83`.
+
+Repeat the comparison and measurements with:
+
+```sh
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm --palindrome-trace
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm quadruple parity anti-king non-consecutive nc-white-dots whispers palindrome palindrome-knight palindrome-whispers
+```
+
+The remaining 230 ms app-order rating still needs work in the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88). The geometric cache cannot replace actual numeric rules or prove an unknown candidate impossible. Keep improvements to the remaining expert searches separate and preserve their positive proofs.
