@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
-import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type RankPattern, type VariantPuzzle } from '../src/sudoku/engine.ts'
+import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type PracticeExercise, type RankPattern, type VariantPosition, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { DIFFICULTY_LEVELS, difficultyIndex } from '../src/sudoku/difficulty.ts'
 import { generateClassic } from '../src/sudoku/classic-generation.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
@@ -37,6 +37,22 @@ function engineRequests() {
     return response.value as EngineResult<Request>
   }
   return { raw, run }
+}
+
+type TestEngine = ReturnType<typeof engineRequests>['run']
+
+async function assertFocusedClassic(run: TestEngine, example: Pick<PracticeExercise, 'givens' | 'entries' | 'eliminations' | 'deduction'>) {
+  const id = example.deduction.technique
+  const techniqueOrder = ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single', 'pointing', 'claiming']
+    .filter(technique => technique !== id)
+  assert.deepEqual(await run({ type: 'deductions', values: lessonValues(example), eliminations: example.eliminations, techniqueOrder }), [], id)
+}
+
+async function assertFocusedVariant(run: TestEngine, position: VariantPosition, id: string) {
+  const techniqueOrder = ['full-house', 'naked-single', 'hidden-single', 'locked-candidates']
+  const hints = await run({ type: 'variant', operation: 'hints', position, techniqueOrder, limit: 100 })
+  assert.ok(hints.every(({ evidence, technique }) => id === 'locked-candidates' && technique === id &&
+    evidence.type === 'intersection' && ('diagonal' in evidence.source || 'diagonal' in evidence.target)), id)
 }
 
 test('technique counts match full deductions before and after a candidate edit', async () => {
@@ -1205,12 +1221,12 @@ test('lesson examples preserve the candidates and deduction for each technique',
 
 test('every hint technique links to a Learn article with a starting scan and a working drill', async () => {
   const { run } = engineRequests()
-  const examples: Record<string, EngineLessonExample> = await run({ type: 'lesson-examples' })
+  const examples: Record<string, EngineLessonExample> = await run({ type: 'lesson-examples', focused: true })
   const { techniques } = await run({ type: 'techniques', variant: true })
   for (const { id } of techniques) {
     assert.ok(lessonRoutes.has(id), id)
     if (examples[id]) continue
-    const [diagram, practice] = await run({ type: 'practice-examples', variant: true, technique: id })
+    const [diagram, practice] = await run({ type: 'practice-examples', variant: true, technique: id, focused: true })
     examples[id] = { ...diagram, practice }
   }
   for (const article of articles) {
@@ -1246,14 +1262,20 @@ test('every hint technique links to a Learn article with a starting scan and a w
 
 test('each Classic Learn drill generates a different grid with a verified walkthrough for its technique', async () => {
   const { run } = engineRequests()
-  const examples = await run({ type: 'lesson-examples' })
+  const examples = await run({ type: 'lesson-examples', focused: true })
+  const { techniques } = await run({ type: 'techniques' })
+  const focused = new Set(techniques.filter(({ difficulty }) => difficultyIndex(difficulty) >= difficultyIndex('medium')).map(({ id }) => id))
   const drills = new Set(articles.flatMap(article => article.blocks.flatMap(block =>
     block.type === 'practice' ? block.drills.map(({ example }) => example) : [])))
   for (const technique of drills) {
     if (!examples[technique]) continue
+    if (focused.has(technique)) {
+      await assertFocusedClassic(run, examples[technique])
+      await assertFocusedClassic(run, examples[technique].practice)
+    }
     let exclude = lessonValues(examples[technique].practice)
     for (let repeat = 0; repeat < 2; repeat++) {
-      const generated = await run({ type: 'generate-practice-example', technique, seed: workedExampleSeed(technique, repeat + 1), exclude })
+      const generated = await run({ type: 'generate-practice-example', technique, seed: workedExampleSeed(technique, repeat + 1), exclude, focused: true })
       const values = lessonValues(generated)
       assert.notEqual(values, exclude, technique)
       assert.equal(generated.deduction.technique, technique)
@@ -1267,6 +1289,7 @@ test('each Classic Learn drill generates a different grid with a verified walkth
       const { start, check } = practiceSearch(generated)
       assert.ok(start.text && check.text, technique)
       assert.ok(lessonDiagram(generated).results.length, technique)
+      if (focused.has(technique)) await assertFocusedClassic(run, generated)
       exclude = values
     }
   }
@@ -1298,8 +1321,8 @@ test('variant Learn drills offer distinct boards with checkable moves and rule c
   const { run } = engineRequests()
   const classic = await run({ type: 'lesson-examples' })
   const { techniques } = await run({ type: 'techniques', variant: true })
-  for (const { id } of techniques.filter(({ id }) => !classic[id])) {
-    const exercises = await run({ type: 'practice-examples', variant: true, technique: id })
+  for (const { id, difficulty } of techniques.filter(({ id }) => !classic[id])) {
+    const exercises = await run({ type: 'practice-examples', variant: true, technique: id, focused: true })
     const drills = exercises.map(variantLessonExercise)
     assert.equal(new Set(drills.map(lessonValues)).size, 3, id)
     for (const [index, drill] of drills.entries()) {
@@ -1309,6 +1332,9 @@ test('variant Learn drills offer distinct boards with checkable moves and rule c
       const proof = await run({ type: 'variant', operation: 'check-practice-move', position: exercises[index].position,
         technique: id, action: drill.suggestion })
       assert.equal(proof?.technique, id)
+      if (difficultyIndex(difficulty) >= difficultyIndex('medium')) {
+        await assertFocusedVariant(run, exercises[index].position, id)
+      }
     }
   }
 })
@@ -1317,20 +1343,24 @@ test('variant Learn examples continue beyond the first three with seeded, checka
   const { run } = engineRequests()
   const classic = await run({ type: 'lesson-examples' })
   const { techniques } = await run({ type: 'techniques', variant: true })
-  for (const { id } of techniques.filter(({ id }) => !classic[id])) {
-    const fixed = await run({ type: 'practice-examples', technique: id, variant: true })
-    const seen = new Set(fixed.map(({ position }) => position.puzzle.givens))
-    let exclude = fixed[1].position.puzzle.givens
+  for (const { id, difficulty } of techniques.filter(({ id }) => !classic[id])) {
+    const fixed = await run({ type: 'practice-examples', technique: id, variant: true, focused: true })
+    const seen = new Set(fixed.map(exercise => lessonValues(variantLessonExercise(exercise))))
+    let exclude = lessonValues(variantLessonExercise(fixed[1]))
 
     for (let number = 3; number <= (id === 'between' ? 14 : 3); number++) {
-      const request = { type: 'generate-practice-example', variant: true, technique: id,
+      const request = { type: 'generate-practice-example', variant: true, technique: id, focused: true,
         seed: workedExampleSeed(id, number), exclude } as const
       const example = await run(request)
       const { position, deduction, suggestion } = example
       assert.equal(deduction.technique, id)
       assert.ok(deduction.actions.some(action => JSON.stringify(action) === JSON.stringify(suggestion)), id)
-      assert.ok(!seen.has(position.puzzle.givens), id)
+      const values = lessonValues(variantLessonExercise(example))
+      assert.ok(!seen.has(values), id)
       assert.equal(await run({ type: 'variant', operation: 'analyze', position }), 'unique', id)
+      if (difficultyIndex(difficulty) >= difficultyIndex('medium')) {
+        await assertFocusedVariant(run, position, id)
+      }
       const proof = await run({ type: 'variant', operation: 'check-practice-move', position, technique: id, action: suggestion })
       assert.equal(proof?.technique, id)
       if (id === 'locked-candidates') {
@@ -1338,8 +1368,8 @@ test('variant Learn examples continue beyond the first three with seeded, checka
         assert.ok('diagonal' in deduction.evidence.source || 'diagonal' in deduction.evidence.target)
       }
       if (id === 'between') assert.deepEqual(await run(request), example)
-      seen.add(position.puzzle.givens)
-      exclude = position.puzzle.givens
+      seen.add(values)
+      exclude = values
     }
   }
 })

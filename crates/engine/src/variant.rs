@@ -32,7 +32,7 @@ use pairs::{PairClue, PairCompiler, PairConstraint, ParityClue};
     feature = "wasm-api",
     any(target_arch = "wasm32", test, feature = "cli")
 ))]
-pub(crate) use practice::generate_practice_example;
+pub(crate) use practice::{focused_practice_examples, generate_practice_example};
 #[cfg(any(feature = "teaching", test))]
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
 use quadruple::Quadruple;

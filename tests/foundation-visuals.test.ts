@@ -80,13 +80,49 @@ function completions(visual: FoundationVisualDefinition) {
 }
 
 test('the final marks in the multi-digit examples hold in every possible filling', () => {
-  for (const id of ['candidate-elimination', 'subset-count', 'wing-cases', 'contradiction', 'loop-alternating-links', 'placement-capacity'] as const) {
+  for (const id of ['candidate-elimination', 'subset-count', 'wing-cases', 'contradiction', 'loop-alternating-links', 'placement-capacity',
+    'naked-triple-count', 'locked-pair-two-houses', 'wxyz-wing-all-restricted', 'overlap-uses-two-slots',
+    'als-four-cell-wing', 'als-four-sets', 'forcing-three-choices', 'forcing-common-result'] as const) {
     const visual = foundationVisuals[id]
     const solutions = completions(visual)
     assert.ok(solutions.length > 0, id)
     for (const { cell, digit, kind } of visual.steps.at(-1)!.marks!) {
       if (kind === 'result') assert.ok(solutions.every(values => values.get(cell) === digit), `${id}: placement`)
       if (kind === 'removal') assert.ok(solutions.every(values => values.get(cell) !== digit), `${id}: removal`)
+    }
+  }
+})
+
+test('the two Medusa grids show a color that fails and a removal shared by both colors', () => {
+  const article = catalog.lessonRoutes.get('3d-medusa')!
+  const ids = ['medusa-empty-cell-chain', 'medusa-both-colors-chain'] as const
+  assert.deepEqual(article.blocks.flatMap(block => block.type === 'foundation-visual' ? [block.visual] : []), ids)
+  for (const id of ids) {
+    const visual = foundationVisuals[id]
+    const { links, marks } = visual.steps[0]
+    const possibleColors = new Set<string>()
+    for (const filling of completions(visual)) {
+      const placed = ({ cell, digit }: { cell: number; digit: number }) => filling.get(cell) === digit
+      if (!links!.every(link => placed(points(link.from)[0]) !== placed(points(link.to)[0]))) continue
+      const blue = placed(marks!.find(mark => mark.kind === 'pattern')!)
+      possibleColors.add(blue ? 'blue' : 'amber')
+      for (const mark of marks!) {
+        if (mark.kind === 'pattern') assert.equal(placed(mark), blue, id)
+        if (mark.kind === 'accent') assert.equal(placed(mark), !blue, id)
+        if (mark.kind === 'removal' && id === 'medusa-both-colors-chain') assert.ok(!placed(mark), id)
+      }
+    }
+    if (id === 'medusa-empty-cell-chain') {
+      assert.deepEqual(possibleColors, new Set(['blue']))
+      const target = 21
+      const struck = marks!.filter(mark => mark.kind === 'removal')
+      assert.deepEqual(struck.map(mark => mark.digit), visual.candidates![target])
+      for (const mark of struck) {
+        assert.equal(mark.cell, target)
+        assert.ok(marks!.some(candidate => candidate.kind === 'accent' && candidate.digit === mark.digit && peer(candidate.cell, target)))
+      }
+    } else {
+      assert.deepEqual(possibleColors, new Set(['blue', 'amber']))
     }
   }
 })
@@ -104,6 +140,19 @@ test('both fish placements use every cover and exclude the marked candidate', ()
   const layouts = digitLayouts(visual.candidates!, [[20, 21], [39, 42], [56, 60]])
   assert.deepEqual(layouts, [[21, 42, 56], [20, 39, 60]])
   assert.ok(layouts.every(layout => !layout.includes(30)))
+  const withFourthColumn = digitLayouts(visual.steps.at(-1)!.candidates!, [[20, 21, 23], [39, 42], [56, 60]])
+  assert.ok(withFourthColumn.some(layout => layout.includes(30)))
+})
+
+test('pointing and claiming rule out their targets from either placement in the overlap', () => {
+  for (const id of ['pointing-box-to-row', 'claiming-row-to-box'] as const) {
+    const visual = foundationVisuals[id]
+    const rowBoxOverlap = [9, 11]
+    const layouts = digitLayouts(visual.candidates!, [rowBoxOverlap])
+    assert.deepEqual(layouts, [[9], [11]], id)
+    const target = visual.steps[0].marks!.find(mark => mark.kind === 'removal')!
+    assert.ok(layouts.every(layout => !layout.includes(target.cell)), id)
+  }
 })
 
 test('both color states are possible and rule out the same target', () => {

@@ -159,10 +159,10 @@ export type EngineRequest =
   | ({ type: 'classify-actions'; actions: readonly DeductionAction[] } & CandidatePosition)
   | { type: 'opening-techniques'; values: string }
   | { type: 'techniques'; variant?: boolean }
-  | { type: 'lesson-examples' }
-  | { type: 'practice-examples'; technique: string; variant?: false }
-  | { type: 'practice-examples'; technique: string; variant: true }
-  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string; variant?: boolean }
+  | { type: 'lesson-examples'; focused?: boolean }
+  | { type: 'practice-examples'; technique: string; variant?: false; focused?: boolean }
+  | { type: 'practice-examples'; technique: string; variant: true; focused?: boolean }
+  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string; variant?: boolean; focused?: boolean }
   | GenerationRequest
   | GenerationCommand
 

@@ -61,19 +61,12 @@ test('grouped techniques keep their URLs and move to Master after their foundati
   assert.equal(new Set(catalog.articles.map(article => article.id)).size, catalog.articles.length)
 })
 
-test('all concept questions and tables can be saved by the lesson editor', () => {
-  assert.doesNotThrow(() => validateContent(curriculum, curriculum, [...catalog.lessonExampleIds]))
-  for (const article of catalog.articles.filter(article => article.kind === 'foundation')) {
-    const check = article.blocks.find(block => block.type === 'concept-check')
-    assert.ok(check, article.id)
-    assert.ok(check.questions.length >= 2, article.id)
-    for (const question of check.questions) assert.equal(new Set(question.options).size, question.options.length)
-  }
+test('the lesson editor saves the curriculum and rejects quiz blocks', () => {
+  const examples = [...catalog.lessonExampleIds]
+  assert.doesNotThrow(() => validateContent(curriculum, curriculum, examples))
   const invalid = structuredClone(curriculum)
-  const question = invalid.groups.flatMap(group => group.lessons).flatMap(lesson => lesson.blocks)
-    .find(block => block.type === 'concept-check')!
-  question.questions[0].answer = 99
-  assert.throws(() => validateContent(invalid, curriculum, [...catalog.lessonExampleIds]), /valid answers/)
+  Object.assign(invalid.fundamentals.blocks[0], { type: 'concept-check' })
+  assert.throws(() => validateContent(invalid, curriculum, examples), /unknown block type/)
 })
 
 test('foundation review practice cannot take over an existing technique route', () => {

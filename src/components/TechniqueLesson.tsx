@@ -15,7 +15,6 @@ import { LessonWorkbench } from './LessonWorkbench'
 import { LearnHeading, LessonDifficulty } from './LearnHeading'
 import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
-import { ConceptCheck } from './ConceptCheck'
 import { FoundationVisual } from './FoundationVisual'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
@@ -154,7 +153,7 @@ function WorkedExamples({ article, block, variant, diagrams, editorPreview }: {
   const authored = useMemo(() => diagrams.map(({ block }) => block).filter(({ example }) =>
     example === technique || (technique === drills[0].example && !drills.some(drill => drill.example === example))),
   [diagrams, drills, technique])
-  return <section className="surface lesson-worked-examples" id="worked-example" aria-labelledby="examples">
+  return <section className="lesson-worked-examples" id="worked-example" aria-labelledby="examples">
     <header className="lesson-practice-heading">
       <h2 id="examples">Examples</h2>
       {!editorPreview && drills.length > 1 && <label className="lesson-drill">
@@ -199,7 +198,7 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
   }
 
   return (
-    <section className="surface lesson-practice" aria-labelledby="trainer" data-lesson-block={blockIndex}>
+    <section className="lesson-practice" aria-labelledby="trainer" data-lesson-block={blockIndex}>
       <header className="lesson-practice-heading">
         <div>
           <div className="lesson-title-row">
@@ -274,7 +273,6 @@ export function ExplanationBlock({ block, index, drills }: { block: LessonBlock;
       <thead><tr>{block.columns.map((column, i) => <th scope="col" key={i}>{column}</th>)}</tr></thead>
       <tbody>{block.rows.map((row, i) => <tr key={i}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody>
     </table></div>
-    case 'concept-check': return <div data-lesson-block={index}><ConceptCheck block={block} /></div>
     case 'foundation-visual': return <div data-lesson-block={index}><FoundationVisual visual={block.visual} /></div>
     default: return null
   }

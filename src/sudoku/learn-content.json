@@ -66,6 +66,10 @@
         ]
       },
       {
+        "type": "foundation-visual",
+        "visual": "address-and-peers"
+      },
+      {
         "type": "heading",
         "id": "candidates",
         "title": "Candidates"
@@ -186,30 +190,6 @@
               "paragraphs": [
                 "The same rule applies to pencil marks. If two cells in one row both show a possible 5, only one can be 5.",
                 "If you remove one of the marks, the other is still only a possibility. The row can have another place for 5."
-              ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "R2C2 and R3C3 share neither a row nor a column. Do they see each other?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "Both cells are in box 1. Sharing that box is enough."
-                },
-                {
-                  "prompt": "If R2C2 is 5, does that rule out 5 in R4C4?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "R4C4 is outside row 2, column 2, and box 1."
-                }
               ]
             }
           ],
@@ -558,39 +538,6 @@
                 "Suppose two cells in row 3 each show only 2 and 8. The cells must be different, so together they use both digits. Remove 2 and 8 from the other cells in row 3.",
                 "Count each different digit once. Two pencil marks for 2 still represent one digit."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "You marked 2 and 8 in a cell but never checked 5. Can you rely on that cell having just two choices?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "First find out whether 5 can go there. The missing pencil mark alone cannot rule it out."
-                },
-                {
-                  "prompt": "Can a candidate removal help even if it leaves no single?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "The removal can leave a pair, a link, or another pattern you can use next."
-                },
-                {
-                  "prompt": "Two cells each show {2, 8}. How many different digits are in their lists?",
-                  "options": [
-                    "Two",
-                    "Four"
-                  ],
-                  "answer": 0,
-                  "explanation": "Only 2 and 8 appear. Each counts once."
-                }
-              ]
             }
           ],
           "references": [
@@ -638,6 +585,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "pointing-box-to-row"
+            },
+            {
               "type": "diagram",
               "example": "pointing"
             },
@@ -651,6 +602,10 @@
               "paragraphs": [
                 "For claiming, start along the line. If every possible 6 in row 4 lies in box 5, remove 6 from the other rows of box 5."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "claiming-row-to-box"
             },
             {
               "type": "diagram",
@@ -700,6 +655,12 @@
           "prerequisites": [
             "naked-single",
             "candidate-logic"
+          ],
+          "credits": [
+            {
+              "label": "Sudoku Exchange",
+              "href": "https://github.com/grantm/sudoku-exchange-puzzle-bank"
+            }
           ]
         },
         {
@@ -751,6 +712,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "hidden-count"
+            },
+            {
               "type": "table",
               "caption": "What an equal count tells you",
               "columns": [
@@ -769,39 +734,6 @@
                   "As many possible cells as digits",
                   "Other digits in those cells"
                 ]
-              ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Three cells show {2, 4}, {4, 7}, and {2, 7}. How many different digits appear?",
-                  "options": [
-                    "Three",
-                    "Six"
-                  ],
-                  "answer": 0,
-                  "explanation": "There are three digits, 2, 4, and 7."
-                },
-                {
-                  "prompt": "Only two cells in a box allow 2 or 9. Where can you remove other digits?",
-                  "options": [
-                    "From those two cells",
-                    "From the rest of the box"
-                  ],
-                  "answer": 0,
-                  "explanation": "The box needs both 2 and 9. Those two cells must hold them."
-                },
-                {
-                  "prompt": "Three cells in one row have four candidate digits between them. Does that reserve all four?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "The three cells use three different digits. The fourth digit can go elsewhere."
-                }
               ]
             }
           ],
@@ -859,10 +791,8 @@
               "title": "Naked triple"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Look for lists such as {2, 3}, {2, 5}, and {3, 5} in one house. Together they use 2, 3, and 5. Remove all three digits from its other cells."
-              ]
+              "type": "foundation-visual",
+              "visual": "naked-triple-count"
             },
             {
               "type": "heading",
@@ -872,7 +802,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Four cells with {1, 2}, {2, 4}, {3, 4}, and {1, 2, 3} use exactly four different digits. If they share a house, remove 1, 2, 3, and 4 elsewhere in it."
+                "In row 5, R5C2 through R5C5 have {1, 2}, {2, 4}, {3, 4}, and {1, 2, 3}. The four cells must use 1 through 4 once each. R5C6 has {3, 4, 7}, so remove its 3 and 4."
               ]
             },
             {
@@ -881,10 +811,8 @@
               "title": "Locked pair"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "If both cells of a pair share a line and a box, each house gets both digits. Remove them from the other cells in both houses."
-              ]
+              "type": "foundation-visual",
+              "visual": "locked-pair-two-houses"
             },
             {
               "type": "heading",
@@ -996,10 +924,8 @@
               "title": "Hidden triple"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "For three digits, count every cell that shows at least one of them. If there are just three such cells, remove their other marks."
-              ]
+              "type": "foundation-visual",
+              "visual": "hidden-triple-places"
             },
             {
               "type": "heading",
@@ -1072,7 +998,7 @@
           "title": "Strong and weak links",
           "kind": "foundation",
           "difficulty": "tricky",
-          "summary": "A link says what one candidate tells you about another. A strong link needs at least one end to be true. A weak link allows at most one true end. A pair can have both properties.",
+          "summary": "A link connects two candidates. With a weak link, placing one rules out the other. With a strong link, ruling out one forces the other.",
           "prerequisites": [
             "cells-that-see",
             "candidate-logic",
@@ -1083,30 +1009,23 @@
             {
               "type": "heading",
               "id": "where-to-start",
-              "title": "Compare two places with three"
+              "title": "Find two candidates"
             },
             {
               "type": "text",
               "paragraphs": [
-                "Highlight 5. Find a row with just two possible 5s, then a row with three. Compare what happens in each row if you remove one possible 5."
-              ]
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Each end of a link stands for a claim, such as “R4C2 is 5.” A solid line shows a strong link. A dashed line shows a weak link. An arrow shows which end you use first."
+                "Pick a digit and look for all its possible places in one row. Start by comparing two of those candidates."
               ]
             },
             {
               "type": "heading",
               "id": "weak-links",
-              "title": "A weak link comes from a conflict"
+              "title": "Weak links"
             },
             {
               "type": "text",
               "paragraphs": [
-                "A weak link means at most one end is true. If R4C2 is 5, R4C5 cannot be 5 because both cells share row 4.",
-                "Two digits in one cell also conflict. If that cell is 2, it cannot also be 7. Both choices can be false if the cell has a third candidate."
+                "Two candidates have a weak link if they cannot both be true. Two 5s in the same row have a weak link because the row can contain only one 5."
               ]
             },
             {
@@ -1116,13 +1035,12 @@
             {
               "type": "heading",
               "id": "strong-links",
-              "title": "A strong link comes from a required choice"
+              "title": "Strong links"
             },
             {
               "type": "text",
               "paragraphs": [
-                "A strong link means at least one end is true. Suppose row 4 has just two places for 5, R4C2 and R4C8. If you rule out 5 in R4C2, row 4 forces 5 into R4C8.",
-                "Look through the entire row. A third possible 5 breaks this argument."
+                "Two candidates have a strong link if at least one of them must be true. Look for a row that still needs a digit and has exactly two places for it."
               ]
             },
             {
@@ -1132,113 +1050,35 @@
             {
               "type": "heading",
               "id": "dual-links",
-              "title": "One pair can have both links"
+              "title": "Dual links"
             },
             {
               "type": "text",
               "paragraphs": [
-                "A pair that has both properties is a dual link. Exactly one end is true. The only two places for 5 in a row form a dual link, as do the only two candidates in a cell."
-              ]
-            },
-            {
-              "type": "foundation-visual",
-              "visual": "cell-link"
-            },
-            {
-              "type": "table",
-              "caption": "Which pairs of states can each link allow?",
-              "columns": [
-                "A",
-                "B",
-                "Weak",
-                "Strong",
-                "Dual"
-              ],
-              "rows": [
-                [
-                  "True",
-                  "True",
-                  "No",
-                  "Yes",
-                  "No"
-                ],
-                [
-                  "True",
-                  "False",
-                  "Yes",
-                  "Yes",
-                  "Yes"
-                ],
-                [
-                  "False",
-                  "True",
-                  "Yes",
-                  "Yes",
-                  "Yes"
-                ],
-                [
-                  "False",
-                  "False",
-                  "Yes",
-                  "No",
-                  "No"
-                ]
+                "The pair in the second grid has both links. Row 4 needs a 5 in one of those cells, and it can contain only one 5. Exactly one candidate is true. This is called a dual link.",
+                "A two-candidate cell works the same way. If R6C4 has only 2 and 7, ruling out 2 forces 7. Placing 2 rules out 7 in the same cell."
               ]
             },
             {
               "type": "heading",
               "id": "common-mistake",
-              "title": "What each link guarantees"
+              "title": "Can both be true?"
             },
             {
               "type": "text",
               "paragraphs": [
-                "A strong link alone allows both ends to be true. To use the same pair as a weak link, you also need a reason the ends cannot both be true."
+                "For a strong link, “at least one” can mean both. To rule out one candidate after placing the other, you also need a weak link."
               ]
             },
             {
               "type": "heading",
               "id": "use-links",
-              "title": "Where to use links"
+              "title": "Links in a Skyscraper"
             },
             {
               "type": "text",
               "paragraphs": [
-                "In a Skyscraper, two rows each have only two places for a digit. Two of those places share a column. The row pairs supply strong links, and the column supplies a weak link."
-              ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "A row has three possible 7s. After you remove one, must a particular cell be 7?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "Either of the two remaining cells can supply the 7."
-                },
-                {
-                  "prompt": "A cell allows only 3 and 9. Which links do those two choices have?",
-                  "options": [
-                    "Weak only",
-                    "Strong only",
-                    "Both strong and weak"
-                  ],
-                  "answer": 2,
-                  "explanation": "The cell needs one digit and has room for only one. Exactly one of the candidates is true."
-                },
-                {
-                  "prompt": "Two candidates have a strong link. Without a separate conflict, can both be true?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "A strong link requires at least one true end. Both can be true."
-                }
+                "Look for two rows that each have exactly two places for the same digit. Each row gives you a strong link. If one end from each row shares a column, those two candidates also have a weak link."
               ]
             }
           ],
@@ -1300,30 +1140,6 @@
               "paragraphs": [
                 "Remove the digit from the cover columns outside the chosen rows. You can turn the pattern sideways by starting with columns."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Every possible 5 in three rows lies in the same three columns. Must those rows use all three columns?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "Each row needs its own 5, and a column has room for only one."
-                },
-                {
-                  "prompt": "One of those rows also has a possible 5 in a fourth column. Does the same count still force the first three columns?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "That row can use the fourth column. You need another reason to rule out the extra place."
-                }
-              ]
             }
           ],
           "references": [
@@ -1369,6 +1185,10 @@
               "paragraphs": [
                 "Remove the digit from those columns outside the two rows. If you start with two columns, remove it from the crossing rows instead."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "x-wing-start-in-columns"
             },
             {
               "type": "heading",
@@ -1546,10 +1366,8 @@
               "title": "Dual kite"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Two kites can share the connection in the box. Follow each kite from its own row pair to its own column pair before you remove a candidate."
-              ]
+              "type": "foundation-visual",
+              "visual": "dual-kite-shared-box"
             },
             {
               "type": "practice",
@@ -1626,6 +1444,10 @@
               "paragraphs": [
                 "You can start from either arm. If the target and far end form another two-place line, trace it back for a second removal. A box with just two possible places can also form a short X-Chain."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "empty-rectangle-two-directions"
             },
             {
               "type": "practice",
@@ -1838,39 +1660,6 @@
               "type": "text",
               "paragraphs": [
                 "A cell that sees only A can still be 9 in the case that forces B. If the pivot also allows 9, include that third case before you remove anything."
-              ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "The pivot allows only 2 and 6. Each choice rules out 9 in R4C4. Can you remove that 9?",
-                  "options": [
-                    "Yes",
-                    "Only after choosing the pivot"
-                  ],
-                  "answer": 0,
-                  "explanation": "Both possible pivot values rule out the same candidate."
-                },
-                {
-                  "prompt": "The pivot also allows 9. You tested only 2 and 6. Have you covered every case?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "You still need to test 9 in the pivot."
-                },
-                {
-                  "prompt": "One case forces A to be 9. The other forces B to be 9. Does a cell that sees only A lose 9?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "When B is 9, that cell can still contain 9. A removal must hold in both cases."
-                }
               ]
             }
           ],
@@ -2243,39 +2032,6 @@
                 "Unique Rectangles and BUG use this argument. Givens must stay in place, and the swap must respect every rule of the puzzle. A rectangle in four boxes or an extra variant clue can prevent the swap.",
                 "For an imported puzzle, finding one solution alone does not establish uniqueness."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "A solver stops after finding one solution. Has it proved the puzzle has only one?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "Another solution can still exist. The solver must also rule out a second one."
-                },
-                {
-                  "prompt": "Can you use an ordinary candidate conflict without knowing whether the puzzle has one solution?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "Every solution must obey the same row, column, and box rules."
-                },
-                {
-                  "prompt": "Can a swap that changes a given prove a second solution?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "A solution must keep every given in its original cell."
-                }
-              ]
             }
           ],
           "references": [
@@ -2422,8 +2178,17 @@
             {
               "type": "text",
               "paragraphs": [
-                "An avoidable rectangle can include digits you placed after the puzzle began. All four corners must have started empty. With three filled corners, remove the candidate that completes the swap.",
-                "With two filled corners and the same single extra in both empty corners, one of the extras must be true. Remove it from other cells that see both."
+                "All four corners of an avoidable rectangle must start empty. Use this rule only if the puzzle has one solution."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "avoidable-rectangle-three-placed"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Suppose you placed 2 in R1C3 and 7 in R1C4. R2C3 has {5, 7} and R2C4 has {2, 5}. If both lower corners use the rectangle digits, all four corners can swap 2 and 7. In a puzzle with one solution, one lower corner must use 5. Remove 5 from R2C5, which sees both through row 2."
               ]
             },
             {
@@ -2436,6 +2201,10 @@
               "paragraphs": [
                 "Earlier moves can remove a rectangle digit from your notes. For this version, use the givens to check that both swapped fillings are possible in all four corners."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "rectangle-earlier-removal"
             },
             {
               "type": "practice",
@@ -2651,39 +2420,6 @@
               "paragraphs": [
                 "Two colors can mark opposite choices along links where exactly one end is true. A weak link alone permits both ends to be false, so it cannot establish opposite colors."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "One end of a link is false. Which type of link can force the other end true?",
-                  "options": [
-                    "Strong",
-                    "Weak"
-                  ],
-                  "answer": 0,
-                  "explanation": "A strong link needs at least one true end."
-                },
-                {
-                  "prompt": "At least one end of a chain is true. Which candidate does that rule out?",
-                  "options": [
-                    "A candidate conflicting with both ends",
-                    "Any candidate near the chain"
-                  ],
-                  "answer": 0,
-                  "explanation": "A candidate that conflicts with both ends leaves neither end able to be true."
-                },
-                {
-                  "prompt": "Can you assume the ends of any weak link have opposite states?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "Both ends can be false. To give the two ends opposite colors, exactly one must be true."
-                }
-              ]
             }
           ],
           "references": [
@@ -2747,38 +2483,8 @@
               ]
             },
             {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Can you use a weak link alone to assign opposite colors to its ends?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "A weak link can have two false ends. Opposite colors mean exactly one end is true."
-                },
-                {
-                  "prompt": "An uncolored 5 sees a blue 5 and an amber 5 in one connected set. Which 5 can you remove?",
-                  "options": [
-                    "Only the uncolored 5",
-                    "All blue 5s",
-                    "All amber 5s"
-                  ],
-                  "answer": 0,
-                  "explanation": "Either blue or amber supplies a 5 that rules out the uncolored one."
-                },
-                {
-                  "prompt": "Two blue candidates in different sets conflict. Can you remove blue from both sets?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "The two sets choose their true colors independently. The conflict only rules out blue in both at once."
-                }
-              ]
+              "type": "foundation-visual",
+              "visual": "color-repeated-digit"
             }
           ],
           "references": [
@@ -2822,7 +2528,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "If an uncolored candidate sees both a blue and an amber candidate, remove it. Whichever color holds the digit rules it out."
+                "R2C5 and R2C6 are the only places for 4 in box 2. One is blue and one is amber. Either choice places 4 in row 2. Remove 4 from R2C7."
               ]
             },
             {
@@ -2833,7 +2539,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "If two blue candidates see each other, blue cannot be true in this set. Remove every blue candidate in the set. Its amber candidates must be true."
+                "The linked group gives the 9s in R4C4 and R4C8 the same color. If blue is true, both 9s go in row 4. That breaks the row rule. Remove every blue 9 in this group. Its amber 9s must be true."
               ]
             },
             {
@@ -2842,10 +2548,8 @@
               "title": "No place for the digit"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Suppose one color is true. If that leaves any house without a place for the digit, remove that color throughout the set."
-              ]
+              "type": "foundation-visual",
+              "visual": "simple-color-empty-house"
             },
             {
               "type": "practice",
@@ -2996,7 +2700,7 @@
         {
           "id": "3d-medusa",
           "title": "3D Medusa",
-          "summary": "3D Medusa uses two colors to track candidates for several digits. Within one connected group, either all the blue candidates or all the amber candidates are true. If two blue 7s share a row, blue is impossible throughout that group.",
+          "summary": "3D Medusa follows linked candidates across houses and within cells. Color each linked pair blue and amber. Then test what happens if one color is true throughout the connected group.",
           "blocks": [
             {
               "type": "heading",
@@ -3006,18 +2710,9 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find a cell with exactly two candidates, such as 2 and 7. Color the 2 blue and the 7 amber. If its row has just one other place for 7, color that 7 blue."
+                "Start in a cell with exactly two candidates and give them opposite colors. A cell with two candidates must use one of them. The same rule applies to the only two places for a digit in a row, column, or box.",
+                "Follow both kinds of links from every colored candidate. The next candidate on each link gets the opposite color. The solid lines in the diagrams show those links. Within one connected group, if blue is true, every blue candidate must be placed and every amber candidate ruled out. If amber is true, the roles reverse."
               ]
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Continue from each colored candidate. In a two-candidate cell, give the other digit the opposite color. In a row, column, or box with just two places for the same digit, give its other place the opposite color."
-              ]
-            },
-            {
-              "type": "diagram",
-              "example": "3d-medusa"
             },
             {
               "type": "heading",
@@ -3025,18 +2720,21 @@
               "title": "When one color breaks a rule"
             },
             {
-              "type": "list",
-              "items": [
-                "One color puts two digits in one cell.",
-                "One color puts the same digit twice in a house.",
-                "One color leaves an empty cell with no candidates.",
-                "One color leaves a house with no place for a missing digit."
+              "type": "text",
+              "paragraphs": [
+                "Assume one color is true throughout the group. Look for a cell with no candidates, a house with no place for a missing digit, or two placements that conflict. If the assumption breaks a rule, remove all candidates of that color in the group and place the other color’s candidates."
               ]
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "If a color causes one of these conflicts, remove every candidate of that color in this set. Place the candidates of the other color."
+              "type": "foundation-visual",
+              "visual": "medusa-empty-cell-chain"
+            },
+            {
+              "type": "list",
+              "items": [
+                "Two digits in one cell. If a linked group gives both 5 and 8 in R2C3 the same color, that color would put two digits in R2C3.",
+                "The same digit twice in a house. If 9 in R1C3 and 9 in R1C4 are both blue, placing either blue 9 rules out the other through row 1. Blue is false.",
+                "No place for a missing digit. Suppose R1C1, R1C2, and R1C4 are the only places for 7 in row 1. Blue fills those cells with 5, 6, and 4. All three 7s disappear and row 1 still needs a 7. Blue is false."
               ]
             },
             {
@@ -3045,12 +2743,25 @@
               "title": "When either color rules out the same candidate"
             },
             {
+              "type": "text",
+              "paragraphs": [
+                "Test an uncolored candidate under both color choices. If both choices rule it out, remove it. This can happen even when each color is still possible."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "medusa-both-colors-chain"
+            },
+            {
               "type": "list",
               "items": [
-                "If a cell contains both colors, either color fills it. Remove its uncolored candidates.",
-                "If an uncolored 5 sees both a blue 5 and an amber 5, remove the uncolored 5.",
-                "If one color fills the cell and the other places its candidate digit in a peer, both colors rule out that candidate."
+                "The target sees its digit in both colors. A 9 in R6C4 sees the amber 9 in R6C2 and the blue 9 in R6C3. Either 9 rules out 9 in R6C4 through row 6.",
+                "One color fills the target’s cell and the other puts the digit in a peer. If blue puts 1 in R6C2, that rules out 7 in the same cell. If amber puts 7 in R6C3, it rules out 7 in R6C2 through row 6. Either way, remove 7 from R6C2."
               ]
+            },
+            {
+              "type": "diagram",
+              "example": "3d-medusa"
             },
             {
               "type": "practice",
@@ -3162,40 +2873,6 @@
               "paragraphs": [
                 "The count alone cannot tell you which digit is absent. A link to another cell or set can rule out one digit and force all the others."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Two cells in a row allow {1, 4} and {4, 8}. Do they form an ALS?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "They share a row and have three different digits for two cells."
-                },
-                {
-                  "prompt": "Does finding an ALS by itself let you remove one of its digits from nearby cells?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "The set can omit one digit. You need a reason it must use the digit you want to remove elsewhere."
-                },
-                {
-                  "prompt": "How many different candidate digits does a three-cell ALS have?",
-                  "options": [
-                    "Three",
-                    "Four",
-                    "Six"
-                  ],
-                  "answer": 1,
-                  "explanation": "An ALS has one more digit than cells, so three cells need four digits."
-                }
-              ]
             }
           ],
           "references": [
@@ -3256,10 +2933,8 @@
               "title": "When no digit can repeat"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "If all four digits can occur only once, the wing must contain each one. For each digit, look for an outside cell that sees every possible copy inside."
-              ]
+              "type": "foundation-visual",
+              "visual": "wxyz-wing-all-restricted"
             },
             {
               "type": "heading",
@@ -3271,6 +2946,10 @@
               "paragraphs": [
                 "An almost locked set has one more possible digit than cells, all in one house. Some WXYZ-Wings split into two such sets and also have an ALS-XZ proof."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "als-four-cell-wing"
             },
             {
               "type": "practice",
@@ -3450,39 +3129,6 @@
                 "Look at the digits as well as the cells at the two ends. A chain can switch digits in the middle. A removal must conflict with both endpoint candidates.",
                 "If the path returns to its starting candidate, compare the first and last links at that point."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Does A = B mean that A and B are both true or both false?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "The equals sign marks a strong link. At least one end must be true."
-                },
-                {
-                  "prompt": "Can a dash represent a pair that has both a strong and a weak link?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "The dash uses the weak link. It shows that the two ends cannot both be true."
-                },
-                {
-                  "prompt": "Is a chain invalid just because it switches digits inside a cell?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "A chain can switch digits. Each step must still have the strong or weak link it uses."
-                }
-              ]
             }
           ],
           "references": [
@@ -3539,10 +3185,8 @@
               "title": "Type 2 with different digits"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Suppose the ends are 2 in A and 7 in B, and the cells share a house. A 7 in A rules out 2 in A and 7 in B. Remove 7 from A. The same argument removes 2 from B if it is a candidate there."
-              ]
+              "type": "foundation-visual",
+              "visual": "aic-different-endpoints"
             },
             {
               "type": "practice",
@@ -3651,30 +3295,6 @@
                   "One of each",
                   "Exactly one end of each weak link is true."
                 ]
-              ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Two weak links meet at the starting candidate. Which assumption about that candidate leads to a conflict?",
-                  "options": [
-                    "True",
-                    "False"
-                  ],
-                  "answer": 0,
-                  "explanation": "If the candidate starts true, the first weak link rules out its neighbor. The loop returns and rules out the starting candidate."
-                },
-                {
-                  "prompt": "A loop alternates at every join. Why does it rule out a candidate that conflicts with both ends of one weak link?",
-                  "options": [
-                    "At least one of those endpoints must be true",
-                    "Both endpoints must be false"
-                  ],
-                  "answer": 0,
-                  "explanation": "Go around the rest of the loop. If one end is false, that path forces the other end true."
-                }
               ]
             }
           ],
@@ -3849,39 +3469,6 @@
               "type": "text",
               "paragraphs": [
                 "An outside candidate conflicts with G only if it rules out every member. Use the same test at a grouped chain end. A target must conflict with every candidate at both ends."
-              ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "G means “R3C1 or R3C2 is 5.” If only R3C1 loses 5, is G false?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "R3C2 can still be 5."
-                },
-                {
-                  "prompt": "An outside candidate sees only one of two possible 5s in a group. Does that prove a weak link to the group?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "The other 5 can still make the group true."
-                },
-                {
-                  "prompt": "A group and one other cell cover every possible 5 in a row. Do they have a strong link?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "The row needs one 5. If the group has none, the other cell must be 5."
-                }
               ]
             }
           ],
@@ -4110,39 +3697,6 @@
               "paragraphs": [
                 "If the first set uses 6, the second loses every 6. It must use all its remaining digits. The first set is also free to omit 6. If neither set uses it, both sets use all their other digits."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Both sets include 6. One possible 6 misses a 6 in the other set. Is 6 a restricted common candidate?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "Every possible 6 in one set must see every possible 6 in the other."
-                },
-                {
-                  "prompt": "Must exactly one set use the restricted common digit?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "At most one set can use the digit. Both can omit it."
-                },
-                {
-                  "prompt": "One set uses the restricted common digit. What happens to the other set?",
-                  "options": [
-                    "It loses that digit and becomes locked",
-                    "It must use that digit too"
-                  ],
-                  "answer": 0,
-                  "explanation": "Every copy in the other set conflicts with that digit. The other set must use all its remaining digits."
-                }
-              ]
             }
           ],
           "references": [
@@ -4206,30 +3760,6 @@
               "paragraphs": [
                 "To rule out 4 throughout the set, an outside 4 must see every 4 inside. If that happens, the set must use 1. That in turn rules out an outside 1 that sees every possible 1 inside."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "An outside 4 sees only one of two 4s in a set. Does it rule out 4 throughout the set?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "The second possible 4 remains. An outside digit must see both places to rule out the whole group."
-                },
-                {
-                  "prompt": "Can this set use both 1 and 4 despite the strong link between them?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 0,
-                  "explanation": "The set can use 1 and 4 and omit 8. A strong link allows both ends to be true."
-                }
-              ]
             }
           ],
           "references": [
@@ -4267,10 +3797,8 @@
               "title": "One digit short of a locked subset"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Two cells with {1, 2} and {2, 3} form an ALS. If the set loses 1, the first cell must be 2 and the second must be 3. Those two digits now fill the set."
-              ]
+              "type": "foundation-visual",
+              "visual": "als-one-digit-short"
             },
             {
               "type": "heading",
@@ -4310,6 +3838,16 @@
                 "An ALS-XY-Wing links three sets through two different restricted common candidates.",
                 "In an ALS Chain, each middle set uses a different digit for each of its two links."
               ]
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Each of these sets is one cell with two candidates. The middle cell, R2C4, can be 2 or 7. A 2 there forces 5 in R2C2 through row 2. A 7 there forces 5 in R4C4 through column 4. Remove 5 from R4C2, which shares column 2 with the first end and row 4 with the other."
+              ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "als-four-sets"
             },
             {
               "type": "text",
@@ -5162,37 +4700,8 @@
               ]
             },
             {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "You try an assumption and cannot find another move. Have you ruled out the assumption?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "To rule it out, find a Sudoku rule that the assumption breaks."
-                },
-                {
-                  "prompt": "A cell allows 2, 5, or 8. Both 2 and 5 rule out a target 9. Is that enough to remove 9?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "The 8 case must also rule out 9, or it must lead to a contradiction."
-                },
-                {
-                  "prompt": "A trial rules out every possible 4 in row 7. What follows?",
-                  "options": [
-                    "The assumption is false",
-                    "The row does not need a 4"
-                  ],
-                  "answer": 0,
-                  "explanation": "Row 7 needs a 4. An assumption that leaves it no place for 4 must be false."
-                }
-              ]
+              "type": "foundation-visual",
+              "visual": "forcing-three-choices"
             }
           ],
           "references": [
@@ -5249,6 +4758,10 @@
               "paragraphs": [
                 "Try every candidate in one cell, every place for one digit in a house, or both states of one candidate. If all cases force the same move, you can make that move on the original grid."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "forcing-common-result"
             },
             {
               "type": "heading",
@@ -5645,28 +5158,8 @@
               ]
             },
             {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Four cells need all four available slots. Can one cell use two slots?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "That leaves only two slots for the three other cells."
-                },
-                {
-                  "prompt": "A candidate in one chosen cell uses none of the counted slots. Does the equal count still prove the removal?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "That candidate can fill a cell without using a slot. The count no longer covers every choice."
-                }
-              ]
+              "type": "foundation-visual",
+              "visual": "overlap-uses-two-slots"
             }
           ],
           "references": [
@@ -6230,39 +5723,6 @@
                 "A solver can test a choice, follow its consequences, and return to the last choice if it fails. This is backtracking. Another approach compares complete layouts for one or more digits.",
                 "Impossible is the highest difficulty in the app. A player can still find a shorter proof than the solver found."
               ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "Suppose A is true. Both possible cases for B force C. What do you know?",
-                  "options": [
-                    "C under A",
-                    "C without any assumptions"
-                  ],
-                  "answer": 0,
-                  "explanation": "C follows while A is true. The case where A is false is still open."
-                },
-                {
-                  "prompt": "A solver reaches its time limit. Does that prove the puzzle has no solution?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "An unexamined case can still contain a solution."
-                },
-                {
-                  "prompt": "Does finding a completed grid tell you the easiest move a player can use?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "A completion shows the final digits. Identifying an available technique requires a separate proof."
-                }
-              ]
             }
           ],
           "references": [
@@ -6369,30 +5829,6 @@
               "paragraphs": [
                 "Layouts for two different digits cannot share a cell. Discard a layout for 5 if every layout for 8 overlaps it.",
                 "For three digits, the three layouts must fit at the same time. Other digits can still rule out a combination that passes this test."
-              ]
-            },
-            {
-              "type": "concept-check",
-              "title": "Check your understanding",
-              "questions": [
-                {
-                  "prompt": "One layout omits a possible 5 and another uses it. Can you remove that 5 from this evidence?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "To remove it this way, every possible layout must omit it."
-                },
-                {
-                  "prompt": "A layout for 5 and a layout for 8 both use R3C8. Can those layouts occur together?",
-                  "options": [
-                    "Yes",
-                    "No"
-                  ],
-                  "answer": 1,
-                  "explanation": "R3C8 can hold only one of those digits. At least one layout must change."
-                }
               ]
             }
           ],
@@ -6797,10 +6233,7 @@
             },
             {
               "type": "diagram",
-              "example": "cage-house-sum",
-              "copy": {
-                "description": "Box 4 totals 45. The three cage cells in its middle row total 12, so the six other cells must add to 33."
-              }
+              "example": "cage-house-sum"
             },
             {
               "type": "practice",
@@ -7657,10 +7090,7 @@
             },
             {
               "type": "diagram",
-              "example": "whispers",
-              "copy": {
-                "description": "This line needs a difference of at least 5. Compare each end with the middle cell, R3C3."
-              }
+              "example": "whispers"
             },
             {
               "type": "practice",
@@ -7747,10 +7177,7 @@
             },
             {
               "type": "diagram",
-              "example": "renban",
-              "copy": {
-                "description": "The line has three cells and already contains 4 and 5. Only {3, 4, 5} or {4, 5, 6} can fit, so the last cell cannot be 8."
-              }
+              "example": "renban"
             },
             {
               "type": "practice",
@@ -7789,10 +7216,7 @@
             },
             {
               "type": "diagram",
-              "example": "region-sum",
-              "copy": {
-                "description": "R7C6 is alone in its part and contains 7. The other part, R7C7 and R8C7, must also add to 7."
-              }
+              "example": "region-sum"
             },
             {
               "type": "practice",
@@ -7843,10 +7267,7 @@
             },
             {
               "type": "diagram",
-              "example": "little-killer",
-              "copy": {
-                "description": "The ray totals 41. Its placed digits are 2, 6, and 9, so the four empty cells must add to 24."
-              }
+              "example": "little-killer"
             },
             {
               "type": "practice",
@@ -7885,10 +7306,7 @@
             },
             {
               "type": "diagram",
-              "example": "skyscrapers",
-              "copy": {
-                "description": "Look across row 9 from the left. The clue is 4, and the 9 in R9C7 hides both buildings after it."
-              }
+              "example": "skyscrapers"
             },
             {
               "type": "practice",
@@ -7927,10 +7345,7 @@
             },
             {
               "type": "diagram",
-              "example": "sandwich",
-              "copy": {
-                "description": "Row 1 has a sandwich clue of 20 and a 1 in R1C8. Try possible places for 9 and add only the digits between it and R1C8."
-              }
+              "example": "sandwich"
             },
             {
               "type": "practice",
@@ -7974,10 +7389,7 @@
             },
             {
               "type": "diagram",
-              "example": "x-sum",
-              "copy": {
-                "description": "The clue is 32. If R1C1 were 9, the sum would include the whole row and equal 45. Remove 9 from R1C1."
-              }
+              "example": "x-sum"
             },
             {
               "type": "practice",
@@ -8029,11 +7441,7 @@
             },
             {
               "type": "diagram",
-              "example": "quadruple",
-              "copy": {
-                "description": "The circle between R6C3, R6C4, R7C3, and R7C4 lists 2, 4, 6, and 8. These four cells need those four digits.",
-                "reason": "The four printed digits fill all four cells. There is no cell left for 5, so remove candidate 5 from R6C3."
-              }
+              "example": "quadruple"
             },
             {
               "type": "text",

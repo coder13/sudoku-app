@@ -46,18 +46,18 @@ pub(super) fn catalog() -> Value {
 }
 
 #[cfg(feature = "teaching")]
-pub(super) fn practice_examples(id: &str) -> ResultValue {
+pub(super) fn practice_examples(id: &str, focused: bool) -> ResultValue {
     let technique = VariantTechnique::from_id(id).ok_or(INVALID_TECHNIQUE)?;
-    Ok(json!(
-        variant_practice_examples(technique).map_err(|_| INVALID_LESSON)?
-    ))
+    let examples = if focused { crate::variant::focused_practice_examples(technique) }
+        else { variant_practice_examples(technique) };
+    Ok(json!(examples.map_err(|_| INVALID_LESSON)?))
 }
 
 #[cfg(feature = "teaching")]
-pub(super) fn generate_practice_example(id: &str, seed: u32, exclude: crate::Board) -> ResultValue {
+pub(super) fn generate_practice_example(id: &str, seed: u32, exclude: crate::Board, focused: bool) -> ResultValue {
     let technique = VariantTechnique::from_id(id).ok_or(INVALID_TECHNIQUE)?;
     Ok(json!(
-        crate::variant::generate_practice_example(technique, seed, exclude)
+        crate::variant::generate_practice_example(technique, seed, exclude, focused)
             .ok_or(INVALID_LESSON)?
     ))
 }

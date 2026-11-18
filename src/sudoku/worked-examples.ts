@@ -6,6 +6,8 @@ export type WorkedExample = Omit<LessonExample, 'practice'> & Pick<LessonExercis
 type ExampleEntry = { example: WorkedExample }
 
 const STORE = 'examples'
+// Cached boards from before the basic moves were cleared can still be in IndexedDB.
+const EXAMPLE_VERSION = 'focused'
 const memory = new Map<string, unknown>()
 let database: Promise<IDBDatabase> | undefined
 
@@ -80,17 +82,17 @@ function forDisplay({ givens, entries, eliminations, candidates, deduction, patt
 }
 
 export async function generateLessonExercise(technique: string, seed: number, exclude: string, variant: boolean): Promise<LessonExercise> {
-  const request = { type: 'generate-practice-example', technique, seed, exclude } as const
+  const request = { type: 'generate-practice-example', technique, seed, exclude, focused: true } as const
   return variant ? variantLessonExercise(await runEngine({ ...request, variant: true })) : runEngine(request)
 }
 
 export async function loadWorkedExample(technique: string, number: number, initial: WorkedExample): Promise<ExampleEntry> {
   // Keep the first two browsed variant boards in their original order.
   if (initial.variantPuzzle && number <= 2) {
-    const key = `${technique}:variants`
+    const key = `${EXAMPLE_VERSION}:${technique}:variants`
     let examples = await readExample<WorkedExample[]>(key)
     if (!examples) {
-      const exercises = await runEngine({ type: 'practice-examples', technique, variant: true }, { background: true })
+      const exercises = await runEngine({ type: 'practice-examples', technique, variant: true, focused: true }, { background: true })
       // The article and the practice board use the first two exercises.
       examples = [...exercises.slice(2), ...exercises.slice(0, 2)].map(exercise => forDisplay(variantLessonExercise(exercise)))
       await saveExample(key, examples)
@@ -100,12 +102,12 @@ export async function loadWorkedExample(technique: string, number: number, initi
     return { example }
   }
 
-  const key = `${technique}:example:${number}`
+  const key = `${EXAMPLE_VERSION}:${technique}:example:${number}`
   const saved = await readExample<ExampleEntry>(key)
   if (saved) return saved
   const previous = initial.variantPuzzle && number === 3
     ? await loadWorkedExample(technique, 2, initial)
-    : number > 1 ? await readExample<ExampleEntry>(`${technique}:example:${number - 1}`) : undefined
+    : number > 1 ? await readExample<ExampleEntry>(`${EXAMPLE_VERSION}:${technique}:example:${number - 1}`) : undefined
   const exercise = await generateLessonExercise(technique, workedExampleSeed(technique, number),
     lessonValues(previous?.example ?? initial), Boolean(initial.variantPuzzle))
   const entry = { example: forDisplay(exercise) }

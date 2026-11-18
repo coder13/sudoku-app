@@ -38,7 +38,21 @@ function VisualWalkthrough({ visual: id }: { visual: FoundationVisualId }) {
   const step = visual.steps[index]
   const heading = useId()
   const note = useId()
-  return <figure className="lesson-diagram foundation-visual" aria-labelledby={heading} data-visual={id}>
+  const boardStyle = visual.region && { '--visual-columns': visual.region.columns } as CSSProperties
+  const board = visual.region && <div className="foundation-board lesson-board">
+    <Board {...foundationBoard(visual, step)} region={visual.region} showGuides label={visual.title} descriptionId={note} />
+  </div>
+  if (board && visual.steps.length === 1) {
+    return <div className="lesson-inline-example" data-visual={id} style={boardStyle}>
+      <h3 id={heading}>{visual.title}</h3>
+      <figure className="lesson-inline-grid" aria-labelledby={heading}>{board}</figure>
+      <div className="lesson-inline-copy" id={note}>
+        <p>{step.description}</p>
+        <p>{visual.note}</p>
+      </div>
+    </div>
+  }
+  return <figure className="lesson-diagram foundation-visual" aria-labelledby={heading} data-visual={id} style={boardStyle}>
     <header className="foundation-visual-heading"><h3 id={heading}>{visual.title}</h3>
       {visual.steps.length > 1 && <div className="foundation-step-controls" role="group" aria-label={`${visual.title} steps`}>
         <button className="button secondary" type="button" aria-label="Previous diagram step" disabled={index === 0}
@@ -49,9 +63,7 @@ function VisualWalkthrough({ visual: id }: { visual: FoundationVisualId }) {
       </div>}
     </header>
     <p className="foundation-visual-note" id={note}>{visual.note}</p>
-    {visual.region ? <div className="foundation-board lesson-board" style={{ '--visual-columns': visual.region.columns } as CSSProperties}>
-      <Board {...foundationBoard(visual, step)} region={visual.region} showGuides label={visual.title} descriptionId={note} />
-    </div> : <div className="foundation-stage-stack">{visual.steps.map((frame, i) => <div className="foundation-stage" key={i}
+    {board || <div className="foundation-stage-stack">{visual.steps.map((frame, i) => <div className="foundation-stage" key={i}
       data-active={i === index} aria-hidden={i !== index}>
       {frame.branches && <ProofBranches branches={frame.branches} />}
     </div>)}</div>}
