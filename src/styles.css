@@ -3410,8 +3410,11 @@ a.game-row { text-decoration: none; color: inherit; }
 .sync-invitation-actions .button { flex: none; }
 .sync-devices { list-style: none; padding: 0; margin: 0; }
 .sync-devices li { display: flex; align-items: center; gap: var(--space-8); min-height: 58px; padding-block: var(--space-6); border-bottom: 1px solid var(--border); }
-.sync-device-label { min-width: 0; flex: 1; overflow-wrap: anywhere; }
-.sync-device-label small { display: block; color: var(--muted); }
+.sync-device-label {
+  min-width: 0; flex: 1; overflow-wrap: anywhere;
+  font-size: 0.9375rem; font-weight: 500; line-height: 1.4;
+}
+.sync-device-label small { display: block; color: var(--muted); font-size: 0.8125rem; font-weight: 400; }
 .sync-rename { display: flex; align-items: center; gap: var(--space-6); width: 100%; }
 .sync-rename input { flex: 1; min-width: 0; min-height: 44px; }
 .device-sync-page .sync-devices .button { align-self: center; }

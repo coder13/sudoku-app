@@ -97,7 +97,7 @@ export function LinkedDeviceRow({ device, current, mobile, working, rename, unli
     <IconButton variant="quiet" type="button" aria-label="Cancel rename" title="Cancel" disabled={working} onClick={close}><X size={18} /></IconButton>
   </form></li>
   return <li onKeyDown={event => { if (mode === 'unlink' && event.key === 'Escape' && !working) close() }}>
-    <div className="sync-device-label"><strong>{device.name}</strong>{current && <small>This device</small>}</div>
+    <div className="sync-device-label"><span>{device.name}</span>{current && <small>This device</small>}</div>
     {mode === 'unlink' ? <>
       <Button variant="danger" disabled={working} onClick={unlink}>Confirm unlink</Button>
       <IconButton autoFocus={mobile} variant="quiet" aria-label="Cancel unlink" title="Cancel" disabled={working} onClick={close}><X size={18} /></IconButton>

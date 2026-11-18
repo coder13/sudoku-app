@@ -70,7 +70,7 @@ Search by component name or browse the sections below.
 | [DeviceSyncPage](../../../../src/components/DeviceSyncPage.tsx) | `DeviceSyncPage` owns enrollment, invites, joining, recovery, and linked-device management. Use its header for step navigation. |
 | [PairingInvitation](../../../../src/components/PairingInvitation.tsx) | Use `PairingInvitation` on the inviting device to show the single-use code, expiry, and copy action. The close control belongs in its top-right corner. |
 | [PairingScanner](../../../../src/components/PairingScanner.tsx) | `PairingScanner` reads a device-link QR code from the camera or a saved photo and returns a ticket for confirmation. |
-| [LinkedDeviceRow](../../../../src/components/LinkedDeviceRow.tsx) | `LinkedDeviceRow` displays a private device label and handles rename and unlink. Its `DeviceActionMenu` groups those actions on narrow screens and manages menu keyboard focus. |
+| [LinkedDeviceRow](../../../../src/components/LinkedDeviceRow.tsx) | `LinkedDeviceRow` displays each device name in medium-weight body text beneath the section heading. The current device gets a smaller, muted label. Its `DeviceActionMenu` groups rename and unlink on narrow screens and manages menu keyboard focus. |
 
 ## Learning
 
