@@ -1,10 +1,10 @@
 import { DifficultySelector } from './DifficultySelector'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
-import { Bookmark, Clipboard, Dices, PencilLine, Trash2 } from 'lucide-react'
-import { type DifficultyPreference } from '../sudoku/difficulty'
+import { Bookmark, Clipboard, Dices, FileUp, PencilLine, Trash2 } from 'lucide-react'
+import type { DifficultyPreference } from '../sudoku/difficulty'
 import { runEngine } from '../sudoku/engine'
 import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
-import { isSolved, makeGame, restartGame, valuesOf, type Game } from '../sudoku/game'
+import { isSolved, makeGame, valuesOf, type Game } from '../sudoku/game'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { VariantSelector } from './VariantSelector'
@@ -23,34 +23,33 @@ function useMounted() {
   return mounted
 }
 
-export function StopPlaying({ game, fromPlay = false, close, onDone }: {
+export function ManagePuzzle({ game, close }: {
   game: Game
-  fromPlay?: boolean
   close: () => void
-  onDone?: () => void
 }) {
   const id = useId()
 
-  function stop(action: 'save' | 'delete') {
+  function deletePuzzle() {
     const current = roomStore.getSnapshot().games.find((puzzle) => puzzle.id === game.id)
     if (current && current.source !== 'draft' && !isSolved(current)) {
       roomStore.stopPlaying(game.id)
-      if (action === 'save') roomStore.update(game.id, (puzzle) => ({ ...restartGame(puzzle), savedForLater: true }))
-      else roomStore.remove(game.id)
+      roomStore.remove(game.id)
     }
     close()
-    onDone?.()
   }
 
-  return <Modal title={fromPlay ? 'Stop playing?' : game.title} onClose={close}>
+  return <Modal title={game.title} onClose={close}>
     <div className="stop-puzzle-options">
-      {!game.savedForLater && <button type="button" className="new-option" onClick={() => stop('save')}
+      {!game.savedForLater && <button type="button" className="new-option" onClick={() => {
+        roomStore.saveForLater(game.id)
+        close()
+      }}
         aria-labelledby={`${id}-save`} aria-describedby={`${id}-save-description`}>
         <span className="option-icon"><Bookmark size={20} aria-hidden="true" /></span>
         <span><strong id={`${id}-save`}>Save for later</strong>
-          <small id={`${id}-save-description`}>Clear your progress and move the puzzle to Saved for later.</small></span>
+          <small id={`${id}-save-description`}>Resume this puzzle later with your progress saved.</small></span>
       </button>}
-      <button type="button" className="new-option delete-puzzle-option" onClick={() => stop('delete')}
+      <button type="button" className="new-option delete-puzzle-option" onClick={deletePuzzle}
         aria-labelledby={`${id}-delete`} aria-describedby={`${id}-delete-description`}>
         <span className="option-icon"><Trash2 size={20} aria-hidden="true" /></span>
         <span><strong id={`${id}-delete`}>Delete puzzle</strong>
@@ -58,18 +57,19 @@ export function StopPlaying({ game, fromPlay = false, close, onDone }: {
       </button>
     </div>
     <div className="dialog-actions stop-puzzle-footer">
-      <button type="button" className="button secondary" onClick={close}>{fromPlay ? 'Keep playing' : 'Cancel'}</button>
+      <button type="button" className="button secondary" onClick={close}>Cancel</button>
     </div>
   </Modal>
 }
 
-export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDifficultyChange, onPuzzleStart, onCreate }: {
+export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDifficultyChange, onPuzzleStart, onCreate, onImport }: {
   close: () => void
   difficulty: DifficultyPreference
   initialVariant?: VariantId
   onDifficultyChange: (difficulty: DifficultyPreference) => void
   onPuzzleStart?: (preference: NewPuzzlePreference) => void
   onCreate: () => void
+  onImport: () => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
@@ -89,24 +89,30 @@ export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDif
   }
 
   return (
-    <Modal title="New puzzle" onClose={close}>
-      <form className="dialog-form" onSubmit={submit}>
+    <Modal title="New puzzle" onClose={close} className="new-puzzle-dialog">
+      <form className="dialog-form new-puzzle-form" onSubmit={submit}>
         <VariantSelector value={variant} onChange={setVariant} busy={busy} />
-        <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
-        {error && <p className="form-error" role="alert">{error}</p>}
-        <button type="submit" className="button primary puzzle-start-button" disabled={busy}>
-          <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
-        </button>
+        <div className="new-puzzle-setup">
+          <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <button type="submit" className="button primary puzzle-start-button" disabled={busy}>
+            <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
+          </button>
+        </div>
+        <div className="new-options">
+          <button type="button" className="new-option" disabled={busy} onClick={onImport}>
+            <span className="option-icon"><FileUp size={21} aria-hidden="true" /></span>
+            <strong>Import a puzzle</strong>
+          </button>
+          <button type="button" className="new-option" disabled={busy} onClick={() => {
+            onCreate()
+            close()
+          }}>
+            <span className="option-icon"><PencilLine size={21} /></span>
+            <span><strong>Create by hand</strong><small>Enter your own givens on a blank grid.</small></span>
+          </button>
+        </div>
       </form>
-      <div className="new-options">
-        <button className="new-option" disabled={busy} onClick={() => {
-          onCreate()
-          close()
-        }}>
-          <span className="option-icon"><PencilLine size={21} /></span>
-          <span><strong>Create by hand</strong><small>Enter your own givens on a blank grid.</small></span>
-        </button>
-      </div>
     </Modal>
   )
 }

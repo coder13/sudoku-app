@@ -1,4 +1,4 @@
-import { STARTER_GAME, type Game } from '../../src/sudoku/game'
+import { isSolved, STARTER_GAME, type Game } from '../../src/sudoku/game'
 import { initialPlayerRating, type PlayerRating } from '../../src/sudoku/player-rating'
 import type { roomStore as appStore } from '../../src/sudoku/storage'
 
@@ -10,6 +10,17 @@ const listeners = new Set<() => void>()
 function publish(next: Room) {
   room = next
   listeners.forEach((listener) => listener())
+}
+
+function playPuzzle(games: Game[], selected: Game) {
+  const next = games.map((game) => {
+    if (game.id === selected.id) return game.savedForLater ? { ...game, savedForLater: undefined } : game
+    if (game.id === room.active && game.started && game.source !== 'draft' && selected.source !== 'draft' && !isSolved(game)) {
+      return { ...game, savedForLater: true as const }
+    }
+    return game
+  })
+  publish({ ...room, games: next, active: selected.id, stoppedPlaying: false })
 }
 
 export function seedRoom(games: Game[], active = games[0]?.id ?? null, storageAvailable = true) {
@@ -30,15 +41,21 @@ export const roomStore: typeof appStore = {
   connect: () => () => {},
   select(id) {
     const game = room.games.find((game) => game.id === id)
-    if (!game) return
-    if (game.savedForLater) roomStore.update(id, (saved) => ({ ...saved, savedForLater: undefined }))
-    publish({ ...room, active: id, stoppedPlaying: false })
+    if (game) playPuzzle(room.games, game)
+  },
+  saveForLater(id) {
+    const game = room.games.find(item => item.id === id)
+    if (!game || game.source === 'draft' || isSolved(game)) return
+    roomStore.stopPlaying(id)
+    roomStore.update(id, current => ({ ...current, savedForLater: true }))
   },
   stopPlaying(id) {
     if (room.active === id) publish({ ...room, active: null, stoppedPlaying: true })
   },
   add(game) {
-    publish({ ...room, games: [game, ...room.games], active: game.id, stoppedPlaying: false })
+    const games = [game, ...room.games]
+    if (game.savedForLater) publish({ ...room, games })
+    else playPuzzle(games, game)
   },
   update(id, update) {
     const game = room.games.find((item) => item.id === id)

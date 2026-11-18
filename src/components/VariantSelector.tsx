@@ -1,5 +1,5 @@
-import { Check } from 'lucide-react'
-import { useId } from 'react'
+import { Check, Search } from 'lucide-react'
+import { useId, useState } from 'react'
 import type { VariantRule } from '../sudoku/engine'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
 import { regionMembership, VARIANTS, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
@@ -42,16 +42,33 @@ export function VariantSelector({ value, onChange, busy }: {
 }) {
   const group = useId()
   const description = useId()
+  const [query, setQuery] = useState('')
+  const search = query.trim().toLowerCase().replace(/[-\s]+/g, ' ')
+  const variants = (Object.keys(VARIANTS) as VariantId[]).filter((id) =>
+    VARIANTS[id].name.toLowerCase().replace(/[-\s]+/g, ' ').includes(search))
+
   return <fieldset className="variant-picker" disabled={busy} aria-describedby={description}>
     <legend>Sudoku variant</legend>
+    <label className="variant-search">
+      <Search size={17} aria-hidden="true" />
+      <span className="sr-only">Search variants</span>
+      <input type="search" value={query} placeholder="Search variants" autoComplete="off"
+        onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
+          if (event.key === 'Enter') event.preventDefault()
+        }} />
+    </label>
     <div className="variant-options">
-      {(Object.keys(VARIANTS) as VariantId[]).map((id) => <label key={id} className="variant-option">
+      {variants.map((id) => <label key={id} className="variant-option">
         <input className="sr-only" type="radio" name={group} value={id} checked={value === id} onChange={() => onChange(id)} />
         <VariantPreview variant={id} />
         <span>{VARIANTS[id].name}</span>
         {value === id && <Check className="variant-check" size={14} aria-hidden="true" />}
       </label>)}
     </div>
-    <p id={description} aria-live="polite">{VARIANTS[value].rule}</p>
+    {variants.length === 0 && <p className="variant-empty" role="status">No variants found. Try another search.</p>}
+    <p id={description} className="variant-description" aria-live="polite" aria-atomic="true">
+      <strong>{VARIANTS[value].name}</strong>
+      <span>{VARIANTS[value].rule}</span>
+    </p>
   </fieldset>
 }

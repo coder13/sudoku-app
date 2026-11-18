@@ -20,7 +20,7 @@ import { generationVariant } from '../sudoku/variants'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
-import { NewPuzzle, SavePuzzle, SharePuzzle, StopPlaying } from './PuzzleDialogs'
+import { NewPuzzle, SavePuzzle, SharePuzzle } from './PuzzleDialogs'
 import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
@@ -30,7 +30,7 @@ import { usePuzzleGeneration } from './usePuzzleGeneration'
 import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
 
-type Panel = 'new' | 'import' | 'share' | 'publish' | 'stop' | null
+type Panel = 'new' | 'import' | 'share' | 'publish' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
 const PUZZLE_LINK = /^#(?:puzzle|variant)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
@@ -60,9 +60,8 @@ const PlayContent = createContext<ReactNode>(null)
 type PuzzlesContentValue = {
   games: ReturnType<typeof roomStore.getSnapshot>['games']
   active: string | null
-  difficulty: DifficultyPreference
   setDifficulty: (difficulty: DifficultyPreference) => void
-  newPuzzlePreference: NewPuzzlePreference | null
+  newPuzzlePreference: NewPuzzlePreference
   rememberNewPuzzle: (preference: NewPuzzlePreference) => void
   preferencesReady: boolean
   onCreatePuzzle: () => void
@@ -121,6 +120,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const resizeStartInputSize = useRef(inputSize)
   const automaticPuzzleStarted = useRef(false)
   const game = games.find((item) => item.id === active)
+  const newPuzzleDefaults: NewPuzzlePreference = newPuzzlePreference ?? {
+    variant: generationVariant(game?.variant) ?? 'classic',
+    difficulty: game?.generatedWithAuto ? 'auto' : game?.difficulty ?? difficulty,
+  }
   const mobile = useMobileLayout()
   const workspaceMode = mobile ? 'standard' : preferredWorkspaceMode
   const desktopStandard = !mobile && workspaceMode === 'standard'
@@ -261,11 +264,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setPanel('import')
   }
 
-  function openNewPuzzle(step?: 'difficulty') {
+  function openNewPuzzle(step?: 'variant' | 'difficulty') {
     if (mobile) {
       setPanel(null)
-      void navigate({ to: '/puzzles/new', search: step === 'difficulty' && (!game?.variant || generationVariant(game.variant))
-        ? { step, variant: generationVariant(game?.variant) ?? 'classic' } : {} })
+      const variant = generationVariant(game?.variant)
+      void navigate({ to: '/puzzles/new', search: step === 'difficulty' && (!game?.variant || variant)
+        ? { step, variant: variant ?? 'classic' } : step ? { step: 'variant' } : {} })
     } else setPanel('new')
   }
 
@@ -455,9 +459,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
             </button>
             <Presence open={menuOpen}>{(presence) => <div className="app-menu" id="app-menu" data-presence={presence}
               aria-hidden={presence === 'exit' || undefined} inert={presence === 'exit' || undefined}>
+              <Link className="mobile-menu-only" to="/" onClick={() => setMenuOpen(false)}><Play size={17} /> Play</Link>
+              <Link to="/puzzles/new" onClick={() => setMenuOpen(false)}><Dices size={17} /> New puzzle</Link>
               <div className="mobile-primary-navigation">
-                <Link to="/" onClick={() => setMenuOpen(false)}><Play size={17} /> Play</Link>
-                <Link to="/puzzles/new" onClick={() => setMenuOpen(false)}><Dices size={17} /> New puzzle</Link>
                 <Link to="/puzzles" onClick={() => setMenuOpen(false)}><Grid3X3 size={17} /> Puzzles</Link>
                 <Link to="/learn" onClick={() => setMenuOpen(false)}><BookOpen size={17} /> Learn</Link>
                 <div className="app-menu-separator" />
@@ -484,7 +488,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       </header>
 
       <PuzzlesContent.Provider value={{
-        games, active, difficulty, setDifficulty, newPuzzlePreference, rememberNewPuzzle, preferencesReady: workspaceReady, onCreatePuzzle: createPuzzle,
+        games, active, setDifficulty, newPuzzlePreference: newPuzzleDefaults, rememberNewPuzzle, preferencesReady: workspaceReady, onCreatePuzzle: createPuzzle,
       }}>
       <PlayContent.Provider value={playing && !workspaceReady ? (
         <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
@@ -507,7 +511,11 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
                 onNewPuzzle={openNewPuzzle} onCreatePuzzle={createPuzzle} onEditPuzzle={editPuzzle}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
-                onStopPlaying={() => setPanel('stop')} />
+                onStopPlaying={() => {
+                  if (!game) return
+                  roomStore.saveForLater(game.id)
+                  void navigate({ to: '/puzzles/browse' })
+                }} />
             ) : (
               <section className="surface empty-board">{emptyPuzzleContent}</section>
             )}
@@ -532,12 +540,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         </span>
       </div>}</MotionSurface>
 
-      {panel === 'new' && !mobile && <NewPuzzle close={close} difficulty={newPuzzlePreference?.difficulty ?? difficulty} initialVariant={newPuzzlePreference?.variant}
-        onDifficultyChange={setDifficulty} onPuzzleStart={rememberNewPuzzle} onCreate={createPuzzle} />}
+      {panel === 'new' && !mobile && <NewPuzzle close={close} difficulty={newPuzzleDefaults.difficulty} initialVariant={newPuzzleDefaults.variant}
+        onDifficultyChange={setDifficulty} onPuzzleStart={rememberNewPuzzle} onCreate={createPuzzle} onImport={openImport} />}
       {panel === 'import' && <ImportPuzzle close={close} onPlay={() => { close(); void navigate({ to: '/' }) }} />}
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
-      {panel === 'stop' && game && <StopPlaying game={game} fromPlay close={close}
-        onDone={() => { void navigate({ to: '/puzzles/browse' }) }} />}
       {settingsRoute && <Settings close={closeSettings} section={settingsSection}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
         appearance={appearance} setAppearance={setAppearance}

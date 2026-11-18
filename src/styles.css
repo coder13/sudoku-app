@@ -948,7 +948,48 @@ svg { flex-shrink: 0; }
   align-self: center;
   gap: var(--space-6) 9px;
 }
-.puzzle:has(.sudoku-grid) .puzzle-metadata { margin-inline-start: var(--puzzle-grid-inset); }
+.puzzle:has(.sudoku-grid) :is(.puzzle-metadata, .puzzle-collection-credit) { margin-inline-start: var(--puzzle-grid-inset); }
+
+.puzzle:has(> .puzzle-visuals) {
+  grid-template: "metadata visuals actions" auto "grid grid grid" auto / minmax(0, 1fr) auto auto;
+}
+.puzzle-visuals {
+  grid-area: visuals;
+  place-self: center end;
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-muted);
+}
+.puzzle-visuals label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 30px;
+  padding-inline: var(--space-10);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.puzzle-visuals label:hover { background: var(--surface-hover); }
+.puzzle-visuals label:has(input:checked) {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--dark-purple);
+}
+.puzzle-visuals label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
+@container (max-width: 32rem) {
+  .puzzle:has(> .puzzle-visuals) > .puzzle-metadata { grid-column: 1 / 3; }
+  .puzzle-visuals { grid-area: 2 / 1 / 3 / -1; justify-self: center; }
+  .puzzle-visuals ~ .puzzle-stage { grid-row: 3; }
+}
+@media (pointer: coarse) {
+  .puzzle-visuals label { min-height: 44px; }
+}
 
 .puzzle-difficulty { color: var(--muted); font-size: 0.8125rem; font-weight: 720; }
 .puzzle-auto-mode { color: var(--muted); font-size: 0.75rem; }
@@ -1008,7 +1049,8 @@ svg { flex-shrink: 0; }
   --mode-tab-length: var(--space-28);
   --mode-tab-depth: var(--space-22);
   --mode-tab-corner-gap: calc(var(--puzzle-mode-corner-radius) + var(--space-4));
-  --mode-tab-inset: calc(var(--puzzle-mode-border-inset) + (var(--puzzle-mode-border-width) - var(--mode-tab-depth)) / 2);
+  /* Join the flat edge to the outline, with the rounded end outside the card. */
+  --mode-tab-inset: calc(var(--puzzle-mode-border-inset) + var(--puzzle-mode-border-width) - var(--mode-tab-depth));
   --mode-tab-offset: clamp(var(--mode-tab-corner-gap), var(--mode-offset), calc(100% - var(--mode-tab-corner-gap) - var(--mode-tab-length)));
   position: absolute;
   display: grid;
@@ -1050,12 +1092,10 @@ svg { flex-shrink: 0; }
   inset-inline-start: var(--mode-tab-inset);
   border-radius: 6px 0 0 6px;
 }
-.standard-puzzle-stack:has(.puzzle-mode-tab) {
-  /* Keep the card aligned with the keypad while making room in the scrollport for the tab. */
-  margin-block-start: calc(-1 * var(--space-10));
-  padding-block: var(--space-10);
-}
-.dock-puzzle-panel .puzzle-column:has(.puzzle-mode-tab) { padding-block: var(--space-10); }
+.puzzle-column:has(.puzzle-mode-tab[data-edge="top"]) { padding-block-start: var(--space-22); }
+.puzzle-column:has(.puzzle-mode-tab[data-edge="bottom"]) { padding-block-end: var(--space-22); }
+.puzzle-column:has(.puzzle-mode-tab[data-edge="left"]) { padding-inline-start: var(--space-20); }
+.puzzle-column:has(.puzzle-mode-tab[data-edge="right"]) { padding-inline-end: var(--space-20); }
 .sudoku-grid.drag-select { touch-action: none; }
 .grid-row { display: grid; grid-template-columns: repeat(var(--board-columns, 9), minmax(0, 1fr)); min-height: 0; }
 .cell {
@@ -1700,6 +1740,7 @@ svg { flex-shrink: 0; }
 .main-menu-panel { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding-right: var(--space-4); }
 .main-menu-section { display: grid; align-content: start; gap: var(--space-18); }
 .main-menu-section > header { display: grid; gap: 3px; }
+.main-menu-section > .new-puzzle-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-12); }
 .main-menu-section > header :is(h2, h3) { margin: 0; font-size: 1.25rem; letter-spacing: -.025em; }
 .main-menu-section > header p, .main-menu-empty { margin: 0; color: var(--muted); font-size: 0.8125rem; line-height: 1.5; }
 .main-difficulty-options { display: grid; gap: 0; margin: 0; padding: 0; border: 0; }
@@ -1958,7 +1999,6 @@ svg { flex-shrink: 0; }
   container: completion / size;
 }
 .puzzle[data-completion] .completion { height: 100%; aspect-ratio: auto; }
-.puzzle[data-completion] .puzzle-collection-credit { margin-top: var(--space-6); }
 .completion {
   grid-area: board;
   width: 100%;
@@ -2150,6 +2190,7 @@ svg { flex-shrink: 0; }
   animation: dialog-exit var(--motion-standard-duration) var(--motion-exit) both;
 }
 .dialog.check-dialog { width: min(410px, calc(100vw - 28px)); }
+.dialog.new-puzzle-dialog { width: min(860px, calc(100vw - 28px)); }
 .dialog::backdrop { background: #00000065; }
 .dialog[data-presence="open"]::backdrop { animation: dialog-backdrop-enter var(--motion-standard-duration) ease-out both; }
 .dialog[data-presence="exit"]::backdrop { animation: dialog-backdrop-exit var(--motion-standard-duration) ease-in both; }
@@ -2355,6 +2396,16 @@ svg { flex-shrink: 0; }
   details[open]::details-content { block-size: auto; }
 }
 .dialog-form { display: flex; flex-direction: column; gap: 9px; }
+.new-puzzle-form.dialog-form {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "variants setup" "create setup"; align-items: start; gap: var(--space-22) var(--space-28);
+}
+.new-puzzle-form > .variant-picker { grid-area: variants; margin-bottom: 0; }
+.new-puzzle-form > .new-options { grid-area: create; margin-top: 0; }
+.new-puzzle-setup { grid-area: setup; display: grid; min-width: 0; gap: var(--space-16); }
+@media (max-width: 700px) {
+  .new-puzzle-form.dialog-form { grid-template-columns: minmax(0, 1fr); grid-template-areas: "variants" "setup" "create"; }
+}
 .dialog-form p { font-size: 0.875rem; line-height: 1.55; color: var(--muted); margin-bottom: 3px; }
 .dialog-form label:not(.file-picker) { font-size: 0.8125rem; font-weight: 760; }
 .dialog-form input:not([type="file"]), .dialog-form select, .dialog-form textarea {
@@ -2373,8 +2424,9 @@ svg { flex-shrink: 0; }
 .puzzles-page.import-page { max-width: 580px; overflow-y: auto; padding-bottom: var(--space-24); }
 .import-page > :is(.import-form, .import-preview) { flex: none; }
 .import-preview { --board-frame-width: min(100%, 430px); display: grid; gap: var(--space-16); }
-.import-preview-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
-.import-preview-meta span { color: var(--muted); font-size: 0.875rem; }
+.import-preview-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4) var(--space-10); }
+.import-preview-rating { font-weight: 650; color: var(--dark-purple); }
+.import-preview-format { margin-inline-start: auto; color: var(--muted); font-size: 0.875rem; }
 .import-preview-rules { display: grid; gap: var(--space-8); margin: 0; padding-inline-start: var(--space-20); color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
 .import-preview-actions { flex-wrap: wrap; }
 .import-preview-actions .import-edit { margin-inline-end: auto; }
@@ -2389,7 +2441,7 @@ svg { flex-shrink: 0; }
 .form-error, .dialog-form .form-error { color: #9c2f42; font-size: 0.8125rem; line-height: 1.4; }
 .file-picker { position: relative; cursor: pointer; }
 .file-picker input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
-.new-options { display: grid; margin-top: var(--space-16); padding-top: var(--space-16); border-top: 1px solid var(--border); }
+.new-options { display: grid; gap: var(--space-8); margin-top: var(--space-16); padding-top: var(--space-16); border-top: 1px solid var(--border); }
 .new-option {
   text-align: left;
   display: flex;
@@ -2784,12 +2836,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .standard-workspace-page .puzzle-mode-tab[data-edge="bottom"] {
     --mode-tab-length: var(--space-32);
     --mode-tab-depth: var(--space-16);
-    --mode-tab-inset: calc(var(--puzzle-mode-border-inset) - var(--space-10));
   }
   .standard-workspace-page .puzzle-mode-tab[data-edge="bottom"] svg { width: 13px; height: 13px; }
-  .standard-workspace-page .puzzle-mode-tab:is([data-edge="left"], [data-edge="right"]) {
-    --mode-tab-inset: calc(var(--puzzle-mode-border-inset) - var(--space-12));
-  }
   .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger) { width: 44px; min-height: 44px; }
   .mobile-puzzle-menu { max-width: calc(100vw - 16px); overscroll-behavior: contain; }
   .mobile-puzzle-menu button { min-height: 44px; }
@@ -3026,10 +3074,21 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 
 .variant-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
-.dialog-form > .variant-picker { margin-bottom: var(--space-12); }
 .variant-picker legend { margin-bottom: 9px; padding: 0; font-size: 0.875rem; font-weight: 730; }
 .variant-picker p { margin: var(--space-10) 0 0; color: var(--muted); font-size: 0.8125rem; line-height: 1.45; }
-.variant-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr)); gap: 7px; }
+.variant-search { position: relative; display: flex; align-items: center; margin-bottom: var(--space-12); }
+.variant-search > svg { position: absolute; left: var(--space-12); color: var(--muted); pointer-events: none; }
+.variant-search input[type="search"] {
+  width: 100%; min-width: 0; min-height: 42px; padding: 9px var(--space-12) 9px 37px;
+  border: 1px solid var(--border); border-radius: 9px; background: var(--surface-soft); font-size: 0.8125rem; font-weight: 500;
+}
+.variant-options {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.5rem), 1fr)); gap: 7px;
+  max-height: 18rem; padding: 3px; margin: -3px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable;
+}
+.variant-description { display: grid; gap: var(--space-4); }
+.variant-description strong { color: var(--ink); font-weight: 700; }
+.variant-empty { padding: var(--space-16) 0; }
 .variant-option {
   position: relative;
   display: grid;
@@ -3045,6 +3104,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .variant-option:has(input:checked) { border-color: var(--board-selected-border); background: var(--board-selected-bg); }
 .variant-option:has(input:focus-visible) { outline: 2px solid var(--board-selected-border); outline-offset: 2px; }

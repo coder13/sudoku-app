@@ -55,7 +55,7 @@ function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[], chains: rea
   })
 }
 
-export function useChainSketch(graph: ChainGraph | null, positionKey: string) {
+export function useChainSketch(graph: ChainGraph | null, positionKey: string, canDraw: boolean) {
   const [drawing, setDrawing] = useState(false)
   const [pending, setPending] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
@@ -65,7 +65,7 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string) {
   const [status, setStatus] = useState('')
   const active = sketches.find(({ id }) => id === activeId) ?? sketches[0]
   const edges = active.history.at(-1)!
-  const enabled = Boolean(graph)
+  const enabled = canDraw && Boolean(graph)
 
   const analyzed = useMemo(() => graph ? sketches.map((sketch) => {
     const edges = sketch.history.at(-1)!
