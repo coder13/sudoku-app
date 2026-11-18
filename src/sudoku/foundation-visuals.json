@@ -11,7 +11,7 @@
     "steps": [
       {
         "title": "Find a candidate",
-        "description": "R2C4 means row 2, column 4. The small 5 in the center is one possible digit. The ring marks it for this step.",
+        "description": "R2C4 means row 2, column 4. The small 5 shows that 5 can go in the cell. The ring highlights it for this step.",
         "marks": [
           {
             "cell": 12,
@@ -128,7 +128,7 @@
       },
       {
         "title": "Remove 2 and 8 from R3C6",
-        "description": "The pair supplies both digits to row 3. Its order makes no difference to R3C6.",
+        "description": "Whether R3C4 is 2 or 8, R3C4 and R3C5 use both digits. Row 3 rules out 2 and 8 in R3C6.",
         "marks": [
           {
             "cell": 21,
@@ -164,7 +164,7 @@
       },
       {
         "title": "Place 5",
-        "description": "After those two removals, only 5 remains in R3C6.",
+        "description": "Only 5 remains in R3C6. Place 5 in R3C6.",
         "marks": [
           {
             "cell": 21,
@@ -239,7 +239,7 @@
     "steps": [
       {
         "title": "At most one end is true",
-        "description": "A and B share row 4, so they cannot both be 5. Both can be false if the 5 goes in R4C8.",
+        "description": "R4C2 and R4C5 share row 4, so at most one can be 5. Both can be false if 5 goes in R4C8.",
         "marks": [
           {
             "cell": 28,
@@ -552,7 +552,7 @@
     "steps": [
       {
         "title": "Read the pivot",
-        "description": "R1C1 allows only 2 or 6. Its 2 sees the 2 in wing A along row 1. Its 6 sees the 6 in wing B down column 1.",
+        "description": "R1C1 is the pivot and allows 2 or 6. It shares row 1 with the 2 in R1C4 and column 1 with the 6 in R4C1.",
         "marks": [
           {
             "cell": 0,
@@ -614,7 +614,7 @@
       },
       {
         "title": "Suppose the pivot is 2",
-        "description": "Row 1 rules out 2 in A, so A must be 9. Column 4 then rules out 9 in R4C4.",
+        "description": "If R1C1 is 2, row 1 rules out 2 in R1C4, leaving 9. Column 4 then rules out 9 in R4C4.",
         "marks": [
           {
             "cell": 0,
@@ -698,7 +698,7 @@
       },
       {
         "title": "Suppose the pivot is 6",
-        "description": "Column 1 rules out 6 in B, so B must be 9. Row 4 then rules out 9 in R4C4.",
+        "description": "If R1C1 is 6, column 1 rules out 6 in R4C1, leaving 9. Row 4 then rules out 9 in R4C4.",
         "marks": [
           {
             "cell": 0,
@@ -782,7 +782,7 @@
       },
       {
         "title": "Use the result of both cases",
-        "description": "Both choices remove 9 from R4C4, leaving 5. You can place that 5 while R1C1 still has two choices.",
+        "description": "Both choices rule out 9 in R4C4. Remove 9 and place 5 in R4C4.",
         "marks": [
           {
             "cell": 0,
@@ -1020,7 +1020,7 @@
       },
       {
         "title": "Suppose A is false",
-        "description": "For this trial, suppose R1C1 cannot be 5. Leave the pencil mark on your own board.",
+        "description": "In this trial, suppose R1C1 cannot be 5. Keep that assumption separate from the deductions on the original grid.",
         "marks": [
           {
             "cell": 4,
@@ -1099,7 +1099,7 @@
       },
       {
         "title": "Row 1 forces B",
-        "description": "Only A and B can supply row 1 with 5. Without A, B must be 5.",
+        "description": "Row 1 has only two places for 5. If R1C1 cannot be 5, R1C5 must be 5.",
         "marks": [
           {
             "cell": 4,
@@ -2015,7 +2015,7 @@
       },
       {
         "title": "Suppose R8C5 is 6",
-        "description": "Row 8 rules out both blue 6s. The two blue cells must now use 1 and 4.",
+        "description": "If R8C5 is 6, row 8 rules out 6 in R8C1 and R8C2. Those two cells must use 1 and 4.",
         "marks": [
           {
             "cell": 63,
@@ -2082,7 +2082,7 @@
       },
       {
         "title": "Suppose neither set uses 6",
-        "description": "Blue must use 1 and 4. Amber must use 2 and 7. This also satisfies the weak link.",
+        "description": "If both sets omit 6, the blue cells must use 1 and 4 and the amber cells must use 2 and 7. The weak link allows both sets to omit 6.",
         "marks": [
           {
             "cell": 63,
@@ -2150,7 +2150,7 @@
       },
       {
         "title": "Add a possible 6 in R9C6",
-        "description": "The blue 6s cannot see this new amber 6. Both sets can now use 6 without a conflict between those places.",
+        "description": "If R9C6 is 6, that placement shares no row, column, or box with either blue candidate for 6. The blue set can still use 6, so 6 no longer links the sets.",
         "candidates": {
           "63": [
             1,
@@ -3085,7 +3085,7 @@
       },
       {
         "title": "Test 5 in R4C4",
-        "description": "A 5 here uses column 4. That leaves only columns 3 and 7 for the three marked rows. Remove 5 from R4C4.",
+        "description": "If R4C4 is 5, column 4 rules out 5 in the three marked rows. That leaves them only columns 3 and 7 for three copies of 5. Remove 5 from R4C4.",
         "marks": [
           {
             "cell": 20,
@@ -3194,7 +3194,7 @@
       },
       {
         "title": "Continue from R2C5",
-        "description": "Column 5 makes R4C5 blue. Row 4 then makes R4C3 amber.",
+        "description": "R2C5 is amber. The other 5 in column 5, R4C5, is blue. The other 5 in row 4, R4C3, is amber.",
         "marks": [
           {
             "cell": 10,
@@ -3262,7 +3262,7 @@
       },
       {
         "title": "Try blue",
-        "description": "R2C2 would contain 5. Box 1 then rules out 5 in R3C3.",
+        "description": "If blue is true, R2C2 is 5. Box 1 rules out 5 in R3C3.",
         "marks": [
           {
             "cell": 10,
@@ -3335,7 +3335,7 @@
       },
       {
         "title": "Try amber",
-        "description": "R4C3 would contain 5. Column 3 then rules out 5 in R3C3.",
+        "description": "If amber is true, R4C3 is 5. Column 3 rules out 5 in R3C3.",
         "marks": [
           {
             "cell": 13,
@@ -3408,7 +3408,7 @@
       },
       {
         "title": "Remove 5 from R3C3",
-        "description": "One color must be true. Each color rules out the same 5 in R3C3.",
+        "description": "Both colors rule out 5 in R3C3. Remove 5 from that cell.",
         "marks": [
           {
             "cell": 10,
@@ -3581,7 +3581,7 @@
       },
       {
         "title": "Suppose A is true",
-        "description": "A rules out B. Row 2 then forces C. C rules out A in box 1.",
+        "description": "If R3C2 is 5, box 1 rules out 5 in R2C1. Row 2 would then need 5 in R2C3. That also conflicts with R3C2 in box 1.",
         "marks": [
           {
             "cell": 19,
@@ -4638,7 +4638,7 @@
       },
       {
         "title": "Put 5 in R1C2 and R2C5",
-        "description": "A 5 in R3C8 completes the layout. Each row, column, and box has one 5.",
+        "description": "Place 5 in R3C8 to complete this layout. The three 5s go in different rows, columns, and boxes.",
         "marks": [
           {
             "cell": 1,

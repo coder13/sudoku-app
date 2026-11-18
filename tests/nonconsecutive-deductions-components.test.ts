@@ -73,7 +73,7 @@ test('desktop and mobile proof cards and solution lists honor every cell naming 
       for (const html of [desktop, mobile]) {
         assert.ok(html.includes(`/learn/${technique}`))
         assert.ok(html.includes('Non-Consecutive'))
-        assert.ok(html.includes('every alternative would fail'))
+        assert.ok(html.includes('every alternative fails'))
         if (cellReferenceStyle === 'concise') assert.match(html, /r[1-9]c[1-9]/)
         else { assert.match(html, /row [1-9], column [1-9]/); assert.doesNotMatch(html, /\br[1-9]c[1-9]\b/i) }
       }

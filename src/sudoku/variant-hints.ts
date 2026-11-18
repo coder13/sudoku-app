@@ -5,6 +5,7 @@ import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName }
 
 type ConstraintEvidence = Extract<VariantDeduction['evidence'], { type: 'constraint' }>
 const alternatives = new Intl.ListFormat('en', { type: 'disjunction' })
+const list = new Intl.ListFormat('en')
 
 function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at: (cell: number) => string, focus: readonly { cell: number; digit: number }[]) {
   const { cells, domains } = evidence
@@ -14,8 +15,8 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
   const pair = b === undefined ? at(a) : `${at(a)} and ${at(b)}`
   switch (rule?.type) {
     case 'quadruple':
-      return { description: `The circle requires ${rule.digits.join(', ')} among its four surrounding cells.`,
-        reason: 'Each printed digit needs a separate cell. No arrangement that uses a crossed-out candidate can fit all the printed digits.' }
+      return { description: `The circle at ${list.format(cells.map(at))} lists ${list.format(rule.digits.map(String))}.`,
+        reason: 'Fit each printed digit into a different surrounding cell. Remove a candidate if no arrangement can use it and still fit every printed digit.' }
     case 'anti-knight':
     case 'anti-king': {
       const step = rule.type === 'anti-knight' ? 'a knight’s move apart' : 'diagonal neighbors'
@@ -116,33 +117,34 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
           reason: `Each cell between them must contain ${choices}.` }
       }
       return { description: `The endpoints are ${at(a)} and ${at(cells[last])}.`,
-        reason: 'For each possible pair, check that every cell inside can hold a digit between the two values. Remove any candidate that fits no pair.' }
+        reason: 'For each possible pair of end digits, check that every interior cell can use a digit strictly between them. Remove a candidate if no pair leaves room for it.' }
     }
     case 'whispers':
-      return { description: `Neighbors on this line must differ by at least ${rule.minDifference}.`,
-        reason: 'A crossed-out digit leaves no way to keep that difference along the line.' }
+      return { description: `On the line from ${at(a)} to ${at(cells[cells.length - 1])}, neighboring digits must differ by at least ${rule.minDifference}.`,
+        reason: 'Check whether the candidate fits a sequence that keeps the required difference at every step. Remove it if no such sequence fits.' }
     case 'arrow':
       return { description: `The ${rule.cells.length === 1 ? 'digit on the arrow equals' : 'digits on the arrow add to'} the digit in ${at(rule.circle)}.`,
         reason: 'With the current candidates, no matching sum uses a crossed-out digit in its marked cell.' }
     case 'renban':
-      return { description: `This line needs ${cells.length} different consecutive digits, in any order.`,
-        reason: 'No consecutive set can fill every line cell with a crossed-out digit in its marked position.' }
+      return { description: `The line from ${at(a)} to ${at(cells[cells.length - 1])} needs ${cells.length} different consecutive digits, in any order.`,
+        reason: 'Try ranges of the right length that include the placed digits. A candidate must fit at least one range with a different digit in every line cell.' }
     case 'region-sum':
       return { description: rule.groupByRegion ? 'Add all visits to the same region together. Each region needs the same total.'
         : 'Split the line at each region boundary. All parts must have the same sum.',
-        reason: 'With a crossed-out digit in place, the parts have no total they can all reach.' }
+        reason: 'Compare the totals each part can make. Remove a candidate if its part cannot reach a total that every other part can also reach.' }
     case 'little-killer':
       return { description: `The diagonal from ${at(a)} to ${at(cells[cells.length - 1])} must add to ${rule.sum}.`,
         reason: 'No choice of digits in the other cells completes that sum with a crossed-out candidate.' }
     case 'skyscrapers':
       return { description: `Look from ${at(a)}. The clue requires ${rule.count} visible ${rule.count === 1 ? 'building' : 'buildings'}.`,
-        reason: 'Count the first building and each new tallest building. No order with a crossed-out digit in its cell gives the required count.' }
+        reason: rule.count === 1 ? `Only the first building can be visible, so ${at(a)} must be 9. A candidate must fit an order with that 9 first.`
+          : 'Count the first building and every later building that is taller than all the ones before it. A candidate must fit at least one order with the required count.' }
     case 'sandwich':
-      return { description: `Only the digits between 1 and 9 count toward the clue of ${rule.sum}.`,
-        reason: 'No pair of endpoint positions allows that sum with a crossed-out candidate in its cell.' }
+      return { description: `In the line starting at ${at(a)}, the digits between 1 and 9 must add to ${rule.sum}.`,
+        reason: 'Try each pair of positions for 1 and 9. Leave both endpoints out of the sum. Remove a candidate if no arrangement that reaches the total uses it.' }
     case 'x-sum':
-      return { description: `The digit in ${at(a)} tells how many cells to add, including itself. The sum must be ${rule.sum}.`,
-        reason: 'No possible starting length and set of digits gives that sum with a crossed-out candidate in its cell.' }
+      return { description: `The digit in ${at(a)} tells you how many cells to add, starting with ${at(a)} itself. The sum must be ${rule.sum}.`,
+        reason: 'For each possible first digit, check which placements can reach the total with that many cells. Remove candidates that fit none of those arrangements.' }
     default:
       return { description: 'Compare the candidates in the highlighted cells with their clue.',
         reason: 'No allowed combination uses a crossed-out digit in its marked cell.' }
@@ -212,17 +214,17 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         : `In ${houseLabel(premise.house)}, ${premise.digit} can go only in ${alternatives.format(alternativesText)}.`
       reason = focus.map(target => {
         const reasons = cases.map(source => {
-          if (source.cell === target.cell) return `${nameCell(source.cell)} would already contain ${target.digit}, so it could not contain ${source.digit}`
+          if (source.cell === target.cell) return `That would rule out ${source.digit} in the same cell.`
           if (source.digit === target.digit) {
             const house = evidence.houses.find(house => {
               const sites = variantHouseCells(house, puzzle)
               return sites.includes(source.cell) && sites.includes(target.cell)
             })!
-            return `${source.digit} in ${nameCell(source.cell)} would repeat ${target.digit} in ${houseLabel(house)}`
+            return `That would rule out ${source.digit} in ${nameCell(source.cell)} through ${houseLabel(house)}.`
           }
-          return `Non-Consecutive forbids ${source.digit} in ${nameCell(source.cell)} next to ${target.digit}; they differ by 1 across their shared edge`
+          return `Across the shared edge, Non-Consecutive would rule out ${source.digit} in ${nameCell(source.cell)} because the digits differ by 1.`
         })
-        return `Remove ${target.digit} from ${nameCell(target.cell)}. If ${nameCell(target.cell)} were ${target.digit}, every alternative would fail: ${reasons.join('; ')}.`
+        return `If ${nameCell(target.cell)} is ${target.digit}, every alternative fails. ${reasons.join(' ')} Remove ${target.digit} from ${nameCell(target.cell)}.`
       }).join(' ')
       break
     }
@@ -266,14 +268,14 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
             description = rule.parity === 'odd'
               ? `${location} has an odd circle, so it can contain only 1, 3, 5, 7, or 9.`
               : `${location} has an even square, so it can contain only 2, 4, 6, or 8.`
-            reason = `Remove ${focus.map(({ digit }) => digit).join(', ')} from ${location}; ${rule.parity === 'odd' ? 'even' : 'odd'} digits cannot satisfy this marker.`
+            reason = `Remove ${list.format(focus.map(({ digit }) => String(digit)))} from ${location}. The ${rule.parity === 'odd' ? 'circle rules out even' : 'square rules out odd'} digits.`
           } else description = 'The odd or even marker restricts the highlighted cell.'
           break
         }
         case 'anti-king': {
           const name = nameCell
           description = `${cells.map(name).join(' and ')} touch at a corner. Anti-King requires different digits in these cells.`
-          reason = focus.map(({ cell, digit }) => `${digit} cannot go in ${name(cell)}; ${name(cells.find(other => other !== cell)!)} is restricted to ${digit}.`).join(' ')
+          reason = focus.map(({ cell, digit }) => `The only candidate in ${name(cells.find(other => other !== cell)!)} is ${digit}. Remove ${digit} from ${name(cell)} because the two cells touch at a corner.`).join(' ')
           break
         }
         case 'non-consecutive': {
@@ -282,7 +284,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
             const other = cells.findIndex(candidate => candidate !== cell)
             const choices = Array.from({ length: 9 }, (_, index) => index + 1)
               .filter(candidate => evidence.domains[other] & 1 << (candidate - 1))
-            return `${digit} cannot go in ${nameCell(cell)}; ${nameCell(cells[other])} can contain only ${alternatives.format(choices.map(String))}. Every choice would differ from ${digit} by 1.`
+            return `${nameCell(cells[other])} can contain only ${alternatives.format(choices.map(String))}. Every choice differs from ${digit} by 1, so remove ${digit} from ${nameCell(cell)}.`
           }).join(' ')
           break
         }

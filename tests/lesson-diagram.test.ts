@@ -141,7 +141,7 @@ test('Doubly linked ALS-XZ explains a removal supported by only one of the two s
   assert.match(diagram.reason, /The 1 candidates in sets 1 and 2 share row 1/)
   assert.match(diagram.reason, /One set must skip 1 and the other must skip 2/)
   assert.match(diagram.reason, /At least one of R1C1 and R1C4 must be 1/)
-  assert.match(diagram.reason, /At least one of R1C1 and R1C2 must be 3\. Putting 3 in R2C2/)
+  assert.match(diagram.reason, /At least one of R1C1 and R1C2 must be 3\. If R2C2 is 3, it rules out 3 in R1C1 through box 1 and R1C2 through column 2/)
 })
 
 test('ALS-XY-Wing names the middle set and the digit passed to the last set', () => {

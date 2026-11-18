@@ -124,7 +124,8 @@ function explainRemoval({ cell, digit }: Candidate, placements: Candidate[], nam
   const locations = [...new Set(placements.map(({ cell }) => cell))]
   const required = locations.length === 1 ? `${nameCell(locations[0])} must be ${digit}.`
     : `At least one of ${list.format(locations.map(nameCell))} must be ${digit}.`
-  return `${required} Putting ${digit} in ${nameCell(cell)} would block ${locations.length === 1 ? 'that spot' : 'all of those spots'}.`
+  const conflicts = locations.map(location => `${nameCell(location)} through ${houseName(sharedHouse([cell, location])!)}`)
+  return `${required} If ${nameCell(cell)} is ${digit}, it rules out ${digit} in ${list.format(conflicts)}.`
 }
 
 function describePattern(deduction: Deduction, candidates: readonly number[], nameCell = cellName): Pattern | undefined {
@@ -232,11 +233,16 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     const { digit, links, bridge } = evidence['single-digit-chain']
     const cells = links.flatMap(({ cells: pair }) => pair)
     const outer = cells.filter((cell) => !bridge.includes(cell))
+    const bridgeHouse = houseName(sharedHouse(bridge)!)
     return {
       houses: links.map(({ house }) => house), cells, candidates: marks(cells, [digit]),
       links: [...links.map(({ cells: [a, b] }) => link(a, b, digit)), link(bridge[0], bridge[1], digit, true)],
-      description: `${capital(list.format(links.map(({ house }) => houseName(house))))} each have two places for ${digit}. The dashed link joins ${nameCell(bridge[0])} and ${nameCell(bridge[1])} in ${houseName(sharedHouse(bridge)!)}.`,
-      reason: `If ${nameCell(outer[0])} loses ${digit}, ${digit} must go in ${nameCell(bridge[0])}. This rules out ${digit} in ${nameCell(bridge[1])} and forces it into ${nameCell(outer[1])}. Either far end rules out ${digit} in ${nameCell(first.cell)}.`,
+      description: `${capital(list.format(links.map(({ house }) => houseName(house))))} each have two places for ${digit}. The dashed link joins ${nameCell(bridge[0])} and ${nameCell(bridge[1])} in ${bridgeHouse}.`,
+      reason: [
+        `If ${nameCell(outer[0])} cannot be ${digit}, ${houseName(links[0].house)} needs ${digit} in ${nameCell(bridge[0])}.`,
+        `${capital(bridgeHouse)} rules out ${digit} in ${nameCell(bridge[1])}, so ${houseName(links[1].house)} needs ${digit} in ${nameCell(outer[1])}.`,
+        nameRemoval(first, marks(outer, [digit])),
+      ].join(' '),
     }
   }
   if ('empty-rectangle' in evidence) {
@@ -246,14 +252,15 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     const [a, b] = pair.cells
     const near = onNear(a) ? a : b
     const far = near === a ? b : a
+    const nearArm = 'column' in pair.house ? `row ${row + 1}` : `column ${column + 1}`
     const otherArm = 'column' in pair.house ? `column ${column + 1}` : `row ${row + 1}`
     const blocked = cells.filter(onNear)
     const closest = blocked.reduce((best, cell) => Math.abs(cell - near) < Math.abs(best - near) ? cell : best)
     return {
       houses: [{ box }, pair.house], cells: [...cells, a, b], candidates: marks([...cells, a, b], [digit]),
       links: [link(a, b, digit), link(near, closest, digit, true, true)],
-      description: `In box ${box + 1}, ${digit} can go only on row ${row + 1} or column ${column + 1}. Placing ${digit} in ${nameCell(near)} rules it out in ${list.format(blocked.map(nameCell))} along the arrow.`,
-      reason: `If ${nameCell(far)} is ${digit}, ${nameCell(first.cell)} loses it. If ${nameCell(near)} is ${digit}, box ${box + 1} needs its ${digit} in ${otherArm}. That line also rules out ${digit} in ${nameCell(first.cell)}.`,
+      description: `In box ${box + 1}, ${digit} can go only on row ${row + 1} or column ${column + 1}. If ${nameCell(near)} is ${digit}, ${nearArm} rules out ${digit} in ${list.format(blocked.map(nameCell))}.`,
+      reason: `If ${nameCell(far)} is ${digit}, ${houseName(sharedHouse([far, first.cell])!)} rules out ${digit} in ${nameCell(first.cell)}. If ${nameCell(near)} is ${digit}, box ${box + 1} needs ${digit} in ${otherArm}, which also rules out ${digit} in ${nameCell(first.cell)}.`,
     }
   }
   if ('wing' in evidence) {
@@ -515,8 +522,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     const reason = technique === 'unique-rectangle-6'
       ? `The links force ${digit} onto one diagonal. Placing it on the diagonal with extra candidates would force all four corners to use ${pair}. ${digit} must use the other diagonal.`
       : technique === 'hidden-rectangle'
-        ? `If ${nameCell(first.cell)} were ${first.digit}, both links would force ${digit} into the adjacent corners. The opposite corner would be ${first.digit}, completing a rectangle that could be swapped.`
-        : `One of the linked corners must be ${digit}. If the other linked corner were ${first.digit}, the opposite corners would complete a rectangle that could be swapped. Both linked corners therefore lose ${first.digit}.`
+        ? `If ${nameCell(first.cell)} is ${first.digit}, both links force ${digit} into the adjacent corners. The opposite corner must then be ${first.digit}, making a second solution possible by swapping the digits.`
+        : `One of the linked corners must be ${digit}. If the other linked corner is ${first.digit}, the two digits could swap and give a second solution. Remove ${first.digit} from both linked corners.`
     return { houses, cells: corners, candidates: marks(corners, digits), links, description, reason }
   }
   if ('als-xz' in evidence || 'als-chain' in evidence) {
@@ -622,7 +629,11 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     candidates: [...marks(wings, [linkedDigit, digit]), ...marks(pair.cells, [linkedDigit])],
     links: [link(a, left, linkedDigit, true), link(left, right, linkedDigit), link(right, b, linkedDigit, true)],
     description: `${nameCell(a)} and ${nameCell(b)} each have ${linkedDigit} and ${digit}. In ${houseName(pair.house)}, ${linkedDigit} must go in ${nameCell(left)} or ${nameCell(right)}.`,
-    reason: `If ${nameCell(left)} is ${linkedDigit}, ${nameCell(a)} must be ${digit}. If ${nameCell(right)} is ${linkedDigit}, ${nameCell(b)} must be ${digit}. ${nameCell(first.cell)} sees both wings.`,
+    reason: [
+      ...([[left, a], [right, b]] as const).map(([source, wing]) =>
+        `If ${nameCell(source)} is ${linkedDigit}, ${houseName(sharedHouse([source, wing])!)} rules out ${linkedDigit} in ${nameCell(wing)}, leaving ${digit}.`),
+      nameRemoval(first, marks(wings, [digit])),
+    ].join(' '),
   }
 }
 

@@ -83,7 +83,7 @@ test('variant source context survives serialization and formats parity and Anti-
   const king = lessonExample(corpus['anti-king']).practice
   const kingLong = lessonDiagram(king, king.pattern, options)
   assert.match(kingLong.description, /row [1-9], column [1-9] and row [1-9], column [1-9] touch at a corner/)
-  assert.match(kingLong.reason, /cannot go in row [1-9], column [1-9]; row [1-9], column [1-9] is restricted/)
+  assert.match(kingLong.reason, /The only candidate in row [1-9], column [1-9] is \d\. Remove \d from row [1-9], column [1-9] because the two cells touch at a corner\./)
   assert.doesNotMatch(wording(kingLong), compact)
 })
 
