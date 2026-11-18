@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -111,6 +111,28 @@ if (options.includes('--renban')) {
     fixtures.push({ name: `renban-coach-${source.url.split('/').pop()}`, position: { puzzle: source.puzzle } })
   }
   fixtures.push({ name: 'adjacent-sum-99Eu', position: { puzzle: (await detectPuzzle((await read('../tests/fixtures/adjacent-sum-coach.json')).source.code)).variant.puzzle } })
+}
+// This flag extends the regression corpus. It does not expect a catalog or
+// scoring change, unlike --entropic, which compares the original integration.
+if (options.includes('--entropic-corpus')) {
+  fixtures.push({ name: 'entropic-clover', position: { puzzle: (await read('../tests/fixtures/entropic-clover.json')).puzzle } })
+  for (const source of (await read('../tests/fixtures/entropic-coach.json')).examples.filter(source => source.puzzle)) {
+    const name = `entropic-coach-${source.url.split('/').pop()}`
+    const position = { puzzle: source.puzzle }
+    fixtures.push({ name, position })
+    if (source.url.endsWith('/Hyk5')) {
+      const trace = await before({ type: 'variant', operation: 'trace', position, techniqueOrder })
+      assert.equal(trace.rating.status, 'stalled')
+      assert.equal(trace.rating.points, 1680)
+      assert.equal(trace.steps.length, 12)
+      for (let stepIndex = 1; stepIndex < trace.steps.length; stepIndex++) {
+        const replay = await before({ type: 'variant', operation: 'replay-step', position, techniqueOrder, stepIndex })
+        assert.ok(replay)
+        fixtures.push({ name: `${name}-step-${stepIndex}`, position: replay.before })
+      }
+      fixtures.push({ name: `${name}-stall`, position: trace.end })
+    }
+  }
 }
 let comparisons = 0, positive = 0, improvedBudgets = 0, alternativeCompletions = 0
 const exhausted = result => result === 'search-limit' || result?.engineError === 'search-limit'
