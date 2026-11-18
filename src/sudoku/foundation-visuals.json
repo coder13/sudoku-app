@@ -227,19 +227,15 @@
     }
   },
   "weak-link": {
-    "title": "A dashed link rules out a pair of placements",
-    "note": "In row 4, A is R4C2 and B is R4C5. A third possible 5 is in R4C8.",
+    "title": "Three places for 5",
+    "note": "If you rule out 5 in R4C2, either of the other cells can still be 5.",
     "key": [
-      "pattern",
-      "accent",
-      "weak",
-      "removal",
-      "arrow"
+      "weak"
     ],
     "steps": [
       {
-        "title": "At most one end is true",
-        "description": "A and B share row 4, so they cannot both be 5. Both can be false if the 5 goes in R4C8.",
+        "title": "Three places for 5",
+        "description": "In row 4, 5 can go in R4C2, R4C4, or R4C5. The dashed line joins R4C2 and R4C4. If R4C2 is 5, it rules out 5 in R4C4 along row 4.",
         "marks": [
           {
             "cell": 28,
@@ -247,14 +243,9 @@
             "kind": "pattern"
           },
           {
-            "cell": 31,
+            "cell": 30,
             "digit": 5,
             "kind": "pattern"
-          },
-          {
-            "cell": 34,
-            "digit": 5,
-            "kind": "accent"
           }
         ],
         "links": [
@@ -264,110 +255,11 @@
               "digit": 5
             },
             "to": {
-              "cell": 31,
+              "cell": 30,
               "digit": 5
             },
-            "kind": "weak",
-            "arrow": false
+            "kind": "weak"
           }
-        ],
-        "notation": [
-          "A",
-          "-",
-          "B"
-        ]
-      },
-      {
-        "title": "Suppose A is 5",
-        "description": "A 5 in R4C2 rules out 5 in R4C5 and R4C8. The arrow points from the assumption toward its consequence.",
-        "marks": [
-          {
-            "cell": 28,
-            "digit": 5,
-            "kind": "pattern"
-          },
-          {
-            "cell": 31,
-            "digit": 5,
-            "kind": "removal"
-          },
-          {
-            "cell": 34,
-            "digit": 5,
-            "kind": "removal"
-          }
-        ],
-        "links": [
-          {
-            "from": {
-              "cell": 28,
-              "digit": 5
-            },
-            "to": {
-              "cell": 31,
-              "digit": 5
-            },
-            "kind": "weak",
-            "arrow": true
-          }
-        ],
-        "states": [
-          "A: true (assumed)",
-          "B: false"
-        ],
-        "notation": [
-          "A",
-          "-",
-          "B"
-        ],
-        "active": [
-          0,
-          1,
-          2
-        ]
-      },
-      {
-        "title": "Suppose A loses 5",
-        "description": "Row 4 still has two places for 5, R4C5 and R4C8. Removing A leaves B undecided.",
-        "marks": [
-          {
-            "cell": 31,
-            "digit": 5,
-            "kind": "pattern"
-          },
-          {
-            "cell": 34,
-            "digit": 5,
-            "kind": "accent"
-          },
-          {
-            "cell": 28,
-            "digit": 5,
-            "kind": "removal"
-          }
-        ],
-        "links": [
-          {
-            "from": {
-              "cell": 28,
-              "digit": 5
-            },
-            "to": {
-              "cell": 31,
-              "digit": 5
-            },
-            "kind": "weak",
-            "arrow": false
-          }
-        ],
-        "states": [
-          "A: false (assumed)",
-          "B: unknown"
-        ],
-        "notation": [
-          "A",
-          "-",
-          "B"
         ]
       }
     ],
@@ -375,34 +267,30 @@
       "row": 3,
       "column": 1,
       "rows": 1,
-      "columns": 7
+      "columns": 4
     },
     "candidates": {
       "28": [
         5
       ],
-      "31": [
+      "30": [
         5
       ],
-      "34": [
+      "31": [
         5
       ]
     }
   },
   "strong-link": {
-    "title": "A solid link needs at least one true end",
-    "note": "This time row 4 has exactly two possible places for 5, R4C2 and R4C8.",
+    "title": "Two places for 5",
+    "note": "Check the rest of the row before using this link. A third place for 5 would leave you with two choices.",
     "key": [
-      "pattern",
-      "strong",
-      "weak",
-      "arrow",
-      "removal"
+      "strong"
     ],
     "steps": [
       {
-        "title": "Find both places",
-        "description": "Row 4 must contain 5, so at least one end of the solid link is true. The row also prevents both from being true.",
+        "title": "Two places for 5",
+        "description": "Now the only places for 5 in row 4 are R4C2 and R4C4. The solid line joins them. If you rule out 5 in R4C2, place 5 in R4C4.",
         "marks": [
           {
             "cell": 28,
@@ -410,7 +298,7 @@
             "kind": "pattern"
           },
           {
-            "cell": 34,
+            "cell": 30,
             "digit": 5,
             "kind": "pattern"
           }
@@ -422,105 +310,11 @@
               "digit": 5
             },
             "to": {
-              "cell": 34,
+              "cell": 30,
               "digit": 5
             },
-            "kind": "strong",
-            "arrow": false
+            "kind": "strong"
           }
-        ],
-        "notation": [
-          "A",
-          "=",
-          "B"
-        ]
-      },
-      {
-        "title": "Suppose A loses 5",
-        "description": "If R4C2 cannot be 5, row 4 forces 5 into R4C8.",
-        "marks": [
-          {
-            "cell": 34,
-            "digit": 5,
-            "kind": "pattern"
-          },
-          {
-            "cell": 28,
-            "digit": 5,
-            "kind": "removal"
-          }
-        ],
-        "links": [
-          {
-            "from": {
-              "cell": 28,
-              "digit": 5
-            },
-            "to": {
-              "cell": 34,
-              "digit": 5
-            },
-            "kind": "strong",
-            "arrow": true
-          }
-        ],
-        "states": [
-          "A: false (assumed)",
-          "B: true"
-        ],
-        "notation": [
-          "A",
-          "=",
-          "B"
-        ],
-        "active": [
-          0,
-          1,
-          2
-        ]
-      },
-      {
-        "title": "Use the same pair in the other direction",
-        "description": "If R4C2 is 5, row 4 rules out 5 in R4C8. The dashed link shows this conflict.",
-        "marks": [
-          {
-            "cell": 28,
-            "digit": 5,
-            "kind": "pattern"
-          },
-          {
-            "cell": 34,
-            "digit": 5,
-            "kind": "removal"
-          }
-        ],
-        "links": [
-          {
-            "from": {
-              "cell": 28,
-              "digit": 5
-            },
-            "to": {
-              "cell": 34,
-              "digit": 5
-            },
-            "kind": "weak",
-            "arrow": true
-          }
-        ],
-        "states": [
-          "A: true (assumed)",
-          "B: false"
-        ],
-        "notation": [
-          "A",
-          "-",
-          "B"
-        ],
-        "active": [
-          0,
-          1,
-          2
         ]
       }
     ],
@@ -528,13 +322,13 @@
       "row": 3,
       "column": 1,
       "rows": 1,
-      "columns": 7
+      "columns": 4
     },
     "candidates": {
       "28": [
         5
       ],
-      "34": [
+      "30": [
         5
       ]
     }

@@ -1088,7 +1088,7 @@
           "title": "Strong and weak links",
           "kind": "foundation",
           "difficulty": "tricky",
-          "summary": "A link says what one candidate tells you about another. A strong link needs at least one end to be true. A weak link allows at most one true end. A pair can have both properties.",
+          "summary": "A link connects two candidates. With a weak link, placing one rules out the other. With a strong link, ruling out one forces the other.",
           "prerequisites": [
             "cells-that-see",
             "candidate-logic",
@@ -1099,30 +1099,23 @@
             {
               "type": "heading",
               "id": "where-to-start",
-              "title": "Compare two places with three"
+              "title": "Find two candidates"
             },
             {
               "type": "text",
               "paragraphs": [
-                "Highlight 5. Find a row with just two possible 5s, then a row with three. Compare what happens in each row if you remove one possible 5."
-              ]
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Each end of a link stands for a claim, such as “R4C2 is 5.” A solid line shows a strong link. A dashed line shows a weak link. An arrow shows which end you use first."
+                "Pick a digit and look for all its possible places in one row. Start by comparing two of those candidates."
               ]
             },
             {
               "type": "heading",
               "id": "weak-links",
-              "title": "A weak link comes from a conflict"
+              "title": "Weak links"
             },
             {
               "type": "text",
               "paragraphs": [
-                "A weak link means at most one end is true. If R4C2 is 5, R4C5 cannot be 5 because both cells share row 4.",
-                "Two digits in one cell also conflict. If that cell is 2, it cannot also be 7. Both choices can be false if the cell has a third candidate."
+                "Two candidates have a weak link if they cannot both be true. Two 5s in the same row have a weak link because the row can contain only one 5."
               ]
             },
             {
@@ -1132,13 +1125,12 @@
             {
               "type": "heading",
               "id": "strong-links",
-              "title": "A strong link comes from a required choice"
+              "title": "Strong links"
             },
             {
               "type": "text",
               "paragraphs": [
-                "A strong link means at least one end is true. Suppose row 4 has just two places for 5, R4C2 and R4C8. If you rule out 5 in R4C2, row 4 forces 5 into R4C8.",
-                "Look through the entire row. A third possible 5 breaks this argument."
+                "Two candidates have a strong link if at least one of them must be true. Look for a row that still needs a digit and has exactly two places for it."
               ]
             },
             {
@@ -1148,112 +1140,68 @@
             {
               "type": "heading",
               "id": "dual-links",
-              "title": "One pair can have both links"
+              "title": "Dual links"
             },
             {
               "type": "text",
               "paragraphs": [
-                "A pair that has both properties is a dual link. Exactly one end is true. The only two places for 5 in a row form a dual link, as do the only two candidates in a cell."
-              ]
-            },
-            {
-              "type": "foundation-visual",
-              "visual": "cell-link"
-            },
-            {
-              "type": "table",
-              "caption": "Which pairs of states can each link allow?",
-              "columns": [
-                "A",
-                "B",
-                "Weak",
-                "Strong",
-                "Dual"
-              ],
-              "rows": [
-                [
-                  "True",
-                  "True",
-                  "No",
-                  "Yes",
-                  "No"
-                ],
-                [
-                  "True",
-                  "False",
-                  "Yes",
-                  "Yes",
-                  "Yes"
-                ],
-                [
-                  "False",
-                  "True",
-                  "Yes",
-                  "Yes",
-                  "Yes"
-                ],
-                [
-                  "False",
-                  "False",
-                  "Yes",
-                  "No",
-                  "No"
-                ]
+                "The pair in the second grid has both links. Row 4 needs a 5 in one of those cells, and it can contain only one 5. Exactly one candidate is true. This is called a dual link.",
+                "A two-candidate cell works the same way. If R6C4 has only 2 and 7, ruling out 2 forces 7. Placing 2 rules out 7 in the same cell."
               ]
             },
             {
               "type": "heading",
               "id": "common-mistake",
-              "title": "What each link guarantees"
+              "title": "Can both be true?"
             },
             {
               "type": "text",
               "paragraphs": [
-                "A strong link alone allows both ends to be true. To use the same pair as a weak link, you also need a reason the ends cannot both be true."
+                "For a strong link, “at least one” can mean both. To rule out one candidate after placing the other, you also need a weak link."
               ]
             },
             {
               "type": "heading",
               "id": "use-links",
-              "title": "Where to use links"
+              "title": "Links in a Skyscraper"
             },
             {
               "type": "text",
               "paragraphs": [
-                "In a Skyscraper, two rows each have only two places for a digit. Two of those places share a column. The row pairs supply strong links, and the column supplies a weak link."
+                "Look for two rows that each have exactly two places for the same digit. Each row gives you a strong link. If one end from each row shares a column, those two candidates also have a weak link."
               ]
             },
             {
               "type": "concept-check",
-              "title": "Check your understanding",
+              "title": "Try it",
               "questions": [
                 {
-                  "prompt": "A row has three possible 7s. After you remove one, must a particular cell be 7?",
+                  "prompt": "Row 8 has three places for 7. You rule out one of them. Do you know where to place 7?",
                   "options": [
                     "Yes",
                     "No"
                   ],
                   "answer": 1,
-                  "explanation": "Either of the two remaining cells can supply the 7."
+                  "explanation": "Either of the two remaining cells can be 7."
                 },
                 {
-                  "prompt": "A cell allows only 3 and 9. Which links do those two choices have?",
+                  "prompt": "R6C4 has only 3 and 9. Which links do those two candidates have?",
                   "options": [
                     "Weak only",
                     "Strong only",
                     "Both strong and weak"
                   ],
                   "answer": 2,
-                  "explanation": "The cell needs one digit and has room for only one. Exactly one of the candidates is true."
+                  "explanation": "R6C4 needs one digit and can hold only one. If you rule out 3, place 9. If you place 3, remove 9 from R6C4."
                 },
                 {
-                  "prompt": "Two candidates have a strong link. Without a separate conflict, can both be true?",
+                  "prompt": "A strong link tells you that at least one of two candidates is true. Can both be true?",
                   "options": [
                     "Yes",
                     "No"
                   ],
                   "answer": 0,
-                  "explanation": "A strong link requires at least one true end. Both can be true."
+                  "explanation": "Yes. A weak link is what prevents both candidates from being true."
                 }
               ]
             }
