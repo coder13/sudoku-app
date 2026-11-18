@@ -46,6 +46,7 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       case 'anti-king': return ['Cells touching at a corner must differ.']
       case 'non-consecutive': return [nonConsecutiveDescription(puzzle, rule)]
       case 'inequality': return [`${cellName(rule.less)} < ${cellName(rule.greater)}`]
+      case 'adjacent-total': return [`Total ${rule.sum} · ${cells(rule.cells)}`]
       case 'clone': return rule.groups.map((group) => `Same digit · ${cells(group)}`)
       case 'kropki': return [
         ...(rule.consecutive?.negative ? ['All white dots are given.'] : []),

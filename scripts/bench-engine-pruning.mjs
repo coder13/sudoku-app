@@ -6,7 +6,9 @@ import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
-const [beforePath, afterPath, ...selected] = process.argv.slice(2)
+const [beforePath, afterPath, ...args] = process.argv.slice(2)
+const addedTechniques = args.filter(arg => arg.startsWith('--added-technique=')).map(arg => arg.slice('--added-technique='.length))
+const selected = args.filter(arg => !arg.startsWith('--added-technique='))
 assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm [fixture names]')
 const binaries = await Promise.all([beforePath, afterPath].map(path => readFile(path)))
 async function engine(bytes) {
@@ -48,9 +50,14 @@ console.log(`Before ${binaries[0].length} raw / ${gzipSync(binaries[0]).length} 
 console.log(`SHA-256 before ${createHash('sha256').update(binaries[0]).digest('hex')}; after ${createHash('sha256').update(binaries[1]).digest('hex')}.`)
 console.log('Each engine uses its own declared default/app order. Fresh instances per fixture; alternate execution order.')
 console.log('Fixed requests: 5 warmups, 20 measured samples. Exhaustive first page: 2 warmups, 10 measured samples.')
+if (addedTechniques.length) console.log(`New default-profile IDs: ${addedTechniques.join(', ')}. Compare all proof/rating fields exactly; remove only these declared IDs from the new rating's techniqueOrder for the cross-version metadata check.`)
 for (const { name, puzzle } of fixtures) {
   if (selected.length && !selected.includes(name)) continue
   const pair = await Promise.all(binaries.map(engine))
+  for (const key of ['nativeOrder', 'appOrder']) {
+    assert.deepEqual(pair[1][key].filter(id => !addedTechniques.includes(id)), pair[0][key])
+    for (const id of addedTechniques) assert.ok(!pair[0][key].includes(id) && pair[1][key].includes(id))
+  }
   let proofPosition = { puzzle }
   if (name === 'palindrome-whispers') {
     const trace = await pair[0].request({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: pair[0].appOrder })
@@ -91,7 +98,10 @@ for (const { name, puzzle } of fixtures) {
     }
     console.log(`${name} ${operation} fresh-instance first request: ${cold.map(ms => ms.toFixed(3)).join(' -> ')} ms`)
     await Promise.all(pair.map((engine, index) => engine.request(options[index])))
-    assert.deepEqual(expected[1], expected[0], `${name}: ${operation}: unchanged behavior`)
+    const comparable = operation.endsWith('rate') && addedTechniques.length ? {
+      ...expected[1], techniqueOrder: expected[1].techniqueOrder.filter(id => !addedTechniques.includes(id)),
+    } : expected[1]
+    assert.deepEqual(comparable, expected[0], `${name}: ${operation}: unchanged behavior`)
     const times = [[], []]
     const warmups = operation === 'exhaustive' ? 2 : 5, samples = operation === 'exhaustive' ? 10 : 20
     for (let round = 0; round < warmups + samples; round++) for (const index of round % 2 ? [1, 0] : [0, 1]) {

@@ -63,6 +63,19 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
       }
       return { description, reason: 'Each crossed-out digit has no partner in the other cell that fits the dot rules.' }
     }
+    case 'adjacent-total': {
+      const description = `The clue between ${pair} gives a total of ${rule.sum}.`
+      const fixed = domains.findIndex(mask => onlyCandidate(mask) !== null)
+      if (fixed >= 0) {
+        const digit = onlyCandidate(domains[fixed])!
+        return { description, reason: `${at(cells[fixed])} must be ${digit}. Subtract ${digit} from ${rule.sum}: its partner must be ${rule.sum - digit}.` }
+      }
+      if (rule.sum % 2 === 0 && focus.some(candidate => candidate.digit === rule.sum / 2)) {
+        const house = Math.floor(a / 9) === Math.floor(b / 9) ? `row ${Math.floor(a / 9) + 1}` : `column ${a % 9 + 1}`
+        return { description, reason: `Two ${rule.sum / 2}s would give this total, but these cells share ${house}. Neither cell can be ${rule.sum / 2}.${focus.some(candidate => candidate.digit !== rule.sum / 2) ? ' Other crossed-out candidates have no allowed partner.' : ''}` }
+      }
+      return { description, reason: 'Subtract each candidate from the total. Remove it if the required partner is outside 1–9 or cannot go in the other cell.' }
+    }
     case 'xv': {
       const marks = rules.filter(r => r?.type === 'xv')
       const v = marks.some(r => hasMarkedPair(r.five?.pairs, a, b))

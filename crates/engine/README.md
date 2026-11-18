@@ -405,6 +405,29 @@ The exact solver enforces every occurrence even when the logical profile omits `
 
 Generation accepts `{"type":"quadruple","topLeft":21,"clueSize":3}` in `derivedClues`. It samples distinct surrounding cells from a completion and retains repeated digits. Rule-dependency and opening targets use the `quadruple` identifier. Imported app puzzles can use the rule before calibrated New puzzle presets exist.
 
+An `adjacent-total` rule stores two cells sharing an edge and their sum from 3 through 17.
+The cells also share a row or column, so equal digits cannot support each other.
+The rule applies during exact search even when its logical technique is disabled.
+
+```json
+{"type":"adjacent-total","cells":[80,79],"sum":15}
+```
+
+Coach renders this total as the Roman numeral XV, meaning fifteen.
+It is one sum constraint.
+The `adjacent-total` technique costs 20 points at the Easy tier, calibrated against three independently checked practice positions.
+Existing costs and thresholds remain at variant scoring version 8.
+
+Generic totals of 5 and 10 also count as V and X marks when a negative XV rule declares all marks given.
+Their deductions retain the generic rule's original index.
+Fog must reveal these marks before enabling negative XV rules.
+Generation dependency checks retain their marked locations when removing the mathematical total constraints.
+
+For derived generation, use `{"type":"adjacent-total","cells":[80,79]}` in `derivedClues`.
+The generator calculates the sum from its sampled completion.
+Given-count, clue-count, rule-dependency, score and technique targets use the existing generation API.
+App generation presets remain conditional on difficulty calibration.
+
 With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via Serde. A `variant` worker request takes the position, operation, and optional `maxNodes` for exact search. `normalize` validates the definition and returns a complete position record. `candidates` returns 81 candidate masks. `analyze` distinguishes conflicts, impossible puzzles, uniqueness, multiple solutions, and search limits. `solve` returns one completion or an error. Unsupported rule IDs and format versions have distinct error codes.
 
 ```json

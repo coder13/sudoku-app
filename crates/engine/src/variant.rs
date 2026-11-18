@@ -270,6 +270,14 @@ rules! {
         #[cfg_attr(feature = "wasm-api", serde(default))]
         ten: MarkedPairs,
     }
+    /// Require the digits in two edge-sharing cells to add to the given total.
+    /// Totals of five and ten also count as positive V and X marks.
+    AdjacentTotal => "adjacent-total" {
+        /// Two distinct orthogonally adjacent cell indices, in source order.
+        cells: [usize; 2],
+        /// Total from three through seventeen.
+        sum: u8,
+    }
     /// Require digits to increase strictly from the bulb to the tip.
     Thermometer => "thermometer" {
         /// Cell indices in order, starting at the bulb.
@@ -481,6 +489,16 @@ impl VariantPuzzle {
         &self,
         enforce_regions: bool,
     ) -> Result<CompiledVariant, VariantDefinitionError> {
+        self.compile_with_xv_exemptions(enforce_regions, &[])
+    }
+
+    // A dependency check removes mathematical constraints, not the visible
+    // locations of V/X marks that exempt edges from a negative rule.
+    fn compile_with_xv_exemptions(
+        &self,
+        enforce_regions: bool,
+        exemptions: &[[usize; 2]],
+    ) -> Result<CompiledVariant, VariantDefinitionError> {
         if self.version != VARIANT_FORMAT_VERSION {
             return Err(VariantDefinitionError::UnsupportedVersion(self.version));
         }
@@ -530,6 +548,7 @@ impl VariantPuzzle {
         }
         let mut occupied_cages = 0;
         let mut pairs = PairCompiler::default();
+        pairs.exempt_xv_edges(exemptions);
         for (index, rule) in self.rules.iter().enumerate() {
             match rule {
                 PuzzleRule::Diagonal { diagonal } => {

@@ -104,6 +104,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
             marks && { ...marks, pairs: marks.pairs?.map(([a, b]) => [cell(a), cell(b)] as const) }
           return { ...rule, consecutive: reflectMarks(rule.consecutive), ratioTwo: reflectMarks(rule.ratioTwo) }
         }
+        case 'adjacent-total': return { ...rule, cells: [cell(rule.cells[0]), cell(rule.cells[1])] as const }
         case 'xv': {
           const reflectMarks = (marks: typeof rule.five) =>
             marks && { ...marks, pairs: marks.pairs?.map(([a, b]) => [cell(a), cell(b)] as const) }

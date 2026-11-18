@@ -357,5 +357,34 @@ fn without_family(puzzle: &VariantPuzzle, id: &str) -> Option<CompiledVariant> {
     }
     let mut reduced = puzzle.clone();
     reduced.rules.retain(|rule| rule.id() != id);
-    reduced.compile().ok()
+    let exemptions: Vec<_> = puzzle.rules.iter().filter_map(|rule| match rule {
+        PuzzleRule::AdjacentTotal { cells, sum: 5 | 10 } if id == "adjacent-total" => Some(*cells),
+        _ => None,
+    }).collect();
+    reduced.compile_with_xv_exemptions(true, &exemptions).ok()
+}
+
+#[cfg(test)]
+mod adjacent_total_tests {
+    use super::*;
+
+    #[test]
+    fn removing_total_constraints_does_not_activate_negative_xv_on_their_marks() {
+        let solution = crate::parse_givens("534678912672195348198342567859761423426853791713924856961537284287419635345286179").unwrap();
+        let mut puzzle = VariantPuzzle::classic([0; CELLS]);
+        for a in 0..CELLS {
+            for b in [if a % 9 < 8 { a + 1 } else { CELLS }, if a < 72 { a + 9 } else { CELLS }] {
+                if b < CELLS && matches!(solution[a] + solution[b], 5 | 10) {
+                    puzzle.rules.push(PuzzleRule::AdjacentTotal { cells: [a, b], sum: solution[a] + solution[b] });
+                }
+            }
+        }
+        puzzle.rules.push(PuzzleRule::Xv {
+            five: MarkedPairs { pairs: vec![], negative: true },
+            ten: MarkedPairs { pairs: vec![], negative: true },
+        });
+        assert_eq!(puzzle.compile().unwrap().analyze(&solution, &[0; CELLS], 1), Ok(Analysis::Unique));
+        let reduced = without_family(&puzzle, "adjacent-total").unwrap();
+        assert_eq!(reduced.analyze(&solution, &[0; CELLS], 1), Ok(Analysis::Unique));
+    }
 }

@@ -216,6 +216,11 @@ fn numeric_rules_distinguish_the_exact_outcomes() {
             [1, 2],
         ),
         (
+            PuzzleRule::AdjacentTotal { cells: [3, 4], sum: 13 },
+            [1, 2],
+            [6, 8],
+        ),
+        (
             PuzzleRule::Thermometer {
                 cells: vec![1, 2, 3],
             },

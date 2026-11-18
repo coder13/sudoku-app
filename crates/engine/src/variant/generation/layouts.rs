@@ -95,6 +95,11 @@ pub enum VariantClueLayout {
         /// Pair of cells to compare.
         cells: [usize; 2],
     },
+    /// Compute the total between two edge-sharing cells.
+    AdjacentTotal {
+        /// Orthogonally adjacent cell indices.
+        cells: [usize; 2],
+    },
     /// Mark adjacent digit pairs meeting the chosen relationships.
     Markers {
         /// Which two relationships to mark.
@@ -123,6 +128,7 @@ impl VariantClueLayout {
             Self::Quadruple { .. } => "quadruple",
             Self::Parity { .. } => "parity",
             Self::Inequality { .. } => "inequality",
+            Self::AdjacentTotal { .. } => "adjacent-total",
             Self::Markers {
                 family: MarkerFamily::Kropki,
                 ..
@@ -202,6 +208,13 @@ pub(super) fn validate(
             }
             Inequality { cells } => {
                 if cell_mask(cells).is_none() {
+                    return Err(invalid);
+                }
+            }
+            AdjacentTotal { cells: [a, b] } => {
+                if *a >= CELLS || *b >= CELLS
+                    || a.abs_diff(*b) != 9 && !(a / 9 == b / 9 && a.abs_diff(*b) == 1)
+                {
                     return Err(invalid);
                 }
             }
@@ -368,6 +381,10 @@ pub(super) fn build(
                 };
                 PuzzleRule::Inequality { less, greater }
             }
+            VariantClueLayout::AdjacentTotal { cells } => PuzzleRule::AdjacentTotal {
+                sum: solution[cells[0]] + solution[cells[1]],
+                cells,
+            },
             VariantClueLayout::Markers {
                 family,
                 negative,

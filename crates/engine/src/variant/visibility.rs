@@ -19,7 +19,8 @@ pub struct VariantVisibility {
     /// The reveal policy confirms that all Kropki markers are visible.
     #[cfg_attr(feature = "wasm-api", serde(default))]
     pub complete_kropki: bool,
-    /// The reveal policy confirms that all XV markers are visible.
+    /// The reveal policy confirms that all XV markers are visible,
+    /// including generic adjacent totals of five and ten.
     #[cfg_attr(feature = "wasm-api", serde(default))]
     pub complete_xv: bool,
     /// Candidate removals established from clues the player has seen.
@@ -111,6 +112,8 @@ impl VariantPosition {
                     five.negative &= visibility.complete_xv;
                     ten.negative &= visibility.complete_xv;
                 }
+                PuzzleRule::AdjacentTotal { sum: 5 | 10, .. }
+                    if visibility.complete_xv && !visible => return Err(HiddenMarkers),
                 _ => {}
             }
             if visible {
