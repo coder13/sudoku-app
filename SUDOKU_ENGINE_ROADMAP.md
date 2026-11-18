@@ -6,7 +6,7 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `6c30514`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, Odd/Even, Anti-King, Non-Consecutive, consistent cell references, the revised lesson layout, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `28f3f6d`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, Odd/Even, Anti-King, Non-Consecutive, consistent cell references, the revised lesson layout, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ This inventory uses main at `6c30514`, including capability packaging, mixed-rul
 | Non-Consecutive imports, edge exceptions and proofs | In main through [PR 112](https://github.com/coder13/sudoku-app/pull/112) | Preserve mixed white-dot exceptions and versioned technique profiles; review live viewports and calibrate app presets |
 | Pattern Overlay support witnesses | In main through [PR 114](https://github.com/coder13/sudoku-app/pull/114) | Preserve bounded probes, geometry, complete proofs and the exact fallback; review latency, memory and package cost together |
 | Non-Consecutive locks and candidate alternatives | In main through [PR 115](https://github.com/coder13/sudoku-app/pull/115) | Preserve versioned profiles, complete alternatives and independent case checks; expand training against published positions |
-| Complete geometric candidate support | In progress on `codex/sudoku-candidate-support-pruning` for [issue 117](https://github.com/coder13/sudoku-app/issues/117) | Preserve every proof and score while pruning certified empty Classic searches; measure hints, rating, memory and build size |
+| Complete geometric candidate support | In main through [PR 118](https://github.com/coder13/sudoku-app/pull/118) | Preserve bounded support, singleton and uniqueness safety; profile remaining expensive searches and measure browser startup, worker transfer and concurrency in [issue 88](https://github.com/coder13/sudoku-app/issues/88) |
 | Additional rule families and shading | Research on `codex/sudoku-engine-integration` | Port one app-ready family from current main through [issue 35](https://github.com/coder13/sudoku-app/issues/35) |
 | Proof explorer and expert lesson work | Open in [PR 14](https://github.com/coder13/sudoku-app/pull/14) | Reconcile its diff with current main and the research branch before integration |
 | Uncommitted proof, technique, and lesson edits | Preserved in the original R&D worktree | Compare each change with current main and the research branch before porting it |
