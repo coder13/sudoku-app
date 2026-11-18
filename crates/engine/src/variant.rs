@@ -317,6 +317,12 @@ rules! {
         #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
         segments: Option<Vec<Vec<usize>>>,
     }
+    /// Require each three successive positions to use low, medium and high digits.
+    Entropic => "entropic" {
+        /// Ordered walk, retaining closures and revisits. Two positions use different groups.
+        /// One position is unrestricted. Every reference must be in the grid.
+        cells: Vec<usize>,
+    }
     /// Require each interior digit to fall strictly between the endpoint digits.
     Between => "between" {
         /// Cell indices in line order, including both endpoints.
@@ -588,6 +594,7 @@ impl VariantPuzzle {
                 }
                 PuzzleRule::Arrow { .. }
                 | PuzzleRule::Renban { .. }
+                | PuzzleRule::Entropic { .. }
                 | PuzzleRule::Between { .. }
                 | PuzzleRule::RegionSum { .. }
                 | PuzzleRule::Sandwich { .. }

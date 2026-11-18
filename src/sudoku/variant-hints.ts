@@ -124,6 +124,14 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'arrow':
       return { description: `The ${rule.cells.length === 1 ? 'digit on the arrow equals' : 'digits on the arrow add to'} the digit in ${at(rule.circle)}.`,
         reason: 'With the current candidates, no matching sum uses a crossed-out digit in its marked cell.' }
+    case 'entropic': {
+      const group = (mask: number) => [7, 56, 448].map((bits, i) => mask & bits ? i : -1).filter(i => i >= 0)
+      const names = ['low (1–3)', 'medium (4–6)', 'high (7–9)']
+      const known = cells.flatMap((cell, i) => group(domains[i]).length === 1 ? [`${at(cell)} is ${names[group(domains[i])[0]]}`] : [])
+      return { description: rule.cells.length === 2 ? 'These two positions must use different low, medium or high groups.'
+        : 'Every three successive positions on this Entropic line need one low, one medium and one high digit.',
+        reason: `${known.length ? 'Along this line, ' + known.slice(0, 3).join(' and ') + '. ' : ''}The groups repeat every three positions. A crossed-out candidate fits no group order allowed by every highlighted cell. Cells three positions apart share a group, not necessarily a digit.` }
+    }
     case 'renban':
       return { description: `This line needs ${cells.length} different consecutive digits, in any order.`,
         reason: 'No consecutive set can fill every line cell with a crossed-out digit in its marked position.' }

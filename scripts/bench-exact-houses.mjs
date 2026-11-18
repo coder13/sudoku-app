@@ -6,9 +6,10 @@ import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 import { countLineSolutions } from '../tests/helpers/line-oracle.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
+const legacyOrder = options.includes('--legacy-order')
 const mode = options.find(option => option === '--generation-only')
 const recipesPath = options.find(option => option.startsWith('--recipes='))?.slice('--recipes='.length)
-assert.ok(beforePath && afterPath && options.every(option => option === '--generation-only' || option.startsWith('--recipes=')), 'Usage: node --experimental-strip-types scripts/bench-exact-houses.mjs before.wasm after.wasm [--generation-only] [--recipes=fixtures.json]')
+assert.ok(beforePath && afterPath && options.every(option => option === '--generation-only' || option === '--legacy-order' || option.startsWith('--recipes=')), 'Usage: node --experimental-strip-types scripts/bench-exact-houses.mjs before.wasm after.wasm [--generation-only] [--recipes=fixtures.json] [--legacy-order]')
 const bytes = await Promise.all([beforePath, afterPath].map(path => readFile(path)))
 async function engine(binary) {
   const { instance } = await WebAssembly.instantiate(binary)
@@ -47,13 +48,14 @@ for (const operation of mode === '--generation-only' ? [] : ['analyze', 'solve']
 const recipes = JSON.parse(await readFile(recipesPath ?? new URL('../crates/engine/benches/fixtures/variants.json', import.meta.url), 'utf8'))
 for (const { name, template, derivedClues, givens, variantClues, requiredRule } of recipes) {
   const pair = await Promise.all(bytes.map(engine))
+  const techniqueOrder = legacyOrder ? (await pair[0].request({ type: 'techniques', variant: true })).value.defaultOrder : undefined
   const times = [[], []], matches = [0, 0], distinct = [new Set(), new Set()], failedSeeds = [[], []]
   let identical = 0
   for (let seed = 1; seed <= 20; seed++) {
     const responses = []
     for (const index of seed % 2 ? [0, 1] : [1, 0]) {
       const start = performance.now()
-      responses[index] = await pair[index].request({ type: 'generate-variant', seed, maxAttempts: 6, maxNodes: 20_000, template, derivedClues, givens, variantClues, requiredRule })
+      responses[index] = await pair[index].request({ type: 'generate-variant', seed, maxAttempts: 6, maxNodes: 20_000, template, derivedClues, givens, variantClues, requiredRule, techniqueOrder })
       times[index].push(performance.now() - start)
       const result = responses[index]
       if (!('value' in result)) {
@@ -87,6 +89,6 @@ for (const { name, template, derivedClues, givens, variantClues, requiredRule } 
     const outcome = response => 'value' in response ? response.value : { code: response.code, error: response.error }
     if (JSON.stringify(outcome(responses[0])) === JSON.stringify(outcome(responses[1]))) identical++
   }
-  console.log(JSON.stringify({ generation: name, seeds: 20, matches, failedSeeds, identicalResponses: identical, distinctPuzzles: distinct.map(set => set.size),
+  console.log(JSON.stringify({ generation: name, seeds: 20, legacyOrder, matches, failedSeeds, identicalResponses: identical, distinctPuzzles: distinct.map(set => set.size),
     medianP95: times.map(summary), memoryBytes: pair.map(engine => engine.memory()) }))
 }

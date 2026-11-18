@@ -1,5 +1,5 @@
 {
-  "description": "Unmodified original Coach exports. Deferred sources preserve known format, grid-size and companion-rule gaps.",
+  "description": "Original Renban integration corpus. Deferred fields record that release boundary. Ksy3 now imports completely through the Entropic family in entropic-coach.json.",
   "examples": [
     {
       "url": "https://sudoku.coach/en/s/Jh4o",
@@ -235,7 +235,7 @@
       "published": "2026-10-14 11:33:35",
       "code": "SCv7_32_f2eaqlebiadk037sissung5so5blusurcdl0vb4pe96hbbo2nhdotivvjobf3mhh0r12260339t38knn91ec9ccboldvo5e45ohn2q6asrafaonn2fhi3l428iahugptshsfka2f06rvdl5l4kvg0se6lm61amqt51o6rels7qp7i3j5r5u8itu0s9jqhtuvho2ib4i8d7u73hsh329b1i2o6bhogsf46686hckurstlpb5rr5sc60peolcck4pgdmq58gha4n7kuvjk1m5gum1s183opk73r0s1ann4pni1ge1a2brmhqrut3p5g3qcol2s8gnckgi3372ru2259qsfjisujgth1bfq00pisojkr072iu8coi35kgugeq9dl1kf6blfo889h26bul58uie6edrcssb81pko40so36sm8tcqeaic36p10dre8eiki5ben244ujt755h49o1hsnr1tt6cec64v9s9udmikqrd59ip9qdp1jb6adcv57usvmrni6fbk9lqls13qpgmi7cjib30in94ts3m90ssqr2n22abs53li80e9fi5gbgmpmpbh40o891ms5ktsmfu2pqa6juln43799c66a0dnmatmjkfnr9j6v1lfcs7seql9fa3giuu9heom7gjerv2ic2kk5vgiv8e10vb4j9od2ogb9v6iafgaaikuuj59k1k6q2ugu8jdg0jkeajmlpk14sh97jo2khvds2chfkgpk2cibb7c7ogj4jnto19a4p4l922ra1j84t6socri1ho7ms4sherurblmhqf6km8ef25mdejc4f2t5qap4u3km9uohjb32gcn7bj1vicr6kmbtvmtof2tet6hm3radn654ioj3oq2s2ejc9du0rg16b9s8eqg20rqqhmmrb8kmo4uvf8vrt4dvv78fe1cg7cveu2sokh1ugnub17lqvg3t5pi6d0",
       "solution": "872146935165329784394758216913584672647912853258673491489235167736491528521867349",
-      "deferred": "Entropic companion rule remains unsupported. Preserve the whole source.",
+      "deferred": "Deferred at the Renban release. Complete source now imports through Entropic; see entropic-coach.json.",
       "imageUrl": "https://sudoku.coach/open_graph_images/Ksy3.png",
       "imageSha256": "19332a55061e124eb8eeba241cc407c6096413a16fb217396130ccb12f01100b"
     },

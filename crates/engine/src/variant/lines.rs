@@ -1,3 +1,5 @@
+mod entropic;
+
 use std::{collections::HashMap, ops::Range};
 
 use super::{ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, cell_mask};
@@ -19,6 +21,7 @@ enum LineKind {
     EqualSums(Vec<Range<usize>>),
     Sum(u16),
     Renban,
+    Entropic(entropic::EntropicLine),
     Between,
     Outside(OutsideClue),
 }
@@ -54,6 +57,19 @@ impl LineConstraint {
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
                 (cells.clone(), LineKind::Renban)
+            }
+            PuzzleRule::Entropic { cells } => {
+                let (cells, line) = entropic::EntropicLine::compile(cells).ok_or(invalid)?;
+                // Different phases cannot contain the same digit. Equal phases
+                // share only a digit group and remain free to repeat digits.
+                for (i, &a) in cells.iter().enumerate() {
+                    for (j, &b) in cells.iter().enumerate() {
+                        if line.different_phases(i, j) {
+                            puzzle.peers[a] |= 1 << b;
+                        }
+                    }
+                }
+                (cells, LineKind::Entropic(line))
             }
             PuzzleRule::Between { cells } => {
                 if cells.len() < 3 {
@@ -180,6 +196,7 @@ impl LineConstraint {
                 }
                 support.copy_from_slice(&matches[..len]);
             }
+            LineKind::Entropic(line) => line.support(domains, support),
             LineKind::Between => between_support(domains, support),
             LineKind::Outside(clue) => {
                 clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());

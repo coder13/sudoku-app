@@ -3,7 +3,7 @@ import type { VariantRule } from './engine.ts'
 function paths(rule: VariantRule): readonly (readonly number[])[] {
   switch (rule.type) {
     case 'palindrome': case 'renban': return rule.segments ?? [rule.cells]
-    case 'thermometer': case 'whispers': return [rule.cells]
+    case 'thermometer': case 'whispers': case 'entropic': return [rule.cells]
     case 'arrow': return [[rule.circle, ...rule.cells]]
     default: return []
   }
@@ -25,11 +25,11 @@ function* edges(lines: readonly (readonly number[])[]) {
   }
 }
 
-/** Separate independent Renban clues that use the same visible line segment. */
-export function renbanOverlapLanes(rules: readonly VariantRule[]) {
+/** Separate colored set/group clues that use the same visible line segment. */
+export function coloredLineOverlapLanes(rules: readonly VariantRule[]) {
   const owners = new Map<number, number[]>()
   rules.forEach((rule, index) => {
-    if (rule.type !== 'renban') return
+    if (rule.type !== 'renban' && rule.type !== 'entropic') return
     for (const edge of new Set(edges(paths(rule)))) {
       const list = owners.get(edge) ?? []
       list.push(index); owners.set(edge, list)

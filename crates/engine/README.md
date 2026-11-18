@@ -476,6 +476,7 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `kropki`, `xv` | Use `consecutive` and `ratioTwo` for Kropki dots, or `five` and `ten` for XV markers. |
 | `thermometer`, `whispers`, `palindrome` | Supply `cells` in line order. Start a Thermometer at the bulb. Set `minDifference` for Whispers. |
 | `arrow`, `renban`, `between` | Supply `cells` in line order. For Arrow, supply its `circle` separately. For Between, include both endpoints in `cells`. |
+| `entropic` | Keep the ordered walk, including closures and revisits. Every three positions use the low, medium and high groups. |
 | `region-sum` | Supply `cells` in line order. The active regions divide the line into segments. Set `groupByRegion` to true to combine separate visits to the same region. |
 | `sandwich`, `x-sum`, `skyscrapers`, `little-killer` | Supply `cells` from the clue toward the far edge in the declared `direction`. Use `count` for Skyscrapers and `sum` for the other clues. |
 
@@ -601,3 +602,11 @@ The 17-clue template collection is attributed to Gordon Royle and The University
 The original `whispers` technique applies the path's binary relations at 27 points. `whispers-house-support` checks complete line assignments together with the houses shared by its cells, at 39 points and the Medium tier. [`VariantEvidence::LineHouses`] records the original domains, supported digits, explicit houses, rule indices and complete assignment count. The search permits 32,768 assignment nodes per line; exhausted work returns no proof. It does not consult the puzzle's exact solution or impose standard boxes on Jigsaw grids. Other rule families remain outside this proof.
 
 Variant scoring version 8 adds this technique to the default order while retaining earlier point costs. Three distinct exercises and an additional lesson explain the shared-house argument. The [published Brain Zaps puzzle](https://www.gmpuzzles.com/blog/2026/01/german-whispers-sudoku-by-philip-newman-5/) has three givens: its prior logical profile stalls after four basic Whispers deductions, while the new profile completes the puzzle with replayable line/house proofs. The app accepts native and Coach Whispers clues, shows their paths and minimum differences, and preserves the rules throughout play and sharing. New puzzle presets remain subject to separate generation calibration.
+
+## Entropic lines
+
+Use `entropic` with the original ordered `cells` walk. Every three successive positions contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). Two positions must use different groups. One position is unrestricted. Digits can repeat three positions later when other rules allow them. Touching paths remain independent rules.
+
+The compiler retains repeated references and closed paths. It maps the walk onto distinct cells and their repeating phases. A cell revisited in different phases makes the constraint unsatisfiable. Every support request checks at most six group orders. Drawings and serialized rules keep their original order.
+
+The logical technique costs 27 points at Medium difficulty, as in the research catalog. Existing scoring version 8 and prior costs stay unchanged. Proof evidence records the original rule index, distinct cells and input domains. The three checked practice positions also support generated drills. Fixed templates support generation and required-family dependence. App presets require separate difficulty calibration.

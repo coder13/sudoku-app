@@ -7729,6 +7729,53 @@
           "difficulty": "medium"
         },
         {
+          "id": "entropic",
+          "title": "Entropic lines",
+          "summary": "An Entropic line repeats three digit groups: low (1–3), medium (4–6) and high (7–9). Once you know two groups, the next position needs the third. Positions three steps apart share a group, but can contain different digits.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a cell confined to one digit group"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a placed digit or a cell whose candidates all belong to one group. Along the line, every three successive positions must use the three different groups. Follow that pattern in both directions.",
+                "Two-cell lines also use different groups. Touching paths remain independent. A closed line must fit the repeating pattern at its join."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "entropic",
+              "copy": {
+                "description": "R5C6 can only be 3, a low digit. The two-cell line requires a different group in R6C6, so remove its low candidates."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "entropic",
+                  "title": "Entropic lines"
+                }
+              ],
+              "guide": {
+                "start": "Identify low, medium and high candidates on the highlighted path.",
+                "check": "Follow the repeating groups. Two-cell lines need two different groups.",
+                "reason": "A candidate must fit a group order allowed by every cell on its own path."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Published Numeric Keypad puzzle by Clover",
+              "href": "https://www.gmpuzzles.com/blog/2026/01/entropic-lines-sudoku-by-clover/"
+            }
+          ],
+          "difficulty": "medium"
+        },
+        {
           "id": "renban",
           "title": "Renban lines",
           "summary": "A Renban line contains different consecutive digits in any order. A four-cell line that contains both 3 and 6 must also contain 4 and 5, even before you know their positions.",

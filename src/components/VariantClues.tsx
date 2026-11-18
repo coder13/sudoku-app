@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react'
 import type { VariantRule } from '../sudoku/engine'
 import { extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
-import { renbanOverlapLanes, sharedPalindromeEdges } from '../sudoku/line-geometry'
+import { coloredLineOverlapLanes, sharedPalindromeEdges } from '../sudoku/line-geometry'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
@@ -101,7 +101,7 @@ function InequalityClue({ less, greater, offset, compact = false }: { less: numb
 
 type SumKind = 'xv' | 'adjacent-total'
 
-function RenbanLane({ cells, lane, count, color }: { cells: readonly [number, number]; lane: number; count: number; color: string }) {
+function ColoredLineLane({ cells, lane, count, color }: { cells: readonly [number, number]; lane: number; count: number; color: string }) {
   const [ax, ay] = center(cells[0]), [bx, by] = center(cells[1])
   const length = Math.hypot(bx - ax, by - ay)
   const offset = (lane - (count - 1) / 2) * Math.min(.1, .26 / count)
@@ -153,7 +153,7 @@ function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [n
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const marker = useId()
   const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
-  const renbanLanes = useMemo(() => renbanOverlapLanes(rules), [rules])
+  const coloredLanes = useMemo(() => coloredLineOverlapLanes(rules), [rules])
   const renbanIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'renban') renbanIndices.set(index, renbanIndices.size) })
   const renbanColor = (index: number) => ['#cf419c', '#8353be', '#d26878', '#aa48bf'][renbanIndices.get(index)! % 4]
@@ -161,9 +161,9 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
-    { rule, index, overlay: undefined as 'palindrome' | 'renban' | 'whispers-label' | undefined, layer: layer(rule) },
+    { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | undefined, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
-    ...(renbanLanes.has(index) ? [{ rule, index, overlay: 'renban' as const, layer: .4 }] : []),
+    ...(coloredLanes.has(index) ? [{ rule, index, overlay: 'colored-line' as const, layer: .4 }] : []),
     ...(rule.type === 'whispers' && rule.minDifference !== 5 ? [{ rule, index, overlay: 'whispers-label' as const, layer: .75 }] : []),
   ]).sort((a, b) => a.layer - b.layer)
   const dots = new Map<number, number>()
@@ -199,8 +199,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
     </defs>}
     {drawingOrder.map(({ rule, index, overlay }) => {
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
-      if (overlay === 'renban') return <g key={`${index}-renban-overlap`} className="variant-renban-overlap" data-renban={renbanIndices.get(index)! + 1}>
-        {renbanLanes.get(index)!.map((lane, part) => <RenbanLane key={part} {...lane} color={renbanColor(index)} />)}
+      if (overlay === 'colored-line') return <g key={`${index}-line-overlap`} className={rule.type === 'entropic' ? 'variant-entropic-overlap' : 'variant-renban-overlap'} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
+        {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} color={rule.type === 'entropic' ? '#bc6c27' : renbanColor(index)} />)}
       </g>
       if (overlay === 'palindrome') return <g key={`${index}-overlap`} className="variant-palindrome-overlap">
         {shared.get(index)!.map((edge, i) => <polyline key={i} points={points(edge)} />)}
@@ -252,6 +252,11 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         case 'palindrome':
           return <g key={index} className="variant-palindrome">
             {(rule.segments ?? [rule.cells]).map((path, part) => <polyline key={part} points={points(path)} />)}
+          </g>
+        case 'entropic':
+          return <g key={index} className="variant-entropic">
+            {rule.cells.length === 1 ? <circle cx={center(rule.cells[0])[0]} cy={center(rule.cells[0])[1]} r=".12" />
+              : <polyline points={points(rule.cells)} />}
           </g>
         case 'renban':
           return <g key={index} className="variant-renban" data-renban={renbanIndices.get(index)! + 1} stroke={renbanColor(index)} fill={renbanColor(index)}>
@@ -346,6 +351,11 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
           labels[cell].push(`Whispers line, minimum difference ${rule.minDifference} with ${[...neighbors].map(reference).join(' and ')}`)
         }
         break
+      case 'entropic': {
+        const number = rules.slice(0, index + 1).filter(rule => rule.type === 'entropic').length
+        for (const cell of new Set(rule.cells)) labels[cell].push(`Entropic line ${number}, ${rule.cells.length === 1 ? 'one-cell path, any digit 1–9' : rule.cells.length === 2 ? 'two positions from different low (1–3), medium (4–6) or high (7–9) groups' : 'every three successive positions contain a low (1–3), medium (4–6) and high (7–9) digit'}`)
+        break
+      }
       case 'renban':
         for (const cell of rule.cells) labels[cell].push(`Renban line ${rules.slice(0, index + 1).filter(rule => rule.type === 'renban').length}, ${rule.cells.length === 1 ? 'one-cell set, any digit 1–9' : `${rule.cells.length} different consecutive digits in any order`}`)
         break

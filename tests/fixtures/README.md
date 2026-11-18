@@ -1373,3 +1373,137 @@ node --experimental-strip-types scripts/bench-engine-pruning.mjs /tmp/main-wasm/
 node --experimental-strip-types scripts/bench-exact-houses.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --generation-only --recipes=/tmp/renban-recipes.json
 node --experimental-strip-types --test scripts/bench-renban-app.mts
 ```
+
+## Entropic Lines native and app integration
+
+[Issue 58](https://github.com/coder13/sudoku-app/issues/58) starts from main `679311f` and incorporates photo-import PR 155 at `d4235f4`. [Source contract and full/partial path table](../../SUDOKU_ENTROPIC_AUDIT.md)
+
+An inspected Clover puzzle/solution pair and five complete original Coach exports establish six independently unique source puzzles. The native rule preserves independent touching paths, two-cell different-group rules, one-cell unrestricted paths, closures and revisits. It checks at most six repeating group orders. Ksy3 now imports every Renban, Palindrome, sum, dot and Entropic clue. Its orange path is redundant for uniqueness, so structural checks retain it. Global Entropy companions still reject explicitly.
+
+Native validation passes 344 tests, sixteen capability combinations, four Wasm profiles and strict full/reduced Cargo documentation. The combined photo-import/Entropic app passes TypeScript, 485 app tests, 292 Wasm contracts and the 161-route production/offline build. Native support checks exhaust 262,144 two-cell domain pairs and independently enumerate longer examples. Tests replay every source action, check each positive Entropic proof independently, preserve actual storage/history/sharing, and test practice and score/first-technique generation targets.
+
+The legacy 65,536-selection regression remains intact. New Entropic composition checks cover each of eighteen companion families, every companion pair and the full inventory. All 171 compatible cases pass, and two intentional contradictions reject. These bounded witnesses do not establish arbitrary layouts feasible. Static review covers twenty-eight actual React/CSS clue exports at 900/360 pixels in light/dark themes. Live viewport interaction and New puzzle calibration remain open.
+
+All 8,167 complete retained responses match without response normalization. This includes 8,019 variant responses over 53 corpus positions and 354 positive practice positions, plus 148 Classic responses. All 118 prior detector lists, full traces, ratings and hint pages agree under explicit legacy orders. The catalog adds only `entropic`, at 27 points/Medium. The inherited cost passes the independent proof-effort model. Existing costs, default relative order and scoring version 8 remain unchanged.
+
+Fresh builds use separate Cargo targets per source checkout. The current-main control reproduces baseline SHA-256 `7949a66187f5e820926efc8891578f42f5f5f3ab70f260f4db0f688599523e17`. The candidate and its production rebuild retain `8d5e9764319156a5b20a7f81f2e6a527e4a7c3c1a5d1a44bcbfda128d42bd0d9`. Photo import changes no Rust engine inputs, so earlier paired kernel measurements use those same final binaries. All compressed sizes use Node `gzipSync` at its default level.
+
+| Wasm profile | Current main raw/gzip bytes | Entropic raw/gzip bytes |
+| --- | --- | --- |
+| Solver | 2,061,762 / 563,437 | 2,061,762 / 563,437 |
+| Variant solver | 2,631,886 / 709,431 | 2,621,084 / 706,969 |
+| Classic | 2,563,763 / 663,682 | 2,563,763 / 663,682 |
+| App | 3,358,070 / 901,120 | 3,402,659 / 898,241 |
+
+App adds 44,589 raw bytes and saves 2,879 gzip bytes. Variant solver saves 10,802 raw/2,462 gzip bytes. Solver and Classic sizes stay unchanged. The final comparison includes photo import in both builds. Seventeen client JavaScript assets change from 6,045,046/1,994,102 to 6,051,600/1,995,352 raw/gzip bytes. The Entropic delta is 6,554 raw/1,250 gzip bytes. Each asset is compressed separately. Compiler output size changes do not establish a request speedup.
+
+Paired measurements use Node 26.13.0 on macOS arm64. Engines alternate and use their actual declared native/app default orders. Full proofs, ratings, choices and traces agree. The metadata comparison removes only the newly declared technique ID from the candidate rating order. The separate strict comparison above sends the same explicit legacy order to both builds and changes no response fields.
+
+Candidates, exact calls, native rates and ten raw hints use five warmups/twenty samples. App rates use two/five. Exhaustive requests use two/ten in the older retained corpus and two/five in the XV/Renban corpus. Values are median/p95 milliseconds. The p95 of five is the maximum. Fresh-instance first requests also preserve complete responses. Instantiation, browser startup, transfer, layout and paint are excluded.
+
+A separate puzzle-library grading audit consumes one CPU core at the start of the paired phase. No audit-owned compiler, test or other benchmark runs concurrently. The final source-only phase starts after that background audit finishes. The host remains nondedicated. Preserve the slower samples and do not infer a general speedup.
+
+| Retained fixture | Candidates, main → Entropic | Unique analysis | Exact solve | Native rate |
+| --- | --- | --- | --- | --- |
+| quadruple | 0.061/0.077 → 0.060/0.100 | 0.517/0.579 → 0.515/0.587 | 0.404/0.445 → 0.402/0.427 | 1.210/1.310 → 1.213/1.377 |
+| parity | 0.018/0.024 → 0.018/0.025 | 0.029/0.036 → 0.028/0.033 | 0.030/0.052 → 0.029/0.041 | 0.132/0.138 → 0.129/0.138 |
+| anti-king | 0.016/0.026 → 0.016/0.025 | 0.021/0.022 → 0.022/0.022 | 0.022/0.024 → 0.022/0.025 | 0.139/0.176 → 0.136/0.188 |
+| non-consecutive | 0.021/0.082 → 0.022/0.087 | 0.098/0.127 → 0.099/0.125 | 0.096/0.106 → 0.094/0.096 | 0.361/0.403 → 0.361/0.408 |
+| nc-white-dots | 0.053/0.073 → 0.053/0.083 | 0.310/0.349 → 0.311/0.360 | 0.307/0.319 → 0.307/0.326 | 1.000/1.098 → 1.031/1.152 |
+| whispers | 0.018/0.019 → 0.019/0.022 | 14.674/15.513 → 14.564/15.346 | 14.545/14.816 → 14.553/15.870 | 0.281/0.292 → 0.275/0.289 |
+| palindrome | 0.017/0.019 → 0.018/0.021 | 0.033/0.035 → 0.034/0.036 | 0.035/0.051 → 0.036/0.036 | 0.104/0.108 → 0.100/0.106 |
+| palindrome-knight | 0.020/0.028 → 0.020/0.026 | 0.044/0.049 → 0.044/0.050 | 0.043/0.044 → 0.044/0.045 | 0.871/0.995 → 0.874/0.957 |
+| palindrome-whispers | 0.026/0.100 → 0.025/0.087 | 0.514/0.653 → 0.500/0.547 | 0.104/0.144 → 0.106/0.125 | 0.818/0.843 → 0.809/0.880 |
+| xv-clover | 0.023/0.033 → 0.021/0.026 | 0.073/0.105 → 0.071/0.104 | 0.046/0.049 → 0.045/0.047 | 0.321/0.504 → 0.320/0.502 |
+| xv-quadruple-clover | 0.033/0.084 → 0.028/0.082 | 0.119/0.128 → 0.118/0.127 | 0.123/0.152 → 0.123/0.139 | 0.259/0.332 → 0.260/0.313 |
+| 7v7n | 0.016/0.018 → 0.016/0.026 | 0.399/0.418 → 0.397/0.468 | 0.139/0.190 → 0.133/0.225 | 0.116/0.154 → 0.112/0.153 |
+| FCeS | 0.022/0.034 → 0.022/0.043 | 0.087/0.092 → 0.082/0.113 | 0.092/0.286 → 0.091/0.402 | 0.541/1.367 → 0.558/1.543 |
+| 63Jk | 0.010/0.014 → 0.010/0.012 | 0.085/0.152 → 0.052/0.122 | 0.039/0.044 → 0.039/0.040 | 0.994/1.121 → 1.042/1.100 |
+| Chcs | 0.026/0.027 → 0.025/0.029 | 1.351/1.416 → 1.250/1.338 | 0.726/0.777 → 0.682/0.763 | 20.471/20.663 → 20.457/20.920 |
+| renban-clover | 0.034/0.041 → 0.033/0.042 | 0.145/0.177 → 0.151/0.178 | 0.142/0.156 → 0.143/0.165 | 0.223/0.329 → 0.254/0.325 |
+| renban-killer-clover | 0.028/0.030 → 0.028/0.033 | 0.149/0.158 → 0.149/0.161 | 0.151/0.190 → 0.152/0.206 | 0.160/0.176 → 0.170/0.183 |
+| Jh4o | 0.043/0.044 → 0.044/0.048 | 0.820/0.862 → 0.830/0.869 | 0.240/0.249 → 0.241/0.252 | 0.185/0.258 → 0.182/0.223 |
+| KUUo | 0.017/0.043 → 0.016/0.021 | 0.121/0.127 → 0.122/0.122 | 0.056/0.058 → 0.056/0.056 | 0.080/0.109 → 0.080/0.126 |
+| BSms | 0.020/0.029 → 0.020/0.024 | 718.721/729.708 → 721.466/735.354 | 43.250/43.966 → 43.552/44.477 | 0.057/0.061 → 0.057/0.064 |
+
+| Retained fixture | App rate, main → Entropic | Ten hints | Exhaustive | Committed MiB |
+| --- | --- | --- | --- | --- |
+| quadruple | 1.261/1.407 → 1.276/1.664 | 0.248/0.658 → 0.238/0.506 | 150.534/152.986 → 151.124/156.138 | 1.50 → 1.50 |
+| parity | 0.173/0.181 → 0.173/0.179 | 0.076/0.081 → 0.078/0.085 | 47.017/55.884 → 48.751/56.006 | 3.56 → 3.56 |
+| anti-king | 0.154/0.243 → 0.155/0.184 | 0.115/0.126 → 0.116/0.129 | 100.414/107.839 → 100.539/108.625 | 10.44 → 10.44 |
+| non-consecutive | 0.390/0.457 → 0.392/0.458 | 0.082/0.095 → 0.085/0.102 | 34.670/41.288 → 34.760/36.833 | 4.06 → 4.06 |
+| nc-white-dots | 1.041/1.114 → 1.046/1.183 | 0.338/0.495 → 0.340/0.453 | 0.363/0.855 → 0.362/0.539 | 1.50 → 1.50 |
+| whispers | 0.320/0.330 → 0.316/0.347 | 3.259/4.157 → 3.200/3.391 | 3.375/3.706 → 3.441/4.663 | 1.56 → 1.56 |
+| palindrome | 0.120/0.130 → 0.118/0.127 | 40.389/41.548 → 40.986/43.277 | 41.059/45.283 → 40.442/42.073 | 3.38 → 3.38 |
+| palindrome-knight | 0.909/1.028 → 0.932/1.005 | 0.140/0.282 → 0.140/0.178 | 198.837/212.062 → 196.934/209.372 | 5.06 → 5.06 |
+| palindrome-whispers | 103.250/109.044 → 103.107/108.403 | 0.221/0.433 → 0.228/0.286 | 2.410/2.581 → 2.453/2.681 | 8.31 → 8.31 |
+| xv-clover | 5.828/6.693 → 6.107/6.661 | 0.132/0.383 → 0.128/0.421 | 129.159/132.555 → 128.363/134.434 | 2.1250 → 2.1250 |
+| xv-quadruple-clover | 0.314/0.332 → 0.312/0.377 | 0.133/0.176 → 0.139/0.150 | 140.280/142.955 → 142.710/143.635 | 1.8750 → 1.8750 |
+| 7v7n | 90.902/97.928 → 91.855/99.393 | 280.749/286.816 → 281.994/293.817 | 291.766/314.272 → 284.526/289.898 | 4.6875 → 4.6875 |
+| FCeS | 7.461/7.753 → 7.363/7.640 | 0.121/0.196 → 0.123/0.192 | 0.869/1.022 → 0.902/0.918 | 2.3125 → 2.3125 |
+| 63Jk | 4012.948/4164.703 → 4016.598/4072.822 | 0.105/0.118 → 0.108/0.119 | 376.179/385.166 → 376.711/389.575 | 6.3125 → 6.3125 |
+| Chcs | 260.805/265.698 → 259.276/260.666 | 296.280/302.727 → 297.696/307.144 | 299.573/301.983 → 297.067/310.238 | 1.5000 → 1.5000 |
+| renban-clover | 0.250/0.266 → 0.257/0.272 | 0.133/0.180 → 0.129/0.160 | 87.674/87.899 → 87.315/88.002 | 4.6875 → 4.6875 |
+| renban-killer-clover | 0.186/0.297 → 0.195/0.269 | 0.137/0.151 → 0.143/0.152 | 64.263/68.296 → 63.924/64.077 | 3.9375 → 3.9375 |
+| Jh4o | 861.670/872.535 → 851.869/863.760 | 71.760/73.288 → 71.436/72.107 | 89.060/90.385 → 88.576/90.115 | 4.2500 → 4.2500 |
+| KUUo | 64.040/64.261 → 63.569/64.032 | 0.084/0.086 → 0.088/0.092 | 47.989/49.175 → 48.248/48.946 | 4.5625 → 4.5625 |
+| BSms | 67.713/71.027 → 66.852/74.279 | 87.822/89.348 → 87.876/89.999 | 88.159/88.741 → 87.665/90.380 | 6.7500 → 6.9375 |
+
+Selected Whispers uniqueness searches and final-position Palindrome/Whispers Tridagon scans retain their zero-proof outcomes. The committed capacities above measure raw-instance Wasm buffer sizes after fixed request sequences. They do not measure RSS, browser heap or live allocations. BSms grows from 6.75 to 6.9375 MiB. Existing slow 63Jk, Jh4o and exhaustive searches remain in the broader performance audit.
+
+Generation controls alternate engines over seeds 1–20 for each of six retained families. They allow six attempts and 20,000 nodes per exact check, with no warmups. Both receive the baseline native technique order explicitly. All 120 complete outcomes match, including Renban seed 10 reaching its budget. Every accepted Renban result passes independent digit-array uniqueness and family-dependence checks outside timing.
+
+| Retained generation | Successes, main/Entropic | Main median/p95 ms | Entropic median/p95 ms | Failed seeds in both |
+| --- | --- | --- | --- | --- |
+| classic | 20/20 | 0.575/0.851 | 0.584/0.797 | None |
+| x-sudoku | 20/20 | 0.586/0.698 | 0.584/0.715 | None |
+| killer | 20/20 | 2.606/3.204 | 2.608/3.021 | None |
+| jigsaw-killer | 20/20 | 2.411/2.598 | 2.486/2.635 | None |
+| windoku | 20/20 | 0.782/2.114 | 0.785/2.149 | None |
+| renban | 19/19 | 100.153/296.848 | 101.674/301.654 | 10 |
+
+New source requests have no pre-port engine baseline. The main engine does not support Entropic rules. Direct requests include serialization and compare complete results outside timing. One raw instance is reused across the six source cases. Its committed capacity is cumulative, not isolated per puzzle. The actual app callers use separate in-process worker instances.
+
+| New source | Candidates | Unique analysis | Exact solve | Native rate | App rate |
+| --- | --- | --- | --- | --- | --- |
+| clover | 0.029/0.078 | 0.101/0.123 | 0.054/0.074 | 0.176/0.192 | 0.172/0.176 |
+| EoGB | 0.011/0.012 | 0.038/0.046 | 0.038/0.039 | 0.098/0.140 | 0.131/0.134 |
+| BSEJ | 0.016/0.017 | 0.094/0.098 | 0.081/0.085 | 0.057/0.060 | 0.211/0.216 |
+| Hyk5 | 0.015/0.028 | 6.637/6.825 | 2.541/2.664 | 0.077/0.089 | 895.314/899.913 |
+| Hafj | 0.018/0.022 | 0.875/0.936 | 0.777/0.882 | 0.072/0.086 | 104.657/107.647 |
+| Ksy3 | 0.070/0.077 | 0.261/0.313 | 0.249/0.261 | 0.485/0.554 | 0.511/0.527 |
+
+| New source | Ten raw hints | Exhaustive | Ordinary app choices | Cumulative raw-instance MiB |
+| --- | --- | --- | --- | --- |
+| clover | 0.162/0.353 | 78.008/78.344 | 10 | 4.7500 |
+| EoGB | 2.666/2.880 | 116.362/127.574 | 10 | 6.9375 |
+| BSEJ | 122.902/125.991 | 130.223/132.041 | 10 | 6.9375 |
+| Hyk5 | 3.337/3.429 | 3.336/3.413 | 7 | 6.9375 |
+| Hafj | 3.264/3.376 | 3.220/3.395 | 3 | 6.9375 |
+| Ksy3 | 0.175/0.183 | 1243.320/1246.534 | 10 | 7.2500 |
+
+Actual preview, hints and walkthrough use two warmups/five samples. Play candidates, input and grid SSR use five/twenty. Assertions check the independently known completion, full score/count metadata and clue counts outside timing. Both incomplete walkthroughs remain explicitly stalled. These measurements exclude browser startup, transfer, layout and paint.
+
+| New source | Preview including rating | Play candidates | Ordinary app hints | Walkthrough | Input with candidates | Grid SSR |
+| --- | --- | --- | --- | --- | --- | --- |
+| clover | 0.314/0.323 | 0.021/0.025 | 0.246/0.266 | 1.768/2.762 | 0.049/0.066 | 1.732/2.424 |
+| EoGB | 0.540/1.860 | 0.013/0.018 | 2.554/2.727 | 3.059/4.859 | 0.034/0.061 | 1.498/1.986 |
+| BSEJ | 0.561/0.605 | 0.017/0.019 | 121.005/121.980 | 2.971/3.182 | 0.097/0.104 | 1.755/1.993 |
+| Hyk5 | 906.913/914.713 | 0.016/0.020 | 3.541/3.588 | 905.069/917.465 | 0.032/0.094 | 1.714/1.917 |
+| Hafj | 105.931/106.490 | 0.019/0.022 | 3.327/3.551 | 104.325/106.887 | 0.060/0.119 | 1.759/1.999 |
+| Ksy3 | 1.428/6.541 | 0.070/0.079 | 0.245/0.252 | 3.826/4.146 | 0.159/0.395 | 2.247/2.871 |
+
+New Entropic template generation succeeds on all twenty seeds, with twenty distinct puzzles. It preserves thirty givens and eight fixed clues. Median/p95 is 3.312/13.564 ms under six attempts and 20,000 nodes. Repeated requests agree completely. Independent counting proves every accepted puzzle unique and multiple without Entropic. These are fixed-template controls, not very-hard difficulty calibration.
+
+[Issue 162](https://github.com/coder13/sudoku-app/issues/162) tracks Hyk5/Hafj human reasoning. Hyk5 app rating uses 895.314/899.913 ms despite 2.541/2.664 ms exact solving. BSEJ ordinary hints use 121.005/121.980 ms despite a complete cheap rating. Those remaining searches, worker transport, browser cold loading and profile boundaries stay in [issue 88](https://github.com/coder13/sudoku-app/issues/88).
+
+Repeat from separate source checkouts and Cargo targets. The retained generation recipe file appends the Clover Renban template to `crates/engine/benches/fixtures/variants.json`. Clear its givens and request thirty givens, twelve clues and `requiredRule: "renban"`. The optional retained-source JSON uses a `cases` array of `{name, position: {puzzle}, solution}` records from the five original Renban fixtures.
+
+```sh
+node --experimental-strip-types scripts/compare-engine-pruning.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --palindrome-trace --classic-tridagon --xv --renban --entropic
+node --experimental-strip-types scripts/bench-engine-pruning.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm quadruple parity anti-king non-consecutive nc-white-dots whispers palindrome palindrome-knight palindrome-whispers --added-technique=entropic
+node --experimental-strip-types scripts/bench-xv-rating.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --added-technique=entropic
+node --experimental-strip-types scripts/bench-xv-rating.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm /tmp/renban-inputs.json --added-technique=entropic
+node --experimental-strip-types scripts/bench-exact-houses.mjs /tmp/main-wasm/engine.wasm src/sudoku/generated/engine.wasm --generation-only --legacy-order --recipes=/tmp/retained-recipes.json
+node --experimental-strip-types --test scripts/bench-entropic-app.mts
+```

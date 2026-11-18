@@ -33,7 +33,12 @@ test('published original Renban and Renban/Killer fixtures preserve unique compl
 test('three unmodified modern Coach sources import while unsupported complete exports reject explicitly', async () => {
   for (const source of load('coach').examples) {
     if (source.deferred) {
-      const reason = source.url.endsWith('Ksy3') ? /entropicLine/ : source.url.endsWith('9uMo') ? /9\s*×\s*9/ : /format|version/i
+      if (source.url.endsWith('Ksy3')) {
+        const current = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8')).examples.find((s: { url: string }) => s.url === source.url)
+        assert.deepEqual((await detectPuzzle(source.code)).variant!.puzzle, current.puzzle)
+        continue
+      }
+      const reason = source.url.endsWith('9uMo') ? /9\s*×\s*9/ : /format|version/i
       await assert.rejects(detectPuzzle(source.code), reason)
       continue
     }

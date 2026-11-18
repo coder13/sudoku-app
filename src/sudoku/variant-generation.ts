@@ -94,7 +94,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
         case 'inequality': return { ...rule, less: cell(rule.less), greater: cell(rule.greater) }
         case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }
-        case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
+        case 'entropic': case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
         case 'palindrome': case 'renban': return { ...rule, cells: rule.cells.map(cell),
           ...(rule.segments && { segments: rule.segments.map(path => path.map(cell)) }) }
         case 'thermometer': return { ...rule, cells: rule.cells.map(cell) }
