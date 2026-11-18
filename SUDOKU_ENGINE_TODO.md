@@ -76,9 +76,9 @@ This pass reached main at `4dfeda0` through [PR 121](https://github.com/coder13/
 - [x] Pass CI on reviewed head `4e95cf3` and merge the app-ready family separately through [PR 121](https://github.com/coder13/sudoku-app/pull/121). Verify the reviewed head and merge commit on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44238999616)
 - [x] Measure earlier bounded uniqueness eligibility in [issue 122](https://github.com/coder13/sudoku-app/issues/122). Preserve complete proof lists and ratings while avoiding searches whose existing uniqueness precondition fails.
 
-### Bounded uniqueness search performance in progress
+### Bounded uniqueness search performance merged
 
-This pass is isolated on `codex/sudoku-uniqueness-pruning` from main `b5b394c`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/122)
+This pass reached main at `1a62a7c` through [PR 124](https://github.com/coder13/sudoku-app/pull/124). All CI and deployment checks passed on reviewed head `3e60cc8`. The reviewed worktree remains on `codex/sudoku-uniqueness-pruning`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/122)
 
 - [x] Profile empty Unique Rectangle chain searches on Brain Zaps and identify the existing late uniqueness precondition.
 - [x] Move the cached 4,096-node check before expensive rectangle-chain searches. Keep empty cheap searches lazy, candidate removals outside uniqueness analysis and the swap-scope filter intact.
@@ -86,7 +86,8 @@ This pass is isolated on `codex/sudoku-uniqueness-pruning` from main `b5b394c`. 
 - [x] Match 2,996 complete responses across sixteen corpus positions, all 117 detectors and all 351 positive practice positions. Preserve full proofs, ratings, custom orders, every hint page, catalogs and scoring version 8.
 - [x] Measure paired ordinary/exhaustive hints, retained fixtures, committed Wasm memory and every package profile. Brain Zaps ordinary hints improve 660.803/678.451 → 486.085/514.869 ms, with eight choices unchanged. Empty cheap requests stay lazy. App Wasm adds 162 gzip bytes. [Methods and limits](tests/fixtures/README.md#earlier-bounded-uniqueness-eligibility)
 - [x] Pass 295 native tests including doctests, 396 app tests, 243 Wasm tests, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, TypeScript and the 159-route production/offline build.
-- [ ] Pass CI on the reviewed head, merge the focused optimization and record its release.
+- [x] Pass CI on reviewed head `3e60cc8`, merge the focused optimization through [PR 124](https://github.com/coder13/sudoku-app/pull/124) and verify the reviewed head on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44244011999)
+- [ ] Investigate geometric completion witnesses for the remaining nested searches in [issue 125](https://github.com/coder13/sudoku-app/issues/125). Keep the detector's premises, numeric variant validation and uniqueness certificates separate.
 
 ### Complete candidate-support performance merged
 
