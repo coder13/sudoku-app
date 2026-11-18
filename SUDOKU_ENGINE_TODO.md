@@ -57,7 +57,7 @@ This family reached main at `c38cc2b` through [PR 135](https://github.com/coder1
 
 ### Inequality integration audit
 
-The next family remains open in [issue 47](https://github.com/coder13/sudoku-app/issues/47). Native support already exists. App integration remains unfinished.
+This source audit led to the separate exact-search repair and app integration below. The family reached main through [PR 145](https://github.com/coder13/sudoku-app/pull/145). [Inequality issue](https://github.com/coder13/sudoku-app/issues/47)
 
 - [x] Audit native directed pairs, symmetry, generation, the eight-point technique and three practice fixtures against main. Identify the missing playable-rule validation, Coach decoding, clue rendering and candidate cleanup.
 - [x] Independently prove the preserved zero-given FzzD puzzle unique with all three Palindrome paths, seven inequalities and five white dots. Removing only inequalities gives multiple completions.
@@ -66,13 +66,13 @@ The next family remains open in [issue 47](https://github.com/coder13/sudoku-app
 - [x] Establish a larger-budget baseline. Two million nodes still exhaust. Ten million nodes prove uniqueness in about 6.8 seconds and find the published completion in about 5.7 seconds. These are single local observations.
 - [x] Isolate house Hidden Singles in the independent counter. Without them, 100,000 calls find no completion. With them, 52,244 calls prove uniqueness. Keep those counts separate from native node accounting.
 - [x] Inspect the original FzzD published image. Match all seven sign directions, five white dots and three Palindrome paths to the preserved export.
-- [x] Finish the complete app flow before integrating inequalities. Preserve directed endpoints under every grid transformation. Require CI on the reviewed family PR before merging.
+- [x] Finish the complete app flow and preserve directed endpoints under every grid transformation. Pass CI on the reviewed family head before merging [PR 145](https://github.com/coder13/sudoku-app/pull/145).
 - [x] Make sparse mixed-rule validation practical while keeping honest search-limit outcomes in [issue 139](https://github.com/coder13/sudoku-app/issues/139). Merge the measured repair through [PR 143](https://github.com/coder13/sudoku-app/pull/143).
 - [x] Test exact-search house propagation. Preserve public candidate and logical-profile behavior. Check boundary budgets, ambiguous completions and seeded generation before selecting the implementation.
 
-### Inequality app integration in progress
+### Inequality app integration merged
 
-The isolated worktree is `codex/sudoku-inequality-integration`, based on main `b60cd52`. [Inequality issue](https://github.com/coder13/sudoku-app/issues/47)
+This pass reached main at `1c32f32` through [PR 145](https://github.com/coder13/sudoku-app/pull/145). All CI and deployment checks passed on reviewed head `9ec697c`. The reviewed worktree remains on `codex/sudoku-inequality-integration`. [Inequality issue](https://github.com/coder13/sudoku-app/issues/47)
 
 - [x] Decode ordered Coach `greaterLess` pairs without dropping companion rules. Validate distinct endpoints and reject unknown semantics. Preserve direction through all eight grid transformations.
 - [x] Draw oriented signs with contrast halos and accessible smaller/larger cell labels. Show connectors for distant endpoints and keep dots visible on a shared pair. Check actual component paths at desktop and mobile sizes against the published diagram.
@@ -80,7 +80,8 @@ The isolated worktree is `codex/sudoku-inequality-integration`, based on main `b
 - [x] Verify the full FzzD import, native completion, partial walkthrough, independent inequality proof replay, multiple hints, pages, Finder counts, all three practice exercises, checked answers and actual save/reload.
 - [x] Pass 423 app tests, 258 Wasm contracts, TypeScript and the production/offline build. Preserve the exact released engine artifact. Check 16,384 fixed-clue family selections: 12,288 compatible samples pass and 4,096 contradictory samples reject. These counts do not prove arbitrary family combinations feasible.
 - [x] Record app and engine request costs, provenance and remaining limits. Preview uses 909.715/913.208 ms and ten hints 5.770/6.007 ms through the in-process app transport. Preserve the released Wasm hash and record the 577-byte client JavaScript gzip increase. [Methods and limits](tests/fixtures/README.md#inequality-app-integration)
-- [ ] Pass CI on the reviewed head and merge the app-ready family separately. Keep New puzzle recipes conditional on calibration and keep the partial 98-point FzzD logical path explicit.
+- [x] Pass CI on reviewed head `9ec697c`, merge the app-ready family separately and verify remote main ancestry. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44300678745)
+- [ ] Finish live viewport interaction review and calibrate New puzzle recipes. Keep the partial 98-point FzzD logical path explicit.
 
 ### Sparse mixed-rule exact search merged
 
@@ -94,7 +95,7 @@ This pass reached main at `a1aeb27` through [PR 143](https://github.com/coder13/
 - [x] Pass 255 final Wasm contracts. Check 6,574 complete responses: 6,536 match exactly and 38 finish previously exhausted exact requests. Preserve all 351 positive practice fixtures, 117 detector lists, hint pages and seeded completions. Validate each improved outcome against the original engine at a larger explicit budget.
 - [x] Measure equal-budget completed exact work, native compilation and domain phases, nine retained fixtures, generation yield, memory and all package sizes. FzzD medians improve 6,603 → 483 ms for uniqueness and 5,727 → 392 ms for solving. Preserve the FgZb rating and record slower samples. [Methods and limits](tests/fixtures/README.md#exact-house-propagation-for-sparse-mixed-puzzles)
 - [x] Pass CI on reviewed head `b027404`, merge the focused improvement and verify remote main ancestry. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44297435642)
-- [ ] Complete inequality app integration separately in [issue 47](https://github.com/coder13/sudoku-app/issues/47). The exact-search repair preserves its honest 98-point logical stall.
+- [x] Complete inequality app integration separately through [PR 145](https://github.com/coder13/sudoku-app/pull/145). The exact-search repair preserves its honest 98-point logical stall.
 
 ### Non-Consecutive integration merged
 
