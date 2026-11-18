@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BookOpen, Lightbulb, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
 import { useLayoutEffect, useRef } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
@@ -14,10 +14,11 @@ type ExplanationProps = {
 }
 type OutcomeProps = { removals?: readonly HintRemoval[]; text?: string }
 
-export function HintCard({ hint, onClose, onShown, navigation, action, lessDetail, secondaryAction, lesson, removals, ...explanation }: {
+export function HintCard({ hint, onClose, onShown, visuals, navigation, action, lessDetail, secondaryAction, lesson, removals, ...explanation }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
+  visuals?: { visible: boolean; onToggle: () => void }
   navigation?: HintNavigation
   action?: HintAction
   lessDetail?: { disabled: boolean; onClick: () => void }
@@ -41,9 +42,16 @@ export function HintCard({ hint, onClose, onShown, navigation, action, lessDetai
             <BookOpen size={14} aria-hidden="true" /> Review lesson
           </a>}
         </div>
-        <button type="button" className="icon-button borderless hint-card-close" aria-label="Close hint" onClick={onClose}>
-          <X size={18} aria-hidden="true" />
-        </button>
+        <div className="hint-card-heading-buttons">
+          {visuals && <button type="button" className="icon-button borderless hint-card-visuals"
+            aria-label="Hint visuals" aria-pressed={visuals.visible} title={visuals.visible ? 'Hide hint visuals' : 'Show hint visuals'}
+            onClick={visuals.onToggle}>
+            {visuals.visible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
+          </button>}
+          <button type="button" className="icon-button borderless hint-card-close" aria-label="Close hint" onClick={onClose}>
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
         {(navigation || action || secondaryAction) && <div className="hint-card-actions">
           {navigation && <div className="hint-card-navigation" role="group" aria-label="Hint navigation">
             <button type="button" className="icon-button" aria-label="Previous hint"
