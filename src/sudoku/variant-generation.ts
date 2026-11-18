@@ -93,6 +93,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
         case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }
+        case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
         case 'thermometer': return { ...rule, cells: rule.cells.map(cell) }
         case 'arrow': return { ...rule, circle: cell(rule.circle), cells: rule.cells.map(cell) }
         case 'kropki': {

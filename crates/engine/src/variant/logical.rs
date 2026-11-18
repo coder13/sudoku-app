@@ -19,13 +19,14 @@ use crate::{
 mod tests;
 
 /// Version of the point costs and difficulty thresholds for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 7;
+pub const VARIANT_SCORING_VERSION: u32 = 8;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod exclusions;
 mod pruning;
+mod line_houses;
 
 macro_rules! catalog {
     ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
@@ -109,6 +110,8 @@ catalog! {
     CageCombinations: "cage-combinations", 34, Easy;
     /// Find assignments whose path digits add to the digit in the circle.
     Arrow: "arrow", 36, Easy;
+    /// Check a Whispers line together with the houses shared by its cells.
+    WhispersHouseSupport: "whispers-house-support", 39, Medium;
     /// Find consecutive sets that fit a Renban line.
     Renban: "renban", 40, Medium;
     /// Find shared sums among parts of a Region Sum line.
@@ -222,6 +225,9 @@ pub enum VariantEvidence {
         /// Candidate masks, including singleton masks for placed digits.
         domains: Vec<u16>,
     },
+    /// Complete line assignments respecting explicit shared houses.
+    /// Box the rare payload so other deductions retain their compact layout.
+    LineHouses(Box<VariantLineHouseProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -266,6 +272,24 @@ pub enum VariantEvidence {
         #[cfg_attr(feature = "wasm-api", serde(rename = "swapCells"))]
         swap_cells: Vec<usize>,
     },
+}
+
+/// Replayable support for a binary line and its shared houses.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantLineHouseProof {
+    /// Ordered rule indices supplying the line's binary relations.
+    pub rules: Vec<usize>,
+    /// Distinct line cells in first-visit order.
+    pub cells: Vec<usize>,
+    /// Current candidate masks, including placed digits.
+    pub domains: Vec<u16>,
+    /// Candidates occurring in at least one valid complete line assignment.
+    pub supported: Vec<u16>,
+    /// Shared houses forbidding equal digits in line cells.
+    pub houses: Vec<VariantHouseKind>,
+    /// Number of valid assignments in the complete enumeration.
+    pub assignments: u32,
 }
 
 /// A rule-based proof and the actions it justifies.
@@ -471,6 +495,7 @@ impl VariantDeduction {
             VariantEvidence::CageSum { cells, .. }
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
+            VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -960,6 +985,7 @@ impl CompiledVariant {
                     }
                 }
             }
+            WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             Arrow | Between | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines

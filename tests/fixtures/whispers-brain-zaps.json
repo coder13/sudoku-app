@@ -1,0 +1,69 @@
+{
+  "title": "Brain Zaps",
+  "author": "Philip Newman",
+  "published": "2026-01-08",
+  "source": "https://www.gmpuzzles.com/blog/2026/01/german-whispers-sudoku-by-philip-newman-5/",
+  "puzzleSource": "https://www.gmpuzzles.com/images/puzzles2026/260108-GermanWhispersSudoku-BrainZaps.pdf",
+  "solutionSource": "https://www.gmpuzzles.com/images/puzzles2026/260108-GermanWhispersSudoku-BrainZaps-soln.pdf",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000000000000000700000000000000000020000000000000000009000000000000000000000",
+    "rules": [
+      {
+        "type": "whispers",
+        "cells": [
+          12,
+          4,
+          13,
+          5,
+          14,
+          6,
+          15,
+          7
+        ],
+        "minDifference": 5
+      },
+      {
+        "type": "whispers",
+        "cells": [
+          10,
+          18,
+          28,
+          27,
+          37,
+          45,
+          46
+        ],
+        "minDifference": 5
+      },
+      {
+        "type": "whispers",
+        "cells": [
+          34,
+          35,
+          43,
+          53,
+          52,
+          62,
+          70
+        ],
+        "minDifference": 5
+      },
+      {
+        "type": "whispers",
+        "cells": [
+          73,
+          65,
+          74,
+          66,
+          75,
+          67,
+          76,
+          68
+        ],
+        "minDifference": 5
+      }
+    ]
+  },
+  "solution": "431598762976432185258761394382157649795624813164983527617349258529876431843215976"
+}

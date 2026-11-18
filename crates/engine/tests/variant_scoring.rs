@@ -2,7 +2,8 @@
 
 use sudoku_app_engine::{
     DEFAULT_VARIANT_SEARCH_NODES, Difficulty, SolveStatus, Technique, VARIANT_SCORING_VERSION,
-    VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantTechnique, variant_practice_examples,
+    VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantTechnique,
+    variant_practice_examples,
 };
 
 fn estimate(deduction: &VariantDeduction) -> u16 {
@@ -10,13 +11,33 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
     let (cells, domains, cages) = match &deduction.evidence {
         VariantEvidence::Exclusion { premise, .. } => {
             let (base, alternatives, mut cells) = match premise {
-                VariantExclusionPremise::Cell { cell, domain } => (14, domain.count_ones(), vec![*cell]),
-                VariantExclusionPremise::House { cells, .. } => (12, cells.len() as u32, cells.clone()),
+                VariantExclusionPremise::Cell { cell, domain } => {
+                    (14, domain.count_ones(), vec![*cell])
+                }
+                VariantExclusionPremise::House { cells, .. } => {
+                    (12, cells.len() as u32, cells.clone())
+                }
             };
-            cells.extend(deduction.actions.iter().map(|action| action.candidate().cell));
+            cells.extend(
+                deduction
+                    .actions
+                    .iter()
+                    .map(|action| action.candidate().cell),
+            );
             cells.sort_unstable();
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
+        }
+        VariantEvidence::LineHouses(proof) => {
+            let (cells, domains, houses) = (&proof.cells, &proof.domains, &proof.houses);
+            let choices: u16 = domains
+                .iter()
+                .map(|domain| {
+                    let n = domain.count_ones();
+                    (u32::BITS - (n - 1).leading_zeros()) as u16
+                })
+                .sum();
+            return 24 + 2 * cells.len() as u16 + 2 * choices + 3 * houses.len() as u16;
         }
         VariantEvidence::Intersection { .. } => return Technique::Pointing.cost(),
         VariantEvidence::Constraint { cells, domains, .. } => (cells, domains, 0),
@@ -138,10 +159,17 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
             path_scores.push(total);
         }
     }
-    assert_eq!(path_scores.len(), 3 * (VariantTechnique::DEFAULT_ORDER.len() - 3));
+    assert_eq!(
+        path_scores.len(),
+        3 * (VariantTechnique::DEFAULT_ORDER.len() - 3)
+    );
     path_scores.sort_unstable();
     println!(
         "{} verified calibration paths, {}–{} points, median {}. Difficulty counts {:?}.",
-        path_scores.len(), path_scores[0], path_scores[path_scores.len() - 1], path_scores[path_scores.len() / 2], tiers,
+        path_scores.len(),
+        path_scores[0],
+        path_scores[path_scores.len() - 1],
+        path_scores[path_scores.len() / 2],
+        tiers,
     );
 }

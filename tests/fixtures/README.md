@@ -308,3 +308,60 @@ Their complete app scores, ten ordinary choices, exhaustive choices and committe
 | app | 3,324,125 / 871,804 | 3,324,381 / 871,215 |
 
 The app adds 256 raw bytes and saves 589 gzip bytes; variant-solver adds 8,919 raw / 10,046 gzip bytes. The new paths compile only with `variants`. The measured production artifact has SHA-256 `a857e60ff33eeffe7aa6e729a1df5b84c771f32a07d6d8fb14b4158f2246809f`; main is `15a4b04916621e3ba1b6889835b98be38c8c6b5e5b3db113a7e6c9a4058eedcc`. All 284 native tests including doctests, 382 app tests, 233 Wasm tests, TypeScript, sixteen native capability combinations, four Wasm profiles, strict full/reduced Cargo documentation and the production/offline build with 158 prerendered routes pass locally.
+
+
+## Whispers lines, shared houses and app integration
+
+The published fixture is Philip Newman's **Brain Zaps**, from Genuinely Approachable Sudoku on 2026-01-08. The puzzle has three givens and four green lines. Both the [puzzle PDF](https://www.gmpuzzles.com/images/puzzles2026/260108-GermanWhispersSudoku-BrainZaps.pdf) and [completion PDF](https://www.gmpuzzles.com/images/puzzles2026/260108-GermanWhispersSudoku-BrainZaps-soln.pdf) were rendered and checked visually. The lower zigzag is in rows 8 and 9; PDF text extraction and the search index give a misleading row order. The fixture stores the cell paths from the image and the printed completion.
+
+An independent digit-set counter proves uniqueness and matches the printed grid. Removing the Whispers rules leaves multiple solutions. The engine before this integration finds four basic line deductions, then stalls. A separate prototype completes the puzzle using shared-house line assignments and singles. The integrated `whispers-house-support` technique has its own 39-point Medium cost, three independently unique practice puzzles, typed `line-houses` evidence and a lesson. Variant scoring advances from 7 to 8; older costs stay unchanged. One initial drill had an unrelated 3/4 ambiguity; a second local Whispers clue selects its completion while leaving the teaching proof dependent on the original shared-house argument.
+
+The generic binary-clue search checks complete line assignments against only the explicit houses recorded in its proof. It caps each line at 32,768 nodes and returns no negative support when exhausted. Jigsaw regions replace boxes; declared diagonals and extra houses can supply the needed inequality. Redundant house exclusions are omitted from the evidence. Returned actions have a stable sorted order, including when the line direction is reversed. A direct triple product checks every nonempty middle domain, three endpoint domains and minimum differences 1–8, both with and without an endpoint inequality: 24,528 complete comparisons. Public tests independently replay the published deductions, all three new drills, Jigsaw/extra/diagonal cases and reversed paths.
+
+Real Coach exports include closed walks. The compiler keeps every closing/revisited edge while deduplicating the assignment variables; the original ordered walk stays in puzzle JSON and SVG geometry. A direct triangle replay checks all six minimum-4 assignments and confirms that its closing edge rules out otherwise supported digits.
+
+The app preserves ordered walks and minimum differences 1–8 through native and Coach import, save/reload, sharing, history and all eight grid symmetries. Nonstandard gaps are printed on their lines. Cell accessibility text names the actual line neighbors and required difference. Cleanup and conflict feedback apply only to consecutive cells along the line; the complete line is not an all-different region. Component checks cover desktop/mobile grids, clue geometry, hint cards, Learn diagrams, candidate marks, solution lists and cell naming preferences. Native generation independently verifies three 30-given puzzles at seeds 17, 29 and 43 that need Whispers. App New puzzle presets remain unavailable until their difficulty recipes are calibrated.
+
+The unmodified Coach exports in `whispers-coach.json` verify the source `whisper` type, default difference 5 and explicit differences 4 and 2, including the styling fields present on real lines. Tests isolate those constraints for decoder checks. The complete exports still reject their unimplemented companion clues: Aeb's lesson contains cosmetic annotations, cyboogie's puzzle contains XV, and the 1-to-32 puzzle uses unsupported cage settings. These fixtures do not claim full import support for those puzzles or short links. Their data is retained for the remaining interchange work.
+
+All 4,096 selections of the twelve other rendered families are checked with a Whispers path fitted to the existing fixed completion witnesses. Of these selected fixed-clue samples, 3,072 import, validate, offer multiple hints and rate to completion. The other 1,024 contain a known knight conflict and reject. This checks those samples and does not establish general feasibility of family combinations.
+
+The differential corpus matches 2,306 retained responses on fifteen Classic/variant positions, including all 116 prior catalog detector outputs, full traces/ratings, candidates, exact completions and every hint page. Old profile behavior is retained except the declared scoring-version metadata. Seven additional line/house proofs replay independently. The sparse published puzzle is also checked with both a 20,000-node exact budget and a completed 100,000-node budget, retaining matching search-limit outcomes.
+
+Repeat with `node --experimental-strip-types scripts/compare-whispers-engines.mjs before.wasm after.wasm` and `node --experimental-strip-types scripts/bench-whispers-engines.mjs before.wasm after.wasm`. Optional fixture names narrow the benchmark. Browser viewport fidelity, actual worker transfer and New puzzle recipes remain separate follow-ups.
+
+
+Paired measurements compare main `70fab58` with the final compact-proof artifact on Darwin arm64, Node 26.13.0. Each build uses its own native/app order. Requests alternate execution order on fresh instances per fixture. Fixed requests use five warmups/twenty samples and exhaustive first pages use two/ten, except the expensive Whispers app rating and both hint operations use one/five. Values include request encoding/decoding and exclude assertions, module instantiation, worker startup, transfer and rendering. The host was not dedicated to this benchmark; large tails and small differences remain observational. Values are milliseconds median/p95.
+
+| Brain Zaps operation | Main → Whispers integration |
+| --- | ---: |
+| Candidates | 0.033/0.037 → 0.032/0.035 |
+| Uniqueness, 100,000-node budget | 32.355/36.664 → 30.239/34.909 |
+| Exact solve, 100,000-node budget | 31.822/47.195 → 31.715/38.895 |
+| Native default rating | 0.119/0.334 → 0.533/1.023 |
+| App-order rating | 24367.310/34962.469 → 0.886/1.560 |
+| Ordinary ten-hint request | 2403.923/3312.024 → 2405.030/2607.348 |
+| Exhaustive first page | 1422.503/2563.798 → 1602.991/1980.805 |
+
+The native default changes from a four-step stall at 108 points to a complete 92-step, 862-point Medium path. App order also completes in 92 steps, at 1,212 points. Ordinary and exhaustive opening requests increase from four choices to eight. These requests still spend seconds in empty expert searches; this integration does not claim an exhaustive-hint speedup. A single first request on a fresh Wasm instance takes 26,824.947 → 2.274 ms for app rating, 1,996.210 → 1,987.865 ms for ordinary hints and 2,979.246 → 2,006.493 ms for the exhaustive page. These are individual observations, not cold-browser percentiles. Committed linear memory after all requests changes from 8.88 to 9.44 MiB; buffer size is not process RSS or live allocation.
+
+| Retained fixture | App rate, main → integration | Exhaustive page, main → integration | Choices | Committed MiB |
+| --- | ---: | ---: | ---: | ---: |
+| Quadruple | 5.729/19.110 → 6.996/20.307 | 1510.138/1769.210 → 1483.040/1626.887 | 31 | 5.88 |
+| Odd/Even | 0.450/1.398 → 0.363/2.246 | 127.911/213.506 → 136.831/152.184 | 23 | 3.56 |
+| Anti-King | 0.278/0.757 → 0.276/0.509 | 230.694/267.564 → 231.666/267.465 | 438 | 10.44 |
+| Published Non-Consecutive | 0.720/1.027 → 0.771/1.092 | 95.800/106.241 → 97.580/114.271 | 70 | 4.06 |
+| Two-given Consecudoku | 1.742/2.255 → 2.003/2.427 | 1.391/2.605 → 1.484/2.485 | 4 | 1.50 |
+
+Retained scores, statuses, hint choices and committed memory are unchanged. Quadruple exact validation measures 6.303/12.170 → 9.376/19.539 ms and solving 2.505/5.654 → 3.420/5.126 ms. These slower samples need a controlled repeat and profile; no retained-fixture performance improvement is claimed. Remaining work in the performance audit includes this exact/rating path, empty uniqueness searches on Whispers, cold worker loading and foreground/background scheduling.
+
+The rare `VariantLineHouseProof` payload is boxed. An equivalent native unboxed evidence enum measures 128 bytes and the final shared `VariantEvidence` measures 120 on this host, so unused Whispers data does not enlarge every deduction. Boxing preserves 2,730 complete outputs over fourteen corpus positions and all 351 positive training positions (117 IDs), plus fourteen full published/closed-loop responses. The 2,306-response legacy comparison is also repeated on the final artifact.
+
+| Wasm profile | Main raw/gzip bytes | Whispers raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,040,103 / 556,090 | 2,040,103 / 556,090 |
+| variant-solver | 2,585,481 / 700,237 | 2,587,664 / 695,874 |
+| classic | 2,555,726 / 662,305 | 2,555,726 / 662,305 |
+| app | 3,324,381 / 871,215 | 3,346,737 / 895,950 |
+
+The app adds 22,356 raw / 24,735 gzip bytes. Variant-solver adds 2,183 raw bytes and saves 4,363 gzip bytes; solver and Classic are identical. Final app SHA-256 is `93e7f9364a35b01bf6335efc40adef2de5a254039ec17c9f7bc44a0c25f00340`; main is `a857e60ff33eeffe7aa6e729a1df5b84c771f32a07d6d8fb14b4158f2246809f`. All 291 native tests including doctests, 396 app tests, 242 Wasm tests, TypeScript, sixteen feature combinations, four profile contracts, strict full/reduced Cargo docs and the 159-route production/offline build pass on the compact representation. An interrupted feature-matrix run exhausted disk space; after clearing only unused caches from this chat's earlier engine passes, the complete matrix passed.

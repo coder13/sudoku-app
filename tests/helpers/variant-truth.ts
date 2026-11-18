@@ -43,6 +43,9 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         }
         if (rule.coverGrid) assert.equal(new Set(rule.cages.flatMap(cage => cage.cells)).size, 81)
         break
+      case 'whispers':
+        rule.cells.slice(1).forEach((cell, i) => assert.ok(Math.abs(digits[rule.cells[i]] - digits[cell]) >= rule.minDifference))
+        break
       case 'thermometer':
         rule.cells.slice(1).forEach((cell, i) => assert.ok(digits[rule.cells[i]] < digits[cell]))
         break

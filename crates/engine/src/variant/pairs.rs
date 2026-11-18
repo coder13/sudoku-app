@@ -1,3 +1,5 @@
+mod house_support;
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
@@ -228,7 +230,12 @@ impl PairCompiler {
                 cells,
                 min_difference,
             } => {
-                valid_cells(cells, 2..=CELLS)?;
+                if !(2..=CELLS + 1).contains(&cells.len())
+                    || cells.iter().any(|&cell| cell >= CELLS)
+                    || cells.windows(2).any(|pair| pair[0] == pair[1])
+                {
+                    return Err(invalid);
+                }
                 if !(1..=8).contains(min_difference) {
                     return Err(invalid);
                 }
@@ -372,7 +379,12 @@ fn path(source: &Arc<RuleSource>, cells: &[usize], relation: impl Fn(u8, u8) -> 
         .collect();
     PairClue {
         source: Arc::clone(source),
-        cells: cells.to_vec(),
+        // A walk may revisit a cell. Keep every edge, with one domain and
+        // assignment variable per distinct cell.
+        cells: cells.iter().copied().fold(Vec::new(), |mut scope, cell| {
+            if !scope.contains(&cell) { scope.push(cell); }
+            scope
+        }),
         links,
     }
 }

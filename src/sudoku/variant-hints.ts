@@ -216,6 +216,16 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = 'No assignment that puts a crossed-out digit in its marked cell reaches the required sum.'
       break
     }
+    case 'line-houses': {
+      cells = evidence.cells
+      const gap = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'whispers')
+      const minimum = gap?.type === 'whispers' ? gap.minDifference : 5
+      description = `Neighbors on this line must differ by at least ${minimum}. Its cells must also use different digits where they share ${new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))}.`
+      reason = `Check the line assignments against both rules. ${evidence.assignments} ${evidence.assignments === 1 ? 'assignment fits' : 'assignments fit'}, and none uses the crossed-out candidates.`
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+        .map(digit => ({ cell: cells[i], digit })))
+      break
+    }
     case 'constraint': {
       cells = evidence.cells
       const clue = constraintClue(evidence, puzzle, nameCell)

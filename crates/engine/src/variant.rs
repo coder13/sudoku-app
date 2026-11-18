@@ -23,7 +23,7 @@ pub use generation::{
 };
 use lines::LineConstraint;
 pub use logical::{
-    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise,
+    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantLineHouseProof,
     VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, PairConstraint, ParityClue};
@@ -281,7 +281,8 @@ rules! {
     }
     /// Require neighboring digits along the line to differ by a given amount.
     Whispers => "whispers" {
-        /// Cell indices in line order.
+        /// Ordered walk, including repeated cells at closures or revisits.
+        /// At most 82 references, with distinct consecutive cells.
         cells: Vec<usize>,
         /// Minimum difference between consecutive cells on the line.
         min_difference: u8,
