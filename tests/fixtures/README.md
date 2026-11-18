@@ -365,3 +365,76 @@ The rare `VariantLineHouseProof` payload is boxed. An equivalent native unboxed 
 | app | 3,324,381 / 871,215 | 3,346,737 / 895,950 |
 
 The app adds 22,356 raw / 24,735 gzip bytes. Variant-solver adds 2,183 raw bytes and saves 4,363 gzip bytes; solver and Classic are identical. Final app SHA-256 is `93e7f9364a35b01bf6335efc40adef2de5a254039ec17c9f7bc44a0c25f00340`; main is `a857e60ff33eeffe7aa6e729a1df5b84c771f32a07d6d8fb14b4158f2246809f`. All 291 native tests including doctests, 396 app tests, 242 Wasm tests, TypeScript, sixteen feature combinations, four profile contracts, strict full/reduced Cargo docs and the 159-route production/offline build pass on the compact representation. An interrupted feature-matrix run exhausted disk space; after clearing only unused caches from this chat's earlier engine passes, the complete matrix passed.
+
+## Earlier bounded uniqueness eligibility
+
+[Issue 122](https://github.com/coder13/sudoku-app/issues/122) starts from main `b5b394c`, after the Whispers integration. Its published Brain Zaps opening has eight hint choices, but three Unique Rectangle graph searches find no accepted proof. The existing 4,096-node uniqueness check cannot certify that position. A larger public exact-search budget proves its unique completion.
+
+Unique Rectangle AIC and both Unique Rectangle Nice Loops now check the same cached uniqueness requirement before graph search. Empty cheap searches defer the check until they find a proof. All uniqueness searches can reuse a cached failure. The check still excludes candidate removals, and every accepted proof retains its swap-scope filter. Technique order, costs, capabilities and scoring version 8 are unchanged.
+
+The paired Node/Wasm measurements below use macOS arm64 and Node 26.13.0. No compiler or engine-generation job was active during these measurements. The desktop remains a nondedicated host.
+
+Each fixture uses separately instantiated engines and alternates their execution order. Fixed requests use five warmups and twenty measured samples. Exhaustive pages use two warmups and ten measured samples. Values are milliseconds, median/p95.
+
+| Brain Zaps operation | Main | Earlier eligibility |
+| --- | ---: | ---: |
+| Candidates | 0.032/0.043 | 0.033/0.049 |
+| Exact analysis, 100,000 nodes | 13.926/14.301 | 13.765/14.195 |
+| Exact solving, 100,000 nodes | 13.776/13.916 | 13.721/13.943 |
+| Native default rating | 0.339/0.604 | 0.347/0.458 |
+| App-order rating | 0.350/0.476 | 0.347/0.504 |
+| Up to ten hints | 660.803/678.451 | 486.085/514.869 |
+| Exhaustive first page | 664.839/702.136 | 490.369/504.954 |
+| Selected Unique Rectangle Type 1 | 0.013/0.028 | 0.013/0.024 |
+| Selected Unique Loop | 0.012/0.016 | 0.012/0.016 |
+| Selected BUG+1 | 0.012/0.025 | 0.012/0.019 |
+| Selected Unique Rectangle AIC | 59.140/59.553 | 2.825/2.911 |
+| Selected Unique Rectangle Continuous Nice Loop | 59.802/63.663 | 2.885/3.187 |
+| Selected Unique Rectangle Discontinuous Nice Loop | 59.307/60.817 | 2.749/2.904 |
+
+Ordinary and exhaustive requests keep the same eight choices, including full proof equality. The selected searches in this table return no proofs in both engines. Complete ratings remain 862 native-default points and 1,212 app-order points. Committed Wasm memory after requests stays at 9.44 MiB. This measures the linear-memory buffer, not RSS or live allocation.
+
+A first operation request on a fresh instance measures 691.618 → 515.082 ms for ordinary hints and 660.896 → 489.550 ms for the exhaustive page. Module instantiation and catalog requests precede these timers. All timings include request encoding and decoding. They exclude worker startup, worker transfer, rendering and result-comparison assertions. These observations do not measure browser cold loading.
+
+| Retained fixture | App rate, main → change | Up to ten hints, main → change | Exhaustive page, main → change | Available choices | Committed MiB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Quadruple | 1.256/1.459 → 1.244/1.377 | 0.279/0.558 → 0.254/0.372 | 593.923/607.919 → 590.728/752.224 | 31 | 5.88 |
+| Odd/Even | 0.179/0.214 → 0.180/0.250 | 0.080/0.090 → 0.081/0.092 | 55.768/56.346 → 55.291/55.982 | 23 | 3.56 |
+| Anti-King | 0.159/0.176 → 0.161/0.205 | 0.118/0.135 → 0.118/0.127 | 101.327/105.407 → 101.872/103.703 | 438 | 10.44 |
+| Published Non-Consecutive | 0.441/0.481 → 0.438/0.487 | 0.087/0.090 → 0.088/0.092 | 41.467/44.068 → 41.274/41.863 | 70 | 4.06 |
+| Two-given Consecudoku | 1.124/1.504 → 1.095/1.164 | 0.786/1.053 → 0.772/0.871 | 0.804/0.886 → 0.778/0.841 | 4 | 1.50 |
+
+| Retained fixture | Candidates, main → change | Exact analysis, main → change | Exact solving, main → change |
+| --- | ---: | ---: | ---: |
+| Quadruple | 0.060/0.121 → 0.059/0.087 | 3.000/3.110 → 2.925/3.069 | 1.331/1.430 → 1.310/1.400 |
+| Odd/Even | 0.020/0.033 → 0.018/0.028 | 0.165/0.217 → 0.180/0.209 | 0.060/0.066 → 0.059/0.063 |
+| Anti-King | 0.015/0.018 → 0.015/0.019 | 0.036/0.056 → 0.035/0.041 | 0.022/0.023 → 0.022/0.023 |
+| Published Non-Consecutive | 0.020/0.021 → 0.020/0.021 | 0.360/0.407 → 0.362/0.422 | 0.281/0.307 → 0.283/0.302 |
+| Two-given Consecudoku | 0.051/0.054 → 0.051/0.060 | 0.390/0.414 → 0.413/0.435 | 0.387/0.408 → 0.403/0.433 |
+
+Retained scores, statuses, proof choices and memory match. These samples do not establish a broad speedup. A quiet Quadruple repeat measures 595.486/615.334 → 600.422/642.138 ms for exhaustive pages, with the same 31 choices. Its app rating measures 1.263/1.448 → 1.262/1.381 ms. Exact analysis measures 2.950/3.636 → 2.908/3.107 ms, and solving measures 1.313/1.363 → 1.308/1.440 ms.
+
+The repeated scan median is about 5 ms slower, and its p95 is about 27 ms slower. This does not reproduce the first run's larger tail, but it also does not establish a retained-case speedup. An early probe can add work when uniqueness is certified and the detector must still search. The earlier heavily contended Whispers exact/rating slowdown does not appear in these quiet paired runs. Remaining detector work and timing tails stay in the broader performance audit.
+
+Reproduce the retained and Whispers runs after building both artifacts:
+
+```sh
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/bench-engine-pruning.mjs before.wasm after.wasm whispers
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm
+```
+
+The app artifact changes from 3,346,737 raw / 895,950 gzip bytes to 3,346,922 / 896,112, an increase of 185 raw and 162 gzip bytes. SHA-256 is `93e7f9364a35b01bf6335efc40adef2de5a254039ec17c9f7bc44a0c25f00340` before and `23e3c1628611abdf1eec975eb5379a46323e9f1c51c709f6620987bc9aad7dd5` after.
+
+| Wasm profile | Main raw/gzip bytes | Earlier eligibility raw/gzip bytes |
+| --- | ---: | ---: |
+| solver | 2,040,103 / 556,090 | 2,040,103 / 556,090 |
+| variant-solver | 2,587,664 / 695,874 | 2,587,805 / 695,956 |
+| classic | 2,555,726 / 662,305 | 2,555,726 / 662,305 |
+| app | 3,346,737 / 895,950 | 3,346,922 / 896,112 |
+
+All four profile contracts pass. Solver and Classic sizes are unchanged, and variant-solver adds 141 raw / 82 gzip bytes. The final artifact preserves 2,996 complete responses across sixteen corpus positions and all 351 positive practice positions. The comparison includes all 117 detector IDs, full proofs, ratings, traces, every page, custom orders and unchanged catalogs. It preserves search-limit outcomes at 20,000 nodes and the positive Brain Zaps solve at 100,000 nodes.
+
+Focused native cases cover genuine unique proofs, ambiguous geometric support, candidate removals that mimic a uniqueness premise and an exhausted probe on a genuinely unique puzzle. Empty selected Type 1, Unique Loop and BUG+1 scans keep the exact check uninitialized. A Wasm regression preserves the public search-limit status and independently replays the still-available line/shared-house proofs. The final app suite passes 396 tests, and the final Wasm suite passes 243.
+
+The final native release suite passes 295 tests including seven doctests. All sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo docs and TypeScript checks pass. The production/offline build renders 159 routes. The rebuilt app hash matches the measured artifact.

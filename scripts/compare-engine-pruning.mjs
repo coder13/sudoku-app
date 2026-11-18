@@ -12,8 +12,9 @@ async function engine(path) {
   let id = 0
   return async request => {
     const result = await handle({ id: ++id, request })
-    assert.ok('value' in result, JSON.stringify(result))
-    return result.value
+    if ('value' in result) return result.value
+    assert.equal(result.code, 'search-limit', JSON.stringify(result))
+    return { engineError: result.code, message: result.error }
   }
 }
 const before = await engine(beforePath), after = await engine(afterPath)
@@ -35,6 +36,13 @@ for (const file of ['combined-families', 'quadruple-clover', 'parity-big-eight',
 const coach = (await read('../tests/fixtures/nonconsecutive-coach.json')).examples[0]
 fixtures.push({ name: 'nc-white-dots', position: { puzzle: (await detectPuzzle(coach.code)).variant.puzzle } })
 fixtures.push({ name: 'archived-nc-stall', position: (await read('../tests/fixtures/nonconsecutive-locked.json')).position })
+// Keep earlier scoring-version comparisons reproducible while including the
+// complete Whispers family whenever the compared catalog supports it.
+if (detectors.includes('whispers-house-support')) {
+  fixtures.push({ name: 'whispers-brain-zaps', position: { puzzle: (await read('../tests/fixtures/whispers-brain-zaps.json')).puzzle } })
+  fixtures.push({ name: 'closed-whispers-walk', position: { puzzle: { version: 1, givens: '0'.repeat(81),
+    rules: [{ type: 'whispers', cells: [0, 10, 20, 0], minDifference: 4 }] } } })
+}
 let comparisons = 0, positive = 0
 async function compare(request, label) {
   const expected = await before(request), actual = await after(request)
@@ -44,6 +52,9 @@ async function compare(request, label) {
 }
 for (const { name, position } of fixtures) {
   for (const operation of ['candidates', 'analyze', 'solve']) await compare({ type: 'variant', operation, position, maxNodes: 20_000 }, `${name}: ${operation}`)
+  if (name === 'whispers-brain-zaps') for (const operation of ['analyze', 'solve']) {
+    await compare({ type: 'variant', operation, position, maxNodes: 100_000 }, `${name}: completed ${operation}`)
+  }
   for (const technique of detectors) await compare({ type: 'variant', operation: 'hints', position,
     techniqueOrder: [technique], limit: 0xffff_ffff }, `${name}: complete ${technique} proofs`)
   for (const order of [old.defaultOrder, techniqueOrder]) for (const operation of ['trace', 'rate']) {

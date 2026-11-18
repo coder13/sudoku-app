@@ -21,6 +21,19 @@ useWasmWorker()
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 const source = '#variant=' + encodeURIComponent(JSON.stringify({ id: 'whispers', puzzle: fixture.puzzle }))
 
+test('an exhausted uniqueness check preserves the exact status and rule-specific hints', async () => {
+  const position = { puzzle: fixture.puzzle }
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 4096 }), 'search-limit')
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 100_000 }), 'unique')
+  for (const technique of ['unique-rectangle-aic', 'unique-rectangle-continuous-nice-loop', 'unique-rectangle-discontinuous-nice-loop']) {
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [technique], limit: 0xffff_ffff }), [])
+  }
+  const proofs = await runEngine({ type: 'variant', operation: 'hints', position,
+    techniqueOrder: ['whispers-house-support'], limit: 0xffff_ffff })
+  assert.ok(proofs.length > 0)
+  for (const proof of proofs) assertLineHouseProof(position, proof)
+})
+
 test('Brain Zaps imports, rates, replays every deduction and reaches the published completion', async () => {
   const { game } = await prepareImportedPuzzle(source)
   assert.equal(game.variant?.solution, fixture.solution)

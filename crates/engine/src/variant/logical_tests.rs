@@ -63,7 +63,7 @@ fn complete_support_does_not_hide_a_singleton_placement() {
 }
 
 #[test]
-fn unknown_support_and_safe_uniqueness_scopes_retain_the_original_search() {
+fn unknown_support_retains_the_original_search() {
     let compiled = VariantPuzzle::classic([0; CELLS]).compile().unwrap();
     let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
     assert!(!compiled.classic_search_is_empty(&position, Technique::XWing));
@@ -77,15 +77,167 @@ fn unknown_support_and_safe_uniqueness_scopes_retain_the_original_search() {
             .has_full_completion_support(0)
     );
     assert!(!compiled.classic_search_is_empty(&position, Technique::NestedForcingNet));
+}
 
+#[test]
+fn geometric_support_does_not_establish_uniqueness() {
+    let compiled = VariantPuzzle::classic([0; CELLS]).compile().unwrap();
     let fresh = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
     assert!(
         compiled
             .overlay_search(&fresh)
             .has_full_completion_support(4096)
     );
-    assert!(!compiled.classic_search_is_empty(&fresh, Technique::UniqueRectangleAic));
-    assert!(!compiled.classic_search_is_empty(&fresh, Technique::BugPlusOne));
+    assert_eq!(
+        compiled.analyze(&[0; CELLS], &[0; CELLS], 4096),
+        Ok(Analysis::Multiple)
+    );
+    for technique in Technique::ALL
+        .into_iter()
+        .filter(|item| item.requires_unique_solution())
+    {
+        assert!(
+            compiled
+                .explain(&fresh, VariantTechnique::Classic(technique))
+                .is_empty()
+        );
+    }
+    assert_eq!(fresh.uniqueness.get(), Some(&false));
+    assert!(compiled.classic_search_is_empty(&fresh, Technique::BugPlusOne));
+}
+
+#[cfg(feature = "teaching")]
+#[test]
+fn verified_unique_positions_keep_every_positive_uniqueness_exercise() {
+    for technique in Technique::ALL
+        .into_iter()
+        .filter(|item| item.requires_unique_solution())
+    {
+        let examples = technique.practice_examples();
+        assert!(!examples.is_empty(), "{}", technique.id());
+        for example in examples {
+            let source = example.position().unwrap();
+            let compiled = VariantPuzzle::classic(source.givens).compile().unwrap();
+            let position = compiled
+                .proof_position(&source.entries, &source.eliminations)
+                .unwrap();
+            assert_eq!(
+                compiled.analyze(&source.entries, &[0; CELLS], 4096),
+                Ok(Analysis::Unique)
+            );
+            assert!(!compiled.classic_search_is_empty(&position, technique));
+            assert!(
+                compiled
+                    .explain(&position, VariantTechnique::Classic(technique))
+                    .iter()
+                    .any(|proof| proof.actions == example.expected_actions),
+                "{}",
+                technique.id()
+            );
+            assert_eq!(position.uniqueness.get(), Some(&true));
+        }
+    }
+}
+
+#[cfg(feature = "teaching")]
+#[test]
+fn candidate_removals_cannot_supply_a_uniqueness_assumption() {
+    let example = Technique::UniqueRectangle1.practice_example();
+    let source = example.position().unwrap();
+    let original = VariantPuzzle::classic(source.givens).compile().unwrap();
+    let original_board = source.values().unwrap();
+    let original_masks = original
+        .candidates(&source.entries, &source.eliminations)
+        .unwrap();
+    // Removing every fixed 4 and 5 permits at least their global digit swap.
+    // Candidate restrictions restore the old domains and apparent rectangle.
+    let givens = original_board.map(|digit| if [4, 5].contains(&digit) { 0 } else { digit });
+    let removals = std::array::from_fn(|cell| {
+        if givens[cell] != 0 {
+            0
+        } else if original_board[cell] != 0 {
+            DIGITS & !digit_bit(original_board[cell])
+        } else {
+            DIGITS & !original_masks[cell]
+        }
+    });
+    let compiled = VariantPuzzle::classic(givens).compile().unwrap();
+    assert_eq!(
+        compiled.analyze(&[0; CELLS], &[0; CELLS], 4096),
+        Ok(Analysis::Multiple)
+    );
+    assert_eq!(
+        compiled.analyze(&[0; CELLS], &removals, 4096),
+        Ok(Analysis::Unique)
+    );
+    let position = compiled.proof_position(&[0; CELLS], &removals).unwrap();
+    assert!(
+        DeductionSearch::new(&position.board, &position.masks)
+            .hints(Technique::UniqueRectangle1)
+            .iter()
+            .any(|proof| proof.actions == example.expected_actions)
+    );
+    assert!(
+        compiled
+            .explain(
+                &position,
+                VariantTechnique::Classic(Technique::UniqueRectangle1)
+            )
+            .is_empty()
+    );
+}
+
+#[cfg(feature = "wasm-api")]
+#[test]
+fn an_exhausted_uniqueness_probe_does_not_reclassify_a_unique_puzzle() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/fixtures/whispers-brain-zaps.json"
+    ))
+    .unwrap();
+    let puzzle: VariantPuzzle = serde_json::from_value(fixture["puzzle"].clone()).unwrap();
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(
+        compiled.analyze(&[0; CELLS], &[0; CELLS], 4096),
+        Ok(Analysis::SearchLimit)
+    );
+    assert_eq!(
+        compiled.analyze(&[0; CELLS], &[0; CELLS], 100_000),
+        Ok(Analysis::Unique)
+    );
+    let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
+    for technique in [
+        Technique::UniqueRectangle1,
+        Technique::UniqueLoop,
+        Technique::BugPlusOne,
+    ] {
+        assert!(
+            compiled
+                .explain(&position, VariantTechnique::Classic(technique))
+                .is_empty()
+        );
+        assert!(
+            position.uniqueness.get().is_none(),
+            "{} defers the exact probe",
+            technique.id()
+        );
+    }
+    assert!(compiled.classic_search_is_empty(&position, Technique::UniqueRectangleAic));
+    for technique in Technique::ALL
+        .into_iter()
+        .filter(|item| item.requires_unique_solution())
+    {
+        assert!(compiled.classic_search_is_empty(&position, technique));
+        assert!(
+            compiled
+                .explain(&position, VariantTechnique::Classic(technique))
+                .is_empty()
+        );
+    }
+    assert!(
+        !compiled
+            .explain(&position, VariantTechnique::WhispersHouseSupport)
+            .is_empty()
+    );
 }
 
 #[test]
@@ -116,6 +268,7 @@ fn complete_rule_scopes_reject_unsafe_swaps_before_searching() {
         );
     }
     assert!(position.overlay.get().is_none());
+    assert!(position.uniqueness.get().is_none());
 }
 
 #[test]
