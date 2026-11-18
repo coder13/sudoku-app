@@ -43,6 +43,10 @@ export const HINT_CANDIDATES_ERROR: PuzzleHint = {
 }
 
 const TECHNIQUE_LABELS: Record<string, string> = {
+  'non-consecutive-locked-candidates-2': 'Non-Consecutive locked candidates (2 cells)',
+  'non-consecutive-locked-candidates-3': 'Non-Consecutive locked candidates (3 cells)',
+  'non-consecutive-bivalue': 'Non-Consecutive bivalue',
+  'non-consecutive-trivalue': 'Non-Consecutive trivalue',
   'aic': 'Alternating inference chain',
   'als-chain': 'ALS chain',
   'als-aic': 'ALS alternating inference chain',

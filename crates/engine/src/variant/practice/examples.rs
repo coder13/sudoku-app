@@ -190,6 +190,86 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 [PuzzleRule::NonConsecutive { except: vec![] }],
             ),
         ],
+        NonConsecutiveLockedPair => [
+            seed(
+                "038520000502000410940137050690002580004000037007000102719080000000701849480200300",
+                6,
+                6,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+            seed(
+                "000000007794800010310000050030040002079280006800010070005360049947020300000974800",
+                0,
+                6,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+            seed(
+                "080000009100685700072900006724106000050470630300000000800501400001004003047000100",
+                38,
+                9,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+        ],
+        NonConsecutiveLockedTriple => [
+            seed(
+                "038520000502000410940137050690002580004000037007000102719080000000701849480200300",
+                49,
+                5,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+            seed(
+                "000000007794800010310000050030040002079280006800010070005360049947020300000974800",
+                14,
+                3,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+            seed(
+                "080000009100685700072900006724106000050470630300000000800501400001004003047000100",
+                4,
+                1,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+        ],
+        NonConsecutiveBivalue => [
+            seed(
+                "038520000502000410940137050690002580004000037007000102719080000000701849480200300",
+                29,
+                3,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+            seed(
+                "000000007794800010310000050030040002079280006800010070005360049947020300000974800",
+                33,
+                9,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+            seed(
+                "080000009100685700072900006724106000050470630300000000800501400001004003047000100",
+                47,
+                8,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+        ],
+        NonConsecutiveTrivalue => [
+            seed(
+                "000000007794800010310000050030040002079280006800010070005360049947020300000974800",
+                21,
+                6,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+            seed(
+                "500000007794800010310000050030040002079280006800010070005360049947020300000974800",
+                29,
+                6,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+            seed(
+                "000000007794800010316000050030040002079280006800010070005360049947020300000974800",
+                73,
+                2,
+                [PuzzleRule::NonConsecutive { except: vec![] }],
+            ),
+        ],
         Clone => [
             seed(
                 "802001005000002170500709300901020750000308916630000824140070680090810507008000030",

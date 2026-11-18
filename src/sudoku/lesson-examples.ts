@@ -19,6 +19,13 @@ export function variantLessonExercise({ position, deduction, ...exercise }: Vari
         .filter((digit) => active & (1 << (digit - 1))).map((digit) => ({ cell, digit }))
     })
   }
+  if (pattern && deduction.evidence.type === 'exclusion') {
+    const { premise } = deduction.evidence
+    pattern.candidates = premise.type === 'cell'
+      ? Array.from({ length: 9 }, (_, index) => index + 1)
+        .filter(digit => premise.domain & 1 << (digit - 1)).map(digit => ({ cell: premise.cell, digit }))
+      : premise.cells.map(cell => ({ cell, digit: premise.digit }))
+  }
   return { ...exercise, givens: puzzle.givens, entries, eliminations: [...eliminations], deduction: hint, pattern, variantPuzzle: puzzle }
 }
 
