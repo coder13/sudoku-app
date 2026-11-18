@@ -19,7 +19,7 @@ npx wrangler@4 pages dev
 
 ## Preview a pull request
 
-This repository deploys the static app and its Worker together to the Direct Upload Pages project `klyn-sudoku`. The preview environment starts with an empty binding list. For the first Cloudflare preview, create a preview database with `npx wrangler@4 d1 create sudoku-sync-preview`. In `wrangler.jsonc`, add a record under `env.preview.d1_databases` with binding `DB`, database name `sudoku-sync-preview`, the returned database ID, and migrations directory `cloudflare/migrations`. Commit the binding so future branch builds can reuse it. Apply pending preview migrations before uploading a branch build. Use the branch alias to test across updates so the browser retains its device credentials.
+This repository deploys the static app and its Worker together to the Direct Upload Pages project `klyn-sudoku`. Branch previews share the `sudoku-sync-preview` D1 database through the `DB` binding in `env.preview`. Apply pending preview migrations before uploading a branch build. Use the branch alias to test across updates so the browser retains its device credentials.
 
 ```sh
 npm run build:cloudflare

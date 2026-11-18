@@ -12,7 +12,14 @@
   ],
   "env": {
     "preview": {
-      "d1_databases": []
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sudoku-sync-preview",
+          "database_id": "65210c14-e3ce-4b22-ab7e-c8262ce457d2",
+          "migrations_dir": "cloudflare/migrations"
+        }
+      ]
     }
   }
 }
