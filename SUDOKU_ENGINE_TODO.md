@@ -15,6 +15,15 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 - [ ] Evaluate narrower expert-detector and variant-family boundaries against actual callers and package savings.
 - [ ] Integrate each remaining research contribution through a focused change against current main.
 
+## Variant graph performance
+
+- [x] Separate rectangle-graph construction and traversal on the published HCHW opening and both saved stalls. Native construction dominates at roughly 60/26/22 ms; traversal remains below 0.2 ms. Retain the raw timing log and exact source head in the isolated performance worktree. [Issue 175](https://github.com/coder13/sudoku-app/issues/175)
+- [x] Reuse the immutable rectangle graph, including an empty result, across its three inference techniques within one logical position. Guard board/mask provenance and preserve eligibility, traversal order and proof fields. All 356 native unit/integration tests and seven serial Cargo examples pass, including published positive chains and stale-input controls.
+- [x] Preserve 12341 complete replies on 83 variant corpus positions and 363 positive practice positions, all 121 detectors and every hint page, plus 148 Classic replies. Pass 520 app tests, 316 Wasm contracts, TypeScript, four package profiles, strict documentation and the 163-route production build. [Evidence and costs](SUDOKU_RECTANGLE_GRAPH_AUDIT.md)
+- [ ] Complete the broad paired request, app caller and generation audit. Pass the full native capability runtime matrix in CI after local linking exceeded disk space, then merge and record the measured improvement.
+
+- [ ] Speed up dense empty Quintuple Pattern Overlay scans without truncating complete results. Preserve HCHW app step 22 and the positive multi-digit proof controls. [Separate performance issue](https://github.com/coder13/sudoku-app/issues/179)
+
 ## App integration
 
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
