@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -82,7 +82,15 @@ if (options.includes('--palindrome-trace')) {
     }
   }
 }
-if (options.includes('--exact-houses')) fixtures.push({ name: 'inequality-palindrome14', position: { puzzle: (await read('../tests/fixtures/inequality-palindrome14.json')).puzzle } })
+if (options.includes('--exact-houses') || options.includes('--xv')) fixtures.push({ name: 'inequality-palindrome14', position: { puzzle: (await read('../tests/fixtures/inequality-palindrome14.json')).puzzle } })
+if (options.includes('--xv')) {
+  for (const file of ['xv-clover', 'xv-quadruple-clover']) fixtures.push({ name: file,
+    position: { puzzle: (await read(`../tests/fixtures/${file}.json`)).puzzle } })
+  for (const source of (await read('../tests/fixtures/xv-coach.json')).examples.filter(source => !source.deferred.length)) {
+    fixtures.push({ name: `xv-coach-${source.url.split('/').pop()}`,
+      position: { puzzle: (await detectPuzzle(source.code)).variant.puzzle } })
+  }
+}
 let comparisons = 0, positive = 0, improvedBudgets = 0, alternativeCompletions = 0
 const exhausted = result => result === 'search-limit' || result?.engineError === 'search-limit'
 async function compare(request, label) {
