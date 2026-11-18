@@ -1,7 +1,7 @@
 import { difficultyIndex } from './difficulty.ts'
 import type { Difficulty, VariantClueLayout, VariantGenerationRequest, VariantPuzzle, VariantRule } from './engine.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
-import { WINDOKU_REGIONS, type PlayableVariant } from './variants.ts'
+import { quadrupleCells, WINDOKU_REGIONS, type PlayableVariant } from './variants.ts'
 
 export type VariantSeed = {
   seed: number
@@ -91,7 +91,8 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         }
         case 'killer-cages':
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
-        case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
+        case 'parity': case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
+        case 'quadruple': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
         case 'inequality': return { ...rule, less: cell(rule.less), greater: cell(rule.greater) }
         case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }
         case 'entropic': case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
