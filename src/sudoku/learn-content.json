@@ -859,10 +859,8 @@
               "title": "Naked triple"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Look for lists such as {2, 3}, {2, 5}, and {3, 5} in one house. Together they use 2, 3, and 5. Remove all three digits from its other cells."
-              ]
+              "type": "foundation-visual",
+              "visual": "naked-triple-count"
             },
             {
               "type": "heading",
@@ -870,10 +868,8 @@
               "title": "Naked quadruple"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Four cells with {1, 2}, {2, 4}, {3, 4}, and {1, 2, 3} use exactly four different digits. If they share a house, remove 1, 2, 3, and 4 elsewhere in it."
-              ]
+              "type": "foundation-visual",
+              "visual": "naked-quadruple-count"
             },
             {
               "type": "heading",
@@ -881,10 +877,8 @@
               "title": "Locked pair"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "If both cells of a pair share a line and a box, each house gets both digits. Remove them from the other cells in both houses."
-              ]
+              "type": "foundation-visual",
+              "visual": "locked-pair-two-houses"
             },
             {
               "type": "heading",
@@ -996,10 +990,8 @@
               "title": "Hidden triple"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "For three digits, count every cell that shows at least one of them. If there are just three such cells, remove their other marks."
-              ]
+              "type": "foundation-visual",
+              "visual": "hidden-triple-places"
             },
             {
               "type": "heading",
@@ -1371,6 +1363,10 @@
               ]
             },
             {
+              "type": "foundation-visual",
+              "visual": "x-wing-start-in-columns"
+            },
+            {
               "type": "heading",
               "id": "finned-x-wing",
               "title": "Finned X-Wing"
@@ -1546,10 +1542,8 @@
               "title": "Dual kite"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Two kites can share the connection in the box. Follow each kite from its own row pair to its own column pair before you remove a candidate."
-              ]
+              "type": "foundation-visual",
+              "visual": "dual-kite-shared-box"
             },
             {
               "type": "practice",
@@ -1626,6 +1620,10 @@
               "paragraphs": [
                 "You can start from either arm. If the target and far end form another two-place line, trace it back for a second removal. A box with just two possible places can also form a short X-Chain."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "empty-rectangle-two-directions"
             },
             {
               "type": "practice",
@@ -2422,9 +2420,16 @@
             {
               "type": "text",
               "paragraphs": [
-                "An avoidable rectangle can include digits you placed after the puzzle began. All four corners must have started empty. With three filled corners, remove the candidate that completes the swap.",
-                "With two filled corners and the same single extra in both empty corners, one of the extras must be true. Remove it from other cells that see both."
+                "All four corners of an avoidable rectangle must start empty. Use this rule only if the puzzle has one solution."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "avoidable-rectangle-three-placed"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "avoidable-rectangle-two-placed"
             },
             {
               "type": "heading",
@@ -2820,10 +2825,8 @@
               "title": "Color trap"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "If an uncolored candidate sees both a blue and an amber candidate, remove it. Whichever color holds the digit rules it out."
-              ]
+              "type": "foundation-visual",
+              "visual": "simple-color-trap"
             },
             {
               "type": "heading",
@@ -2831,10 +2834,8 @@
               "title": "Color wrap"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "If two blue candidates see each other, blue cannot be true in this set. Remove every blue candidate in the set. Its amber candidates must be true."
-              ]
+              "type": "foundation-visual",
+              "visual": "simple-color-wrap"
             },
             {
               "type": "heading",
@@ -2842,10 +2843,8 @@
               "title": "No place for the digit"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Suppose one color is true. If that leaves any house without a place for the digit, remove that color throughout the set."
-              ]
+              "type": "foundation-visual",
+              "visual": "simple-color-empty-house"
             },
             {
               "type": "practice",
@@ -3006,7 +3005,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find a cell with exactly two candidates, such as 2 and 7. Color the 2 blue and the 7 amber. If its row has just one other place for 7, color that 7 blue."
+                "Start with a cell that has exactly two candidates. Give the candidates opposite colors."
               ]
             },
             {
@@ -3020,18 +3019,35 @@
               "example": "3d-medusa"
             },
             {
+              "type": "foundation-visual",
+              "visual": "medusa-first-links"
+            },
+            {
               "type": "heading",
               "id": "medusa-conflicts",
               "title": "When one color breaks a rule"
             },
             {
-              "type": "list",
-              "items": [
-                "One color puts two digits in one cell.",
-                "One color puts the same digit twice in a house.",
-                "One color leaves an empty cell with no candidates.",
-                "One color leaves a house with no place for a missing digit."
+              "type": "text",
+              "paragraphs": [
+                "In each diagram, the colored candidates belong to one linked group. The crop shows the candidates involved in the deduction."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "medusa-two-digits"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "medusa-repeat-digit"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "medusa-empty-cell"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "medusa-empty-house"
             },
             {
               "type": "text",
@@ -3045,12 +3061,22 @@
               "title": "When either color rules out the same candidate"
             },
             {
-              "type": "list",
-              "items": [
-                "If a cell contains both colors, either color fills it. Remove its uncolored candidates.",
-                "If an uncolored 5 sees both a blue 5 and an amber 5, remove the uncolored 5.",
-                "If one color fills the cell and the other places its candidate digit in a peer, both colors rule out that candidate."
+              "type": "text",
+              "paragraphs": [
+                "If both color choices rule out the same uncolored candidate, you can remove it."
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "medusa-two-colors-in-cell"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "medusa-two-peers"
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "medusa-cell-and-peer"
             },
             {
               "type": "practice",
@@ -3256,10 +3282,8 @@
               "title": "When no digit can repeat"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "If all four digits can occur only once, the wing must contain each one. For each digit, look for an outside cell that sees every possible copy inside."
-              ]
+              "type": "foundation-visual",
+              "visual": "wxyz-wing-all-restricted"
             },
             {
               "type": "heading",
@@ -3539,10 +3563,8 @@
               "title": "Type 2 with different digits"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Suppose the ends are 2 in A and 7 in B, and the cells share a house. A 7 in A rules out 2 in A and 7 in B. Remove 7 from A. The same argument removes 2 from B if it is a candidate there."
-              ]
+              "type": "foundation-visual",
+              "visual": "aic-different-endpoints"
             },
             {
               "type": "practice",
@@ -4267,10 +4289,8 @@
               "title": "One digit short of a locked subset"
             },
             {
-              "type": "text",
-              "paragraphs": [
-                "Two cells with {1, 2} and {2, 3} form an ALS. If the set loses 1, the first cell must be 2 and the second must be 3. Those two digits now fill the set."
-              ]
+              "type": "foundation-visual",
+              "visual": "als-one-digit-short"
             },
             {
               "type": "heading",
@@ -5667,6 +5687,10 @@
                   "explanation": "That candidate can fill a cell without using a slot. The count no longer covers every choice."
                 }
               ]
+            },
+            {
+              "type": "foundation-visual",
+              "visual": "overlap-uses-two-slots"
             }
           ],
           "references": [

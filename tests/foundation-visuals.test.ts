@@ -80,7 +80,8 @@ function completions(visual: FoundationVisualDefinition) {
 }
 
 test('the final marks in the multi-digit examples hold in every possible filling', () => {
-  for (const id of ['candidate-elimination', 'subset-count', 'wing-cases', 'contradiction', 'loop-alternating-links', 'placement-capacity'] as const) {
+  for (const id of ['candidate-elimination', 'subset-count', 'wing-cases', 'contradiction', 'loop-alternating-links', 'placement-capacity',
+    'naked-triple-count', 'naked-quadruple-count', 'locked-pair-two-houses', 'wxyz-wing-all-restricted', 'overlap-uses-two-slots'] as const) {
     const visual = foundationVisuals[id]
     const solutions = completions(visual)
     assert.ok(solutions.length > 0, id)
@@ -88,6 +89,47 @@ test('the final marks in the multi-digit examples hold in every possible filling
       if (kind === 'result') assert.ok(solutions.every(values => values.get(cell) === digit), `${id}: placement`)
       if (kind === 'removal') assert.ok(solutions.every(values => values.get(cell) !== digit), `${id}: removal`)
     }
+  }
+})
+
+test('3D Medusa illustrates each conflict and each way both colors rule out a candidate', () => {
+  const article = catalog.lessonRoutes.get('3d-medusa')!
+  const conflicts = ['medusa-two-digits', 'medusa-repeat-digit', 'medusa-empty-cell', 'medusa-empty-house'] as const
+  const traps = ['medusa-two-colors-in-cell', 'medusa-two-peers', 'medusa-cell-and-peer'] as const
+  const start = article.blocks.findIndex(block => block.type === 'heading' && block.id === 'medusa-conflicts')
+  const split = article.blocks.findIndex(block => block.type === 'heading' && block.id === 'medusa-traps')
+  const visualIds = (blocks: typeof article.blocks) => blocks.flatMap(block => block.type === 'foundation-visual' ? [block.visual] : [])
+  assert.deepEqual(visualIds(article.blocks.slice(start, split)), conflicts)
+  assert.deepEqual(visualIds(article.blocks.slice(split)), traps)
+
+  const marks = (id: typeof conflicts[number] | typeof traps[number]) => foundationVisuals[id].steps[0].marks!
+  const rulesOut = (source: { cell: number; digit: number }, target: typeof source) =>
+    source.cell === target.cell ? source.digit !== target.digit : source.digit === target.digit && peer(source.cell, target.cell)
+  for (const id of ['medusa-two-digits', 'medusa-repeat-digit'] as const) {
+    const [a, b] = marks(id)
+    assert.equal(a.kind, b.kind, id)
+    assert.equal(a.cell === b.cell, id === 'medusa-two-digits', id)
+    assert.ok(rulesOut(a, b), id)
+  }
+  for (const id of ['medusa-empty-cell', 'medusa-empty-house'] as const) {
+    const blue = marks(id).filter(mark => mark.kind === 'pattern')
+    const removed = marks(id).filter(mark => mark.kind === 'removal')
+    assert.ok(removed.every(target => blue.some(source => rulesOut(source, target))), id)
+    const { candidates } = foundationVisuals[id]
+    const [first] = removed
+    if (id === 'medusa-empty-cell') {
+      assert.ok(removed.every(target => target.cell === first.cell), id)
+      assert.deepEqual(removed.map(target => target.digit), candidates![first.cell], id)
+    } else {
+      assert.ok(removed.every(target => target.digit === first.digit && Math.floor(target.cell / 9) === Math.floor(first.cell / 9)), id)
+      assert.deepEqual(removed.map(target => target.cell), Object.keys(candidates!).map(Number), id)
+    }
+  }
+  for (const [expected, id] of [[2, traps[0]], [0, traps[1]], [1, traps[2]]] as const) {
+    const [blue, amber, target] = marks(id)
+    assert.deepEqual([blue.kind, amber.kind, target.kind], ['pattern', 'accent', 'removal'], id)
+    assert.ok(rulesOut(blue, target) && rulesOut(amber, target), id)
+    assert.equal([blue, amber].filter(source => source.cell === target.cell).length, expected, id)
   }
 })
 

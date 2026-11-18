@@ -299,7 +299,18 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 .foundation-step-controls > span { min-width: 3.5em; text-align: center; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
 .foundation-visual-note { color: var(--muted); font-size: 0.8125rem; line-height: 1.5; }
 .foundation-board .board-frame { width: min(100%, calc(var(--visual-columns) * 68px + 20px)); margin-inline: auto; }
-.foundation-board .candidate-marks { font-size: clamp(11px, calc(25cqw / var(--board-columns, 9)), 19px); }
+.foundation-visual .candidate-marks { font-size: clamp(11px, calc(25cqw / var(--board-columns, 9)), 19px); }
+.lesson-inline-example {
+  align-items: center;
+  gap: var(--space-16);
+}
+.lesson-inline-example figcaption { font-size: inherit; line-height: inherit; }
+.lesson-inline-example h3 { margin: 0; font-size: 1rem; line-height: 1.35; }
+.lesson-inline-example .board-frame { width: min(100%, calc(var(--visual-columns) * 48px + 20px)); }
+@container (min-width: 570px) {
+  .lesson-inline-example { grid-template-columns: minmax(0, 1fr) minmax(0, 16rem); }
+  .lesson-inline-example .board-frame { margin-inline-end: 0; }
+}
 .foundation-stage-stack { display: grid; min-width: 0; }
 .foundation-stage { grid-area: 1 / 1; min-width: 0; visibility: hidden; }
 .foundation-stage[data-active="true"] { visibility: visible; }
