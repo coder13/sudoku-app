@@ -1,0 +1,56 @@
+{
+  "description": "Unmodified SCv7 exports. Preserve all companion rules and each explicit two-cell sum.",
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/7v7n",
+      "title": "XV Maelstrom",
+      "author": "Raumplaner",
+      "published": "2025-06-07 07:51:04",
+      "code": "SCv7_32_f2e8r4uddb1j0444rtisustgvpmlvso874b1uj52310uo12rd5kkrnlteqg2b4dbm8rr2v5rpjn6gpnaopodp1pf9tqgbqm2ncfnd5r1h9hhn1hoa7ujckpoa8mgkk7sngn19hcfpf79vjvrbd7q1ibnnnvg23qbf5ugi0r13f8ba7errp3jubm5j6jab89mustptg0akbg80lm3387eg2ioo40qb0ekfu1q4u0l54g368gjq8c9hj6u15kimm6u9jmq0u9jkm090b2id4kcbkqpo9a3p78mjbip0cigj71ielhqr293acdrevpdmd1i199hu58ctu9b513k5j91jm3vfhmdca653236tb9v78fr24tvm4todku9htv3hu3ctgebdtrqdalsbatn19nbmpculuofrc89jlnd3n5v061f4rfk",
+      "solution": "689132457517498326243675198195846732476253981328917564764589213932761845851324679",
+      "deferred": [],
+      "requiresXv": true
+    },
+    {
+      "url": "https://sudoku.coach/en/s/FCeS",
+      "title": "Anti-King diagonal xv",
+      "author": "Ce",
+      "published": "2026-05-08 01:42:17",
+      "code": "SCv7_32_f2e8r56bdb1j0425vt2ummaodv4tmb2r98gsn4k5d221293mm3apdlnorulj9h95ipa6dpu7n7bj77hrj94jf1n37pu7jkiq41enhtvtdrkaee5qq33ojd1f6c4kfkmi0p4fpf14h8e87qs6rqepsv77cbh0j469etjnvgofquthgguvkmtnimf0at7j7vfj602rp7ldfbbsfs4grrhn8v6lom7m3pqfkvutnuau769tft7ofaapld69svh4ctvmq67le9pi4mv9afs65djo36hi92djmkio206sckja20asmuqgb582ghp6g45gpi0de26ukhg9q0e4e6mg917gqin19058l8a8dl0u7pl33a818hai0l6e4i09n231g1qqj789dd605d1tv4gk32799afl9bdbe8beg3vv74rajcjtdj8rqcsj3l4m9odl0u8t6t4sndmja9si2hck2v9luh055diq122a0kp8ut8hkmj715gkp4a077n7n9eak0c1egqk14cldb47f9fsunh1jtc7qq121lp0eihneifnt2jqi5g704q3mojitf1v43bfi0q5e",
+      "solution": "765932184143856972289174536534698721628715493971243865456387219892461357317529648",
+      "deferred": [],
+      "requiresXv": true
+    },
+    {
+      "url": "https://sudoku.coach/en/s/63Jk",
+      "title": "XV(anti)K",
+      "author": "Ugleh",
+      "published": "2024-10-21 21:29:46",
+      "code": "SCv7_32_f2e8r41t1u130446vv5sq798btd5dn0s346k68qdnk20l8d78o4vvnd28i2k1gidtnev7f6nmg1tqokhs59k28god2u2isq0hli220bfklu2um0rvl52pt30ri8ddhii5f8goqqe3lg0228f378a6sff01kgh3o6um2poo4llra0fj473c8hlrbebnfr7kcckqj9mrvjsankftpqalipindbl7cs3mdlgt9u1csgneg4ddliaaidk88alg9h5rlt4fvsg82o4qhgi65egepkhgdoms4tprap5jbcjua7sjugnpqejmj0",
+      "solution": "967283145283145967145967283672831459831459672459672831728314596314596728596728314",
+      "deferred": [],
+      "requiresXv": true
+    },
+    {
+      "url": "https://sudoku.coach/en/s/Chcs",
+      "title": "Whisper Colouring 15",
+      "author": "cyboogie",
+      "published": "2026-01-30 15:46:56",
+      "code": "SCv7_32_f2e8ql6bdr13047s2vrjl1vo3njsk9rglgs49gd4iog433h9d88vvngdamgi23p1b6lk96ktjn6aosr1ek6dmtfouqm70o3lv3qcrajdn8acnk54hoauu5ommqme06aov8t152kt7t17ft4hg5qrsfno7taebtvrvoksuo0tdg76mo8s1i3pcc02iohsudj0osp9c1svfgif1pbqomht6g43dc40qielg1dh02ucca9o0177s07c50n7e34c088mfem85l9g39d46kal6099c92ian5t6754gmpd194bla1uck0ia91903la6jdiqkh8kag46rbk4qg9nnmnih157tvfdgdnceovfl9p3t8alhlffr99a856uevdalar26vn5kgnsjv8bv7koi14b67jo6mcs91sea6ha5scvu51ua3j0s8nir7er2goqujs771ge98ot1blqh02me7k66jh0ni2a8ma6l5754ktlkdm9khfnr7jqss6ju3b3va6vh82suebnsnedom56q77hjmletcss1nkm8f6t7aqntquco9v51sn8t0ila753dj0qj0e6foqeu2mn2svs02kstv7s",
+      "solution": "483729516971685432562314798157496823829153647346872951798241365234568179615937284",
+      "deferred": [],
+      "requiresXv": false
+    },
+    {
+      "url": "https://sudoku.coach/en/s/99Eu",
+      "title": "May the Sudoku Be With You",
+      "author": "Dariao142",
+      "published": "2025-08-30 21:05:41",
+      "code": "SCv7_32_f2e8r3hv1u130465nv5sq78g6g52mrkehi3a30d6bo18bd478qdnsttf9947148eivf9vnrrpu1rdm2mv1951p026jf9aed38pp50g5iulipv6nunm1tj88shghinka4jelger51r2ig5q1pe87911ngc98dv201ktqavfk7enm8hk38tpu0goh6utlp5turn1me3j303b7a96k973fjdulgq3q1gimlenat9bq91s6ovovfii467ji2keqb4lt4dia05ho0te2f0qqhgsrpmubtho",
+      "solution": "639285741174639285528174639963528174417963528852417963396852417741396852285741396",
+      "deferred": [
+        "general-two-cell-sum"
+      ]
+    }
+  ]
+}

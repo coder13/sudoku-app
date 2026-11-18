@@ -6,7 +6,7 @@ import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName }
 type ConstraintEvidence = Extract<VariantDeduction['evidence'], { type: 'constraint' }>
 const alternatives = new Intl.ListFormat('en', { type: 'disjunction' })
 
-function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at: (cell: number) => string, focus: readonly { cell: number }[]) {
+function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at: (cell: number) => string, focus: readonly { cell: number; digit: number }[]) {
   const { cells, domains } = evidence
   const rules = evidence.rules.map(index => puzzle.rules?.[index])
   const rule = rules[0]
@@ -70,6 +70,15 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
       const excluded = [marks.some(r => r.five?.negative) ? '5' : '', marks.some(r => r.ten?.negative) ? '10' : ''].filter(Boolean)
       const description = v || x ? `The ${v ? 'V' : 'X'} between ${pair} gives a total of ${v ? 5 : 10}.`
         : `This edge has no mark. The puzzle gives all relevant marks, so these cells cannot add to ${excluded.join(' or ')}.`
+      const fixed = domains.findIndex(mask => onlyCandidate(mask) !== null)
+      if ((v || x) && fixed >= 0) {
+        const digit = onlyCandidate(domains[fixed])!
+        return { description, reason: `${at(cells[fixed])} must be ${digit}. Its partner across the ${v ? 'V' : 'X'} must be ${(v ? 5 : 10) - digit}.` }
+      }
+      if (x && focus.some(candidate => candidate.digit === 5)) {
+        const house = Math.floor(a / 9) === Math.floor(b / 9) ? `row ${Math.floor(a / 9) + 1}` : `column ${a % 9 + 1}`
+        return { description, reason: `Across an X, 5 needs another 5. These cells share ${house}, so neither cell can be 5.${focus.some(candidate => candidate.digit !== 5) ? ' Other crossed-out candidates also lack an allowed partner.' : ''}` }
+      }
       return { description, reason: 'A crossed-out digit has no partner in the other cell that gives an allowed sum.' }
     }
     case 'thermometer':

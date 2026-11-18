@@ -183,6 +183,20 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
       else if (constraint.type === 'antiKing') rules.push({ type: 'anti-king' })
       else if (constraint.type === 'nonconsecutive') rules.push({ type: 'non-consecutive' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })
+    } else if (constraint.type === 'twoCellSum') {
+      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no two-cell sum clues.')
+      const five: [number, number][] = [], ten: [number, number][] = []
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
+          !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'sum')) {
+          throw new Error('This Sudoku Coach puzzle has an invalid two-cell sum clue.')
+        }
+        const sum = segment.parameters.sum
+        if (sum !== 5 && sum !== 10) throw new Error(`This Sudoku Coach two-cell sum (${String(sum)}) is not supported yet. XV clues require a sum of 5 or 10.`)
+        if (sum === 5) five.push(segment.cells as [number, number])
+        else ten.push(segment.cells as [number, number])
+      }
+      rules.push({ type: 'xv', ...(five.length > 0 && { five: { pairs: five } }), ...(ten.length > 0 && { ten: { pairs: ten } }) })
     } else if (constraint.type === 'greaterLess') {
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no inequality signs.')
       for (const segment of constraint.segments) {

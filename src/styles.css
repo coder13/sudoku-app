@@ -3190,6 +3190,14 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-inequality-halo { stroke: var(--board-bg); stroke-width: .14; }
 .variant-inequality-sign { stroke: var(--board-ink); stroke-width: .045; }
 .variant-inequality-connector { stroke: var(--board-ink); stroke-width: .025; stroke-dasharray: .07 .07; }
+.variant-xv-mark, .variant-xv-halo {
+  font-size: .26px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.variant-xv-halo { fill: none; stroke: var(--board-bg); stroke-width: .07; }
+.variant-xv-mark { fill: var(--board-ink); stroke: none; }
 .variant-palindrome-overlap polyline {
   fill: none;
   stroke: var(--board-ink);

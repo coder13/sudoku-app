@@ -671,3 +671,24 @@ The version 3 release benchmark measured 40 rating and hint calls on each fixed 
 | X Sudoku | 26 | 0.074/0.075 | 0.019/0.021 | 0.569/0.768 | 0.058/0.062 | 0.049/0.055 | 0.555/0.711 |
 | Killer | 15 | 0.235/0.236 | 0.037/0.037 | 1.999/2.300 | 0.241/0.281 | 0.109/0.128 | 2.370/2.726 |
 | Jigsaw and Killer | 15 | 0.137/0.138 | 0.025/0.026 | 1.620/1.721 | 0.210/0.229 | 0.112/0.166 | 2.226/2.379 |
+
+## 14. Integrate XV into the app
+
+The separate worktree is `codex/sudoku-xv-integration`. Track the family in [issue 48](https://github.com/coder13/sudoku-app/issues/48). Native XV rules, techniques, practice and generation already exist. This pass connects them to the app.
+
+- [x] Render and inspect Clover's published XV puzzle and solution PDFs from 2025-10-08. Preserve four givens, eight V marks and fourteen X marks. Independently prove the printed unique completion and multiple completions after removing XV.
+- [x] Inspect the published XV and IVs puzzle and solution PDFs from 2025-12-16. Preserve four givens, four V marks, twelve X marks and six Quadruple clues. Independently prove uniqueness and the need for both rule families.
+- [x] Check every action in both native/app traces against the independently verified grids. The pure native profile stalls at 1,076 points after 55 steps; the app profile solves at 4,538 points after 151 steps. The mixed puzzle solves under both orders at 1,540/1,870 points and 123 steps.
+- [x] Verify three generated 30-given, twenty-marker puzzles independently. Seeds 17, 43 and 227 all need XV and complete their native Easy paths. These are compatibility cases, not difficulty calibration or a generation benchmark.
+- [x] Test independent negative V/X flags and repeated Quadruple digits. The independent counter uses digit arrays and exhaustive four-cell assignments, separate from the engine's support code.
+- [x] Audit the Coach `twoCellSum` compiler: sums of 5 and 10 map to V and X; other totals need [general adjacent totals](https://github.com/coder13/sudoku-app/issues/72). Preserve or explicitly reject those parameters.
+- [x] Preserve four unmodified Coach exports: 7v7n, FCeS, 63Jk and Chcs. Count their solutions independently and retain every dot, diagonal, chess rule, inequality and Whispers parameter. Keep the real 99Eu sum-15 export rejected pending general adjacent totals.
+- [x] Render V/X marks and accessible partner labels. Separate overlapping dots and reversed inequalities under all eight transforms. Inspect static 900/360-pixel diagrams against the published originals. Live viewport testing remains a follow-up.
+- [x] Verify independent positive and negative V/X semantics across rule layers. Cover all digit pairs in both directions, both note types, conflict checks, bulk input, undo/redo, actual storage reload, original shared givens and all eight transforms.
+- [x] Replay every action in published complete and partial paths against independent completions. Enumerate XV proof support independently. Verify several hints, pages, Finder, disabled logical profiles, selected steps and three practice exercises with accepted and rejected answers.
+- [x] Expand the combined-family fixture to 32,768 selections: 24,576 compatible imports and 8,192 intentional contradictions. This checks combinations on a near-complete grid; it does not prove that every arrangement is supported.
+- [x] Pass 437 app tests, 265 Wasm tests, TypeScript and the 159-route production/offline build. The final explicit text halo also passes seven focused component tests. No Rust source or scoring policy changes in this integration.
+- [x] Record request latency, app caller costs, memory and package sizes. The six-source benchmark includes the slow 6.75-second 63Jk rating, preview and walkthrough. Preserve the costs of app hint preferences separately from raw ten-hint requests. [Measurements](tests/fixtures/README.md#xv-app-integration)
+- [ ] Pass exact-head CI and merge the app-ready family separately. Keep New puzzle recipes conditional on calibration.
+
+The app-order paths solve Clover at 4,538 points, XV and IVs at 1,870, FCeS at 3,186 and 63Jk at 27,358. Maelstrom stalls at 940 points after 27 steps. Chcs stalls at 160 points after six steps. Preserve those partial results. Chcs is independently unique without XV, so do not claim every imported marker family is necessary. The separate [rating audit](https://github.com/coder13/sudoku-app/issues/147) tracks the slow 63Jk rating and Maelstrom hint search.

@@ -9,11 +9,19 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
     ...Array.from({ length: 9 }, (_, c) => Array.from({ length: 9 }, (_, r) => 9 * r + c)), ...regions,
   ]
   const edges: [number, number, (a: number, b: number) => boolean][] = []
+  const quadruples: { cells: number[]; digits: readonly number[] }[] = []
+  const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
     if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
       edges.push([cell, rule.cells[rule.cells.length - 1 - i], (a, b) => a === b]))
     else if (rule.type === 'inequality') edges.push([rule.less, rule.greater, (a, b) => a < b])
+    else if (rule.type === 'quadruple') quadruples.push({ cells: [rule.topLeft, rule.topLeft + 1, rule.topLeft + 9, rule.topLeft + 10], digits: rule.digits })
+    else if (rule.type === 'xv') {
+      for (const [sum, marks] of [[5, rule.five], [10, rule.ten]] as const) {
+        for (const [a, b] of marks?.pairs ?? []) edges.push([a, b, (a, b) => a + b === sum])
+      }
+    }
     else if (rule.type === 'kropki') {
       if (rule.consecutive?.negative || rule.ratioTwo?.negative) throw new Error('Independent line counter does not implement negative Kropki markers')
       for (const [a, b] of rule.consecutive?.pairs ?? []) edges.push([a, b, (a, b) => Math.abs(a - b) === 1])
@@ -28,6 +36,13 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
     else if (rule.type === 'extra-house') houses.push(rule.cells)
     else if (rule.type === 'diagonal') houses.push(Array.from({ length: 9 }, (_, i) => rule.diagonal === 'main' ? i * 10 : i * 8 + 8))
     else throw new Error(`Independent line counter does not implement ${rule.type}`)
+  }
+  for (const [sum, layers] of [[5, xv.map(rule => rule.five)], [10, xv.map(rule => rule.ten)]] as const) {
+    if (!layers.some(marks => marks?.negative)) continue
+    const marked = layers.flatMap(marks => marks?.pairs ?? [])
+    for (let a = 0; a < 81; a++) for (const b of [a % 9 < 8 ? a + 1 : -1, a < 72 ? a + 9 : -1]) {
+      if (b >= 0 && !marked.some(([x, y]) => x === a && y === b || x === b && y === a)) edges.push([a, b, (a, b) => a + b !== sum])
+    }
   }
   let count = 0, nodes = 0, solution: string | undefined
   const solutions: string[] = []
@@ -53,6 +68,28 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000) {
       for (const [a, b, permits] of edges) for (const [from, to] of [[a, b], [b, a]]) {
         const keep = domains[from].filter(digit => domains[to].some(other => from === a ? permits(digit, other) : permits(other, digit)))
         changed ||= keep.length !== domains[from].length; domains[from] = keep
+      }
+      for (const clue of quadruples) {
+        const supported = clue.cells.map(() => new Set<number>())
+        const assigned: number[] = []
+        function enumerate(index: number) {
+          if (index === 4) {
+            for (let digit = 1; digit <= 9; digit++) {
+              if (assigned.filter(value => value === digit).length < clue.digits.filter(value => value === digit).length) return
+            }
+            assigned.forEach((digit, i) => supported[i].add(digit))
+            return
+          }
+          for (const digit of domains[clue.cells[index]]) {
+            if (assigned.some((value, i) => value === digit && houses.some(house => house.includes(clue.cells[index]) && house.includes(clue.cells[i])))) continue
+            assigned[index] = digit; enumerate(index + 1); assigned.length = index
+          }
+        }
+        enumerate(0)
+        clue.cells.forEach((cell, i) => {
+          const keep = domains[cell].filter(digit => supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        })
       }
       if (domains.some(digits => digits.length === 0)) return
     } while (changed)

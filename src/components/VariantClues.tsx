@@ -9,6 +9,15 @@ const center = (cell: number) => [x(cell) + 0.5, y(cell) + 0.5] as const
 const pairKey = (a: number, b: number) => Math.min(a, b) * 81 + Math.max(a, b)
 const points = (cells: readonly number[]) => cells.map((cell) => center(cell).join(',')).join(' ')
 
+// Use the same side of an edge even when a directed clue reverses its endpoints.
+function pairCenter(a: number, b: number, offset = 0) {
+  const [first, second] = a < b ? [a, b] : [b, a]
+  const [ax, ay] = center(first), [bx, by] = center(second)
+  const length = Math.hypot(bx - ax, by - ay)
+  return [(ax + bx) / 2 - (by - ay) / length * offset,
+    (ay + by) / 2 + (bx - ax) / length * offset] as const
+}
+
 /** Reserve the circle at the caption cell's top-left intersection. */
 export function cageLabelInset(cell: number, rules: readonly VariantRule[]) {
   return rules.some(rule => rule.type === 'quadruple' && rule.topLeft + 10 === cell) ? .34 : .1
@@ -74,12 +83,11 @@ function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly 
   </>
 }
 
-function InequalityClue({ less, greater, withDot }: { less: number; greater: number; withDot: boolean }) {
+function InequalityClue({ less, greater, offset }: { less: number; greater: number; offset: number }) {
   const [ax, ay] = center(less), [bx, by] = center(greater)
   const length = Math.hypot(bx - ax, by - ay)
   const ux = (bx - ax) / length, uy = (by - ay) / length
-  const offset = withDot ? .24 : 0
-  const cx = (ax + bx) / 2 - uy * offset, cy = (ay + by) / 2 + ux * offset
+  const [cx, cy] = pairCenter(less, greater, offset)
   // The vertex faces the smaller cell, regardless of orientation.
   const sign = `${cx + ux * .09 - uy * .12},${cy + uy * .09 + ux * .12} ${cx - ux * .09},${cy - uy * .09} ${cx + ux * .09 + uy * .12},${cy + uy * .09 - ux * .12}`
   return <g className="variant-inequality" data-less={less} data-greater={greater}>
@@ -90,18 +98,40 @@ function InequalityClue({ less, greater, withDot }: { less: number; greater: num
   </g>
 }
 
+function XvClue({ a, b, marks, dots }: { a: number; b: number; marks: number; dots: number }) {
+  return <g className="variant-xv" data-cell-a={a} data-cell-b={b}>
+    {([5, 10] as const).flatMap((sum, kind) => {
+      if (!(marks & 1 << kind)) return []
+      const offset = marks === 3 ? (kind ? 1 : -1) * (dots ? .43 : .18)
+        : dots === 3 ? -.43 : dots ? -.27 : 0
+      const [cx, cy] = pairCenter(a, b, offset)
+      return <g key={sum}>
+        <text className="variant-xv-halo" x={cx} y={cy}>{sum === 5 ? 'V' : 'X'}</text>
+        <text className="variant-xv-mark" data-sum={sum} x={cx} y={cy}>{sum === 5 ? 'V' : 'X'}</text>
+      </g>
+    })}
+  </g>
+}
+
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const marker = useId()
   const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : 0
+    rule.type === 'inequality' ? 2 : rule.type === 'xv' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: false, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: true, layer: .5 }] : []),
   ]).sort((a, b) => a.layer - b.layer)
   const dots = new Map<number, number>()
+  const sums = new Map<number, number>()
   for (const rule of rules) {
+    if (rule.type === 'xv') {
+      for (const [kind, marks] of [rule.five, rule.ten].entries()) for (const [a, b] of marks?.pairs ?? []) {
+        const key = pairKey(a, b)
+        sums.set(key, (sums.get(key) ?? 0) | 1 << kind)
+      }
+    }
     if (rule.type !== 'kropki') continue
     for (const [kind, marks] of [rule.consecutive, rule.ratioTwo].entries()) {
       for (const [a, b] of marks?.pairs ?? []) {
@@ -110,6 +140,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
       }
     }
   }
+  const drawnSums = new Set<number>()
   return <svg className="variant-clues" viewBox="0 0 9 9" aria-hidden="true" focusable="false">
     {rules.some((rule) => rule.type === 'arrow') && <defs>
       <marker id={marker} viewBox="0 0 1 1" refX=".9" refY=".5" markerWidth=".29" markerHeight=".29"
@@ -123,7 +154,15 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
       </g>
       switch (rule.type) {
         case 'inequality':
-          return <InequalityClue key={index} {...rule} withDot={dots.has(pairKey(rule.less, rule.greater))} />
+          return <InequalityClue key={index} {...rule} offset={dots.get(pairKey(rule.less, rule.greater)) === 3 ? .4
+            : sums.has(pairKey(rule.less, rule.greater)) ? .31 : dots.has(pairKey(rule.less, rule.greater)) ? .27 : 0} />
+        case 'xv':
+          return <g key={index}>{[rule.five, rule.ten].flatMap(marks => (marks?.pairs ?? []).flatMap(([a, b]) => {
+            const key = pairKey(a, b)
+            if (drawnSums.has(key)) return []
+            drawnSums.add(key)
+            return <XvClue key={key} a={a} b={b} marks={sums.get(key)!} dots={dots.get(key) ?? 0} />
+          }))}</g>
         case 'parity':
           return <g key={index} className={`variant-parity variant-parity-${rule.parity}`}>
             {rule.cells.map(cell => rule.parity === 'odd'
@@ -192,6 +231,13 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
       case 'inequality':
         labels[rule.less].push(`inequality, smaller than ${reference(rule.greater)}`)
         labels[rule.greater].push(`inequality, larger than ${reference(rule.less)}`)
+        break
+      case 'xv':
+        for (const [sum, marks] of [[5, rule.five], [10, rule.ten]] as const) for (const [a, b] of marks?.pairs ?? []) {
+          const describe = (cell: number) => `${sum === 5 ? 'V' : 'X'} clue, sum ${sum} with ${reference(cell)}`
+          if (!labels[a].includes(describe(b))) labels[a].push(describe(b))
+          if (!labels[b].includes(describe(a))) labels[b].push(describe(a))
+        }
         break
       case 'non-consecutive':
         for (const [a, b] of rule.except ?? []) {
