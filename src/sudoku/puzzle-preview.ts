@@ -5,7 +5,7 @@ import { applyPuzzleGrade, ratePuzzle, type PuzzleGrade } from './puzzle-rating.
 import { validation } from './puzzle-validation.ts'
 import { variantName } from './variants.ts'
 
-export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format']; grade?: PuzzleGrade | null }
+export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] | 'Photo or screenshot'; grade?: PuzzleGrade | null }
 
 export function findImportedPuzzle(games: readonly Game[], { givens, variant }: Pick<ImportedPuzzle, 'givens' | 'variant'>) {
   const identity = puzzleIdentity({ givens, variant })
