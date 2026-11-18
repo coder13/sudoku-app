@@ -53,7 +53,7 @@ This stage reached main at `8439f6d` through [PR 112](https://github.com/coder13
 
 ### Non-Consecutive deduction and training follow-up
 
-This pass is isolated on `codex/sudoku-nonconsecutive-deductions` from main at `36add07` and includes the lesson/hint rewrite in main `da339cf` ([PR 99](https://github.com/coder13/sudoku-app/pull/99)). [Deduction and training issue](https://github.com/coder13/sudoku-app/issues/111)
+This pass reached main at `6c30514` through [PR 115](https://github.com/coder13/sudoku-app/pull/115), after the lesson/hint rewrite in main `da339cf` ([PR 99](https://github.com/coder13/sudoku-app/pull/99)). All CI and deployment checks passed on reviewed head `4b10aef`. [Deduction and training issue](https://github.com/coder13/sudoku-app/issues/111)
 
 - [x] Implement two-cell and three-cell house locks, bivalue and trivalue neighbors using the existing binary relation tables, explicit exceptions and all declared houses.
 - [x] Add typed exhaustive-alternative proofs, rule and house provenance, and independent case replay. Cover positive moves, missing edges, extra candidates, digit boundaries, Jigsaw and extra houses. Reproduce the six researched removals at the archived Coach stall.
@@ -61,6 +61,18 @@ This pass is isolated on `codex/sudoku-nonconsecutive-deductions` from main at `
 - [x] Finish app lesson, hint, practice, Finder, paging, history and disabled-profile contracts. Verify all twelve exercises independently, fresh practice generation, four 30-given puzzles with the selected first technique, the complete unseeded Coach solve and the retained 62-step custom-profile stall. Compare 2,052 retained responses across fourteen positions, including all 107 prior detector outputs and every hint page.
 - [x] Measure paired complete ratings, hints, memory, all profile sizes and retained proofs. Consecudoku app rating changes from a stalled 1,058.396/1,412.850 ms to a complete 1.067/1.600 ms path. Opening hints remain about 680 ms for four choices; app Wasm is 9,539 gzip bytes smaller. [Methods and limits](tests/fixtures/README.md#non-consecutive-locks-and-candidate-alternatives)
 - [x] Pass local native/app/Wasm/build, feature/profile and strict Cargo documentation gates. The eleven new native cases include every candidate mask at five edge/interior cells for both cell techniques, both diagonals, Jigsaw and extra houses. Require CI on the reviewed PR head before the separate merge.
+
+### Complete candidate-support performance follow-up
+
+This pass is isolated on `codex/sudoku-candidate-support-pruning` from main `6c30514`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/117)
+
+- [x] Reuse bounded geometric completion coverage before expensive Classic detector searches. Cache certificates per position and retain the original search for incomplete or exhausted coverage. Keep computational scheduling independent of human technique costs.
+- [x] Preserve singleton placements and uniqueness assumptions. Skip unsafe swap searches only when every recognized swap fails the existing extra-rule filter; keep numeric variant techniques and public capabilities active.
+- [x] Check the real four-choice Coach opening, every positive graph/branching practice proof under zero-budget fallback, singleton domains, true/false assumptions, Jigsaw topology, independent position instances, and cache invalidation after candidates and placements change.
+- [x] Match 2,712 complete responses against main across fourteen corpus positions and all 348 positive training positions. Include every one of the 116 catalog detector IDs, complete traces and ratings, disabled/custom profiles, and every hint page; preserve catalogs and scoring without normalization.
+- [x] Measure paired latency, first requests on fresh instances, memory and all profile sizes. Preserve the four Coach choices while ordinary hints change from 1,300.655/2,148.838 to 1.122/2.620 ms under host contention; committed memory falls from 6.56 to 1.50 MiB. Report the 10,046-byte variant-solver gzip increase alongside the 589-byte app saving. [Methods and limits](tests/fixtures/README.md#complete-candidate-support-pruning)
+- [x] Pass 284 native tests including doctests, 382 app tests, 233 Wasm tests, TypeScript, all sixteen feature combinations, four Wasm profiles, strict full/reduced Cargo documentation and the production/offline build with 158 rendered routes.
+- [ ] Pass CI on the reviewed PR head and merge separately into main.
 
 ### Pattern Overlay support performance merged
 
