@@ -1,6 +1,6 @@
 # Global Entropy integration audit
 
-This work belongs to [issue 60](https://github.com/coder13/sudoku-app/issues/60). It is in the isolated `codex/sudoku-global-entropy-integration` worktree and is not yet merged. Local package, performance and app checks pass. Final CI and release checks remain open.
+This family reached main at `18c982e63e86e22e93bf03406f8e7ff5dfea43da` through [PR 173](https://github.com/coder13/sudoku-app/pull/173), closing [issue 60](https://github.com/coder13/sudoku-app/issues/60). Every native/feature, Wasm/app, documentation and deployment check passed on reviewed head `639c043b91bbc371658ce4bebeb82ae7f513b45b` in [CI run 44390417985](https://github.com/coder13/sudoku-app/actions/runs/44390417985). Remote main contains the reviewed head and merge, with identical shipping source. The isolated `codex/sudoku-global-entropy-integration` worktree remains clean on that reviewed head; the original R&D worktree stays intact.
 
 ## Rule and source controls
 
@@ -67,7 +67,7 @@ Local checks cover multiple hints, collection bounds, Finder counts, three check
 
 The all-symmetry completion audit found a pre-existing app bug: Quadruple and Odd/Even coordinates did not move with the givens. [PR 171](https://github.com/coder13/sudoku-app/pull/171) isolates that repair. The repair reached main at `e14fe04`. All four complete Global Entropy sources now retain their printed completions and exact rules under all eight transformations.
 
-The local native/feature/package/documentation gates, retained-response comparisons, production build and measurements below pass. Static review exports twenty clue diagrams from actual React SVG and theme tokens at 900/360 pixels in light/dark modes. Their grid/text layout is schematic, so this does not establish browser layout or interaction. Real components are tested separately. Exact-head CI and deployment checks must pass before merge.
+The local native/feature/package/documentation gates, retained-response comparisons, production build and measurements below pass. Static review exports twenty clue diagrams from actual React SVG and theme tokens at 900/360 pixels in light/dark modes. Their grid/text layout is schematic, so this does not establish browser layout or interaction. Real components are tested separately. Exact-head CI and deployment checks passed before the merge recorded above.
 
 ## Package and performance measurements
 
@@ -83,7 +83,7 @@ Baseline is main `e14fe04`, including the separately merged clue transformation 
 
 App Wasm adds 30,643 raw/927 gzip bytes. Variant solver saves 11,921 raw bytes and adds 2,060 gzip bytes. Solver and Classic sizes stay unchanged. Client JavaScript adds 8,385 raw/2,304 gzip bytes. Compiler size differences do not establish a request speedup.
 
-Main app SHA-256: `2fc3ac9ea7ad3922c9dc13e578045702fb6b4bcfaa34a93ee31b9be4a545b41c`. Candidate: `4ab15911aae4c14c751c3fb959f4f6cf73c8b8cf3eccdbaf1cdd277bb3f24b99`. The production rebuild reproduces the candidate. Sixteen capability combinations, four Wasm profiles, 354 native tests and strict full/reduced Cargo documentation pass. Local validation passes TypeScript, 502 app tests, the 303-contract Wasm suite and the final 11-test family suite, including the additional exclusive-opening control. Production/offline prerenders 162 routes. Final CI must include all 304 Wasm contracts.
+Main app SHA-256: `2fc3ac9ea7ad3922c9dc13e578045702fb6b4bcfaa34a93ee31b9be4a545b41c`. Candidate: `4ab15911aae4c14c751c3fb959f4f6cf73c8b8cf3eccdbaf1cdd277bb3f24b99`. The production rebuild reproduces the candidate. Sixteen capability combinations, four Wasm profiles, 354 native tests and strict full/reduced Cargo documentation pass. The reviewed head passes TypeScript, 502 app tests and all 304 Wasm contracts, including the eleven Global Entropy contracts and the exclusive-opening control. The production/offline build prerenders 162 routes.
 
 All **10,679 complete retained responses** match on the final artifact: 10,531 variant responses over 71 corpus positions and 357 positive practice positions, plus 148 Classic responses over nine Tridagon positions. Every prior detector, trace, rating and hint page agrees under explicit legacy profiles. The catalog adds only `global-entropy`, at 24 points/Easy. This strict comparison normalizes no response fields.
 
@@ -202,3 +202,29 @@ SUDOKU_BENCH_FAMILY=global-entropy node --experimental-strip-types --test script
 ```
 
 The shared app benchmark defaults to Entropic when `SUDOKU_BENCH_FAMILY` is omitted. `SUDOKU_BENCH_WASM` selects an explicit artifact for both raw requests and app callers. Live viewport interaction, worker startup/transfer, narrower profile boundaries and New puzzle calibration remain follow-ups. [Issue 88](https://github.com/coder13/sudoku-app/issues/88) retains the performance queue.
+
+## Existing app caller controls
+
+A separate follow-up runs the original Entropic app benchmark from the reviewed main checkout and the updated benchmark from this integration. Each process uses its own complete JavaScript source and Wasm artifact. The six old source puzzles keep identical rating/status/version records, hint counts and complete/partial walkthrough outcomes. Both twenty-seed Entropic generation runs accept twenty distinct, independently checked puzzles with thirty givens and eight printed clues.
+
+These are sequential before/after processes, rather than alternated paired engine calls. Preview, hints and walkthrough use two warmups/five samples; input and SSR use five/twenty. In-process transport excludes worker startup, message transfer, browser layout and paint. The nondedicated host and p95-of-five limit causal claims. Slower medians remain visible below.
+
+| Existing source | Preview, main → Global Entropy | App hints | Walkthrough | Input with candidates | Board SSR |
+| --- | --- | --- | --- | --- | --- |
+| clover | 0.393/0.528 → 0.332/0.389 | 0.268/0.377 → 0.231/0.254 | 1.866/2.121 → 2.315/2.362 | 0.049/0.060 → 0.057/0.068 | 1.857/2.148 → 1.835/2.829 |
+| EoGB | 0.750/1.638 → 0.724/0.820 | 2.647/2.859 → 2.728/2.791 | 3.514/4.924 → 3.432/5.162 | 0.034/0.061 → 0.027/0.061 | 1.610/1.751 → 1.682/2.177 |
+| BSEJ | 0.567/0.606 → 0.759/2.661 | 138.692/170.924 → 129.916/137.455 | 4.182/8.121 → 2.491/5.122 | 0.152/0.221 → 0.115/0.163 | 2.511/3.929 → 1.824/2.358 |
+| Hyk5 | 836.201/849.627 → 844.410/855.807 | 3.771/3.901 → 3.542/3.665 | 845.249/1121.654 → 872.652/1054.686 | 0.046/0.074 → 0.046/0.068 | 2.000/2.238 → 2.008/2.436 |
+| Hafj | 107.407/108.868 → 113.113/126.792 | 3.522/3.608 → 3.346/3.648 | 105.012/105.354 → 105.809/107.583 | 0.059/0.096 → 0.095/0.144 | 1.783/2.064 → 2.015/2.514 |
+| Ksy3 | 1.619/9.200 → 1.630/3.086 | 0.269/0.278 → 0.249/0.259 | 4.155/4.842 → 4.175/5.008 | 0.145/0.225 → 0.181/0.398 | 2.295/2.930 → 2.429/3.742 |
+
+Hyk5 preview changes from 836.201/849.627 to 844.410/855.807 ms and walkthrough from 845.249/1121.654 to 872.652/1054.686 ms. The human path stays stalled. This pass claims neither a general caller speedup nor browser interaction coverage.
+
+Repeat `node --experimental-strip-types --test scripts/bench-entropic-app.mts` separately in the main and candidate checkouts with their own generated artifacts and build targets. Keep other audit-owned compilation, tests and benchmarks stopped during measurement.
+
+
+## Reduced variant-solver control
+
+The reduced `variant-solver` package omits generation and teaching. On all four complete sources, twenty complete candidate/analyze/solve/trace/rate responses match the app profile under the same explicit native order. The catalog also agrees, and 39 Global Entropy proofs replay independently from their declared digit domains. Both generation and practice requests return `unsupported-capability`.
+
+The artifact has 2615615 raw/710657 gzip bytes and SHA-256 `0c88e8c7d42df5b85d1e36c413ed2631cc6bcc34af8a5ee2a2af42bd61ad5757`. This control verifies the new rule and its human proof path in a smaller embeddable package; it does not add a public family-specific Cargo feature.
