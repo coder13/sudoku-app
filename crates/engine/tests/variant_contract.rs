@@ -513,6 +513,7 @@ fn ordered_pair_lines_apply_in_path_order_to_mixed_rules() {
         },
         PuzzleRule::Palindrome {
             cells: vec![10, 40, 80],
+            segments: None,
         },
         PuzzleRule::Whispers {
             cells: vec![80, 60],
@@ -531,7 +532,10 @@ fn ordered_pair_lines_apply_in_path_order_to_mixed_rules() {
         PuzzleRule::Thermometer {
             cells: vec![0, 1, 0],
         },
-        PuzzleRule::Palindrome { cells: vec![0, 81] },
+        PuzzleRule::Palindrome {
+            cells: vec![0, 81],
+            segments: None,
+        },
         PuzzleRule::Whispers {
             cells: vec![0, 1],
             min_difference: 9,

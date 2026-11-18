@@ -271,6 +271,7 @@ fn each_local_rule_explains_a_candidate_that_its_relationship_excludes() {
         (
             PuzzleRule::Palindrome {
                 cells: vec![0, 40, 80],
+                segments: None,
             },
             &[(0, 4)],
             [80, 5],

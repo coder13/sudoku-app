@@ -332,6 +332,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 7,
                 [PuzzleRule::Palindrome {
                     cells: vec![53, 52, 60],
+                    segments: None,
                 }],
             ),
             seed(
@@ -340,6 +341,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 1,
                 [PuzzleRule::Palindrome {
                     cells: vec![49, 48, 58, 57],
+                    segments: None,
                 }],
             ),
             seed(
@@ -348,6 +350,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 3,
                 [PuzzleRule::Palindrome {
                     cells: vec![12, 21, 31, 40, 50],
+                    segments: None,
                 }],
             ),
         ],

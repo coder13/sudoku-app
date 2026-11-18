@@ -1,0 +1,61 @@
+{
+  "source": {
+    "title": "Palindrome Sudoku",
+    "author": "clover!",
+    "date": "2025-09-08",
+    "page": "https://www.gmpuzzles.com/blog/2025/09/palindrome-sudoku-by-clover/",
+    "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/250908-PalindromeSudoku.pdf",
+    "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250908-PalindromeSudoku-soln.pdf"
+  },
+  "puzzle": {
+    "version": 1,
+    "givens": "012000000003009000000000060400000000000456000000000005060000000000100700000000890",
+    "rules": [
+      {
+        "type": "palindrome",
+        "cells": [
+          0,
+          10,
+          20,
+          30,
+          31,
+          32
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          3,
+          13,
+          23,
+          33,
+          34,
+          35
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          45,
+          46,
+          47,
+          57,
+          67,
+          77
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          48,
+          49,
+          50,
+          60,
+          70,
+          80
+        ]
+      }
+    ]
+  },
+  "solution": "812364579673519428549782361456978213321456987798231645967823154284195736135647892"
+}

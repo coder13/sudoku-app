@@ -1,0 +1,96 @@
+{
+  "source": {
+    "title": "Anti-Knight Palindrome Sudoku",
+    "author": "Philip Newman",
+    "date": "2025-09-25",
+    "page": "https://www.gmpuzzles.com/blog/2025/09/anti-knight-palindrome-sudoku-by-philip-newman/",
+    "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/250925-AntiknightPalindromeSudoku.pdf",
+    "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250925-AntiknightPalindromeSudoku-soln.pdf"
+  },
+  "puzzle": {
+    "version": 1,
+    "givens": "000010000000200000000030000000040000000000000000050000000060000000007000000080000",
+    "rules": [
+      {
+        "type": "anti-knight"
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          73,
+          74,
+          66,
+          58
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          57,
+          49,
+          41,
+          33,
+          25,
+          35
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          56,
+          48
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          24,
+          32
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          23,
+          31,
+          39,
+          47,
+          55,
+          45
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          7,
+          6,
+          14,
+          22
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          75,
+          76,
+          68,
+          60,
+          52,
+          44
+        ]
+      },
+      {
+        "type": "palindrome",
+        "cells": [
+          5,
+          4,
+          12,
+          20,
+          28,
+          36
+        ]
+      }
+    ]
+  },
+  "solution": "674815932358279461192634857916348275583792614427156389241563798835927146769481523"
+}

@@ -51,7 +51,8 @@ export type VariantRule =
   | { type: 'inequality'; less: number; greater: number }
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
-  | { type: 'thermometer' | 'palindrome' | 'renban' | 'between'; cells: readonly number[] }
+  | { type: 'thermometer' | 'renban' | 'between'; cells: readonly number[] }
+  | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }
   | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean }

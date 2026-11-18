@@ -1,6 +1,7 @@
-import { useId } from 'react'
+import { useId, useMemo } from 'react'
 import type { VariantRule } from '../sudoku/engine'
-import { extraRegionName, quadrupleCells } from '../sudoku/variants'
+import { extraRegionName, palindromePartner, quadrupleCells } from '../sudoku/variants'
+import { sharedPalindromeEdges } from '../sudoku/line-geometry'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
@@ -75,10 +76,14 @@ function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly 
 
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const marker = useId()
+  const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'parity' ? -1 : rule.type === 'quadruple' ? 1 : 0
-  const drawingOrder = rules.map((rule, index) => ({ rule, index }))
-    .sort((a, b) => layer(a.rule) - layer(b.rule))
+  const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'palindrome' ? -1 :
+    rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : 0
+  const drawingOrder = rules.flatMap((rule, index) => [
+    { rule, index, overlay: false, layer: layer(rule) },
+    ...(shared.has(index) ? [{ rule, index, overlay: true, layer: .5 }] : []),
+  ]).sort((a, b) => a.layer - b.layer)
   const dots = new Map<number, number>()
   for (const rule of rules) {
     if (rule.type !== 'kropki') continue
@@ -96,7 +101,10 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         <path className="variant-arrow-head" d="M.08 .08L.9 .5L.08 .92" />
       </marker>
     </defs>}
-    {drawingOrder.map(({ rule, index }) => {
+    {drawingOrder.map(({ rule, index, overlay }) => {
+      if (overlay) return <g key={`${index}-overlap`} className="variant-palindrome-overlap">
+        {shared.get(index)!.map((edge, i) => <polyline key={i} points={points(edge)} />)}
+      </g>
       switch (rule.type) {
         case 'parity':
           return <g key={index} className={`variant-parity variant-parity-${rule.parity}`}>
@@ -131,6 +139,10 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
               x={(x(a) + x(b) + 1) / 2} y={(y(a) + y(b) + 1) / 2}>≥{rule.minDifference}</text>}
           </g>
         }
+        case 'palindrome':
+          return <g key={index} className="variant-palindrome">
+            {(rule.segments ?? [rule.cells]).map((path, part) => <polyline key={part} points={points(path)} />)}
+          </g>
         case 'thermometer':
           return <g key={index} className="variant-thermometer">
             <polyline points={points(rule.cells)} />
@@ -195,6 +207,13 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
           const neighbors = new Set(rule.cells.flatMap((other, i) => i > 0
             ? other === cell ? [rule.cells[i - 1]] : rule.cells[i - 1] === cell ? [other] : [] : []))
           labels[cell].push(`Whispers line, minimum difference ${rule.minDifference} with ${[...neighbors].map(reference).join(' and ')}`)
+        }
+        break
+      case 'palindrome':
+        for (const cell of rule.cells) {
+          const partner = palindromePartner(rule.cells, cell)
+          labels[cell].push(partner === undefined ? 'Palindrome middle cell, no matching partner'
+            : `Palindrome line, same digit as ${reference(partner)}`)
         }
         break
       case 'thermometer':
