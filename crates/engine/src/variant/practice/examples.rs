@@ -67,7 +67,7 @@ fn cage(sum: u16, cells: &[usize]) -> KillerCage {
     }
 }
 
-// Fixed outputs from seeded variant generation. Each suggested action
+// Authored and seeded variant exercises. Each suggested action
 // is verified against the current detector and the unique completion.
 pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     use VariantTechnique::*;
@@ -504,6 +504,33 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                         negative: false,
                     },
                 }],
+            ),
+        ],
+        WhispersHouseSupport => [
+            seed(
+                "431500762976002185258761394382157649795624813164903527617009258529876431843215976",
+                4,
+                8,
+                [
+                    PuzzleRule::Whispers { cells: vec![12, 4, 13], min_difference: 5 },
+                    PuzzleRule::Whispers { cells: vec![57, 49], min_difference: 5 },
+                ],
+            ),
+            seed(
+                "431598762976432185258761090302157600795620010164983527617349250529876431843215976",
+                35,
+                8,
+                [
+                    PuzzleRule::Whispers { cells: vec![26, 35, 44], min_difference: 5 },
+                ],
+            ),
+            seed(
+                "031598762976432185258761394002157609705624013160980527617349258529876431840215976",
+                37,
+                8,
+                [
+                    PuzzleRule::Whispers { cells: vec![27, 37, 47], min_difference: 5 },
+                ],
             ),
         ],
         Whispers => [

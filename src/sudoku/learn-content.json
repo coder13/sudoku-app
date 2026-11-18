@@ -7639,6 +7639,54 @@
           "difficulty": "medium"
         },
         {
+          "id": "whispers-house-support",
+          "title": "Whispers and shared houses",
+          "summary": "Line cells that share a row, column, box, or region must contain different digits. Use this restriction together with the line’s minimum difference to rule out candidates that the line alone still allows.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find line cells that share a house"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a bend whose two ends are in one house. The ends need different digits even when they are separated along the line.",
+                "In this example, the two ends can contain only 3 and 4. If the middle cell were 8, both ends would need 3 to meet the minimum difference of 5. The shared box rules out that repeat, so remove 8 from the middle cell.",
+                "For a longer line, keep only the complete digit sequences that satisfy every link and each shared house. A digit with no surviving sequence can be removed."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "whispers-house-support",
+              "copy": {
+                "description": "R2C4 and R2C5 each allow 3 or 4. If R1C5 were 8, both ends would need 3, repeating it in box 2. Remove 8 from R1C5."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "whispers-house-support",
+                  "title": "Whispers and shared houses"
+                }
+              ],
+              "guide": {
+                "start": "Find line cells that share a house. Read the minimum difference for the line.",
+                "check": "Try a candidate in the middle cell. Check whether the neighboring cells would have to repeat a digit in their shared house.",
+                "reason": "Every candidate needs a complete line assignment that also respects the shared houses. Remove it if no assignment fits."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Brain Zaps by Philip Newman",
+              "href": "https://www.gmpuzzles.com/blog/2026/01/german-whispers-sudoku-by-philip-newman-5/"
+            }
+          ],
+          "difficulty": "medium"
+        },
+        {
           "id": "renban",
           "title": "Renban lines",
           "summary": "A Renban line contains different consecutive digits in any order. A four-cell line that contains both 3 and 6 must also contain 4 and 5, even before you know their positions.",

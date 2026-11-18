@@ -87,7 +87,7 @@ test('Consecudoku now completes without seeding removals and every new step repl
   const normalized = await runEngine({ type: 'variant', operation: 'normalize', position })
   assert.deepEqual(normalized.puzzle, fixture.position.puzzle)
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  assert.equal(trace.rating.scoringVersion, 7)
+  assert.equal(trace.rating.scoringVersion, 8)
   assert.notEqual(trace.rating.status, 'stalled')
   assert.ok(trace.steps.some(step => NC_EXCLUSION_TECHNIQUES.includes(step.technique as typeof NC_EXCLUSION_TECHNIQUES[number])))
   let played = game

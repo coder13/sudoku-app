@@ -123,6 +123,14 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         case 'killer-cages':
           return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} {...cage}
             captionInset={cageLabelInset(Math.min(...cage.cells), rules)} />)}</g>
+        case 'whispers': {
+          const [a, b] = rule.cells
+          return <g key={index} className="variant-whispers" data-min-difference={rule.minDifference}>
+            <polyline points={points(rule.cells)} />
+            {rule.minDifference !== 5 && <text className="variant-whispers-gap"
+              x={(x(a) + x(b) + 1) / 2} y={(y(a) + y(b) + 1) / 2}>≥{rule.minDifference}</text>}
+          </g>
+        }
         case 'thermometer':
           return <g key={index} className="variant-thermometer">
             <polyline points={points(rule.cells)} />
@@ -180,6 +188,13 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
         for (const { cells, sum } of rule.cages) {
           const corner = reference(Math.min(...cells))
           for (const cell of cells) labels[cell].push(`cage totaling ${sum}, starting at ${corner}`)
+        }
+        break
+      case 'whispers':
+        for (const cell of new Set(rule.cells)) {
+          const neighbors = new Set(rule.cells.flatMap((other, i) => i > 0
+            ? other === cell ? [rule.cells[i - 1]] : rule.cells[i - 1] === cell ? [other] : [] : []))
+          labels[cell].push(`Whispers line, minimum difference ${rule.minDifference} with ${[...neighbors].map(reference).join(' and ')}`)
         }
         break
       case 'thermometer':

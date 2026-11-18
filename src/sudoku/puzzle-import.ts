@@ -12,7 +12,7 @@ const COACH_CODE = /^SCv([0-9]+)_([0-9]+)_/i
 const FP_CODE = /^fpuz(?:zles)?/i
 const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
-  'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'acid',
+  'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'acid', 'givenColours',
 ])
 const FPUZZLES_FIELDS = new Set(['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage', 'killercage', 'diagonal+', 'diagonal-'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
@@ -144,7 +144,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -214,6 +214,22 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
           throw new Error('This Sudoku Coach puzzle has an invalid extra region.')
         }
         rules.push({ type: 'extra-house', cells: segment.cells })
+      }
+    } else if (constraint.type === 'whisper') {
+      const settings = constraint.settings
+      const visual = new Set(['colour', 'colourSync', 'lineThickness', 'lineEndOffset', 'borderColour', 'borderThickness', 'opacity'])
+      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => key !== 'difference' && !visual.has(key)))) {
+        throw new Error('This Sudoku Coach Whispers line uses unsupported settings.')
+      }
+      const difference = record(settings) ? settings.difference ?? 5 : 5
+      if (!Number.isInteger(difference) || Number(difference) < 1 || Number(difference) > 8 || !constraint.segments.length) {
+        throw new Error('This Sudoku Coach Whispers line has an unsupported minimum difference or no cells.')
+      }
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an unsupported Whispers line.')
+        }
+        rules.push({ type: 'whispers', cells: segment.cells, minDifference: Number(difference) })
       }
     } else if (constraint.type === 'thermometer' || constraint.type === 'arrow') {
       if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no cells for ${constraint.type}.`)

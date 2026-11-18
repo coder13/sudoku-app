@@ -56,6 +56,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Odd/Even',
     rule: 'Cells with a circle contain an odd digit (1, 3, 5, 7, or 9). Cells with a square contain an even digit (2, 4, 6, or 8). Unmarked cells allow either.',
   },
+  whispers: {
+    name: 'Whispers',
+    rule: 'Digits in neighboring cells along a line must differ by at least the line’s minimum. German Whispers uses a minimum of 5; Dutch Whispers uses 4.',
+  },
   quadruple: {
     name: 'Quadruple',
     rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
@@ -178,6 +182,8 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
     }
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
     if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
+      (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
     if (rule.type === 'thermometer') return rule.cells.includes(a) && rule.cells.includes(b)
     return false
   })
@@ -193,9 +199,17 @@ export function cellsShareEdge(a: number, b: number) {
 
 /** Extra pairwise exclusions beyond the same-digit peers used by the player. */
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
-  if (!puzzle || !cellsShareEdge(from, to)) return 0
-  const restricted = puzzle.rules?.some(rule => rule.type === 'non-consecutive' && !hasMarkedPair(rule.except, from, to))
-  return restricted ? (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0) : 0
+  let excluded = 0
+  for (const rule of puzzle?.rules ?? []) {
+    if (rule.type === 'non-consecutive' && cellsShareEdge(from, to) && !hasMarkedPair(rule.except, from, to)) {
+      excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
+    }
+    if (rule.type === 'whispers' && rule.cells.some((cell, i) => i > 0 &&
+      (cell === from && rule.cells[i - 1] === to || cell === to && rule.cells[i - 1] === from))) {
+      for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) < rule.minDifference) excluded |= 1 << (other - 1)
+    }
+  }
+  return excluded
 }
 
 export function nonConsecutiveDescription(puzzle: VariantPuzzle, rule: Extract<VariantRule, { type: 'non-consecutive' }>) {
@@ -241,6 +255,9 @@ function isPlayableRule(rule: VariantRule): boolean {
       validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
     case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
     case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
+    case 'whispers': return Array.isArray(rule.cells) && rule.cells.length >= 2 && rule.cells.length <= 82 &&
+      rule.cells.every((cell, i) => Number.isInteger(cell) && cell >= 0 && cell < 81 && (i === 0 || cell !== rule.cells[i - 1])) &&
+      Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
     case 'arrow': return validCells([rule.circle, ...(Array.isArray(rule.cells) ? rule.cells : [])], 2)
     case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
@@ -289,6 +306,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   thermometer: VARIANTS.thermometer.name,
   arrow: VARIANTS.arrow.name,
   kropki: VARIANTS.kropki.name,
+  whispers: PUZZLE_VARIANTS.whispers.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
   parity: PUZZLE_VARIANTS.parity.name,
   'anti-king': PUZZLE_VARIANTS['anti-king'].name,
@@ -323,6 +341,11 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
           ? 'Cells with a circle contain an odd digit: 1, 3, 5, 7, or 9.'
           : 'Cells with a square contain an even digit: 2, 4, 6, or 8.')
         break
+      case 'whispers': {
+        const at = (cell: number) => `r${Math.floor(cell / 9) + 1}c${cell % 9 + 1}`
+        descriptions.push(`Whispers line from ${at(rule.cells[0])} to ${at(rule.cells.at(-1)!)}: neighboring digits along it must differ by at least ${rule.minDifference}. Cells farther apart on the line may repeat a digit if the other rules allow it.`)
+        break
+      }
       case 'quadruple':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)
         break
