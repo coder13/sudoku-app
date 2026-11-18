@@ -5,6 +5,7 @@ import type { roomStore as appStore } from '../../src/sudoku/storage'
 type Room = ReturnType<typeof appStore.getSnapshot>
 const starter = { ...STARTER_GAME, difficulty: 'easy' } satisfies Game
 let room: Room = { games: [starter], active: starter.id, stoppedPlaying: false, storageAvailable: true, playerRating: initialPlayerRating }
+const selections = new Set<(id: string | null) => void>()
 const listeners = new Set<() => void>()
 
 function publish(next: Room) {
@@ -15,12 +16,10 @@ function publish(next: Room) {
 function playPuzzle(games: Game[], selected: Game) {
   const next = games.map((game) => {
     if (game.id === selected.id) return game.savedForLater ? { ...game, savedForLater: undefined } : game
-    if (game.id === room.active && game.started && game.source !== 'draft' && selected.source !== 'draft' && !isSolved(game)) {
-      return { ...game, savedForLater: true as const }
-    }
     return game
   })
   publish({ ...room, games: next, active: selected.id, stoppedPlaying: false })
+  selections.forEach(listener => listener(selected.id))
 }
 
 export function seedRoom(games: Game[], active = games[0]?.id ?? null, storageAvailable = true) {
@@ -36,6 +35,10 @@ export const roomStore: typeof appStore = {
     listeners.add(listener)
     return () => { listeners.delete(listener) }
   },
+  onPlay(listener) { selections.add(listener); return () => { selections.delete(listener) } },
+  onEdit(listener) { return roomStore.subscribe(listener) },
+  view(id) { if (room.active !== id) publish({ ...room, active: id }) },
+  refreshPuzzle() {},
   getSnapshot: () => room,
   getServerSnapshot: () => room,
   connect: () => () => {},

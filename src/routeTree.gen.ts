@@ -15,6 +15,7 @@ import { Route as LearnRouteImport } from './routes/learn'
 import { Route as PuzzlesRouteImport } from './routes/puzzles'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShortcutsRouteImport } from './routes/shortcuts'
+import { Route as SyncRouteImport } from './routes/sync'
 import { Route as LearnIndexRouteImport } from './routes/learn.index'
 import { Route as LearnTechniqueRouteImport } from './routes/learn.$technique'
 import { Route as PuzzlesBrowseRouteImport } from './routes/puzzles.browse'
@@ -51,6 +52,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ShortcutsRoute = ShortcutsRouteImport.update({
   id: '/shortcuts',
   path: '/shortcuts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SyncRoute = SyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LearnIndexRoute = LearnIndexRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/puzzles': typeof PuzzlesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/shortcuts': typeof ShortcutsRoute
+  '/sync': typeof SyncRoute
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/puzzles': typeof PuzzlesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/shortcuts': typeof ShortcutsRoute
+  '/sync': typeof SyncRoute
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/puzzles': typeof PuzzlesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/shortcuts': typeof ShortcutsRoute
+  '/sync': typeof SyncRoute
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/puzzles'
     | '/settings'
     | '/shortcuts'
+    | '/sync'
     | '/learn/$technique'
     | '/puzzles/browse'
     | '/puzzles/collections'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/puzzles'
     | '/settings'
     | '/shortcuts'
+    | '/sync'
     | '/learn/$technique'
     | '/puzzles/browse'
     | '/puzzles/collections'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/puzzles'
     | '/settings'
     | '/shortcuts'
+    | '/sync'
     | '/learn/$technique'
     | '/puzzles/browse'
     | '/puzzles/collections'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   PuzzlesRoute: typeof PuzzlesRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
   ShortcutsRoute: typeof ShortcutsRoute
+  SyncRoute: typeof SyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/shortcuts'
       fullPath: '/shortcuts'
       preLoaderRoute: typeof ShortcutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sync': {
+      id: '/sync'
+      path: '/sync'
+      fullPath: '/sync'
+      preLoaderRoute: typeof SyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/learn/': {
@@ -334,6 +354,7 @@ const rootRouteChildren: RootRouteChildren = {
   PuzzlesRoute: PuzzlesRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
   ShortcutsRoute: ShortcutsRoute,
+  SyncRoute: SyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -15,6 +15,9 @@ import {
   saveHighlightPreferences, saveInputSize, savePanelHeight, saveWorkspaceMode, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_WORKSPACE_MODE,
   saveNewPuzzlePreference, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
 } from '../sudoku/preferences'
+import { deviceSync } from '../sudoku/device-sync'
+import { inProgress } from '../sudoku/puzzle-activity'
+import { ResumePuzzles } from './ResumePuzzles'
 import { roomStore } from '../sudoku/storage'
 import { generationVariant } from '../sudoku/variants'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
@@ -119,7 +122,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const resizeStartHeight = useRef(panelHeight)
   const resizeStartInputSize = useRef(inputSize)
   const automaticPuzzleStarted = useRef(false)
-  const game = games.find((item) => item.id === active)
+  const requested = useMatch({ from: '/', shouldThrow: false, select: m => m.search.puzzle })
+  const sync = useSyncExternalStore(deviceSync.subscribe, deviceSync.getSnapshot, deviceSync.getServerSnapshot)
+  const homePreview = useRef<string | null>(null)
+  const followingHome = Boolean(requested && requested === homePreview.current)
+  const game = games.find(item => item.id === (requested ?? active))
+  const resumable = playRoute && (!requested || followingHome) && workspaceReady ? inProgress(games) : []
+  const showLibrary = !requested && resumable.length > 1
+  const soleId = resumable.length === 1 ? resumable[0].id : undefined
   const newPuzzleDefaults: NewPuzzlePreference = newPuzzlePreference ?? {
     variant: generationVariant(game?.variant) ?? 'classic',
     difficulty: game?.generatedWithAuto ? 'auto' : game?.difficulty ?? difficulty,
@@ -155,6 +165,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const disconnect = roomStore.connect()
+    const disconnectSync = deviceSync.connect()
     const disconnectDownloads = collectionDownloads.connect()
     const preferences = readPreferences()
     setAdvancedModesState(preferences.advancedModes)
@@ -171,7 +182,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
     setWorkspaceReady(true)
-    return () => { disconnect(); disconnectDownloads() }
+    return () => { disconnect(); disconnectSync(); disconnectDownloads() }
   }, [])
   useEffect(() => {
     if (!workspaceReady || savedAppearance.current === appearance) return
@@ -197,21 +208,42 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setPanel(null)
     void navigate({ to: '/puzzles/new', search: {} })
   }, [mobile, navigate, panel])
+  useEffect(() => roomStore.onPlay(id => {
+    homePreview.current = null
+    if (!id && !new URLSearchParams(window.location.search).has('puzzle')) return
+    void navigate({ to: '/', search: id ? { puzzle: id } : {}, viewTransition: false })
+  }), [navigate])
   useEffect(() => {
-    if (!workspaceReady || !playRoute || stoppedPlaying || PUZZLE_LINK.test(window.location.hash)) return
-    if (game) {
+    if (!workspaceReady || !playRoute || PUZZLE_LINK.test(window.location.hash)) return
+    if (requested) {
+      // Home may have resumed the only local save just before another device's
+      // upload arrived. Keep following home until the player uses the board.
+      if (followingHome && resumable.length > 1) {
+        homePreview.current = null
+        void navigate({ to: '/', search: {}, replace: true, viewTransition: false })
+        return
+      }
+      if (game) roomStore.view(requested)
       automaticPuzzleStarted.current = false
       return
     }
-    if (games.length) {
-      const next = games.find((item) => !item.savedForLater)
-      if (next) roomStore.select(next.id)
-      return
+    if (showLibrary || !sync.ready || (stoppedPlaying && !soleId)) return
+    const next = soleId ?? game?.id ?? games.find(item => !item.savedForLater)?.id
+    if (next) {
+      homePreview.current = next
+      void navigate({ to: '/', search: { puzzle: next }, replace: true, viewTransition: false })
+    } else if (!games.length && !sync.linked && !automaticPuzzleStarted.current) {
+      automaticPuzzleStarted.current = true
+      void automaticPuzzle.generate(difficulty)
     }
-    if (automaticPuzzleStarted.current) return
-    automaticPuzzleStarted.current = true
-    void automaticPuzzle.generate(difficulty)
-  }, [workspaceReady, playRoute, game, games.length, stoppedPlaying, difficulty, linkError])
+  }, [workspaceReady, playRoute, requested, game?.id, games.length, soleId, showLibrary, followingHome, resumable.length, sync.ready, sync.linked, stoppedPlaying, difficulty, navigate, linkError])
+  useEffect(() => {
+    if (!followingHome) { if (!playRoute) homePreview.current = null; return }
+    const pin = () => { homePreview.current = null }
+    window.addEventListener('pointerdown', pin, true)
+    window.addEventListener('keydown', pin, true)
+    return () => { window.removeEventListener('pointerdown', pin, true); window.removeEventListener('keydown', pin, true) }
+  }, [followingHome, playRoute])
   useEffect(() => {
     if (!playing) return
     let attempt = 0
@@ -386,7 +418,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   function createPuzzle() {
     setPanel(null)
     roomStore.add({ ...makeGame(createGameId(), 'Untitled puzzle', EMPTY, 'draft'), returnId: active ?? undefined })
-    if (!playing) void navigate({ to: '/' })
   }
 
   function editPuzzle() {
@@ -415,7 +446,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   return (
     <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
-      enabled={playing && workspaceReady && desktopStandard}>
+      enabled={playing && !showLibrary && workspaceReady && desktopStandard}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
           <Link to="/" className="wordmark" onClick={() => setMenuOpen(false)}>
@@ -477,6 +508,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
               <Link to="/puzzles/statistics" onClick={() => setMenuOpen(false)}>
                 <BarChart3 size={17} /> Statistics
               </Link>
+              <Link to="/sync" onClick={() => setMenuOpen(false)}><Monitor size={17} /> Device sync</Link>
               <button onClick={openSettings}><SlidersHorizontal size={17} /> Settings</button>
               <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
@@ -492,6 +524,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       }}>
       <PlayContent.Provider value={playing && !workspaceReady ? (
         <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
+      ) : playRoute && showLibrary ? <ResumePuzzles games={resumable} /> : playRoute && requested && !game ? (
+        <main className="page sync-page"><h1>{sync.linked && !sync.ready ? 'Loading puzzle…' : 'Puzzle unavailable on this device'}</h1>
+          <p>{sync.linked ? sync.message : 'Link the device that has this puzzle to open it here.'}</p>
+          <Link className="button primary" to="/sync">Device sync</Link>
+          <Link className="button secondary" to="/" search={{}}>Return to puzzles</Link>
+        </main>
       ) : playing ? (
         <main id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace">
           {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}
@@ -542,7 +580,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
       {panel === 'new' && !mobile && <NewPuzzle close={close} difficulty={newPuzzleDefaults.difficulty} initialVariant={newPuzzleDefaults.variant}
         onDifficultyChange={setDifficulty} onPuzzleStart={rememberNewPuzzle} onCreate={createPuzzle} onImport={openImport} />}
-      {panel === 'import' && <ImportPuzzle close={close} onPlay={() => { close(); void navigate({ to: '/' }) }} />}
+      {panel === 'import' && <ImportPuzzle close={close} onPlay={close} />}
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
       {settingsRoute && <Settings close={closeSettings} section={settingsSection}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}

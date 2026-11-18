@@ -10,5 +10,5 @@ function ImportPage() {
   return <ImportPuzzle fullPage close={() => {
     if (canGoBack) router.history.back()
     else void navigate({ to: '/puzzles', replace: true })
-  }} onPlay={() => { void navigate({ to: '/', replace: true }) }} />
+  }} />
 }

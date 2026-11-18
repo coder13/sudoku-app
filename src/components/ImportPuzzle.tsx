@@ -42,7 +42,7 @@ export async function openPuzzle(input: string, cancelled: () => boolean) {
 
 export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = preparePuzzle }: {
   close: () => void
-  onPlay: () => void
+  onPlay?: () => void
   fullPage?: boolean
   onPreview?: (input: string) => Promise<PuzzlePreview>
 }) {
@@ -150,7 +150,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         <button type="button" className="button secondary" onClick={() => saveAndContinue(preview)}>
           <Bookmark size={17} aria-hidden="true" /> Save and import another
         </button>
-        <button type="button" className="button primary" onClick={() => { finishImport(preview, true); onPlay() }}>
+        <button type="button" className="button primary" onClick={() => { finishImport(preview, true); onPlay?.() }}>
           <Play size={17} aria-hidden="true" /> Start playing
         </button>
       </div>

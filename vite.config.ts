@@ -30,6 +30,7 @@ function prerenderPages() {
     '/',
     '/puzzles',
     '/import',
+    '/sync',
     '/shortcuts',
     '/puzzles/browse',
     '/puzzles/new',

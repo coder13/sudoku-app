@@ -137,7 +137,7 @@ export function PuzzleCollectionCredit({ game }: { game: Game }) {
   </div>
 }
 
-export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: () => void }) {
+export function PuzzleCollections({ games }: { games: Game[] }) {
   const search = route.useSearch()
   const navigate = useNavigate()
   const id = useId()
@@ -178,9 +178,8 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
     setMessage('')
     try {
       const { added } = await openCollectionPuzzle(collection.id, puzzleId, { online, play, preview: previewGrid, signal: request.signal })
-      if (request.signal.aborted) return
-      if (play) onPlay()
-      else setMessage(!roomStore.getSnapshot().storageAvailable
+      if (request.signal.aborted || play) return
+      setMessage(!roomStore.getSnapshot().storageAvailable
         ? 'Puzzle available for this session. Local storage is unavailable.'
         : added ? 'Puzzle saved for later.' : 'This puzzle is already in Your puzzles.')
     } catch (reason) {

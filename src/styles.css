@@ -3367,3 +3367,19 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-entropic polyline { fill: none; stroke: #bc6c27; stroke-width: .105; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: .19 .1; opacity: .88; }
 .variant-entropic circle { fill: #bc6c27; stroke: none; }
 .variant-entropic-overlap line { stroke-linecap: round; }
+
+.page.sync-page {
+  max-width: 640px; overflow-y: auto; display: flex; flex-direction: column;
+  align-items: stretch; gap: var(--space-14); padding-block: var(--space-24);
+}
+.sync-page h1 { font-size: 1.6rem; }
+.sync-page h2 { font-size: 1.1rem; }
+.sync-page p { color: var(--muted); line-height: 1.5; }
+.sync-page section, .sync-page label { display: grid; gap: var(--space-8); }
+.sync-page input { width: 100%; padding: 10px; border: 1px solid var(--border-strong); border-radius: 6px; color: inherit; background: var(--surface); font: inherit; }
+.sync-page details > * { margin-block: var(--space-8); }
+.sync-page .button { align-self: flex-start; justify-self: start; }
+a.game-row { text-decoration: none; color: inherit; }
+.sync-devices { list-style: none; padding: 0; }
+.sync-devices li { display: flex; align-items: center; gap: var(--space-8); margin-block: var(--space-8); }
+.sync-devices li span { flex: 1; }
