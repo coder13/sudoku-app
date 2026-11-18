@@ -16,13 +16,15 @@ An authored second control removes a 6/7 rectangle from a standard complete grid
 
 The inspected Coach `Two-Cell-Sum (XV)` compiler uses `parameters.sum`. It compiles 5 and 10 as its existing V/X constraints and other values as a binary equality on the digit sum. Its constructor picker offers totals 3 through 17. Its renderer formats Roman numerals, including XV for 15. Preserve the parameter rather than interpreting the printed text as two different marks.
 
+The constructor's edge selector chooses two cells sharing a horizontal or vertical edge. The drawing helper only computes their midpoint; it does not itself validate adjacency. Validate the endpoints explicitly rather than relying on the renderer.
+
 Current main exposes only `PuzzleRule::Xv { five, ten }` for these sums. The compiled pair engine already has bidirectional support tables, provenance, exact propagation and local logical evidence, but a general adjacent-total rule is absent. This needs a native addition as well as the app decoder and renderer. The original 99Eu import must continue to reject explicitly until the complete family is ready.
 
 ## Requirements for the port
 
 - Reuse the compiled pair-support machinery. Keep the parameter and original rule provenance explicit. Do not replace a sum with a search-only shortcut.
 - Preserve the old XV wire format, default costs, positive markers and independent negative flags. Decide how generic sums of 5/10 interact with negative XV before defining their shared representation and glyphs.
-- Confirm and validate the constructor's endpoint geometry. Preserve endpoint order and totals under all eight grid transformations.
+- Validate the constructor's orthogonally adjacent endpoint geometry. Preserve endpoint order and totals under all eight grid transformations.
 - Preserve a complete `twoCellSum` layer, including mixed 5, 10 and other totals. Reject unknown parameters and unsupported settings instead of dropping them.
 - Render each total as one legible clue, with accessible endpoints and its numeric meaning. Keep marks, dots and inequalities separate on a shared edge. Cover wider Roman numerals at mobile sizes.
 - Explain candidates and deductions by enumerating allowed digit pairs, including house distinctness. Test low/high boundaries, impossible totals, every candidate digit, both endpoint directions and multiple constraints on one edge.
