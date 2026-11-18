@@ -269,21 +269,26 @@ export function PuzzleCollections({ games, onPlay, search }: { games: Game[]; on
   if (!variant) return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
     <CollectionSteps />
     <header><h2 id={`${id}-title`}>Choose a variant</h2><p>Browse collections of Sudoku puzzles.</p></header>
-    {cards.length ? <div className="collection-cards collection-variant-cards">
+    {cards.length ? <ul className="collection-variant-list" role="list" aria-labelledby={`${id}-title`}>
       {(Object.keys(COLLECTION_VARIANTS) as CollectionVariant[]).map(variant => {
         const collections = cards.filter(card => card.collection.variant === variant)
         if (!collections.length) return null
         const count = collections.reduce((total, card) => total + card.count, 0)
-        return <Link key={variant} className="collection-card" to="/puzzles/collections" search={{ variant }}>
-          <span className="collection-card-icon"><VariantPreview variant={variant} /></span>
-          <div className="collection-card-heading"><h3>{COLLECTION_VARIANTS[variant]}</h3>
-            <span>{collections.length} {collections.length === 1 ? 'collection' : 'collections'} · {count} puzzles{online ? '' : ' available offline'}</span></div>
-          <ChevronRight className="collection-card-chevron" size={18} aria-hidden="true" />
-          <p>{variantDescriptions[variant]}</p>
-        </Link>
+        return <li key={variant}>
+          <Link className="collection-card" to="/puzzles/collections" search={{ variant }}>
+            <span className="collection-card-icon"><VariantPreview variant={variant} /></span>
+            <div className="collection-card-heading">
+              <div className="collection-variant-heading">
+                <h3>{COLLECTION_VARIANTS[variant]}</h3>
+                <span>{collections.length} {collections.length === 1 ? 'collection' : 'collections'} · {count} puzzles{online ? '' : ' available offline'}</span>
+              </div>
+              <p>{variantDescriptions[variant]}</p>
+            </div>
+            <ChevronRight className="collection-card-chevron" size={18} aria-hidden="true" />
+          </Link>
+        </li>
       })}
-    </div> : <p className="collection-note">No collection puzzles available offline. Download puzzles while online to play them here.</p>}
-    <Link to="/puzzles/new" search={{}} className="button secondary collection-action">Generate a new puzzle <ChevronRight size={16} aria-hidden="true" /></Link>
+    </ul> : <p className="collection-note">No collection puzzles available offline. Download puzzles while online to play them here.</p>}
   </section>
 
   if (!collection) {
