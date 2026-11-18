@@ -1,5 +1,6 @@
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
+import { lineGroupMask } from './line-groups.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -71,6 +72,10 @@ export const PUZZLE_VARIANTS = {
   entropic: {
     name: 'Entropic Lines',
     rule: 'Each three successive positions on an Entropic line contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',
+  },
+  modular: {
+    name: 'Modular Lines',
+    rule: 'Each three successive positions on a Modular line contain one digit from {1, 4, 7}, one from {2, 5, 8} and one from {3, 6, 9}. These groups have different remainders when divided by 3. The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent. Digits may repeat if all other puzzle rules allow it.',
   },
   renban: {
     name: 'Renban',
@@ -201,7 +206,7 @@ export function variantHouseMasks(puzzle: VariantPuzzle, values: string, elimina
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
     if (rule.type === 'extra-house') houses.push({ extra: index })
-    if (rule.type === 'entropic') {
+    if (rule.type === 'entropic' || rule.type === 'modular') {
       for (const [i, from] of rule.cells.entries()) if (values[from] !== '0') {
         for (const [j, to] of rule.cells.entries()) if (i % 3 !== j % 3) masks[to] &= ~(1 << (Number(values[from]) - 1))
       }
@@ -242,7 +247,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
     if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
       (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
-    if (rule.type === 'entropic') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
+    if (rule.type === 'entropic' || rule.type === 'modular') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
     if (rule.type === 'thermometer' || rule.type === 'renban') return rule.cells.includes(a) && rule.cells.includes(b)
     return false
   })
@@ -275,9 +280,9 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
   let v = false, x = false, negativeV = false, negativeX = false
   const edge = cellsShareEdge(from, to)
   for (const rule of puzzle?.rules ?? []) {
-    if (rule.type === 'entropic' && rule.cells.includes(from) && rule.cells.includes(to)) {
+    if ((rule.type === 'entropic' || rule.type === 'modular') && rule.cells.includes(from) && rule.cells.includes(to)) {
       const samePhase = rule.cells.indexOf(from) % 3 === rule.cells.indexOf(to) % 3
-      const group = 7 << (Math.floor((digit - 1) / 3) * 3)
+      const group = lineGroupMask(rule.type, digit)
       excluded |= samePhase ? 511 & ~group : group
     }
     if (rule.type === 'renban' && rule.cells.includes(from) && rule.cells.includes(to)) {
@@ -363,7 +368,7 @@ function isPlayableRule(rule: VariantRule): boolean {
       validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
     case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
     case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
-    case 'entropic': return Array.isArray(rule.cells) && rule.cells.length > 0 &&
+    case 'entropic': case 'modular': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && Array.isArray(rule.cells) && rule.cells.length > 0 &&
       rule.cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81)
     case 'whispers': return Array.isArray(rule.cells) && rule.cells.length >= 2 && rule.cells.length <= 82 &&
       rule.cells.every((cell, i) => Number.isInteger(cell) && cell >= 0 && cell < 81 && (i === 0 || cell !== rule.cells[i - 1])) &&
@@ -424,6 +429,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
 
 const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   entropic: PUZZLE_VARIANTS.entropic.name,
+  modular: PUZZLE_VARIANTS.modular.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
   renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
@@ -467,6 +473,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         break
       case 'entropic':
         descriptions.push(PUZZLE_VARIANTS.entropic.rule)
+        break
+      case 'modular':
+        descriptions.push(PUZZLE_VARIANTS.modular.rule)
         break
       case 'renban':
         descriptions.push(PUZZLE_VARIANTS.renban.rule)

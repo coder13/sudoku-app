@@ -167,8 +167,18 @@ test('raw exports preserve their encoded scope while incomplete authored sources
   const ordered = deferred.find((source: { url: string }) => source.url.endsWith('7nms'))
   await assert.rejects(detectPuzzle(ordered.code), /cosmeticText/)
   assert.match(ordered.deferred, /order digit groups.*169/)
-  for (const id of ['HqJ9', 'FLAb', 'Hu9m', '2j53']) {
+  for (const id of ['HqJ9', 'FLAb', '2j53']) {
     const source = deferred.find((source: { url: string }) => source.url.endsWith(id))
     await assert.rejects(detectPuzzle(source.code), /unsupported|not supported|version|region/i)
   }
+})
+
+
+test('Modular Lines completes the earlier Hu9m export without losing its global or companion rules', async () => {
+  const source = load('coach').examples.find((source: { url: string }) => source.url.endsWith('Hu9m'))
+  const complete = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples.find((source: { url: string }) => source.url.endsWith('Hu9m'))
+  assert.equal(source.code, complete.code)
+  assert.equal(source.solution, complete.solution)
+  assert.deepEqual((await detectPuzzle(source.code)).variant!.puzzle, complete.puzzle)
+  assert.equal(complete.puzzle.rules.length, 35)
 })

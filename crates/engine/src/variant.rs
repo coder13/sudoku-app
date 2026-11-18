@@ -324,6 +324,12 @@ rules! {
         /// One position is unrestricted. Every reference must be in the grid.
         cells: Vec<usize>,
     }
+    /// Require each three successive positions to use different remainders modulo three.
+    Modular => "modular" {
+        /// Ordered walk, retaining closures and revisits. Two positions use different groups.
+        /// One position is unrestricted. Every reference must be in the grid.
+        cells: Vec<usize>,
+    }
     /// Require low (1–3), middle (4–6) and high (7–9) digits in every 2 × 2 area.
     GlobalEntropy => "global-entropy" {}
     /// Require each interior digit to fall strictly between the endpoint digits.
@@ -602,6 +608,7 @@ impl VariantPuzzle {
                 PuzzleRule::Arrow { .. }
                 | PuzzleRule::Renban { .. }
                 | PuzzleRule::Entropic { .. }
+                | PuzzleRule::Modular { .. }
                 | PuzzleRule::Between { .. }
                 | PuzzleRule::RegionSum { .. }
                 | PuzzleRule::Sandwich { .. }

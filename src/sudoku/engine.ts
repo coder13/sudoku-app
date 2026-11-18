@@ -56,6 +56,7 @@ export type VariantRule =
   | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'renban'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'entropic'; cells: readonly number[] }
+  | { type: 'modular'; cells: readonly number[] }
   | { type: 'global-entropy' }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }

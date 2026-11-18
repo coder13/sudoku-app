@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy] [--global-entropy-corpus] [--modular]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy', '--global-entropy-corpus', '--modular'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -26,6 +26,7 @@ const additionsExpected = [
   ...(options.includes('--adjacent-total') ? [{ id: 'adjacent-total', aliases: [], cost: 20, difficulty: 'easy', requiresUniqueSolution: false }] : []),
   ...(options.includes('--entropic') ? [{ id: 'entropic', aliases: [], cost: 27, difficulty: 'medium', requiresUniqueSolution: false }] : []),
   ...(options.includes('--global-entropy') ? [{ id: 'global-entropy', aliases: [], cost: 24, difficulty: 'easy', requiresUniqueSolution: false }] : []),
+  ...(options.includes('--modular') ? [{ id: 'modular', aliases: [], cost: 27, difficulty: 'medium', requiresUniqueSolution: false }] : []),
 ]
 if (additionsExpected.length) {
   const additions = updated.techniques.filter(item => !old.techniques.some(before => before.id === item.id))
@@ -133,6 +134,12 @@ if (options.includes('--entropic-corpus')) {
       }
       fixtures.push({ name: `${name}-stall`, position: trace.end })
     }
+  }
+}
+if (options.includes('--global-entropy-corpus')) {
+  fixtures.push({ name: 'global-entropy-newman', position: { puzzle: (await read('../tests/fixtures/global-entropy-newman.json')).puzzle } })
+  for (const source of (await read('../tests/fixtures/global-entropy-coach.json')).examples.filter(source => source.puzzle)) {
+    fixtures.push({ name: `global-entropy-coach-${source.url.split('/').pop()}`, position: { puzzle: source.puzzle } })
   }
 }
 let comparisons = 0, positive = 0, improvedBudgets = 0, alternativeCompletions = 0

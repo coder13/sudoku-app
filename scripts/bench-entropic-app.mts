@@ -18,8 +18,8 @@ import { useWasmWorker } from '../tests/helpers/wasm-worker.ts'
 const wasmPath = process.env.SUDOKU_BENCH_WASM
 useWasmWorker(wasmPath)
 const family = process.env.SUDOKU_BENCH_FAMILY ?? 'entropic'
-assert.ok(['entropic', 'global-entropy'].includes(family), 'Choose entropic or global-entropy')
-const variantClues = family === 'entropic' ? 8 : 0
+assert.ok(['entropic', 'global-entropy', 'modular'].includes(family), 'Choose entropic, global-entropy or modular')
+const variantClues = family === 'entropic' ? 8 : family === 'modular' ? 12 : 0
 
 test(`measure ${family} engine requests, actual app callers and fixed-template generation`, async () => {
   const load = async (name: string) =>
@@ -37,7 +37,7 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
         name: s.url.split('/').at(-1),
         code: s.code,
         solution: s.solution,
-        complete: !(family === 'entropic' ? ['Hyk5', 'Hafj'] : ['A2s7', 'CJhv']).some((id) => s.url.endsWith(id)),
+        complete: !(family === 'entropic' ? ['Hyk5', 'Hafj'] : family === 'modular' ? ['HCHW'] : ['A2s7', 'CJhv']).some((id) => s.url.endsWith(id)),
       })),
   ]
   const bytes = await readFile(wasmPath ?? new URL('../src/sudoku/generated/engine.wasm', import.meta.url)),
@@ -212,6 +212,7 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
             [...result.matchAll(/class="variant-entropic"/g)].length,
             puzzle.rules!.filter((r) => r.type === 'entropic').length
           )
+          if (family === 'modular') assert.equal([...result.matchAll(/class="variant-modular"/g)].length, puzzle.rules!.filter(rule => rule.type === 'modular').length)
           if (family === 'global-entropy') assert.match(result, /Global Entropy: every 2 × 2 area/)
         }
       )
@@ -256,7 +257,7 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
       const counted = countLineSolutions(generated.puzzle)
       assert.equal(counted.count, 1)
       assert.equal(counted.solution, generated.solution)
-      assert.equal(countLineSolutions({ ...generated.puzzle, rules: [] }).count, 2)
+      assert.equal(countLineSolutions({ ...generated.puzzle, rules: generated.puzzle.rules!.filter(rule => rule.type !== family) }).count, 2)
       distinct.add(JSON.stringify(generated.puzzle))
     }
     console.log(

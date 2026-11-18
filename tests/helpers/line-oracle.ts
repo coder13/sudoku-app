@@ -25,15 +25,17 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
     else if (rule.type === 'renban') sets.push({ cells: rule.cells })
     else if (rule.type === 'killer-cages') sets.push(...rule.cages)
     else if (rule.type === 'parity') rule.cells.forEach(cell => edges.push([cell, cell, (a,b) => a === b && a % 2 === (rule.parity === 'odd' ? 1 : 0)]))
-    else if (rule.type === 'entropic') {
+    else if (rule.type === 'entropic' || rule.type === 'modular') {
       for (let i = 0; i < rule.cells.length; i++) for (let j = i + 1; j < Math.min(i + 3, rule.cells.length); j++) {
-        edges.push([rule.cells[i], rule.cells[j], (a, b) => Math.floor((a - 1) / 3) !== Math.floor((b - 1) / 3)])
+        edges.push([rule.cells[i], rule.cells[j], (a, b) => rule.type === 'entropic'
+          ? Math.floor((a - 1) / 3) !== Math.floor((b - 1) / 3) : a % 3 !== b % 3])
       }
     }
     else if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
       edges.push([cell, rule.cells[rule.cells.length - 1 - i], (a, b) => a === b]))
     else if (rule.type === 'inequality') edges.push([rule.less, rule.greater, (a, b) => a < b])
+    else if (rule.type === 'thermometer') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => a < b]))
     else if (rule.type === 'adjacent-total') edges.push([rule.cells[0], rule.cells[1], (a, b) => a + b === rule.sum])
     else if (rule.type === 'quadruple') quadruples.push({ cells: [rule.topLeft, rule.topLeft + 1, rule.topLeft + 9, rule.topLeft + 10], digits: rule.digits })
     else if (rule.type === 'xv') {
@@ -104,7 +106,8 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
         }
       }
       for (const [a, b, permits] of edges) for (const [from, to] of [[a, b], [b, a]]) {
-        const keep = domains[from].filter(digit => domains[to].some(other => from === a ? permits(digit, other) : permits(other, digit)))
+        const keep = domains[from].filter(digit => a === b ? permits(digit, digit) :
+          domains[to].some(other => from === a ? permits(digit, other) : permits(other, digit)))
         changed ||= keep.length !== domains[from].length; domains[from] = keep
       }
       for (const clue of sets) {

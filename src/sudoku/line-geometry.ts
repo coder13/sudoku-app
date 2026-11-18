@@ -3,7 +3,7 @@ import type { VariantRule } from './engine.ts'
 function paths(rule: VariantRule): readonly (readonly number[])[] {
   switch (rule.type) {
     case 'palindrome': case 'renban': return rule.segments ?? [rule.cells]
-    case 'thermometer': case 'whispers': case 'entropic': return [rule.cells]
+    case 'thermometer': case 'whispers': case 'entropic': case 'modular': return [rule.cells]
     case 'arrow': return [[rule.circle, ...rule.cells]]
     default: return []
   }
@@ -29,7 +29,7 @@ function* edges(lines: readonly (readonly number[])[]) {
 export function coloredLineOverlapLanes(rules: readonly VariantRule[]) {
   const owners = new Map<number, number[]>()
   rules.forEach((rule, index) => {
-    if (rule.type !== 'renban' && rule.type !== 'entropic') return
+    if (rule.type !== 'renban' && rule.type !== 'entropic' && rule.type !== 'modular') return
     for (const edge of new Set(edges(paths(rule)))) {
       const list = owners.get(edge) ?? []
       list.push(index); owners.set(edge, list)

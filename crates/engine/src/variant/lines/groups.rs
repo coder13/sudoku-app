@@ -3,12 +3,26 @@ use crate::{CELLS, DIGITS};
 /// A path has at most six possible repeating group orders. Compile its walk
 /// onto distinct cells so every later support request uses one domain per cell.
 #[derive(Clone, Debug)]
-pub(super) struct EntropicLine {
+pub(super) struct GroupLine {
+    partition: DigitGroups,
     phases: Vec<usize>,
     consistent: bool,
 }
 
-const GROUPS: [u16; 3] = [0b000000111, 0b000111000, 0b111000000];
+#[derive(Clone, Copy, Debug)]
+pub(super) enum DigitGroups {
+    Entropic,
+    Modular,
+}
+
+impl DigitGroups {
+    fn masks(self) -> [u16; 3] {
+        match self {
+            Self::Entropic => [0b000000111, 0b000111000, 0b111000000],
+            Self::Modular => [0b001001001, 0b010010010, 0b100100100],
+        }
+    }
+}
 const ORDERS: [[usize; 3]; 6] = [
     [0, 1, 2],
     [0, 2, 1],
@@ -18,8 +32,8 @@ const ORDERS: [[usize; 3]; 6] = [
     [2, 1, 0],
 ];
 
-impl EntropicLine {
-    pub(super) fn compile(walk: &[usize]) -> Option<(Vec<usize>, Self)> {
+impl GroupLine {
+    pub(super) fn compile(walk: &[usize], partition: DigitGroups) -> Option<(Vec<usize>, Self)> {
         if walk.is_empty() || walk.iter().any(|&cell| cell >= CELLS) {
             return None;
         }
@@ -38,7 +52,14 @@ impl EntropicLine {
                 phases.push(phase);
             }
         }
-        Some((cells, Self { phases, consistent }))
+        Some((
+            cells,
+            Self {
+                partition,
+                phases,
+                consistent,
+            },
+        ))
     }
 
     pub(super) fn different_phases(&self, a: usize, b: usize) -> bool {
@@ -50,9 +71,10 @@ impl EntropicLine {
             return;
         }
         // Cells three positions apart use the same group, not the same digit.
+        let groups = self.partition.masks();
         let mut possible = [DIGITS; 3];
         for (&phase, &domain) in self.phases.iter().zip(domains) {
-            for group in GROUPS {
+            for group in groups {
                 if domain & group == 0 {
                     possible[phase] &= !group;
                 }
@@ -63,10 +85,10 @@ impl EntropicLine {
             if order
                 .iter()
                 .enumerate()
-                .all(|(phase, &group)| possible[phase] & GROUPS[group] != 0)
+                .all(|(phase, &group)| possible[phase] & groups[group] != 0)
             {
                 for (phase, group) in order.into_iter().enumerate() {
-                    supported[phase] |= GROUPS[group];
+                    supported[phase] |= groups[group];
                 }
             }
         }
@@ -82,8 +104,14 @@ mod tests {
 
     // Enumerate actual digits. Check each sliding window directly instead of
     // relying on repeating phases or the six-order implementation above.
-    fn expected(walk: &[usize], cells: &[usize], domains: &[u16]) -> Vec<u16> {
+    fn expected(
+        partition: DigitGroups,
+        walk: &[usize],
+        cells: &[usize],
+        domains: &[u16],
+    ) -> Vec<u16> {
         fn visit(
+            partition: DigitGroups,
             walk: &[usize],
             cells: &[usize],
             domains: &[u16],
@@ -96,7 +124,11 @@ mod tests {
                 for &cell in window {
                     let index = cells.iter().position(|&c| c == cell).unwrap();
                     if let Some(&digit) = values.get(index) {
-                        groups |= 1u8 << ((digit - 1) / 3);
+                        groups |= 1u8
+                            << match partition {
+                                DigitGroups::Entropic => (digit - 1) / 3,
+                                DigitGroups::Modular => digit % 3,
+                            };
                         assigned += 1;
                     }
                 }
@@ -113,49 +145,57 @@ mod tests {
             for digit in 1..=9 {
                 if domains[values.len()] & (1 << (digit - 1)) != 0 {
                     values.push(digit);
-                    visit(walk, cells, domains, values, support);
+                    visit(partition, walk, cells, domains, values, support);
                     values.pop();
                 }
             }
         }
         let mut support = vec![0; cells.len()];
-        visit(walk, cells, domains, &mut vec![], &mut support);
+        visit(partition, walk, cells, domains, &mut vec![], &mut support);
         support
     }
 
-    fn check(walk: &[usize], domains: &[u16]) {
-        let (cells, line) = EntropicLine::compile(walk).unwrap();
+    fn check(partition: DigitGroups, walk: &[usize], domains: &[u16]) {
+        let (cells, line) = GroupLine::compile(walk, partition).unwrap();
         let mut actual = vec![0; cells.len()];
         line.support(domains, &mut actual);
         assert_eq!(
             actual,
-            expected(walk, &cells, domains),
+            expected(partition, walk, &cells, domains),
             "{walk:?} {domains:?}"
         );
     }
 
     #[test]
     fn every_two_cell_digit_domain_pair_matches_direct_assignments() {
-        for a in 0..=511 {
-            for b in 0..=511 {
-                check(&[0, 10], &[a, b]);
+        for partition in [DigitGroups::Entropic, DigitGroups::Modular] {
+            for a in 0..=511 {
+                for b in 0..=511 {
+                    check(partition, &[0, 10], &[a, b]);
+                }
             }
         }
     }
 
     #[test]
     fn every_three_cell_group_domain_matches_actual_digit_assignments() {
-        let masks: Vec<u16> = (0..8)
-            .map(|bits| {
-                GROUPS.iter().enumerate().fold(0, |mask, (i, group)| {
-                    mask | if bits & (1 << i) != 0 { *group } else { 0 }
+        for partition in [DigitGroups::Entropic, DigitGroups::Modular] {
+            let masks: Vec<u16> = (0..8)
+                .map(|bits| {
+                    partition
+                        .masks()
+                        .iter()
+                        .enumerate()
+                        .fold(0, |mask, (i, group)| {
+                            mask | if bits & (1 << i) != 0 { *group } else { 0 }
+                        })
                 })
-            })
-            .collect();
-        for &a in &masks {
-            for &b in &masks {
-                for &c in &masks {
-                    check(&[0, 10, 20], &[a, b, c]);
+                .collect();
+            for &a in &masks {
+                for &b in &masks {
+                    for &c in &masks {
+                        check(partition, &[0, 10, 20], &[a, b, c]);
+                    }
                 }
             }
         }
@@ -172,9 +212,27 @@ mod tests {
             (vec![0, 0], vec![511]),
             (vec![0, 10, 20, 30, 40, 50], vec![3, 24, 192, 7, 56, 448]),
         ] {
-            check(&walk, &domains);
+            for partition in [DigitGroups::Entropic, DigitGroups::Modular] {
+                check(partition, &walk, &domains);
+            }
         }
         let walk: Vec<_> = [0, 10, 20].into_iter().cycle().take(301).collect();
-        check(&walk, &[511; 3]);
+        for partition in [DigitGroups::Entropic, DigitGroups::Modular] {
+            check(partition, &walk, &[511; 3]);
+        }
+    }
+
+    #[test]
+    fn the_two_partitions_enforce_different_numeric_rules() {
+        let (_, entropy) = GroupLine::compile(&[0, 10, 20], DigitGroups::Entropic).unwrap();
+        let (_, modular) = GroupLine::compile(&[0, 10, 20], DigitGroups::Modular).unwrap();
+        for (domains, entropy_allowed) in [([1, 8, 64], true), ([1, 2, 4], false)] {
+            let mut actual = [0; 3];
+            entropy.support(&domains, &mut actual);
+            assert_eq!(actual, if entropy_allowed { domains } else { [0; 3] });
+            let mut actual = [0; 3];
+            modular.support(&domains, &mut actual);
+            assert_eq!(actual, if entropy_allowed { [0; 3] } else { domains });
+        }
     }
 }
