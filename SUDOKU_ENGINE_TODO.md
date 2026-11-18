@@ -19,6 +19,8 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
 
+- [x] Move Quadruple circles and Odd/Even markers with transformed givens. Check fixed coordinates, repeated printed digits, immutable source puzzles, sharing and published completions under all eight square symmetries. Verify native normalization, candidates, uniqueness and exact completions through the released Wasm artifact. [Clue transformation repair](https://github.com/coder13/sudoku-app/issues/170)
+
 - [x] Audit Entropic Lines against Clover's published puzzle/solution PDFs, five complete original Coach exports and two deferred Global Entropy combinations. Preserve independent touching paths, closed walks and the redundant Ksy3 clue. [Source and integration contract](SUDOKU_ENTROPIC_AUDIT.md)
 - [x] Merge native/app Entropic integration through [PR 163](https://github.com/coder13/sudoku-app/pull/163). All checks passed on reviewed head `49d54c1`; main contains the release at `dded30a`. [Issue 58](https://github.com/coder13/sudoku-app/issues/58) is closed. Human solve coverage, live viewport review and New puzzle calibration remain follow-ups.
 
