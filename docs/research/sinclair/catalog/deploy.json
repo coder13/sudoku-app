@@ -1,11 +1,11 @@
 {
   "publish": "dist/client",
-  "releaseSha256": "37986d3ffe8f4b62de749ecea51a61a3a213613d7e0addfcc3118f689fe0e9b2",
-  "wasmSha256": "5e1af132bdbe59f05e529c67b30d8f3712ff42a12fbf057bb8b2d6b30feded67",
+  "releaseSha256": "cf1010b10ce5f6cbd44611da3edafdd0e5f707a70f6fb379db5724447fa54275",
+  "wasmSha256": "b129d048118ccfccc1c7ff60384160f38729ee74ddce061906e4824f319a9861",
   "packs": 66,
   "puzzles": 6600,
-  "bytes": 4073975,
+  "bytes": 4076543,
   "collectionFilesInShellPrecache": 0,
-  "javascriptAssetsChecked": 23,
+  "javascriptAssetsChecked": 18,
   "libraryGridsFoundInJavaScript": 0
 }
