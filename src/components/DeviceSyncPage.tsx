@@ -11,9 +11,9 @@ import { deviceSync, recoveryStorage } from '../sudoku/device-sync'
 import { isSyncPage, syncPageTitles } from '../sudoku/sync-pages'
 
 type Invitation = { ticket: string; expires: number; issuer: string }
+const invitationStorage = 'sudoku-app:sync:tab-invitation'
 declare module '@tanstack/history' {
   interface HistoryState {
-    syncInvitation?: Invitation
     fromSyncScanner?: boolean
   }
 }
@@ -32,7 +32,15 @@ export function DeviceSyncPage() {
     try { return localStorage.getItem(recoveryStorage + deviceSync.credentials()?.id) ?? '' } catch { return '' }
   })
   const [recovery, setRecovery] = useState('')
-  const invite = current.state.syncInvitation
+  const [invite, setInvite] = useState<Invitation | null>(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(invitationStorage) ?? 'null')
+      if (saved?.expires > Date.now() && /^[a-f0-9]{64}$/.test(saved.ticket) &&
+          saved.issuer === deviceSync.credentials()?.id) return saved as Invitation
+      sessionStorage.removeItem(invitationStorage)
+    } catch { /* The invitation also works in memory when tab storage is unavailable. */ }
+    return null
+  })
   const [clock, setClock] = useState(Date.now)
   const [devices, setDevices] = useState<LinkedDevice[]>([])
   const [listError, setListError] = useState('')
@@ -78,8 +86,10 @@ export function DeviceSyncPage() {
     const issuer = deviceSync.credentials()!.id
     const { ticket, expires } = await deviceSync.invite()
     if (entry !== router.history.location.href || issuer !== deviceSync.credentials()?.id) return
-    await router.navigate({ to: '/sync/$step', params: { step: 'invite' }, replace: screen === 'invite',
-      state: { syncInvitation: { ticket, expires, issuer } } })
+    const invitation = { ticket, expires, issuer }
+    setInvite(invitation)
+    try { sessionStorage.setItem(invitationStorage, JSON.stringify(invitation)) } catch { /* Keep the open invitation usable. */ }
+    await router.navigate({ to: '/sync/$step', params: { step: 'invite' }, replace: screen === 'invite' })
   }
   function enroll(mode: 'libraries' | 'join' | 'recover') {
     void action(async () => {
@@ -110,7 +120,9 @@ export function DeviceSyncPage() {
   const backToScanner = screen === 'recover' || (screen === 'confirm' && current.state.fromSyncScanner)
   const root = screen === 'start' || screen === 'devices'
   function back() {
-    if (canGoBack) router.history.back()
+    // Static hosts may redirect to a trailing slash on reload, resetting the router's index.
+    const navigation = (window as Window & { navigation?: { canGoBack: boolean } }).navigation
+    if (canGoBack || (navigation?.canGoBack ?? window.history.length > 1)) router.history.back()
     else if (root) void router.navigate({ to: '/', search: {}, replace: true })
     else if (backToScanner || screen === 'invite') void router.navigate({
       to: '/sync/$step', params: { step: backToScanner ? 'scan' : 'devices' }, replace: true,

@@ -8,6 +8,8 @@ test('QR scanning accepts only a pairing ticket for the current app', () => {
   const path = '/sync#pair=' + token
   assert.equal(pairingTicket(site + path, site), token)
   assert.equal(pairingTicket(site + '/sync/confirm#pair=' + token, site), token)
+  assert.equal(pairingTicket(site + '/sync/#pair=' + token, site), token)
+  assert.equal(pairingTicket(site + '/sync/confirm/#pair=' + token, site), token)
   for (const text of [token, site + '/#pair=' + token, 'https://other.example' + path, site + path + 'x',
     'https://anyone@sudoku.example' + path, site + '/sync?target=elsewhere#pair=' + token, '/sync#pair=' + token]) {
     assert.equal(pairingTicket(text, site), null)
