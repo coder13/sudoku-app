@@ -162,8 +162,28 @@ export function variantHouseCells(house: VariantHouse, puzzle: VariantPuzzle): r
   return cells.map((i) => top + Math.floor(i / 3) * 9 + i % 3)
 }
 
+function disjointGroupPosition(rule: VariantRule): number | undefined {
+  if (rule.type !== 'extra-house' || rule.cells.length !== 9 || new Set(rule.cells).size !== 9) return
+  const position = (cell: number) => Math.floor(cell / 9) % 3 * 3 + cell % 3
+  const offset = position(rule.cells[0])
+  if (rule.cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81 && position(cell) === offset)) return offset
+}
+
+export const DISJOINT_GROUPS_RULE = 'Disjoint Groups: cells in the same relative position within each of the nine 3 × 3 blocks also contain the digits 1–9 once each.'
+
+/** Recognize the complete layout without changing its nine typed house rules. */
+export function disjointGroupRuleIndices(rules: readonly VariantRule[]): ReadonlySet<number> {
+  const groups = rules.flatMap((rule, index) => {
+    const position = disjointGroupPosition(rule)
+    return position === undefined ? [] : [{ index, position }]
+  })
+  return new Set(new Set(groups.map(group => group.position)).size === 9 ? groups.map(group => group.index) : [])
+}
+
 export function extraRegionName(rules: readonly VariantRule[], index: number): string {
   if (rules[index]?.type !== 'extra-house') return 'extra region'
+  const position = disjointGroupPosition(rules[index])
+  if (position !== undefined) return `disjoint group at row ${Math.floor(position / 3) + 1}, column ${position % 3 + 1} within each 3 × 3 block`
   return `extra region ${rules.slice(0, index + 1).filter(rule => rule.type === 'extra-house').length}`
 }
 
@@ -439,7 +459,8 @@ export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle'>): strin
 /** Explain every active rule, including the direction and negative dot clues. */
 export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
-  for (const rule of puzzle.rules ?? []) {
+  const disjoint = disjointGroupRuleIndices(puzzle.rules ?? [])
+  for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     switch (rule.type) {
       case 'global-entropy':
         descriptions.push(PUZZLE_VARIANTS['global-entropy'].rule)
@@ -492,7 +513,7 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         descriptions.push(`The ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal must also contain the digits 1–9 once each.`)
         break
       case 'extra-house':
-        descriptions.push('Each shaded extra region must also contain the digits 1–9 once each.')
+        descriptions.push(disjoint.has(index) ? DISJOINT_GROUPS_RULE : 'Each shaded extra region must also contain the digits 1–9 once each.')
         break
       case 'kropki':
         descriptions.push('Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other.')

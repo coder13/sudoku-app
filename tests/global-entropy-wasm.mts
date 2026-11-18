@@ -7,12 +7,14 @@ import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { assertGlobalEntropyProof } from './helpers/global-entropy-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { transformedBoard } from './helpers/transformed-board.ts'
 useWasmWorker()
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/global-entropy-${name}.json`, import.meta.url), 'utf8'))
@@ -60,7 +62,9 @@ for (const [id, nativePoints, nativeSteps, appPoints, appSteps, nativeDifficulty
           assert.equal(Number(source.solution[candidate.cell]) === candidate.digit, 'place' in action)
         }
         if (proof.technique === 'global-entropy') assertGlobalEntropyProof(source.puzzle, proof)
-        played = applyDeduction(played, proof.actions, variantHouseMasks(source.puzzle, valuesOf(played)))
+        const next = applyDeduction(played, proof.actions, variantHouseMasks(source.puzzle, valuesOf(played)))
+        assert.notEqual(next, played, `${id}: ${proof.technique} must apply to the preceding position`)
+        played = next
       }
       assert.equal(isSolved(played), Boolean(difficulty))
       if (difficulty) assert.equal(valuesOf(played), source.solution)
@@ -96,6 +100,19 @@ test('Global Entropy selection, pages and Finder retain independent proof action
   } finally {
     scan.close()
     await runEngine({ type: 'release-hints', collection: 608 })
+  }
+})
+
+test('all eight square transformations retain every complete source’s exact rules and printed completion', async () => {
+  for (const source of [published, ...sources]) for (let symmetry = 0; symmetry < 8; symmetry++) {
+    const puzzle = reflectVariant(source.puzzle, symmetry)
+    const expected = transformedBoard(source.solution, symmetry)
+    assertVariantCompletion(puzzle, expected)
+    const position = { puzzle }
+    const normalized = await runEngine({ type: 'variant', operation: 'normalize', position })
+    assert.deepEqual(normalized.puzzle.rules, puzzle.rules)
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position }), 'unique')
+    assert.equal(await runEngine({ type: 'variant', operation: 'solve', position }), expected)
   }
 })
 
@@ -188,4 +205,20 @@ test('generation preserves the global rule, exact givens, first technique, score
     await assert.rejects(runEngine({ ...request, maxAttempts: 1, score: [0, 0] }),
       error => error instanceof Error && 'code' in error && error.code === 'invalid-rating-target')
   }
+})
+
+test('preferring Global Entropy first does not claim an exclusive opening when a single also works', async () => {
+  const request = { type: 'generate-variant', seed: 1, maxAttempts: 1, maxNodes: 50_000,
+    template: { ...published.puzzle, givens: '0'.repeat(81) }, givens: 30, variantClues: 0, requiredRule: 'global-entropy',
+    techniqueOrder: ['global-entropy', 'full-house', 'naked-single', 'hidden-single'] } as const
+  const first = await runEngine({ ...request, technique: { id: 'global-entropy', mode: 'first' } })
+  assertVariantCompletion(first.puzzle, first.solution)
+  const position = { puzzle: first.puzzle }
+  const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: request.techniqueOrder })
+  assert.equal(trace.steps[0].technique, 'global-entropy')
+  const competing = await runEngine({ type: 'variant', operation: 'hints', position,
+    techniqueOrder: ['full-house', 'naked-single', 'hidden-single'], limit: 1 })
+  assert.equal(competing.length, 1)
+  await assert.rejects(runEngine({ ...request, technique: { id: 'global-entropy', mode: 'exclusive-opening' } }),
+    error => error instanceof Error && 'code' in error && error.code === 'search-limit')
 })

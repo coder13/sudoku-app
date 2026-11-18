@@ -44,7 +44,12 @@ test('desktop and mobile grids explain the global rule and preserve all visible 
       const circles = source.puzzle.rules.filter((rule: { type: string }) => rule.type === 'quadruple')
       assert.equal([...html.matchAll(/class="variant-quadruple"/g)].length, circles.length)
       const houses = source.puzzle.rules.filter((rule: { type: string }) => rule.type === 'extra-house')
-      if (houses.length) assert.match(html, /extra-region/)
+      if (houses.length) {
+        assert.match(html, /Disjoint Groups: cells in the same relative position/)
+        assert.match(html, /disjoint group at row 3, column 3 within each 3 × 3 block/)
+        assert.doesNotMatch(html, /class="variant-extra-region"/)
+        assert.match(variantRuleDescriptions(source.puzzle).join(' '), /Disjoint Groups/)
+      }
     }
     assert.match(variantRuleDescriptions(source.puzzle).join(' '), /Equal digits can repeat diagonally if all other puzzle rules allow it/)
   }

@@ -6,11 +6,12 @@ import { conflictsOf, enter, fillEntries, makeGame, redo, undo } from '../src/su
 import { ENTROPY_AREAS, globalEntropyState } from '../src/sudoku/global-entropy.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
-import { generationVariant, isPlayablePuzzle, variantDigitExclusions, variantHouseMasks,
+import { disjointGroupRuleIndices, generationVariant, isPlayablePuzzle, variantDigitExclusions, variantHouseMasks,
   variantIdForPuzzle, variantPeers, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
+import { transformedBoard } from './helpers/transformed-board.ts'
 
 const empty = '0'.repeat(81)
 const load = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/global-entropy-${name}.json`, import.meta.url), 'utf8'))
@@ -116,7 +117,7 @@ test('walkthrough masks retain group deductions for an explained hint step', () 
 test('every square symmetry retains all global and companion clues, completion and readable rule text', () => {
   for (const source of [published, ...sources]) for (let symmetry = 0; symmetry < 8; symmetry++) {
     const puzzle = reflectVariant(source.puzzle, symmetry)
-    const transformed = reflectVariant({ ...source.puzzle, givens: source.solution }, symmetry).givens
+    const transformed = transformedBoard(source.solution, symmetry)
     assertVariantCompletion(puzzle, transformed)
     assert.equal(puzzle.rules.filter((rule: { type: string }) => rule.type === 'global-entropy').length, 1)
     assert.equal(puzzle.rules.length, source.puzzle.rules.length)
@@ -134,6 +135,25 @@ test('global imports reject local cells, unknown parameters and invalid definiti
   assert.equal(isPlayablePuzzle('global-entropy', { ...plain, rules: [{ type: 'global-entropy', groups: [1, 2, 3] }] }), false)
 })
 
+test('the Disjoint Groups presentation requires all nine exact houses and preserves their source indices', () => {
+  const source = sources.find((source: { url: string }) => source.url.endsWith('AdoP'))
+  assert.deepEqual([...disjointGroupRuleIndices(source.puzzle.rules)], [0, 1, 2, 3, 4, 5, 6, 7, 8])
+  for (let symmetry = 0; symmetry < 8; symmetry++) {
+    const puzzle = reflectVariant(source.puzzle, symmetry)
+    assert.equal(disjointGroupRuleIndices(puzzle.rules!).size, 9)
+    assertVariantCompletion(puzzle, transformedBoard(source.solution, symmetry))
+  }
+  const missing = source.puzzle.rules.slice(1)
+  assert.equal(disjointGroupRuleIndices(missing).size, 0)
+  const duplicated = [...missing, source.puzzle.rules[1]]
+  assert.equal(disjointGroupRuleIndices(duplicated).size, 0)
+  const malformed = structuredClone(source.puzzle.rules)
+  malformed[0].cells[0] = malformed[0].cells[1]
+  assert.equal(disjointGroupRuleIndices(malformed).size, 0)
+  const shifted = [{ type: 'global-entropy' as const }, ...source.puzzle.rules]
+  assert.deepEqual([...disjointGroupRuleIndices(shifted)], [1, 2, 3, 4, 5, 6, 7, 8, 9])
+})
+
 test('raw exports preserve their encoded scope while incomplete authored sources remain tracked', async () => {
   const deferred = load('coach').examples.filter((source: { deferred?: string }) => source.deferred)
   for (const source of deferred) await assert.rejects(detectPuzzle(source.url), /Copy → Puzzle/)
@@ -149,6 +169,6 @@ test('raw exports preserve their encoded scope while incomplete authored sources
   assert.match(ordered.deferred, /order digit groups.*169/)
   for (const id of ['HqJ9', 'FLAb', 'Hu9m', '2j53']) {
     const source = deferred.find((source: { url: string }) => source.url.endsWith(id))
-    await assert.rejects(detectPuzzle(source.code), /unsupported|version|region/i)
+    await assert.rejects(detectPuzzle(source.code), /unsupported|not supported|version|region/i)
   }
 })
