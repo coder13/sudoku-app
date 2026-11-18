@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react'
 import type { VariantRule } from '../sudoku/engine'
 import { extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
-import { sharedPalindromeEdges } from '../sudoku/line-geometry'
+import { renbanOverlapLanes, sharedPalindromeEdges } from '../sudoku/line-geometry'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
@@ -101,6 +101,37 @@ function InequalityClue({ less, greater, offset, compact = false }: { less: numb
 
 type SumKind = 'xv' | 'adjacent-total'
 
+function RenbanLane({ cells, lane, count, color }: { cells: readonly [number, number]; lane: number; count: number; color: string }) {
+  const [ax, ay] = center(cells[0]), [bx, by] = center(cells[1])
+  const length = Math.hypot(bx - ax, by - ay)
+  const offset = (lane - (count - 1) / 2) * Math.min(.1, .26 / count)
+  const dx = -(by - ay) / length * offset, dy = (bx - ax) / length * offset
+  return <line x1={ax + dx} y1={ay + dy} x2={bx + dx} y2={by + dy} stroke={color} strokeWidth={Math.min(.075, .2 / count)} />
+}
+
+function whispersLabelPoint(a: number, b: number, marked: boolean) {
+  const [ax, ay] = center(a), [bx, by] = center(b)
+  const cx = (ax + bx) / 2, cy = (ay + by) / 2
+  if (!marked) return [cx, cy] as const
+  const length = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / length, uy = (by - ay) / length
+  // Move beside the marked edge, then along it to clear signs and sum text.
+  const candidates = [1, -1].map(side => [cx - uy * .5 * side + ux * .3, cy + ux * .5 * side + uy * .3] as const)
+  return candidates.find(([x, y]) => x >= .25 && x <= 8.75 && y >= .15 && y <= 8.85)
+    ?? [Math.max(.25, Math.min(8.75, candidates[0][0])), Math.max(.15, Math.min(8.85, candidates[0][1]))] as const
+}
+
+function WhispersLabel({ rule, markedEdges }: { rule: Extract<VariantRule, { type: 'whispers' }>; markedEdges: ReadonlySet<number> }) {
+  const edges = rule.cells.slice(1).map((b, i) => [rule.cells[i], b] as const)
+  const [a, b] = edges.find(([a, b]) => !markedEdges.has(pairKey(a, b))) ?? edges[0]
+  const marked = markedEdges.has(pairKey(a, b)), [lx, ly] = whispersLabelPoint(a, b, marked)
+  return <g className="variant-whispers-label">
+    {marked && <line className="variant-whispers-label-leader"
+      x1={(x(a) + x(b) + 1) / 2} y1={(y(a) + y(b) + 1) / 2} x2={lx} y2={ly} />}
+    <text className="variant-whispers-gap-halo" x={lx} y={ly}>≥{rule.minDifference}</text>
+    <text className="variant-whispers-gap" x={lx} y={ly}>≥{rule.minDifference}</text>
+  </g>
+}
+
 function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [number, SumKind][]; dots: number }) {
   return <g className={sums.every(([, kind]) => kind === 'xv') ? 'variant-xv' : 'variant-adjacent-total'} data-cell-a={a} data-cell-b={b}>
     {sums.map(([sum, kind], index) => {
@@ -122,12 +153,18 @@ function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [n
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const marker = useId()
   const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
+  const renbanLanes = useMemo(() => renbanOverlapLanes(rules), [rules])
+  const renbanIndices = new Map<number, number>()
+  rules.forEach((rule, index) => { if (rule.type === 'renban') renbanIndices.set(index, renbanIndices.size) })
+  const renbanColor = (index: number) => ['#cf419c', '#8353be', '#d26878', '#aa48bf'][renbanIndices.get(index)! % 4]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'palindrome' ? -1 :
+  const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
-    { rule, index, overlay: false, layer: layer(rule) },
-    ...(shared.has(index) ? [{ rule, index, overlay: true, layer: .5 }] : []),
+    { rule, index, overlay: undefined as 'palindrome' | 'renban' | 'whispers-label' | undefined, layer: layer(rule) },
+    ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
+    ...(renbanLanes.has(index) ? [{ rule, index, overlay: 'renban' as const, layer: .4 }] : []),
+    ...(rule.type === 'whispers' && rule.minDifference !== 5 ? [{ rule, index, overlay: 'whispers-label' as const, layer: .75 }] : []),
   ]).sort((a, b) => a.layer - b.layer)
   const dots = new Map<number, number>()
   const sums = new Map<number, Map<number, SumKind>>()
@@ -152,6 +189,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
     }
   }
   const drawnSums = new Set<number>()
+  const markedEdges = new Set([...dots.keys(), ...sums.keys(), ...rules.flatMap(rule => rule.type === 'inequality' ? [pairKey(rule.less, rule.greater)] : [])])
   return <svg className="variant-clues" viewBox="0 0 9 9" aria-hidden="true" focusable="false">
     {rules.some((rule) => rule.type === 'arrow') && <defs>
       <marker id={marker} viewBox="0 0 1 1" refX=".9" refY=".5" markerWidth=".29" markerHeight=".29"
@@ -160,7 +198,11 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
       </marker>
     </defs>}
     {drawingOrder.map(({ rule, index, overlay }) => {
-      if (overlay) return <g key={`${index}-overlap`} className="variant-palindrome-overlap">
+      if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
+      if (overlay === 'renban') return <g key={`${index}-renban-overlap`} className="variant-renban-overlap" data-renban={renbanIndices.get(index)! + 1}>
+        {renbanLanes.get(index)!.map((lane, part) => <RenbanLane key={part} {...lane} color={renbanColor(index)} />)}
+      </g>
+      if (overlay === 'palindrome') return <g key={`${index}-overlap`} className="variant-palindrome-overlap">
         {shared.get(index)!.map((edge, i) => <polyline key={i} points={points(edge)} />)}
       </g>
       switch (rule.type) {
@@ -203,16 +245,19 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} {...cage}
             captionInset={cageLabelInset(Math.min(...cage.cells), rules)} />)}</g>
         case 'whispers': {
-          const [a, b] = rule.cells
           return <g key={index} className="variant-whispers" data-min-difference={rule.minDifference}>
             <polyline points={points(rule.cells)} />
-            {rule.minDifference !== 5 && <text className="variant-whispers-gap"
-              x={(x(a) + x(b) + 1) / 2} y={(y(a) + y(b) + 1) / 2}>≥{rule.minDifference}</text>}
           </g>
         }
         case 'palindrome':
           return <g key={index} className="variant-palindrome">
             {(rule.segments ?? [rule.cells]).map((path, part) => <polyline key={part} points={points(path)} />)}
+          </g>
+        case 'renban':
+          return <g key={index} className="variant-renban" data-renban={renbanIndices.get(index)! + 1} stroke={renbanColor(index)} fill={renbanColor(index)}>
+            {(rule.segments ?? [rule.cells]).map((path, part) => path.length === 1
+              ? <circle key={part} cx={center(path[0])[0]} cy={center(path[0])[1]} r=".12" />
+              : <polyline key={part} points={points(path)} />)}
           </g>
         case 'thermometer':
           return <g key={index} className="variant-thermometer">
@@ -300,6 +345,9 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
             ? other === cell ? [rule.cells[i - 1]] : rule.cells[i - 1] === cell ? [other] : [] : []))
           labels[cell].push(`Whispers line, minimum difference ${rule.minDifference} with ${[...neighbors].map(reference).join(' and ')}`)
         }
+        break
+      case 'renban':
+        for (const cell of rule.cells) labels[cell].push(`Renban line ${rules.slice(0, index + 1).filter(rule => rule.type === 'renban').length}, ${rule.cells.length === 1 ? 'one-cell set, any digit 1–9' : `${rule.cells.length} different consecutive digits in any order`}`)
         break
       case 'palindrome':
         for (const cell of rule.cells) {

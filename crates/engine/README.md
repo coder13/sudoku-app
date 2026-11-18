@@ -428,6 +428,24 @@ The generator calculates the sum from its sampled completion.
 Given-count, clue-count, rule-dependency, score and technique targets use the existing generation API.
 App generation presets remain conditional on difficulty calibration.
 
+Renban rules accept one through nine distinct logical cells.
+Their digits form a consecutive set in any order, without repetition.
+A one-cell set permits every digit and adds no deduction.
+The existing `renban` technique costs 40 points at Medium.
+
+Optional `segments` preserve branching, closed or revisited drawing paths.
+Their union must equal the logical `cells` set.
+They do not add digit occurrences or change the consecutive-set constraint.
+Omitted geometry preserves the existing wire format.
+
+```json
+{"type":"renban","cells":[0,10,20],"segments":[[0,10],[10,20,0]]}
+```
+
+Coach compiles each connected component within a Renban layer as one set.
+Separate layers retain independent constraints even when their paths overlap.
+Generation preserves fixed Renban rules and their drawing geometry through the existing template API.
+
 With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via Serde. A `variant` worker request takes the position, operation, and optional `maxNodes` for exact search. `normalize` validates the definition and returns a complete position record. `candidates` returns 81 candidate masks. `analyze` distinguishes conflicts, impossible puzzles, uniqueness, multiple solutions, and search limits. `solve` returns one completion or an error. Unsupported rule IDs and format versions have distinct error codes.
 
 ```json

@@ -64,6 +64,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Palindrome',
     rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
   },
+  renban: {
+    name: 'Renban',
+    rule: 'Each Renban line contains a set of consecutive digits in any order, without repetition. Connected branches of one clue form one set. Overlapping clues stay independent.',
+  },
   inequality: {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
@@ -169,6 +173,10 @@ export function variantHouseMasks(puzzle: VariantPuzzle, values: string, elimina
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
     if (rule.type === 'extra-house') houses.push({ extra: index })
+    if (rule.type === 'renban') {
+      const used = rule.cells.reduce((mask, cell) => mask | (values[cell] === '0' ? 0 : 1 << (Number(values[cell]) - 1)), 0)
+      for (const cell of rule.cells) masks[cell] &= ~used
+    }
   }
   for (const house of houses) {
     const indices = variantHouseCells(house, puzzle)
@@ -201,7 +209,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
     if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
       (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
-    if (rule.type === 'thermometer') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'thermometer' || rule.type === 'renban') return rule.cells.includes(a) && rule.cells.includes(b)
     return false
   })
 }
@@ -233,6 +241,9 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
   let v = false, x = false, negativeV = false, negativeX = false
   const edge = cellsShareEdge(from, to)
   for (const rule of puzzle?.rules ?? []) {
+    if (rule.type === 'renban' && rule.cells.includes(from) && rule.cells.includes(to)) {
+      for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) >= rule.cells.length) excluded |= 1 << (other - 1)
+    }
     if (rule.type === 'adjacent-total' && (rule.cells[0] === from && rule.cells[1] === to || rule.cells[1] === from && rule.cells[0] === to)) {
       v ||= rule.sum === 5
       x ||= rule.sum === 10
@@ -316,7 +327,8 @@ function isPlayableRule(rule: VariantRule): boolean {
       rule.cells.every((cell, i) => Number.isInteger(cell) && cell >= 0 && cell < 81 && (i === 0 || cell !== rule.cells[i - 1])) &&
       Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
-    case 'palindrome': return validCells(rule.cells, 2) && (rule.segments === undefined ||
+    case 'palindrome': case 'renban': return validCells(rule.cells, rule.type === 'renban' ? 1 : 2) &&
+      (rule.type !== 'renban' || rule.cells.length <= 9) && (rule.segments === undefined ||
       Array.isArray(rule.segments) && rule.segments.length > 0 &&
       rule.segments.every(path => Array.isArray(path) && path.length > 0 &&
         path.every(cell => Number.isInteger(cell) && rule.cells.includes(cell))) &&
@@ -369,6 +381,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
 }
 
 const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+  renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
   xv: PUZZLE_VARIANTS.xv.name,
   inequality: PUZZLE_VARIANTS.inequality.name,
@@ -404,6 +417,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'renban':
+        descriptions.push(PUZZLE_VARIANTS.renban.rule)
+        break
       case 'inequality':
         descriptions.push(PUZZLE_VARIANTS.inequality.rule)
         break

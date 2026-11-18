@@ -330,9 +330,7 @@ fn each_local_rule_explains_a_candidate_that_its_relationship_excludes() {
             [1, 5],
         ),
         (
-            PuzzleRule::Renban {
-                cells: vec![0, 40, 80],
-            },
+            PuzzleRule::Renban { cells: vec![0, 40, 80], segments: None },
             &[(0, 2), (40, 4)],
             [80, 6],
         ),

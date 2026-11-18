@@ -1,10 +1,10 @@
-/** Coach compiles each connected Palindrome component in insertion order.
- * Shared cells are deduplicated before opposite positions are paired.
+/** Coach compiles connected Palindrome and Renban components in insertion order.
+ * Shared cells are deduplicated before applying the mathematical rule.
  * Keep the original paths as drawing geometry when that order differs.
- * Source: jX1r9.jX61 -> jX25b -> jX2ih / jX3l9 / jX2ia,
+ * Source: jX1r9/jX1jq.jX61 -> jX25b -> jX2ih / jX3l9 / jX2ia,
  * https://sudoku.coach/js/jCfXtZs-1776367508519.js
  */
-export function coachPalindromeLines(paths: readonly (readonly number[])[]) {
+export function coachConnectedLines(paths: readonly (readonly number[])[]) {
   const remaining = new Set(paths.map((_, index) => index))
   const components: { cells: number[]; segments?: readonly (readonly number[])[] }[] = []
   for (let seed = 0; seed < paths.length; seed++) {

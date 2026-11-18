@@ -244,9 +244,7 @@ fn numeric_rules_distinguish_the_exact_outcomes() {
             [7, 8],
         ),
         (
-            PuzzleRule::Renban {
-                cells: vec![1, 2, 0],
-            },
+            PuzzleRule::Renban { cells: vec![1, 2, 0], segments: None },
             [8, 9],
             [5, 9],
         ),

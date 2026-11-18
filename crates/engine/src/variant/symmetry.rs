@@ -206,7 +206,7 @@ impl SquareTransform {
                 *circle = self.cell(*circle);
                 self.path(cells);
             }
-            Palindrome { cells, segments } => {
+            Palindrome { cells, segments } | Renban { cells, segments } => {
                 self.path(cells);
                 if let Some(segments) = segments {
                     for segment in segments {
@@ -216,7 +216,6 @@ impl SquareTransform {
             }
             Thermometer { cells }
             | Whispers { cells, .. }
-            | Renban { cells }
             | Between { cells }
             | RegionSum { cells, .. } => self.path(cells),
             Sandwich {

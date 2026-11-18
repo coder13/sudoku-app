@@ -3178,6 +3178,15 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-quadruple text { fill: var(--board-ink); font-size: .19px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
 
 
+.variant-renban polyline {
+  fill: none;
+  stroke-width: .24;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .72;
+}
+.variant-renban circle { stroke: none; opacity: .72; }
+.variant-renban-overlap line { stroke-linecap: round; }
 .variant-palindrome polyline {
   fill: none;
   stroke: var(--board-ink);
@@ -3213,13 +3222,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   stroke-linejoin: round;
   opacity: .65;
 }
-.variant-whispers-gap {
-  fill: var(--board-ink);
-  stroke: var(--board-bg);
-  stroke-width: .07;
-  paint-order: stroke;
+.variant-whispers-gap, .variant-whispers-gap-halo {
   font-size: .2px;
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: middle;
 }
+.variant-whispers-gap { fill: var(--board-ink); stroke: none; }
+.variant-whispers-gap-halo { fill: none; stroke: var(--board-bg); stroke-width: .07; }
+.variant-whispers-label-leader { stroke: #72a54e; stroke-width: .025; stroke-dasharray: .05 .04; }
