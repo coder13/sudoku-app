@@ -438,7 +438,18 @@ Use [`CompiledVariant::solve_seeded`] or pass a `seed` with the `solve` operatio
 
 Use [`VariantPosition::solve_logically`] for a trace or [`VariantPosition::rate`] for a score. Both use the supplied order of techniques. The rating records the regions, rules, technique order, and version of the score. A stalled solve reports the points earned before it stalled.
 
-Singles and Locked Candidates use all active houses. The other variant techniques explain deductions from the individual constraints. Proofs record the rule indices, cells, and candidate masks before the move. A rule can produce several proofs, such as separate Clone groups.
+Singles and Locked Candidates use all active houses. Local variant techniques explain deductions from the individual constraints. Binary exclusions can also combine a rule with an exhaustive set of cell candidates or house locations. Proofs record the rule indices, cells, and candidate masks before the move. A rule can produce several proofs, such as separate Clone groups.
+
+Non-Consecutive has four additional techniques. Each checks finite alternatives rather than searching for a solution. [`VariantEvidence::Exclusion`] records a typed [`VariantExclusionPremise`], the source rules, and any houses needed to exclude equal digits. Every alternative must conflict with each removed candidate. The detector uses the compiled binary relation, including explicit edge exceptions. House premises include Jigsaw regions, diagonals and extra houses.
+
+| Technique ID | Required pattern | Points | Tier |
+| --- | --- | ---: | --- |
+| `non-consecutive-locked-candidates-2` | A house has two adjacent locations for a digit; a neighboring digit in either location excludes both | 20 | Easy |
+| `non-consecutive-locked-candidates-3` | A house's two or three locations and a target span three cells; every location is the target or its active neighbor | 24 | Easy |
+| `non-consecutive-bivalue` | A cell has two consecutive candidates; neither can go in an active neighbor | 22 | Easy |
+| `non-consecutive-trivalue` | A cell's candidates span three consecutive digits, with both endpoints present; the middle digit cannot go in an active neighbor | 24 | Easy |
+
+Pass these IDs in `techniqueOrder` to select, disable or reorder them. The default order includes them; the original eight-point `non-consecutive` detector keeps its existing pair-support behavior. Three distinct practice puzzles per technique exercise these patterns. The app includes their lessons, candidate highlights and case explanations. The [public Coach solver](https://sudoku.coach/js/jCfXtZb-1776367508519.js) names these four families; the engine's proof format and effort estimates are independent.
 
 Cage Combinations checks which digits can occupy each cell while meeting the cage sum. Cage House Sum uses the fact that the digits in a house add to 45. It can derive a sum for cells inside or outside the house. The proof identifies the cages and records the candidate masks before the move.
 
@@ -450,7 +461,7 @@ Use `replay-step` with a zero-based `stepIndex` to get the position before and a
 
 Use [`variant_practice_examples`] to load three exercises for a technique. In Wasm or `batch-variant`, send `practice-examples` with `variant: true` and the technique ID. Send `techniques` with `variant: true` to read the variant catalog, point costs, and default order. Each exercise includes its rules, the position before the move, the candidate masks, valid actions, and a suggested action with its proof.
 
-The engine uses scoring version 6 for variants. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. House sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
+The engine uses scoring version 7 for variants. The four Non-Consecutive techniques extend the default path, while older technique costs remain unchanged. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. Exclusions count each alternative to inspect; house sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
 
 The variant technique tiers use costs through 26 points for Easy and through 68 for Medium. Cage Combinations and Arrow also start at Easy because they apply the basic rules of Killer and Arrow Sudoku. Higher costs start at Hard. Total points do not raise the difficulty. A complete path uses its hardest technique tier, and generation checks the requested tier and the lower-tier profile. A stalled path reports a partial total and keeps the selected rule set, technique order, and scoring version.
 

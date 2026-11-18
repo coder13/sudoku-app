@@ -6,7 +6,7 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `8439f6d`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, Odd/Even, Anti-King, Non-Consecutive, consistent cell references, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `da339cf`, including capability packaging, mixed-rule integration, the UAT fixes, engine performance work, variant hint repairs, Quadruple, Odd/Even, Anti-King, Non-Consecutive, consistent cell references, the revised lesson layout, and the Colors panel. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
@@ -20,8 +20,9 @@ This inventory uses main at `8439f6d`, including capability packaging, mixed-rul
 | Odd/Even markers, imports, proofs, and practice | In main through [PR 106](https://github.com/coder13/sudoku-app/pull/106) | Retain mixed clues and marker-specific help; finish live viewport review and calibrate generation recipes before offering app presets |
 | Anti-King imports, corner peers, proofs, and practice | In main through [PR 108](https://github.com/coder13/sudoku-app/pull/108) | Preserve corner feedback and combined rules; finish live viewport review and calibrate generation recipes before offering app presets |
 | Consistent cell naming in hints and solutions | In main through [PR 110](https://github.com/coder13/sudoku-app/pull/110) | Preserve typed display context, lesson defaults and preference changes without new engine work |
-| Non-Consecutive imports, edge exceptions and proofs | In main through [PR 112](https://github.com/coder13/sudoku-app/pull/112) | Preserve mixed white-dot exceptions and honest stalled paths; extend human deductions in [issue 111](https://github.com/coder13/sudoku-app/issues/111), review live viewports and calibrate app presets |
-| Pattern Overlay support witnesses | Measured implementation on `codex/sudoku-pattern-overlay-pruning` for [issue 113](https://github.com/coder13/sudoku-app/issues/113) | Preserve bounded probes, geometry, complete proofs and the exact fallback; review latency, memory and package cost together |
+| Non-Consecutive imports, edge exceptions and proofs | In main through [PR 112](https://github.com/coder13/sudoku-app/pull/112) | Preserve mixed white-dot exceptions and versioned technique profiles; review live viewports and calibrate app presets |
+| Pattern Overlay support witnesses | In main through [PR 114](https://github.com/coder13/sudoku-app/pull/114) | Preserve bounded probes, geometry, complete proofs and the exact fallback; review latency, memory and package cost together |
+| Non-Consecutive locks and candidate alternatives | Usable implementation and measured coverage on `codex/sudoku-nonconsecutive-deductions` for [issue 111](https://github.com/coder13/sudoku-app/issues/111) | Preserve versioned profiles, complete alternatives and independent case checks; expand training against published positions |
 | Additional rule families and shading | Research on `codex/sudoku-engine-integration` | Port one app-ready family from current main through [issue 35](https://github.com/coder13/sudoku-app/issues/35) |
 | Proof explorer and expert lesson work | Open in [PR 14](https://github.com/coder13/sudoku-app/pull/14) | Reconcile its diff with current main and the research branch before integration |
 | Uncommitted proof, technique, and lesson edits | Preserved in the original R&D worktree | Compare each change with current main and the research branch before porting it |

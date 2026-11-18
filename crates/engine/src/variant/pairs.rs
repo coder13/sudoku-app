@@ -59,6 +59,10 @@ pub(super) struct PairClue {
 }
 
 impl PairClue {
+    pub fn binary_relation(&self) -> Option<&PairConstraint> {
+        (self.links.len() == 1).then(|| &self.links[0])
+    }
+
     pub fn restrict(&self, domains: &mut [u16; CELLS]) {
         loop {
             let mut changed = false;
@@ -269,6 +273,11 @@ impl PairCompiler {
                 PairConstraint::new(cells, forward)
             })
             .collect();
+        for (index, clue) in self.clues.iter().enumerate() {
+            for &cell in &clue.cells {
+                puzzle.pair_clue_memberships[cell].push(index);
+            }
+        }
         puzzle.pair_clues = self.clues;
     }
 }

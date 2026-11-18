@@ -19,10 +19,12 @@ use crate::{
 mod tests;
 
 /// Version of the point costs and difficulty thresholds for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 6;
+pub const VARIANT_SCORING_VERSION: u32 = 7;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
+
+mod exclusions;
 
 macro_rules! catalog {
     ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
@@ -82,12 +84,20 @@ catalog! {
     Clone: "clone", 17, Easy;
     /// Apply a consecutive or double relation from Kropki marks.
     Kropki: "kropki", 20, Easy;
+    /// A house places a digit in two adjacent cells, excluding neighboring digits there.
+    NonConsecutiveLockedPair: "non-consecutive-locked-candidates-2", 20, Easy;
     /// Apply a sum relation from XV marks.
     Xv: "xv", 20, Easy;
     /// Match candidates at mirrored positions on a line.
     Palindrome: "palindrome", 21, Easy;
+    /// Two consecutive candidates in one cell exclude both digits from its neighbors.
+    NonConsecutiveBivalue: "non-consecutive-bivalue", 22, Easy;
     /// Bound the interior of a line using the two endpoint digits.
     Between: "between", 23, Easy;
+    /// A house confines a digit to alternatives spanning three cells with a target.
+    NonConsecutiveLockedTriple: "non-consecutive-locked-candidates-3", 24, Easy;
+    /// Candidates spanning three consecutive digits exclude their middle digit nearby.
+    NonConsecutiveTrivalue: "non-consecutive-trivalue", 24, Easy;
     /// Find increasing assignments along a thermometer.
     Thermometer: "thermometer", 26, Easy;
     /// Require every printed digit occurrence in the four cells touching a circle.
@@ -152,6 +162,28 @@ pub struct VariantClueScope {
     pub cells: Vec<usize>,
 }
 
+/// An exhaustive set of alternatives used to exclude another candidate.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(tag = "type", rename_all = "kebab-case"))]
+pub enum VariantExclusionPremise {
+    /// One of the listed candidates must occupy this empty cell.
+    Cell {
+        /// Cell whose candidates form the alternatives.
+        cell: usize,
+        /// Complete candidate mask before the deduction.
+        domain: u16,
+    },
+    /// A house must place this digit in one of the listed empty cells.
+    House {
+        /// House that requires the digit.
+        house: VariantHouseKind,
+        /// Digit to place somewhere in the house.
+        digit: u8,
+        /// Complete list of candidate locations for the digit in this house.
+        cells: Vec<usize>,
+    },
+}
+
 /// Evidence for a logical move in a structured puzzle.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(
@@ -212,6 +244,15 @@ pub enum VariantEvidence {
         domains: Vec<u16>,
         /// Required digit.
         digit: u8,
+    },
+    /// Every alternative conflicts with every removed candidate.
+    Exclusion {
+        /// Cell candidates or house locations, at least one of which must be true.
+        premise: VariantExclusionPremise,
+        /// Indices of the binary rules used by the conflicts.
+        rules: Vec<usize>,
+        /// Houses needed to exclude equal digits in different cells.
+        houses: Vec<VariantHouseKind>,
     },
     /// A classic proof that applies to the current rules.
     Classic {
@@ -430,6 +471,16 @@ impl VariantDeduction {
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
+            VariantEvidence::Exclusion { premise, .. } => {
+                let mut cells = match premise {
+                    VariantExclusionPremise::Cell { cell, .. } => vec![*cell],
+                    VariantExclusionPremise::House { cells, .. } => cells.clone(),
+                };
+                cells.extend(self.actions.iter().map(|action| action.candidate().cell));
+                cells.sort_unstable();
+                cells.dedup();
+                cells.len()
+            }
             VariantEvidence::Classic { proof, .. } => proof.pattern_size(),
         };
         (
@@ -872,6 +923,10 @@ impl CompiledVariant {
             LockedCandidates => {
                 self.locked_candidates(position, &mut proofs);
                 self.quadruple_locks(position, &mut proofs);
+            }
+            NonConsecutiveLockedPair | NonConsecutiveLockedTriple
+            | NonConsecutiveBivalue | NonConsecutiveTrivalue => {
+                self.nonconsecutive_exclusions(position, technique, &mut proofs);
             }
             Classic(classic) => self.classic_proofs(position, classic, &mut proofs),
             Parity => {

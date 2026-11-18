@@ -47,13 +47,24 @@ This stage reached main at `8439f6d` through [PR 112](https://github.com/coder13
 - [x] Pass 258 native tests including doctests, 379 app tests, 227 Wasm tests, TypeScript, the production/offline build, all 16 native capability combinations, four Wasm profiles and strict full/reduced Cargo documentation.
 - [x] Verify three independently counted 30-given generated puzzles that need Non-Consecutive, plus a mixed white-dot template that retains all exceptions.
 - [x] Measure candidates, validation, solving, rating, ordinary/exhaustive hints and generation. Preserve retained responses and complete nested proofs on eleven fixtures against main. The published puzzle rates at 0.345/0.431 ms; the two-given Coach path remains stalled at 2,516.019/2,526.339 ms. [Methods and limits](tests/fixtures/README.md#non-consecutive-sources-and-app-coverage)
-- [ ] Add Non-Consecutive locked and multi-candidate deductions. The real two-given Coach fixture imports with its exact completion, while the current logical path stalls. Track proof, scoring, training and performance work separately in [issue 111](https://github.com/coder13/sudoku-app/issues/111).
+- [x] Add Non-Consecutive locked and multi-candidate deductions, with typed proofs, scoring version 7, twelve practice puzzles and app explanations. The follow-up below solves the two-given Coach puzzle without seeding removals. [Implementation and evidence](https://github.com/coder13/sudoku-app/issues/111)
 - [x] Pass CI's native release suite, feature matrix, four Wasm profiles, app/Wasm contracts, strict Cargo documentation and deployment checks; merge the app-ready variant in [PR 112](https://github.com/coder13/sudoku-app/pull/112).
 - [ ] Review live viewport behavior and calibrate generation recipes before offering Non-Consecutive in New puzzle.
 
-### Pattern Overlay support performance
+### Non-Consecutive deduction and training follow-up
 
-This pass is isolated on `codex/sudoku-pattern-overlay-pruning` from main at `8439f6d`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/113)
+This pass is isolated on `codex/sudoku-nonconsecutive-deductions` from main at `36add07` and includes the lesson/hint rewrite in main `da339cf` ([PR 99](https://github.com/coder13/sudoku-app/pull/99)). [Deduction and training issue](https://github.com/coder13/sudoku-app/issues/111)
+
+- [x] Implement two-cell and three-cell house locks, bivalue and trivalue neighbors using the existing binary relation tables, explicit exceptions and all declared houses.
+- [x] Add typed exhaustive-alternative proofs, rule and house provenance, and independent case replay. Cover positive moves, missing edges, extra candidates, digit boundaries, Jigsaw and extra houses. Reproduce the six researched removals at the archived Coach stall.
+- [x] Add twelve distinct practice puzzles and verify their answers, uniqueness and complete calibration paths. Bill once per deduction at 20, 24, 22 and 24 points; advance variant scoring to version 7 while preserving older costs.
+- [x] Finish app lesson, hint, practice, Finder, paging, history and disabled-profile contracts. Verify all twelve exercises independently, fresh practice generation, four 30-given puzzles with the selected first technique, the complete unseeded Coach solve and the retained 62-step custom-profile stall. Compare 2,052 retained responses across fourteen positions, including all 107 prior detector outputs and every hint page.
+- [x] Measure paired complete ratings, hints, memory, all profile sizes and retained proofs. Consecudoku app rating changes from a stalled 1,058.396/1,412.850 ms to a complete 1.067/1.600 ms path. Opening hints remain about 680 ms for four choices; app Wasm is 9,539 gzip bytes smaller. [Methods and limits](tests/fixtures/README.md#non-consecutive-locks-and-candidate-alternatives)
+- [x] Pass local native/app/Wasm/build, feature/profile and strict Cargo documentation gates. The eleven new native cases include every candidate mask at five edge/interior cells for both cell techniques, both diagonals, Jigsaw and extra houses. Require CI on the reviewed PR head before the separate merge.
+
+### Pattern Overlay support performance merged
+
+This pass reached main at `36add07` through [PR 114](https://github.com/coder13/sudoku-app/pull/114), with all CI and deployment checks passing on reviewed head `8b3c5fb`. The reviewed worktree remains on `codex/sudoku-pattern-overlay-pruning`. [Measured search issue](https://github.com/coder13/sudoku-app/issues/113)
 
 - [x] Profile Consecudoku's empty expert searches and retain all per-technique proof lists. Five-digit and four-digit Pattern Overlay cost 750.684 and 293.104 ms median while finding no deductions.
 - [x] Prototype bounded completion witnesses for the detector's masks, houses and equal-digit exclusions, with checked digit permutations. Seed exact support and retain the original search when witnesses are incomplete. Share the masked-completion primitive with the existing forcing probes; keep new code gated by `variants`.
