@@ -2482,7 +2482,9 @@ svg { flex-shrink: 0; }
 }
 
 
-.puzzles-page.import-image-view { padding-block: var(--space-6) var(--space-8); }
+.puzzles-page.import-image-view {
+  padding-block: var(--space-6) max(calc(var(--space-48) + var(--space-6)), env(safe-area-inset-bottom));
+}
 .import-image-view > .puzzles-page-heading { margin-bottom: var(--space-6); }
 .import-image-view > .photo-import:not([hidden]) {
   flex: 1;
@@ -2508,7 +2510,7 @@ svg { flex-shrink: 0; }
   justify-items: center;
 }
 .import-image-view .photo-review > * { width: min(100%, 100cqh); max-width: 100%; }
-@container (max-width: 500px) and (min-height: 345px) {
+@container (max-width: 500px) and (min-height: 330px) {
   .import-image-view .photo-review {
     --confirm-grid-width: min(100cqw, 65cqh);
     grid-template-columns: minmax(0, 1fr);
