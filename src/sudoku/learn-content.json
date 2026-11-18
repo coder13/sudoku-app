@@ -890,8 +890,10 @@
               "title": "Naked quadruple"
             },
             {
-              "type": "foundation-visual",
-              "visual": "naked-quadruple-count"
+              "type": "text",
+              "paragraphs": [
+                "In row 5, R5C2 through R5C5 have {1, 2}, {2, 4}, {3, 4}, and {1, 2, 3}. The four cells must use 1 through 4 once each. R5C6 has {3, 4, 7}, so remove its 3 and 4."
+              ]
             },
             {
               "type": "heading",
@@ -2450,8 +2452,10 @@
               "visual": "avoidable-rectangle-three-placed"
             },
             {
-              "type": "foundation-visual",
-              "visual": "avoidable-rectangle-two-placed"
+              "type": "text",
+              "paragraphs": [
+                "Suppose you placed 2 in R1C3 and 7 in R1C4. R2C3 has {5, 7} and R2C4 has {2, 5}. If both lower corners use the rectangle digits, all four corners can swap 2 and 7. In a puzzle with one solution, one lower corner must use 5. Remove 5 from R2C5, which sees both through row 2."
+              ]
             },
             {
               "type": "heading",
@@ -2855,8 +2859,10 @@
               "title": "Color trap"
             },
             {
-              "type": "foundation-visual",
-              "visual": "simple-color-trap"
+              "type": "text",
+              "paragraphs": [
+                "R2C5 and R2C6 are the only places for 4 in box 2. One is blue and one is amber. Either choice places 4 in row 2. Remove 4 from R2C7."
+              ]
             },
             {
               "type": "heading",
@@ -2864,8 +2870,10 @@
               "title": "Color wrap"
             },
             {
-              "type": "foundation-visual",
-              "visual": "simple-color-wrap"
+              "type": "text",
+              "paragraphs": [
+                "The linked group gives the 9s in R4C4 and R4C8 the same color. If blue is true, both 9s go in row 4. That breaks the row rule. Remove every blue 9 in this group. Its amber 9s must be true."
+              ]
             },
             {
               "type": "heading",
@@ -3025,7 +3033,7 @@
         {
           "id": "3d-medusa",
           "title": "3D Medusa",
-          "summary": "3D Medusa uses two colors to track candidates for several digits. Within one connected group, either all the blue candidates or all the amber candidates are true. If two blue 7s share a row, blue is impossible throughout that group.",
+          "summary": "3D Medusa follows linked candidates across houses and within cells. Color each linked pair blue and amber. Then test what happens if one color is true throughout the connected group.",
           "blocks": [
             {
               "type": "heading",
@@ -3035,22 +3043,9 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start with a cell that has exactly two candidates. Give the candidates opposite colors."
+                "Start in a cell with exactly two candidates and give them opposite colors. A cell with two candidates must use one of them. The same rule applies to the only two places for a digit in a row, column, or box.",
+                "Follow both kinds of links from every colored candidate. The next candidate on each link gets the opposite color. The solid lines in the diagrams show those links. Within one connected group, if blue is true, every blue candidate must be placed and every amber candidate ruled out. If amber is true, the roles reverse."
               ]
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "Continue from each colored candidate. In a two-candidate cell, give the other digit the opposite color. In a row, column, or box with just two places for the same digit, give its other place the opposite color."
-              ]
-            },
-            {
-              "type": "diagram",
-              "example": "3d-medusa"
-            },
-            {
-              "type": "foundation-visual",
-              "visual": "medusa-first-links"
             },
             {
               "type": "heading",
@@ -3060,29 +3055,19 @@
             {
               "type": "text",
               "paragraphs": [
-                "In each diagram, the colored candidates belong to one linked group. The crop shows the candidates involved in the deduction."
+                "Assume one color is true throughout the group. Look for a cell with no candidates, a house with no place for a missing digit, or two placements that conflict. If the assumption breaks a rule, remove all candidates of that color in the group and place the other color’s candidates."
               ]
             },
             {
               "type": "foundation-visual",
-              "visual": "medusa-two-digits"
+              "visual": "medusa-empty-cell-chain"
             },
             {
-              "type": "foundation-visual",
-              "visual": "medusa-repeat-digit"
-            },
-            {
-              "type": "foundation-visual",
-              "visual": "medusa-empty-cell"
-            },
-            {
-              "type": "foundation-visual",
-              "visual": "medusa-empty-house"
-            },
-            {
-              "type": "text",
-              "paragraphs": [
-                "If a color causes one of these conflicts, remove every candidate of that color in this set. Place the candidates of the other color."
+              "type": "list",
+              "items": [
+                "Two digits in one cell. If a linked group gives both 5 and 8 in R2C3 the same color, that color would put two digits in R2C3.",
+                "The same digit twice in a house. If 9 in R1C3 and 9 in R1C4 are both blue, placing either blue 9 rules out the other through row 1. Blue is false.",
+                "No place for a missing digit. Suppose R1C1, R1C2, and R1C4 are the only places for 7 in row 1. Blue fills those cells with 5, 6, and 4. All three 7s disappear and row 1 still needs a 7. Blue is false."
               ]
             },
             {
@@ -3093,20 +3078,23 @@
             {
               "type": "text",
               "paragraphs": [
-                "If both color choices rule out the same uncolored candidate, you can remove it."
+                "Test an uncolored candidate under both color choices. If both choices rule it out, remove it. This can happen even when each color is still possible."
               ]
             },
             {
               "type": "foundation-visual",
-              "visual": "medusa-two-colors-in-cell"
+              "visual": "medusa-both-colors-chain"
             },
             {
-              "type": "foundation-visual",
-              "visual": "medusa-two-peers"
+              "type": "list",
+              "items": [
+                "The target sees its digit in both colors. A 9 in R6C4 sees the amber 9 in R6C2 and the blue 9 in R6C3. Either 9 rules out 9 in R6C4 through row 6.",
+                "One color fills the target’s cell and the other puts the digit in a peer. If blue puts 1 in R6C2, that rules out 7 in the same cell. If amber puts 7 in R6C3, it rules out 7 in R6C2 through row 6. Either way, remove 7 from R6C2."
+              ]
             },
             {
-              "type": "foundation-visual",
-              "visual": "medusa-cell-and-peer"
+              "type": "diagram",
+              "example": "3d-medusa"
             },
             {
               "type": "practice",
@@ -4366,16 +4354,10 @@
               ]
             },
             {
-              "type": "foundation-visual",
-              "visual": "als-two-sets"
-            },
-            {
-              "type": "foundation-visual",
-              "visual": "als-four-cell-wing"
-            },
-            {
-              "type": "foundation-visual",
-              "visual": "als-three-sets"
+              "type": "text",
+              "paragraphs": [
+                "Each of these sets is one cell with two candidates. The middle cell, R2C4, can be 2 or 7. A 2 there forces 5 in R2C2 through row 2. A 7 there forces 5 in R4C4 through column 4. Remove 5 from R4C2, which shares column 2 with the first end and row 4 with the other."
+              ]
             },
             {
               "type": "foundation-visual",

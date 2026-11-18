@@ -9,7 +9,7 @@ export function ConceptCheck({ block }: { block: Extract<LessonBlock, { type: 'c
   const question = block.questions[index]
   const correct = answer === question.answer
 
-  return <section className="surface lesson-concept-check" aria-labelledby={`${id}-title`}>
+  return <section className="lesson-concept-check" aria-labelledby={`${id}-title`}>
     <header className="lesson-practice-heading">
       <h2 id={`${id}-title`}>{block.title}</h2>
       <span className="concept-progress">{index + 1} of {block.questions.length}</span>

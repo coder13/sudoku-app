@@ -154,7 +154,7 @@ function WorkedExamples({ article, block, variant, diagrams, editorPreview }: {
   const authored = useMemo(() => diagrams.map(({ block }) => block).filter(({ example }) =>
     example === technique || (technique === drills[0].example && !drills.some(drill => drill.example === example))),
   [diagrams, drills, technique])
-  return <section className="surface lesson-worked-examples" id="worked-example" aria-labelledby="examples">
+  return <section className="lesson-worked-examples" id="worked-example" aria-labelledby="examples">
     <header className="lesson-practice-heading">
       <h2 id="examples">Examples</h2>
       {!editorPreview && drills.length > 1 && <label className="lesson-drill">
@@ -199,7 +199,7 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
   }
 
   return (
-    <section className="surface lesson-practice" aria-labelledby="trainer" data-lesson-block={blockIndex}>
+    <section className="lesson-practice" aria-labelledby="trainer" data-lesson-block={blockIndex}>
       <header className="lesson-practice-heading">
         <div>
           <div className="lesson-title-row">
