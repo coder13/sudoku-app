@@ -417,18 +417,16 @@ impl<'a> GuardianSearch<'a> {
         visit: &mut impl FnMut(HintAction, Vec<ForcingBranch>) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         let indices: Vec<_> = guardians.iter().copied().map(index).collect();
+        let words = guardian_words(&indices);
         for i in 0..self.branch.graph.available.len() {
             let id = self.branch.graph.available[i];
             for assumption in [id * 2 + 1, id * 2] {
                 let Some(reached) = self.reached(assumption) else {
                     continue;
                 };
-                let known = |state: usize| reached[state / 64] & (1u64 << (state % 64)) != 0;
                 // The clause can advance a settled branch only when every alternative
                 // has been ruled out but one, or the branch rules out all of them.
-                if indices.iter().any(|&id| known(id * 2 + 1))
-                    || indices.iter().filter(|&&id| !known(id * 2)).take(2).count() > 1
-                {
+                if !guardian_clause_can_advance(&words, reached) {
                     continue;
                 }
                 let conclusion = action(assumption ^ 1);
@@ -472,6 +470,35 @@ impl<'a> GuardianSearch<'a> {
         }
         self.reached.get(self.slots[assumption])
     }
+}
+
+fn guardian_words(indices: &[usize]) -> Vec<(usize, u64)> {
+    let mut masks = [0; WORDS];
+    for &id in indices {
+        let state = id * 2;
+        masks[state / 64] |= 1u64 << (state % 64);
+    }
+    masks
+        .into_iter()
+        .enumerate()
+        .filter(|(_, bits)| *bits != 0)
+        .collect()
+}
+
+/// False literals use even bits, so shifting each mask once selects its true literals.
+fn guardian_clause_can_advance(words: &[(usize, u64)], reached: &[u64; WORDS]) -> bool {
+    let mut remaining = 0;
+    for &(word, alternatives) in words {
+        let known = reached[word];
+        if known & (alternatives << 1) != 0 {
+            return false;
+        }
+        remaining += (alternatives & !known).count_ones();
+        if remaining > 1 {
+            return false;
+        }
+    }
+    true
 }
 
 struct BranchSearch<'a> {
@@ -959,6 +986,53 @@ fn action(state: usize) -> HintAction {
 #[cfg(test)]
 mod guardian_tests {
     use super::*;
+
+    #[test]
+    fn guardian_clause_eligibility_matches_every_assignment_across_word_boundaries() {
+        for id in 0..CELLS * 9 {
+            for state in 0u64..4 {
+                let mut reached = [0; WORDS];
+                reached[id * 2 / 64] = state << (id * 2 % 64);
+                assert_eq!(
+                    guardian_clause_can_advance(&guardian_words(&[id]), &reached),
+                    state & 2 == 0
+                );
+            }
+        }
+        // Cover bit 63, adjacent words, a later word and the last candidate.
+        let candidates = [0, 31, 32, 63, 64, 728];
+        for assignment in 0usize..4usize.pow(6) {
+            // 0: unknown, 1: false, 2: true, 3: both. Settled branches normally
+            // exclude 3, but its true literal must still satisfy the clause.
+            let states = std::array::from_fn::<_, 6, _>(|i| (assignment >> (i * 2)) & 3);
+            let mut reached = [0; WORDS];
+            for (&id, &state) in candidates.iter().zip(&states) {
+                let literal = id * 2;
+                reached[literal / 64] |= (state as u64) << (literal % 64);
+            }
+            // Unrelated true and false literals cannot affect this clause.
+            reached[200 * 2 / 64] |= 3 << (200 * 2 % 64);
+            for subset in 1..1 << candidates.len() {
+                let indices: Vec<_> = candidates
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, &id)| (subset & (1 << i) != 0).then_some(id))
+                    .collect();
+                let selected: Vec<_> = states
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, &state)| (subset & (1 << i) != 0).then_some(state))
+                    .collect();
+                let satisfied = selected.iter().any(|state| state & 2 != 0);
+                let remaining = selected.iter().filter(|&&state| state & 1 == 0).count();
+                assert_eq!(
+                    guardian_clause_can_advance(&guardian_words(&indices), &reached),
+                    !satisfied && remaining <= 1,
+                    "assignment {assignment}, subset {subset}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn shared_guardian_conclusions_require_a_surviving_case_and_keep_branch_order() {

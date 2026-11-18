@@ -694,3 +694,19 @@ The separate worktree is `codex/sudoku-xv-integration`. Track the family in [iss
 The XV integration reached main at `91dbe9c`. Native, feature, Wasm, app, documentation and deployment checks passed on reviewed head `500a39c` in run `44313482936`. The source worktree remains pinned to that head. [Issue 48](https://github.com/coder13/sudoku-app/issues/48) is closed. The separate performance work in [issue 147](https://github.com/coder13/sudoku-app/issues/147) remains open.
 
 The app-order paths solve Clover at 4,538 points, XV and IVs at 1,870, FCeS at 3,186 and 63Jk at 27,358. Maelstrom stalls at 940 points after 27 steps. Chcs stalls at 160 points after six steps. Preserve those partial results. Chcs is independently unique without XV, so do not claim every imported marker family is necessary. The separate [rating audit](https://github.com/coder13/sudoku-app/issues/147) tracks the slow 63Jk rating and Maelstrom hint search.
+
+## 15. Reduce repeated guardian-state work in ratings
+
+The isolated worktree is `codex/sudoku-xv-rating-audit`, based on the XV release record in main `04def98`. Track this focused pass in [issue 147](https://github.com/coder13/sudoku-app/issues/147).
+
+- [x] Profile the complete original 63Jk rating. Inspect sampled native instructions to distinguish guardian-state checks from bounds and propagation. Preserve the unsuccessful guardian-count experiments outside the candidate change.
+- [x] Pack guardian false literals into nonempty machine words. Accept a refutation check only when no guardian is already true and at most one is unremoved. Preserve original indices, assumption order, propagation and proof construction.
+- [x] Independently test all 729 candidate IDs and 258,048 assignment/subset combinations across word boundaries. Include unrelated states, satisfied clauses and zero, one or multiple remaining alternatives.
+- [x] Compare complete responses and traces on six published XV sources against a fresh main artifact. Preserve 27,358 points and 199 steps on 63Jk. Keep a separate Cargo target directory for each side after finding shared-cache reuse in a preliminary control.
+- [x] Pass 322 native tests, sixteen capability combinations, four package profiles and strict full/reduced Cargo documentation.
+- [x] Preserve 7,291 complete responses: 7,143 variant responses on 47 corpus positions and 351 positive practice positions, plus 148 Classic responses on nine Tridagon positions. Cover all 117 detectors, full traces, ratings and every hint page.
+- [x] Pass 437 app tests, 265 Wasm contracts, TypeScript and the 159-route production/offline build on the final artifact.
+- [x] Rebuild main and candidate in separate target directories. The fresh 63Jk paired rating falls from 6,847.856/6,964.237 to 4,022.262/4,042.819 ms median/p95, a 41.3% median gain. Preserve all 100 generation outcomes across five families and report all profile costs, retained regressions and actual app caller latency. [Final measurements](tests/fixtures/README.md#packed-guardian-checks-in-tridagon-refutations)
+- [ ] Pass exact-head CI and merge the focused optimization.
+
+This change preserves scoring version 8, technique costs and enabled techniques. The four-second rating, Maelstrom/Chcs hint latency, branch propagation and browser-worker costs remain part of the broader [performance audit](https://github.com/coder13/sudoku-app/issues/88).
