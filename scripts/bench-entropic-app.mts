@@ -15,7 +15,8 @@ import { getVariantPlayOrder, playCandidates } from '../src/sudoku/variant-play.
 import { variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { countLineSolutions } from '../tests/helpers/line-oracle.ts'
 import { useWasmWorker } from '../tests/helpers/wasm-worker.ts'
-useWasmWorker()
+const wasmPath = process.env.SUDOKU_BENCH_WASM
+useWasmWorker(wasmPath)
 
 test('measure Entropic engine requests, actual app callers and fixed-template generation', async () => {
   const load = async (name: string) =>
@@ -36,7 +37,7 @@ test('measure Entropic engine requests, actual app callers and fixed-template ge
         complete: !['Hyk5', 'Hafj'].some((id) => s.url.endsWith(id)),
       })),
   ]
-  const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url)),
+  const bytes = await readFile(wasmPath ?? new URL('../src/sudoku/generated/engine.wasm', import.meta.url)),
     { instance } = await WebAssembly.instantiate(bytes)
   const handle = createEngineHandler(async () => instance.exports)
   let id = 0
@@ -55,7 +56,7 @@ test('measure Entropic engine requests, actual app callers and fixed-template ge
         sha256: createHash('sha256').update(bytes).digest('hex'),
       },
       method:
-        'Candidates/input/SSR/native/exact: 5 warmups/20 samples. App rate/preview/hints/walkthrough: 2/5. Include request serialization and caller conversions. Assertions outside timing. In-process worker excludes startup, transfer, layout and paint. p95 of five is the maximum. New sources have no pre-port engine baseline.',
+        'Candidates/input/SSR/native/exact: 5 warmups/20 samples. App rate/preview/hints/walkthrough: 2/5. Include request serialization and caller conversions. Assertions outside timing. In-process worker excludes startup, transfer, layout and paint. p95 of five is the maximum.',
     })
   )
   const summary = (times: number[]) =>

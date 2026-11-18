@@ -778,3 +778,19 @@ The isolated worktree is `codex/sudoku-entropic-integration`, based on main `679
 - [x] Pass all native, feature, Wasm/app, strict documentation and deployment checks on `49d54c1` in [run 44361287093](https://github.com/coder13/sudoku-app/actions/runs/44361287093). Merge [PR 163](https://github.com/coder13/sudoku-app/pull/163) at `dded30a` and verify the reviewed commit on remote main. Keep the source worktree pinned to its reviewed head.
 - [ ] Research the Hyk5/Hafj human reasoning gaps in [issue 162](https://github.com/coder13/sudoku-app/issues/162). Keep slow Hyk5 rating and BSEJ hints in [issue 88](https://github.com/coder13/sudoku-app/issues/88). Derive independently checked deductions before adding named techniques or changing scores.
 - [ ] Complete live viewport interaction review and calibrate New puzzle recipes. Native template generation remains available.
+
+
+## 19. Reduce repeated forcing-branch intersection checks
+
+The isolated worktree is `codex/sudoku-entropic-rating-audit`, based on main `68684c6`. Track the measured change in [issue 165](https://github.com/coder13/sudoku-app/issues/165). [Measurements and limits](SUDOKU_FORCING_PERFORMANCE_AUDIT.md)
+
+- [x] Profile Hyk5's real stalled position. Locate repeated locked-candidate premise scans inside Nested Forcing Net branches.
+- [x] Cache negative candidate literals by digit and cell. Preserve every intersection, scan order, premise and target. Restore the cache through inner and outer rollback.
+- [x] Establish intersection eligibility from the remaining source cells across every overlapping house pair and removal subset. Cover high cell bits, zero/one remaining site and unrelated removals.
+- [x] Pass 346 native tests, sixteen capability combinations, all four Wasm profiles and strict full/reduced Cargo documentation. Preserve all twelve AI Escargot nested proofs and independent inference replay.
+- [x] Pass 485 app tests and 292 Wasm contracts. Extend profiling to progressed positions and an explicit Wasm artifact. Extend full-response comparisons with all Entropic sources and every Hyk5 stage.
+- [x] Preserve all 10,679 complete comparison responses and 140 generation outcomes. Finish paired source/retained measurements and both actual caller runs. Record all package costs and memory increases. Hyk5 app rating falls from 884.961 to 798.371 ms median. 63Jk falls from 3,997.348 to 3,667.600 ms.
+- [x] Pass the 161-route production/offline build and preserve the measured Wasm hash.
+- [ ] Pass all checks on the reviewed PR head. Merge the PR and verify both the reviewed commit and merge on remote main.
+
+Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app/issues/162). Broader latency and real browser-worker costs remain in [issue 88](https://github.com/coder13/sudoku-app/issues/88).

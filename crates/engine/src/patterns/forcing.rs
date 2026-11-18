@@ -28,9 +28,16 @@ struct Clause {
 
 struct Intersection {
     scope: ForcingScope,
-    shared: Vec<usize>,
+    shared_cells: u128,
+    premise_cells: u128,
     premises: Vec<usize>,
     targets: Vec<usize>,
+}
+
+impl Intersection {
+    fn can_advance(&self, removed: u128) -> bool {
+        self.premise_cells & !removed == 0 && (self.shared_cells & !removed).count_ones() >= 2
+    }
 }
 
 impl ForcingGraph {
@@ -151,7 +158,10 @@ impl ForcingGraph {
     ) -> ControlFlow<Deduction> {
         let mut branch = BranchSearch::new(self, Mode::Dynamic);
         let mut witnesses = witnesses::Search::new(
-            search.board, search.masks, search.verified_solution, search.completion_probe_nodes,
+            search.board,
+            search.masks,
+            search.verified_solution,
+            search.completion_probe_nodes,
         );
         #[cfg(feature = "variants")]
         witnesses.seed(search.completion_support);
@@ -269,7 +279,8 @@ impl ForcingGraph {
                             target,
                             digit,
                         },
-                        shared,
+                        shared_cells: shared.iter().fold(0, |mask, id| mask | (1 << (id / 9))),
+                        premise_cells: premises.iter().fold(0, |mask, id| mask | (1 << (id / 9))),
                         premises,
                         targets,
                     });
@@ -508,6 +519,9 @@ struct BranchSearch<'a> {
     advanced: Option<Box<advanced::State>>,
     guardians: Vec<usize>,
     seen: [usize; STATES],
+    // Negative literals indexed by digit and cell. Intersections can check
+    // their source domains without reading every candidate's fact index.
+    removed: [u128; 9],
     facts: Vec<Fact>,
 }
 
@@ -524,6 +538,7 @@ impl<'a> BranchSearch<'a> {
             advanced: (mode == Mode::Advanced).then(|| Box::new(advanced::State::new(graph))),
             guardians: Vec::new(),
             seen: [UNSEEN; STATES],
+            removed: [0; 9],
             facts: Vec::new(),
         }
     }
@@ -539,6 +554,10 @@ impl<'a> BranchSearch<'a> {
         }
         for fact in self.facts.drain(len..) {
             self.seen[fact.state] = UNSEEN;
+            if fact.state & 1 == 0 && self.mode >= Mode::Dynamic {
+                let id = fact.state / 2;
+                self.removed[id % 9] &= !(1 << (id / 9));
+            }
         }
     }
 
@@ -703,17 +722,10 @@ impl<'a> BranchSearch<'a> {
     fn apply_intersections(&mut self) -> Option<Conflict> {
         for index in 0..self.intersections.len() {
             let intersection = &self.intersections[index];
-            if !intersection
-                .premises
-                .iter()
-                .all(|&id| self.seen[id * 2] != UNSEEN)
-                || intersection
-                    .shared
-                    .iter()
-                    .filter(|&&id| self.seen[id * 2] == UNSEEN)
-                    .nth(1)
-                    .is_none()
-            {
+            let ForcingScope::Intersection { digit, .. } = intersection.scope else {
+                unreachable!();
+            };
+            if !intersection.can_advance(self.removed[usize::from(digit - 1)]) {
                 continue;
             }
             let mode = if self.mode == Mode::Advanced {
@@ -761,6 +773,10 @@ impl<'a> BranchSearch<'a> {
         let index = self.facts.len();
         self.facts.push(Fact { state, cause, mode });
         self.seen[state] = index;
+        if state & 1 == 0 && self.mode >= Mode::Dynamic {
+            let id = state / 2;
+            self.removed[id % 9] |= 1 << (id / 9);
+        }
         (self.seen[state ^ 1] != UNSEEN).then(|| Conflict::Opposite([self.seen[state ^ 1], index]))
     }
 
@@ -986,6 +1002,106 @@ fn action(state: usize) -> HintAction {
 #[cfg(test)]
 mod guardian_tests {
     use super::*;
+
+    #[test]
+    fn intersection_eligibility_requires_a_confined_source_with_two_remaining_sites() {
+        // Every subset of every source house covers removals on both sides of
+        // each shared boundary, including the high bits at cells 64 through 80.
+        for source in House::all() {
+            let source_cells = source.cells();
+            for target in House::all() {
+                let shared = house_cells(source) & house_cells(target);
+                if source == target || shared.count_ones() < 2 {
+                    continue;
+                }
+                let intersection = Intersection {
+                    scope: ForcingScope::Intersection {
+                        source,
+                        target,
+                        digit: 9,
+                    },
+                    shared_cells: shared,
+                    premise_cells: house_cells(source) & !shared,
+                    premises: Vec::new(),
+                    targets: Vec::new(),
+                };
+                for selection in 0u16..512 {
+                    let removed = source_cells.iter().enumerate().fold(0, |mask, (i, &cell)| {
+                        mask | if selection & (1 << i) != 0 {
+                            1 << cell
+                        } else {
+                            0
+                        }
+                    });
+                    let remaining: Vec<_> = source_cells
+                        .iter()
+                        .copied()
+                        .filter(|&cell| removed & (1 << cell) == 0)
+                        .collect();
+                    let confined = remaining.iter().all(|&cell| target.cells().contains(&cell));
+                    assert_eq!(
+                        intersection.can_advance(removed),
+                        confined && remaining.len() >= 2
+                    );
+                    // Eliminating unrelated sites cannot change this lock.
+                    assert_eq!(
+                        intersection.can_advance(removed | !house_cells(source)),
+                        confined && remaining.len() >= 2
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn branch_removal_domains_follow_facts_through_inner_and_outer_rollbacks() {
+        let board = crate::parse_givens(
+            "100007090030020008009600500005300900010080002600004000300000010041000007007000300",
+        )
+        .unwrap();
+        let masks = crate::candidates(&board).unwrap();
+        let positions = super::super::candidate_positions(&masks);
+        let graph = ForcingGraph::new(&masks, &positions);
+        for mode in [Mode::Dynamic, Mode::Advanced] {
+            let mut branch = BranchSearch::new(&graph, mode);
+            let check = |branch: &BranchSearch<'_>| {
+                let mut expected = [0; 9];
+                for fact in &branch.facts {
+                    if fact.state & 1 == 0 {
+                        let candidate = candidate(fact.state / 2);
+                        expected[usize::from(candidate.digit - 1)] |= 1 << candidate.cell;
+                    }
+                }
+                assert_eq!(branch.removed, expected);
+                for &id in &graph.available {
+                    assert_eq!(
+                        branch.removed[id % 9] & (1 << (id / 9)) != 0,
+                        branch.seen[id * 2] != UNSEEN
+                    );
+                }
+            };
+            for &id in &graph.available {
+                if branch.run(id * 2 + 1).is_some() {
+                    continue;
+                }
+                check(&branch);
+                let checkpoint = branch.facts.len();
+                for &inner in &graph.available {
+                    if branch.seen[inner * 2] != UNSEEN || branch.seen[inner * 2 + 1] != UNSEEN {
+                        continue;
+                    }
+                    for state in [inner * 2 + 1, inner * 2] {
+                        branch.extend(state);
+                        check(&branch);
+                        branch.rollback(checkpoint);
+                        check(&branch);
+                    }
+                }
+                branch.rollback(0);
+                check(&branch);
+            }
+        }
+    }
 
     #[test]
     fn guardian_clause_eligibility_matches_every_assignment_across_word_boundaries() {

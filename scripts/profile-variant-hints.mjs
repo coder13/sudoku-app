@@ -3,11 +3,11 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
-const [fixturePath, recordPath] = process.argv.slice(2)
-assert.ok(fixturePath, 'Usage: node --experimental-strip-types scripts/profile-variant-hints.mjs fixture.json [results.json]')
+const [fixturePath, recordPath, wasmPath] = process.argv.slice(2)
+assert.ok(fixturePath, 'Usage: node --experimental-strip-types scripts/profile-variant-hints.mjs fixture.json [results.json] [engine.wasm]')
 const source = JSON.parse(await readFile(fixturePath, 'utf8'))
-const position = { puzzle: source.puzzle ?? source }
-const { instance } = await WebAssembly.instantiate(await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url)))
+const position = source.position ?? { puzzle: source.puzzle ?? source }
+const { instance } = await WebAssembly.instantiate(await readFile(wasmPath ?? new URL('../src/sudoku/generated/engine.wasm', import.meta.url)))
 const handle = createEngineHandler(async () => instance.exports)
 let id = 0
 async function request(request) {
