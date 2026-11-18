@@ -6,12 +6,14 @@ This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGIN
 
 ## Current integration state
 
-This inventory uses main at `91dbe9c`. It includes capability packaging, mixed rules, UAT fixes, engine performance work, variant hint repairs and the Colors panel. Quadruple, Odd/Even, Anti-King, Non-Consecutive, Whispers, Palindrome, Inequality and XV have complete app integrations. Cell references and lessons use the revised presentation. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
+This inventory uses main at `e37a21f`. It includes capability packaging, mixed rules, UAT fixes, engine performance work, variant hint repairs and the Colors panel. Quadruple, Odd/Even, Anti-King, Non-Consecutive, Whispers, Palindrome, Inequality and XV have complete app integrations. Cell references and lessons use the revised presentation. The foundation from `codex/sudoku-engine-rd` is an ancestor of that commit. The original worktree still contains development changes that must remain available.
 
 | Work | State | Next integration step |
 | --- | --- | --- |
 | Classic solving, scoring, proofs, hints, generation, and browser worker | In main | Preserve the public contracts and versioned ratings |
-| XV clues, independent negative flags, Coach sums and mixed-rule play | In main through [PR 148](https://github.com/coder13/sudoku-app/pull/148) | Preserve published complete/partial paths and companion rules; review live viewports, calibrate app presets and measure slow ratings under [issue 147](https://github.com/coder13/sudoku-app/issues/147) |
+| Packed guardian checks for Tridagon refutations | In main through [PR 150](https://github.com/coder13/sudoku-app/pull/150) | Preserve complete proofs and fresh artifact controls; continue the remaining four-second rating, hint and worker audit in [issue 88](https://github.com/coder13/sudoku-app/issues/88) |
+| General adjacent totals, including Roman XV meaning 15 | Source audit under [issue 72](https://github.com/coder13/sudoku-app/issues/72); not integrated | Add the missing native rule and complete app flow while preserving the original clue, even when it is redundant for uniqueness |
+| XV clues, independent negative flags, Coach sums and mixed-rule play | In main through [PR 148](https://github.com/coder13/sudoku-app/pull/148) | Preserve published complete/partial paths and companion rules; review live viewports, calibrate app presets and continue remaining performance work under [issue 88](https://github.com/coder13/sudoku-app/issues/88) |
 | Sparse validation, hint paging, worker isolation, and batched singles | In main through [PR 100](https://github.com/coder13/sudoku-app/pull/100) | Preserve the measured improvements while extending the same app flows to every built-in variant |
 | Additional completion witnesses for exhaustive variant hints | In main through [PR 107](https://github.com/coder13/sudoku-app/pull/107) | Preserve complete proofs, bounded probes and smaller profiles while measuring the remaining expert searches |
 | Windoku | In main through [PR 93](https://github.com/coder13/sudoku-app/pull/93) | Maintain its import, play, save, hint, and generation coverage |
