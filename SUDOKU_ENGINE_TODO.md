@@ -66,12 +66,12 @@ The next family remains open in [issue 47](https://github.com/coder13/sudoku-app
 - [x] Establish a larger-budget baseline. Two million nodes still exhaust. Ten million nodes prove uniqueness in about 6.8 seconds and find the published completion in about 5.7 seconds. These are single local observations.
 - [x] Isolate house Hidden Singles in the independent counter. Without them, 100,000 calls find no completion. With them, 52,244 calls prove uniqueness. Keep those counts separate from native node accounting.
 - [ ] Finish published clue review and the complete app flow before integrating inequalities. Preserve directed endpoints under every grid transformation.
-- [ ] Make sparse mixed-rule validation practical while keeping honest search-limit outcomes in [issue 139](https://github.com/coder13/sudoku-app/issues/139).
+- [x] Make sparse mixed-rule validation practical while keeping honest search-limit outcomes in [issue 139](https://github.com/coder13/sudoku-app/issues/139). Merge the measured repair through [PR 143](https://github.com/coder13/sudoku-app/pull/143).
 - [x] Test exact-search house propagation. Preserve public candidate and logical-profile behavior. Check boundary budgets, ambiguous completions and seeded generation before selecting the implementation.
 
-### Sparse mixed-rule exact search in progress
+### Sparse mixed-rule exact search merged
 
-The focused worktree is `codex/sudoku-exact-house-propagation`, based on main `9d298af`. [Exact validation issue](https://github.com/coder13/sudoku-app/issues/139)
+This pass reached main at `a1aeb27` through [PR 143](https://github.com/coder13/sudoku-app/pull/143). All CI and deployment checks passed on reviewed head `b027404`. The reviewed worktree remains on `codex/sudoku-exact-house-propagation`. [Exact validation issue](https://github.com/coder13/sudoku-app/issues/139)
 
 - [x] Restrict exact-search domains with missing-digit support and Hidden Singles in enforced houses. Keep public candidates, enabled human techniques and seeded sampling unchanged.
 - [x] Preserve region geometry without restoring removed region distinctness during generation dependency checks. Cover replacement Jigsaw regions, diagonals, extra houses, contradictory support and explicit node boundaries.
@@ -80,7 +80,8 @@ The focused worktree is `codex/sudoku-exact-house-propagation`, based on main `9
 - [x] Pass 321 native tests, 415 app tests, TypeScript, sixteen capability combinations, four package profiles, strict full/reduced Cargo documentation and the 159-route production/offline build.
 - [x] Pass 255 final Wasm contracts. Check 6,574 complete responses: 6,536 match exactly and 38 finish previously exhausted exact requests. Preserve all 351 positive practice fixtures, 117 detector lists, hint pages and seeded completions. Validate each improved outcome against the original engine at a larger explicit budget.
 - [x] Measure equal-budget completed exact work, native compilation and domain phases, nine retained fixtures, generation yield, memory and all package sizes. FzzD medians improve 6,603 → 483 ms for uniqueness and 5,727 → 392 ms for solving. Preserve the FgZb rating and record slower samples. [Methods and limits](tests/fixtures/README.md#exact-house-propagation-for-sparse-mixed-puzzles)
-- [ ] Pass CI on the reviewed PR head, merge the focused improvement and verify remote main ancestry. Inequality app integration remains separate.
+- [x] Pass CI on reviewed head `b027404`, merge the focused improvement and verify remote main ancestry. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44297435642)
+- [ ] Complete inequality app integration separately in [issue 47](https://github.com/coder13/sudoku-app/issues/47). The exact-search repair preserves its honest 98-point logical stall.
 
 ### Non-Consecutive integration merged
 
