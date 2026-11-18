@@ -1,6 +1,6 @@
 import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
-import { formatPuzzleRating } from '../sudoku/difficulty'
+import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import type { Game } from '../sudoku/game'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
@@ -58,7 +58,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const [preview, setPreview] = useState<PuzzlePreview>()
   const [photo, setPhoto] = useState<Blob>()
   const [cameraOpen, setCameraOpen] = useState(false)
-  const title = preview ? 'Preview puzzle' : photo ? 'Import from image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
+  const title = preview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
 
   useEffect(() => () => pending.current?.abort(), [])
   useEffect(() => {
@@ -130,9 +130,11 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
         <strong>{variantName(preview.game.variant)}</strong>
-        <span className="import-preview-rating"><span className="sr-only">Puzzle rating </span>
-          {preview.game.difficulty ? formatPuzzleRating(preview.game.difficulty, preview.game.score)
-            : preview.game.difficulty === null ? 'Unrated' : 'Rating unavailable'}
+        <span className="import-preview-rating">
+          {preview.game.difficulty
+            ? <span><span>Difficulty</span> <strong>{DIFFICULTY_LABELS[preview.game.difficulty]}</strong></span>
+            : <strong>{preview.game.difficulty === null ? 'Unrated' : 'Rating unavailable'}</strong>}
+          {preview.game.score != null && <span><span>Score</span> <strong>{preview.game.score}</strong></span>}
         </span>
         <span className="import-preview-format">{preview.format}</span>
       </p>
@@ -211,7 +213,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   </>
 
   if (fullPage) return (
-    <main className="puzzles-page puzzles-subscreen import-page" aria-labelledby={`${id}-heading`} onPaste={pasteImage}>
+    <main className={`puzzles-page puzzles-subscreen import-page${photo && !preview ? ' import-image-view' : ''}`} aria-labelledby={`${id}-heading`} onPaste={pasteImage}>
       <header className="puzzles-page-heading">
         <button type="button" className="icon-button puzzles-back"
           aria-label={preview && photo ? 'Back to detected givens' : preview || photo || cameraOpen ? 'Back to puzzle input' : 'Leave puzzle import'}

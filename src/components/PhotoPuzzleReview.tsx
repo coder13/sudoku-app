@@ -84,7 +84,7 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
   const showInstructions = Boolean(reviewing || editingCrop)
   const inReview = Boolean(reviewing)
   useEffect(() => {
-    if (visible && showInstructions) instructions.current?.focus()
+    if (visible && showInstructions) instructions.current?.focus({ preventScroll: true })
   }, [visible, showInstructions, inReview])
 
   function back() {
@@ -125,22 +125,24 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
   const conflicts = reviewing && conflictsOf(reviewing.givens.join(''))
   return <section className="photo-import" hidden={!visible}>
     {reviewing ? <>
-      <p ref={instructions} tabIndex={-1}>Compare the grid with the image and correct any digits. Check highlighted cells
+      <p className="sr-only" ref={instructions} tabIndex={-1}>Compare the grid with the image and correct any digits. Check highlighted cells
         and clear any player-placed digits or candidates. If the image shows extra rules, use a puzzle code or link.</p>
       <p className="sr-only" id={keyboardHelp}>Use the arrow keys to move between cells.</p>
-      <div className="photo-review">
-        <img src={reviewing.url} alt="Cropped puzzle image" width={576} height={576} />
-        <div className="photo-edit-grid" role="group" aria-label="Edit Classic Sudoku givens" aria-describedby={keyboardHelp}>
-          {reviewing.givens.map((digit, cell) => (
-            <input key={cell} type="text" inputMode="numeric" autoComplete="off"
-              aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}${reviewing.review.has(cell) ? ', needs review' : ''}`}
-              aria-invalid={conflicts?.has(cell) || undefined}
-              data-review={reviewing.review.has(cell) || undefined} data-cell={cell} tabIndex={activeCell === cell ? 0 : -1}
-              disabled={checking} value={digit === '0' ? '' : digit}
-              onFocus={event => { setActiveCell(cell); event.currentTarget.select() }}
-              onKeyDown={event => moveCell(event, cell)}
-              onChange={event => changeCell(cell, event.target.value.replace(/[^1-9]/g, '').slice(-1) || '0')} />
-          ))}
+      <div className="photo-stage">
+        <div className="photo-review">
+          <img src={reviewing.url} alt="Cropped puzzle image" width={576} height={576} />
+          <div className="photo-edit-grid" role="group" aria-label="Edit Classic Sudoku givens" aria-describedby={keyboardHelp}>
+            {reviewing.givens.map((digit, cell) => (
+              <input key={cell} type="text" inputMode="numeric" autoComplete="off"
+                aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}${reviewing.review.has(cell) ? ', needs review' : ''}`}
+                aria-invalid={conflicts?.has(cell) || undefined}
+                data-review={reviewing.review.has(cell) || undefined} data-cell={cell} tabIndex={activeCell === cell ? 0 : -1}
+                disabled={checking} value={digit === '0' ? '' : digit}
+                onFocus={event => { setActiveCell(cell); event.currentTarget.select() }}
+                onKeyDown={event => moveCell(event, cell)}
+                onChange={event => changeCell(cell, event.target.value.replace(/[^1-9]/g, '').slice(-1) || '0')} />
+            ))}
+          </div>
         </div>
       </div>
       {checkError && <p className="form-error" role="alert">{checkError}</p>}
@@ -152,9 +154,11 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
       </div>
     </> : <>
       {editingCrop && photo && <>
-        <p ref={instructions} tabIndex={-1}>Drag the frame to move it. Line up the four corners with the full 9 × 9 grid.</p>
-        <PhotoCropEditor url={photo.url} width={photo.canvas.width} height={photo.canvas.height}
-          crop={editingCrop} onChange={setCrop} />
+        <p className="sr-only" ref={instructions} tabIndex={-1}>Drag the frame to move it. Line up the four corners with the full 9 × 9 grid.</p>
+        <div className="photo-stage">
+          <PhotoCropEditor url={photo.url} width={photo.canvas.width} height={photo.canvas.height}
+            crop={editingCrop} onChange={setCrop} />
+        </div>
       </>}
       {!photo && !error && <p role="status">Finding the grid…</p>}
       {reading && <p role="status">Reading digits…</p>}

@@ -2384,7 +2384,8 @@ svg { flex-shrink: 0; }
 .import-page > :is(.import-form, .import-preview, .photo-import) { flex: none; }
 .import-preview { --board-frame-width: min(100%, 430px); display: grid; gap: var(--space-16); }
 .import-preview-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4) var(--space-10); }
-.import-preview-rating { font-weight: 650; color: var(--dark-purple); }
+.import-preview-rating { display: inline-flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); color: var(--muted); }
+.import-preview-rating strong { color: var(--ink); }
 .import-preview-format { margin-inline-start: auto; color: var(--muted); font-size: 0.875rem; }
 .import-preview-rules { display: grid; gap: var(--space-8); margin: 0; padding-inline-start: var(--space-20); color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
 .import-preview-actions { flex-wrap: wrap; }
@@ -2478,6 +2479,43 @@ svg { flex-shrink: 0; }
 @media (max-width: 540px) {
   .photo-review { grid-template-columns: minmax(0, 1fr); }
   .photo-review img { max-width: min(100%, 32svh); justify-self: center; }
+}
+
+
+.puzzles-page.import-image-view { padding-block: var(--space-6) var(--space-8); }
+.import-image-view > .puzzles-page-heading { margin-bottom: var(--space-6); }
+.import-image-view > .photo-import:not([hidden]) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.import-image-view .photo-stage {
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  place-items: start center;
+}
+.import-image-view .photo-actions { flex: none; }
+.import-image-view .photo-crop-image { margin-block: 22px; }
+.import-image-view .photo-crop-image img { max-height: max(0px, calc(100cqh - 44px)); }
+.import-image-view .photo-review {
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-items: center;
+}
+.import-image-view .photo-review > * { width: min(100%, 100cqh); max-width: 100%; }
+@container (max-width: 500px) and (min-height: 345px) {
+  .import-image-view .photo-review {
+    --confirm-grid-width: min(100cqw, 65cqh);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+  }
+  .import-image-view .photo-review .photo-edit-grid { width: var(--confirm-grid-width); }
+  .import-image-view .photo-review img { width: min(100%, calc(100cqh - var(--confirm-grid-width) - var(--space-8))); }
 }
 
 @media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
