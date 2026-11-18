@@ -44,7 +44,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     return {
       start: { cells: [cell], text: `Look at the candidates left in ${cellName(cell)}.` },
       check: { houses: [{ row: Math.floor(cell / 9) }, { column: cell % 9 }, { box: Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3) }],
-        cells: [cell], text: 'Read the row, column, and box around this cell. After the earlier removals, which digit can still go here?' },
+        cells: [cell], text: 'Check which digits the row, column, and box rule out. Count what remains after any earlier candidate removals.' },
     }
   }
   if ('house' in evidence) {
@@ -53,7 +53,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
       start: { houses: [house], text: `Start in ${houseName(house)}. ${technique === 'full-house' ? 'Count the empty cells.' : 'Pick a digit that is still missing.'}` },
       check: { houses: [house], text: technique === 'full-house'
         ? 'Read the eight filled cells. Which digit from 1 through 9 is missing?'
-        : `Which empty cells in ${houseName(house)} still allow ${first.digit}? Look for a placed ${first.digit} in each crossing house.` },
+        : `Check each empty cell in ${houseName(house)}. A placed ${first.digit} in any row, column, or box it shares rules out ${first.digit} there.` },
     }
   }
   if ('intersection' in evidence) {
@@ -61,7 +61,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     return {
       start: { houses: [source], text: `Start in ${houseName(source)}. Find all the places for digit ${first.digit}.` },
       check: { houses: [source, target], cells, candidates: marks(cells, [first.digit]),
-        text: `All possible ${first.digit}s in ${houseName(source)} lie in ${houseName(target)}. Which cells in ${houseName(target)} lie outside that overlap?` },
+        text: `In ${houseName(source)}, ${first.digit} can go only in cells that also belong to ${houseName(target)}. Look for ${first.digit} elsewhere in ${houseName(target)}.` },
     }
   }
   if ('pair' in evidence || 'subset' in evidence) {
@@ -77,7 +77,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
         ? { houses: [house], candidates: seed, text: `Find all the places for ${digits(values)} in ${houseName(house)}. Do they fit in only ${cells.length} cells?` }
         : { houses: [house], cells, candidates: marks(cells, values),
           text: `Look at ${names(cells)}. How many different digits appear across their candidate lists?` },
-      follow: hidden ? 'Which other pencil marks in those cells compete with the reserved digits?'
+      follow: hidden ? 'Look in those cells for candidates outside the reserved digits.'
         : `Look for one of the chosen digits elsewhere in ${lockedIn ? houses([house, lockedIn]) : houseName(house)}.`,
     }
   }
@@ -101,7 +101,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
       start: { houses: [a.house], text: `Find the only two places for digit ${digit} in ${houseName(a.house)}.` },
       check: { houses: [a.house, b.house], cells: bridge, candidates: spots(a.house, digit),
         text: `Find the second pair for ${digit} in ${houseName(b.house)}. Which two ends share a house?` },
-      follow: 'Suppose the first far end is false. What happens at the other far end? Find a candidate that sees both.',
+      follow: `Rule out ${digit} at the first far end for this trial. Follow the links to the other far end. Look for a ${digit} candidate that sees both far ends.`,
     }
   }
   if ('empty-rectangle' in evidence) {
@@ -111,7 +111,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
       start: { houses: [box], text: `Find every place for digit ${digit} in ${houseName(box)}. Can one row and one column cover all of them?` },
       check: { houses: [box, link.house], cells, candidates: marks(cells, [digit]),
         text: `The box candidates lie on row ${row + 1} and column ${column + 1}. Which possible ${digit} in ${houseName(link.house)} lines up with an arm?` },
-      follow: 'Try each end of the outside pair. Which arm can the box still use? Look for a candidate that both cases rule out.',
+      follow: 'Try each end of the outside pair. The near end rules out one arm in the box. Look for a candidate that sees both the far end and every place on the other arm.',
     }
   }
   if ('wing' in evidence) {
@@ -121,7 +121,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
       start: { cells: [pivot], text: `Read the ${xyz ? 'three' : 'two'} candidates in ${cellName(pivot)}. Look for cells it sees with exactly two candidates.` },
       check: { cells: [pivot, ...pincers], candidates: marks([pivot, ...pincers], [x, y, z]),
         text: `Compare ${cellName(pivot)} with ${names(pincers)}. One wing shares ${x} with the pivot, and the other shares ${y}. Which digit do the wings share?` },
-      follow: `Try each digit in the pivot. Where can ${z} go in each case? Look for another ${z} that sees ${xyz ? 'all three cells' : 'both wings'}.`,
+      follow: `Try each digit in the pivot and check where it forces ${z}. Look for another ${z} candidate that sees ${xyz ? 'both wings and the pivot' : 'both wings'}.`,
     }
   }
   if ('w-wing' in evidence) {
@@ -137,7 +137,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     return {
       start: { cells: cells.slice(0, 1), text: `Start at ${cellName(cells[0])}. Look nearby for cells that use some of the same candidates.` },
       check: { cells, candidates: marks(cells, values), text: 'Count the different candidate digits in the four highlighted cells. There must be four in total.' },
-      follow: 'Choose one digit. Do all wing cells with that digit see each other? Repeat for the other digits. Which digit must the wing use?',
+      follow: 'Check each digit across the four cells. If every pair of cells that allow it sees each other, the digit can fill only one cell. Count how many digits pass that test.',
     }
   }
   if ('als-xz' in evidence || 'als-chain' in evidence) {
@@ -162,7 +162,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
       check: { cells: [stem, ...petals.flatMap(({ set }) => set.cells)], accent: marks([stem], links),
         candidates: petals.flatMap(({ digit, set }) => marks(set.cells, [digit])),
         text: 'For each stem digit, find every copy in its petal. Does the stem see them all?' },
-      follow: 'Which other digit appears in every petal? Look for an outside cell that sees each possible copy of that digit.',
+      follow: 'Find a digit other than the stem candidates that appears in every petal. Look for an outside candidate that sees every possible place for that digit in the petals.',
     }
   }
   if ('coloring' in evidence) {
@@ -227,7 +227,7 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     return {
       start: { cells: [seed], text: `In this puzzle with one solution, start at ${cellName(seed)}. Look along its row and column for cells with ${digits(values)}.` },
       check: { cells: corners, candidates: marks(corners, values),
-        text: `Check ${names(corners)}. All four contain ${digits(values)}. Count how many boxes the rectangle spans.` },
+        text: `Check ${names(corners)}. All four allow both ${digits(values)}. Check that the corners lie in exactly two boxes.` },
       follow: 'strong-links' in support
         ? `Count the places for ${support['strong-links'].digit} in ${houses(support['strong-links'].houses)}. Which placements let the four corners swap digits?`
         : 'subset' in support
@@ -240,20 +240,20 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     return {
       start: { cells: [cell], text: `Start at ${cellName(cell)}. It has three candidates. Count the candidates in the other empty cells.` },
       check: { cells: [cell], houses, candidates: marks([cell], values),
-        text: `Count the spots for ${digits(values)} in each highlighted house. Which digit has three spots in all three houses?` },
+        text: `Count every place for ${digits(values)} in each highlighted house. Look for the digit that can go in three cells in each of the three houses.` },
     }
   }
   if ('forcing' in evidence) {
     const { branches } = evidence.forcing
     const { assumption, steps } = branches[0]
-    const describe = ({ candidate, truth }: typeof assumption) =>
-      `${truth ? 'Place' : 'Remove'} ${candidateName(candidate)}`
+    const describe = ({ candidate, truth }: typeof assumption) => truth
+      ? `Place ${candidateName(candidate)}` : `Remove ${candidate.digit} from ${cellName(candidate.cell)}`
     const firstEffect = steps[0]?.effect
     const effect = firstEffect && (firstEffect.candidate.cell !== first.cell || firstEffect.candidate.digit !== first.digit) ? firstEffect : undefined
     return {
       start: { cells: [assumption.candidate.cell], text: `Start at ${cellName(assumption.candidate.cell)}. Which nearby cells share a candidate with this cell?` },
       check: { candidates: [assumption.candidate, ...(effect ? [effect.candidate] : [])],
-        text: `${describe(assumption)} as an assumption. ${effect ? `The first change is to ${describe(effect).toLowerCase()}. ` : ''}Which cell or house now has just one choice?` },
+        text: `For this trial, ${describe(assumption).replace(/^./, letter => letter.toLowerCase())}. ${effect ? `${describe(effect)} as the first consequence. ` : ''}Look for a cell or house with just one choice left.` },
       follow: branches.length === 1
         ? technique === 'forcing-net'
           ? 'Track the changes that follow. If several earlier steps leave only one choice, use them together. Look for a rule the assumption breaks.'
