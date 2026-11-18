@@ -62,18 +62,19 @@ This pass reached main at `6c30514` through [PR 115](https://github.com/coder13/
 - [x] Measure paired complete ratings, hints, memory, all profile sizes and retained proofs. Consecudoku app rating changes from a stalled 1,058.396/1,412.850 ms to a complete 1.067/1.600 ms path. Opening hints remain about 680 ms for four choices; app Wasm is 9,539 gzip bytes smaller. [Methods and limits](tests/fixtures/README.md#non-consecutive-locks-and-candidate-alternatives)
 - [x] Pass local native/app/Wasm/build, feature/profile and strict Cargo documentation gates. The eleven new native cases include every candidate mask at five edge/interior cells for both cell techniques, both diagonals, Jigsaw and extra houses. Require CI on the reviewed PR head before the separate merge.
 
-### German Whispers integration in progress
+### German Whispers integration merged
 
-This pass is isolated on `codex/sudoku-whispers-integration` from main `70fab58`. [Whispers issue](https://github.com/coder13/sudoku-app/issues/50)
+This pass reached main at `4dfeda0` through [PR 121](https://github.com/coder13/sudoku-app/pull/121). All CI and deployment checks passed on reviewed head `4e95cf3`. The reviewed worktree remains on `codex/sudoku-whispers-integration`. [Whispers issue](https://github.com/coder13/sudoku-app/issues/50)
 
-- [x] Verify Philip Newman's three-given Brain Zaps puzzle and completion from the rendered publication PDFs. Confirm that exact solving is unique while main's logical path stalls after four basic line deductions.
+- [x] Verify Philip Newman's three-given Brain Zaps puzzle and completion from the rendered publication PDFs. Confirm unique exact solving and the previous logical profile's stall after four basic line deductions.
 - [x] Prototype line assignments with explicit shared-house exclusions. Independently solve the published puzzle using only these assignments and singles.
 - [x] Add the 39-point Medium line/house technique, typed support evidence, 24,528 independent domain comparisons, exhausted-budget checks and three unique practice puzzles. Advance variant scoring to version 8; preserve all older costs.
 - [x] Finish Coach/native import for minimum differences 1–8, including closed and revisited walks. Preserve every link while assigning each distinct cell once. Verify visible geometry, accessibility, candidates, conflicts, history and all eight grid symmetries; retain unsupported companion clues in real exports for interchange follow-up.
 - [x] Verify preview services/shared grid rendering, desktop/mobile components, hints, every page, Finder, complete published walkthrough, fixed/fresh practice, saved games and sharing. Check all 4,096 selections of the twelve prior families: 3,072 fixed-clue samples solve and 1,024 reject known knight conflicts. Independently verify three generated 30-given puzzles that need Whispers.
 - [x] Measure candidates, validation, solving, rating, ordinary/exhaustive hints, generation and all package profiles. Brain Zaps app rating changes from a stalled 24,367.310/34,962.469 ms to a complete 0.886/1.560 ms path. Opening choices increase from four to eight; exhaustive scans and slower retained Quadruple samples remain performance follow-ups. Box the rare payload to keep shared evidence compact. [Methods and limits](tests/fixtures/README.md#whispers-lines-shared-houses-and-app-integration)
 - [x] Pass 291 native tests including doctests, 396 app tests, 242 Wasm tests, TypeScript, sixteen native feature combinations, four Wasm profiles, strict full/reduced Cargo documentation and the production/offline build with 159 rendered routes.
-- [ ] Pass CI on the reviewed head, merge the app-ready family separately and update its release record.
+- [x] Pass CI on reviewed head `4e95cf3` and merge the app-ready family separately through [PR 121](https://github.com/coder13/sudoku-app/pull/121). Verify the reviewed head and merge commit on remote main. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44238999616)
+- [ ] Measure earlier bounded uniqueness eligibility in [issue 122](https://github.com/coder13/sudoku-app/issues/122). Preserve complete proof lists and ratings while avoiding searches whose existing uniqueness precondition fails.
 
 ### Complete candidate-support performance merged
 
