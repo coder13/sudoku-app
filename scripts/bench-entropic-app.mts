@@ -168,7 +168,12 @@ test('measure Entropic engine requests, actual app callers and fixed-template ge
         `${source.name}: solution walkthrough`,
         () => puzzleSolution(game),
         (result) => {
-          assert.deepEqual(result.rating, gold)
+          assert.equal(result.rating.score.points, gold.points)
+          assert.deepEqual(result.rating.score.counts, gold.counts)
+          assert.equal(result.rating.score.hardest, gold.hardest)
+          assert.deepEqual(result.rating.status, gold.status)
+          assert.equal(result.rating.scoringVersion, gold.scoringVersion)
+          assert.deepEqual(result.rating.techniqueOrder, gold.techniqueOrder)
           if (source.complete) assert.equal(result.board, source.solution)
           else {
             assert.equal(result.rating.status, 'stalled')

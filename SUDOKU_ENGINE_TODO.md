@@ -770,11 +770,11 @@ The isolated worktree is `codex/sudoku-entropic-integration`, based on main `679
 - [x] Wire complete import, visible paths/overlap lanes, accessible labels, candidates, both Pencil modes, input/history, actual storage, sharing, hints/pages/Finder, practice and Learn.
 - [x] Replay every source action and independently check every positive Entropic proof. Keep Hyk5/Hafj partial paths explicit. Check generated practice and first-technique/exact-score generation on three selected seeds.
 - [x] Preserve the legacy 65,536-selection regression. Add 173 bounded Entropic composition cases: 171 compatible and two intentional contradictions.
-- [x] Pass TypeScript, 479 app tests, eleven focused new Wasm contracts and twelve retained/new line-component checks.
+- [x] Pass TypeScript, 479 app tests, eleven focused new Wasm contracts and twelve retained/new line-component checks. After incorporating photo-import PR 155, pass TypeScript and all 485 combined app tests.
 - [x] Inspect twenty-eight static light/dark exports at 900/360 pixels. Keep live viewport interaction review separate.
 - [x] Pass all 292 Wasm contracts and all 8,167 complete retained responses under explicit legacy profiles. Compare 53 variant corpus positions, 354 positive practice positions, all 118 prior detectors and nine Classic Tridagon positions without response normalization.
 - [x] Pass the production/offline build with 161 routes. Rebuilds preserve the measured Wasm artifact.
-- [ ] Record source/retained timings, memory, package profiles and generation yield.
+- [x] Record source/retained timings, memory, all profiles and generation yield. Preserve all 120 retained seed outcomes. New Entropic generation succeeds on twenty of twenty seeds, with twenty distinct independently unique and family-dependent puzzles. [Methods and limits](tests/fixtures/README.md#entropic-lines-native-and-app-integration)
 - [ ] Pass reviewed-head CI and deployment checks, merge the focused PR and verify remote main ancestry.
-- [ ] Research the Hyk5/Hafj human reasoning gaps and slow Hyk5 rating. Derive independently checked deductions before adding named techniques or changing scores.
+- [ ] Research the Hyk5/Hafj human reasoning gaps in [issue 162](https://github.com/coder13/sudoku-app/issues/162). Keep slow Hyk5 rating and BSEJ hints in [issue 88](https://github.com/coder13/sudoku-app/issues/88). Derive independently checked deductions before adding named techniques or changing scores.
 - [ ] Complete live viewport interaction review and calibrate New puzzle recipes. Native template generation remains available.

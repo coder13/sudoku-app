@@ -476,6 +476,7 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `kropki`, `xv` | Use `consecutive` and `ratioTwo` for Kropki dots, or `five` and `ten` for XV markers. |
 | `thermometer`, `whispers`, `palindrome` | Supply `cells` in line order. Start a Thermometer at the bulb. Set `minDifference` for Whispers. |
 | `arrow`, `renban`, `between` | Supply `cells` in line order. For Arrow, supply its `circle` separately. For Between, include both endpoints in `cells`. |
+| `entropic` | Keep the ordered walk, including closures and revisits. Every three positions use the low, medium and high groups. |
 | `region-sum` | Supply `cells` in line order. The active regions divide the line into segments. Set `groupByRegion` to true to combine separate visits to the same region. |
 | `sandwich`, `x-sum`, `skyscrapers`, `little-killer` | Supply `cells` from the clue toward the far edge in the declared `direction`. Use `count` for Skyscrapers and `sum` for the other clues. |
 
