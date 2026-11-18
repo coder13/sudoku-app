@@ -26,11 +26,14 @@
     "@fontsource-variable/dm-sans": "^5.2.0",
     "@tanstack/react-router": "^1.169.5",
     "@tanstack/react-start": "^1.169.5",
+    "@tesseract.js-data/eng": "^1.0.0",
     "dockview-react": "^8.9.0",
     "lucide-react": "^0.468.0",
     "lz-string": "^1.5.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tesseract.js": "^7.0.0",
+    "tesseract.js-core": "^7.0.0"
   },
   "devDependencies": {
     "@storybook/addon-a11y": "^10.6.7",
