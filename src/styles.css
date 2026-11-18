@@ -2510,6 +2510,8 @@ svg { flex-shrink: 0; }
   justify-items: center;
 }
 .import-image-view .photo-review > * { width: min(100%, 100cqh); max-width: 100%; }
+.import-image-view .photo-edit-grid { grid-template-rows: repeat(9, minmax(0, 1fr)); min-height: 0; }
+.import-image-view .photo-edit-grid input { min-height: 0; }
 @container (max-width: 500px) and (min-height: 330px) {
   .import-image-view .photo-review {
     --confirm-grid-width: min(100cqw, 65cqh);
