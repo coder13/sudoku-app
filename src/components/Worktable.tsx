@@ -1807,7 +1807,9 @@ export function Worktable({
   }
 
   function applyChainEdits(actions: readonly DeductionAction[]) {
-    if (canAnalyzeChains && chainMasks && applyToCurrentPosition(actions, chainMasks)) sketch.suspend()
+    if (!canAnalyzeChains || !chainMasks || !applyToCurrentPosition(actions, chainMasks)) return false
+    sketch.suspend()
+    return true
   }
 
   function applyHint() {

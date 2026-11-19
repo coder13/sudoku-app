@@ -9,6 +9,7 @@ export type BoardLink = {
   to: BoardPoint
   color: string
   dashed?: boolean
+  colorBreak?: boolean
   arrow?: boolean
 }
 
@@ -29,7 +30,7 @@ export function BoardLinks({ links, region, candidateInsets }: { links?: readonl
   const counts = new Map<string, number>()
   const items: BoardMark[] = []
   const routes = boardLinkRoutes(links ?? [], candidateInsets)
-  for (const [index, { color, dashed, arrow }] of (links ?? []).entries()) {
+  for (const [index, { color, dashed, arrow, colorBreak }] of (links ?? []).entries()) {
     const points = routes[index]
     if (points.length < 2) continue
     const [start, end] = [points[0], points[points.length - 1]]
@@ -38,6 +39,8 @@ export function BoardLinks({ links, region, candidateInsets }: { links?: readonl
     counts.set(shape, count + 1)
     const key = `${shape}_${count}`
     const marker = `${id}-arrow-${key}`
+    const middle = Math.floor(points.length / 2)
+    const [before, after] = [points[middle - 1], points[middle]]
     items.push(<g key={key}>
       {arrow && <marker id={marker} markerWidth="2.5" markerHeight="2.5" refX="2.3" refY="1.25"
         markerUnits="userSpaceOnUse" orient="auto">
@@ -46,6 +49,8 @@ export function BoardLinks({ links, region, candidateInsets }: { links?: readonl
       <polyline points={points.map(({ x, y }) => `${x},${y}`).join(' ')} fill="none"
         stroke={color} strokeWidth=".45" strokeLinecap="round" strokeLinejoin="round"
         strokeDasharray={dashed ? '1 .9' : undefined} markerEnd={arrow ? `url(#${marker})` : undefined} />
+      {colorBreak && <circle className="chain-color-break" cx={(before.x + after.x) / 2} cy={(before.y + after.y) / 2}
+        r=".9" fill="var(--board-bg)" stroke={color} strokeWidth=".42" />}
     </g>)
   }
   return <BoardMarks items={items} group={<svg aria-hidden="true" className="board-links" viewBox={viewBox} />} />

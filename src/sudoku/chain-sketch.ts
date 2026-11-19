@@ -3,10 +3,18 @@ import type { Game } from './game.ts'
 
 export const CHAIN_COLORS = ['Blue', 'Orange', 'Purple', 'Teal', 'Pink', 'Green'] as const
 export type ChainColor = typeof CHAIN_COLORS[number]
-export type ChainType = 'alternating' | 'medusa'
+export const CHAIN_COLOR_PAIRS = [
+  ['Blue', 'Orange'], ['Purple', 'Teal'], ['Pink', 'Green'],
+] as const satisfies readonly (readonly [ChainColor, ChainColor])[]
+export const chainColor = (color: ChainColor) => `var(--chain-${color.toLowerCase()})`
+
+export function chainPairIndex(first: ChainColor, second: ChainColor) {
+  return CHAIN_COLOR_PAIRS.findIndex(([a, b]) => (a === first && b === second) || (b === first && a === second))
+}
+
 export type ChainSketch = {
   id: number
-  type: ChainType
+  type: 'alternating' | 'medusa' // Kept for saves shared with older devices.
   color: ChainColor
   secondColor: ChainColor
   hidden: boolean
@@ -17,9 +25,9 @@ export type ChainSketchState = { sketches: ChainSketch[]; activeId: number; pend
 export const MAX_CHAIN_HISTORY = 64
 
 export function newChainSketch(id: number): ChainSketch {
-  const colorIndex = (id - 1) % CHAIN_COLORS.length
+  const [color, secondColor] = CHAIN_COLOR_PAIRS[(id - 1) % CHAIN_COLOR_PAIRS.length]
   return {
-    id, type: 'alternating', color: CHAIN_COLORS[colorIndex], secondColor: CHAIN_COLORS[(colorIndex + 1) % CHAIN_COLORS.length],
+    id, type: 'alternating', color, secondColor,
     hidden: false, history: [[]], highlightedDigit: null,
   }
 }

@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainExtensionStrength, completeChainLoop, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
+import { analyzeChainPaths, analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainColors, chainExtensionStrength, completeChainLoop, completeMedusa, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
 import { newChainSketch, pruneChainsAfterMove, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
-import { EMPTY, enter, makeGame, paintCandidate } from '../src/sudoku/game.ts'
+import { EMPTY, enter, makeGame, paintCandidate, STARTER_GAME } from '../src/sudoku/game.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { variantHouseMasks } from '../src/sudoku/variants.ts'
 
 const id = (cell: number, digit = 1) => candidateId({ cell, digit })
 const pathEdges = (...nodes: number[]): ChainEdge[] => nodes.slice(1).map((node, i) => [nodes[i], node])
@@ -118,6 +119,43 @@ test('disjoint drawings are analyzed separately and a branch is not treated as a
   ])
 })
 
+test('one branched drawing can prove both a Medusa deduction and an AIC through a weak link', () => {
+  const { givens } = STARTER_GAME
+  const links = makeChainGraph(variantHouseMasks({ version: 1, givens }, givens))
+  const main = pathEdges(id(23, 2), id(23, 4), id(50, 4), id(32, 4))
+  const branches = pathEdges(id(50, 4), id(50), id(32))
+  const sketch = [...main, ...branches]
+  const colors = chainColors(links, sketch)
+  assert.ok(sketch.every(([from, to]) => colors.get(from) !== colors.get(to)))
+  const aic = analyzeChainPaths(links, sketch).find(proof => proof.title === 'Alternating inference chain (Type 2)')
+  assert.deepEqual(aic?.strengths, ['strong', 'weak', 'strong'])
+  assert.deepEqual(aic?.actions, [{ eliminate: { cell: 23, digit: 4 } }])
+  const medusa = analyzeMedusa(links, sketch, colors).find(proof => proof.nodes.length === 4)
+  assert.deepEqual(medusa?.actions, [
+    { eliminate: { cell: 5, digit: 4 } }, { eliminate: { cell: 23, digit: 4 } }, { eliminate: { cell: 32, digit: 7 } },
+  ])
+  assert.ok([...medusa!.sides].every(([node, side]) => colors.get(node) === side))
+  assert.ok(!medusa?.nodes.includes(id(23, 4)), 'The weak link does not join the Medusa component')
+})
+
+test('an AIC deduction still applies after extending the path with a weak link', () => {
+  const { givens } = STARTER_GAME
+  const links = makeChainGraph(variantHouseMasks({ version: 1, givens }, givens))
+  const sketch = pathEdges(id(10, 7), id(11, 7), id(17, 7), id(26, 7), id(24, 7))
+  assert.ok(analyzeChainPaths(links, sketch).some(proof =>
+    proof.actions.some(action => 'eliminate' in action && action.eliminate.cell === 15 && action.eliminate.digit === 7)))
+})
+
+test('an odd loop marks a single color break and retains its loop deduction', () => {
+  const links = graph({ 0: [1], 1: [1], 8: [1] })
+  const edges = pathEdges(id(0), id(8), id(1), id(0))
+  const colors = chainColors(links, edges)
+  assert.equal(edges.filter(([a, b]) => colors.get(a) === colors.get(b)).length, 1)
+  const [loop] = analyzeChainPaths(links, edges)
+  assert.equal(loop.loop, 'discontinuous')
+  assert.deepEqual(loop.actions, [{ eliminate: { cell: 8, digit: 1 } }])
+})
+
 test('Medusa colors a branch and removes the color that contains a conflict', () => {
   const links = graph({ 0: [1, 2], 1: [1, 3], 9: [1, 4] })
   const root = id(0)
@@ -139,6 +177,37 @@ test('Medusa rejects a color that removes every candidate from a cell', () => {
   const links = graph({ 0: [1, 2], 1: [1, 3], 2: [3, 6], 9: [1, 3], 28: [3, 7], 36: [1, 8] })
   const [medusa] = analyzeMedusa(links, pathEdges(id(0, 2), id(0), id(1), id(1, 3)))
   assert.deepEqual(medusa.actions, [{ eliminate: { cell: 0, digit: 1 } }, { eliminate: { cell: 1, digit: 3 } }])
+})
+
+test('completing a drawn Medusa adds all five branches and finds the empty R5C9', () => {
+  const rows = [
+    '67 . . 39 39 . . . 67',
+    '3679 59 56 . . . 3679 3679 .',
+    '39 . . . . . 139 139 .',
+    '69 . 56 . . 379 357 37 .',
+    '. . . 346 346 . . 3469 369',
+    '. 59 . . 469 79 4567 467 .',
+    '. . . 34 . . 1347 1347 37',
+    '. . . 69 . . 69 . .',
+    '. . . . 469 39 346 . 369',
+  ]
+  const links = makeChainGraph(rows.join(' ').split(' ').map(cell =>
+    [...cell].reduce((mask, digit) => digit === '.' ? mask : mask | (1 << (Number(digit) - 1)), 0)))
+  const initialPath = pathEdges(id(43, 9), id(44, 9), id(80, 9), id(69, 9), id(66, 9),
+    id(3, 9), id(3, 3), id(4, 3), id(4, 9))
+  const added = completeMedusa(links, initialPath, id(4, 9))
+  assert.deepEqual(added, [
+    [id(4, 3), id(40, 3)], [id(66, 9), id(66, 6)], [id(69, 9), id(69, 6)],
+    [id(66, 6), id(39, 6)], [id(66, 6), id(76, 6)],
+  ])
+  const complete = [...initialPath, ...added]
+  const [medusa] = analyzeMedusa(links, complete)
+  assert.equal(medusa.sides.size, 14)
+  assert.match(medusa.explanation ?? '', /leaves r5c9 with no digit/)
+  const removals = [id(43, 9), id(80, 9), id(66, 9), id(69, 6), id(3, 3), id(39, 6),
+    id(76, 6), id(4, 9), id(40, 3)]
+  assert.deepEqual(new Set(medusa.actions.map(({ eliminate }) => id(eliminate.cell, eliminate.digit))), new Set(removals))
+  assert.deepEqual(completeMedusa(links, complete, id(4, 9)), [])
 })
 
 test('Medusa offers no edits when both colors lead to a conflict', () => {
