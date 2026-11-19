@@ -143,6 +143,8 @@ type SizedClassicRequest = { type: 'sized-classic'; position: SizedClassicPositi
   | { operation: 'candidates' }
   | { operation: 'solve' }
   | { operation: 'next-deduction'; eliminations?: readonly number[] }
+  | { operation: 'hints'; eliminations?: readonly number[]; limit?: number }
+  | { operation: 'trace'; eliminations?: readonly number[]; singlesOnly?: boolean }
 )
 
 export type SizedClassicDeduction = {
@@ -152,8 +154,16 @@ export type SizedClassicDeduction = {
   actions: DeductionAction[]
 }
 
+export type SizedClassicTracePosition = {
+  digits: number[]
+  eliminations: number[]
+  candidates: number[]
+  deduction: SizedClassicDeduction | null
+}
+
 export type EngineRequest =
   | SizedClassicRequest
+  | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
   | { type: 'capabilities' }
   | VariantRequest
   | { type: 'canonical-puzzles'; values: readonly string[] }
@@ -520,8 +530,11 @@ export type EngineResult<T extends EngineRequest> =
   T extends SizedClassicRequest ? (
     T['operation'] extends 'analyze' ? Analysis :
     T['operation'] extends 'next-deduction' ? SizedClassicDeduction | null :
+    T['operation'] extends 'hints' ? { candidates: number[]; choices: SizedClassicDeduction[] } | null :
+    T['operation'] extends 'trace' ? SizedClassicTracePosition[] | null :
     number[] | null
   ) :
+  T extends { type: 'generate-mini' } ? number[] :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
   T extends { type: 'canonical-puzzles' | 'impossible-templates' } ? string[] :
@@ -624,6 +637,7 @@ type WorkerOptions = { interactive?: boolean; background?: boolean }
 function connectionFor(request: EngineRequest, options: WorkerOptions) {
   switch (request.type) {
     case 'generate':
+    case 'generate-mini':
     case 'generate-constrained':
     case 'generate-targeted':
     case 'generate-from-pool':

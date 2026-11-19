@@ -48,6 +48,13 @@ mod variant;
 )]
 enum Request {
     Capabilities,
+    #[cfg(feature = "generation")]
+    GenerateMini {
+        seed: u32,
+        difficulty: crate::MiniDifficulty,
+        #[serde(default)]
+        exclude: Vec<[u8; 16]>,
+    },
     SizedClassic {
         position: sized::Definition,
         #[serde(flatten)]
@@ -956,6 +963,11 @@ fn trace_value(trace: &super::LogicalSolve) -> Value {
 
 fn execute(request: Request) -> ResultValue<ResponseValue> {
     let result = match request {
+        #[cfg(feature = "generation")]
+        Request::GenerateMini { seed, difficulty, exclude } => {
+            crate::generate_mini(seed, difficulty, &exclude).map(|puzzle| json!(puzzle))
+                .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
+        }
         Request::SizedClassic { position, operation } => sized::execute(position, operation),
         #[cfg(feature = "generation")]
         Request::ImpossibleTemplates => Ok(json!(
@@ -1546,6 +1558,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
             "canonical-puzzles"
                 | "impossible-templates"
                 | "generate-targeted"
+                | "generate-mini"
                 | "generate-constrained"
                 | "generate-from-pool"
                 | "generate-variant"

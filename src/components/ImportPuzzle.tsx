@@ -9,6 +9,7 @@ import { findImportedPuzzle, prepareImportedPuzzle, type PuzzlePreview } from '.
 import { applyPuzzleGrade } from '../sudoku/puzzle-rating'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
+import { MINI_RULE } from '../sudoku/new-puzzle'
 import { Board } from './Board'
 import { Modal } from './Modal'
 import { PhotoPuzzleReview } from './PhotoPuzzleReview'
@@ -132,7 +133,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const puzzlePreview = preview && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
-        <strong>{variantName(preview.game.variant)}</strong>
+        <strong>{preview.game.grid ? 'Mini Sudoku · 4 × 4' : variantName(preview.game.variant)}</strong>
         <span className="import-preview-rating">
           {preview.game.difficulty
             ? <span><span>Difficulty</span> <strong>{DIFFICULTY_LABELS[preview.game.difficulty]}</strong></span>
@@ -141,8 +142,9 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         </span>
         <span className="import-preview-format">{preview.format}</span>
       </p>
-      <Board label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
+      <Board grid={preview.game.grid} label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
         variantPuzzle={preview.game.variant?.puzzle} showGuides={false} />
+      {preview.game.grid && <p>{MINI_RULE}</p>}
       {preview.game.variant && <ul className="import-preview-rules">
         {variantRuleDescriptions(preview.game.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}

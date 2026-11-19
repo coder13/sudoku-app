@@ -1,5 +1,5 @@
 import { STARTER } from './formats.ts'
-import { CLASSIC_GRID, isGridText, type MiniGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, isGridText, type MiniGrid, type PlayGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
@@ -443,11 +443,11 @@ export function completeCandidateMasks(game: Game): number[] | null {
   return [...values].every((digit, index) => digit !== '0' || masks[index] !== 0) ? masks : null
 }
 
-export function hintEliminations(values: string, displayedCandidates: readonly number[] | null, applied?: readonly number[]) {
+export function hintEliminations(values: string, displayedCandidates: readonly number[] | null, applied?: readonly number[], size: number = CLASSIC_GRID.size) {
   if (!displayedCandidates) return applied
   return displayedCandidates.map((mask, cell) => {
     const removed = applied?.[cell] ?? 0
-    return values[cell] === '0' ? removed | (0x1ff & ~mask) : removed
+    return values[cell] === '0' ? removed | (((1 << size) - 1) & ~mask) : removed
   })
 }
 
@@ -517,23 +517,26 @@ export function applyDeduction(game: Game, actions: readonly DeductionAction[], 
   })
 }
 
-export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[], variant?: VariantPuzzle): [number, number] | null {
-  if (values.length !== 81 || masks.length !== 81) return null
+export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[], variant?: VariantPuzzle, grid?: MiniGrid): [number, number] | null {
+  const size = (grid ?? CLASSIC_GRID).size
+  if (values.length !== size ** 2 || masks.length !== values.length) return null
   const remaining = (cell: number) => masks[cell] & ~(eliminations?.[cell] ?? 0)
-  for (let index = 0; index < 81; index++) {
+  for (let index = 0; index < values.length; index++) {
     const mask = remaining(index)
     if (values[index] === '0' && mask && (mask & (mask - 1)) === 0) {
       return [index, Math.log2(mask) + 1]
     }
   }
-  const houses = variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
+  const houses = grid ? DIGITS.slice(0, size).flatMap(digit => [
+    gridHouseCells({ row: digit - 1 }, grid), gridHouseCells({ column: digit - 1 }, grid), gridHouseCells({ box: digit - 1 }, grid),
+  ]) : variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
   const extra = variant?.rules?.flatMap((rule, index) => {
     if (rule.type === 'diagonal') return [variantHouseCells({ diagonal: rule.diagonal }, variant)]
     if (rule.type === 'extra-house') return [variantHouseCells({ extra: index }, variant)]
     return []
   }) ?? []
   for (const house of [...houses, ...extra]) {
-    for (let digit = 1; digit <= 9; digit++) {
+    for (let digit = 1; digit <= size; digit++) {
       if (house.some((index) => values[index] === String(digit))) continue
       const bit = 1 << (digit - 1)
       const cells = house.filter((index) => values[index] === '0' && (remaining(index) & bit) !== 0)

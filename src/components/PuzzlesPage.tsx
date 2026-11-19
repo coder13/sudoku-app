@@ -12,7 +12,8 @@ import { techniqueLabel } from '../sudoku/hints'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { VARIANTS, PUZZLE_VARIANTS, isPuzzleVariantId, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { gameVariantId, isGameVariantId, miniDifficulty, MINI_NAME, MINI_RULE, newPuzzleVariants, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
 import { VariantPreview } from './VariantPreview'
 import { VariantRulesetSelector } from './VariantRulesetSelector'
@@ -33,7 +34,6 @@ type Section = keyof typeof sections
 const newPuzzleRoute = getRouteApi('/puzzles/new')
 const collectionRoute = getRouteApi('/puzzles/collections')
 const solvedRoute = getRouteApi('/puzzles/solved')
-const newPuzzleVariants = Object.keys(VARIANTS) as VariantId[]
 
 declare module '@tanstack/history' {
   interface HistoryState {
@@ -41,8 +41,8 @@ declare module '@tanstack/history' {
   }
 }
 
-function MiniGrid({ values }: { values: string }) {
-  return <span className="mini-grid" aria-hidden="true">
+function MiniGrid({ values, size }: { values: string; size?: number }) {
+  return <span className="mini-grid" data-size={size} aria-hidden="true">
     {[...values].map((digit, index) => <i key={index} data-filled={digit !== '0'} />)}
   </span>
 }
@@ -64,14 +64,14 @@ function PuzzleRows({ puzzles, active, manage }: {
         const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
         const useRatingTitle = manageable && game.source === 'generated' && /\bPuzzle \d+$/.test(game.title)
         const name = useRatingTitle ? rating || 'Unrated' : game.title
-        const variant = game.variant?.id
-        const variantLabel = variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[variant ?? 'classic'].name
+        const variant = gameVariantId(game)
+        const variantLabel = variant === 'mini' ? MINI_NAME : variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[variant].name
         const detail = (manage
-          ? [useRatingTitle && variant && variantLabel, !useRatingTitle && rating, puzzleStatus(game)]
+          ? [useRatingTitle && variant !== 'classic' && variantLabel, !useRatingTitle && rating, puzzleStatus(game)]
           : [variantLabel, rating || 'Unrated', !game.timeUntracked && formatTime(game.elapsed)]).filter(Boolean).join(' · ')
         return <li key={game.id} className={manageable ? 'game-row-with-options' : undefined}>
           <Link className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
-            <MiniGrid values={valuesOf(game)} />
+            <MiniGrid values={valuesOf(game)} size={game.grid?.size} />
             <span className="game-row-copy"><strong>{name}</strong><small>{detail}</small></span>
             {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
           </Link>
@@ -101,10 +101,11 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
   return <div className="main-menu-section puzzle-library solved-puzzles">
     <div className="solved-filter-bar" role="group" aria-label="Solved puzzle filters">
       <SelectControl aria-label="Variant" value={filters.variant ?? ''} onChange={({ currentTarget: { value } }) => {
-        setFilters({ ...filters, variant: isPuzzleVariantId(value) ? value : undefined })
+        setFilters({ ...filters, variant: isGameVariantId(value) ? value : undefined })
       }}>
         <option value="">{filters.variant ? 'All variants' : 'Variant'}</option>
         {Object.entries(PUZZLE_VARIANTS).map(([id, variant]) => <option key={id} value={id}>{variant.name}</option>)}
+        <option value="mini">{MINI_NAME}</option>
         <option value="mixed">Mixed rules</option>
       </SelectControl>
       <SelectControl aria-label="Difficulty" value={filters.difficulty ?? ''} onChange={({ currentTarget: { value } }) => {
@@ -162,13 +163,13 @@ function PuzzleLibrary({ games, active, manage, loading }: {
 }
 
 function NewPuzzleVariant({ variant, ruleset, onCreate }: {
-  variant: VariantId
+  variant: NewPuzzleId
   ruleset?: GenerationRulesetId
-  onCreate: () => void
+  onCreate: (variant: NewPuzzleId) => void
 }) {
   const navigate = useNavigate()
   const index = newPuzzleVariants.indexOf(variant)
-  const { name, rule } = VARIANTS[variant]
+  const { name, rule } = variant === 'mini' ? { name: MINI_NAME, rule: MINI_RULE } : VARIANTS[variant]
 
   function browse(direction: number) {
     const count = newPuzzleVariants.length
@@ -195,31 +196,31 @@ function NewPuzzleVariant({ variant, ruleset, onCreate }: {
         <p>{rule}</p>
       </div>
     </div>
-    <VariantRulesetSelector variant={variant} value={ruleset} onChange={next => {
+    {variant !== 'mini' && <VariantRulesetSelector variant={variant} value={ruleset} onChange={next => {
       void navigate({ to: '/puzzles/new', search: { variant, ruleset: next }, replace: true, resetScroll: false })
-    }} />
+    }} />}
     <Link to="/puzzles/new/difficulty" search={{ variant, ruleset }} state={{ fromPuzzleVariantPicker: true }}
       className={buttonClassName('primary')}>Continue <ArrowRight size={18} aria-hidden="true" /></Link>
     <div className="new-puzzle-actions">
-      <Button onClick={onCreate}><PencilLine size={18} aria-hidden="true" />Create puzzle</Button>
+      <Button onClick={() => onCreate(variant)}><PencilLine size={18} aria-hidden="true" />Create puzzle</Button>
       <Link className={buttonClassName()} to="/import"><FileUp size={18} aria-hidden="true" />Import puzzle</Link>
     </div>
   </section>
 }
 
 function NewPuzzleDifficulty({ variant, ruleset, difficulty, save }: {
-  variant: VariantId
+  variant: NewPuzzleId
   ruleset?: GenerationRulesetId
   difficulty: DifficultyPreference
   save: (preference: NewPuzzlePreference) => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const navigate = useNavigate()
-  const preset = generationRuleset(variant, ruleset)
+  const preset = variant === 'mini' ? undefined : generationRuleset(variant, ruleset)
   const { recommended } = usePlayerRating()
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
-  const selected = variantDifficulty(variant, selection ?? difficulty)
-  const autoLabel = variantDifficultyLabel(variant, 'auto', recommended)
+  const selected = variant === 'mini' ? miniDifficulty(selection ?? difficulty) : variantDifficulty(variant, selection ?? difficulty)
+  const autoLabel = variantDifficultyLabel(variant === 'mini' ? undefined : variant, 'auto', recommended)
   function start() {
     const onGenerated = () => {
       save({ variant, difficulty: selected, ...(preset ? { ruleset: preset.id } : {}) })
@@ -230,11 +231,11 @@ function NewPuzzleDifficulty({ variant, ruleset, difficulty, save }: {
   return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
     <p className="new-puzzle-variant-summary">
       <VariantPreview variant={variant} ruleset={ruleset} />
-      <span>{preset?.name ?? VARIANTS[variant].name}</span>
+      <span>{preset?.name ?? (variant === 'mini' ? MINI_NAME : VARIANTS[variant].name)}</span>
     </p>
-    <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
+    {variant !== 'mini' && <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: next }, replace: true, resetScroll: false })
-    }} />
+    }} />}
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
     <Button variant="primary" className="puzzle-start-button" disabled={busy} onClick={start}>
@@ -300,7 +301,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   rememberNewPuzzle: (preference: NewPuzzlePreference) => void
   preferencesReady: boolean
   loadingPuzzles: boolean
-  onCreatePuzzle: () => void
+  onCreatePuzzle: (variant: NewPuzzleId) => void
   error?: string
 }) {
   const router = useRouter()
@@ -321,7 +322,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
   const screen = section === 'new' ? difficultyScreen ? 'difficulty' : 'variant' : undefined
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
-  const ruleset = generationRuleset(variant, newPuzzleSearch?.ruleset ?? newPuzzlePreference.ruleset)?.id
+  const ruleset = variant === 'mini' ? undefined : generationRuleset(variant, newPuzzleSearch?.ruleset ?? newPuzzlePreference.ruleset)?.id
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
     : screen === 'variant' ? 'Choose a variant'
       : section === 'puzzles' ? 'Puzzles'
@@ -333,7 +334,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
 
   function savePuzzlePreference(preference: NewPuzzlePreference) {
     rememberNewPuzzle(preference)
-    setDifficulty(preference.difficulty)
+    if (preference.variant !== 'mini') setDifficulty(preference.difficulty)
   }
 
   function content(current: Section) {

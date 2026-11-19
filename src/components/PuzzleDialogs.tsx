@@ -1,6 +1,7 @@
 import { Button, ChoiceButton } from './Button'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Trash2 } from 'lucide-react'
+import { analyzeMini } from '../sudoku/mini-play'
 import { runEngine } from '../sudoku/engine'
 import { exportPuzzle, puzzlePlayLink, type ShareFormat } from '../sudoku/formats'
 import { isSolved, makeGame, valuesOf, type Game } from '../sudoku/game'
@@ -70,10 +71,10 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
   const { hostname, origin } = window.location
   const loopback = hostname === 'localhost' || hostname.endsWith('.localhost') ||
     hostname === '[::1]' || /^127(?:\.\d+){3}$/.test(hostname)
-  const [format, setFormat] = useState<ShareFormat>(loopback && !game.variant ? 'exchange' : 'link')
+  const [format, setFormat] = useState<ShareFormat>(loopback && !game.variant && !game.grid ? 'exchange' : 'link')
   const [status, setStatus] = useState('')
   const text = useRef<HTMLTextAreaElement>(null)
-  const value = game.variant || format === 'link' ? puzzlePlayLink(game, origin) : exportPuzzle(game.givens, format, origin)
+  const value = game.variant || game.grid || format === 'link' ? puzzlePlayLink(game, origin) : exportPuzzle(game.givens, format, origin)
 
   async function copy() {
     try {
@@ -89,7 +90,7 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
     <Modal title="Share puzzle" onClose={close}>
       <div className="dialog-form">
         <p>Share the starting grid for {game.title}. Anyone who opens the link without access to your solve starts their own.</p>
-        {!game.variant && <>
+        {!game.variant && !game.grid && <>
           <label htmlFor="share-format">Format</label>
           <SelectControl id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
             {formats.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
@@ -120,7 +121,7 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
     setBusy(true)
     const givens = valuesOf(game)
     try {
-      const status = await runEngine({ type: 'analyze', values: givens })
+      const status = game.grid ? await analyzeMini(givens) : await runEngine({ type: 'analyze', values: givens })
       if (status !== 'unique') throw new Error(validation[status].text)
       if (!mounted.current) return
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
@@ -130,11 +131,11 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
       if (game.editingId) {
         const original = roomStore.getSnapshot().games.find((item) => item.id === game.editingId)
         if (!original) throw new Error('The saved puzzle is no longer available.')
-        roomStore.update(original.id, () => ({ ...makeGame(original.id, title.trim(), givens, 'custom', original.created), saved: true }))
+        roomStore.update(original.id, () => ({ ...makeGame(original.id, title.trim(), givens, 'custom', original.created, game.grid), saved: true }))
         roomStore.remove(game.id)
         roomStore.select(original.id)
       } else {
-        roomStore.update(game.id, () => ({ ...makeGame(game.id, title.trim(), givens, 'custom', game.created), saved: true }))
+        roomStore.update(game.id, () => ({ ...makeGame(game.id, title.trim(), givens, 'custom', game.created, game.grid), saved: true }))
       }
       close()
     } catch (reason) {

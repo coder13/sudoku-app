@@ -45,7 +45,8 @@ export function parsePuzzle(input: string): string {
 
 export type ShareFormat = 'link' | 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
 
-export function puzzleLinkHash({ givens, variant }: Pick<Game, 'givens' | 'variant'>): string {
+export function puzzleLinkHash({ givens, variant, grid }: Pick<Game, 'givens' | 'variant' | 'grid'>): string {
+  if (grid) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, grid, givens }))}`
   if (!variant) return `puzzle=${givens}`
   const { version, rules, regions } = variant.puzzle
   return `variant=${encodeURIComponent(JSON.stringify({ id: variant.id, puzzle: { version, givens, rules, regions } }))}`

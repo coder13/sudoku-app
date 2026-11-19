@@ -134,7 +134,7 @@ export const techniqueHistory = {
 
 export function observeTechniqueActions(game: Game, actions: readonly DeductionAction[], source: TechniqueObservation['source'],
   eliminations: readonly number[] | undefined = game.position.eliminations) {
-  if (game.source === 'draft' || actions.length === 0 || typeof indexedDB === 'undefined') return
+  if (game.grid || game.source === 'draft' || actions.length === 0 || typeof indexedDB === 'undefined') return
   const task = recordActions(game, actions, source, eliminations)
   pending.add(task)
   void task.then(() => pending.delete(task), () => pending.delete(task))

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
 import type { TechniqueCatalog } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
+import { MINI_TECHNIQUES, miniHintChoices } from '../sudoku/mini-play'
 import { HINT_CANDIDATES_ERROR, HINT_ERROR, techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
@@ -62,13 +63,62 @@ function AnalysisTable({
   )
 }
 
+type ContentsProps = { game: Game; active?: boolean; onSelectTechnique?: (technique: string) => void }
+
+export function PuzzleAnalysisContents(props: ContentsProps) {
+  return props.game.grid ? <MiniAnalysis {...props} /> : <StandardAnalysis {...props} />
+}
+
+function MiniAnalysis({ game, active = true, onSelectTechnique }: ContentsProps) {
+  const values = valuesOf(game)
+  const size = game.grid!.size
+  const eliminations = useMemo(() => hintEliminations(values, completeCandidateMasks(game), game.position.eliminations, size),
+    [values, game.position, size])
+  const solved = isSolved(game)
+  const key = `${values}:${eliminations?.join(',') ?? ''}`
+  const [scan, setScan] = useState<ScanProgress | null>(null)
+  const [hideZero, setHideZero] = useState(true)
+  const [failedKey, setFailedKey] = useState<string>()
+  useEffect(() => {
+    if (!active || solved) return
+    let current = true
+    void miniHintChoices(values, eliminations).then(found => {
+      if (!current) return
+      if (!found) { setFailedKey(key); return }
+      const counts = new Map<string, Set<string>>()
+      for (const choice of found.choices) {
+        const targets = counts.get(choice.technique) ?? new Set<string>()
+        for (const action of choice.actions) {
+          const { cell, digit } = 'place' in action ? action.place : action.eliminate
+          targets.add(`${cell}:${digit}`)
+        }
+        counts.set(choice.technique, targets)
+      }
+      setFailedKey(undefined)
+      setScan({ key, results: Object.fromEntries(MINI_TECHNIQUES.map(id => [id, { count: counts.get(id)?.size ?? 0 }])) })
+    }, () => { if (current) setFailedKey(key) })
+    return () => { current = false }
+  }, [active, solved, values, eliminations, key])
+
+  const results = scan?.key === key ? scan.results : {}
+  const groups = filterAnalysisGroups([{ title: 'Mini Sudoku', techniques: [...MINI_TECHNIQUES] }], results, hideZero, solved)
+  return <div className="puzzle-analysis-content">
+    {failedKey === key ? <p role="alert" className="analysis-error">Check the placed digits and candidates, then try again.</p> : <>
+      <label className="analysis-zero-filter">
+        <input type="checkbox" checked={hideZero} onChange={event => setHideZero(event.target.checked)} />
+        Hide techniques with 0 candidates
+      </label>
+      {groups.length ? <AnalysisTable groups={groups} results={results} solved={solved} onSelectTechnique={onSelectTechnique} />
+        : <p className="analysis-empty" role="status">No techniques with candidates.</p>}
+    </>}
+  </div>
+}
+
 /** Scan one technique at a time on the dedicated technique worker. Each
  * result appears immediately, and obsolete positions never queue 72 jobs.
  * The game worker stays free for input, hints, and candidate updates.
  */
-export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique }: {
-  game: Game; active?: boolean; onSelectTechnique?: (technique: string) => void
-}) {
+function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsProps) {
   const values = valuesOf(game)
   const solved = isSolved(game)
   const eliminationMasks = useMemo(() => hintEliminations(values, completeCandidateMasks(game), game.position.eliminations),

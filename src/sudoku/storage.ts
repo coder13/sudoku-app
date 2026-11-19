@@ -1,4 +1,4 @@
-import { CLASSIC_GRID, isGridText, isMiniGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, MINI_GRID, isGridText, isMiniGrid, type PlayGrid } from './grid.ts'
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
@@ -87,7 +87,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
       if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.chainSketch !== undefined && !validChainSketchState(value.chainSketch)) delete value.chainSketch
-      if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory)) delete value.actionHistory
+      if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory, grid)) delete value.actionHistory
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
@@ -426,6 +426,17 @@ export const roomStore = {
   },
   refreshPuzzle(id: string) {
     onStorage({ storageArea: localStorage, key: GAME_PREFIX + id } as StorageEvent)
+  },
+  playedMiniGivens() {
+    const result = new Set(room.games.filter(game => game.grid && game.source !== 'draft').map(game => game.givens))
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (!key.startsWith(SEEN_PREFIX)) continue
+        const givens = key.slice(SEEN_PREFIX.length)
+        if (isGridText(givens, MINI_GRID)) result.add(givens)
+      }
+    } catch { /* Saved puzzles remain available if browser storage is unavailable. */ }
+    return [...result]
   },
   getSnapshot: () => room,
   getServerSnapshot: () => initial,

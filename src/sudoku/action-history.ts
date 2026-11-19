@@ -1,3 +1,4 @@
+import { CLASSIC_GRID, isGridText, type PlayGrid } from './grid.ts'
 import type { DeductionAction } from './engine.ts'
 import { completeCandidateMasks, createGameId, hintEliminations, valuesOf, type Game } from './game.ts'
 import { techniqueActionKey } from './technique-progress.ts'
@@ -32,8 +33,9 @@ export function deductionActions(changes: readonly ActionChange[]): DeductionAct
 export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit',
   options: { at?: number; technique?: string; actions?: readonly DeductionAction[] } = {}): Game {
   if (before === after || before.source === 'draft' || before.position === after.position) return after
+  const size = (before.grid ?? CLASSIC_GRID).size
   const changes: ActionChange[] = []
-  for (let cell = 0; cell < 81; cell++) {
+  for (let cell = 0; cell < before.givens.length; cell++) {
     if (before.givens[cell] !== '0') continue
     const previous = Number(before.position.entries[cell])
     const next = Number(after.position.entries[cell])
@@ -46,11 +48,11 @@ export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit
         if ('eliminate' in action) changes.push({ kind: 'candidate', ...action.eliminate, added: false })
       }
     } else {
-      for (let cell = 0; cell < 81; cell++) {
+      for (let cell = 0; cell < before.givens.length; cell++) {
         if (before.givens[cell] !== '0' || before.position.entries[cell] !== '0' || after.position.entries[cell] !== '0') continue
         const previous = before.position.center[cell] | before.position.corner[cell]
         const next = after.position.center[cell] | after.position.corner[cell]
-        for (let digit = 1; digit <= 9; digit++) {
+        for (let digit = 1; digit <= size; digit++) {
           const bit = 1 << (digit - 1)
           if ((previous & bit) !== (next & bit)) changes.push({ kind: 'candidate', cell, digit, added: Boolean(next & bit) })
         }
@@ -61,7 +63,7 @@ export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit
   const at = options.at ?? Date.now()
   const actions = deductionActions(changes)
   const pending = kind === 'edit' && actions.length > 0 && actions.length === changes.length
-    ? { values: valuesOf(before), eliminations: hintEliminations(valuesOf(before), completeCandidateMasks(before), before.position.eliminations) }
+    ? { values: valuesOf(before), eliminations: hintEliminations(valuesOf(before), completeCandidateMasks(before), before.position.eliminations, size) }
     : undefined
   const entry: ActionHistoryEntry = {
     id: createGameId(), at, lastAt: at, elapsed: before.elapsed, kind, changes,
@@ -139,7 +141,9 @@ export function applyActionMatches(game: Game, entries: readonly ActionHistoryEn
   return { ...game, actionHistory: [...history.slice(0, start), ...matches, ...history.slice(start + entries.length)] }
 }
 
-export function validActionHistory(value: unknown): value is ActionHistoryEntry[] {
+export function validActionHistory(value: unknown, grid: PlayGrid = CLASSIC_GRID): value is ActionHistoryEntry[] {
+  const cellCount = grid.size ** 2
+  const fullMask = (1 << grid.size) - 1
   const integer = (number: unknown, max = Number.MAX_SAFE_INTEGER): number is number =>
     typeof number === 'number' && Number.isSafeInteger(number) && number >= 0 && number <= max
   const kinds: ActionKind[] = ['edit', 'undo', 'redo', 'candidates', 'singles', 'hint', 'recovery']
@@ -148,10 +152,10 @@ export function validActionHistory(value: unknown): value is ActionHistoryEntry[
     integer(entry.at) && integer(entry.lastAt) && entry.lastAt >= entry.at && integer(entry.elapsed) && kinds.includes(entry.kind) &&
     (entry.technique === undefined || entry.technique === null || typeof entry.technique === 'string') &&
     (entry.matchFailed === undefined || entry.matchFailed === true) &&
-    Array.isArray(entry.changes) && entry.changes.every((change) => change && integer(change.cell, 80) &&
-      (change.kind === 'entry' ? integer(change.before, 9) && integer(change.after, 9)
-        : change.kind === 'candidate' && integer(change.digit, 9) && change.digit > 0 && typeof change.added === 'boolean')) &&
-    (entry.pending === undefined || entry.pending && typeof entry.pending.values === 'string' && /^[0-9]{81}$/.test(entry.pending.values) &&
-      (entry.pending.eliminations === undefined || Array.isArray(entry.pending.eliminations) && entry.pending.eliminations.length === 81 &&
-        entry.pending.eliminations.every((mask) => integer(mask, 511)))))
+    Array.isArray(entry.changes) && entry.changes.every((change) => change && integer(change.cell, cellCount - 1) &&
+      (change.kind === 'entry' ? integer(change.before, grid.size) && integer(change.after, grid.size)
+        : change.kind === 'candidate' && integer(change.digit, grid.size) && change.digit > 0 && typeof change.added === 'boolean')) &&
+    (entry.pending === undefined || entry.pending && isGridText(entry.pending.values, grid) &&
+      (entry.pending.eliminations === undefined || Array.isArray(entry.pending.eliminations) && entry.pending.eliminations.length === cellCount &&
+        entry.pending.eliminations.every((mask) => integer(mask, fullMask)))))
 }

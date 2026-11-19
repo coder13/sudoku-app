@@ -12,7 +12,7 @@ import { puzzleTiming } from '../src/sudoku/puzzle-timing.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 
 test('4×4 progress, masks and undo survive a save and reload', async () => {
-  const { readGame } = await import('../src/sudoku/storage.ts')
+  const { readGame } = await import('../src/sudoku/storage.ts?mini-grid-validation')
   const original = makeGame('mini', 'Mini Sudoku', '0234341221434321', 'imported', 0, MINI_GRID)
   const candidate = enter(original, [0], 'candidate', 1)
   const played = undo(enter(candidate, [0], 'value', 1))

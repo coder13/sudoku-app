@@ -57,6 +57,25 @@ test('sized Classic requests use the structured worker protocol', async () => {
   assert.equal(await run({ type: 'analyze', values: STARTER }), 'unique')
 })
 
+test('Mini Sudoku generation, hint alternatives, and trace share the verified answer', async () => {
+  const { run } = engineRequests()
+  const generation = { type: 'generate-mini', seed: 7, difficulty: 'medium' } as const
+  const digits = await run(generation)
+  const exclude = await run({ ...generation, exclude: [digits] })
+  assert.notDeepEqual(exclude, digits)
+  const request = {
+    type: 'sized-classic', position: { version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits },
+  } as const
+  const hints = await run({ ...request, operation: 'hints', limit: 256 })
+  assert.ok(hints?.choices.length)
+  const trace = await run({ ...request, operation: 'trace' })
+  assert.ok(trace)
+  assert.equal(trace.length, digits.filter(digit => digit === 0).length + 1)
+  assert.deepEqual(trace.at(-1)?.digits, await run({ ...request, operation: 'solve' }))
+  assert.equal(trace.at(-1)?.deduction, null)
+  assert.deepEqual(trace[0].deduction, hints.choices[0])
+})
+
 test('technique counts match full deductions before and after a candidate edit', async () => {
   const { raw, run } = engineRequests()
   const values = STARTER

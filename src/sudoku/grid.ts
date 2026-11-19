@@ -1,4 +1,4 @@
-import type { SizedClassicPosition } from './engine.ts'
+import type { House, SizedClassicPosition } from './engine.ts'
 
 export const CLASSIC_GRID = { size: 9, boxRows: 3, boxColumns: 3 } as const
 export const MINI_GRID = { size: 4, boxRows: 2, boxColumns: 2 } as const
@@ -19,4 +19,15 @@ export function isGridText(text: unknown, grid: PlayGrid): text is string {
 
 export function sizedClassicPosition(grid: MiniGrid, values: string): SizedClassicPosition {
   return { version: 2, grid, digits: Array.from(values, Number) }
+}
+
+export function gridHouseCells(house: House, { size, boxRows, boxColumns }: PlayGrid = CLASSIC_GRID) {
+  return Array.from({ length: size }, (_, index) => {
+    if ('row' in house) return house.row * size + index
+    if ('column' in house) return index * size + house.column
+    const boxesAcross = size / boxColumns
+    const row = Math.floor(house.box / boxesAcross) * boxRows + Math.floor(index / boxColumns)
+    const column = house.box % boxesAcross * boxColumns + index % boxColumns
+    return row * size + column
+  })
 }

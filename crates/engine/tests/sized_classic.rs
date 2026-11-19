@@ -153,3 +153,42 @@ fn locked_candidate_evidence_identifies_the_two_houses_and_exact_targets() {
     removed[0] = 16;
     assert!(mini.next_deduction(&[0; 16], &removed).is_none());
 }
+
+#[cfg(feature = "generation")]
+#[test]
+fn mini_generation_checks_uniqueness_recipes_replay_and_played_exclusions() {
+    use sudoku_app_engine::{MiniDifficulty, generate_mini};
+
+    let layout = grid(4, 2, 2);
+    let completions = mini_completions();
+    for (difficulty, range) in [
+        (MiniDifficulty::Easy, 8..=10),
+        (MiniDifficulty::Medium, 4..=6),
+    ] {
+        let mut exclude = Vec::new();
+        for seed in 0..32 {
+            let puzzle =
+                generate_mini(seed, difficulty, &exclude).expect("the recipe yields a puzzle");
+            let givens = puzzle.iter().filter(|&&digit| digit != 0).count();
+            assert!(range.contains(&givens));
+            let mut matches = completions.iter().filter(|solution| {
+                puzzle
+                    .iter()
+                    .zip(solution.iter())
+                    .all(|(&given, &digit)| given == 0 || given == digit)
+            });
+            let answer = matches
+                .next()
+                .expect("the independent oracle finds a solution");
+            assert!(matches.next().is_none());
+            let replay = layout.trace(puzzle.to_vec(), vec![0; 16], true).unwrap();
+            assert_eq!(replay.len(), 17 - givens);
+            assert_eq!(replay.last().unwrap().digits, answer.as_slice());
+            assert!(!exclude.contains(&puzzle));
+            exclude.push(puzzle);
+        }
+        let first = generate_mini(10, difficulty, &[]).unwrap();
+        assert_eq!(generate_mini(10, difficulty, &[]), Some(first));
+        assert_ne!(generate_mini(10, difficulty, &[first]), Some(first));
+    }
+}

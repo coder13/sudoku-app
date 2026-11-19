@@ -2,6 +2,11 @@
 
 use crate::{Analysis, Candidate, HintAction, House};
 
+#[cfg(feature = "generation")]
+mod generation;
+#[cfg(feature = "generation")]
+pub use generation::{MiniDifficulty, generate_mini};
+
 /// Wire version for a sized Classic grid. Version 1 uses the original 9×9 format.
 pub const SIZED_GRID_VERSION: u8 = 2;
 const MAX_SIZE: usize = 16;
@@ -40,6 +45,24 @@ pub struct SizedDeduction {
     pub houses: Vec<House>,
     pub candidates: Vec<Candidate>,
     pub actions: Vec<HintAction>,
+}
+
+/// Logical steps supported at a position, in technique order.
+#[derive(Debug)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct SizedHints {
+    pub candidates: Vec<u16>,
+    pub choices: Vec<SizedDeduction>,
+}
+
+/// A position and the deduction that follows it, when one exists.
+#[derive(Debug)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct SizedTracePosition {
+    pub digits: Vec<u8>,
+    pub eliminations: Vec<u16>,
+    pub candidates: Vec<u16>,
+    pub deduction: Option<SizedDeduction>,
 }
 
 /// A compiled rectangular box layout. All coordinates and house indices are zero based.
@@ -123,6 +146,52 @@ impl SizedGrid {
     /// Find the next supported deduction using the player's established candidate eliminations.
     /// Return `None` for a conflict, a dead end, or a position with no supported step.
     pub fn next_deduction(&self, digits: &[u8], eliminations: &[u16]) -> Option<SizedDeduction> {
+        self.hints(digits, eliminations, 1)?.choices.pop()
+    }
+
+    /// Find several supported deductions and return the masks used to find them.
+    pub fn hints(&self, digits: &[u8], eliminations: &[u16], limit: usize) -> Option<SizedHints> {
+        self.find_hints(digits, eliminations, limit, false)
+    }
+
+    /// Replay a deterministic logical path. The last position has no following deduction.
+    pub fn trace(
+        &self,
+        mut digits: Vec<u8>,
+        mut eliminations: Vec<u16>,
+        singles_only: bool,
+    ) -> Option<Vec<SizedTracePosition>> {
+        let mut trace = Vec::new();
+        loop {
+            let mut hints = self.find_hints(&digits, &eliminations, 1, singles_only)?;
+            let deduction = hints.choices.pop();
+            trace.push(SizedTracePosition {
+                digits: digits.clone(),
+                eliminations: eliminations.clone(),
+                candidates: hints.candidates,
+                deduction,
+            });
+            let Some(step) = &trace.last()?.deduction else {
+                return Some(trace);
+            };
+            for action in &step.actions {
+                match *action {
+                    HintAction::Place(Candidate { cell, digit }) => digits[cell] = digit,
+                    HintAction::Eliminate(Candidate { cell, digit }) => {
+                        eliminations[cell] |= 1 << (digit - 1)
+                    }
+                }
+            }
+        }
+    }
+
+    fn find_hints(
+        &self,
+        digits: &[u8],
+        eliminations: &[u16],
+        limit: usize,
+        singles_only: bool,
+    ) -> Option<SizedHints> {
         if eliminations.len() != self.cell_count()
             || eliminations.iter().any(|mask| mask & !self.full_mask != 0)
         {
@@ -154,28 +223,48 @@ impl SizedGrid {
         {
             return None;
         }
-        if let Some(cell) = masks.iter().position(|mask| mask.is_power_of_two()) {
-            return Some(self.single(SizedTechnique::NakedSingle, cell, masks[cell], vec![]));
+        let mut choices = Vec::new();
+        for (cell, &mask) in masks.iter().enumerate() {
+            if choices.len() == limit {
+                break;
+            }
+            if mask.is_power_of_two() {
+                choices.push(self.single(SizedTechnique::NakedSingle, cell, mask, vec![]));
+            }
         }
+        let mut hidden_placements = [0; MAX_SIZE * MAX_SIZE];
         for (house, cells) in self.houses.iter().enumerate() {
+            if choices.len() == limit {
+                break;
+            }
             let (mut seen, mut repeated) = (0, 0);
             for &cell in cells {
                 repeated |= seen & masks[cell];
                 seen |= masks[cell];
             }
-            let unique = seen & !repeated;
-            if unique != 0 {
+            let mut unique = seen & !repeated;
+            while unique != 0 && choices.len() < limit {
                 let bit = 1 << unique.trailing_zeros();
+                unique ^= bit;
                 let cell = cells.iter().copied().find(|&cell| masks[cell] & bit != 0)?;
-                return Some(self.single(
-                    SizedTechnique::HiddenSingle,
-                    cell,
-                    bit,
-                    vec![self.house(house)],
-                ));
+                if hidden_placements[cell] & bit == 0 {
+                    hidden_placements[cell] |= bit;
+                    choices.push(self.single(
+                        SizedTechnique::HiddenSingle,
+                        cell,
+                        bit,
+                        vec![self.house(house)],
+                    ));
+                }
             }
         }
-        self.locked_candidate(&masks)
+        if !singles_only && choices.len() < limit {
+            self.locked_candidates(&masks, &mut choices, limit);
+        }
+        Some(SizedHints {
+            candidates: masks,
+            choices,
+        })
     }
 
     fn single(
@@ -197,7 +286,7 @@ impl SizedGrid {
         }
     }
 
-    fn locked_candidate(&self, masks: &[u16]) -> Option<SizedDeduction> {
+    fn locked_candidates(&self, masks: &[u16], choices: &mut Vec<SizedDeduction>, limit: usize) {
         let size = self.spec.size;
         for (source, cells) in self.houses.iter().enumerate() {
             for digit in 1..=size as u8 {
@@ -207,9 +296,10 @@ impl SizedGrid {
                     .copied()
                     .filter(|&cell| masks[cell] & bit != 0)
                     .collect();
-                let Some(&first) = support.first() else {
+                if support.len() < 2 {
                     continue;
-                };
+                }
+                let first = support[0];
                 for target in self.memberships[first] {
                     // Only consider row/box and column/box intersections.
                     if (source < 2 * size) == (target < 2 * size) {
@@ -230,20 +320,23 @@ impl SizedGrid {
                         .map(|cell| HintAction::Eliminate(Candidate { cell, digit }))
                         .collect();
                     if !actions.is_empty() {
-                        return Some(SizedDeduction {
+                        choices.push(SizedDeduction {
                             technique: SizedTechnique::LockedCandidate,
                             houses: vec![self.house(source), self.house(target)],
                             candidates: support
-                                .into_iter()
+                                .iter()
+                                .copied()
                                 .map(|cell| Candidate { cell, digit })
                                 .collect(),
                             actions,
                         });
+                        if choices.len() == limit {
+                            return;
+                        }
                     }
                 }
             }
         }
-        None
     }
 
     fn house(&self, index: usize) -> House {
