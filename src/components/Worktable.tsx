@@ -216,6 +216,7 @@ export function Worktable({
   useActionHistory(game)
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
   const modeBadgeId = useId()
+  const puzzleStageId = useId()
   const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('cardModeBadgePosition')
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
@@ -267,6 +268,7 @@ export function Worktable({
   const [focusHintRequest, setFocusHintRequest] = useState(0)
   const [focusChainsRequest, setFocusChainsRequest] = useState(0)
   const [solvedView, setSolvedView] = useState<'results' | 'grid'>('results')
+  const [completionActionsTarget, setCompletionActionsTarget] = useState<HTMLElement | null>(null)
   const [ratingFailed, setRatingFailed] = useState(false)
   const [singlesCheck, setSinglesCheck] = useState<{ givens: string; variant: Game['variant']; needsMore: boolean }>()
   const boardRef = useRef<HTMLDivElement>(null)
@@ -360,7 +362,6 @@ export function Worktable({
     }
   const showResults = solved && solvedView === 'results'
   const showSolvedGrid = solved && solvedView === 'grid'
-  const mobileResults = mobile && showResults
   const { id, givens, difficulty, score, variant, generatedWithAuto } = game
   const analysisDialogOpen = analysisOpen && mobile && !draft && !solved
   const needsRating = difficulty === undefined || score === undefined
@@ -376,6 +377,7 @@ export function Worktable({
     openInsightTabs.find(({ id }) => id === 'techniques') ?? openInsightTabs[0]
   const previewing = !draft && solutionPathRevealed && solutionPath !== null &&
     (mobile || (advancedWorkspace ? desktopSolutionVisible : activeDesktopTab?.id === 'solution'))
+  const showMobileResults = mobile && showResults && !previewing
   const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const chainsVisible = advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains'
@@ -743,8 +745,8 @@ export function Worktable({
 
   useEffect(() => {
     if (!solved) setSolvedView('results')
-    else if (showSolvedGrid) boardRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus({ preventScroll: true })
-  }, [solved, showSolvedGrid])
+    else if (!mobile && showSolvedGrid) boardRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus({ preventScroll: true })
+  }, [mobile, solved, showSolvedGrid])
 
   useEffect(() => {
     if (!puzzleMenuOpen) return
@@ -1667,9 +1669,10 @@ export function Worktable({
     : 'Loading candidates…'
   const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection}
     digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: setChainHighlightDigit } : undefined} />
-  const completionPanel = showResults ? (
+  const completionPanel = showResults || (mobile && showSolvedGrid) ? (
     <CompletedPuzzle game={game} games={games} catchUpPuzzle={catchUpPuzzle} preferredDifficulty={preferredDifficulty}
-      ratingPending={ratingPending} shortcutEnabled={!rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
+      ratingPending={ratingPending} shortcutEnabled={showResults && !rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
+      actionsTarget={mobile ? completionActionsTarget : null}
       showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle} onResumePuzzle={roomStore.select}
       onChooseDifficulty={() => onNewPuzzle('difficulty')} onChooseVariant={() => onNewPuzzle()} />
   ) : null
@@ -1853,8 +1856,8 @@ export function Worktable({
       {puzzleOptionItems}
     </div>
   )
-  const canSelectCell = !game.paused && !mobileResults && !rearranging
-  const gridInputMode = placeholder || draft || solved || mobileResults || previewing || (sketch.drawing && chainMasks)
+  const canSelectCell = !game.paused && !showMobileResults && !rearranging
+  const gridInputMode = placeholder || draft || solved || previewing || (sketch.drawing && chainMasks)
     ? undefined
     : eraseMode ? 'erase' : colorMode || brush !== null ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging ? undefined : gridInputMode
@@ -1864,7 +1867,7 @@ export function Worktable({
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} />
   )
-  const livePuzzleStage = previewing ? solutionGrid : completionPanel ? completionPanel
+  const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : sketch.drawing && chainMasks ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
@@ -1882,7 +1885,8 @@ export function Worktable({
       label={variant ? `${variantName(variant)} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
-      highlightedDigit={mobileResults ? null : selectedDigit} selected={mobileResults ? undefined : selected} active={active}
+      overlay={mobile && completionPanel ? { content: completionPanel, visible: showMobileResults } : undefined}
+      highlightedDigit={selectedDigit} selected={selected} active={active}
       pointerFocusedCell={pointerFocusedCell}
       highlightCandidateCount={!hintAnnotations && highlightCandidatePairs ? 2 : null}
       boardRef={boardRef} onCell={canSelectCell && !paintingCandidates ? clickCell : undefined}
@@ -1908,10 +1912,10 @@ export function Worktable({
     </div>
   )
   const puzzlePanel = (
-      <div className="puzzle-column">
+      <div className="puzzle-column" data-solved-edge={mobile && solved && !previewing ? modeBadgePosition.edge : undefined}>
         <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
           data-input-mode={gridInputMode}
-          data-completion={Boolean(completionPanel) && !previewing || undefined}
+          data-completion={!mobile && showResults && !previewing || undefined}
           style={{ '--board-font-scale': appearance.gridTextScale } as CSSProperties}>
         {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
           {difficulty && <span className="puzzle-difficulty">
@@ -1943,9 +1947,11 @@ export function Worktable({
                 aria-label={`${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
                 <Info size={16} aria-hidden="true" />{variant.id === 'mixed' ? 'Mixed rules' : variantName(variant)}
               </Button>}
-              {solved && !previewing && <Button variant="quiet" className="puzzle-view-toggle" aria-pressed={showSolvedGrid} onClick={() => {
-                setSolvedView(showSolvedGrid ? 'results' : 'grid')
-              }}>{showSolvedGrid ? 'View results' : 'View grid'}</Button>}
+              {solved && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
+                aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} onClick={() => setSolvedView(showSolvedGrid ? 'results' : 'grid')}>
+                <span aria-hidden={showSolvedGrid || undefined}>View grid</span>
+                <span aria-hidden={!showSolvedGrid || undefined}>View results</span>
+              </Button>}
               {timing.showPause && !solved && game.started && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
                 aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'} title={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
                 aria-pressed={game.paused} onClick={() => {
@@ -1973,7 +1979,7 @@ export function Worktable({
             </>
           )}
         </div>
-        <div className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
+        <div id={puzzleStageId} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
           onContextMenu={preventControlClickMenu} onPointerUp={finishControlClick}
           onBlur={(event) => {
             const cell = event.target.dataset.cell
@@ -2010,7 +2016,7 @@ export function Worktable({
       </div>
   )
   const inputPanel = (
-      <div className="workspace-controls">
+      <div className="workspace-controls" data-show-completion={showMobileResults || undefined}>
         <Controls mode={mode} pencil={pencilActive} togglePencil={() => {
           setColorBrush(null); setEraseMode(false); setColorMode(false); setHighlightMode(false); setPencil((current) => !current)
         }}
@@ -2035,6 +2041,8 @@ export function Worktable({
           } : undefined}
           disabled={disabled || (solved && !showSolvedGrid)} draft={presentationDraft} inputSize={inputSize} panelHeight={panelHeight}
           setPanelHeight={setPanelHeight} beginResize={beginResize} multi={multi} toggleMulti={toggleMulti} />
+        {mobile && solved && <section ref={setCompletionActionsTarget} className="surface mobile-completion-actions"
+          aria-label="Next puzzle options" hidden={!showMobileResults} data-no-panel-hold />}
       </div>
   )
   const advancedHintPanel = hintPanel || (
@@ -2145,7 +2153,6 @@ export function Worktable({
                 </div>
               </section>}</MotionSurface>
             </div></>
-          : mobileResults ? <div className="mobile-completion-layout mobile-completion">{puzzlePanel}</div>
           : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
             blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisDialogOpen ||
               dialogResult !== null || resetOpen || cancelDraftOpen}
@@ -2165,7 +2172,7 @@ export function Worktable({
                   <HintCard hint={{ title: 'Puzzle hints', text: 'Hints will appear here.' }} onClose={() => {}} />
                 </div>
               ) } : undefined,
-              input: { title: 'Keypad', content: inputPanel },
+              input: { title: showMobileResults ? 'Next puzzle' : 'Keypad', content: inputPanel },
             }} />}
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>

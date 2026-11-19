@@ -19,7 +19,7 @@ Search by component name or browse the sections below.
 
 | Source | When to use it |
 | --- | --- |
-| [Board](../../../../src/components/Board.tsx) | `Board` renders a Sudoku grid with givens, entries, candidates, selection, and optional teaching annotations. |
+| [Board](../../../../src/components/Board.tsx) | `Board` renders a Sudoku grid with givens, entries, candidates, selection, and optional teaching annotations. An overlay can replace the grid visually while preserving its dimensions. |
 | [BoardAnnotations](../../../../src/components/BoardAnnotations.tsx) | `BoardLinks` draws supplied links between grid positions for chains and teaching diagrams. |
 | [BoardMarks](../../../../src/components/BoardMarks.tsx) | `BoardMarks` manages the appearance and removal of marks in a grid overlay. |
 | [VariantClues](../../../../src/components/VariantClues.tsx) | `VariantClues` renders the visible rules for a variant grid. `Cage` outlines cages and labels totals. `ExtraRegion` marks additional regions. `ArrowClue` draws a bulb and arrow. `BetweenClue` draws a line with two endpoint circles. Dotted cells and dashed connectors identify separated logical cells; interior digits can repeat. `InequalityClue` marks a comparison. `ColoredLineLane` routes colored rule lines. `WhispersLabel` labels a Whispers line. `SumClue` places a sum indicator. |
@@ -32,7 +32,7 @@ Search by component name or browse the sections below.
 | [PuzzleCheckResult](../../../../src/components/PuzzleCheckResult.tsx) | `PuzzleCheckResult` displays the outcome of an explicit puzzle check. |
 | [SolutionPath](../../../../src/components/SolutionPath.tsx) | `SolutionPath` embeds a list of logical solving steps. `SolutionDialog` presents that path in a modal. |
 | [Worktable](../../../../src/components/Worktable.tsx) | `Worktable` coordinates interactions, solving tools, and state for a playable puzzle. The card shows when another device has the puzzle open and offers Catch up when the player can open that device’s latest puzzle. Its menu owns manual sync and routine save status. |
-| [CompletedPuzzle](../../../../src/components/CompletedPuzzle.tsx) | `CompletedPuzzle` shows solve results and offers to catch up to another device’s puzzle or resume the next playable attempt in last-played order. Pass `onResumePuzzle` to open the existing attempt by ID. New puzzle opens the variant and difficulty picker. When a collection can continue, its next puzzle is the primary action. |
+| [CompletedPuzzle](../../../../src/components/CompletedPuzzle.tsx) | `CompletedPuzzle` shows solve results and offers to catch up to another device’s puzzle or resume the next playable attempt in last-played order. Pass `onResumePuzzle` to open the existing attempt by ID. New puzzle opens the variant and difficulty picker. When a collection can continue, its next puzzle is the primary action. The mobile worktable displays these actions in the keypad slot. |
 
 ## Layout and navigation
 
@@ -47,7 +47,7 @@ Search by component name or browse the sections below.
 
 | Source | When to use it |
 | --- | --- |
-| [PuzzlesPage](../../../../src/components/PuzzlesPage.tsx) | `PuzzlesPage` serves the Puzzles home and its navigation. Its private `PuzzleLibrary` shows Active Puzzles in last-played order, offers a start action when there are none, and shows completed attempts on the Solved puzzles page. `MiniGrid` previews an attempt. `NewPuzzleVariant` browses variants and offers creation and import. `NewPuzzleDifficulty` opens on its own route to select a difficulty and start the puzzle. `Statistics` summarizes solves. `TechniqueStatistics` shows progress by solving technique. |
+| [PuzzlesPage](../../../../src/components/PuzzlesPage.tsx) | `PuzzlesPage` serves the Puzzles home and its navigation. Its private `PuzzleLibrary` shows Active Puzzles in last-played order, offers a start action when there are none, and shows completed attempts on the Solved puzzles page. `MiniGrid` previews an attempt. `NewPuzzleVariant` browses variants and offers creation and import. `NewPuzzleDifficulty` opens on its own route to select a difficulty and start the puzzle. On mobile, center the form below the pinned heading and Back control. `Statistics` summarizes solves. `TechniqueStatistics` shows progress by solving technique. |
 | [PuzzleLibrary](../../../../src/components/PuzzleLibrary.tsx) | `PuzzleLibrary` renders a compact list of selectable attempts for callers that supply a selection callback. |
 | [AdvancedPuzzleBrowser](../../../../src/components/AdvancedPuzzleBrowser.tsx) | `AdvancedPuzzleBrowser` provides active, past, and saved views inside the advanced workspace. Its `MiniGrid` supplies a preview for each row. |
 | [PuzzleCollections](../../../../src/components/PuzzleCollections.tsx) | `PuzzleCollections` browses collection packs. `DownloadPuzzles` offers offline downloads. `CollectionCredits` attributes a collection. `PuzzleCollectionCredit` attributes the collection associated with a particular puzzle. |
@@ -75,7 +75,7 @@ Search by component name or browse the sections below.
 
 | Source | When to use it |
 | --- | --- |
-| [LearnHeading](../../../../src/components/LearnHeading.tsx) | `LearnHeading` supplies the heading and navigation context for a lesson. `LessonDifficulty` labels its difficulty. |
+| [LearnHeading](../../../../src/components/LearnHeading.tsx) | `LearnHeading` supplies the heading and navigation context for a lesson. The mobile header stays above the scrolling introduction and article. `LessonDifficulty` labels its difficulty. |
 | [ConceptCheck](../../../../src/components/ConceptCheck.tsx) | `ConceptCheck` presents questions with feedback when a lesson tests understanding. |
 | [LessonWorkbench](../../../../src/components/LessonWorkbench.tsx) | `LessonWorkbench` provides an interactive teaching grid with lesson annotations and optional editing. |
 | [LessonPractice](../../../../src/components/LessonPractice.tsx) | `PracticePuzzle` runs a specific practice position and checks the learner’s next move. |

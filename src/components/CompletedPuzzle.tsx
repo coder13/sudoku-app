@@ -1,6 +1,7 @@
 import { Button, buttonClassName } from './Button'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
+import { createPortal } from 'react-dom'
 import { ArrowRight, Check, CircleCheck } from 'lucide-react'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
@@ -23,7 +24,7 @@ function activePuzzleSummary(game: Game) {
 }
 
 /** Show solve results and continue with the next active puzzle, a collection puzzle, or a new puzzle. */
-export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
+export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, actionsTarget, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
   game: Game
   games: Game[]
   catchUpPuzzle?: Game
@@ -32,6 +33,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   shortcutEnabled: boolean
   showGuides: boolean
   cellReferenceStyle?: CellReferenceStyle
+  actionsTarget?: HTMLElement | null
   onResumePuzzle: (id: string) => void
   onChooseDifficulty: () => void
   onChooseVariant: () => void
@@ -121,6 +123,38 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     return () => window.removeEventListener('keydown', keydown)
   }, [canContinue, continuePlaying, shortcutEnabled, shortcuts])
 
+  const collectionStatus = collectionEntry && progress && collectionDifficulty && <p className="completion-collection-progress">
+    {collectionEntry.collection.title} · {DIFFICULTY_LABELS[collectionDifficulty]}<br />
+    {progress.solved} {progress.solved === 1 ? 'puzzle' : 'puzzles'} solved
+  </p>
+  const footer = <div className="completion-footer">
+    {!actionsTarget && collectionStatus}
+    {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
+    <div className="completion-actions">
+      {!inCollection && nextActive ? <>
+        {resumeAction}
+        <Button className="completion-next" disabled={busy} onClick={onChooseVariant}>New puzzle</Button>
+      </> : <>
+        {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
+          ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
+          : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
+          : <Button variant="primary" className="completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)}
+            disabled={!canPlayNext} onClick={playNext}>
+            {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
+            {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
+          </Button>}
+        {resumeAction}
+        {collectionEntry ? <>
+          <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
+          <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles">Choose a different puzzle</Link>
+        </> : !needsChoice && <>
+          <Button disabled={busy} onClick={onChooseDifficulty}>Choose difficulty</Button>
+          <Button disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
+        </>}
+      </>}
+    </div>
+  </div>
+
   return (
     <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
       aria-labelledby="completion-title">
@@ -152,37 +186,9 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
               <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
           </dl>
           <ActionHistoryPanel entries={game.actionHistory} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
+          {actionsTarget && collectionStatus}
         </div>
-        <div className="completion-footer">
-          {collectionEntry && progress && collectionDifficulty && <p className="completion-collection-progress">
-            {collectionEntry.collection.title} · {DIFFICULTY_LABELS[collectionDifficulty]}<br />
-            {progress.solved} {progress.solved === 1 ? 'puzzle' : 'puzzles'} solved
-          </p>}
-          {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
-          <div className="completion-actions">
-            {!inCollection && nextActive ? <>
-              {resumeAction}
-              <Button className="completion-next" disabled={busy} onClick={onChooseVariant}>New puzzle</Button>
-            </> : <>
-              {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
-                ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
-                : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
-                : <Button variant="primary" className="completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)}
-                  disabled={!canPlayNext} onClick={playNext}>
-                  {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
-                  {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
-                </Button>}
-              {resumeAction}
-              {collectionEntry ? <>
-                <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
-                <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles">Choose a different puzzle</Link>
-              </> : !needsChoice && <>
-                <Button disabled={busy} onClick={onChooseDifficulty}>Choose difficulty</Button>
-                <Button disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
-              </>}
-            </>}
-          </div>
-        </div>
+        {actionsTarget ? createPortal(footer, actionsTarget) : footer}
       </div>
     </section>
   )

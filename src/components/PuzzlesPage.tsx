@@ -190,7 +190,10 @@ function NewPuzzleDifficulty({ variant, difficulty, save }: {
   }
 
   return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
-    <p className="new-puzzle-variant-summary"><VariantPreview variant={variant} />{VARIANTS[variant].name}</p>
+    <p className="new-puzzle-variant-summary">
+      <VariantPreview variant={variant} />
+      <span>{VARIANTS[variant].name}</span>
+    </p>
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
     <Button variant="primary" className="puzzle-start-button" disabled={busy} onClick={start}>
@@ -306,7 +309,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     return <Statistics games={games} />
   }
 
-  return <main className={`puzzles-page ${section === 'puzzles' ? 'puzzles-home' : 'puzzles-subscreen'}${screen ? ' new-puzzle-page' : ''}`}>
+  return <main className={`puzzles-page ${section === 'puzzles' ? 'puzzles-home' : 'puzzles-subscreen'}${screen ? ' new-puzzle-page' : ''}${difficultyScreen ? ' puzzles-difficulty-page' : ''}`}>
     <div className="puzzles-layout">
       <header className="puzzles-page-heading">
         {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"

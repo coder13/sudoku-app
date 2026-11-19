@@ -158,8 +158,8 @@ export function bindPreview(doc, { content, lesson, editing, changed, selectBloc
       property(element, 'Credit label', lesson.credits[index], 'label'))
   } else {
     const { overview, groups } = content
-    property(header.querySelector('.lesson-summary'), 'Introduction', overview, 'intro')
-    property(header.querySelector('.lesson-overview-basics > span'), 'Fundamentals link introduction', overview, 'fundamentalsNote')
+    property(article.querySelector('.lesson-intro .lesson-summary'), 'Introduction', overview, 'intro')
+    property(article.querySelector('.lesson-intro .lesson-overview-basics > span'), 'Fundamentals link introduction', overview, 'fundamentalsNote')
     const difficulty = article.querySelector('[data-lesson-difficulty]')
     property(difficulty.querySelector('h2'), 'Difficulty heading', overview, 'difficultyTitle')
     difficulty.querySelectorAll('p').forEach((element, index) =>
