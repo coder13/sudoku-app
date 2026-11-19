@@ -87,3 +87,11 @@ export const GlobalEntropyDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=global-entropy" />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 }
+
+export const EntropicVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=entropic" />,
+}
+export const EntropicDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=entropic" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}

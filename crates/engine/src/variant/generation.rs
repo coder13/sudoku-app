@@ -42,7 +42,9 @@ pub struct VariantGenerationOptions {
     /// Whispers path direction, segmentation and duplicate edges do not change identity.
     /// Palindrome and Clone matching-digit components are compared transitively;
     /// free odd centers and alternative drawings do not add constraints.
-    /// Global Entropy allows group-preserving digit renamings when every
+    /// Entropic walks use their original sliding-window different-group pairs,
+    /// independently of path direction, decomposition or unrestricted singletons.
+    /// Global Entropy and Entropic allow group-preserving digit renamings when every
     /// companion rule also preserves those renamings. Exact duplicate rules
     /// do not distinguish played puzzles. Public definitions remain unchanged.
     /// Optional drawing paths do not distinguish otherwise identical logical puzzles.
