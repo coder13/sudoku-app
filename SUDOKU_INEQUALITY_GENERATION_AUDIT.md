@@ -1,7 +1,8 @@
 # Inequality New Puzzle integration
 
 Agent A implements Easy/Medium Inequality generation under [issue 189](https://github.com/coder13/sudoku-app/issues/189).
-The working base is main `ea81360`. This is preparation, not a release record.
+The measured base is main `ea81360`. The current-main integration starts at `b9ffe95` and preserves the released 6×6, solving-settings and shared Play changes.
+Measurements below describe the isolated Inequality change at the stated base. Combined-current-main CI remains a release gate. This is not a release record.
 Local validation and matched measurements are complete. Exact-head CI and release gates remain pending.
 
 ## Generation and source controls
