@@ -31,3 +31,7 @@ export const Mobile: Story = {
     await expect(await canvas.findByRole('heading', { name: 'Killer' })).toBeVisible()
   },
 }
+
+export const XSumsDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=x-sum" />,
+}

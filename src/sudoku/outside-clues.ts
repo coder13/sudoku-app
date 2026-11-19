@@ -1,6 +1,6 @@
 import type { VariantRule } from './engine.ts'
 
-export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-killer' }>
+export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-killer' | 'x-sum' }>
 export type OutsideSide = 'top' | 'right' | 'bottom' | 'left'
 type Direction = Extract<VariantRule, { direction: string }>['direction']
 const DELTAS: Record<Direction, readonly [number, number]> = {
@@ -49,7 +49,16 @@ export function outsideClueLabel(rule: OutsideRule) {
         : rule.direction === 'east'
           ? 'left'
           : 'right'
-  return `Sandwich ${rule.sum}, ${side} of ${side === 'top' || side === 'bottom' ? 'column ' + ((rule.cells[0] % 9) + 1) : 'row ' + (Math.floor(rule.cells[0] / 9) + 1)}: digits strictly between 1 and 9 sum to ${rule.sum}; 1 and 9 are excluded.`
+  const location = `${side} of ${side === 'top' || side === 'bottom' ? 'column ' + ((rule.cells[0] % 9) + 1) : 'row ' + (Math.floor(rule.cells[0] / 9) + 1)}`
+  return rule.type === 'x-sum'
+    ? `X-Sum ${rule.sum}, ${location}: the first digit counts how many cells to add, including itself, starting at ${cellName(rule.cells[0])}.`
+    : `Sandwich ${rule.sum}, ${location}: digits strictly between 1 and 9 sum to ${rule.sum}; 1 and 9 are excluded.`
+}
+
+/** Prefix otherwise ambiguous outside totals when both orthogonal rule families are present. */
+export function outsideClueLegend(rules?: readonly VariantRule[]) {
+  return rules?.some(rule => rule.type === 'sandwich') && rules.some(rule => rule.type === 'x-sum')
+    ? ['S = Sandwich', 'X = X-Sums'] : []
 }
 
 /** Lay out all edge and corner labels in cell coordinates. Repeated anchors move outward along their ray. */
@@ -61,23 +70,26 @@ export function outsideClueLayout(rules?: readonly VariantRule[]) {
     y: number
     dr: number
     dc: number
+    label: string
     arrow?: { x1: number; y1: number; x2: number; y2: number }
   }[] = []
   const depths = { top: 0, right: 0, bottom: 0, left: 0 }
+  const legend = outsideClueLegend(rules)
   const anchors = new Map<string, { lane: number; extent: number }>()
   for (const rule of rules ?? []) {
-    if (rule.type !== 'sandwich' && rule.type !== 'little-killer') continue
+    if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'x-sum') continue
     const [dr, dc] = clueDelta(rule.direction),
       first = rule.cells[0]
     const ox = (first % 9) + 0.5 - dc,
       oy = Math.floor(first / 9) + 0.5 - dr
     const key = `${ox},${oy}`,
       prior = anchors.get(key) ?? { lane: 0, extent: 0 }
-    if (rule.type === 'sandwich') {
+    if (rule.type !== 'little-killer') {
       const x = (first % 9) + 0.5 - dc * (0.85 + prior.extent),
         y = Math.floor(first / 9) + 0.5 - dr * (0.85 + prior.extent)
-      clues.push({ rule, lane: prior.lane, x, y, dr, dc })
-      const extent = prior.extent + 0.7
+      const label = (legend.length ? rule.type === 'sandwich' ? 'S' : 'X' : '') + rule.sum
+      clues.push({ rule, lane: prior.lane, x, y, dr, dc, label })
+      const extent = prior.extent + (legend.length ? 0.9 : 0.7)
       if (dr === 1) depths.top = Math.max(depths.top, extent)
       if (dr === -1) depths.bottom = Math.max(depths.bottom, extent)
       if (dc === 1) depths.left = Math.max(depths.left, extent)
@@ -93,6 +105,7 @@ export function outsideClueLayout(rules?: readonly VariantRule[]) {
         ...label,
         dr,
         dc,
+        label: String(rule.sum),
         arrow: { x1: x + dc * 0.2, y1: y + dr * 0.2, x2: x + dc * 0.45, y2: y + dr * 0.45 },
       })
       // Include the complete glyph and arrow in the gutters, including corner clues.
@@ -105,5 +118,5 @@ export function outsideClueLayout(rules?: readonly VariantRule[]) {
   }
   for (const side of Object.keys(depths) as OutsideSide[])
     depths[side] = Math.max(0, Math.ceil((depths[side] - 1e-10) * 10) / 10)
-  return { clues, depths }
+  return { clues, depths, legend }
 }

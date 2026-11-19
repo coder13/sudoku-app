@@ -51,6 +51,7 @@ test('Coach Sandwich decoding preserves all four sides, zero and companion therm
   const first = imported.variant!.puzzle.rules![0]
   assert.deepEqual('cells' in first && first.cells, [0,9,18,27,36,45,54,63,72])
   for (const parameters of [{ side: 'top', index: 9, value: 0 }, { side: 'left', index: '0', value: 0 }, { side: 'up', index: 0, value: 0 },
+    { side: ['top'], index: 0, value: 0 }, { side: null, index: 0, value: 0 },
     { side: 'top', index: 0, value: 36 }, { side: 'top', index: 0, value: '0' }, { side: 'top', index: 0, value: 0, bread: '28' }]) {
     await assert.rejects(detectPuzzle(coachCode({ ...decoded, givenConstraints: [{ ...constraint, segments: [{ cells: [], parameters }] }] })), /invalid Sandwich/)
   }

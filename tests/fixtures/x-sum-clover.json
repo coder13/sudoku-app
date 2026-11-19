@@ -1,0 +1,209 @@
+{
+  "title": "The Scariest Thing",
+  "author": "clover!",
+  "published": "2026-10-31",
+  "source": "https://www.gmpuzzles.com/images/puzzles2026/261031-XSumsSudoku-TheScariestThing.pdf",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2026/261031-XSumsSudoku-TheScariestThing.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2026/261031-XSumsSudoku-TheScariestThing-soln.pdf",
+  "pdfSha256": "e549809a5fe802ea52bfb6d0bfe66981200161570038e311fb5a28ee0b8aa445",
+  "solutionPdfSha256": "6ccf007a68910fee224e8895d15152c373d112d7facd8894868b7aac5c3ff4f7",
+  "puzzle": {
+    "version": 1,
+    "givens": "007260458300000007600000002400000000000000000000000001800000003200000006745026800",
+    "rules": [
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          3,
+          12,
+          21,
+          30,
+          39,
+          48,
+          57,
+          66,
+          75
+        ],
+        "sum": 10
+      },
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          4,
+          13,
+          22,
+          31,
+          40,
+          49,
+          58,
+          67,
+          76
+        ],
+        "sum": 31
+      },
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          6,
+          15,
+          24,
+          33,
+          42,
+          51,
+          60,
+          69,
+          78
+        ],
+        "sum": 10
+      },
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          7,
+          16,
+          25,
+          34,
+          43,
+          52,
+          61,
+          70,
+          79
+        ],
+        "sum": 31
+      },
+      {
+        "type": "x-sum",
+        "direction": "west",
+        "cells": [
+          62,
+          61,
+          60,
+          59,
+          58,
+          57,
+          56,
+          55,
+          54
+        ],
+        "sum": 10
+      },
+      {
+        "type": "x-sum",
+        "direction": "west",
+        "cells": [
+          71,
+          70,
+          69,
+          68,
+          67,
+          66,
+          65,
+          64,
+          63
+        ],
+        "sum": 31
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          73,
+          64,
+          55,
+          46,
+          37,
+          28,
+          19,
+          10,
+          1
+        ],
+        "sum": 10
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          74,
+          65,
+          56,
+          47,
+          38,
+          29,
+          20,
+          11,
+          2
+        ],
+        "sum": 31
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          76,
+          67,
+          58,
+          49,
+          40,
+          31,
+          22,
+          13,
+          4
+        ],
+        "sum": 10
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          77,
+          68,
+          59,
+          50,
+          41,
+          32,
+          23,
+          14,
+          5
+        ],
+        "sum": 31
+      },
+      {
+        "type": "x-sum",
+        "direction": "east",
+        "cells": [
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "sum": 10
+      },
+      {
+        "type": "x-sum",
+        "direction": "east",
+        "cells": [
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        "sum": 31
+      }
+    ]
+  },
+  "solution": "197263458352894167684157392461978235573612984928435671816749523239581746745326819"
+}

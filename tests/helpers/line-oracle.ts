@@ -16,6 +16,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
   const regionParts: number[][][] = []
   const diagonalSums: { cells: readonly number[]; sum: number }[] = []
+  const xSums: { cells: readonly number[]; total: number }[] = []
   const sandwiches: { cells: readonly number[]; total: number }[] = []
   const betweenTriples: (readonly [number, number, number])[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
@@ -54,6 +55,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
       regionParts.push(parts)
     }
     else if (rule.type === 'little-killer') diagonalSums.push({ cells: rule.cells, sum: rule.sum })
+    else if (rule.type === 'x-sum') xSums.push({ cells: rule.cells, total: rule.sum })
     else if (rule.type === 'sandwich') sandwiches.push({ cells: rule.cells, total: rule.sum })
     else if (rule.type === 'between') rule.cells.slice(1, -1).forEach(cell =>
       betweenTriples.push([rule.cells[0], cell, rule.cells[rule.cells.length - 1]]))
@@ -192,6 +194,41 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
         clue.cells.forEach((cell, i) => {
           const keep = domains[cell].filter(digit => supported[i].has(digit))
           changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        })
+      }
+      for (const clue of xSums) {
+        const supported = supportFor(clue, clue.cells, domains, () => {
+          const result = clue.cells.map(() => new Set<number>()), values = clue.cells.map(() => 0)
+          const order = [0, ...clue.cells.map((_, i) => i).slice(1).sort((a,b) => domains[clue.cells[a]].length - domains[clue.cells[b]].length)]
+          function enumerate(depth: number, used: Set<number>) {
+            const length = values[0]
+            if (length) {
+              let minimum = 0, maximum = 0
+              for (let i = 0; i < length; i++) {
+                if (values[i]) { minimum += values[i]; maximum += values[i] }
+                else {
+                  const options = domains[clue.cells[i]].filter(digit => !used.has(digit))
+                  if (!options.length) return
+                  minimum += Math.min(...options); maximum += Math.max(...options)
+                }
+              }
+              if (minimum > clue.total || maximum < clue.total) return
+            }
+            if (depth === order.length) {
+              if (values.slice(0,length).reduce((sum,digit)=>sum+digit,0) === clue.total) values.forEach((digit,i)=>result[i].add(digit))
+              return
+            }
+            const index=order[depth]
+            for(const digit of domains[clue.cells[index]]) if(!used.has(digit)) {
+              values[index]=digit;used.add(digit);enumerate(depth+1,used);used.delete(digit);values[index]=0
+            }
+          }
+          enumerate(0,new Set<number>())
+          return result
+        })
+        clue.cells.forEach((cell,i)=>{
+          const keep=domains[cell].filter(digit=>supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length;domains[cell]=keep
         })
       }
       for (const clue of sandwiches) {

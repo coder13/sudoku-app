@@ -65,11 +65,11 @@ export function variantGenerationRequest(
         rules.push({ type: 'little-killer', ...clue, direction })
       }
       break
-    case 'sandwich':
+    case 'sandwich': case 'x-sum':
       for (const clue of recipe.outside!) {
         const direction = clue.direction
         if (direction !== 'north' && direction !== 'east' && direction !== 'south' && direction !== 'west') throw new Error('Invalid outside-clue recipe direction.')
-        rules.push({ type: 'sandwich', ...clue, direction })
+        rules.push({ type: id, ...clue, direction })
       }
       break
     case 'clone':
@@ -122,7 +122,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           const direction = row < 0 ? column < 0 ? 'north-west' : 'north-east' : column < 0 ? 'south-west' : 'south-east'
           return { ...rule, cells: rule.cells.map(cell), direction }
         }
-        case 'sandwich': {
+        case 'sandwich': case 'x-sum': {
           const cells = rule.cells.map(cell), step = cells[1] - cells[0]
           return { ...rule, cells, direction: step === 1 ? 'east' : step === -1 ? 'west' : step === 9 ? 'south' : 'north' }
         }

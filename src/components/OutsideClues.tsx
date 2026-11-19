@@ -32,10 +32,10 @@ export function OutsideClues({ layout, hidden }: { layout: Layout; hidden?: bool
           </marker>
         </defs>
       )}
-      {layout.clues.map(({ rule, x, y, lane, arrow }, i) => (
+      {layout.clues.map(({ rule, x, y, lane, arrow, label }, i) => (
         <g key={i} data-outside-clue={rule.type} data-outside-lane={lane}>
           <text x={x} y={y}>
-            {rule.sum}
+            {label}
           </text>
           {arrow && <line className="outside-diagonal-arrow" {...arrow} markerEnd={`url(#${marker})`} />}
         </g>
