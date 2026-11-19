@@ -151,7 +151,7 @@ const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
 const marks = value => fields(value, {}, { pairs, negative: boolean })
-const regions = value => fields(value, { type: oneOf('boxes') }) ||
+const regions = value => fields(value, { type: oneOf('boxes', 'latin-square') }) ||
   fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) })
 const segments = list(list(cell, 1), 1)
 const diagonalDirection = oneOf('north-east', 'south-east', 'south-west', 'north-west')
@@ -190,7 +190,7 @@ const rule = value => {
   return fields(value, { type: oneOf(value.type), ...required }, optional)
 }
 const variant = (value, grid) => fields(value, {
-  id: id => typeof id === 'string' && (['jigsaw', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),
+  id: id => typeof id === 'string' && (['jigsaw', 'latin-square', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),
   puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: list(rule, 0) }),
 })
 const collection = value => fields(value, {

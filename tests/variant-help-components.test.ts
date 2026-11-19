@@ -44,6 +44,16 @@ before(async () => {
 })
 after(async () => { await server?.close() })
 
+test('Latin Square renders row and column lines without standard box borders', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Latin Square',
+    variantPuzzle: { version: 1, givens, regions: { type: 'latin-square' } },
+  }))
+  assert.match(html, /Each row and column uses the digits 1–9 once each./)
+  assert.doesNotMatch(html, /data-box-edge|data-alternate-box/)
+})
+
 test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
   const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
     new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))

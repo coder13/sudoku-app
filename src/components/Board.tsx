@@ -76,11 +76,13 @@ export function Board({
   const hasOutside = Object.values(outside.depths).some(Boolean)
   const clones = cloneLayout(variantRules)
   const disjoint = useMemo(() => disjointGroupRuleIndices(variantRules ?? []), [variantRules])
+  const regions = variantPuzzle?.regions
   const gridLabel = [sizedGrid ? `${gridSize} × ${gridSize} ${label.toLowerCase()}` : label, variantRules?.some(rule => rule.type === 'global-entropy')
     && 'Global Entropy: every 2 × 2 area needs a low digit 1–3, a medium digit 4–6 and a high digit 7–9, including across box or region borders.',
+    regions?.type === 'latin-square' && 'Each row and column uses the digits 1–9 once each.',
     disjoint.size && DISJOINT_GROUPS_RULE].filter(Boolean).join(' ')
-  const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [regions])
+  const drawBoxes = !regionsAt && regions?.type !== 'latin-square'
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
   const sixLabels = useMemo(() => sixRules ? sixClueLabels(sixRules) : undefined, [sixRules])
   const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
@@ -190,7 +192,7 @@ export function Board({
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {rows.map((row) => (
-            <div className="grid-row" role="row" data-box-edge={!regionsAt && row % boxRows === 0 || undefined} key={row}>
+            <div className="grid-row" role="row" data-box-edge={drawBoxes && row % boxRows === 0 || undefined} key={row}>
               {columns.map((col) => {
                 const index = (row - 1) * gridSize + col - 1
                 const regionAtCell = regionsAt?.[index]
@@ -327,10 +329,10 @@ export function Board({
                   <Cell role="gridcell" key={col} data-cell={index} data-clone={clones.at[index]?.label} className={classes} style={cellStyle} aria-label={label}
                     data-pointer-focused={pointerFocusedCell === index || undefined}
                     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
-                    data-box-edge={!regionsAt && col % boxColumns === 0 || undefined}
+                    data-box-edge={drawBoxes && col % boxColumns === 0 || undefined}
                     data-region-right={regionsAt && col < gridSize && regionAtCell !== regionsAt[index + 1] || undefined}
                     data-region-bottom={regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize] || undefined}
-                    data-alternate-box={!regionsAt && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
+                    data-alternate-box={drawBoxes && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
                     type={onCell && 'button'} tabIndex={onCell ? (active === index ? 0 : -1) : undefined}
                     aria-selected={onCell ? inSelection : undefined}
                     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}

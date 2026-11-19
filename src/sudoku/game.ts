@@ -200,6 +200,7 @@ export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGri
   if (puzzle?.regions?.type === 'jigsaw') {
     return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
   }
+  if (puzzle?.regions?.type === 'latin-square') return variantPeers(puzzle, a, b)
   return (Math.floor(ar / grid.boxRows) === Math.floor(br / grid.boxRows) && Math.floor(ac / grid.boxColumns) === Math.floor(bc / grid.boxColumns)) || variantPeers(puzzle, a, b)
 }
 
@@ -568,7 +569,8 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
   }
   const houses = grid ? DIGITS.slice(0, size).flatMap(digit => [
     gridHouseCells({ row: digit - 1 }, grid), gridHouseCells({ column: digit - 1 }, grid), gridHouseCells({ box: digit - 1 }, grid),
-  ]) : variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
+  ]) : variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions]
+    : variant?.regions?.type === 'latin-square' ? HOUSES.slice(0, 18) : HOUSES
   const extra = variant?.rules?.flatMap((rule, index) => {
     if (rule.type === 'diagonal') return [variantHouseCells({ diagonal: rule.diagonal }, variant)]
     if (rule.type === 'extra-house') return [variantHouseCells({ extra: index }, variant)]

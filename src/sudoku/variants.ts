@@ -113,6 +113,10 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
+  'latin-square': {
+    name: 'Latin Square',
+    rule: 'Fill each row and column with the digits 1–9 once each. Only marked extra regions add another group.',
+  },
   inequality: {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
@@ -195,6 +199,7 @@ export function variantHouseCells(house: VariantHouse, puzzle: VariantPuzzle): r
     return rule?.type === 'extra-house' ? rule.cells : []
   }
   if (puzzle.regions?.type === 'jigsaw') return puzzle.regions.regions[house.region]
+  if (puzzle.regions?.type === 'latin-square') return []
   const top = Math.floor(house.region / 3) * 27 + (house.region % 3) * 3
   return cells.map((i) => top + Math.floor(i / 3) * 9 + i % 3)
 }
@@ -234,7 +239,8 @@ export function variantHouseName(house: VariantHouse, puzzle: VariantPuzzle) {
 
 export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
   const masks = [...values].map((digit, cell) => digit === '0' ? 511 & ~(eliminations?.[cell] ?? 0) : 0)
-  const houses: VariantHouse[] = cells.flatMap((i) => [{ row: i }, { column: i }, { region: i }])
+  const boxless = puzzle.regions?.type === 'latin-square'
+  const houses: VariantHouse[] = cells.flatMap((i) => boxless ? [{ row: i }, { column: i }] : [{ row: i }, { column: i }, { region: i }])
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
     if (rule.type === 'extra-house') houses.push({ extra: index })
@@ -457,6 +463,7 @@ function isPlayableRule(rule: VariantRule): boolean {
 export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
   const rules = puzzle.rules ?? []
   if (puzzle.regions?.type === 'jigsaw') return rules.length ? 'mixed' : 'jigsaw'
+  if (puzzle.regions?.type === 'latin-square') return rules.length ? 'mixed' : 'latin-square'
   if (!rules.length) return 'classic'
   const first = rules[0].type
   if (first === 'extra-house') {
@@ -474,7 +481,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
     !puzzle || typeof puzzle !== 'object') return false
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
-  if (regions !== undefined && regions?.type !== 'boxes' &&
+  if (regions !== undefined && regions?.type !== 'boxes' && regions?.type !== 'latin-square' &&
     !(regions?.type === 'jigsaw' && validJigsawRegions(regions.regions))) return false
   // A 9×9 grid has 144 shared edges, so the cell count cannot cap its clues.
   // The interchange decoders bound the encoded and decoded input sizes.
@@ -521,6 +528,7 @@ export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle'>): strin
   const { rules, regions } = variant.puzzle
   const names = [
     ...(regions?.type === 'jigsaw' ? [VARIANTS.jigsaw.name] : []),
+    ...(regions?.type === 'latin-square' ? [PUZZLE_VARIANTS['latin-square'].name] : []),
     ...(rules?.map(rule => RULE_NAMES[rule.type]) ?? []),
   ]
   return [...new Set(names)].filter(Boolean).join(' + ')
@@ -528,7 +536,8 @@ export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle'>): strin
 
 /** Explain every active rule, including the direction and negative dot clues. */
 export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
-  const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
+  const layout = puzzle.regions?.type === 'jigsaw' ? 'jigsaw' : puzzle.regions?.type === 'latin-square' ? 'latin-square' : 'classic'
+  const descriptions: string[] = [PUZZLE_VARIANTS[layout].rule]
   const disjoint = disjointGroupRuleIndices(puzzle.rules ?? [])
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     switch (rule.type) {
