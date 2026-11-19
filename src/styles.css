@@ -3470,3 +3470,22 @@ a.game-row { text-decoration: none; color: inherit; }
     .puzzles-difficulty-page .new-puzzle-step > :not(.new-puzzle-variant-summary, .difficulty-selector) { grid-column: 1 / -1; }
   }
 }
+
+/* Outside clues have their own cell-sized gutters. Grid and link coordinates stay local. */
+.board-frame.has-outside-clues {
+  grid-template-columns: var(--board-guide-width, 20px) minmax(0, var(--outside-left-track)) minmax(0, 9fr) minmax(0, var(--outside-right-track));
+  grid-template-rows: var(--board-guide-height, 19px) auto auto auto;
+  grid-template-areas: ". . columns ." ". . top ." "rows left board right" ". . bottom .";
+}
+.outside-clues { box-sizing: border-box; pointer-events: none; color: var(--board-ink); }
+.outside-clues svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.outside-clues text { font-family: inherit; font-size: .36px; font-weight: 720; fill: currentColor; text-anchor: middle; dominant-baseline: central; }
+.outside-clues-top, .outside-clues-bottom { padding-inline: 2px; }
+.outside-clues-left, .outside-clues-right { padding-block: 2px; }
+.outside-clues-top { grid-area: top; aspect-ratio: 9 / var(--outside-top); }
+.outside-clues-right { grid-area: right; }
+.outside-clues-bottom { grid-area: bottom; aspect-ratio: 9 / var(--outside-bottom); }
+.outside-clues-left { grid-area: left; }
+.board-frame[data-overlay="true"] > .outside-clues { opacity: 0; }
+.variant-sandwich-preview { display: grid; text-align: center; font-size: 9px; line-height: 1.5; color: var(--board-ink); }
+.variant-sandwich-preview > :first-child { font-weight: 750; }

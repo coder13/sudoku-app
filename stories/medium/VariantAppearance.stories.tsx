@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
 import betweenNewman from '../../tests/fixtures/between-newman.json'
 import regionSumNewman from '../../tests/fixtures/region-sum-newman.json'
+import sandwichMurphy from '../../tests/fixtures/sandwich-murphy.json'
 import cloneMurphy from '../../tests/fixtures/clone-murphy.json'
 import { Board } from '../../src/components/Board'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
@@ -102,4 +103,20 @@ export const CloneOverlappingCopies: Story = {
     { from: { cell: 0, digit: 1 }, to: { cell: 40, digit: 9 }, color: 'var(--board-selected-border)' },
   ] } },
   parameters: { gridWidth: 290, docs: { description: { story: 'Overlapping Clone sets link R1C1, R5C5 and R9C9 under one letter. Another letter matches three cells. Cages and thermometers retain their own meaning. Candidate links follow the space reserved for letters and cage totals.' } } },
+}
+
+export const Sandwich: Story = {
+  args: candidateGrid(sandwichMurphy.puzzle as VariantPuzzle, 'Sandwich Sudoku grid'),
+  parameters: { docs: { description: { story: 'American Food by Bill Murphy. Outside totals sum the digits strictly between 1 and 9. The gutters remain visible when coordinate guides are hidden and preserve every candidate and link position.' } } },
+}
+export const SandwichCompact: Story = { ...Sandwich, parameters: { ...Sandwich.parameters, gridWidth: 290 } }
+export const SandwichAllEdges: Story = {
+  args: candidateGrid({ version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'sandwich', direction: 'south', cells: [0,9,18,27,36,45,54,63,72], sum: 0 },
+    { type: 'sandwich', direction: 'north', cells: [80,71,62,53,44,35,26,17,8], sum: 35 },
+    { type: 'sandwich', direction: 'east', cells: [0,1,2,3,4,5,6,7,8], sum: 0 },
+    { type: 'sandwich', direction: 'west', cells: [80,79,78,77,76,75,74,73,72], sum: 35 },
+    { type: 'sandwich', direction: 'east', cells: [0,1,2,3,4,5,6,7,8], sum: 0 },
+  ] }, 'Outside clues on all four edges with repeated zero totals'),
+  parameters: { gridWidth: 290 },
 }

@@ -1,0 +1,145 @@
+{
+  "title": "American Food",
+  "author": "Bill Murphy",
+  "published": "2025-10-21",
+  "source": "https://www.gmpuzzles.com/blog/2025/10/sandwich-sudoku-by-bill-murphy/",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2025/251021-SandwichSudoku-AmericanFood.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/251021-SandwichSudoku-AmericanFood-soln.pdf",
+  "pdfSha256": "36004ee7e1eb10d4156276ca9f9c3437cf14947b6a1d18d74168995214655bd7",
+  "solutionPdfSha256": "4f7fc75949dfb18f6d019a9aa45d9e8d2cf63fe56b6eaad3f812dda48ca8900f",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000090501030000000000030105090000000000010409070000000000070902010000000000",
+    "rules": [
+      {
+        "type": "sandwich",
+        "cells": [
+          1,
+          10,
+          19,
+          28,
+          37,
+          46,
+          55,
+          64,
+          73
+        ],
+        "direction": "south",
+        "sum": 10
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          3,
+          12,
+          21,
+          30,
+          39,
+          48,
+          57,
+          66,
+          75
+        ],
+        "direction": "south",
+        "sum": 13
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          5,
+          14,
+          23,
+          32,
+          41,
+          50,
+          59,
+          68,
+          77
+        ],
+        "direction": "south",
+        "sum": 19
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          7,
+          16,
+          25,
+          34,
+          43,
+          52,
+          61,
+          70,
+          79
+        ],
+        "direction": "south",
+        "sum": 19
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "direction": "east",
+        "sum": 11
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        "direction": "east",
+        "sum": 20
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "direction": "east",
+        "sum": 9
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "direction": "east",
+        "sum": 16
+      }
+    ]
+  },
+  "solution": "581347269694521738723896451436175892957268143812439576269714385375982614148653927"
+}

@@ -11,6 +11,7 @@ export type VariantSeed = {
   layout?: string
   lines?: number[][]
   cloneGroups?: number[][][]
+  outside?: { cells: number[]; direction: string; sum: number }[]
   regions?: string
 }
 
@@ -56,6 +57,13 @@ export function variantGenerationRequest(
     case 'thermometer': case 'between': case 'region-sum':
       for (const cells of recipe.lines!) rules.push({ type: id, cells })
       break
+    case 'sandwich':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (direction !== 'north' && direction !== 'east' && direction !== 'south' && direction !== 'west') throw new Error('Invalid outside-clue recipe direction.')
+        rules.push({ type: 'sandwich', ...clue, direction })
+      }
+      break
     case 'clone':
       for (const groups of recipe.cloneGroups!) rules.push({ type: 'clone', groups })
       break
@@ -97,6 +105,10 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'parity': case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
         case 'quadruple': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
+        case 'sandwich': {
+          const cells = rule.cells.map(cell), step = cells[1] - cells[0]
+          return { ...rule, cells, direction: step === 1 ? 'east' : step === -1 ? 'west' : step === 9 ? 'south' : 'north' }
+        }
         case 'clone': return { ...rule, groups: rule.groups.map(group => group.map(cell)) }
         case 'inequality': return { ...rule, less: cell(rule.less), greater: cell(rule.greater) }
         case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }

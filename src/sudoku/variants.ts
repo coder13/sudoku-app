@@ -3,6 +3,7 @@ import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './eng
 import { lineGroupMask } from './line-groups.ts'
 import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
+import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
@@ -38,6 +39,10 @@ export const VARIANTS = {
   'region-sum': {
     name: 'Region Sum Lines',
     rule: 'Each blue line has parts with the same total. Region borders divide the line unless its listed groups say otherwise. Different lines can have different totals.',
+  },
+  sandwich: {
+    name: 'Sandwich',
+    rule: 'An outside clue gives the sum of the digits strictly between 1 and 9 in its row or column. Do not include 1 or 9 in the total. A zero means 1 and 9 are next to each other. Unmarked rows and columns have no Sandwich total.',
   },
   clone: {
     name: 'Clone',
@@ -380,6 +385,8 @@ function validJigsawRegions(regions: unknown): boolean {
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
   switch (rule.type) {
+    case 'sandwich': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
+      Number.isInteger(rule.sum) && rule.sum >= 0 && rule.sum <= 35 && validOutsideRay(rule.cells, rule.direction)
     case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
       Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
     case 'inequality': return validCells([rule.less, rule.greater], 2)
@@ -464,6 +471,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   'region-sum': VARIANTS['region-sum'].name,
   entropic: PUZZLE_VARIANTS.entropic.name,
   modular: PUZZLE_VARIANTS.modular.name,
+  sandwich: VARIANTS.sandwich.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
   renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
@@ -503,6 +511,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const disjoint = disjointGroupRuleIndices(puzzle.rules ?? [])
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     switch (rule.type) {
+      case 'sandwich':
+        descriptions.push(VARIANTS.sandwich.rule, outsideClueLabel(rule))
+        break
       case 'clone':
         descriptions.push(VARIANTS.clone.rule)
         for (const set of cloneLayout(puzzle.rules).sets) descriptions.push(`Clone ${set.label}: ${set.cells

@@ -1,0 +1,478 @@
+{
+  "title": "Thermo Sandwich",
+  "author": "CaroBaro",
+  "source": "https://sudoku.coach/en/s/9VLq",
+  "published": "2025-09-18 06:12:55",
+  "originalCode": "SCv7_32_f2eabkubdq1j0405q1vpjt9c33uc1c7d4tq5jca0o4ipdg24s2j0vh5vqt0qkaahha0es46sgd3neo40l8pubcvpqa8aa24ln5lfnl6qrpqobcdegvm6a02j893130nrnjs19e5jtqdbdkaeeu0d1qtaq4vsj4tetfdha4aihj290e4ip08ishan9j13u7e627jigku8abi12si23qnkd9a0558ica0lp9q3bqm7kka67d8ui8c0mp3svl88sgh0iulq292294k1t34vrsd75jmo5agaijgaenr8abevpnkvolsnuvno9nkkqcddl2p7oqbfk0pinuemmkdvv7ti85sjdn919t01pg11duth10sdl3v5fto15c6qhvalotti97bvll9trbbbdgcnf8n9pm017pbnsh7ftluaj4strv555auvcvfvum7pv06pomcf6s",
+  "decoded": {
+    "gridSize": 9,
+    "givenConstraints": [
+      {
+        "id": 10,
+        "type": "thermometer",
+        "segments": [
+          {
+            "cells": [
+              11,
+              12,
+              13,
+              14,
+              15
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              38,
+              39,
+              40,
+              41,
+              42
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              65,
+              66,
+              67,
+              68,
+              69
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              10,
+              19,
+              28
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              16,
+              25,
+              34
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              64,
+              55,
+              46
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              70,
+              61,
+              52
+            ],
+            "parameters": {}
+          }
+        ],
+        "settings": {}
+      },
+      {
+        "id": 11,
+        "type": "sandwich",
+        "segments": [
+          {
+            "cells": [],
+            "parameters": {
+              "side": "top",
+              "index": 0,
+              "value": 16
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "top",
+              "index": 1,
+              "value": 6
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "top",
+              "index": 3,
+              "value": 5
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "top",
+              "index": 5,
+              "value": 0
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "top",
+              "index": 6,
+              "value": 0
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "top",
+              "index": 7,
+              "value": 8
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "top",
+              "index": 8,
+              "value": 17
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "left",
+              "index": 0,
+              "value": 0
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "left",
+              "index": 3,
+              "value": 13
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "left",
+              "index": 5,
+              "value": 3
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "left",
+              "index": 6,
+              "value": 0
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "left",
+              "index": 7,
+              "value": 5
+            }
+          },
+          {
+            "cells": [],
+            "parameters": {
+              "side": "left",
+              "index": 8,
+              "value": 0
+            }
+          }
+        ],
+        "settings": {}
+      }
+    ]
+  },
+  "customConstraints": false,
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "rules": [
+      {
+        "type": "thermometer",
+        "cells": [
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      {
+        "type": "thermometer",
+        "cells": [
+          38,
+          39,
+          40,
+          41,
+          42
+        ]
+      },
+      {
+        "type": "thermometer",
+        "cells": [
+          65,
+          66,
+          67,
+          68,
+          69
+        ]
+      },
+      {
+        "type": "thermometer",
+        "cells": [
+          10,
+          19,
+          28
+        ]
+      },
+      {
+        "type": "thermometer",
+        "cells": [
+          16,
+          25,
+          34
+        ]
+      },
+      {
+        "type": "thermometer",
+        "cells": [
+          64,
+          55,
+          46
+        ]
+      },
+      {
+        "type": "thermometer",
+        "cells": [
+          70,
+          61,
+          52
+        ]
+      },
+      {
+        "type": "sandwich",
+        "direction": "south",
+        "cells": [
+          0,
+          9,
+          18,
+          27,
+          36,
+          45,
+          54,
+          63,
+          72
+        ],
+        "sum": 16
+      },
+      {
+        "type": "sandwich",
+        "direction": "south",
+        "cells": [
+          1,
+          10,
+          19,
+          28,
+          37,
+          46,
+          55,
+          64,
+          73
+        ],
+        "sum": 6
+      },
+      {
+        "type": "sandwich",
+        "direction": "south",
+        "cells": [
+          3,
+          12,
+          21,
+          30,
+          39,
+          48,
+          57,
+          66,
+          75
+        ],
+        "sum": 5
+      },
+      {
+        "type": "sandwich",
+        "direction": "south",
+        "cells": [
+          5,
+          14,
+          23,
+          32,
+          41,
+          50,
+          59,
+          68,
+          77
+        ],
+        "sum": 0
+      },
+      {
+        "type": "sandwich",
+        "direction": "south",
+        "cells": [
+          6,
+          15,
+          24,
+          33,
+          42,
+          51,
+          60,
+          69,
+          78
+        ],
+        "sum": 0
+      },
+      {
+        "type": "sandwich",
+        "direction": "south",
+        "cells": [
+          7,
+          16,
+          25,
+          34,
+          43,
+          52,
+          61,
+          70,
+          79
+        ],
+        "sum": 8
+      },
+      {
+        "type": "sandwich",
+        "direction": "south",
+        "cells": [
+          8,
+          17,
+          26,
+          35,
+          44,
+          53,
+          62,
+          71,
+          80
+        ],
+        "sum": 17
+      },
+      {
+        "type": "sandwich",
+        "direction": "east",
+        "cells": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "sum": 0
+      },
+      {
+        "type": "sandwich",
+        "direction": "east",
+        "cells": [
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        "sum": 13
+      },
+      {
+        "type": "sandwich",
+        "direction": "east",
+        "cells": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "sum": 3
+      },
+      {
+        "type": "sandwich",
+        "direction": "east",
+        "cells": [
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62
+        ],
+        "sum": 0
+      },
+      {
+        "type": "sandwich",
+        "direction": "east",
+        "cells": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "sum": 5
+      },
+      {
+        "type": "sandwich",
+        "direction": "east",
+        "cells": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80
+        ],
+        "sum": 0
+      }
+    ]
+  },
+  "solution": "789162543314578962526934178142793685893456721675821394268319457951247836437685219",
+  "publishedMetadata": {
+    "host_name": "CaroBaro",
+    "published_date_utc": "2025-09-18 06:12:55",
+    "custom_constraints": false,
+    "name": "Thermo Sandwich",
+    "author": null,
+    "description": ""
+  }
+}
