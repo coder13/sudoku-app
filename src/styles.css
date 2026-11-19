@@ -2067,6 +2067,7 @@ svg { flex-shrink: 0; }
 .game-row-options { width: 44px; min-height: 44px; }
 .mini-grid { flex: 0 0 33px; height: 33px; display: grid; grid: repeat(9, 1fr) / repeat(9, 1fr); padding: 3px; gap: 1px; border: 1px solid var(--border); background: var(--surface-raised); border-radius: 5px; }
 .mini-grid[data-size="4"] { grid: repeat(4, 1fr) / repeat(4, 1fr); }
+.mini-grid[data-size="6"] { grid: repeat(6, 1fr) / repeat(6, 1fr); }
 .mini-grid i { background: var(--surface-hover); border-radius: 1px; }
 .mini-grid i[data-filled="true"] { background: var(--purple); }
 .game-row-copy { min-width: 0; flex: 1; display: grid; gap: var(--space-2); }
