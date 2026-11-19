@@ -8,6 +8,7 @@ import { calcudokuCatalog } from './src/calcudoku/catalog.ts'
 import { futoshikiCatalog } from './src/futoshiki/catalog.ts'
 import { hidatoCatalog } from './src/hidato/catalog.ts'
 import { kakuroCatalog } from './src/kakuro/catalog.ts'
+import { rulloCatalog } from './src/rullo/catalog.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
 import { syncPageTitles } from './src/sudoku/sync-pages.ts'
 import { PRODUCTION_SYNC_ORIGIN } from './src/sudoku/pairing-link.ts'
@@ -78,6 +79,8 @@ function prerenderPages() {
     '/puzzles/kakuro',
     '/puzzles/kakuro/generated',
     ...kakuroCatalog.map(({ id }) => `/puzzles/kakuro/${id}`),
+    '/puzzles/rullo',
+    ...rulloCatalog.map(({ id }) => `/puzzles/rullo/${id}`),
     '/puzzles/solved',
     '/puzzles/collections',
     '/puzzles/statistics',

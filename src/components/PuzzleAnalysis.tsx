@@ -278,11 +278,12 @@ type PlacementAnalysisProps = {
   techniques: readonly string[]
   counts: ReadonlyMap<string, number>
   solved: boolean
+  unit?: string
   problem?: string
   onSelectTechnique: (technique: string) => void
 }
 
-export function PlacementAnalysis({ title, techniques, counts, solved, problem, onSelectTechnique }: PlacementAnalysisProps) {
+export function PlacementAnalysis({ title, techniques, counts, solved, unit = 'Placements', problem, onSelectTechnique }: PlacementAnalysisProps) {
   const [hideZero, setHideZero] = useState(true)
   const results = Object.fromEntries(techniques.map(technique => [technique, { count: counts.get(technique) ?? 0 }]))
   const groups = filterAnalysisGroups([{ title, techniques: [...techniques] }], results, hideZero, solved)
@@ -290,11 +291,11 @@ export function PlacementAnalysis({ title, techniques, counts, solved, problem, 
     {problem ? <p className="analysis-error" role="alert">{problem}</p> : <>
       <label className="analysis-zero-filter">
         <input type="checkbox" checked={hideZero} onChange={event => setHideZero(event.target.checked)} />
-        Hide techniques with 0 placements
+        Hide techniques with 0 {unit.toLowerCase()}
       </label>
-      {groups.length ? <AnalysisTable groups={groups} results={results} solved={solved} unit="Placements"
+      {groups.length ? <AnalysisTable groups={groups} results={results} solved={solved} unit={unit}
         label={technique => technique} onSelectTechnique={onSelectTechnique} />
-        : <p className="analysis-empty" role="status">No techniques with placements.</p>}
+        : <p className="analysis-empty" role="status">No techniques with {unit.toLowerCase()}.</p>}
     </>}
   </div>
 }

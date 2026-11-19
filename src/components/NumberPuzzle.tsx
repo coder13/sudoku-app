@@ -1,5 +1,5 @@
 import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
-import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Sigma, Undo2 } from 'lucide-react'
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
@@ -22,11 +22,12 @@ import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
 import './number-puzzle.css'
 
-export type NumberGame = GeneratedNumberGame | 'futoshiki' | 'hidato'
+export type NumberGame = GeneratedNumberGame | 'futoshiki' | 'hidato' | 'rullo'
 
 type BoardCell = {
   label?: string
   given?: number
+  printed?: number
   decoration?: ReactNode
   edges?: string
   block?: boolean
@@ -43,6 +44,7 @@ export type NumberBoard = {
   height: number
   maxValue: number
   cells: readonly BoardCell[]
+  cellChoices?: readonly { label: string; key: string; state: string }[]
   check: (values: readonly number[]) => { complete: boolean; marked: number[] }
   hints: (values: readonly number[], limit?: number) => readonly Hint[]
   solve: () => readonly number[] | null
@@ -155,7 +157,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   const next = group.find(entry => !started.has(entry.id) && !solved.has(entry.id))
     ?? group.find(entry => started.has(entry.id)) ?? group[0]
   const busy = generation.pending !== null
-  const GameIcon = { kakuro: Hash, calcudoku: Calculator, futoshiki: MoveHorizontal, hidato: PathIcon }[game]
+  const GameIcon = { kakuro: Hash, calcudoku: Calculator, futoshiki: MoveHorizontal, hidato: PathIcon, rullo: Sigma }[game]
 
   function start() {
     if (generatedEntry) generation.generate(difficulty)
@@ -219,7 +221,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const generation = useNumberPuzzleGeneration(generatedEntry ? game : null, true)
   const board = useMemo(() => config.board(entry), [config, entry])
   const { editable, key, load } = useMemo(() => boardPosition(game, entry.id, board), [game, entry.id, board])
-  const { width, height, maxValue } = board
+  const { width, height, maxValue, cellChoices } = board
   const digits = useMemo(() => Array.from({ length: maxValue }, (_, i) => i + 1), [maxValue])
   const [progress, setProgress] = useState<NumberProgress>(() => ({
     position: emptyNumberPosition(board.cells.length), past: [], future: [],
@@ -356,6 +358,11 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
         row += dr
         col += dc
       }
+    } else if (cellChoices) {
+      const choice = cellChoices.findIndex(choice => choice.key === event.key.toLowerCase())
+      if (choice === -1 && event.key !== 'Backspace' && event.key !== 'Delete') return
+      event.preventDefault()
+      enter(choice + 1)
     } else if (/^[1-9]$/.test(event.key) || event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault()
       if (maxValue > 9 && /^[1-9]$/.test(event.key) && !locked && editable[selection]) {
@@ -380,7 +387,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     const choices = board.hints(position.values, 1)
     setHint(choices.length ? { choices, index: 0, depth: 0 } : null)
     setShowCheck(!choices.length && result.marked.length > 0)
-    setStatus(choices.length ? '' : result.marked.length ? conflictMessage : 'No logical placement found for these entries.')
+    setStatus(choices.length ? '' : result.marked.length ? conflictMessage
+      : cellChoices ? 'No choice follows from the current clues.' : 'No logical placement found for these entries.')
   }
 
   function closeHint() {
@@ -439,7 +447,9 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   function placement(hint: Hint) {
-    return `Place ${hint.value} in ${cellName(hint.cell)}`
+    const choice = cellChoices?.[hint.value - 1]
+    return choice ? `${choice.label} ${board.cells[hint.cell].printed} in ${cellName(hint.cell)}`
+      : `Place ${hint.value} in ${cellName(hint.cell)}`
   }
 
   function explanation(hint: Hint) {
@@ -452,7 +462,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     return (
       <div className="number-puzzle-grid" data-game={game} role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
         style={{ '--number-puzzle-columns': width } as CSSProperties} onKeyDown={preview ? undefined : onGridKey}>
-        {board.cells.map(({ label, block, decoration, edges, given, endpoint }, index) => {
+        {board.cells.map(({ label, block, decoration, edges, given, endpoint, printed }, index) => {
           if (block) {
             return <div key={index} className="number-puzzle-block" data-clue={Boolean(label)}
               data-conflict={!preview && conflictCells.has(index)} data-hint={context.has(index)} role={label ? 'img' : undefined}
@@ -463,17 +473,20 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
           const value = given || (preview?.values ?? position.values)[index]
           const marks = preview ? [] : digits.filter(digit => position.notes[index] & (1 << (digit - 1)))
-          const description = given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
+          const choice = cellChoices?.[value - 1]
+          const description = printed !== undefined ? `${printed}, ${choice?.state ?? 'undecided'}`
+            : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
           return <button key={index} type="button" className="number-puzzle-cell"
             ref={preview ? undefined : button => { if (button) cellButtons.current.set(index, button); else cellButtons.current.delete(index) }}
             tabIndex={selection === index ? 0 : -1} aria-pressed={preview ? undefined : selection === index}
             disabled={Boolean(preview)} data-entry={Boolean(value && !given)}
+            data-choice={cellChoices && value}
             data-conflict={!preview && conflictCells.has(index)} data-hint={shownHint?.cell === index} data-context={context.has(index)}
             data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
             aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
             onFocus={() => selectCell(index)} onClick={() => selectCell(index)}>
             {decoration}
-            {value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
+            {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
               : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
                 : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
                   <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
@@ -487,9 +500,9 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const trace = useMemo<NumberSolutionTrace | null>(() => solution && ({
     status: solution.complete ? 'solved' : 'stalled',
     steps: solution.steps.map(step => step ? { title: step.technique, text: `${placement(step)}.` } : {
-      title: 'Search', text: 'Find the remaining placements by checking possible values.',
+      title: 'Search', text: cellChoices ? 'Check the remaining possible choices.' : 'Find the remaining placements by checking possible values.',
     }),
-  }), [solution, width])
+  }), [solution, width, board])
   const solutionStep = solution?.steps[solutionIndex]
   const solutionCopy = trace && (solutionStep ? { title: placement(solutionStep), text: '' }
     : solutionIndex === trace.steps.length ? solutionEndSummary(trace.status)
@@ -506,6 +519,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   for (const move of found) counts.set(move.technique, (counts.get(move.technique) ?? 0) + 1)
   const analysisProps = {
     title: name, techniques: config.techniques, counts, solved: result.complete,
+    unit: cellChoices ? 'Choices' : undefined,
     problem: result.marked.length ? conflictMessage : undefined,
     onSelectTechnique: (technique: string) => {
       const choices = found.filter(move => move.technique === technique)
@@ -516,14 +530,18 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     },
   }
 
-  const hintStage = ['Show digits', 'Show location', 'Show explanation', 'Apply hint'][depth]
+  const hintStage = [cellChoices ? 'Show choice' : 'Show digits', 'Show location', 'Show explanation', 'Apply hint'][depth]
+  const hintChoice = hint && cellChoices?.[hint.value - 1]
   const hintPanel = !mobile && previewing && showSolutionHint && solutionCopy ? <PlayHint mobile={false}>
     <HintCard hint={solutionCopy} onClose={() => setShowSolutionHint(false)}
       detail={solutionStep && explanation(solutionStep)} />
   </PlayHint> : !previewing && hint && hintSelection ? <PlayHint mobile={mobile}>
     <HintCard hint={{
       title: depth >= 2 ? placement(hint) : hint.technique,
-      text: depth === 0 ? 'Use this technique to find a placement.'
+      text: hintChoice ? depth === 0 ? 'Use this technique to make a choice.'
+        : depth === 1 ? `Look for a number to ${hintChoice.label.toLowerCase()}.`
+          : depth === 3 ? 'The targets require this choice.' : ''
+        : depth === 0 ? 'Use this technique to find a placement.'
         : depth === 1 ? `Look for a place for ${hint.value}.`
           : depth === 3 ? `These rules leave only ${hint.value} for ${cellName(hint.cell)}.` : '',
     }} onClose={closeHint}
@@ -558,7 +576,9 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     setShowCheck(true)
     setStatus('')
     const conflict = result.marked.length > 0
-    const text = hasClueCells
+    const text = cellChoices
+      ? conflict ? 'The highlighted targets cannot fit these choices.' : 'Each target fits the current choices.'
+      : hasClueCells
       ? conflict ? 'The highlighted clues cannot fit these entries.' : 'Each clue fits the current entries.'
       : conflict ? 'The highlighted entries conflict with the rules.' : 'The entries fit the rules checked so far.'
     setCheckResult({ title: 'Puzzle check', text, tone: conflict ? 'error' : 'neutral' })
@@ -589,7 +609,14 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           </div>
         </div>
         <div className="keypad-stack">
-          {maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
+          {cellChoices ? <PuzzleKeypad label="Cell choices" variant="choices">
+            {cellChoices.map(({ label, key }, index) => {
+              const pressed = position.values[selection] === index + 1
+              return <button key={key} type="button" className={pressed ? 'key selected-key' : 'key'}
+                aria-keyshortcuts={key.toUpperCase()} aria-pressed={pressed}
+                disabled={locked || !editable[selection]} onClick={() => enter(index + 1)}>{label}</button>
+            })}
+          </PuzzleKeypad> : maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
             event.preventDefault()
             const value = Number(numberInput)
             if (!value || value > maxValue) return
@@ -610,9 +637,10 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           </PuzzleKeypad>}
         </div>
         <div className="side-actions right-actions" role="group" aria-label="Input modes">
-          <IconButton aria-label="Pencil mode" title="Pencil mode" aria-pressed={notes} disabled={locked}
-            onClick={() => setNotes(current => !current)}><Pencil size={18} /></IconButton>
-          <IconButton aria-label="Erase cell" title="Erase cell" disabled={locked || !editable[selection]}
+          {!cellChoices && <IconButton aria-label="Pencil mode" title="Pencil mode" aria-pressed={notes} disabled={locked}
+            onClick={() => setNotes(current => !current)}><Pencil size={18} /></IconButton>}
+          <IconButton aria-label={cellChoices ? 'Clear choice' : 'Erase cell'} title={cellChoices ? 'Clear choice' : 'Erase cell'}
+            disabled={locked || !editable[selection]}
             onClick={() => enter(0)}><Delete size={18} /></IconButton>
         </div>
       </div>
