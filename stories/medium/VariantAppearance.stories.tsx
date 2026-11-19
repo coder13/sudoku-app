@@ -60,6 +60,15 @@ export const Jigsaw: Story = {
   } } },
 }
 
+export const LockoutLines: Story = {
+  args: candidateGrid({
+    version: 1,
+    givens: '000000902' + '0'.repeat(72),
+    rules: [{ type: 'lockout', cells: [6, 7, 8] }, { type: 'lockout', cells: [9, 30, 51] }],
+  }, 'Lockout Lines Sudoku grid'),
+  parameters: { gridWidth: 290 },
+}
+
 export const BetweenLines: Story = {
   args: candidateGrid(betweenNewman.puzzle as VariantPuzzle, 'Between Lines Sudoku grid'),
   parameters: { docs: { description: { story: 'Between, the Lines by Philip Newman. Two outlined circles bound each independent path. Every interior digit is strictly between the endpoint digits; interior digits can repeat when the other rules allow it.' } } },

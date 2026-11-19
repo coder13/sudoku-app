@@ -98,6 +98,8 @@ catalog! {
     NonConsecutiveBivalue: "non-consecutive-bivalue", 22, Easy;
     /// Bound the interior of a line using the two endpoint digits.
     Between: "between", 23, Easy;
+    /// Find possible Lockout endpoints and digits outside their range.
+    Lockout: "lockout", 21, Easy;
     /// A house confines a digit to alternatives spanning three cells with a target.
     NonConsecutiveLockedTriple: "non-consecutive-locked-candidates-3", 24, Easy;
     /// Candidates spanning three consecutive digits exclude their middle digit nearby.
@@ -1007,7 +1009,7 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
-            Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+            Arrow | Between | Lockout | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines
                     .iter()

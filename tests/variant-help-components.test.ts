@@ -44,6 +44,17 @@ before(async () => {
 })
 after(async () => { await server?.close() })
 
+test('the board draws Lockout diamonds and labels the endpoint and interior rules', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Lockout Lines Sudoku grid',
+    variantPuzzle: { version: 1, givens, rules: [{ type: 'lockout', cells: [0, 40, 80] }] },
+  }))
+  assert.match(html, /class="variant-lockout-endpoints"><path[^>]+><\/path><path/)
+  assert.match(html, /Lockout diamond, difference of at least 4 with row 9, column 9/)
+  assert.match(html, /Lockout interior, digit below both or above both diamonds at row 1, column 1 and row 9, column 9/)
+})
+
 test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
   const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
     new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))

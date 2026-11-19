@@ -180,17 +180,21 @@ function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly 
   </>
 }
 
-function BetweenClue({ cells, endpoints = false }: { cells: readonly number[]; endpoints?: boolean }) {
+function EndpointLineClue({ cells, endpoints = false, lockout = false }: { cells: readonly number[]; endpoints?: boolean; lockout?: boolean }) {
   const separated = lineSkipsCells(cells)
-  return <g className={endpoints ? 'variant-between-endpoints' : 'variant-between'}>
+  const type = lockout ? 'lockout' : 'between'
+  return <g className={`variant-${type}${endpoints ? '-endpoints' : ''}`}>
     {!endpoints && (separated ? <>
       {cells.slice(1).map((cell, i) => <line key={i} className={
         Math.max(Math.abs(x(cell) - x(cells[i])), Math.abs(y(cell) - y(cells[i]))) > 1 ? 'variant-between-jump' : undefined}
         x1={center(cells[i])[0]} y1={center(cells[i])[1]} x2={center(cell)[0]} y2={center(cell)[1]} />)}
       {cells.slice(1, -1).map(cell => <circle key={cell} className="variant-between-node" cx={center(cell)[0]} cy={center(cell)[1]} r=".11" />)}
     </> : <polyline points={points(cells)} />)}
-    {endpoints && [cells[0], cells[cells.length - 1]].map(cell =>
-      <circle key={cell} cx={center(cell)[0]} cy={center(cell)[1]} r=".32" />)}
+    {endpoints && [cells[0], cells[cells.length - 1]].map(cell => {
+      const [cx, cy] = center(cell)
+      return lockout ? <path key={cell} d={`M${cx},${cy - .36}l.36,.36l-.36,.36l-.36,-.36Z`} />
+        : <circle key={cell} cx={cx} cy={cy} r=".32" />
+    })}
   </g>
 }
 
@@ -293,13 +297,13 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const regionSumColor = (index: number) => ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0'][regionSumIndices.get(index)! % 4]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
+    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' || rule.type === 'lockout' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
-    { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
+    { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'endpoints' | undefined, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
     ...(coloredLanes.has(index) ? [{ rule, index, overlay: 'colored-line' as const, layer: .4 }] : []),
     ...(rule.type === 'whispers' && rule.minDifference !== 5 ? [{ rule, index, overlay: 'whispers-label' as const, layer: .75 }] : []),
-    ...(rule.type === 'between' ? [{ rule, index, overlay: 'between-endpoints' as const, layer: .65 }] : []),
+    ...(rule.type === 'between' || rule.type === 'lockout' ? [{ rule, index, overlay: 'endpoints' as const, layer: .65 }] : []),
   ]).sort((a, b) => a.layer - b.layer)
   const dots = new Map<number, number>()
   const sums = new Map<number, Map<number, SumKind>>()
@@ -333,12 +337,12 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
       </marker>
     </defs>}
     {drawingOrder.map(({ rule, index, overlay }) => {
-      if (overlay === 'between-endpoints' && rule.type === 'between') return <BetweenClue key={`${index}-endpoints`} cells={rule.cells} endpoints />
+      if (overlay === 'endpoints' && (rule.type === 'between' || rule.type === 'lockout')) return <EndpointLineClue key={`${index}-endpoints`} cells={rule.cells} endpoints lockout={rule.type === 'lockout'} />
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
       if (overlay === 'colored-line') {
-        const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]] : undefined
-        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(lineSkipsCells)
-        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : rule.type === 'region-sum' ? regionSumColor(index) : renbanColor(index)
+        const endpoints = rule.type === 'between' || rule.type === 'lockout' ? [rule.cells[0], rule.cells[rule.cells.length - 1]] : undefined
+        const dashed = (rule.type === 'between' || rule.type === 'lockout') && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(lineSkipsCells)
+        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : rule.type === 'lockout' ? 'var(--lockout-ink)' : rule.type === 'region-sum' ? regionSumColor(index) : renbanColor(index)
         return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
           {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} endpoints={endpoints} dashed={dashed} color={color} />)}
         </g>
@@ -397,8 +401,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           </g>
         case 'renban':
           return <RenbanClue key={index} {...rule} number={renbanIndices.get(index)! + 1} />
-        case 'between':
-          return <BetweenClue key={index} cells={rule.cells} />
+        case 'between': case 'lockout':
+          return <EndpointLineClue key={index} cells={rule.cells} lockout={rule.type === 'lockout'} />
         case 'region-sum':
           return <RegionSumClue key={index} rule={rule} color={regionSumColor(index)} number={regionSumIndices.get(index)! + 1} />
         case 'thermometer':
@@ -525,6 +529,13 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
         for (const cell of rule.cells) labels[cell].push(ends.includes(cell)
           ? `Between line ${number} endpoint circle, other endpoint at ${reference(ends.find(end => end !== cell)!)}`
           : `Between line ${number} interior, digit strictly between the circles at ${ends.map(reference).join(' and ')}`)
+        break
+      }
+      case 'lockout': {
+        const ends = [rule.cells[0], rule.cells.at(-1)!]
+        for (const cell of rule.cells) labels[cell].push(ends.includes(cell)
+          ? `Lockout diamond, difference of at least 4 with ${reference(ends.find(end => end !== cell)!)}`
+          : `Lockout interior, digit below both or above both diamonds at ${ends.map(reference).join(' and ')}`)
         break
       }
       case 'thermometer':

@@ -2,7 +2,7 @@ import { STARTER } from './formats.ts'
 import { CLASSIC_GRID, gridHouseCells, isGridText, sixDiagonalCells, sixDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
-import { betweenState } from './between.ts'
+import { endpointLineState } from './between.ts'
 import { littleKillerState } from './little-killer.ts'
 import { sandwichState } from './sandwich.ts'
 import { xSumState } from './x-sum.ts'
@@ -208,7 +208,7 @@ export function valuesOf(game: Game): string {
 }
 
 function placedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
-  const states = [globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values), sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values)]
+  const states = [globalEntropyState(puzzle, values), endpointLineState(puzzle, values), regionSumState(puzzle, values), sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values)]
     .filter(state => state !== undefined)
   const result = states[0]
   if (!result) return

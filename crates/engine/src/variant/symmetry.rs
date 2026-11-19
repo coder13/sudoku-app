@@ -254,6 +254,7 @@ impl SquareTransform {
             | Entropic { cells }
             | Modular { cells }
             | Whispers { cells, .. }
+            | Lockout { cells }
             | Between { cells } => self.path(cells),
             Sandwich {
                 cells, direction, ..

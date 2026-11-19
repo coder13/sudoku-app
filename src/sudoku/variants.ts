@@ -117,6 +117,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
   },
+  lockout: {
+    name: 'Lockout Lines',
+    rule: 'The digits in the two diamonds must differ by at least 4. Each digit inside the line must be smaller than both endpoints or larger than both.',
+  },
   xv: {
     name: 'XV',
     rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
@@ -280,7 +284,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
       (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
     if (rule.type === 'entropic' || rule.type === 'modular') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
-    if (rule.type === 'between' && rule.cells.includes(a) && rule.cells.includes(b)) {
+    if ((rule.type === 'between' || rule.type === 'lockout') && rule.cells.includes(a) && rule.cells.includes(b)) {
       const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
       return ends.includes(a) || ends.includes(b)
     }
@@ -425,6 +429,7 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
     case 'between': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 3)
+    case 'lockout': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 2)
     case 'region-sum': return Object.keys(rule).every(key => ['type', 'cells', 'groupByRegion', 'segments'].includes(key)) &&
       validCells(rule.cells, 2) && (rule.groupByRegion === undefined || typeof rule.groupByRegion === 'boolean') &&
       (rule.segments === undefined || Array.isArray(rule.segments) && rule.segments.length > 0 &&
@@ -508,6 +513,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   whispers: PUZZLE_VARIANTS.whispers.name,
   palindrome: PUZZLE_VARIANTS.palindrome.name,
   between: PUZZLE_VARIANTS.between.name,
+  lockout: PUZZLE_VARIANTS.lockout.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
   parity: PUZZLE_VARIANTS.parity.name,
   'anti-king': PUZZLE_VARIANTS['anti-king'].name,
@@ -562,6 +568,12 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         descriptions.push(PUZZLE_VARIANTS.between.rule)
         if (lineSkipsCells(rule.cells)) {
           descriptions.push('A dashed Between connector skips cells. Only the endpoint circles and cells with a small dot belong to that line.')
+        }
+        break
+      case 'lockout':
+        descriptions.push(PUZZLE_VARIANTS.lockout.rule)
+        if (lineSkipsCells(rule.cells)) {
+          descriptions.push('A dashed Lockout connector skips cells. Only the endpoint diamonds and cells with a small dot belong to that line.')
         }
         break
       case 'region-sum': {

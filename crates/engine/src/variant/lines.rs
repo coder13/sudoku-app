@@ -23,6 +23,7 @@ enum LineKind {
     Renban,
     ThreeGroups(groups::GroupLine),
     Between,
+    Lockout,
     Outside(OutsideClue),
 }
 
@@ -81,6 +82,12 @@ impl LineConstraint {
                     return Err(invalid);
                 }
                 (cells.clone(), LineKind::Between)
+            }
+            PuzzleRule::Lockout { cells } => {
+                if cells.len() < 2 {
+                    return Err(invalid);
+                }
+                (cells.clone(), LineKind::Lockout)
             }
             PuzzleRule::RegionSum {
                 cells,
@@ -193,7 +200,8 @@ impl LineConstraint {
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
             LineKind::Renban => renban_support::<9, 512>(domains, support),
             LineKind::ThreeGroups(line) => line.support(domains, support),
-            LineKind::Between => between_support(domains, support),
+            LineKind::Between => endpoint_support(domains, support, false),
+            LineKind::Lockout => endpoint_support(domains, support, true),
             LineKind::Outside(clue) => {
                 clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());
             }
@@ -292,13 +300,20 @@ pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
     }
 }
 
-fn between_support(domains: &[u16], support: &mut [u16]) {
+fn endpoint_support(domains: &[u16], support: &mut [u16], lockout: bool) {
     let last = domains.len() - 1;
     for left in digits(domains[0]) {
         for right in digits(domains[last]) {
             let lower = left.min(right);
             let upper = left.max(right);
-            let interior = (digit_bit(upper) - 1) & !((1 << lower) - 1);
+            let interior = if lockout {
+                if upper - lower < 4 {
+                    continue;
+                }
+                (digit_bit(lower) - 1) | (DIGITS & !((1 << upper) - 1))
+            } else {
+                (digit_bit(upper) - 1) & !((1 << lower) - 1)
+            };
             if domains[1..last]
                 .iter()
                 .any(|&domain| domain & interior == 0)

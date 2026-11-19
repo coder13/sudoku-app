@@ -3695,7 +3695,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   stroke-linejoin: round;
   opacity: .5;
 }
-.variant-between polyline, .variant-between line {
+.variant-between polyline, .variant-between line, .variant-lockout polyline, .variant-lockout line {
   fill: none;
   stroke: var(--board-ink);
   stroke-width: .075;
@@ -3703,8 +3703,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   stroke-linejoin: round;
   opacity: .4;
 }
-.variant-between .variant-between-jump { stroke-dasharray: .1 .08; }
+.variant-between .variant-between-jump, .variant-lockout .variant-between-jump { stroke-dasharray: .1 .08; }
 .variant-between-node { fill: var(--board-ink); opacity: .65; }
+.variant-clues { --lockout-ink: light-dark(#764eaa, #c2a2ee); }
+.variant-lockout polyline, .variant-lockout line { stroke: var(--lockout-ink); opacity: .8; }
+.variant-lockout .variant-between-node { fill: var(--lockout-ink); }
 .variant-region-sum polyline, .variant-region-sum line {
   fill: none;
   stroke: currentColor;
@@ -3715,11 +3718,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-region-sum .variant-region-sum-jump { stroke-dasharray: .1 .08; }
 .variant-region-sum-node { fill: currentColor; opacity: .8; }
-.variant-between-endpoints circle {
+.variant-between-endpoints circle, .variant-lockout-endpoints path {
   fill: var(--board-bg);
   stroke: var(--board-ink);
   stroke-width: .055;
 }
+.variant-lockout-endpoints path { stroke: var(--lockout-ink); }
 .variant-inequality polyline { fill: none; stroke-linejoin: miter; }
 .variant-inequality-halo { stroke: var(--board-bg); stroke-width: .14; }
 .variant-inequality-sign { stroke: var(--board-ink); stroke-width: .045; }
