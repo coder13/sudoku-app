@@ -21,8 +21,9 @@ async function engine(binary) {
   let id = 0
   return { request: async request => {
     const response = await handle({ id: ++id, request })
-    assert.ok('value' in response, JSON.stringify(response))
-    return response.value
+    if ('value' in response) return response.value
+    assert.equal(response.code, 'multiple', JSON.stringify(response))
+    return { engineError: response.code, message: response.error }
   }, memory: () => instance.exports.memory.buffer.byteLength }
 }
 const seed = await engine(binaries[0])
@@ -52,7 +53,7 @@ for (const technique of methods) {
   cases.push({ name: `classic-${technique}`, request: { type: 'deductions', values, eliminations: exercise.eliminations, techniqueOrder: [technique] }, positive: true })
   const [variantExercise] = await seed.request({ type: 'practice-examples', variant: true, technique })
   cases.push({ name: `variant-${technique}`, request: { type: 'variant', operation: 'hints', position: variantExercise.position, techniqueOrder: [technique], limit: 0xffff_ffff }, positive: true })
-  cases.push({ name: `empty-${technique}`, request: { type: 'deductions', values: '0'.repeat(81), techniqueOrder: [technique] }, expected: 0 })
+  cases.push({ name: `empty-${technique}`, request: { type: 'deductions', values: '0'.repeat(81), techniqueOrder: [technique] }, expectedError: 'multiple' })
 }
 for (const name of selected) assert.ok(cases.some(source => source.name === name), `Unknown case ${name}`)
 console.log(JSON.stringify({ host: `${process.platform} ${process.arch}`, node: process.version,
@@ -68,9 +69,10 @@ for (const source of cases.filter(source => !selected.length || selected.include
       if (expected === undefined) expected = actual
       else assert.deepEqual(actual, expected, `${source.name}: engine ${index}`)
       if (source.positive) assert.ok(actual.length > 0)
+      else if (source.expectedError) assert.equal(actual.engineError, source.expectedError)
       else assert.equal(actual.length, source.expected)
       if (round >= warmups) times[index].push(elapsed)
     }
   }
-  console.log(JSON.stringify({ name: source.name, proofs: expected.length, medianP95: times.map(summary), samples: times, memoryBytes: pair.map(engine => engine.memory()) }))
+  console.log(JSON.stringify({ name: source.name, proofs: Array.isArray(expected) ? expected.length : undefined, error: expected.engineError, medianP95: times.map(summary), samples: times, memoryBytes: pair.map(engine => engine.memory()) }))
 }

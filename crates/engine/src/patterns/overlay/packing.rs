@@ -9,15 +9,21 @@ pub(super) struct Family<'a> {
     pub(super) layouts: &'a [u128],
 }
 
-// Count accepted branches, not the rejected layouts scanned between them.
-// Exhausting this probe always resumes the original complete search.
-const WITNESS_CHOICES: u16 = 64;
+// Preserve quick witnesses in the original order before trying the alternate.
+// Its work limit counts every inspected layout, including rejected patterns.
+const ORIGINAL_CHOICES: u16 = 64;
+const ALTERNATE_CHECKS: u32 = 4096;
 
 pub(super) fn compatible_support(families: &[Family<'_>], support: [u128; 9]) -> [u128; 9] {
-    support_with_probe(families, support, WITNESS_CHOICES)
+    support_with_probes(families, support, ORIGINAL_CHOICES, ALTERNATE_CHECKS)
 }
 
-fn support_with_probe(families: &[Family<'_>], mut support: [u128; 9], choices: u16) -> [u128; 9] {
+fn support_with_probes(
+    families: &[Family<'_>],
+    mut support: [u128; 9],
+    choices: u16,
+    checks: u32,
+) -> [u128; 9] {
     let mut witness = [0; 9];
     for (index, family) in families.iter().enumerate() {
         let followers: Vec<_> = families[..index]
@@ -34,27 +40,31 @@ fn support_with_probe(families: &[Family<'_>], mut support: [u128; 9], choices: 
             // Deferring this digit's full template can find a witness before
             // committing its other eight cells to an unsuitable pattern.
             let mut remaining = choices;
-            let found = probe_followers(
-                &followers,
-                target,
-                family,
-                target,
-                &mut witness,
-                &mut remaining,
-            )
-            .unwrap_or_else(|| {
-                let layout = family.layouts.iter().copied().find(|&layout| {
-                    layout & target != 0
-                        && layout & !family.allowed == 0
-                        && disjoint_layouts(&followers, layout, &mut witness)
+            let found = probe_anchored(family, &followers, target, &mut witness, &mut remaining)
+                .or_else(|| {
+                    let mut remaining = checks;
+                    probe_followers(
+                        &followers,
+                        target,
+                        family,
+                        target,
+                        &mut witness,
+                        &mut remaining,
+                    )
+                })
+                .unwrap_or_else(|| {
+                    let layout = family.layouts.iter().copied().find(|&layout| {
+                        layout & target != 0
+                            && layout & !family.allowed == 0
+                            && disjoint_layouts(&followers, layout, &mut witness)
+                    });
+                    if let Some(layout) = layout {
+                        witness[family.digit] = layout;
+                        true
+                    } else {
+                        false
+                    }
                 });
-                if let Some(layout) = layout {
-                    witness[family.digit] = layout;
-                    true
-                } else {
-                    false
-                }
-            });
             if found {
                 // Every digit in this complete witness gains support.
                 for (supported, used) in support.iter_mut().zip(witness) {
@@ -66,6 +76,59 @@ fn support_with_probe(families: &[Family<'_>], mut support: [u128; 9], choices: 
     support
 }
 
+fn probe_anchored(
+    pinned: &Family<'_>,
+    followers: &[Family<'_>],
+    target: u128,
+    witness: &mut [u128; 9],
+    choices: &mut u16,
+) -> Option<bool> {
+    if *choices == 0 {
+        return None;
+    }
+    for &layout in pinned.layouts {
+        if layout & target != 0 && layout & !pinned.allowed == 0 {
+            if *choices == 0 {
+                return None;
+            }
+            *choices -= 1;
+            if probe_disjoint(followers, layout, witness, choices)? {
+                witness[pinned.digit] = layout;
+                return Some(true);
+            }
+        }
+    }
+    Some(false)
+}
+
+fn probe_disjoint(
+    families: &[Family<'_>],
+    occupied: u128,
+    witness: &mut [u128; 9],
+    choices: &mut u16,
+) -> Option<bool> {
+    let Some((family, rest)) = families.split_first() else {
+        return Some(true);
+    };
+    if *choices == 0 {
+        return None;
+    }
+    let forbidden = occupied | !family.allowed;
+    for &layout in family.layouts {
+        if layout & forbidden == 0 {
+            if *choices == 0 {
+                return None;
+            }
+            *choices -= 1;
+            if probe_disjoint(rest, occupied | layout, witness, choices)? {
+                witness[family.digit] = layout;
+                return Some(true);
+            }
+        }
+    }
+    Some(false)
+}
+
 /// `None` means the alternate order is inconclusive; `Some(false)` means its
 /// entire search finished without a witness. Neither case truncates support.
 fn probe_followers(
@@ -74,32 +137,33 @@ fn probe_followers(
     pinned: &Family<'_>,
     required: u128,
     witness: &mut [u128; 9],
-    choices: &mut u16,
+    checks: &mut u32,
 ) -> Option<bool> {
-    if *choices == 0 {
+    if *checks == 0 {
         return None;
     }
     let Some((family, rest)) = families.split_first() else {
         let forbidden = (occupied & !required) | !pinned.allowed;
-        let layout = pinned
-            .layouts
-            .iter()
-            .copied()
-            .find(|&layout| layout & required != 0 && layout & forbidden == 0);
-        if let Some(layout) = layout {
-            witness[pinned.digit] = layout;
-            return Some(true);
+        for &layout in pinned.layouts {
+            if *checks == 0 {
+                return None;
+            }
+            *checks -= 1;
+            if layout & required != 0 && layout & forbidden == 0 {
+                witness[pinned.digit] = layout;
+                return Some(true);
+            }
         }
         return Some(false);
     };
     let forbidden = occupied | !family.allowed;
     for &layout in family.layouts {
+        if *checks == 0 {
+            return None;
+        }
+        *checks -= 1;
         if layout & forbidden == 0 {
-            if *choices == 0 {
-                return None;
-            }
-            *choices -= 1;
-            if probe_followers(rest, occupied | layout, pinned, required, witness, choices)? {
+            if probe_followers(rest, occupied | layout, pinned, required, witness, checks)? {
                 witness[family.digit] = layout;
                 return Some(true);
             }
@@ -203,9 +267,21 @@ mod tests {
                         }
                         let expected = direct(&families);
                         let seeded = std::array::from_fn(|digit| expected[digit] & (u128::MAX / 3));
-                        for budget in [0, 1, 4, WITNESS_CHOICES] {
-                            assert_eq!(support_with_probe(&families, [0; 9], budget), expected);
-                            assert_eq!(support_with_probe(&families, seeded, budget), expected);
+                        for (budget, checks) in [
+                            (0, 0),
+                            (1, 0),
+                            (0, 1),
+                            (4, 4),
+                            (ORIGINAL_CHOICES, ALTERNATE_CHECKS),
+                        ] {
+                            assert_eq!(
+                                support_with_probes(&families, [0; 9], budget, checks),
+                                expected
+                            );
+                            assert_eq!(
+                                support_with_probes(&families, seeded, budget, checks),
+                                expected
+                            );
                         }
                         if reverse != 0 {
                             families.reverse();
@@ -234,14 +310,20 @@ mod tests {
                 layouts: &four,
             })
             .collect();
-        for budget in [0, 1, WITNESS_CHOICES] {
-            assert_eq!(support_with_probe(&families, [0; 9], budget), [0; 9]);
+        for (budget, checks) in [(0, 0), (1, 0), (0, 1), (ORIGINAL_CHOICES, ALTERNATE_CHECKS)] {
+            assert_eq!(
+                support_with_probes(&families, [0; 9], budget, checks),
+                [0; 9]
+            );
         }
         families[4].layouts = &five;
         let expected = direct(&families);
         assert!(expected[..5].iter().all(|&sites| sites != 0));
-        for budget in [0, 1, WITNESS_CHOICES] {
-            assert_eq!(support_with_probe(&families, [0; 9], budget), expected);
+        for (budget, checks) in [(0, 0), (1, 0), (0, 1), (ORIGINAL_CHOICES, ALTERNATE_CHECKS)] {
+            assert_eq!(
+                support_with_probes(&families, [0; 9], budget, checks),
+                expected
+            );
         }
     }
 
@@ -357,7 +439,7 @@ mod tests {
                     .copied()
                     .collect();
                 let mut actual = [0; 9];
-                let mut remaining = WITNESS_CHOICES;
+                let mut remaining = ALTERNATE_CHECKS;
                 assert_eq!(
                     probe_followers(
                         &followers,
