@@ -2,8 +2,8 @@
 
 Agent A implements Easy/Medium Inequality generation under [issue 189](https://github.com/coder13/sudoku-app/issues/189).
 The measured base is main `ea81360`. The current-main integration starts at `b9ffe95` and preserves the released 6×6, solving-settings and shared Play changes.
-Measurements below describe the isolated Inequality change at the stated base. Combined-current-main CI remains a release gate. This is not a release record.
-Local validation and matched measurements are complete. Exact-head CI and release gates remain pending.
+Measurements below describe the isolated Inequality change at the stated base. The release record at the end separately identifies the combined source and deployed artifact.
+Local validation, matched measurements and combined-source release gates are complete. Browser usability review remains open in issue 281.
 
 ## Generation and source controls
 
@@ -158,5 +158,20 @@ Matched client assets total 6,479,492 raw / 2,119,296 gzip JavaScript bytes and 
 The deltas are +14,479 / +532 JavaScript and +165 / +23 CSS bytes.
 Totals sum default Node gzip per client asset, excluding HTML, service workers and manifests.
 All five generated metadata JSON files and both dependency locks match.
-Exact-head CI must still check capabilities, profiles, complete app/Wasm contracts and strict Cargo documentation before merge.
-Production deployment must start for the merge commit. The next priority is existing-variant quality under issue 281.
+
+## Release and existing-variant review
+
+[PR 306](https://github.com/coder13/sudoku-app/pull/306) reached main at `bb2458a2b36bcc20ae9a042cc2cfb081a4a63350`, reviewed head `d828546ee47350dd139ed1e0ad8a1771d427e57c`.
+[CI 44636425469](https://github.com/coder13/sudoku-app/actions/runs/44636425469) passes 404 native tests including seven Cargo examples, all sixteen capability combinations, four Wasm profiles, strict full/core/variants documentation, 740 app tests, 525 Wasm contracts, types and the 171-component catalog.
+CI and the Cloudflare preview build use merged source `94f1a991a15f7b343d77f89f824ab5a020570e3c`, combining the reviewed head with main `65ab89e`, including the released import verification and performance changes.
+The later main change concerns standalone number-puzzle progress/loading and their shared difficulty statistics. It is preserved in the merge; no complete-tree equality with the earlier preview is claimed.
+
+Cloudflare preview `https://466ebc4d.klyn-sudoku.pages.dev` and Netlify deploy `6aff83a1cf934dcb48430d7a` are ready.
+Read-only HTTP verifies the deployed shells, all sixty recipes and the final preview code/CSS.
+The active downloaded Linux Wasm is 3,783,738 raw bytes, SHA-256 `75b6fc3f0c3253319344a9e9daf9d9abbb30bd9848e53fa201033123d5ecc42d`.
+Against those bytes, every recipe has independent uniqueness, required-rule dependence, multiple sound opening hints and a distinct completion. All 332 direct opening comparison proofs pass independent checks; all 45 archived exclusions pass, including 35 former failures.
+These are artifact checks, not browser screenshots or a controlled comparison with the earlier macOS package measurements.
+
+[Cloudflare Pages production run 44637698409](https://github.com/coder13/sudoku-app/actions/runs/44637698409) started for the exact merge commit.
+Twenty-five 9×9 variants plus Classic now have New Puzzle choices. XV, Two-cell sums and Quadruple remain in issue 189; further additions stay in the backlog while [281](https://github.com/coder13/sudoku-app/issues/281) reviews existing quality.
+The complete original FzzD source retains its partial human path. [Review inventory and pending browser checks](SUDOKU_VARIANT_USABILITY_AUDIT.md).

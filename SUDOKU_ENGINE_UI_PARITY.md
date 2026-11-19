@@ -1,6 +1,8 @@
 # Engine and app UI parity
 
-Main `548bba6` has 9×9 app acceptance and UI for all 27 native rule types plus Jigsaw layouts: twenty-eight named variants plus Classic. Twenty-four variants plus Classic are offered in New Puzzle. Native 9×9 family UI coverage is complete. Four older playable families still need New Puzzle recipes. Sized Sudoku and standalone puzzle families have separate inventories.
+Main `bb2458a` has 9×9 app acceptance and UI for all 27 native rule types plus Jigsaw layouts: twenty-eight named variants plus Classic. Twenty-five variants plus Classic are offered in New Puzzle. Native 9×9 family UI coverage is complete. XV, Two-cell sums and Quadruple still need New Puzzle recipes. Sized Sudoku and standalone puzzle families have separate inventories.
+
+The current priority is [existing-variant quality](SUDOKU_VARIANT_USABILITY_AUDIT.md) under [281](https://github.com/coder13/sudoku-app/issues/281). Actual browser rendering, complete interactions and screenshot approval remain open; existing automated contracts do not complete that review. Additional variant rollout stays in the backlog.
 
 Authored-source formats, grid/symbol extensions, Fog and remaining human-solving coverage are separate work.
 
@@ -30,7 +32,7 @@ The first source controls are Philip Newman's [Between, the Lines](https://www.g
 
 Region Sum Lines reached main through [PR 193](https://github.com/coder13/sudoku-app/pull/193) at `3706a0f`, including complete source/import/render/play/help integration and a checked Medium New Puzzle recipe. All exact-head native, capability, profile, app/Wasm, documentation and deployment checks pass in [CI 44460015789](https://github.com/coder13/sudoku-app/actions/runs/44460015789). Five complete sources retain their unique printed solutions and all companion clues. Closed drawing paths and both grouping modes survive storage, sharing and native transforms. [Source, generation, compatibility and performance audit](SUDOKU_REGION_SUM_AUDIT.md). Three Coach human paths remain partial, and FaxQ currently has one available hint; the remaining coverage and latency work is tracked in [192](https://github.com/coder13/sudoku-app/issues/192).
 
-The user explicitly confirmed generation parity for all thirteen originally import-only families. Anti-King, Non-Consecutive, Odd/Even, Whispers, Palindrome, Global Entropy, Entropic Lines, Modular Lines and Renban are released. Add verified New Puzzle recipes for the four remaining families: Inequality, XV, Two-cell sums and Quadruple. Existing generation/worker APIs already support these rules. Keep generation and all play/help flows in each family’s integration and verify every advertised difficulty.
+The user explicitly confirmed generation parity for all thirteen originally import-only families. Anti-King, Non-Consecutive, Odd/Even, Whispers, Palindrome, Global Entropy, Entropic Lines, Modular Lines, Renban and Inequality are released. XV, Two-cell sums and Quadruple remain in the backlog during the existing-variant quality review. Existing generation/worker APIs already support these rules. Keep generation and all play/help flows in each future integration and verify every advertised difficulty.
 
 Between calibration checks twenty of twenty Easy seeds and nineteen of forty one-attempt Medium seeds. Every accepted puzzle is independently unique and needs the Between rule. Three known Medium seeds provide the bounded fallback. App generation now passes full played-puzzle exclusions to the engine, including square symmetries; a reproduced rotated-duplicate fallback is covered by a regression.
 
