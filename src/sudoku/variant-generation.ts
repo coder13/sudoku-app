@@ -17,6 +17,7 @@ export type VariantSeed = {
   minDifference?: number
   layout?: string
   lines?: number[][]
+  pairs?: number[][]
   cloneGroups?: number[][][]
   outside?: ({ cells: number[]; direction: string } & ({ sum: number; count?: never } | { count: number; sum?: never }))[]
   regions?: string
@@ -63,6 +64,9 @@ export function variantGenerationRequest(
       break
     case 'parity':
       derivedClues.push({ type: 'parity', cells: recipe.markedCells! })
+      break
+    case 'inequality':
+      for (const [a, b] of recipe.pairs!) derivedClues.push({ type: 'inequality', cells: [a, b] })
       break
     case 'thermometer': case 'between': case 'region-sum': case 'palindrome': case 'entropic': case 'modular': case 'renban':
       for (const cells of recipe.lines!) rules.push({ type: id, cells })
