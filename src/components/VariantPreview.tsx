@@ -1,3 +1,4 @@
+import type { NewPuzzleId } from '../sudoku/new-puzzle'
 import type { VariantRule } from '../sudoku/engine'
 import { Crown } from 'lucide-react'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
@@ -43,7 +44,8 @@ const previewRegionEdges = previewRegions.flatMap((region, cell) => {
 }).join(' ')
 
 /** Show a compact example of a generatable variant's grid markings alongside its name. */
-export function VariantPreview({ variant, ruleset }: { variant: VariantId; ruleset?: GenerationRulesetId }) {
+export function VariantPreview({ variant, ruleset }: { variant: NewPuzzleId; ruleset?: GenerationRulesetId }) {
+  if (variant === 'mini') return <span className="variant-preview" data-variant="mini" aria-hidden="true" />
   const rules: readonly VariantRule[] = variant === 'whispers'
     ? [{ type: 'whispers', cells: [11, 21, 31, 39, 47, 57], minDifference: generationRuleset(variant, ruleset)!.minDifference }]
     : previews[variant]

@@ -1,5 +1,6 @@
 import type { BoardAnnotations, BoardLink, BoardRegion, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
 import type { Candidate, Deduction, DeductionAction, Difficulty, HintChoice, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
+import { CLASSIC_GRID, gridHouseCells, type PlayGrid } from './grid.ts'
 import { DIGITS, peer } from './game.ts'
 import { cellReference, type CellReferenceOptions, type CellReferenceStyle } from './hints.ts'
 import { variantHintChoice } from './variant-hints.ts'
@@ -52,13 +53,7 @@ export function houseName(house: House) {
   return `box ${house.box + 1}`
 }
 
-export function houseCells(house: House) {
-  return DIGITS.map((_, index) => {
-    if ('row' in house) return house.row * 9 + index
-    if ('column' in house) return index * 9 + house.column
-    return Math.floor(house.box / 3) * 27 + (house.box % 3) * 3 + Math.floor(index / 3) * 9 + index % 3
-  })
-}
+export const houseCells = gridHouseCells
 
 function sharedHouse(cells: readonly number[]) {
   const [first] = cells
@@ -73,7 +68,7 @@ export function aicEndpoints(hint?: Deduction) {
   if (links.length) return [links[0].from, links[links.length - 1].to] as const
 }
 
-export function hintLocation(hint: HintChoice, style: CellReferenceStyle, difficulty?: Difficulty) {
+export function hintLocation(hint: HintChoice, style: CellReferenceStyle, difficulty?: Difficulty, grid: PlayGrid = CLASSIC_GRID) {
   const endpoints = aicEndpoints(hint)
   if (endpoints) {
     const [start, end] = endpoints
@@ -90,7 +85,7 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
     }
     mark(start, 'chain start', patternColor)
     mark(end, 'chain end', accentColor)
-    const nameCell = (cell: number) => cellReference(cell, style, difficulty)
+    const nameCell = (cell: number) => cellReference(cell, style, difficulty, grid.size)
     const text = `Start at ${inferenceName(start, nameCell)}. The other end is ${inferenceName(end, nameCell)}.`
     const annotations: BoardAnnotations = { cells, candidates }
     return { text, annotations }
@@ -101,11 +96,11 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
   const focus = 'house' in evidence ? [] : pattern.cells
   const cells = new Map<number, CellAnnotation>()
   for (const house of pattern.houses) {
-    for (const cell of houseCells(house)) cells.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
+    for (const cell of houseCells(house, grid)) cells.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
   }
   for (const cell of focus) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'hint cell' })
 
-  const references = focus.length ? focus.map((cell) => cellReference(cell, style, difficulty)) : pattern.houses.map(houseName)
+  const references = focus.length ? focus.map((cell) => cellReference(cell, style, difficulty, grid.size)) : pattern.houses.map(houseName)
   const text = references.length > 0 && references.length <= 4 ? `Look in ${list.format(references)}.`
     : 'Look at the highlighted cells.'
   const annotations: BoardAnnotations = { cells }
@@ -183,7 +178,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
   }
   if ('x-wing' in evidence) {
     const { bases, covers, digit } = evidence['x-wing']
-    const coverCells = covers.map(houseCells)
+    const coverCells = covers.map(house => houseCells(house))
     const corners = bases.map((base) => houseCells(base).filter((cell) => coverCells.some((cover) => cover.includes(cell))))
     const [[a, b], [c, d]] = corners
     return {
@@ -195,7 +190,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
   }
   if ('complex-fish' in evidence) {
     const { bases, covers, fins, digit } = evidence['complex-fish']
-    const candidates = marks([...new Set(bases.flatMap(houseCells))], [digit])
+    const candidates = marks([...new Set(bases.flatMap(house => houseCells(house)))], [digit])
     const baseNames = list.format(bases.map(houseName))
     const coverNames = list.format(covers.map(houseName))
     return {
@@ -207,8 +202,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
   }
   if ('fish' in evidence) {
     const { bases, covers, fins, digit } = evidence.fish
-    const coverCells = new Set(covers.flatMap(houseCells))
-    const candidates = marks(bases.flatMap(houseCells).filter((cell) => coverCells.has(cell)), [digit])
+    const coverCells = new Set(covers.flatMap(house => houseCells(house)))
+    const candidates = marks(bases.flatMap(house => houseCells(house)).filter((cell) => coverCells.has(cell)), [digit])
     const baseNames = list.format(bases.map(houseName))
     const coverNames = list.format(covers.map(houseName))
     const baseType = 'row' in bases[0] ? 'rows' : 'columns'
@@ -627,8 +622,9 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
 }
 
 // Lessons retain their established notation unless a display preference is supplied.
-function displayCellName({ cellReferenceStyle, difficulty }: CellReferenceOptions) {
-  return cellReferenceStyle === undefined ? cellName : (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
+function displayCellName({ cellReferenceStyle, difficulty, gridSize = 9 }: CellReferenceOptions) {
+  return cellReferenceStyle === undefined ? (cell: number) => `R${Math.floor(cell / gridSize) + 1}C${cell % gridSize + 1}`
+    : (cell: number) => cellReference(cell, cellReferenceStyle, difficulty, gridSize)
 }
 
 export function deductionResults(actions: readonly DeductionAction[], options: CellReferenceOptions = {}) {
@@ -754,8 +750,9 @@ function explainProof({ evidence, actions, technique }: Deduction, nameCell = ce
 
 
 export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }: Pick<LessonExample, 'deduction' | 'candidates' | 'pattern'>,
-  proof = lessonPattern, options: CellReferenceOptions & { showActions?: boolean } = {}) {
-  const { showActions = true } = options
+  proof = lessonPattern, options: CellReferenceOptions & { showActions?: boolean; grid?: PlayGrid } = {}) {
+  const { showActions = true, grid = CLASSIC_GRID } = options
+  const displayOptions = { ...options, gridSize: grid.size }
   let variant = 'variant' in deduction.evidence ? deduction.evidence.variant : undefined
   if (variant?.source && options.cellReferenceStyle !== undefined) {
     const copy = variantHintChoice(variant.source.deduction, variant.source.puzzle, options).evidence
@@ -763,13 +760,13 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   }
   const pattern: Pattern | undefined = variant
     ? proof && { ...proof, description: variant.description, reason: variant.reason }
-    : describePattern(deduction, candidates, displayCellName(options)) ?? (proof && { ...proof, description: '', reason: '', ...explainProof(deduction, displayCellName(options)) })
+    : describePattern(deduction, candidates, displayCellName(displayOptions)) ?? (proof && { ...proof, description: '', reason: '', ...explainProof(deduction, displayCellName(displayOptions)) })
   if (!pattern) throw new Error(`Missing diagram for ${deduction.technique}`)
   const cells = new Map<number, CellAnnotation>()
   const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
   const tint = (houses: House[] | undefined, fill: string) => {
     for (const house of houses ?? []) {
-      for (const cell of houseCells(house)) cells.set(cell, { fill })
+      for (const cell of houseCells(house, grid)) cells.set(cell, { fill })
     }
   }
   const mark = ({ cell, digit }: Candidate, color: string, label: string, strike = false) => {
@@ -793,22 +790,22 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
       mark(action.eliminate, removalColor, 'to remove', true)
     }
   }
-  const results = deductionResults(deduction.actions, options)
+  const results = deductionResults(deduction.actions, displayOptions)
   const annotations: BoardAnnotations = { cells, candidates: candidateMarks, links: pattern.links }
   const { description, reason, reasonSteps, mainLabel = 'Pattern candidate', accent, trace } = pattern
-  const focus = [...candidateMarks.keys(), ...('house' in deduction.evidence ? houseCells(deduction.evidence.house) : [])]
-  return { annotations, region: enclosingRegion(focus.length ? focus : [...cells.keys()]), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
+  const focus = [...candidateMarks.keys(), ...('house' in deduction.evidence ? houseCells(deduction.evidence.house, grid) : [])]
+  return { annotations, region: enclosingRegion(focus.length ? focus : [...cells.keys()], grid.size), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
 }
 
-function enclosingRegion(cells: number[]): BoardRegion {
+function enclosingRegion(cells: number[], gridSize: number): BoardRegion {
   const span = (coordinates: number[]) => {
     const low = Math.min(...coordinates)
     const high = Math.max(...coordinates)
     const size = Math.max(4, high - low + 1)
-    const start = Math.min(9 - size, Math.max(0, low - Math.floor((size - (high - low + 1)) / 2)))
+    const start = Math.min(gridSize - size, Math.max(0, low - Math.floor((size - (high - low + 1)) / 2)))
     return [start, size]
   }
-  const [row, rows] = span(cells.map((cell) => Math.floor(cell / 9)))
-  const [column, columns] = span(cells.map((cell) => cell % 9))
+  const [row, rows] = span(cells.map((cell) => Math.floor(cell / gridSize)))
+  const [column, columns] = span(cells.map((cell) => cell % gridSize))
   return { row, column, rows, columns }
 }

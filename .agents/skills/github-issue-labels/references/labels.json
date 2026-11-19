@@ -1,0 +1,155 @@
+{
+  "repository": "coder13/sudoku-app",
+  "labels": [
+    {
+      "color": "f143ab",
+      "description": "Barrier affecting people with disabilities",
+      "name": "accessibility",
+      "category": "area"
+    },
+    {
+      "color": "d73a4a",
+      "description": "Something isn't working",
+      "name": "bug",
+      "category": "work"
+    },
+    {
+      "color": "0075ca",
+      "description": "Improvements or additions to documentation",
+      "name": "documentation",
+      "category": "work"
+    },
+    {
+      "color": "cfd3d7",
+      "description": "This issue or pull request already exists",
+      "name": "duplicate",
+      "category": "workflow"
+    },
+    {
+      "color": "a2eeef",
+      "description": "New feature or request",
+      "name": "enhancement",
+      "category": "work"
+    },
+    {
+      "color": "7057ff",
+      "description": "Good for newcomers",
+      "name": "good first issue",
+      "category": "workflow"
+    },
+    {
+      "color": "008672",
+      "description": "Extra attention is needed",
+      "name": "help wanted",
+      "category": "workflow"
+    },
+    {
+      "color": "e4e669",
+      "description": "This doesn't seem right",
+      "name": "invalid",
+      "category": "workflow"
+    },
+    {
+      "color": "d876e3",
+      "description": "Further information is requested",
+      "name": "question",
+      "category": "work"
+    },
+    {
+      "color": "ffffff",
+      "description": "This will not be worked on",
+      "name": "wontfix",
+      "category": "workflow"
+    },
+    {
+      "name": "new puzzle",
+      "color": "0e8a16",
+      "category": "work",
+      "description": "Add a distinct puzzle family, such as Kakuro or Hidato."
+    },
+    {
+      "name": "new variant",
+      "color": "1d76db",
+      "category": "work",
+      "description": "Add a Sudoku rule, ruleset, layout or size, including its app integration."
+    },
+    {
+      "name": "performance",
+      "color": "fbca04",
+      "category": "work",
+      "description": "Measure or improve latency, throughput, memory or package size."
+    },
+    {
+      "name": "research",
+      "color": "d4c5f9",
+      "category": "work",
+      "description": "Resolve an open rule, deduction or algorithm question with evidence."
+    },
+    {
+      "name": "ui",
+      "color": "5319e7",
+      "category": "area",
+      "description": "Player-facing screens, controls, clues, navigation or interaction."
+    },
+    {
+      "name": "engine",
+      "color": "006b75",
+      "category": "area",
+      "description": "Puzzle models, rule checks, candidates, exact solving or engine APIs."
+    },
+    {
+      "name": "generation",
+      "color": "bfdadc",
+      "category": "area",
+      "description": "Puzzle construction, seed calibration or the New Puzzle flow."
+    },
+    {
+      "name": "import",
+      "color": "0f4c81",
+      "category": "area",
+      "description": "Puzzle decoding, screenshots, source fidelity or format interchange."
+    },
+    {
+      "name": "hints",
+      "color": "f9d0c4",
+      "category": "area",
+      "description": "Logical deductions, proof explanations, Technique Finder or solution paths."
+    },
+    {
+      "name": "scoring",
+      "color": "ff9f1c",
+      "category": "area",
+      "description": "Technique costs, difficulty calibration, rating policy or scoring versions."
+    },
+    {
+      "name": "training",
+      "color": "c5def5",
+      "category": "area",
+      "description": "Learn articles, practice positions, drills or teaching content."
+    },
+    {
+      "name": "grid size",
+      "color": "b60205",
+      "category": "area",
+      "description": "Grid dimensions, symbol alphabets or overlapping-grid topology."
+    },
+    {
+      "name": "storage",
+      "color": "ededed",
+      "category": "area",
+      "description": "Saved games, history, checkpoints, backup or persistence."
+    },
+    {
+      "name": "sync",
+      "color": "c2e0c6",
+      "category": "area",
+      "description": "Device pairing, progress synchronization or conflict handling."
+    },
+    {
+      "name": "tooling",
+      "color": "fef2c0",
+      "category": "area",
+      "description": "Repository automation, CI, developer workflows or agent skills."
+    }
+  ]
+}

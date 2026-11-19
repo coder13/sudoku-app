@@ -38,6 +38,7 @@ type Props = {
   onDigitHighlightMatchChange?: (match: DigitHighlightMatch) => void
   hasCellSelection: boolean
   values: string
+  gridSize?: 4 | 9
   input: (digit: number) => void
   undo: () => void
   redo: () => void
@@ -75,7 +76,9 @@ export function Controls(props: Props) {
   const digitHold = useTouchHold(canHighlightDigits)
   const candidateColors = colors && props.colorTarget === 'candidate'
   const darkColors = props.selectedDigit !== null && props.selectedDigit > COLOR_FAMILIES.length
-  const choices = colors ? COLOR_FAMILIES.map((_, index) => index + 1 + (darkColors ? COLOR_FAMILIES.length : 0)) : DIGITS
+  const gridSize = props.gridSize ?? 9
+  const colorToolsLabel = gridSize === 9 ? 'Colors & Chains' : 'Colors'
+  const choices = colors ? COLOR_FAMILIES.map((_, index) => index + 1 + (darkColors ? COLOR_FAMILIES.length : 0)) : DIGITS.slice(0, gridSize)
   const alternate = props.selectedDigit === null ? null : alternateColorShade(props.selectedDigit)
   const counts = Array(10).fill(0) as number[]
   for (const value of props.values) counts[Number(value)]++
@@ -197,7 +200,7 @@ export function Controls(props: Props) {
               </div>
             )}
             {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
-            <div className={`keypad ${colors ? 'palette' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
+            <div className={`keypad ${colors ? 'palette' : gridSize === 4 ? 'mini-keypad' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
                 const singleHighlight = props.highlightedDigitMask === (1 << (digit - 1))
                 const armed = props.selectedDigit === digit || (canHighlightDigits && singleHighlight)
@@ -206,7 +209,7 @@ export function Controls(props: Props) {
                   : `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
                 return (
                   <button type="button" key={digit}
-                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && !colors && counts[digit] === 9 ? 'all-placed' : ''} ${pressed ? 'selected-key' : ''}`}
+                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && !colors && counts[digit] === gridSize ? 'all-placed' : ''} ${pressed ? 'selected-key' : ''}`}
                     aria-label={colors ? COLORS[digit - 1] : digitLabel}
                     aria-keyshortcuts={colors ? digit <= 9 ? `${digit}` : undefined : `${props.chainDrawing ? `${digit} ` : ''}Shift+${digit} F${digit}`}
                     aria-pressed={pressed} disabled={props.disabled} data-no-panel-hold={canHighlightDigits || undefined}
@@ -231,7 +234,7 @@ export function Controls(props: Props) {
 
           <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
-              <IconButton className="pencil-button" title={`Pencil mode (${shortcutLabel(shortcuts.pencilMode)}) · Drag with a mouse and a chosen digit to add or remove candidates · Cmd+1–9 or Ctrl+1–9 toggles candidates in selected cells`} aria-label="Pencil mode"
+              <IconButton className="pencil-button" title={`Pencil mode (${shortcutLabel(shortcuts.pencilMode)}) · Drag with a mouse and a chosen digit to add or remove candidates · Cmd+1–${gridSize} or Ctrl+1–${gridSize} toggles candidates in selected cells`} aria-label="Pencil mode"
                 aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.pencilMode)} onClick={props.togglePencil} disabled={editsDisabled}>
                 <Pencil size={18} />
               </IconButton>
@@ -254,8 +257,8 @@ export function Controls(props: Props) {
               </div>
             )}
             {!props.draft && !(props.compact && props.onActions) && (props.advancedModes.colorsEnabled || props.onOpenColorTools) && (
-              <IconButton className="color-mode-button" title={`${props.onOpenColorTools ? 'Colors & Chains' : 'Color mode'} (${shortcutLabel(shortcuts.colorMode)})`}
-                aria-label={props.onOpenColorTools ? 'Open Colors & Chains' : 'Color mode'}
+              <IconButton className="color-mode-button" title={`${props.onOpenColorTools ? colorToolsLabel : 'Color mode'} (${shortcutLabel(shortcuts.colorMode)})`}
+                aria-label={props.onOpenColorTools ? `Open ${colorToolsLabel}` : 'Color mode'}
                 aria-pressed={props.colorMode || props.colorsActive || false} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)}
                 onClick={props.onOpenColorTools ?? props.toggleColorMode} disabled={props.onOpenColorTools ? props.disabled : editsDisabled}>
                 <Palette size={18} />

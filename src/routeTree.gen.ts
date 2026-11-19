@@ -19,6 +19,7 @@ import { Route as SyncRouteImport } from './routes/sync'
 import { Route as LearnIndexRouteImport } from './routes/learn.index'
 import { Route as LearnTechniqueRouteImport } from './routes/learn.$technique'
 import { Route as PuzzlesBrowseRouteImport } from './routes/puzzles.browse'
+import { Route as PuzzlesCalcudokuRouteImport } from './routes/puzzles.calcudoku'
 import { Route as PuzzlesCollectionsRouteImport } from './routes/puzzles.collections'
 import { Route as PuzzlesGamesRouteImport } from './routes/puzzles.games'
 import { Route as PuzzlesKakuroRouteImport } from './routes/puzzles.kakuro'
@@ -27,6 +28,7 @@ import { Route as PuzzlesSolvedRouteImport } from './routes/puzzles.solved'
 import { Route as PuzzlesStatisticsRouteImport } from './routes/puzzles.statistics'
 import { Route as SettingsSectionRouteImport } from './routes/settings.$section'
 import { Route as SyncStepRouteImport } from './routes/sync.$step'
+import { Route as PuzzlesCalcudokuPuzzleRouteImport } from './routes/puzzles.calcudoku_.$puzzle'
 import { Route as PuzzlesKakuroPuzzleRouteImport } from './routes/puzzles.kakuro_.$puzzle'
 import { Route as PuzzlesNewDifficultyRouteImport } from './routes/puzzles.new.difficulty'
 
@@ -80,6 +82,11 @@ const PuzzlesBrowseRoute = PuzzlesBrowseRouteImport.update({
   path: '/browse',
   getParentRoute: () => PuzzlesRoute,
 } as any)
+const PuzzlesCalcudokuRoute = PuzzlesCalcudokuRouteImport.update({
+  id: '/calcudoku',
+  path: '/calcudoku',
+  getParentRoute: () => PuzzlesRoute,
+} as any)
 const PuzzlesCollectionsRoute = PuzzlesCollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
@@ -120,6 +127,11 @@ const SyncStepRoute = SyncStepRouteImport.update({
   path: '/$step',
   getParentRoute: () => SyncRoute,
 } as any)
+const PuzzlesCalcudokuPuzzleRoute = PuzzlesCalcudokuPuzzleRouteImport.update({
+  id: '/calcudoku_/$puzzle',
+  path: '/calcudoku/$puzzle',
+  getParentRoute: () => PuzzlesRoute,
+} as any)
 const PuzzlesKakuroPuzzleRoute = PuzzlesKakuroPuzzleRouteImport.update({
   id: '/kakuro_/$puzzle',
   path: '/kakuro/$puzzle',
@@ -141,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/sync': typeof SyncRouteWithChildren
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
+  '/puzzles/calcudoku': typeof PuzzlesCalcudokuRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
   '/puzzles/games': typeof PuzzlesGamesRoute
   '/puzzles/kakuro': typeof PuzzlesKakuroRoute
@@ -150,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/settings/$section': typeof SettingsSectionRoute
   '/sync/$step': typeof SyncStepRoute
   '/learn/': typeof LearnIndexRoute
+  '/puzzles/calcudoku/$puzzle': typeof PuzzlesCalcudokuPuzzleRoute
   '/puzzles/kakuro/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
 }
@@ -162,6 +176,7 @@ export interface FileRoutesByTo {
   '/sync': typeof SyncRouteWithChildren
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
+  '/puzzles/calcudoku': typeof PuzzlesCalcudokuRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
   '/puzzles/games': typeof PuzzlesGamesRoute
   '/puzzles/kakuro': typeof PuzzlesKakuroRoute
@@ -171,6 +186,7 @@ export interface FileRoutesByTo {
   '/settings/$section': typeof SettingsSectionRoute
   '/sync/$step': typeof SyncStepRoute
   '/learn': typeof LearnIndexRoute
+  '/puzzles/calcudoku/$puzzle': typeof PuzzlesCalcudokuPuzzleRoute
   '/puzzles/kakuro/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
 }
@@ -185,6 +201,7 @@ export interface FileRoutesById {
   '/sync': typeof SyncRouteWithChildren
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
+  '/puzzles/calcudoku': typeof PuzzlesCalcudokuRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
   '/puzzles/games': typeof PuzzlesGamesRoute
   '/puzzles/kakuro': typeof PuzzlesKakuroRoute
@@ -194,6 +211,7 @@ export interface FileRoutesById {
   '/settings/$section': typeof SettingsSectionRoute
   '/sync/$step': typeof SyncStepRoute
   '/learn/': typeof LearnIndexRoute
+  '/puzzles/calcudoku_/$puzzle': typeof PuzzlesCalcudokuPuzzleRoute
   '/puzzles/kakuro_/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
 }
@@ -209,6 +227,7 @@ export interface FileRouteTypes {
     | '/sync'
     | '/learn/$technique'
     | '/puzzles/browse'
+    | '/puzzles/calcudoku'
     | '/puzzles/collections'
     | '/puzzles/games'
     | '/puzzles/kakuro'
@@ -218,6 +237,7 @@ export interface FileRouteTypes {
     | '/settings/$section'
     | '/sync/$step'
     | '/learn/'
+    | '/puzzles/calcudoku/$puzzle'
     | '/puzzles/kakuro/$puzzle'
     | '/puzzles/new/difficulty'
   fileRoutesByTo: FileRoutesByTo
@@ -230,6 +250,7 @@ export interface FileRouteTypes {
     | '/sync'
     | '/learn/$technique'
     | '/puzzles/browse'
+    | '/puzzles/calcudoku'
     | '/puzzles/collections'
     | '/puzzles/games'
     | '/puzzles/kakuro'
@@ -239,6 +260,7 @@ export interface FileRouteTypes {
     | '/settings/$section'
     | '/sync/$step'
     | '/learn'
+    | '/puzzles/calcudoku/$puzzle'
     | '/puzzles/kakuro/$puzzle'
     | '/puzzles/new/difficulty'
   id:
@@ -252,6 +274,7 @@ export interface FileRouteTypes {
     | '/sync'
     | '/learn/$technique'
     | '/puzzles/browse'
+    | '/puzzles/calcudoku'
     | '/puzzles/collections'
     | '/puzzles/games'
     | '/puzzles/kakuro'
@@ -261,6 +284,7 @@ export interface FileRouteTypes {
     | '/settings/$section'
     | '/sync/$step'
     | '/learn/'
+    | '/puzzles/calcudoku_/$puzzle'
     | '/puzzles/kakuro_/$puzzle'
     | '/puzzles/new/difficulty'
   fileRoutesById: FileRoutesById
@@ -347,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PuzzlesBrowseRouteImport
       parentRoute: typeof PuzzlesRoute
     }
+    '/puzzles/calcudoku': {
+      id: '/puzzles/calcudoku'
+      path: '/calcudoku'
+      fullPath: '/puzzles/calcudoku'
+      preLoaderRoute: typeof PuzzlesCalcudokuRouteImport
+      parentRoute: typeof PuzzlesRoute
+    }
     '/puzzles/collections': {
       id: '/puzzles/collections'
       path: '/collections'
@@ -403,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SyncStepRouteImport
       parentRoute: typeof SyncRoute
     }
+    '/puzzles/calcudoku_/$puzzle': {
+      id: '/puzzles/calcudoku_/$puzzle'
+      path: '/calcudoku/$puzzle'
+      fullPath: '/puzzles/calcudoku/$puzzle'
+      preLoaderRoute: typeof PuzzlesCalcudokuPuzzleRouteImport
+      parentRoute: typeof PuzzlesRoute
+    }
     '/puzzles/kakuro_/$puzzle': {
       id: '/puzzles/kakuro_/$puzzle'
       path: '/kakuro/$puzzle'
@@ -446,23 +484,27 @@ const PuzzlesNewRouteWithChildren = PuzzlesNewRoute._addFileChildren(
 
 interface PuzzlesRouteChildren {
   PuzzlesBrowseRoute: typeof PuzzlesBrowseRoute
+  PuzzlesCalcudokuRoute: typeof PuzzlesCalcudokuRoute
   PuzzlesCollectionsRoute: typeof PuzzlesCollectionsRoute
   PuzzlesGamesRoute: typeof PuzzlesGamesRoute
   PuzzlesKakuroRoute: typeof PuzzlesKakuroRoute
   PuzzlesNewRoute: typeof PuzzlesNewRouteWithChildren
   PuzzlesSolvedRoute: typeof PuzzlesSolvedRoute
   PuzzlesStatisticsRoute: typeof PuzzlesStatisticsRoute
+  PuzzlesCalcudokuPuzzleRoute: typeof PuzzlesCalcudokuPuzzleRoute
   PuzzlesKakuroPuzzleRoute: typeof PuzzlesKakuroPuzzleRoute
 }
 
 const PuzzlesRouteChildren: PuzzlesRouteChildren = {
   PuzzlesBrowseRoute: PuzzlesBrowseRoute,
+  PuzzlesCalcudokuRoute: PuzzlesCalcudokuRoute,
   PuzzlesCollectionsRoute: PuzzlesCollectionsRoute,
   PuzzlesGamesRoute: PuzzlesGamesRoute,
   PuzzlesKakuroRoute: PuzzlesKakuroRoute,
   PuzzlesNewRoute: PuzzlesNewRouteWithChildren,
   PuzzlesSolvedRoute: PuzzlesSolvedRoute,
   PuzzlesStatisticsRoute: PuzzlesStatisticsRoute,
+  PuzzlesCalcudokuPuzzleRoute: PuzzlesCalcudokuPuzzleRoute,
   PuzzlesKakuroPuzzleRoute: PuzzlesKakuroPuzzleRoute,
 }
 

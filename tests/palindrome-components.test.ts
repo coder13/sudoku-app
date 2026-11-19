@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { after, before, test } from 'node:test'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -10,7 +11,6 @@ import { describeHint } from '../src/sudoku/hints.ts'
 import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
 import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { assertPalindromeProof } from './helpers/palindrome-truth.ts'
 import { generationVariant, isVariantId, variantDifficulties } from '../src/sudoku/variants.ts'
 
@@ -135,9 +135,10 @@ test('sharing progressed segmented puzzles preserves starting givens and complet
     const puzzle: VariantPuzzle = { ...fixture.puzzle, rules: fixture.puzzle.rules!.map((rule, i) =>
       i === 0 ? { ...rule, segments: [[0, 10, 20], [20, 30, 31, 32]] } : rule) }
     const game = { ...makeGame('palindrome-share', 'Palindrome', puzzle.givens, 'imported'), variant: { id: 'palindrome' as const, puzzle, solution: fixture.solution } }
-    const html = renderToStaticMarkup(createElement(SharePuzzle, { game: enter(game, [0], 'value', 8), close() {} }))
-    const payload = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-    assert.deepEqual((await detectPuzzle(payload)).variant, { id: 'palindrome', puzzle })
+    const progressed = enter(game, [0], 'value', 8)
+    const html = renderToStaticMarkup(createElement(SharePuzzle, { game: progressed, close() {} }))
+    assert.match(html, /Create link/)
+    assert.deepEqual((await publishFixture(progressed)).variant, { id: 'palindrome', puzzle })
   } finally { if (prior) Object.defineProperty(globalThis, 'window', prior); else Reflect.deleteProperty(globalThis, 'window') }
 })
 

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { after, before, test } from 'node:test'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -12,7 +13,6 @@ import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
 import { assertLineHouseProof } from './helpers/line-house-truth.ts'
 import { isVariantId, variantDifficulties } from '../src/sudoku/variants.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
@@ -63,9 +63,10 @@ test('sharing a progressed Whispers puzzle retains its complete starting definit
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { hostname: 'example.test', origin: 'https://example.test' } } })
   try {
     const game = { ...makeGame('whispers-share', 'Brain Zaps', fixture.puzzle.givens, 'imported'), variant: { id: 'whispers' as const, puzzle: fixture.puzzle, solution: fixture.solution } }
-    const html = renderToStaticMarkup(createElement(SharePuzzle, { game: enter(game, [0], 'value', 4), close() {} }))
-    const payload = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-    assert.deepEqual((await detectPuzzle(payload)).variant, { id: 'whispers', puzzle: fixture.puzzle })
+    const progressed = enter(game, [0], 'value', 4)
+    const html = renderToStaticMarkup(createElement(SharePuzzle, { game: progressed, close() {} }))
+    assert.match(html, /Create link/)
+    assert.deepEqual((await publishFixture(progressed)).variant, { id: 'whispers', puzzle: fixture.puzzle })
   } finally { if (previous) Object.defineProperty(globalThis, 'window', previous); else Reflect.deleteProperty(globalThis, 'window') }
 })
 

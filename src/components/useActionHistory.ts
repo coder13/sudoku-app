@@ -10,10 +10,10 @@ export function useActionHistory(game: Game) {
     if (!batch) return
     let current = true
     const timer = setTimeout(() => {
-      void matchActionBatch(batch.entries, actionHistoryMatcher(game.variant)).then((matches) => {
+      void matchActionBatch(batch.entries, actionHistoryMatcher(game.variant, undefined, game.grid)).then((matches) => {
         if (current) roomStore.update(game.id, (latest) => applyActionMatches(latest, batch.entries, matches), { derived: true })
       })
     }, batch.delay)
     return () => { current = false; clearTimeout(timer) }
-  }, [game.id, game.actionHistory, game.variant])
+  }, [game.id, game.actionHistory, game.variant, game.grid])
 }
