@@ -61,7 +61,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         })
         .sum();
     match deduction.technique {
-        Parity | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
+        Parity | AntiKing | AntiKnight | NonConsecutive | Inequality | MinMax => 4 + span,
         Clone | Palindrome => 8 + span + choices,
         Kropki | Xv | AdjacentTotal | Thermometer | Between | Whispers | Entropic | Modular | GlobalEntropy | Quadruple => 14 + span + choices,
         CageCombinations | Arrow | LittleKiller => 24 + span + 2 * choices,
