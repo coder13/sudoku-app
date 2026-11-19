@@ -1190,7 +1190,7 @@ svg { flex-shrink: 0; }
   display: grid;
   grid: repeat(var(--candidate-rows, 3), 1fr) / repeat(var(--candidate-columns, 3), 1fr);
   place-items: center;
-  font-size: calc((clamp(7px, 2.18cqw, 12px) * var(--board-font-scale, 1)) * var(--app-text-scale));
+  font-size: calc(clamp(7px, 2.18cqw, 12px) * var(--board-font-scale, 1) * var(--app-text-scale) * var(--candidate-font-scale, 1));
   font-weight: 780;
   color: var(--candidate-ink);
 }
@@ -1203,7 +1203,7 @@ svg { flex-shrink: 0; }
   border-radius: 2px;
   background: var(--center-note-bg);
   color: var(--candidate-ink);
-  font-size: calc((clamp(8px, 2.64cqw, 14px) * var(--board-font-scale, 1)) * var(--app-text-scale));
+  font-size: calc(clamp(8px, 2.64cqw, 14px) * var(--board-font-scale, 1) * var(--app-text-scale) * var(--candidate-font-scale, 1));
   font-weight: 750;
   letter-spacing: .01em;
   line-height: 1;
@@ -1215,11 +1215,11 @@ svg { flex-shrink: 0; }
   font-weight: 700;
 }
 .puzzle .candidate-marks > * {
-  font-size: calc((16cqmin + 13cqmin * var(--board-font-scale, 1)) * var(--app-text-scale));
+  font-size: calc((16cqmin + 13cqmin * var(--board-font-scale, 1)) * var(--app-text-scale) * var(--candidate-font-scale, 1));
 }
 .puzzle .center-marks {
   max-width: 90%;
-  font-size: calc(((16cqw + 11cqw * var(--board-font-scale, 1)) / var(--board-columns, 9)) * var(--app-text-scale));
+  font-size: calc((16cqw + 11cqw * var(--board-font-scale, 1)) / var(--board-columns, 9) * var(--app-text-scale) * var(--candidate-font-scale, 1));
   font-weight: 700;
   line-height: .9;
   padding: .04em .06em;
@@ -1522,6 +1522,7 @@ svg { flex-shrink: 0; }
 }
 .keypad:not(.palette) { aspect-ratio: 1; grid-template-rows: repeat(3, minmax(0, 1fr)); }
 .key {
+  position: relative;
   display: grid;
   place-items: center;
   min-height: 51px;
@@ -1537,6 +1538,15 @@ svg { flex-shrink: 0; }
   touch-action: manipulation;
   transition: color var(--motion-fast), background-color var(--motion-fast), border-color var(--motion-fast),
     box-shadow var(--motion-fast), opacity var(--motion-fast), transform var(--motion-fast);
+}
+.key-remaining {
+  position: absolute;
+  inset-block-start: .25rem;
+  inset-inline-end: .3rem;
+  font-size: max(.625rem, .4em);
+  line-height: 1;
+  font-weight: 650;
+  color: var(--muted);
 }
 .key:not(:disabled):active { transform: scale(.96); transition-duration: var(--motion-press-duration); }
 .keypad.six-keypad { grid-template: repeat(2, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); }
@@ -1594,7 +1604,7 @@ svg { flex-shrink: 0; }
   font-weight: 650;
 }
 .dialog.settings-dialog {
-  width: min(760px, calc(100vw - 28px));
+  width: min(960px, calc(100vw - 28px));
   height: min(690px, calc(100dvh - 28px));
   overflow: hidden;
 }
@@ -1620,6 +1630,8 @@ svg { flex-shrink: 0; }
 }
 .settings-tabs :is(button[aria-selected="true"], a[data-status="active"]) { background: var(--selected-bg); color: var(--dark-purple); }
 .settings-panel { min-width: 0; height: 100%; overflow-y: auto; padding-right: var(--space-4); }
+:is(.settings-panel, .settings-mobile) { scrollbar-width: none; }
+:is(.settings-panel, .settings-mobile)::-webkit-scrollbar { display: none; }
 .settings-section { display: grid; align-content: start; gap: var(--space-14); }
 .settings-section h3 { margin: 0; font-size: 1.25rem; letter-spacing: -.025em; }
 .settings-intro { margin-top: -8px; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
@@ -2911,7 +2923,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 :root[data-theme="andoku"] .cell:focus-visible { outline-color: var(--board-selected-border); }
 :root[data-theme="andoku"] .candidate-marks {
   inset: 4%;
-  font-size: calc((clamp(7px, 23cqw / var(--board-columns, 9), 15px) * var(--board-font-scale, 1)) * var(--app-text-scale));
+  font-size: calc(clamp(7px, 23cqw / var(--board-columns, 9), 15px) * var(--board-font-scale, 1) * var(--app-text-scale) * var(--candidate-font-scale, 1));
 }
 :root[data-theme="andoku"] .controls :is(.key:not(.tone-key), .side-actions .icon-button) {
   background: transparent;

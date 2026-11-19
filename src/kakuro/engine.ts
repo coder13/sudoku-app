@@ -88,7 +88,7 @@ function createDomains(puzzle: KakuroPuzzle, values: readonly number[]): number[
 // A digit set can support a cell only if every digit in the set can be
 // assigned to a different cell. Memoize by the remaining digits, which
 // also gives the next position in the sorted cell order.
-function runSupport(run: KakuroRun, domains: readonly number[]): number[] | null {
+function runSupport(run: KakuroRun, domains: readonly number[], memo: Int8Array): number[] | null {
   const allowed = run.cells.map(cell => domains[cell])
   if (allowed.includes(0)) return null
   const length = allowed.length
@@ -103,8 +103,8 @@ function runSupport(run: KakuroRun, domains: readonly number[]): number[] | null
 
   const order = allowed.map((_, i) => i).sort((a, b) => digitCounts[allowed[a]] - digitCounts[allowed[b]])
   const support = allowed.map(() => 0)
-  const memo = new Int8Array(allDigits + 1)
-  const walked = new Uint8Array(allDigits + 1)
+  // A memo entry of 2 also marks that its cell support has been collected.
+  memo.fill(0)
   function canAssign(remaining: number): boolean {
     if (!remaining) return true
     if (memo[remaining]) return memo[remaining] > 0
@@ -120,8 +120,8 @@ function runSupport(run: KakuroRun, domains: readonly number[]): number[] | null
   }
 
   function collect(remaining: number): void {
-    if (!remaining || walked[remaining]) return
-    walked[remaining] = 1
+    if (!remaining || memo[remaining] === 2) return
+    memo[remaining] = 2
     const index = order[order.length - digitCounts[remaining]]
     for (let choices = remaining & allowed[index]; choices; choices &= choices - 1) {
       const digit = choices & -choices
@@ -140,9 +140,23 @@ function runSupport(run: KakuroRun, domains: readonly number[]): number[] | null
   return support[0] ? support : null
 }
 
+function runFitsEntries(run: KakuroRun, values: readonly number[]): boolean {
+  let entered = 0
+  for (const cell of run.cells) {
+    const value = values[cell] ?? 0
+    if (value === 0) continue
+    const digit = digitMask(value)
+    if (!digit || (entered & digit)) return false
+    entered |= digit
+  }
+
+  // Empty cells have no candidate restrictions during a rule check.
+  // Any valid digit set that contains the entries can fill those cells.
+  return totalsByLength[run.cells.length][run.total].some(mask => (mask & entered) === entered)
+}
+
 export function checkKakuro(puzzle: KakuroPuzzle, values: readonly number[]) {
-  const domains = createDomains(puzzle, values)
-  const conflicts = puzzle.runs.filter(run => !runSupport(run, domains))
+  const conflicts = puzzle.runs.filter(run => !runFitsEntries(run, values))
   const complete = !conflicts.length && puzzle.cells.every((cell, i) => cell !== null || digitMask(values[i]) !== 0)
   return { conflicts, complete }
 }
@@ -166,13 +180,14 @@ function propagate(
   domains: number[],
   recordStep?: (run: KakuroRun, domains: readonly number[], support: readonly number[], depth: number) => void,
 ): boolean {
+  const memo = new Int8Array(allDigits + 1)
   let changed = true
   let depth = 0
   while (changed) {
     changed = false
     depth++
     for (const run of puzzle.runs) {
-      const support = runSupport(run, domains)
+      const support = runSupport(run, domains, memo)
       if (!support) return false
       const firstChange = run.cells.findIndex((cell, i) => support[i] !== domains[cell])
       if (firstChange === -1) continue
@@ -256,4 +271,12 @@ export function solveKakuro(
   visit(createDomains(puzzle, values))
   const status = limited ? 'search-limit' : (['unsolvable', 'unique', 'multiple'] as const)[solutions.length]
   return { status, solution: solutions[0] ?? null, nodes }
+}
+
+// Count the candidates left after run deductions. A fully resolved puzzle
+// has exactly one candidate per white cell.
+export function countKakuroCandidates(puzzle: KakuroPuzzle): number | null {
+  const domains = createDomains(puzzle, [])
+  if (!propagate(puzzle, domains)) return null
+  return domains.reduce((count, mask) => count + digitCounts[mask], 0)
 }
