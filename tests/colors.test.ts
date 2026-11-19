@@ -43,7 +43,7 @@ test('the colors panel and the dark brush survive a reload', () => {
   store.set('colorBrush', 12)
   store.set('colorTarget', 'candidate')
   const reloaded = createPlayPreferenceStore(storage).getSnapshot()
-  assert.deepEqual(reloaded.desktopViews, { open: ['chains', 'colors'], active: 'colors' })
+  assert.deepEqual(reloaded.desktopViews, { open: ['colors', 'chains'], active: 'colors' })
   assert.equal(reloaded.selectedColor, 12)
   assert.equal(reloaded.colorBrush, 12)
   assert.equal(reloaded.colorTarget, 'candidate')
