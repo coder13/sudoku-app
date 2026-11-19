@@ -955,3 +955,21 @@ Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app
 - [x] Wire thirty calibrated Medium recipes, complete source-set previews, chooser/navigation stories and next-puzzle actions. Verify sixty distinct actual puzzles, multiple hints, complete independent Renban replay, mixed-import history aliases, deterministic fallbacks and actual storage/sharing. The initial integration passes 673 app and 505 Wasm tests.
 - [x] Finish checks and matched measurements at main `a400d36`, including Mini Sudoku, Algebraic Cages, standalone puzzle flows and UUID sharing. Pass 395 native, 702 app and 510 Wasm tests, strict types, the reduced variants build and five offline contracts across 192 routes. Preserve 1,535 complete response pairs. Record history, performance, memory and package costs in the [integration audit](SUDOKU_RENBAN_GENERATION_AUDIT.md).
 - [x] Pass exact-head engine/profile/docs checks and Cloudflare preview validation. Merge [PR 269](https://github.com/coder13/sudoku-app/pull/269) at `548bba6` and confirm production run 44606496440 starts. Verify all thirty deployed recipes and archived aliases against the downloaded engine. Keep the Netlify repository-access failure, three-template diversity limit and original partial human paths explicit.
+
+## Inequality New Puzzle preparation
+
+- [x] Preserve the complete mixed FzzD source and its honest partial human path. Calibrate fresh-completion generation with its seven comparison positions and two constructed 27-comparison layouts at both Easy and Medium. Independently check every accepted seed's uniqueness, required-rule dependence and completion.
+- [x] Select sixty recipes with sixty distinct completions. Verify full app-order traces, several opening hints, 568 direct digit-pair proofs and 4,408 completion-checked actions.
+- [x] Reproduce 35 history failures among 45 archived controls. Normalize strict-order relations privately across signs, Thermometers, transitive redundancy and safe complemented orientations. Check all 64 four-cell forward graphs against literal digit assignments, numeric companions and cycles. Pass 399 native tests.
+- [x] Wire Easy/Medium New Puzzle, shared directed-sign previews, stories and next-puzzle actions. Pass six focused Wasm contracts for all recipes, sixty actual full replays, real imported aliases, fallbacks, ratings/storage/history and UUID sharing. Pass strict types and seven focused component/import contracts.
+- [x] Record the 707-app/520-Wasm combined-base checks and final nine component/six Wasm focused checks after preview/budget adjustments. Preserve 1,627 full response pairs, 735 prior recipes, 320 bounded probes and five offline contracts across 192 routes. Check one hundred distinct puzzles per level; improve Medium completion diversity from 41 to 93 with six fresh attempts. Record caller/history/memory/package evidence in the [audit](SUDOKU_INEQUALITY_GENERATION_AUDIT.md).
+- [ ] Pass exact-head CI/profile/docs/preview gates, merge the integration and confirm production deployment starts. Keep the original partial FzzD path and source-format gaps explicit.
+
+## Existing 9×9 variant usability review
+
+- [ ] Finish the current Inequality integration, then prioritize [281](https://github.com/coder13/sudoku-app/issues/281). Inventory every existing variant/ruleset and representative combined-rule control.
+- [ ] Review actual rendering at narrow/desktop sizes, in light/dark themes and with larger text. Share screenshots for approval before merging broader visual changes.
+- [ ] Verify combined-rule import/play/input/candidates/conflicts, both Pencil modes, undo/redo, save/reload and sharing without losing any source constraint.
+- [ ] Verify several sound hints when available, selected techniques, proof provenance, pages and counts across existing variants and combined rules. Investigate actual coverage gaps.
+- [ ] Verify Technique Finder progress/cancellation, enabled techniques, counts, pages and action application against the same live candidate state.
+- [ ] Verify exact solutions and human walkthroughs under every active rule, with honest partial paths. Fix discovered defects and retain meaningful regressions.

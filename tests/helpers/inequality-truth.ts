@@ -21,9 +21,9 @@ export function assertInequalityProof(puzzle: VariantPuzzle, proof: VariantDeduc
   assert.ok(proof.actions.length > 0)
   for (const action of proof.actions) {
     const candidate = 'place' in action ? action.place : action.eliminate
-    const side = candidate.cell === rule.less ? 0 : 1
+    const side: 0 | 1 = candidate.cell === rule.less ? 0 : 1
     assert.ok(candidate.cell === rule.less || candidate.cell === rule.greater)
-    const support = new Set(pairs.map(pair => pair[side]))
+    const support: Set<number> = new Set(pairs.map((pair): number => pair[side]))
     if ('place' in action) assert.deepEqual([...support], [candidate.digit])
     else assert.equal(support.has(candidate.digit), false)
   }

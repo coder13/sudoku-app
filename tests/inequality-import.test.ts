@@ -30,7 +30,7 @@ test('the published Coach puzzle preserves every directed sign, line and dot', a
 
 test('inequality validation accepts distant endpoints and rejects malformed or hidden semantics', async () => {
   assert.equal(isPlayablePuzzle('inequality', puzzle), true)
-  assert.equal(generationVariant({ id: 'inequality' }), undefined)
+  assert.equal(generationVariant({ id: 'inequality' }), 'inequality')
   assert.ok(variantRuleDescriptions(puzzle).some(text => text.includes('smaller digit')))
   for (const [less, greater] of [[0, 0], [-1, 2], [0, 81], [1.5, 2], [0, '1']]) {
     assert.equal(isPlayablePuzzle('inequality', { ...puzzle, rules: [{ type: 'inequality', less, greater }] }), false)

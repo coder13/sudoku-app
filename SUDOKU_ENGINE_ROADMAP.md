@@ -4,6 +4,12 @@ The engine serves players, learners, and puzzle authors. Players need several hi
 
 This roadmap defines priorities and completion criteria. The [TODO](SUDOKU_ENGINE_TODO.md) records implementation work. The [engine guide](crates/engine/README.md) describes the available APIs.
 
+## Existing-variant quality priority
+
+Finish the current Inequality New Puzzle integration, then prioritize quality across existing 9×9 variants in [281](https://github.com/coder13/sudoku-app/issues/281).
+Review rendering, combined-rule fidelity, hints, Technique Finder, solutions and complete player flows.
+Share actual app screenshots for user approval before merging broader visual changes. Keep additional variant rollouts in the backlog during this review.
+
 ## Current integration state
 
 This 9×9 inventory uses main at `548bba6`. All 27 native rule types plus Jigsaw layouts have app acceptance and UI: twenty-eight named variants plus Classic. New Puzzle offers twenty-four variants plus Classic. Four older families still need recipes. Sized Sudoku and standalone puzzle families have separate inventories.

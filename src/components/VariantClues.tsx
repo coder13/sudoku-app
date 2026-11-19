@@ -277,7 +277,7 @@ function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [n
   </g>
 }
 
-export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
+export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly VariantRule[]; viewBox?: string }) {
   const clones = cloneLayout(rules)
   const cloneIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'clone') cloneIndices.set(index, cloneIndices.size) })
@@ -325,7 +325,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   }
   const drawnSums = new Set<number>()
   const markedEdges = new Set([...dots.keys(), ...sums.keys(), ...rules.flatMap(rule => rule.type === 'inequality' ? [pairKey(rule.less, rule.greater)] : [])])
-  return <svg className="variant-clues" viewBox="0 0 9 9" aria-hidden="true" focusable="false">
+  return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
     {rules.some((rule) => rule.type === 'arrow') && <defs>
       <marker id={marker} viewBox="0 0 1 1" refX=".9" refY=".5" markerWidth=".29" markerHeight=".29"
         markerUnits="userSpaceOnUse" orient="auto">

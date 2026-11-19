@@ -22,6 +22,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   entropic: [{ type: 'entropic', cells: [2, 1, 0, 9, 18, 19] }, { type: 'entropic', cells: [58, 59, 68, 77, 76, 75, 66] }],
   modular: [{ type: 'modular', cells: [2, 1, 0, 9, 18, 19] }, { type: 'modular', cells: [58, 59, 68, 77, 76, 75, 66] }],
   renban: [{ type: 'renban', cells: [18, 27, 36] }, { type: 'renban', cells: [13, 14, 15] }],
+  inequality: [{ type: 'inequality', less: 30, greater: 31 }],
   palindrome: [{ type: 'palindrome', cells: [0, 10, 20, 30, 31, 32] }, { type: 'palindrome', cells: [48, 49, 50, 60, 70, 80] }],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
@@ -67,8 +68,12 @@ export function VariantPreview({ variant, ruleset, boxRows }: { variant: NewPuzz
   const rules: readonly VariantRule[] = variant === 'whispers'
     ? [{ type: 'whispers', cells: [11, 21, 31, 39, 47, 57], minDifference: generationRuleset(variant, ruleset)!.minDifference }]
     : previews[variant]
+  const viewBox = variant === 'inequality' ? '3 3 2 1' : undefined
   return <span className="variant-preview" data-variant={variant} aria-hidden="true">
-    {rules.length > 0 && <VariantClues rules={rules} />}
+    {rules.length > 0 && <VariantClues rules={rules} viewBox={viewBox} />}
+    {variant === 'inequality' && <svg className="variant-clues variant-inequality-preview-digits" viewBox={viewBox} focusable="false">
+      <text x="3.5" y="3.5">1</text><text x="4.5" y="3.5">3</text>
+    </svg>}
     {variant === 'modular' && <svg className="variant-clues variant-modular-preview" viewBox="0 0 9 9" focusable="false">
       {([[2, 2], [1, 6], [0, 4], [9, 8], [18, 3], [19, 7]] as const).map(([cell, digit]) => <g key={cell}>
         <circle cx={cell % 9 + .5} cy={Math.floor(cell / 9) + .5} r=".34" />
