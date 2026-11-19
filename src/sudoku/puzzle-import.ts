@@ -1,8 +1,10 @@
 import lzString from 'lz-string'
+import type { CollectionReference } from './collection-reference.ts'
 import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { isGridText, isMiniGrid, MINI_GRID, type MiniGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
+import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad } from './sized-sudoku-pad.ts'
@@ -31,6 +33,17 @@ export type ImportedPuzzle = {
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
   grid?: MiniGrid
   algebraic?: AlgebraicDefinition
+  title?: string
+  sharedPuzzleId?: string
+  collection?: CollectionReference
+}
+
+export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
+  const { givens, variant, collection, title, grid, algebraic } = await downloadSharedPuzzle(id, signal)
+  const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
+  if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the shared givens.')
+  const cages = sizing ? { rules: sizing.rules, source: sizing.source } : algebraic && 'rules' in algebraic ? algebraic : undefined
+  return { givens, variant, collection, title, grid, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -544,8 +557,15 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   const link = /^(?:www\.)?(?:sudoku\.coach|sudokuexchange\.com|(?:beta\.)?sudokupad\.app|f-puzzles\.com)\//i.test(text)
     ? `https://${text}` : text
   const base = 'https://sudoku.invalid'
-  const url = /^(https?:\/\/|#(?:puzzle|variant|sized)=)/i.test(link) && URL.canParse(link, base) ? new URL(link, base) : null
+  const ownOrigin = globalThis.window?.location?.origin
+  const url = /^(https?:\/\/|#(?:puzzle|variant|sized)=|\/\?share=)/i.test(link) && URL.canParse(link, base)
+    ? new URL(link, ownOrigin ?? base) : null
   if (url) {
+    if (url.origin === ownOrigin && url.pathname === '/' && url.searchParams.has('share')) {
+      const id = url.searchParams.get('share')
+      if (!isSharedPuzzleId(id)) throw new Error('This puzzle link is invalid.')
+      return importSharedPuzzle(id)
+    }
     if (url.hash.startsWith('#sized=')) {
       const shared = parseJSON(new URLSearchParams(url.hash.slice(1)).get('sized') ?? '', 'Puzzle link')
       if (record(shared) && shared.version === 2 && typeof shared.sudokuPad === 'string' &&

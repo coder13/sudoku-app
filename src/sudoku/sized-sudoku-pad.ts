@@ -51,9 +51,13 @@ function readRule(cage: unknown): Cage {
   return { type: 'algebraic-cage', cells, label, total }
 }
 
+export function isSizedSudokuPadCode(code: unknown): code is string {
+  return typeof code === 'string' && code.length <= MAX_CODE && /^(?:scl|ctc)[A-Za-z0-9+/=]+$/i.test(code)
+}
+
 /** Decode the plain-JSON SCL envelope used by the supported 4×4 arithmetic export. */
 export function decodeSizedSudokuPad(code: string): SizedSudokuPadImport {
-  if (!/^(?:scl|ctc)[A-Za-z0-9+/=]+$/i.test(code) || code.length > MAX_CODE) {
+  if (!isSizedSudokuPadCode(code)) {
     return reject('This SudokuPad code is damaged or too large.')
   }
   const decoded = lzString.decompressFromBase64(code.slice(3))

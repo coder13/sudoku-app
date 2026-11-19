@@ -8,6 +8,7 @@ import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
 import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
+import { isSharedPuzzleId } from './puzzle-sharing.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
@@ -97,6 +98,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
       if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
+      if (value.sharedPuzzleId !== undefined && !isSharedPuzzleId(value.sharedPuzzleId)) delete value.sharedPuzzleId
       if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.chainSketch !== undefined && !validChainSketchState(value.chainSketch)) delete value.chainSketch
       if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory, grid)) delete value.actionHistory
@@ -460,10 +462,11 @@ export const roomStore = {
         if (!key.startsWith(`${SEEN_PREFIX}algebraic:`)) continue
         const identity = key.slice(SEEN_PREFIX.length)
         if (puzzles.has(identity)) continue
-        const [, givens, serialized] = identity.split(':', 3)
-        if (!isGridText(givens, MINI_GRID) || !serialized) continue
-        // Recover the full JSON after the givens separator, including its internal colons.
-        const json = identity.slice('algebraic:'.length + givens.length + 1)
+        const start = 'algebraic:'.length
+        const separator = identity.indexOf(':', start)
+        const givens = identity.slice(start, separator)
+        if (separator < 0 || !isGridText(givens, MINI_GRID)) continue
+        const json = identity.slice(separator + 1)
         try {
           const definitions = JSON.parse(`[${json}]`) as Pick<AlgebraicCage, 'cells' | 'total'>[]
           const rules = definitions.map(({ cells, total }) => ({ type: 'algebraic-cage', cells, total, label: algebraicLabel(total) }))

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, Grid3X3, Hash } from 'lucide-react'
+import { Calculator, ChevronLeft, ChevronRight, Grid3X3, Hash } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { iconButtonClassName } from '../components/Button'
 import '../components/puzzle-games.css'
@@ -41,6 +41,11 @@ function GameTypePicker() {
           <span className="game-row-copy"><strong>Kakuro</strong><small>Use digit sums to solve across and down clues.</small></span>
           <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
         </Link></li>
+        <li><Link className="game-row" to="/puzzles/calcudoku" state={{ fromPuzzleGameTypes: true }}>
+          <Calculator size={24} aria-hidden="true" />
+          <span className="game-row-copy"><strong>Calcudoku</strong><small>Fill a grid with arithmetic cage clues.</small></span>
+          <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
+        </Link></li>
       </ul>
     </div>
   </main>
@@ -51,5 +56,6 @@ declare module '@tanstack/history' {
     fromSudokuVariant?: boolean
     fromPuzzleGameTypes?: boolean
     fromKakuroDifficulty?: boolean
+    fromNumberDifficulty?: 'kakuro' | 'calcudoku'
   }
 }

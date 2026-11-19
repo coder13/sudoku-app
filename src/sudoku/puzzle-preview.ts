@@ -1,8 +1,9 @@
 import { runEngine } from './engine.ts'
-import { verifyAlgebraicPuzzle } from './algebraic-game.ts'
+import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
 import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
-import { detectPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
 import { analyzeMini } from './mini-play.ts'
+import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
+import { findSharedAttempt } from './puzzle-sharing.ts'
 import { applyPuzzleGrade, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
 import { validation } from './puzzle-validation.ts'
 import { variantName } from './variants.ts'
@@ -16,16 +17,28 @@ export function findImportedPuzzle(games: readonly Game[], imported: Pick<Import
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
 export async function prepareImportedPuzzle(input: string, games: readonly Game[] = []): Promise<PuzzlePreview> {
-  const imported = await detectPuzzle(input)
-  const { givens, variant, format, grid, algebraic } = imported
+  return preparePuzzlePreview(await detectPuzzle(input), games)
+}
+
+export async function prepareSharedPuzzle(id: string, games: readonly Game[], signal: AbortSignal): Promise<PuzzlePreview> {
+  const existing = findSharedAttempt(games, id)
+  if (existing) return { game: existing, format: 'Puzzle link' }
+  const imported = await importSharedPuzzle(id, signal)
+  signal.throwIfAborted()
+  return preparePuzzlePreview(imported, games)
+}
+
+async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
+  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
     : variant ? `Imported ${variantName(variant)} puzzle` : grid ? 'Imported Mini Sudoku' : 'Imported puzzle'
-  const game = makeGame(createGameId(), name, givens, 'imported', undefined, grid)
+  const game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
   if (algebraic && grid) {
     game.algebraic = await verifyAlgebraicPuzzle({ givens, ...algebraic })
-    return { game: applyPuzzleGrade(game, null), format, grade: null }
+    const rating = await rateAlgebraicPuzzle(givens, game.algebraic.rules)
+    return { game: { ...game, difficulty: rating?.difficulty ?? null, score: rating?.points ?? null }, format }
   }
   if (!existing) {
     const status = grid ? await analyzeMini(givens) : variant

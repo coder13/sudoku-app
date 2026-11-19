@@ -3,14 +3,14 @@ import { test } from 'node:test'
 import lzString from 'lz-string'
 import { analyzeAlgebraic } from '../src/sudoku/algebraic-play.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
-import { puzzleLinkHash } from '../src/sudoku/formats.ts'
 import { foundationVisuals } from '../src/sudoku/foundation-visuals.ts'
 import { applyDeduction, fillEntries, isSolved, redo, restartGame, undo } from '../src/sudoku/game.ts'
 import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { analyzeMini } from '../src/sudoku/mini-play.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { findImportedPuzzle, prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { findImportedPuzzle, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates } from '../src/sudoku/variant-play.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
@@ -38,9 +38,17 @@ const code = 'scl' + lzString.compressToBase64(JSON.stringify({
 }))
 
 test('a SudokuPad short link retains the rules through solve, hints, replay, share, and storage', async ({ mock }) => {
-  mock.method(globalThis, 'fetch', async (path: string) => {
-    assert.equal(path, '/api/v1/import/sudokupad/contract-puzzle')
-    return Response.json({ code })
+  const shareId = '44444444-4444-4444-8444-444444444444'
+  let shared: unknown
+  mock.method(globalThis, 'fetch', async (path: string, init?: RequestInit) => {
+    if (path === '/api/v1/import/sudokupad/contract-puzzle') return Response.json({ code })
+    if (path === '/api/v1/shares' && init?.method === 'POST') {
+      assert.equal(typeof init.body, 'string')
+      shared = JSON.parse(init.body as string)
+      return Response.json({ id: shareId })
+    }
+    assert.equal(path, `/api/v1/shares/${shareId}`)
+    return Response.json(shared)
   })
   const { game } = await prepareImportedPuzzle('https://sudokupad.app/contract-puzzle')
   const algebraic = game.algebraic
@@ -69,13 +77,20 @@ test('a SudokuPad short link retains the rules through solve, hints, replay, sha
   assert.deepEqual(saved?.position, moved.position)
   assert.equal(readGame(game.id, JSON.stringify({ ...game, algebraic: { ...algebraic, solution: '1234341221434321' } })), undefined)
 
-  const share = '#' + puzzleLinkHash(game)
+  const share = '#sized=' + encodeURIComponent(JSON.stringify({ version: 2, sudokuPad: code }))
   assert.equal(findImportedPuzzle([game], await detectPuzzle(share))?.id, game.id)
   assert.deepEqual((await prepareImportedPuzzle(share)).game.algebraic, algebraic)
   const nativeGame = { ...game, algebraic: { rules: algebraic.rules, solution: algebraic.solution } }
-  const nativeLink = '#' + puzzleLinkHash(nativeGame)
+  const nativeLink = '#sized=' + encodeURIComponent(JSON.stringify({ version: 2, grid: MINI_GRID, givens, rules: algebraic.rules }))
   assert.deepEqual((await prepareImportedPuzzle(nativeLink)).game.algebraic, nativeGame.algebraic)
   assert.deepEqual(readGame(nativeGame.id, JSON.stringify(nativeGame))?.algebraic, nativeGame.algebraic)
+  assert.equal(await publishSharedPuzzle(moved), shareId)
+  assert.deepEqual(shared, { version: 1, title: game.title, givens, grid: MINI_GRID, algebraic: { sudokuPad: code } })
+  const sharedCopy = await prepareSharedPuzzle(shareId, [], new AbortController().signal)
+  assert.deepEqual(sharedCopy.game.algebraic, algebraic)
+  assert.equal(sharedCopy.game.sharedPuzzleId, shareId)
+  assert.equal(await publishSharedPuzzle(nativeGame), shareId)
+  assert.deepEqual((await prepareSharedPuzzle(shareId, [], new AbortController().signal)).game.algebraic, nativeGame.algebraic)
   const trace = await puzzleSolution(game)
   assert.equal(trace.status, 'solved')
   assert.equal(trace.board, expected)
@@ -83,12 +98,19 @@ test('a SudokuPad short link retains the rules through solve, hints, replay, sha
 })
 
 test('generated algebraic definitions are deterministic, replayable, and excluded in either cage order', async () => {
-  const request = { type: 'generate-algebraic', seed: 42 } as const
+  const request = { type: 'generate-algebraic', seed: 42, difficulty: 'easy' } as const
   const generated = await runEngine(request)
   assert.deepEqual(await runEngine(request), generated)
   assert.deepEqual(generated.grid, MINI_GRID)
   const exclude = { ...generated, rules: [...generated.rules].reverse().map(rule => ({ ...rule, cells: [...rule.cells].reverse() })) }
   assert.notDeepEqual(await runEngine({ ...request, exclude: [exclude] }), generated)
+  for (const difficulty of ['easy', 'medium'] as const) {
+    const position = await runEngine({ ...request, difficulty })
+    const rating = await runEngine({ type: 'sized-variant', position, operation: 'rate' })
+    assert.ok(rating)
+    assert.equal(rating.difficulty, difficulty)
+    assert.equal(rating.points <= 27, difficulty === 'easy')
+  }
   const link = '#sized=' + encodeURIComponent(JSON.stringify({
     version: generated.version, grid: generated.grid, givens: generated.digits.join(''), rules: generated.rules,
   }))

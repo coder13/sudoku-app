@@ -8278,6 +8278,7 @@
           "difficulty": "easy",
           "summary": "A letter in a cage label is a shared positive integer. Compare the smallest and largest totals for cages with the same letter. Their ranges can narrow the letter to one value or rule out candidates in a cage.",
           "blocks": [
+            { "type": "heading", "id": "where-to-start", "title": "Find cages that share a letter" },
             {
               "type": "text",
               "paragraphs": [

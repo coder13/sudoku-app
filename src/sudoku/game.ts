@@ -38,6 +38,7 @@ export type Game = {
   title: string
   source: Source
   collection?: CollectionReference
+  sharedPuzzleId?: string
   difficulty?: Difficulty | null
   score?: number | null
   variant?: VariantGame
@@ -106,6 +107,7 @@ export function restartGame(game: Game): Game {
     ...makeGame(game.id, game.title, game.givens, game.source, game.created, game.grid),
     difficulty: game.difficulty,
     collection: game.collection,
+    sharedPuzzleId: game.sharedPuzzleId,
     score: game.score,
     variant: game.variant,
     algebraic: game.algebraic,

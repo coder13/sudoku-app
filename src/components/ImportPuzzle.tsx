@@ -2,12 +2,14 @@ import { Button, IconButton, buttonClassName } from './Button'
 import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
+import { deviceSync } from '../sudoku/device-sync'
 import type { Game } from '../sudoku/game'
 import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
 import { findImportedPuzzle, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
 import { applyPuzzleGrade } from '../sudoku/puzzle-rating'
+import { findSharedAttempt } from '../sudoku/puzzle-sharing'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { MINI_RULE } from '../sudoku/new-puzzle'
@@ -17,15 +19,16 @@ import { PhotoPuzzleReview } from './PhotoPuzzleReview'
 import { PuzzleCamera } from './PuzzleCamera'
 export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
-function existingPuzzle(game: Pick<Game, 'givens' | 'variant' | 'algebraic'>) {
-  return findImportedPuzzle(roomStore.getSnapshot().games, game)
+function existingPuzzle(game: Pick<Game, 'givens' | 'variant' | 'algebraic' | 'sharedPuzzleId'>) {
+  const { games } = roomStore.getSnapshot()
+  return game.sharedPuzzleId ? findSharedAttempt(games, game.sharedPuzzleId) : findImportedPuzzle(games, game)
 }
 
 function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
 
-function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
+export function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
   const existing = existingPuzzle(game)
   if (existing) {
     if (grade !== undefined && (existing.difficulty === undefined || existing.score === undefined)) {
@@ -34,7 +37,8 @@ function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
     if (play) roomStore.select(existing.id)
     return false
   }
-  roomStore.add(play ? game : { ...game, savedForLater: true })
+  const copy = game.sharedPuzzleId && deviceSync.credentials() ? { ...game, saved: true } : game
+  roomStore.add(play ? copy : { ...copy, savedForLater: true })
   return true
 }
 

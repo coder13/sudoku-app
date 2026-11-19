@@ -105,6 +105,11 @@ pub(super) fn generate(
         let mut cages: Vec<AlgebraicCage> = rules.into_iter().map(AlgebraicCage::from).collect();
         for cage in &mut cages {
             cage.cells.sort_unstable();
+            cage.label = match &cage.total {
+                CageTotal::Fixed(value) => value.to_string(),
+                CageTotal::Variable { name, offset: 0 } => name.clone(),
+                CageTotal::Variable { name, offset } => format!("{name}{offset:+}"),
+            };
         }
         cages.sort_unstable_by(|left, right| left.cells.cmp(&right.cells));
         excluded.push(crate::GeneratedAlgebraic { givens, cages });
