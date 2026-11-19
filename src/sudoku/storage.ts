@@ -6,6 +6,7 @@ import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
+import { isSharedPuzzleId } from './puzzle-sharing.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
@@ -87,6 +88,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
       if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
+      if (value.sharedPuzzleId !== undefined && !isSharedPuzzleId(value.sharedPuzzleId)) delete value.sharedPuzzleId
       if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.chainSketch !== undefined && !validChainSketchState(value.chainSketch)) delete value.chainSketch
       if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory, grid)) delete value.actionHistory

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import lzString from 'lz-string'
-import { exportPuzzle, puzzleLinkHash, STARTER } from '../src/sudoku/formats.ts'
+import { exportPuzzle, STARTER } from '../src/sudoku/formats.ts'
 import { WINDOKU_REGIONS, isPlayablePuzzle, variantName, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { countMixedSolutions } from './helpers/mixed-oracle.ts'
 import { mixedFixtures } from './helpers/mixed-fixtures.ts'
@@ -22,7 +22,7 @@ test('detects existing formats and compact Classic links', async () => {
     [STARTER, 'Text grid'],
     ['```text\n' + exportPuzzle(STARTER, 'grid') + '\n```', 'Text grid'],
     [exportPuzzle(STARTER, 'hodoku'), 'HoDoKu'],
-    [exportPuzzle(STARTER, 'link', 'https://example.org'), 'Puzzle link'],
+    [`https://example.org/#puzzle=${STARTER}`, 'Puzzle link'],
     [exportPuzzle(STARTER, 'coach'), 'Sudoku Coach'],
     [exportPuzzle(STARTER, 'exchange'), 'Sudoku Exchange'],
     [`https://sudokuexchange.com/play/?s=${shortGrid}&d=1`, 'Sudoku Exchange'],
@@ -34,10 +34,10 @@ test('detects existing formats and compact Classic links', async () => {
 test('Mini Sudoku imports text and versioned links and rejects unsupported authored rules', async () => {
   const givens = '0000300201400000'
   const grid = MINI_GRID
-  for (const input of [exportPuzzle(givens, 'givens'), exportPuzzle(givens, 'grid', '', 4), '..|..\n3.|.2\n--+--\n.1|4.\n..|..']) {
+  for (const input of [exportPuzzle(givens, 'givens'), exportPuzzle(givens, 'grid', 4), '..|..\n3.|.2\n--+--\n.1|4.\n..|..']) {
     assert.deepEqual(await detectPuzzle(input), { givens, grid, format: 'Text grid' })
   }
-  assert.deepEqual(await detectPuzzle('#' + puzzleLinkHash({ givens, grid })), { givens, grid, format: 'Puzzle link' })
+  assert.deepEqual(await detectPuzzle('#sized=' + encodeURIComponent(JSON.stringify({ version: 2, givens, grid }))), { givens, grid, format: 'Puzzle link' })
   const data = { gridSize: 4, givenDigits: givens, regions: [0,0,1,1,0,0,1,1,2,2,3,3,2,2,3,3] }
   assert.deepEqual(await detectPuzzle(coach(data)), { givens, grid, format: 'Sudoku Coach' })
   await assert.rejects(detectPuzzle(coach({ ...data, givenConstraints: [{ type: 'diagonalNegative', segments: [] }] })), /rules that Mini Sudoku cannot import/)
@@ -259,8 +259,8 @@ test('every Classic share format round-trips sparse and dense grids without play
   const grids = [EMPTY, '123456789'.repeat(9), STARTER,
     ...Array.from({ length: 80 }, () => Array.from({ length: 81 }, () => String(random() % 10)).join(''))]
   for (const givens of grids) {
-    for (const format of ['link', 'givens', 'grid', 'hodoku', 'exchange', 'coach'] as const) {
-      assert.equal((await detectPuzzle(exportPuzzle(givens, format, 'https://example.org'))).givens, givens, format)
+    for (const format of ['givens', 'grid', 'hodoku', 'exchange', 'coach'] as const) {
+      assert.equal((await detectPuzzle(exportPuzzle(givens, format))).givens, givens, format)
     }
   }
 })

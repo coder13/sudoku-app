@@ -1,10 +1,11 @@
 import { Button, ChoiceButton } from './Button'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
-import { Bookmark, Clipboard, Trash2 } from 'lucide-react'
+import { Bookmark, Clipboard, Link2, Trash2 } from 'lucide-react'
 import { analyzeMini } from '../sudoku/mini-play'
 import { runEngine } from '../sudoku/engine'
-import { exportPuzzle, puzzlePlayLink, type ShareFormat } from '../sudoku/formats'
+import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
 import { isSolved, makeGame, valuesOf, type Game } from '../sudoku/game'
+import { publishSharedPuzzle, sharedPuzzleLink } from '../sudoku/puzzle-sharing'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
 import { SelectControl } from './SelectControl'
@@ -58,7 +59,7 @@ export function ManagePuzzle({ game, close }: {
   </Modal>
 }
 
-const formats: [ShareFormat, string][] = [
+const formats: ['link' | ShareFormat, string][] = [
   ['link', 'Puzzle link'],
   ['givens', '81-character givens'],
   ['grid', '9-line text grid'],
@@ -67,7 +68,7 @@ const formats: [ShareFormat, string][] = [
   ['coach', 'sudoku.coach link'],
 ]
 
-const miniFormats: [ShareFormat, string][] = [
+const miniFormats: ['link' | ShareFormat, string][] = [
   ['link', 'Puzzle link'], ['givens', '16-character givens'], ['grid', '4-line text grid'],
 ]
 
@@ -75,11 +76,36 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
   const { hostname, origin } = window.location
   const loopback = hostname === 'localhost' || hostname.endsWith('.localhost') ||
     hostname === '[::1]' || /^127(?:\.\d+){3}$/.test(hostname)
-  const [format, setFormat] = useState<ShareFormat>(loopback && !game.variant && !game.grid ? 'exchange' : 'link')
+  const [format, setFormat] = useState<'link' | ShareFormat>('link')
   const [status, setStatus] = useState('')
+  const [link, setLink] = useState('')
+  const [sharing, setSharing] = useState(false)
+  const [error, setError] = useState('')
   const text = useRef<HTMLTextAreaElement>(null)
+  const pending = useRef<AbortController | null>(null)
   const size = game.grid?.size ?? 9
-  const value = game.variant || format === 'link' ? puzzlePlayLink(game, origin) : exportPuzzle(game.givens, format, origin, size)
+  const value = format === 'link' ? link : exportPuzzle(game.givens, format, size)
+  useEffect(() => () => pending.current?.abort(), [])
+
+  async function createLink() {
+    if (pending.current) return
+    const request = new AbortController()
+    pending.current = request
+    setSharing(true)
+    setError('')
+    try {
+      const id = await publishSharedPuzzle(game, request.signal)
+      if (!request.signal.aborted) {
+        setLink(sharedPuzzleLink(id, origin))
+        setStatus('Link ready to copy.')
+      }
+    } catch (reason) {
+      if (!request.signal.aborted) setError(reason instanceof Error ? reason.message : 'The link could not be created.')
+    } finally {
+      pending.current = null
+      if (!request.signal.aborted) setSharing(false)
+    }
+  }
 
   async function copy() {
     try {
@@ -94,19 +120,28 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
   return (
     <Modal title="Share puzzle" onClose={close}>
       <div className="dialog-form">
-        <p>Share the starting grid for {game.title}. Anyone who opens the link without access to your solve starts their own.</p>
+        <p>Share {game.title} so someone else can solve it. Your progress stays private.</p>
         {!game.variant && <>
           <label htmlFor="share-format">Format</label>
-          <SelectControl id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
+          <SelectControl id="share-format" value={format} disabled={sharing} onChange={(event) => {
+            setFormat(event.target.value as 'link' | ShareFormat)
+            setStatus('')
+            setError('')
+          }}>
             {(game.grid ? miniFormats : formats).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
           </SelectControl>
         </>}
         {loopback && format === 'link' && <p>This link opens only on this device.</p>}
-        <label htmlFor="share-output">Puzzle to share</label>
-        <textarea id="share-output" ref={text} value={value} readOnly rows={format === 'grid' ? size : 3} spellCheck={false} />
+        {format === 'link' && <p>Anyone with the link can open the starting grid and rules.</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {value && <>
+          <label htmlFor="share-output">{format === 'link' ? 'Puzzle link' : 'Puzzle to share'}</label>
+          <textarea id="share-output" ref={text} value={value} readOnly rows={format === 'grid' ? size : 3} spellCheck={false} />
+        </>}
         <div className="dialog-actions spread">
           <span className="dialog-status" role="status">{status}</span>
-          <Button variant="primary" onClick={copy}><Clipboard size={16} /> Copy</Button>
+          {value ? <Button variant="primary" onClick={copy}><Clipboard size={16} /> Copy</Button>
+            : <Button variant="primary" onClick={createLink} disabled={sharing}><Link2 size={16} /> {sharing ? 'Creating link…' : 'Create link'}</Button>}
         </div>
       </div>
     </Modal>
