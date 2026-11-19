@@ -453,7 +453,7 @@ export const roomStore = {
     else playPuzzle(next, game)
     if (saved) announceEdit(game.id)
   },
-  update(id: string, update: (game: Game) => Game) {
+  update(id: string, update: (game: Game) => Game, { derived = false } = {}) {
     const current = room.games.find((game) => game.id === id)
     if (!current) return
     let merged = current
@@ -484,7 +484,7 @@ export const roomStore = {
       writeGame(next)
       if (played) localStorage.setItem(activityPrefix + id, String(Date.now()))
     })
-    if (saved && (played || next.elapsed === merged.elapsed)) {
+    if (saved && !derived && (played || next.elapsed === merged.elapsed)) {
       const paused = next.paused && !merged.paused
       const finished = next.position.entries !== merged.position.entries && isSolved(next) && !isSolved(merged)
       announceEdit(id, paused || finished)

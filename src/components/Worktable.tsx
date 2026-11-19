@@ -53,6 +53,7 @@ import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckR
 import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionDialog, SolutionPath, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
+import { SyncConnectionStatus } from './SyncConnectionStatus'
 import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
@@ -639,7 +640,7 @@ export function Worktable({
     let current = true
     void ratePuzzle(givens, variant).then((grade) => {
       if (!current) return
-      roomStore.update(id, (latest) => latest.givens === givens && latest.variant === variant ? applyPuzzleGrade(latest, grade) : latest)
+      roomStore.update(id, (latest) => latest.givens === givens && latest.variant === variant ? applyPuzzleGrade(latest, grade) : latest, { derived: true })
     }).catch(() => {
       if (current) setRatingFailed(true)
     })
@@ -1774,6 +1775,7 @@ export function Worktable({
     {hintMenuAction}
   </>
   const syncStatus = useSyncExternalStore(deviceSync.subscribePuzzle, () => deviceSync.puzzleStatus(game.id), () => 'none')
+  const syncConnection = useSyncExternalStore(deviceSync.subscribeConnection, deviceSync.getConnection, deviceSync.getServerConnection)
   const showPuzzleSync = syncStatus !== 'none' && !placeholder && !draft
   const syncWarning = showPuzzleSync && storageAvailable && (
     syncStatus === 'offline' ? 'Offline. Changes saved on this device.' :
@@ -1916,6 +1918,7 @@ export function Worktable({
             <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
           </span>}
           {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
+          {showPuzzleSync && <SyncConnectionStatus connection={syncConnection} />}
           {syncWarning && <span className="puzzle-sync-warning" role="status">{syncWarning}</span>}
           {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
             {formatTime(game.elapsed)}

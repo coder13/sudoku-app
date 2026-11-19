@@ -12,6 +12,8 @@ Settings sync includes appearance, highlighting, controls, error checking, timin
 
 Changes are saved locally first. The first unsynced edit starts a one-minute timer. Later edits share that upload. Pausing, finishing, switching puzzles, or backgrounding the app can send pending changes sooner. Elapsed time is included with puzzle saves and does not trigger periodic uploads on its own. Use **Puzzle options → Sync now** to send the current puzzle immediately and check its cloud save. Routine status appears in that menu. If pending changes are offline or fail to sync, the puzzle card shows their status. Failed uploads retry with backoff while the app is open.
 
+The puzzle card shows **Live sync connected** once the server answers on its live connection. **Device sync** shows the last successful cloud check and the last live notification this device received. If live sync is reconnecting, puzzle saves can still sync through periodic cloud checks.
+
 A WebSocket notifies linked devices when puzzles, settings, or the device list change. Devices still check for missed changes on focus, reconnect, and about every five minutes while visible. When the WebSocket is unavailable, visible devices check about every 30 seconds. In **Linked devices**, tap **⋯** on mobile to rename or unlink a device. Clearing a name restores its generated label.
 
 ## Run locally

@@ -4,6 +4,7 @@ import { ArrowLeft, KeyRound, Link2, QrCode } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { PairingInvitation } from './PairingInvitation'
 import { PairingScanner } from './PairingScanner'
+import { SyncConnectionStatus } from './SyncConnectionStatus'
 import { pairingTicket, PRODUCTION_SYNC_ORIGIN } from '../sudoku/pairing-link'
 import { LinkedDeviceRow } from './LinkedDeviceRow'
 import { useMobileLayout } from './mobile-layout'
@@ -23,6 +24,7 @@ type LinkedDevice = Awaited<ReturnType<typeof deviceSync.devices>>[number]
 export function DeviceSyncPage() {
   const mobile = useMobileLayout()
   const status = useSyncExternalStore(deviceSync.subscribe, deviceSync.getSnapshot, deviceSync.getServerSnapshot)
+  const connection = useSyncExternalStore(deviceSync.subscribeConnection, deviceSync.getConnection, deviceSync.getServerConnection)
   const router = useRouter()
   const canGoBack = useCanGoBack()
   const current = useLocation()
@@ -148,6 +150,7 @@ export function DeviceSyncPage() {
       <h1 ref={heading} tabIndex={-1}>{screen === 'start' ? 'Device sync' : syncPageTitles[screen]}</h1>
     </header>
     {productionSync && <p><strong>Production sync.</strong> Changes here sync to the live app.</p>}
+    {status.linked && screen === 'devices' && <SyncConnectionStatus connection={connection} detailed />}
     {status.message && <p role="status">{status.message}</p>}
     {(error || listError) && <p className="workspace-error" role="alert">{error || listError}</p>}
     {!status.linked && status.ready && screen === 'confirm' && ticket && <>

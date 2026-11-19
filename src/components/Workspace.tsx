@@ -478,7 +478,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
       ) : playRoute && !game ? (
         <main className="page sync-page"><h1>{sync.linked && !sync.ready ? 'Loading puzzle…' : 'Puzzle unavailable on this device'}</h1>
-          <p>{sync.linked ? sync.message : 'Link the device that has this puzzle to open it here.'}</p>
+          <p>{sync.linked
+            ? sync.message || 'Open this puzzle on your other device and choose Sync now from Puzzle options.'
+            : 'Link the device that has this puzzle to open it here.'}</p>
           <Link className={buttonClassName('primary')} to="/sync">Device sync</Link>
           <Link className={buttonClassName()} to="/" search={{}}>Return to puzzles</Link>
         </main>

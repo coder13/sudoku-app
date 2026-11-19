@@ -1,6 +1,6 @@
 import { settingsEditedEvent } from './settings-events.ts'
 import { createSyncEngine, syncRequest, SyncError, type Credentials } from './sync-engine.ts'
-import { createSyncSocket } from './sync-socket.ts'
+import { createSyncSocket, type LiveConnection } from './sync-socket.ts'
 import { roomStore } from './storage.ts'
 
 const credentialsKey = 'sudoku-app:sync:device'
@@ -12,6 +12,25 @@ function forgetDevice(id: string) {
 type State = { linked: boolean; ready: boolean; message: string }
 const initial: State = { linked: false, ready: false, message: '' }
 let state = initial
+
+export type SyncConnection = {
+  mode: 'unlinked' | 'offline' | Exclude<LiveConnection, 'inactive'>
+  lastCheck: number | null
+  lastNotification: number | null
+  checkFailed: boolean
+}
+const initialConnection: SyncConnection = { mode: 'unlinked', lastCheck: null, lastNotification: null, checkFailed: false }
+let connection = initialConnection
+const connectionListeners = new Set<() => void>()
+
+function publishConnection(update: Partial<SyncConnection>) {
+  const next = { ...connection, ...update }
+  if (next.mode === connection.mode && next.lastCheck === connection.lastCheck &&
+      next.lastNotification === connection.lastNotification && next.checkFailed === connection.checkFailed) return
+  connection = next
+  connectionListeners.forEach(fn => fn())
+}
+
 const listeners = new Set<() => void>()
 const deviceListeners = new Set<() => void>()
 const devicesChanged = () => deviceListeners.forEach(listener => listener())
@@ -75,10 +94,12 @@ function currentDevice() {
       }
     })
     active = { device, engine }
+    publishConnection({ ...initialConnection, mode: navigator.onLine ? 'connecting' : 'offline' })
     recoverPending = true
     publish({ linked: true, ready: false, message: 'Loading your puzzles…' })
   } else {
     recoverPending = false
+    publishConnection(initialConnection)
     publish({ ...initial, ready: true })
   }
   puzzlesChanged()
@@ -165,6 +186,7 @@ function reportError(target: ActiveDevice, error: unknown) {
     publish({ linked: false, ready: true, message: 'This device was unlinked. Local puzzles are still available.' })
     return
   }
+  publishConnection({ checkFailed: true })
   const message = error instanceof SyncError || error instanceof Error && error.name === 'Error'
     ? error.message : 'Sync is unavailable. Your changes are saved here and will retry.'
   publish({ linked: true, ready: true, message })
@@ -206,8 +228,9 @@ async function flush() {
       checkFailures.clear()
       await applyResult(target, result, edits)
       if (!stillLinked(target)) return
+      publishConnection({ lastCheck: Date.now(), checkFailed: false })
       publish({ linked: true, ready: true, message: failures.size
-        ? 'Some puzzle changes are saved on this device and could not sync.' : 'Up to date.' })
+        ? 'Some puzzle changes are saved on this device and could not sync.' : '' })
     } catch (error) {
       if (stillLinked(target)) {
         backOff()
@@ -257,6 +280,7 @@ async function syncPuzzle(id: string) {
         if (!stillLinked(target)) return
         await applyResult(target, result, edits)
         if (!stillLinked(target)) return
+        publishConnection({ lastCheck: Date.now(), checkFailed: false })
         if (!result.failures.has(id) && !result.copies.has(id) && await target.engine.pending(id)) {
           if (!pending.has(id)) queueEdit(id, Date.now() + batchDelay)
         }
@@ -296,6 +320,12 @@ export const deviceSync = {
   syncPuzzle,
   getSnapshot: () => state,
   getServerSnapshot: () => initial,
+  subscribeConnection(fn: () => void) {
+    connectionListeners.add(fn)
+    return () => { connectionListeners.delete(fn) }
+  },
+  getConnection: () => connection,
+  getServerConnection: () => initialConnection,
   connect() {
     connected = true
     const unsubscribe = roomStore.onEdit((id, handoff) => {
@@ -320,7 +350,11 @@ export const deviceSync = {
     const settingChanged = () => requestPull()
     const socket = createSyncSocket({
       opened: () => { if (!document.hidden) { requestPull(); devicesChanged() } },
-      changes: () => requestPull(),
+      status: mode => {
+        if (!active) return
+        publishConnection({ mode: !navigator.onLine ? 'offline' : mode === 'inactive' ? 'connecting' : mode })
+      },
+      changes: () => { publishConnection({ lastNotification: Date.now() }); requestPull() },
       devices: devicesChanged,
       revoked: () => { retryAt = 0; requestPull(0) },
     })
@@ -328,7 +362,9 @@ export const deviceSync = {
     function wake() {
       const target = currentDevice()
       socket.update(target?.device ?? null)
+      if (target && !document.hidden && navigator.onLine) socket.check(Date.now())
       if (target && !navigator.onLine) {
+        publishConnection({ mode: 'offline' })
         publish({ linked: true, ready: true, message: 'Offline. Changes are saved on this device.' })
         if (recoverPending) {
           void target.engine.pendingIds().then(ids => {

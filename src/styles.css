@@ -794,6 +794,26 @@ svg { flex-shrink: 0; }
 .puzzle-menu button { min-height: 38px; font-size: 0.8125rem; }
 .puzzle-sync-menu-status { margin: 0 var(--space-10) var(--space-6) 36px; color: var(--muted); font-size: 0.75rem; }
 .puzzle-sync-warning { color: var(--danger-ink); font-size: 0.75rem; }
+.sync-connection-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 650;
+}
+.sync-connection-dot { width: 0.55em; height: 0.55em; flex: none; border-radius: 50%; background: currentColor; }
+.sync-connection-label[data-connection="live"] .sync-connection-dot { background: #2a9355; }
+.sync-connection-label[data-connection="failure"] { color: var(--danger-ink); }
+.sync-connection-detail { display: grid; gap: var(--space-8); padding: var(--space-12); border: 1px solid var(--border); border-radius: 8px; }
+.sync-connection-detail .sync-connection-label { font-size: 0.875rem; color: inherit; }
+.sync-connection-detail p, .sync-connection-detail dl { margin: 0; }
+.sync-connection-detail dl { display: grid; gap: var(--space-4); font-size: 0.8125rem; }
+.sync-connection-detail dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-4) var(--space-12); }
+.sync-connection-detail dt { color: var(--muted); }
+.sync-connection-detail dd { margin: 0; }
+
 .puzzle-stage { position: relative; min-width: 0; }
 .puzzle-placeholder-stage { position: relative; }
 .puzzle-grid-reservation { visibility: hidden; pointer-events: none; }
