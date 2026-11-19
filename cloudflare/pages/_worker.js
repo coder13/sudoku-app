@@ -38,6 +38,67 @@ async function input(request, limit = 2048) {
   throw new HttpError(400, 'Invalid request.')
 }
 
+const maximumPuzzleCodeLength = 20_000
+const publicPuzzleSources = {
+  'sudoku-coach': {
+    pattern: /^[A-Za-z0-9]{1,16}$/,
+    url: id => `https://sudoku.coach/en/s/${id}`,
+    maxBytes: 512 * 1024,
+    code(text) {
+      const codes = new Set(text.match(/\bSCv7_32_[0-9a-v]+\b/gi) ?? [])
+      return codes.size === 1 ? codes.values().next().value : undefined
+    },
+  },
+  sudokupad: {
+    pattern: /^[A-Za-z0-9_-]{1,64}$/,
+    url: id => `https://sudokupad.app/api/puzzle/${id}`,
+    maxBytes: 20_024,
+    code(text) {
+      const value = text.trim()
+      return /^(?:scl|ctc|fpuzzles|fpuz|scf)[A-Za-z0-9+/=_-]+$/i.test(value) ? value : undefined
+    },
+  },
+}
+
+async function loadPublicPuzzle(request, path) {
+  const [, provider, id] = path.split('/')
+  const source = Object.hasOwn(publicPuzzleSources, provider) ? publicPuzzleSources[provider] : undefined
+  if (!source || !source.pattern.test(id ?? '') || path !== `import/${provider}/${id}`) {
+    throw new HttpError(404, 'Unknown puzzle link.')
+  }
+  if (request.method !== 'GET') throw new HttpError(405, 'Method not allowed.')
+  let response
+  try {
+    response = await fetch(source.url(id), { redirect: 'error', signal: AbortSignal.timeout(5_000) })
+  } catch {
+    throw new HttpError(502, 'Could not open the published puzzle.')
+  }
+  if (response.status === 404) throw new HttpError(404, 'The published puzzle could not be found.')
+  if (!response.ok || !response.body) throw new HttpError(502, 'The puzzle source is unavailable.')
+
+  if (+response.headers.get('Content-Length') > source.maxBytes) {
+    await response.body.cancel()
+    throw new HttpError(413, 'The puzzle source is too large.')
+  }
+  const decoder = new TextDecoder()
+  let content = '', bytes = 0
+  try {
+    for await (const chunk of response.body) {
+      bytes += chunk.byteLength
+      if (bytes > source.maxBytes) throw new HttpError(413, 'The puzzle source is too large.')
+      content += decoder.decode(chunk, { stream: true })
+    }
+  } catch (error) {
+    if (error instanceof HttpError) throw error
+    throw new HttpError(502, 'The puzzle source is unavailable.')
+  }
+  const code = source.code(content + decoder.decode())
+  if (!code || code.length > maximumPuzzleCodeLength) {
+    throw new HttpError(422, 'This link does not contain a supported puzzle export.')
+  }
+  return json({ code })
+}
+
 async function api(request, { DB: db, SYNC_EVENTS: events }, ctx, url) {
   function notify(library, message, device) {
     if (!events) return
@@ -48,6 +109,7 @@ async function api(request, { DB: db, SYNC_EVENTS: events }, ctx, url) {
   }
   const path = url.pathname.slice(base.length)
   const method = request.method
+  if (path.startsWith('import/')) return loadPublicPuzzle(request, path)
   if (path === 'health') {
     if (method !== 'GET') return json({ error: 'Method not allowed' }, 405)
     return (await db.prepare('SELECT 1 AS ok').first('ok')) === 1 ? json({ ok: true }) : json({ ok: false }, 503)

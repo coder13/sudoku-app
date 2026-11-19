@@ -62,7 +62,7 @@ pub use rank::{
 };
 #[cfg(feature = "variants")]
 pub use sized::{
-    AlgebraicBounds, AlgebraicCage, AlgebraicCageBound, AlgebraicCageProof, AlgebraicCompletion,
+    AlgebraicBounds, AlgebraicCage, AlgebraicCageBound, AlgebraicCageProof, AlgebraicCompletion, AlgebraicStep, AlgebraicTracePosition,
     CageTotal, SizedAlgebraicCages,
 };
 #[cfg(feature = "generation")]

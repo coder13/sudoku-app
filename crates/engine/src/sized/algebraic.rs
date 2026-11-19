@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{GridSpec, SizedGrid};
+use super::{GridSpec, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction};
 
 /// A cage's total. All references to a name share one positive integer.
@@ -20,6 +20,11 @@ pub struct AlgebraicCage {
 
 /// An exact completion assigns both the Sudoku digits and each shared integer.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct AlgebraicCompletion {
     pub digits: Vec<u8>,
     pub variables: BTreeMap<String, i64>,
@@ -27,6 +32,11 @@ pub struct AlgebraicCompletion {
 
 /// A bound from one cage after accounting for its placed and remaining digits.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct AlgebraicCageBound {
     pub cage: usize,
     pub sum_lower: i64,
@@ -37,6 +47,11 @@ type DomainBounds = BTreeMap<String, (i64, i64)>;
 
 /// An intersection of all cage bounds, including positivity for each variable.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct AlgebraicBounds {
     pub variables: DomainBounds,
     pub cages: Vec<AlgebraicCageBound>,
@@ -44,12 +59,47 @@ pub struct AlgebraicBounds {
 
 /// Candidate removals proved by the shared bounds and a cage's distinct assignments.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct AlgebraicCageProof {
     pub target: usize,
     pub bounds: AlgebraicBounds,
     pub total_lower: i64,
     pub total_upper: i64,
     pub actions: Vec<HintAction>,
+}
+
+/// A human-style deduction made with the grid houses or the algebraic cage rules.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(tag = "type", content = "proof", rename_all = "kebab-case")
+)]
+pub enum AlgebraicStep {
+    House(SizedDeduction),
+    Cage(AlgebraicCageProof),
+}
+
+impl AlgebraicStep {
+    pub fn actions(&self) -> &[HintAction] {
+        match self {
+            Self::House(step) => &step.actions,
+            Self::Cage(step) => &step.actions,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct AlgebraicTracePosition {
+    pub digits: Vec<u8>,
+    pub eliminations: Vec<u16>,
+    pub candidates: Vec<u16>,
+    pub step: Option<AlgebraicStep>,
 }
 
 #[derive(Debug)]
@@ -202,6 +252,69 @@ impl SizedAlgebraicCages {
             total_upper,
             actions,
         })
+    }
+
+    /// Find the next ordinary logical step or a cage step with bound evidence.
+    pub fn next_deduction(
+        &self,
+        digits: &[u8],
+        eliminations: &[u16],
+        proof_budget: u32,
+    ) -> Option<AlgebraicStep> {
+        self.logical_position(digits, eliminations, proof_budget)?.1
+    }
+
+    /// Replay supported logical steps without using the exact answer.
+    pub fn trace(
+        &self,
+        mut digits: Vec<u8>,
+        mut eliminations: Vec<u16>,
+        proof_budget: u32,
+    ) -> Option<Vec<AlgebraicTracePosition>> {
+        let mut positions = Vec::new();
+        loop {
+            let (candidates, step) = self.logical_position(&digits, &eliminations, proof_budget)?;
+            positions.push(AlgebraicTracePosition {
+                digits: digits.clone(),
+                eliminations: eliminations.clone(),
+                candidates,
+                step,
+            });
+            let Some(step) = &positions.last()?.step else {
+                return Some(positions);
+            };
+            for action in step.actions() {
+                match *action {
+                    HintAction::Place(Candidate { cell, digit }) => digits[cell] = digit,
+                    HintAction::Eliminate(Candidate { cell, digit }) => {
+                        eliminations[cell] |= 1 << (digit - 1)
+                    }
+                }
+            }
+        }
+    }
+
+    fn logical_position(
+        &self,
+        digits: &[u8],
+        eliminations: &[u16],
+        proof_budget: u32,
+    ) -> Option<(Vec<u16>, Option<AlgebraicStep>)> {
+        let mut domains = self.empty_domains();
+        self.layout.used_digits(digits)?;
+        self.intersect(digits, &mut domains)?;
+        let mut classic = self.layout.hints(digits, eliminations, 1)?;
+        let step = if let Some(house) = classic.choices.pop() {
+            Some(AlgebraicStep::House(house))
+        } else {
+            let mut order: Vec<_> = (0..self.cages.len()).collect();
+            order.sort_by_key(|&index| self.cages[index].cells.len());
+            order.into_iter().find_map(|index| {
+                self.proof_at(digits, eliminations, index, proof_budget)
+                    .map(AlgebraicStep::Cage)
+            })
+        };
+        Some((classic.candidates, step))
     }
 
     /// Count completions under both the houses and the shared integer rules.

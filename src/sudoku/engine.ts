@@ -161,8 +161,46 @@ export type SizedClassicTracePosition = {
   deduction: SizedClassicDeduction | null
 }
 
+export type SizedVariantPosition = SizedClassicPosition & {
+  rules: readonly {
+    type: 'algebraic-cage'
+    cells: readonly number[]
+    total: { type: 'fixed'; value: number } | { type: 'variable'; name: string; offset: number }
+    label: string
+  }[]
+}
+
+export type AlgebraicBounds = {
+  variables: Record<string, [number, number]>
+  cages: { cage: number; sumLower: number; sumUpper: number }[]
+}
+
+export type AlgebraicCageProof = {
+  target: number
+  bounds: AlgebraicBounds
+  totalLower: number
+  totalUpper: number
+  actions: DeductionAction[]
+}
+
+export type AlgebraicTracePosition = {
+  digits: number[]
+  eliminations: number[]
+  candidates: number[]
+  step: { type: 'house'; proof: SizedClassicDeduction } | { type: 'cage'; proof: AlgebraicCageProof } | null
+}
+
+type SizedVariantRequest = { type: 'sized-variant'; position: SizedVariantPosition } & (
+  | { operation: 'analyze' }
+  | { operation: 'solve' }
+  | { operation: 'bounds' }
+  | { operation: 'trace'; eliminations?: readonly number[] }
+  | { operation: 'cage-proof'; rule: number; eliminations?: readonly number[] }
+)
+
 export type EngineRequest =
   | SizedClassicRequest
+  | SizedVariantRequest
   | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
   | { type: 'capabilities' }
   | VariantRequest
@@ -533,6 +571,13 @@ export type EngineResult<T extends EngineRequest> =
     T['operation'] extends 'hints' ? { candidates: number[]; choices: SizedClassicDeduction[] } | null :
     T['operation'] extends 'trace' ? SizedClassicTracePosition[] | null :
     number[] | null
+  ) :
+  T extends SizedVariantRequest ? (
+    T['operation'] extends 'analyze' ? Analysis :
+    T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
+    T['operation'] extends 'bounds' ? AlgebraicBounds | null :
+    T['operation'] extends 'trace' ? AlgebraicTracePosition[] | null :
+    AlgebraicCageProof | null
   ) :
   T extends { type: 'generate-mini' } ? number[] :
   T extends { type: 'analyze' } ? Analysis :

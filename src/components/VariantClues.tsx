@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import type { VariantPuzzle, VariantRule } from '../sudoku/engine'
+import type { SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts } from '../sudoku/region-sum'
@@ -25,35 +25,46 @@ export function cageLabelInset(cell: number, rules: readonly VariantRule[]) {
   return rules.some(rule => rule.type === 'quadruple' && rule.topLeft + 10 === cell) ? .34 : .1
 }
 
-function Cage({ cells, sum, captionInset }: { cells: readonly number[]; sum: number; captionInset: number }) {
+function Cage({ cells, captionWidth, captionInset, size = 9 }: {
+  cells: readonly number[]; captionWidth: number; captionInset: number; size?: number
+}) {
   const edge = 0.075
   const members = new Set(cells)
   const corner = Math.min(...cells)
   return <>
     {cells.map((cell) => {
-      const col = x(cell)
-      const row = y(cell)
+      const col = cell % size
+      const row = Math.floor(cell / size)
       const left = col === 0 || !members.has(cell - 1)
-      const right = col === 8 || !members.has(cell + 1)
-      const top = !members.has(cell - 9)
-      const bottom = !members.has(cell + 9)
+      const right = col === size - 1 || !members.has(cell + 1)
+      const top = !members.has(cell - size)
+      const bottom = !members.has(cell + size)
       const x1 = col + (left ? edge : 0)
       const x2 = col + 1 - (right ? edge : 0)
       const y1 = row + (top ? edge : 0)
       const y2 = row + 1 - (bottom ? edge : 0)
       const segments = [
-        top && `M${cell === corner ? col + captionInset + (sum < 10 ? .17 : .3) : x1},${y1}H${x2}`,
+        top && `M${cell === corner ? col + captionInset + captionWidth : x1},${y1}H${x2}`,
         right && `M${x2},${y1}V${y2}`,
         bottom && `M${x2},${y2}H${x1}`,
         left && `M${x1},${y2}V${y1}`,
-        !top && !left && !members.has(cell - 10) && `M${col + edge},${row}V${row + edge}H${col}`,
-        !top && !right && !members.has(cell - 8) && `M${col + 1 - edge},${row}V${row + edge}H${col + 1}`,
-        !bottom && !right && !members.has(cell + 10) && `M${col + 1 - edge},${row + 1}V${row + 1 - edge}H${col + 1}`,
-        !bottom && !left && !members.has(cell + 8) && `M${col + edge},${row + 1}V${row + 1 - edge}H${col}`,
+        !top && !left && !members.has(cell - size - 1) && `M${col + edge},${row}V${row + edge}H${col}`,
+        !top && !right && !members.has(cell - size + 1) && `M${col + 1 - edge},${row}V${row + edge}H${col + 1}`,
+        !bottom && !right && !members.has(cell + size + 1) && `M${col + 1 - edge},${row + 1}V${row + 1 - edge}H${col + 1}`,
+        !bottom && !left && !members.has(cell + size - 1) && `M${col + edge},${row + 1}V${row + 1 - edge}H${col}`,
       ].filter(Boolean)
       return <path key={cell} className="variant-cage-edge" d={segments.join(' ')} />
     })}
   </>
+}
+
+/** Outline the authored arithmetic cages in a 4×4 grid. Board owns the text labels. */
+export function AlgebraicCages({ rules }: { rules: SizedVariantPosition['rules'] }) {
+  return <svg className="variant-clues" viewBox="0 0 4 4" aria-hidden="true">
+    {rules.map((rule, index) => <g key={index} data-algebraic-cage={index}>
+      <Cage cells={rule.cells} captionInset={.1} captionWidth={Math.min(.75, .13 * rule.label.length + .05)} size={4} />
+    </g>)}
+  </svg>
 }
 
 function cellBoundary(cells: readonly number[]) {
@@ -301,7 +312,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         case 'extra-house':
           return disjoint.has(index) ? null : <ExtraRegion key={index} cells={rule.cells} />
         case 'killer-cages':
-          return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} {...cage}
+          return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} cells={cage.cells} captionWidth={cage.sum < 10 ? .17 : .3}
             captionInset={cageLabelInset(Math.min(...cage.cells), rules)} />)}</g>
         case 'whispers': {
           return <g key={index} className="variant-whispers" data-min-difference={rule.minDifference}>

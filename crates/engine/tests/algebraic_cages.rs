@@ -80,6 +80,13 @@ fn algebraic_cages_derive_shared_positive_integer_and_exact_completion() {
         [1, 3, 4, 2, 4, 2, 3, 1, 3, 1, 2, 4, 2, 4, 1, 3]
     );
     assert_eq!(answer.variables["x"], 6);
+    let trace = puzzle.trace(grid.to_vec(), vec![0; 16], 1_000).unwrap();
+    let Some(sudoku_app_engine::AlgebraicStep::Cage(opening)) = &trace[0].step else {
+        panic!("the opening must explain the shared cage total");
+    };
+    assert_eq!(opening.target, 2);
+    assert_eq!(trace.last().unwrap().digits, answer.digits);
+    assert!(trace.last().unwrap().step.is_none());
 }
 
 #[test]
