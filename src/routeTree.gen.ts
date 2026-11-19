@@ -26,6 +26,7 @@ import { Route as PuzzlesGamesRouteImport } from './routes/puzzles.games'
 import { Route as PuzzlesHidatoRouteImport } from './routes/puzzles.hidato'
 import { Route as PuzzlesKakuroRouteImport } from './routes/puzzles.kakuro'
 import { Route as PuzzlesNewRouteImport } from './routes/puzzles.new'
+import { Route as PuzzlesRulloRouteImport } from './routes/puzzles.rullo'
 import { Route as PuzzlesSolvedRouteImport } from './routes/puzzles.solved'
 import { Route as PuzzlesStatisticsRouteImport } from './routes/puzzles.statistics'
 import { Route as SettingsSectionRouteImport } from './routes/settings.$section'
@@ -35,6 +36,7 @@ import { Route as PuzzlesFutoshikiPuzzleRouteImport } from './routes/puzzles.fut
 import { Route as PuzzlesHidatoPuzzleRouteImport } from './routes/puzzles.hidato_.$puzzle'
 import { Route as PuzzlesKakuroPuzzleRouteImport } from './routes/puzzles.kakuro_.$puzzle'
 import { Route as PuzzlesNewDifficultyRouteImport } from './routes/puzzles.new.difficulty'
+import { Route as PuzzlesRulloPuzzleRouteImport } from './routes/puzzles.rullo_.$puzzle'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -121,6 +123,11 @@ const PuzzlesNewRoute = PuzzlesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => PuzzlesRoute,
 } as any)
+const PuzzlesRulloRoute = PuzzlesRulloRouteImport.update({
+  id: '/rullo',
+  path: '/rullo',
+  getParentRoute: () => PuzzlesRoute,
+} as any)
 const PuzzlesSolvedRoute = PuzzlesSolvedRouteImport.update({
   id: '/solved',
   path: '/solved',
@@ -166,6 +173,11 @@ const PuzzlesNewDifficultyRoute = PuzzlesNewDifficultyRouteImport.update({
   path: '/difficulty',
   getParentRoute: () => PuzzlesNewRoute,
 } as any)
+const PuzzlesRulloPuzzleRoute = PuzzlesRulloPuzzleRouteImport.update({
+  id: '/rullo_/$puzzle',
+  path: '/rullo/$puzzle',
+  getParentRoute: () => PuzzlesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -184,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/puzzles/hidato': typeof PuzzlesHidatoRoute
   '/puzzles/kakuro': typeof PuzzlesKakuroRoute
   '/puzzles/new': typeof PuzzlesNewRouteWithChildren
+  '/puzzles/rullo': typeof PuzzlesRulloRoute
   '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
@@ -194,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/puzzles/hidato/$puzzle': typeof PuzzlesHidatoPuzzleRoute
   '/puzzles/kakuro/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
+  '/puzzles/rullo/$puzzle': typeof PuzzlesRulloPuzzleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -211,6 +225,7 @@ export interface FileRoutesByTo {
   '/puzzles/hidato': typeof PuzzlesHidatoRoute
   '/puzzles/kakuro': typeof PuzzlesKakuroRoute
   '/puzzles/new': typeof PuzzlesNewRouteWithChildren
+  '/puzzles/rullo': typeof PuzzlesRulloRoute
   '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
@@ -221,6 +236,7 @@ export interface FileRoutesByTo {
   '/puzzles/hidato/$puzzle': typeof PuzzlesHidatoPuzzleRoute
   '/puzzles/kakuro/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
+  '/puzzles/rullo/$puzzle': typeof PuzzlesRulloPuzzleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -240,6 +256,7 @@ export interface FileRoutesById {
   '/puzzles/hidato': typeof PuzzlesHidatoRoute
   '/puzzles/kakuro': typeof PuzzlesKakuroRoute
   '/puzzles/new': typeof PuzzlesNewRouteWithChildren
+  '/puzzles/rullo': typeof PuzzlesRulloRoute
   '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
@@ -250,6 +267,7 @@ export interface FileRoutesById {
   '/puzzles/hidato_/$puzzle': typeof PuzzlesHidatoPuzzleRoute
   '/puzzles/kakuro_/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
+  '/puzzles/rullo_/$puzzle': typeof PuzzlesRulloPuzzleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -270,6 +288,7 @@ export interface FileRouteTypes {
     | '/puzzles/hidato'
     | '/puzzles/kakuro'
     | '/puzzles/new'
+    | '/puzzles/rullo'
     | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
@@ -280,6 +299,7 @@ export interface FileRouteTypes {
     | '/puzzles/hidato/$puzzle'
     | '/puzzles/kakuro/$puzzle'
     | '/puzzles/new/difficulty'
+    | '/puzzles/rullo/$puzzle'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -297,6 +317,7 @@ export interface FileRouteTypes {
     | '/puzzles/hidato'
     | '/puzzles/kakuro'
     | '/puzzles/new'
+    | '/puzzles/rullo'
     | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
@@ -307,6 +328,7 @@ export interface FileRouteTypes {
     | '/puzzles/hidato/$puzzle'
     | '/puzzles/kakuro/$puzzle'
     | '/puzzles/new/difficulty'
+    | '/puzzles/rullo/$puzzle'
   id:
     | '__root__'
     | '/'
@@ -325,6 +347,7 @@ export interface FileRouteTypes {
     | '/puzzles/hidato'
     | '/puzzles/kakuro'
     | '/puzzles/new'
+    | '/puzzles/rullo'
     | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
@@ -335,6 +358,7 @@ export interface FileRouteTypes {
     | '/puzzles/hidato_/$puzzle'
     | '/puzzles/kakuro_/$puzzle'
     | '/puzzles/new/difficulty'
+    | '/puzzles/rullo_/$puzzle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -468,6 +492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PuzzlesNewRouteImport
       parentRoute: typeof PuzzlesRoute
     }
+    '/puzzles/rullo': {
+      id: '/puzzles/rullo'
+      path: '/rullo'
+      fullPath: '/puzzles/rullo'
+      preLoaderRoute: typeof PuzzlesRulloRouteImport
+      parentRoute: typeof PuzzlesRoute
+    }
     '/puzzles/solved': {
       id: '/puzzles/solved'
       path: '/solved'
@@ -531,6 +562,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PuzzlesNewDifficultyRouteImport
       parentRoute: typeof PuzzlesNewRoute
     }
+    '/puzzles/rullo_/$puzzle': {
+      id: '/puzzles/rullo_/$puzzle'
+      path: '/rullo/$puzzle'
+      fullPath: '/puzzles/rullo/$puzzle'
+      preLoaderRoute: typeof PuzzlesRulloPuzzleRouteImport
+      parentRoute: typeof PuzzlesRoute
+    }
   }
 }
 
@@ -567,12 +605,14 @@ interface PuzzlesRouteChildren {
   PuzzlesHidatoRoute: typeof PuzzlesHidatoRoute
   PuzzlesKakuroRoute: typeof PuzzlesKakuroRoute
   PuzzlesNewRoute: typeof PuzzlesNewRouteWithChildren
+  PuzzlesRulloRoute: typeof PuzzlesRulloRoute
   PuzzlesSolvedRoute: typeof PuzzlesSolvedRoute
   PuzzlesStatisticsRoute: typeof PuzzlesStatisticsRoute
   PuzzlesCalcudokuPuzzleRoute: typeof PuzzlesCalcudokuPuzzleRoute
   PuzzlesFutoshikiPuzzleRoute: typeof PuzzlesFutoshikiPuzzleRoute
   PuzzlesHidatoPuzzleRoute: typeof PuzzlesHidatoPuzzleRoute
   PuzzlesKakuroPuzzleRoute: typeof PuzzlesKakuroPuzzleRoute
+  PuzzlesRulloPuzzleRoute: typeof PuzzlesRulloPuzzleRoute
 }
 
 const PuzzlesRouteChildren: PuzzlesRouteChildren = {
@@ -584,12 +624,14 @@ const PuzzlesRouteChildren: PuzzlesRouteChildren = {
   PuzzlesHidatoRoute: PuzzlesHidatoRoute,
   PuzzlesKakuroRoute: PuzzlesKakuroRoute,
   PuzzlesNewRoute: PuzzlesNewRouteWithChildren,
+  PuzzlesRulloRoute: PuzzlesRulloRoute,
   PuzzlesSolvedRoute: PuzzlesSolvedRoute,
   PuzzlesStatisticsRoute: PuzzlesStatisticsRoute,
   PuzzlesCalcudokuPuzzleRoute: PuzzlesCalcudokuPuzzleRoute,
   PuzzlesFutoshikiPuzzleRoute: PuzzlesFutoshikiPuzzleRoute,
   PuzzlesHidatoPuzzleRoute: PuzzlesHidatoPuzzleRoute,
   PuzzlesKakuroPuzzleRoute: PuzzlesKakuroPuzzleRoute,
+  PuzzlesRulloPuzzleRoute: PuzzlesRulloPuzzleRoute,
 }
 
 const PuzzlesRouteWithChildren =

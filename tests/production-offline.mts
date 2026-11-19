@@ -5,6 +5,7 @@ import { calcudokuCatalog } from '../src/calcudoku/catalog.ts'
 import { futoshikiCatalog } from '../src/futoshiki/catalog.ts'
 import { hidatoCatalog } from '../src/hidato/catalog.ts'
 import { kakuroCatalog } from '../src/kakuro/catalog.ts'
+import { rulloCatalog } from '../src/rullo/catalog.ts'
 
 // Run after Vite build and scripts/build-offline.mjs. Compare the actual build
 // with the generated router inventory so new static routes cannot be omitted.
@@ -88,5 +89,16 @@ test('each Hidato puzzle precaches its playable cells and both endpoints', async
     assert.ok(html.includes('aria-label="Hidato board"'), `${id} prerenders its board`)
     assert.equal([...html.matchAll(/class="number-puzzle-cell"/g)].length, puzzle.cells.length)
     assert.equal([...html.matchAll(/class="number-puzzle-endpoint"/g)].length, 2)
+  }
+})
+
+test('each Rullo puzzle precaches its numbers and line targets', async () => {
+  for (const { id, puzzle } of rulloCatalog) {
+    const path = `/puzzles/rullo/${id}/index.html`
+    assert.ok(cached.has(path), `${id} has a precached shell`)
+    const html = await readFile(new URL('.' + path, client), 'utf8')
+    assert.ok(html.includes('aria-label="Rullo board"'), `${id} prerenders its grid`)
+    assert.equal([...html.matchAll(/class="number-puzzle-cell"/g)].length, puzzle.numbers.length)
+    assert.equal([...html.matchAll(/class="rullo-target"/g)].length, puzzle.lines.length)
   }
 })

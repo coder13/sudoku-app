@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, within } from 'storybook/test'
 import { KakuroPlay } from '../../src/components/Kakuro'
+import { RulloPlay } from '../../src/components/Rullo'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
+import { rulloCatalog } from '../../src/rullo/catalog'
 import { PreviewRouter } from '../support/frames'
 
 const meta = {
@@ -44,5 +46,28 @@ export const Kakuro: Story = {
     await userEvent.click(solution.getByRole('button', { name: 'Final grid' }))
     await userEvent.click(solution.getByRole('button', { name: 'Close dialog' }))
     await expect(cell).toHaveAccessibleName(/^R2C3, empty/)
+  },
+}
+
+export const Rullo: Story = {
+  render: () => <PreviewRouter shell><RulloPlay entry={rulloCatalog[0]} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const cell = await canvas.findByRole('button', { name: /^R1C1,/ })
+    const clear = canvas.getByRole('button', { name: 'Clear choice' })
+    await userEvent.click(cell)
+    await userEvent.click(clear)
+    await userEvent.click(canvas.getByRole('button', { name: 'Keep' }))
+    await expect(cell).toHaveAccessibleName('R1C1, 3, kept')
+    await userEvent.keyboard('{Control>}z{/Control}')
+    await expect(cell).toHaveAccessibleName('R1C1, 3, undecided')
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Show choice' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Show location' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Show explanation' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Apply hint' }))
+    await expect(cell).toHaveAccessibleName('R1C1, 3, removed')
+    await userEvent.click(clear)
   },
 }
