@@ -44,6 +44,18 @@ before(async () => {
 })
 after(async () => { await server?.close() })
 
+test('the board draws a pill and identifies each place value', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Pill Arrow Sudoku grid',
+    variantPuzzle: { version: 1, givens, rules: [{ type: 'pill-arrow', pill: [8, 7], cells: [16, 17] }] },
+  }))
+  assert.match(html, /class="variant-arrow-pill"/)
+  assert.match(html, /class="variant-arrow-tens">10s/)
+  assert.match(html, /Pill Arrow tens digit, ones digit at row 1, column 8/)
+  assert.match(html, /Pill Arrow ones digit, tens digit at row 1, column 9/)
+})
+
 test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
   const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
     new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))

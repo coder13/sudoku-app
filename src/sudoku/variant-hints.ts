@@ -146,6 +146,9 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'arrow':
       return { description: `The ${rule.cells.length === 1 ? 'digit on the arrow equals' : 'digits on the arrow add to'} the digit in ${at(rule.circle)}.`,
         reason: 'With the current candidates, no matching sum uses a crossed-out digit in its marked cell.' }
+    case 'pill-arrow':
+      return { description: `The arrow adds to the two-digit number with tens in ${at(a)} and ones in ${at(b)}.`,
+        reason: 'A crossed-out candidate fits no arrow sum that matches the pill.' }
     case 'entropic': case 'modular': {
       const { masks, names } = lineGroups[rule.type]
       const group = (mask: number) => masks.map((bits, i) => mask & bits ? i : -1).filter(i => i >= 0)

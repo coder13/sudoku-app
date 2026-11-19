@@ -13,6 +13,7 @@ function paths(rule: VariantRule): readonly (readonly number[])[] {
     case 'palindrome': case 'renban': case 'region-sum': return rule.segments ?? [rule.cells]
     case 'thermometer': case 'between': case 'whispers': case 'entropic': case 'modular': return [rule.cells]
     case 'arrow': return [[rule.circle, ...rule.cells]]
+    case 'pill-arrow': return [[rule.pill[rule.fromTens ? 0 : 1], ...rule.cells]]
     default: return []
   }
 }

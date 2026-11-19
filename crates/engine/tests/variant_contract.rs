@@ -13,6 +13,33 @@ const X_SOLUTION: &str =
 const EMPTY: [u8; 81] = [0; 81];
 const NO_REMOVALS: [u16; 81] = [0; 81];
 
+#[test]
+fn pill_arrow_uses_ordered_digits_and_supports_sums_above_eighty_one() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules = vec![PuzzleRule::PillArrow {
+        pill: [7, 8],
+        cells: vec![16, 17],
+        from_tens: false,
+    }];
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[7] = 1;
+    entries[8] = 2;
+    entries[17] = 8;
+    assert_eq!(compiled.candidates(&entries, &NO_REMOVALS).unwrap()[16], 0b1000);
+    entries[16] = 3;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    // A long arrow sums to 87. The first pill digit is deliberately in the
+    // later cell index so the engine must use the explicit place-value order.
+    let full = parse_givens(CLASSIC_SOLUTION).unwrap();
+    let cells = [32, 78, 57, 30, 49, 41, 62, 66, 56, 52, 38, 70, 50, 51, 67, 76, 48, 45, 44, 42];
+    assert_eq!(full[64] * 10 + full[4], 87);
+    assert_eq!(cells.iter().map(|&cell| u16::from(full[cell])).sum::<u16>(), 87);
+    puzzle.rules = vec![PuzzleRule::PillArrow { pill: [64, 4], cells: cells.into(), from_tens: true }];
+    assert_eq!(puzzle.compile().unwrap().analyze(&full, &NO_REMOVALS, 100), Ok(Analysis::Unique));
+}
+
 fn irregular_regions() -> Vec<Vec<usize>> {
     let mut regions: Vec<Vec<usize>> = (0..9)
         .map(|region| {

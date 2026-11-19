@@ -64,7 +64,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         Parity | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
         Clone | Palindrome => 8 + span + choices,
         Kropki | Xv | AdjacentTotal | Thermometer | Between | Whispers | Entropic | Modular | GlobalEntropy | Quadruple => 14 + span + choices,
-        CageCombinations | Arrow | LittleKiller => 24 + span + 2 * choices,
+        CageCombinations | Arrow | PillArrow | LittleKiller => 24 + span + 2 * choices,
         Renban | RegionSum => 28 + span + 2 * choices,
         CageHouseSum => 34 + 18 + 3 * cages + span + 2 * choices,
         Skyscrapers | Sandwich | XSum => 40 + span + 2 * choices,
@@ -93,7 +93,7 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
         estimates.sort_unstable();
         assert_eq!(estimates[1], technique.cost(), "{}", technique.id());
         let tier = match (technique, estimates[1]) {
-            (VariantTechnique::Arrow | VariantTechnique::CageCombinations, _) | (_, 0..=26) => {
+            (VariantTechnique::Arrow | VariantTechnique::PillArrow | VariantTechnique::CageCombinations, _) | (_, 0..=26) => {
                 Difficulty::Easy
             }
             (_, 27..=68) => Difficulty::Medium,

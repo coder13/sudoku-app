@@ -117,6 +117,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
   },
+  'pill-arrow': {
+    name: 'Pill Arrows',
+    rule: 'The digits along the arrow add to the two-digit number in the pill. Read the pill from left to right or top to bottom, unless a 10s marker identifies the tens cell.',
+  },
   xv: {
     name: 'XV',
     rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
@@ -437,6 +441,9 @@ function isPlayableRule(rule: VariantRule): boolean {
         path.every(cell => Number.isInteger(cell) && rule.cells.includes(cell))) &&
       new Set(rule.segments.flat()).size === rule.cells.length)
     case 'arrow': return validCells([rule.circle, ...(Array.isArray(rule.cells) ? rule.cells : [])], 2)
+    case 'pill-arrow': return Object.keys(rule).every(key => ['type', 'pill', 'cells', 'fromTens'].includes(key)) &&
+      Array.isArray(rule.pill) && rule.pill.length === 2 && Array.isArray(rule.cells) && validCells([...rule.pill, ...rule.cells], 3) &&
+      (rule.fromTens === undefined || typeof rule.fromTens === 'boolean')
     case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
       cage && validCells(cage.cells, 1) && Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45)
     case 'kropki': return [rule.consecutive, rule.ratioTwo].every((marks) => marks === undefined ||
@@ -504,6 +511,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'anti-knight': VARIANTS['anti-knight'].name,
   thermometer: VARIANTS.thermometer.name,
   arrow: VARIANTS.arrow.name,
+  'pill-arrow': PUZZLE_VARIANTS['pill-arrow'].name,
   kropki: VARIANTS.kropki.name,
   whispers: PUZZLE_VARIANTS.whispers.name,
   palindrome: PUZZLE_VARIANTS.palindrome.name,
@@ -583,6 +591,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         break
       case 'inequality':
         descriptions.push(PUZZLE_VARIANTS.inequality.rule)
+        break
+      case 'pill-arrow':
+        descriptions.push(PUZZLE_VARIANTS['pill-arrow'].rule)
         break
       case 'adjacent-total':
         descriptions.push(PUZZLE_VARIANTS['adjacent-total'].rule)

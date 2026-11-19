@@ -118,6 +118,8 @@ catalog! {
     CageCombinations: "cage-combinations", 34, Easy;
     /// Find assignments whose path digits add to the digit in the circle.
     Arrow: "arrow", 36, Easy;
+    /// Match the path sum with the tens and ones digits in a pill.
+    PillArrow: "pill-arrow", 34, Easy;
     /// Check a Whispers line together with the houses shared by its cells.
     WhispersHouseSupport: "whispers-house-support", 39, Medium;
     /// Find consecutive sets that fit a Renban line.
@@ -1007,7 +1009,7 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
-            Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+            Arrow | PillArrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines
                     .iter()

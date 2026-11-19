@@ -19,6 +19,7 @@ pub(super) struct LineConstraint {
 #[derive(Clone, Debug)]
 enum LineKind {
     EqualSums(Vec<Range<usize>>),
+    PillArrow,
     Sum(u16),
     Renban,
     ThreeGroups(groups::GroupLine),
@@ -50,6 +51,13 @@ impl LineConstraint {
                     .collect();
                 let ranges = vec![0..1, 1..cells.len()];
                 (cells, LineKind::EqualSums(ranges))
+            }
+            PuzzleRule::PillArrow { pill, cells, .. } => {
+                if cells.is_empty() {
+                    return Err(invalid);
+                }
+                let cells = pill.iter().chain(cells).copied().collect();
+                (cells, LineKind::PillArrow)
             }
             PuzzleRule::Renban { cells, segments } => {
                 if !(1..=9).contains(&cells.len()) || !super::drawing_paths_cover(cells, segments) {
@@ -190,6 +198,7 @@ impl LineConstraint {
                     }
                 }
             }
+            LineKind::PillArrow => pill_arrow_support(domains, support),
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
             LineKind::Renban => renban_support::<9, 512>(domains, support),
             LineKind::ThreeGroups(line) => line.support(domains, support),
@@ -266,8 +275,12 @@ fn reachable(domains: &[u16]) -> u128 {
 }
 
 pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
+    sum_support_with_capacity::<10>(domains, totals, support);
+}
+
+fn sum_support_with_capacity<const N: usize>(domains: &[u16], totals: u128, support: &mut [u16]) {
     let len = domains.len();
-    let (mut prefix, mut suffix) = ([0u128; 10], [0u128; 10]);
+    let (mut prefix, mut suffix) = ([0u128; N], [0u128; N]);
     prefix[0] = 1;
     suffix[len] = 1;
     for i in 0..len {
@@ -289,6 +302,24 @@ pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
         support[i] = digits(domain)
             .filter(|&digit| (other_sums << digit) & totals != 0)
             .fold(0, |mask, digit| mask | digit_bit(digit));
+    }
+}
+
+fn pill_arrow_support(domains: &[u16], support: &mut [u16]) {
+    let sums = reachable(&domains[2..]);
+    let mut totals = 0;
+    for tens in digits(domains[0]) {
+        for ones in digits(domains[1]) {
+            let target = 1u128 << (10 * tens + ones);
+            if sums & target != 0 {
+                support[0] |= digit_bit(tens);
+                support[1] |= digit_bit(ones);
+                totals |= target;
+            }
+        }
+    }
+    if totals != 0 {
+        sum_support_with_capacity::<CELLS>(&domains[2..], totals, &mut support[2..]);
     }
 }
 
