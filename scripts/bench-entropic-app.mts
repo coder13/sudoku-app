@@ -18,8 +18,8 @@ import { useWasmWorker } from '../tests/helpers/wasm-worker.ts'
 const wasmPath = process.env.SUDOKU_BENCH_WASM
 useWasmWorker(wasmPath)
 const family = process.env.SUDOKU_BENCH_FAMILY ?? 'entropic'
-assert.ok(['entropic', 'global-entropy', 'modular', 'between', 'region-sum'].includes(family), 'Choose entropic, global-entropy, modular, between or region-sum')
-const variantClues = family === 'entropic' ? 8 : family === 'modular' ? 12 : family === 'between' ? 8 : family === 'region-sum' ? 7 : 0
+assert.ok(['entropic', 'global-entropy', 'modular', 'between', 'region-sum', 'clone'].includes(family), 'Choose entropic, global-entropy, modular, between, region-sum or clone')
+const variantClues = family === 'entropic' ? 8 : family === 'modular' ? 12 : family === 'between' ? 8 : family === 'region-sum' ? 7 : family === 'clone' ? 14 : 0
 
 test(`measure ${family} engine requests, actual app callers and fixed-template generation`, async () => {
   const load = async (name: string) =>
@@ -31,14 +31,17 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
       '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
   const cases = [
     { name: family === 'entropic' ? 'clover' : 'newman', code: share(base.puzzle), solution: base.solution, complete: true },
-    ...(await load('coach')).examples
+    ...(family === 'clone' ? await Promise.all(['murphy', 'mixed'].map(async name => {
+      const source = await load(name)
+      return { name, code: share(source.puzzle), solution: source.solution, complete: true }
+    })) : (await load('coach')).examples
       .filter((s: { puzzle?: VariantPuzzle }) => s.puzzle)
       .map((s: { url: string; code: string; solution: string }) => ({
         name: s.url.split('/').at(-1),
         code: s.code,
         solution: s.solution,
         complete: !(family === 'entropic' ? ['Hyk5', 'Hafj'] : family === 'modular' ? ['HCHW'] : ['A2s7', 'CJhv', '9KxH', '91BB', '8oer', 'FaxQ']).some((id) => s.url.endsWith(id)),
-      })),
+      }))),
   ]
   const bytes = await readFile(wasmPath ?? new URL('../src/sudoku/generated/engine.wasm', import.meta.url)),
     { instance } = await WebAssembly.instantiate(bytes)
@@ -215,6 +218,7 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
           if (family === 'region-sum') assert.equal([...result.matchAll(/class="variant-region-sum"/g)].length, puzzle.rules!.filter(rule => rule.type === 'region-sum').length)
           if (family === 'between') assert.equal([...result.matchAll(/class="variant-between-endpoints"/g)].length, puzzle.rules!.filter(rule => rule.type === 'between').length)
           if (family === 'modular') assert.equal([...result.matchAll(/class="variant-modular"/g)].length, puzzle.rules!.filter(rule => rule.type === 'modular').length)
+          if (family === 'clone') assert.equal([...result.matchAll(/class="variant-clone"/g)].length, puzzle.rules!.filter(rule => rule.type === 'clone').length)
           if (family === 'global-entropy') assert.match(result, /Global Entropy: every 2 × 2 area/)
         }
       )
@@ -227,7 +231,7 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
         })
       )
     }
-    const template = { ...base.puzzle, givens: family === 'region-sum' ? base.solution : '0'.repeat(81) },
+    const template = { ...base.puzzle, givens: family === 'region-sum' || family === 'clone' ? base.solution : '0'.repeat(81) },
       times: number[] = [],
       failedSeeds: number[] = [],
       distinct = new Set<string>()
@@ -274,7 +278,7 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
           'No warmups. Six attempts and 20,000 nodes per exact check. Deterministic repeat, independent uniqueness/dependence and assertions outside timing.',
       })
     )
-    if (family === 'between' || family === 'region-sum') for (const difficulty of (family === 'between' ? ['easy', 'medium'] as const : ['medium'] as const)) {
+    if (family === 'between' || family === 'region-sum' || family === 'clone') for (const difficulty of (family === 'between' ? ['easy', 'medium'] as const : family === 'clone' ? ['easy'] as const : ['medium'] as const)) {
       await sample(`New Puzzle ${difficulty}: fresh seed and bounded fallback`,
         () => generatePlayableVariant(family, difficulty, 2, []),
         (generated) => {

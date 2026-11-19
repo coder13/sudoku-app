@@ -3,6 +3,7 @@ import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './eng
 import { lineGroupMask } from './line-groups.ts'
 import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
+import { cloneLayout } from './clone.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -37,6 +38,10 @@ export const VARIANTS = {
   'region-sum': {
     name: 'Region Sum Lines',
     rule: 'Each blue line has parts with the same total. Region borders divide the line unless its listed groups say otherwise. Different lines can have different totals.',
+  },
+  clone: {
+    name: 'Clone',
+    rule: 'Cells with the same Clone letter must contain the same digit. Different letters can contain the same digit if the other puzzle rules allow it.',
   },
   thermometer: {
     name: 'Thermometer',
@@ -321,6 +326,10 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
     if (rule.type === 'palindrome' && palindromePartner(rule.cells, from) === to) {
       excluded |= 511 & ~(1 << (digit - 1))
     }
+    if (rule.type === 'clone') {
+      const layout = cloneLayout(puzzle?.rules), set = layout.at[from]
+      if (set && set === layout.at[to]) excluded |= 511 & ~(1 << (digit - 1))
+    }
     if (rule.type === 'non-consecutive' && cellsShareEdge(from, to) && !hasMarkedPair(rule.except, from, to)) {
       excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
     }
@@ -371,6 +380,8 @@ function validJigsawRegions(regions: unknown): boolean {
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
   switch (rule.type) {
+    case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
+      Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
     case 'inequality': return validCells([rule.less, rule.greater], 2)
     case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
     case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
@@ -449,6 +460,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
 }
 
 const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+  clone: VARIANTS.clone.name,
   'region-sum': VARIANTS['region-sum'].name,
   entropic: PUZZLE_VARIANTS.entropic.name,
   modular: PUZZLE_VARIANTS.modular.name,
@@ -491,6 +503,11 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const disjoint = disjointGroupRuleIndices(puzzle.rules ?? [])
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     switch (rule.type) {
+      case 'clone':
+        descriptions.push(VARIANTS.clone.rule)
+        for (const set of cloneLayout(puzzle.rules).sets) descriptions.push(`Clone ${set.label}: ${set.cells
+          .map(cell => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`).join(', ')} must contain the same digit.`)
+        break
       case 'global-entropy':
         descriptions.push(PUZZLE_VARIANTS['global-entropy'].rule)
         break

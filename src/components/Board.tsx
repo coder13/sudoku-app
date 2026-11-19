@@ -4,6 +4,7 @@ import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type Candi
 import { activeHighlightDigit } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
+import { cloneLayout } from '../sudoku/clone'
 import { VariantClues, cageLabelInset, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
@@ -59,6 +60,7 @@ export function Board({
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates,
 }: Props) {
   const variantRules = variantPuzzle?.rules
+  const clones = cloneLayout(variantRules)
   const disjoint = useMemo(() => disjointGroupRuleIndices(variantRules ?? []), [variantRules])
   const gridLabel = [label, variantRules?.some(rule => rule.type === 'global-entropy')
     && 'Global Entropy: every 2 × 2 area needs a low digit 1–3, a medium digit 4–6 and a high digit 7–9, including across box or region borders.',
@@ -68,6 +70,12 @@ export function Board({
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
   const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
     ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
+  const candidateInsets = useMemo(() => {
+    const insets = new Map<number, { top: number; bottom: number }>()
+    for (const set of clones.sets) for (const cell of set.cells) insets.set(cell, { top: .07, bottom: .28 })
+    for (const cell of cageTotals.keys()) insets.set(cell, { top: .3, bottom: insets.get(cell)?.bottom ?? .07 })
+    return insets
+  }, [clones, cageTotals])
   const variantClues = useMemo(() => variantRules?.length
     ? [<div className="board-variant-clues" key={JSON.stringify(variantRules)}><VariantClues rules={variantRules} /></div>]
     : NO_MARKS, [variantRules])
@@ -267,7 +275,7 @@ export function Board({
                   </span>] : NO_MARKS
 
                 return (
-                  <Cell role="gridcell" key={col} data-cell={index} className={classes} style={cellStyle} aria-label={label}
+                  <Cell role="gridcell" key={col} data-cell={index} data-clone={clones.at[index]?.label} className={classes} style={cellStyle} aria-label={label}
                     data-pointer-focused={pointerFocusedCell === index || undefined}
                     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
                     data-box-edge={!regionsAt && col % 3 === 0 || undefined}
@@ -292,7 +300,7 @@ export function Board({
           ))}
         </div>
         <BoardMarks items={variantClues} />
-        <BoardLinks links={annotations?.links} region={region} />
+        <BoardLinks links={annotations?.links} region={region} candidateInsets={candidateInsets} />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}
       </div>

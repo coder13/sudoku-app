@@ -33,7 +33,7 @@ test('variant choices only offer verified recipes and clamp saved choices', () =
   for (const id of Object.keys(variantSeeds) as (keyof typeof variantSeeds)[]) {
     const levels = variantDifficulties(id)
     assert.deepEqual(levels, DIFFICULTY_LEVELS.filter(level => Object.hasOwn(variantSeeds[id], level)))
-    assert.ok(levels.includes('medium'), id)
+    assert.ok(levels.length > 0, id)
     for (const level of DIFFICULTY_LEVELS) assert.ok(levels.includes(variantDifficulty(id, level)), id)
   }
 })

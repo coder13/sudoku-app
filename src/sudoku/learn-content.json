@@ -7419,7 +7419,7 @@
         {
           "id": "clone",
           "title": "Clone cells",
-          "summary": "A clone clue requires matching cells in two shapes to contain the same digit. Each pair shares its possible digits. A number that cannot fit in one copy cannot fit at the matching position in the other.",
+          "summary": "Cells with the same Clone letter contain the same digit. Compare their candidates: a digit ruled out in one copy cannot go in any matching copy. Different letters can still use the same digit if their other rules allow it.",
           "blocks": [
             {
               "type": "heading",
@@ -7429,7 +7429,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Find the cells the clue pairs as copies. Compare the candidate lists at matching positions. If one copy already contains 7, every matching copy must be 7. Otherwise, find the digits that appear in every list.",
+                "Find cells marked with the same Clone letter. Compare their candidate lists. If one copy already contains 7, every matching copy must be 7. Otherwise, find the digits that appear in every list.",
                 "All matching cells need the same digit. If any one copy rules out a digit, remove it from the other copies too."
               ]
             },
@@ -7437,7 +7437,7 @@
               "type": "diagram",
               "example": "clone",
               "copy": {
-                "description": "R9C4 and R2C3 must match. A candidate that appears in only one of those cells cannot fill either."
+                "description": "R9C4 and R2C3 both carry Clone A, so their digits must match. A candidate that appears in only one of those cells cannot fill either."
               }
             },
             {
@@ -7449,13 +7449,22 @@
                 }
               ],
               "guide": {
-                "start": "Find the cells the clue pairs as copies. Compare the candidate lists at matching positions.",
+                "start": "Find cells marked with the same Clone letter. Compare their candidate lists.",
                 "check": "If one copy already contains 7, every matching copy must be 7. Otherwise, find the digits that appear in every list.",
                 "reason": "All matching cells need the same digit. If any one copy rules out a digit, remove it from the other copies too."
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "Bill Murphy: Legs in a Snare",
+              "href": "https://www.gmpuzzles.com/blog/2026/03/clone-sudoku-by-bill-murphy-2/"
+            },
+            {
+              "label": "Philip Newman: Hello There",
+              "href": "https://www.gmpuzzles.com/blog/2026/04/clone-sudoku-by-philip-newman-2/"
+            }
+          ],
           "difficulty": "easy"
         },
         {

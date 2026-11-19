@@ -4,19 +4,22 @@ const LINK_LANE_SPACING = 3.6
 
 export type BoardPoint = { cell: number; digit?: number } | { cells: readonly number[]; digit: number }
   | { candidates: readonly { cell: number; digit: number }[] }
+export type CandidateInsets = ReadonlyMap<number, { top: number; bottom: number }>
 
-function positions(point: BoardPoint): { x: number; y: number }[] {
-  if ('cells' in point) return point.cells.flatMap(cell => positions({ cell, digit: point.digit }))
-  if ('candidates' in point) return point.candidates.flatMap(positions)
+function positions(point: BoardPoint, insets?: CandidateInsets): { x: number; y: number }[] {
+  if ('cells' in point) return point.cells.flatMap(cell => positions({ cell, digit: point.digit }, insets))
+  if ('candidates' in point) return point.candidates.flatMap(candidate => positions(candidate, insets))
   const offset = (slot: number) => .07 + ((slot + .5) / 3) * .86
+  const inset = insets?.get(point.cell)
+  const rowOffset = (slot: number) => inset ? inset.top + ((slot + .5) / 3) * (1 - inset.top - inset.bottom) : offset(slot)
   return [{
     x: (point.cell % 9 + (point.digit ? offset((point.digit - 1) % 3) : .5)) * 10,
-    y: (Math.floor(point.cell / 9) + (point.digit ? offset(Math.floor((point.digit - 1) / 3)) : .5)) * 10,
+    y: (Math.floor(point.cell / 9) + (point.digit ? rowOffset(Math.floor((point.digit - 1) / 3)) : .5)) * 10,
   }]
 }
 
-export function boardLinkEndpoints(from: BoardPoint, to: BoardPoint) {
-  const starts = positions(from), ends = positions(to)
+export function boardLinkEndpoints(from: BoardPoint, to: BoardPoint, insets?: CandidateInsets) {
+  const starts = positions(from, insets), ends = positions(to, insets)
   if (!starts.length || !ends.length) return undefined
   let start = starts[0], end = ends[0], shortest = Infinity
   // A group is still one logical endpoint. Attach to its nearest member so
@@ -90,9 +93,9 @@ function route({ start, end, trimStart, trimEnd }: Segment, lane: number): Point
   return [trimStart ? trim(start, startBend) : start, startBend, endBend, trimEnd ? trim(end, endBend) : end]
 }
 
-export function boardLinkRoutes(links: readonly { from: BoardPoint; to: BoardPoint }[]): Point[][] {
+export function boardLinkRoutes(links: readonly { from: BoardPoint; to: BoardPoint }[], insets?: CandidateInsets): Point[][] {
   const segments = links.map(({ from, to }) => {
-    const endpoints = boardLinkEndpoints(from, to)
+    const endpoints = boardLinkEndpoints(from, to, insets)
     if (!endpoints || (endpoints.start.x === endpoints.end.x && endpoints.start.y === endpoints.end.y)) return undefined
     return { ...endpoints, trimStart: true, trimEnd: true }
   })
