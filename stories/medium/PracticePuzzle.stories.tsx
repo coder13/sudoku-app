@@ -31,11 +31,20 @@ export const RevealAndReset: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Show next step' }))
     await expect(canvas.getByText('What to check')).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Show solution' }))
-    await expect(canvas.getByRole('heading', { name: 'Why this works' })).toBeVisible()
+    await expect(canvas.getByRole('heading', { name: 'Solution' })).toBeVisible()
+    await expect(canvas.getByRole('heading', { name: 'Why this works' })).toBeInTheDocument()
+    await expect(keypad).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Select 1' })).toBeDisabled()
     await expect(layout()).toEqual(initialLayout)
+    await userEvent.click(canvas.getByRole('button', { name: 'Previous step' }))
+    await expect(canvas.getByRole('button', { name: 'Select 1' })).toBeEnabled()
+    await expect(layout()).toEqual(initialLayout)
+    await userEvent.click(canvas.getByRole('button', { name: 'Show solution' }))
     await userEvent.click(canvas.getByRole('button', { name: 'Apply one move' }))
     await expect(canvas.getByRole('status')).toHaveTextContent('One possible move.')
-    await expect(canvas.getByRole('button', { name: 'Reset puzzle' })).toBeEnabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Reset puzzle' }))
+    await expect(canvas.getByRole('button', { name: 'Check move' })).toBeDisabled()
+    await expect(layout()).toEqual(initialLayout)
   },
 }
 export const CorrectMove: Story = {

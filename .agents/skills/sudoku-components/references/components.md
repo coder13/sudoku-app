@@ -83,8 +83,8 @@ Search by component name or browse the sections below.
 | --- | --- |
 | [LearnHeading](../../../../src/components/LearnHeading.tsx) | `LearnHeading` supplies the heading and navigation context for a lesson. The mobile header stays above the scrolling introduction and article. `LessonDifficulty` labels its difficulty. |
 | [ConceptCheck](../../../../src/components/ConceptCheck.tsx) | `ConceptCheck` presents questions with feedback when a lesson tests understanding. |
-| [LessonWorkbench](../../../../src/components/LessonWorkbench.tsx) | `LessonWorkbench` provides an interactive teaching grid with lesson annotations and optional editing. |
-| [LessonPractice](../../../../src/components/LessonPractice.tsx) | `PracticePuzzle` runs a specific practice position and checks the learner’s next move. |
+| [LessonWorkbench](../../../../src/components/LessonWorkbench.tsx) | `LessonWorkbench` provides a teaching grid with lesson annotations. Use `preview` for a read-only grid. Add `showTools` to keep the input panel visible with editing disabled. |
+| [LessonPractice](../../../../src/components/LessonPractice.tsx) | `PracticePuzzle` checks the learner’s next move. The final walkthrough step keeps the input panel in place and offers Apply one move. |
 | [FoundationVisual](../../../../src/components/FoundationVisual.tsx) | `FoundationVisual` selects a teaching visual, including 4×4 algebraic cage diagrams. `VisualKey` explains annotations. `ProofBranches` renders alternative cases. `VisualWalkthrough` steps through an explanation. |
 | [TechniqueLesson](../../../../src/components/TechniqueLesson.tsx) | `TechniqueLesson` composes an article and its exercises. `Diagram` shows a lesson position. `WorkedExampleViewer` steps through one example. `WorkedExamples` selects and loads examples. `Practice` renders a drill block. `LessonTags` shows classifications. `AlternateNames` lists other names for a technique. `ExplanationBlock` dispatches a content block to its appropriate presentation. |
 
