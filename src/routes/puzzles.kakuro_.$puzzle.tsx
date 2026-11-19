@@ -8,6 +8,8 @@ import { generatedNumberTokens, rememberGeneratedNumberPuzzle } from '../number-
 export const Route = createFileRoute('/puzzles/kakuro_/$puzzle')({
   staticData: { standalonePuzzlePage: true },
   head: () => ({ meta: [{ title: 'Play Kakuro' }] }),
+  // Generated links share one offline shell, so render their search data on the client.
+  ssr: ({ params }) => params.status === 'success' && params.value.puzzle === 'generated' ? 'data-only' : true,
   validateSearch: (search): { board?: string } => ({ board: generatedNumberToken(search.board) }),
   loader: ({ params }) => {
     if (params.puzzle === 'generated') return 'generated'

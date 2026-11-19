@@ -1,6 +1,6 @@
 import { calcudokuCatalog, generatedCalcudokuEntry, type CalcudokuEntry } from '../calcudoku/catalog'
 import { operatorSymbol } from '../calcudoku/engine'
-import { cellLabel, checkLatin, findLatinHint } from '../latin/engine'
+import { cellLabel, checkLatin, findLatinHint, solveLatin } from '../latin/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 
 const calcudoku: NumberGameConfig<CalcudokuEntry> = {
@@ -40,6 +40,10 @@ const calcudoku: NumberGameConfig<CalcudokuEntry> = {
       check: values => {
         const { complete, conflicts } = checkLatin(puzzle, values)
         return { complete, marked: conflicts.flatMap(rule => rule.cells.filter(cell => values[cell] || givens[cell])) }
+      },
+      solve: () => {
+        const result = solveLatin(puzzle)
+        return result.status === 'unique' ? result.solution : null
       },
       hint: values => {
         const hint = findLatinHint(puzzle, values)

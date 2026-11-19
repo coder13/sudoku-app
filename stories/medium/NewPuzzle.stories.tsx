@@ -117,6 +117,12 @@ export const KakuroFromGameTypes: Story = {
     await userEvent.keyboard('1')
     await expect(cell).toHaveAccessibleName(/^R2C3, 1/)
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Hint$/ }))
+    await userEvent.click(canvas.getByText('Show hint steps'))
+    await expect(canvas.getByText('The clue rules out 1 in R4C2. R4C2 can only be 3.')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Place 3' }))
+    await expect(canvas.getByRole('button', { name: /^R4C2, 3/ })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
   },
 }
 

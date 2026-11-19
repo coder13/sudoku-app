@@ -165,12 +165,20 @@ function digitFromMask(mask: number) {
   return 32 - Math.clz32(mask)
 }
 
-export type KakuroHint = { cell: number; digit: number; runs: KakuroRun[]; depth: number }
+type KakuroCandidateChange = { cell: number; removedMask: number; remainingMask: number }
+type KakuroHintStep = { run: KakuroRun; changes: KakuroCandidateChange[] }
+export type KakuroHint = {
+  cell: number
+  digit: number
+  runs: KakuroRun[]
+  depth: number
+  steps: KakuroHintStep[]
+}
 
 function propagate(
   puzzle: KakuroPuzzle,
   domains: number[],
-  reasonFor?: (cell: number, run: KakuroRun, depth: number) => void,
+  recordStep?: (run: KakuroRun, domains: readonly number[], support: readonly number[], depth: number) => void,
 ): boolean {
   let changed = true
   let depth = 0
@@ -180,33 +188,43 @@ function propagate(
     for (const run of puzzle.runs) {
       const support = runSupport(run, domains)
       if (!support) return false
-      run.cells.forEach((cell, i) => {
-        if (support[i] === domains[cell]) return
-        domains[cell] = support[i]
-        changed = true
-        reasonFor?.(cell, run, depth)
-      })
+      const firstChange = run.cells.findIndex((cell, i) => support[i] !== domains[cell])
+      if (firstChange === -1) continue
+      recordStep?.(run, domains, support, depth)
+      for (let i = firstChange; i < run.cells.length; i++) domains[run.cells[i]] = support[i]
+      changed = true
     }
   }
   return true
 }
 
 export function findKakuroHint(puzzle: KakuroPuzzle, values: readonly number[]): KakuroHint | null {
-  const domains = createDomains(puzzle, values)
-  const reasons = new Map<number, Set<KakuroRun>>()
-  let hint: KakuroHint | null = null
-  const consistent = propagate(puzzle, domains, (cell, run, depth) => {
-    // Keep the clue trail that reduced each domain, including crossing runs.
-    const dependencies = new Set([run])
-    for (const sibling of run.cells) {
-      for (const reason of reasons.get(sibling) ?? []) dependencies.add(reason)
+  const trace: KakuroHintStep[] = []
+  let placement: Pick<KakuroHint, 'cell' | 'digit' | 'depth'> | undefined
+  const consistent = propagate(puzzle, createDomains(puzzle, values), (run, domains, support, depth) => {
+    if (placement) return
+    const changes: KakuroCandidateChange[] = []
+    for (const [i, cell] of run.cells.entries()) {
+      const remainingMask = support[i]
+      const removedMask = domains[cell] & ~remainingMask
+      if (!removedMask) continue
+      changes.push({ cell, removedMask, remainingMask })
+      if (!placement && digitCounts[remainingMask] === 1) {
+        placement = { cell, digit: digitFromMask(remainingMask), depth }
+      }
     }
-    reasons.set(cell, dependencies)
-    if (!hint && !values[cell] && digitCounts[domains[cell]] === 1) {
-      hint = { cell, digit: digitFromMask(domains[cell]), runs: [...dependencies], depth }
-    }
+    trace.push({ run, changes })
   })
-  return consistent ? hint : null
+  if (!consistent || !placement) return null
+
+  // Keep each step that narrowed a cell used by a later step in this proof.
+  const needed = new Set([placement.cell])
+  const steps = trace.reverse().filter(({ run, changes }) => {
+    if (!changes.some(({ cell }) => needed.has(cell))) return false
+    for (const cell of run.cells) needed.add(cell)
+    return true
+  }).reverse()
+  return { ...placement, runs: [...new Set(steps.map(step => step.run))], steps }
 }
 
 export type KakuroSolution = {
