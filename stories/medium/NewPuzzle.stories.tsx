@@ -23,12 +23,23 @@ export const Mobile: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: 'Next variant' }))
-    await canvas.findByRole('heading', { name: 'Killer' })
+    await canvas.findByRole('heading', { name: 'Mini Sudoku' })
     await userEvent.click(canvas.getByRole('link', { name: 'Continue' }))
     await canvas.findByRole('heading', { name: 'Choose difficulty' })
-    await expect(canvas.getByText('Killer', { exact: true })).toBeVisible()
+    await expect(canvas.getByText('Mini Sudoku', { exact: true })).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Back to variant' }))
-    await expect(await canvas.findByRole('heading', { name: 'Killer' })).toBeVisible()
+    await expect(await canvas.findByRole('heading', { name: 'Mini Sudoku' })).toBeVisible()
+  },
+}
+
+export const AlgebraicCages: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=algebraic-cages" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Create puzzle' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit cages' }))
+    const dialog = await canvas.findByRole('dialog', { name: 'Edit cages' })
+    await expect(dialog).toBeVisible()
   },
 }
 
@@ -116,6 +127,21 @@ export const KakuroFromGameTypes: Story = {
     await userEvent.click(cell)
     await userEvent.keyboard('1')
     await expect(cell).toHaveAccessibleName(/^R2C3, 1/)
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+  },
+}
+
+export const CalcudokuFromGameTypes: Story = {
+  ...ChooseVariant,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Calcudoku/ }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Easy/ }))
+    const cell = await canvas.findByRole('button', { name: /^R1C1, empty/ })
+    await userEvent.click(cell)
+    await userEvent.keyboard('1')
+    await expect(cell).toHaveAccessibleName(/^R1C1, 1/)
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
   },
 }

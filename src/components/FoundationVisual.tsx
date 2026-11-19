@@ -66,7 +66,9 @@ function VisualWalkthrough({ visual: id }: { visual: FoundationVisualId }) {
           <p>{frame.description}</p>
         </div>)}
       </div>
-      <div className="lesson-legend foundation-key" aria-label="Diagram key">{visual.key.map(kind => <VisualKey key={kind} kind={kind} />)}</div>
+      {visual.key.length > 0 && <div className="lesson-legend foundation-key" aria-label="Diagram key">
+        {visual.key.map(kind => <VisualKey key={kind} kind={kind} />)}
+      </div>}
     </figcaption>
   </figure>
 }
