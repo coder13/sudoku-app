@@ -1,4 +1,5 @@
 import { runEngine } from './engine.ts'
+import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
 import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
 import { analyzeMini } from './mini-play.ts'
 import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
@@ -9,8 +10,8 @@ import { variantName } from './variants.ts'
 
 export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] | 'Photo or screenshot'; grade?: PuzzleGrade | null }
 
-export function findImportedPuzzle(games: readonly Game[], { givens, variant }: Pick<ImportedPuzzle, 'givens' | 'variant'>) {
-  const identity = puzzleIdentity({ givens, variant })
+export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic'>) {
+  const identity = puzzleIdentity(imported)
   return games.find(game => game.source !== 'draft' && puzzleIdentity(game) === identity)
 }
 
@@ -28,11 +29,17 @@ export async function prepareSharedPuzzle(id: string, games: readonly Game[], si
 }
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
-  const { givens, variant, format, title, collection, sharedPuzzleId, grid } = imported
+  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic } = imported
   const existing = findImportedPuzzle(games, imported)
-  const name = variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
+  const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
+    : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
     : variant ? `Imported ${variantName(variant)} puzzle` : grid ? 'Imported Mini Sudoku' : 'Imported puzzle'
   const game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
+  if (algebraic && grid) {
+    game.algebraic = await verifyAlgebraicPuzzle({ givens, ...algebraic })
+    const rating = await rateAlgebraicPuzzle(givens, game.algebraic.rules)
+    return { game: { ...game, difficulty: rating?.difficulty ?? null, score: rating?.points ?? null }, format }
+  }
   if (!existing) {
     const status = grid ? await analyzeMini(givens) : variant
       ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle } })
