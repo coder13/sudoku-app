@@ -23,17 +23,17 @@ From the repository root, build the client with the Rust WebAssembly target inst
 ```sh
 npm ci
 npm run build:cloudflare
-npx wrangler@4 d1 migrations apply DB --local
+npx wrangler d1 migrations apply DB --local
 ```
 
 Run the notification Worker in one terminal and Pages in another.
 
 ```sh
-npx wrangler@4 dev --config cloudflare/wrangler.sync-events.jsonc --port 8790
+npx wrangler dev --config cloudflare/wrangler.sync-events.jsonc --port 8790
 ```
 
 ```sh
-npx wrangler@4 pages dev
+npx wrangler pages dev
 ```
 
 For UI iteration, leave Pages dev on port 8788 and run `npm run dev` in another terminal. Open `http://127.0.0.1:8766/sync`. Vite hot-reloads the interface and forwards sync requests to the local Worker. Use the HTTPS branch preview to pair a physical phone with a computer.
@@ -50,15 +50,26 @@ Vite serves the UI locally and forwards sync requests to the deployed Pages Work
 
 ## Preview a pull request
 
-This repository deploys the static app and its Worker together to the Direct Upload Pages project `klyn-sudoku`. Branch previews share the `sudoku-sync-preview` D1 database through the `DB` binding in `env.preview`. The Pages configuration binds to the `klyn-sudoku-sync-events` Worker in both environments. Deploy that Worker once before the first Pages deployment with the new binding. Notifications are scoped by library ID, and the preview and production libraries live in separate D1 databases. Apply pending preview migrations before uploading a branch build. Use the branch alias to test across updates so the browser retains its device credentials.
+The [Cloudflare Pages workflow](../.github/workflows/cloudflare-pages.yml) builds the static app and its sync Worker together on pull requests from branches in this repository. Open the run summary for the `pr-<number>.klyn-sudoku.pages.dev` link. Use that same address to pair two fresh browser profiles and confirm that a move appears on the second device without refreshing the page. The preview URL stays the same across pushes so each browser retains its device credentials.
+
+Previews share the `sudoku-sync-preview` D1 database through the `DB` binding in `env.preview`. The preview and production Pages deployments bind to the existing `klyn-sudoku-sync-events` Worker. It scopes notifications by library ID. Apply pending preview migrations before testing a branch that needs them.
 
 ```sh
-npx wrangler@4 deploy --config cloudflare/wrangler.sync-events.jsonc
-npm run build:cloudflare
-npx wrangler@4 d1 migrations apply DB --env preview --remote
-npx wrangler@4 pages deploy dist/client --project-name klyn-sudoku --branch codex/accountless-device-sync
+npx wrangler d1 migrations apply sudoku-sync-preview --env preview --remote
 ```
 
-Substitute the pull request's head branch in the final command. Open `/api/v1/health` to check D1 connectivity, then pair two fresh browser profiles and confirm that a move appears on the second device without refreshing the page. Preview data is for testing. The production migration and release are separate operations.
+## Release to production
+
+A push to `main` builds and publishes to [sudoku.klyn.gay](https://sudoku.klyn.gay). The workflow checks `/api/v1/health` after each deployment. It uses the `CLOUDFLARE_ACCOUNT_ID` GitHub Actions variable and the `CLOUDFLARE_API_TOKEN` Actions secret with Cloudflare Pages Edit permission.
+
+For a release that changes the database schema, apply the migration before merging the code that requires it. Keep the migration compatible with the live version during the rollout. Run the migration with a local Wrangler login with D1 access.
+
+```sh
+npx wrangler d1 migrations apply sudoku-sync-prod --remote
+```
+
+When the notification Worker changes, deploy it separately with `npx wrangler deploy --config cloudflare/wrangler.sync-events.jsonc`.
+
+To retry a release, run **Cloudflare Pages** from the Actions tab and select `main`.
 
 Netlify can also serve the UI from the normal `npm run build` output in `dist/client`. A Netlify static preview supports local play, puzzle URLs, and the in-progress library. Device pairing and remote saves need the Cloudflare Worker and D1 deployment.
