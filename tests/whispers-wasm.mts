@@ -16,6 +16,7 @@ import { assertLineHouseProof } from './helpers/line-house-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { assertWhispersProof } from './helpers/whispers-proof.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 useWasmWorker()
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
@@ -75,6 +76,7 @@ test('Whispers proofs, every page and Finder count preserve distinct actions and
       assert.equal(countWhispersSolutions(example.position.puzzle).count, 1)
       const view = lessonExample({ ...example, practice: example }); assert.ok('variant' in view.deduction.evidence)
       assert.match(view.deduction.evidence.variant.description, /differ by at least/)
+      if (technique === 'whispers') assertWhispersProof(example.position.puzzle, example.deduction)
       if (technique === 'whispers-house-support') {
         assertLineHouseProof(example.position, example.deduction)
         const hint = variantHintChoice(example.deduction, example.position.puzzle)

@@ -52,7 +52,7 @@ import { Modal } from './Modal'
 import { MotionSurface, usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
-import { SolutionDialog, SolutionPath, type SolutionPathState } from './SolutionPath'
+import { SolutionDialog, SolutionPath, solutionEndSummary, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
@@ -532,7 +532,7 @@ export function Worktable({
       difficulty: solutionStepDifficulty, cellReferenceStyle,
     })
     : trace && solutionStep === trace.steps.length
-      ? { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
+      ? solutionEndSummary(trace.rating.status)
       : null
 
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)

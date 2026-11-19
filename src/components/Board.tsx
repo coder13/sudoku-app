@@ -4,6 +4,8 @@ import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type Candi
 import { activeHighlightDigit, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
+import { outsideClueLayout } from '../sudoku/outside-clues'
+import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
 import { VariantClues, cageLabelInset, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
@@ -63,6 +65,8 @@ export function Board({
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
 }: Props) {
   const variantRules = variantPuzzle?.rules
+  const outside = useMemo(() => outsideClueLayout(variantRules), [variantRules])
+  const hasOutside = Object.values(outside.depths).some(Boolean)
   const clones = cloneLayout(variantRules)
   const disjoint = useMemo(() => disjointGroupRuleIndices(variantRules ?? []), [variantRules])
   const gridLabel = [label, variantRules?.some(rule => rule.type === 'global-entropy')
@@ -92,9 +96,14 @@ export function Board({
   const layout = candidates ? 'grid' : candidateLayout
   const annotationSlots = showAnnotatedCandidates ? annotations?.candidates : undefined
   const usesDigitSlots = (cell: number) => layout === 'grid' || annotationSlots?.has(cell)
-  const rows = region ? DIGITS.slice(region.row, region.row + region.rows) : DIGITS
-  const columns = region ? DIGITS.slice(region.column, region.column + region.columns) : DIGITS
-  const size = region && { '--board-rows': rows.length, '--board-columns': columns.length } as CSSProperties
+  // An outside total needs its complete row or column visible in teaching diagrams.
+  const visibleRegion = hasOutside ? undefined : region
+  const rows = visibleRegion ? DIGITS.slice(visibleRegion.row, visibleRegion.row + visibleRegion.rows) : DIGITS
+  const columns = visibleRegion ? DIGITS.slice(visibleRegion.column, visibleRegion.column + visibleRegion.columns) : DIGITS
+  const size = { ...(visibleRegion && { '--board-rows': rows.length, '--board-columns': columns.length }),
+    ...(hasOutside && Object.fromEntries(Object.entries(outside.depths).map(([side, depth]) => ['--outside-' + side, depth]))),
+    ...(hasOutside && { '--outside-left-track': `${outside.depths.left}fr`, '--outside-right-track': `${outside.depths.right}fr` }),
+  } as CSSProperties
   const playableCell = (cell: number) => values[cell] === '0' &&
     rows.includes(Math.floor(cell / 9) + 1) && columns.includes(cell % 9 + 1)
   const gridMask = (cell: number) => candidates?.[cell] ??
@@ -145,7 +154,9 @@ export function Board({
   }
 
   return (
-    <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}`} data-overlay={overlay?.visible} style={size}>
+    <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}`} data-overlay={overlay?.visible} style={size}>
+      {outside.depths.top > 0 && <div className="outside-clues-top" aria-hidden="true" />}
+      {outside.depths.bottom > 0 && <div className="outside-clues-bottom" aria-hidden="true" />}
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
@@ -313,10 +324,12 @@ export function Board({
           ))}
         </div>
         <BoardMarks items={variantClues} />
-        <BoardLinks links={annotations?.links} region={region} candidateInsets={candidateInsets} />
+        {hasOutside && <OutsideClues layout={outside} hidden={overlay?.visible} />}
+        <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}
       </div>
+      {outside.legend.length > 0 && <div className="outside-clue-legend" aria-hidden={overlay?.visible || undefined}>{outside.legend.join(' · ')}</div>}
     </div>
   )
 }

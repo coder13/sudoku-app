@@ -1,0 +1,252 @@
+{
+  "sourceAppHead": "79b85a8cbcc5ad3d65292b786b157a03d2bc90dd",
+  "sourceEngineSha256": "22c8e168046610fb65a1600e6f47336a9bc357282815078c255966bc8b2d96fa",
+  "provenance": "Complete pure source paths and completion templates. Fresh removal masks create new puzzles; original published/Coach givens and all mixed companions remain unchanged.",
+  "sources": [
+    {
+      "id": "clover",
+      "source": {
+        "title": "Entropic Lines Sudoku, Numeric Keypad",
+        "author": "clover!",
+        "date": "2026-01-06",
+        "page": "https://www.gmpuzzles.com/blog/2026/01/entropic-lines-sudoku-by-clover/",
+        "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2026/260106-EntropicLinesSudoku-NumericKeypad.pdf",
+        "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2026/260106-EntropicLinesSudoku-NumericKeypad-soln.pdf",
+        "puzzleSha256": "b32d28d9751e8a87d1d2fcaf2704de678bc86963330822b05fdb4b878fa25939",
+        "solutionSha256": "eaa7db67f04b3c59bb26a3a6028e1c1c99220b8ad8a16f185a5d9c3b35fc3828"
+      },
+      "lines": [
+        [
+          2,
+          1,
+          0,
+          9,
+          18,
+          19
+        ],
+        [
+          14,
+          5,
+          4,
+          3,
+          12,
+          21,
+          22
+        ],
+        [
+          15,
+          6,
+          7,
+          8,
+          17,
+          26,
+          25
+        ],
+        [
+          28,
+          27,
+          36,
+          45,
+          46,
+          47,
+          38
+        ],
+        [
+          42,
+          33,
+          34,
+          35,
+          44,
+          53,
+          52
+        ],
+        [
+          55,
+          54,
+          63,
+          72,
+          73,
+          74,
+          65
+        ],
+        [
+          58,
+          59,
+          68,
+          77,
+          76,
+          75,
+          66
+        ],
+        [
+          61,
+          62,
+          71,
+          80,
+          79,
+          78,
+          69
+        ]
+      ],
+      "completionTemplate": "284539167651784932739162485918453276462978513375216849526847391893621754147395628"
+    },
+    {
+      "id": "EoGB",
+      "source": {
+        "url": "https://sudoku.coach/en/s/EoGB",
+        "title": "Entropic Snake",
+        "author": "adboe"
+      },
+      "lines": [
+        [
+          73,
+          74,
+          75,
+          67,
+          76,
+          77,
+          78,
+          68,
+          58,
+          59,
+          60,
+          69,
+          70,
+          61,
+          62,
+          52,
+          42,
+          51,
+          41,
+          50,
+          40,
+          49,
+          48,
+          39,
+          38,
+          28,
+          37,
+          27,
+          19,
+          18,
+          9,
+          0,
+          10,
+          1,
+          11,
+          2,
+          3,
+          12,
+          13,
+          21,
+          22,
+          14,
+          15,
+          16,
+          25,
+          24,
+          33,
+          34,
+          35,
+          44,
+          53
+        ]
+      ],
+      "completionTemplate": "924318657358746192671295348295481763743652819816937425582163974467829531139574286"
+    },
+    {
+      "id": "BSEJ",
+      "source": {
+        "url": "https://sudoku.coach/en/s/BSEJ",
+        "title": "Entropic Web",
+        "author": "joe"
+      },
+      "lines": [
+        [
+          6,
+          7,
+          8,
+          17,
+          26,
+          35,
+          44,
+          53,
+          62,
+          71,
+          80,
+          79,
+          78,
+          77,
+          76,
+          75,
+          74,
+          73,
+          72,
+          63,
+          54,
+          45,
+          36,
+          27,
+          18,
+          9,
+          0,
+          1,
+          2,
+          3
+        ],
+        [
+          12,
+          11,
+          10,
+          19,
+          28,
+          37,
+          46,
+          55,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          25,
+          34
+        ],
+        [
+          22,
+          21,
+          20,
+          29,
+          38
+        ],
+        [
+          47,
+          56,
+          57
+        ],
+        [
+          58,
+          59,
+          60
+        ],
+        [
+          48,
+          49,
+          50
+        ],
+        [
+          51,
+          42,
+          41
+        ]
+      ],
+      "completionTemplate": "347269581985134726621857349264985173798316254513472968156743892872691435439528617"
+    }
+  ]
+}

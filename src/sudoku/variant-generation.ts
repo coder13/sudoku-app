@@ -1,16 +1,24 @@
 import { difficultyIndex } from './difficulty.ts'
 import type { Difficulty, VariantClueLayout, VariantGenerationRequest, VariantPuzzle, VariantRule } from './engine.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
+import { clueDelta } from './outside-clues.ts'
 import { quadrupleCells, WINDOKU_REGIONS, type PlayableVariant } from './variants.ts'
 
 export type VariantSeed = {
   seed: number
   maxGivens: number
+  minGivens?: number
+  maxAttempts?: number
+  /** Fresh-search budget after all checked recipes fail to produce an unplayed puzzle. */
+  retryAttempts?: number
   cageSizes?: number[]
   dotCount?: number
+  markedCells?: number[]
+  minDifference?: number
   layout?: string
   lines?: number[][]
   cloneGroups?: number[][][]
+  outside?: ({ cells: number[]; direction: string } & ({ sum: number; count?: never } | { count: number; sum?: never }))[]
   regions?: string
 }
 
@@ -44,8 +52,8 @@ export function variantGenerationRequest(
     case 'diagonal':
       rules.push({ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' })
       break
-    case 'anti-knight':
-      rules.push({ type: 'anti-knight' })
+    case 'anti-knight': case 'anti-king': case 'non-consecutive': case 'global-entropy':
+      rules.push({ type: id })
       break
     case 'killer-cages':
       derivedClues.push({ type: 'killer-cage-sizes', sizes: recipe.cageSizes!, coverGrid: true })
@@ -53,8 +61,37 @@ export function variantGenerationRequest(
     case 'kropki':
       derivedClues.push({ type: 'markers', family: 'kropki', count: recipe.dotCount })
       break
-    case 'thermometer': case 'between': case 'region-sum':
+    case 'parity':
+      derivedClues.push({ type: 'parity', cells: recipe.markedCells! })
+      break
+    case 'thermometer': case 'between': case 'region-sum': case 'palindrome': case 'entropic':
       for (const cells of recipe.lines!) rules.push({ type: id, cells })
+      break
+    case 'whispers':
+      for (const cells of recipe.lines!) rules.push({ type: 'whispers', cells, minDifference: recipe.minDifference! })
+      break
+    case 'little-killer':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (typeof clue.sum !== 'number') throw new Error('Missing diagonal recipe total.')
+        if (direction !== 'north-east' && direction !== 'south-east' && direction !== 'south-west' && direction !== 'north-west') throw new Error('Invalid diagonal recipe direction.')
+        rules.push({ type: 'little-killer', cells: clue.cells, sum: clue.sum, direction })
+      }
+      break
+    case 'sandwich': case 'x-sum':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (typeof clue.sum !== 'number') throw new Error('Missing outside-clue recipe total.')
+        if (direction !== 'north' && direction !== 'east' && direction !== 'south' && direction !== 'west') throw new Error('Invalid outside-clue recipe direction.')
+        rules.push({ type: id, cells: clue.cells, sum: clue.sum, direction })
+      }
+      break
+    case 'skyscrapers':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (typeof clue.count !== 'number' || direction !== 'north' && direction !== 'east' && direction !== 'south' && direction !== 'west') throw new Error('Invalid visibility-clue recipe.')
+        rules.push({ type: 'skyscrapers', cells: clue.cells, count: clue.count, direction })
+      }
       break
     case 'clone':
       for (const groups of recipe.cloneGroups!) rules.push({ type: 'clone', groups })
@@ -64,10 +101,10 @@ export function variantGenerationRequest(
       break
   }
   return {
-    type: 'generate-variant', seed, maxAttempts: 1,
+    type: 'generate-variant', seed, maxAttempts: recipe.maxAttempts ?? 1,
     template: { version: 1, givens: recipe.layout ?? '0'.repeat(81), rules,
       regions: id === 'jigsaw' ? jigsawLayout(recipe.regions!) : undefined },
-    derivedClues, givens: [0, recipe.maxGivens], requiredRule: id === 'windoku' ? 'extra-house' : id, difficulty, techniqueOrder,
+    derivedClues, givens: [recipe.minGivens ?? 0, recipe.maxGivens], requiredRule: id === 'windoku' ? 'extra-house' : id, difficulty, techniqueOrder,
   }
 }
 
@@ -97,6 +134,19 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'parity': case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
         case 'quadruple': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
+        case 'little-killer': {
+          const [dr, dc] = clueDelta(rule.direction)
+          let row = dr, column = dc
+          if (symmetry & 1) [row, column] = [column, row]
+          if (symmetry & 2) row = -row
+          if (symmetry & 4) column = -column
+          const direction = row < 0 ? column < 0 ? 'north-west' : 'north-east' : column < 0 ? 'south-west' : 'south-east'
+          return { ...rule, cells: rule.cells.map(cell), direction }
+        }
+        case 'sandwich': case 'x-sum': case 'skyscrapers': {
+          const cells = rule.cells.map(cell), step = cells[1] - cells[0]
+          return { ...rule, cells, direction: step === 1 ? 'east' : step === -1 ? 'west' : step === 9 ? 'south' : 'north' }
+        }
         case 'clone': return { ...rule, groups: rule.groups.map(group => group.map(cell)) }
         case 'inequality': return { ...rule, less: cell(rule.less), greater: cell(rule.greater) }
         case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }

@@ -3,6 +3,7 @@ import { type Game, type Position, valuesOf } from './game.ts'
 import { readDisabledHintTechniques } from './hint-preferences.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from './variant-generation.ts'
 import { variantIdForPuzzle, type PlayableVariant, type VariantGame } from './variants.ts'
+import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
 let playOrder: Promise<string[]> | undefined
 
@@ -17,9 +18,12 @@ export function getVariantPlayOrder() {
   return playOrder
 }
 
-export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[]) {
+export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions) {
+  if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
+    throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
   const techniqueOrder = await getVariantPlayOrder()
-  const recipes = variantSeeds[id][difficulty]
+  const ruleset = generationRuleset(id, options?.ruleset)
+  const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')
   const excluded = games.flatMap(game => game.variant && variantIdForPuzzle(game.variant.puzzle) === id ? [game.variant.puzzle] : [])
   const initial = seed % recipes.length
@@ -27,6 +31,18 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
     const recipe = recipes[(initial + Math.max(0, attempt - 1)) % recipes.length]
     const request = variantGenerationRequest(id, difficulty, recipe, techniqueOrder, attempt === 0 ? seed : recipe.seed)
     if (attempt === 0) request.maxNodes = 20_000
+    if (excluded.length) request.exclude = excluded
+    try {
+      return await runEngine(request)
+    } catch (error) {
+      if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
+    }
+  }
+  const recipe = recipes[initial]
+  if (recipe.retryAttempts) {
+    const request = variantGenerationRequest(id, difficulty, recipe, techniqueOrder, seed)
+    request.maxNodes = 20_000
+    request.maxAttempts = recipe.retryAttempts
     if (excluded.length) request.exclude = excluded
     try {
       return await runEngine(request)

@@ -1,0 +1,161 @@
+{
+  "title": "Leftovers",
+  "author": "Philip Newman",
+  "published": "2025-11-30",
+  "source": "https://www.gmpuzzles.com/blog/2025/11/sandwich-sudoku-by-philip-newman/",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2025/251130-SandwichSudoku-Leftovers.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/251130-SandwichSudoku-Leftovers-soln.pdf",
+  "pdfSha256": "cabd0c604a4be2125f0f57c26bb4e1331f8c4f10b61cdf32db1ad7f6e474a6d8",
+  "solutionPdfSha256": "345ae718ff7c55af6e297a079d8bd0bb70632d2790ca1cbd02a1604dabf1752a",
+  "puzzle": {
+    "version": 1,
+    "givens": "100340000000501200000602034000003000700000003000700000670804000008905000000067009",
+    "rules": [
+      {
+        "type": "sandwich",
+        "cells": [
+          0,
+          9,
+          18,
+          27,
+          36,
+          45,
+          54,
+          63,
+          72
+        ],
+        "direction": "south",
+        "sum": 3
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          2,
+          11,
+          20,
+          29,
+          38,
+          47,
+          56,
+          65,
+          74
+        ],
+        "direction": "south",
+        "sum": 5
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          4,
+          13,
+          22,
+          31,
+          40,
+          49,
+          58,
+          67,
+          76
+        ],
+        "direction": "south",
+        "sum": 7
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          6,
+          15,
+          24,
+          33,
+          42,
+          51,
+          60,
+          69,
+          78
+        ],
+        "direction": "south",
+        "sum": 9
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          8,
+          17,
+          26,
+          35,
+          44,
+          53,
+          62,
+          71,
+          80
+        ],
+        "direction": "south",
+        "sum": 11
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "direction": "east",
+        "sum": 2
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        "direction": "east",
+        "sum": 4
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "direction": "east",
+        "sum": 6
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "direction": "east",
+        "sum": 8
+      }
+    ]
+  },
+  "solution": "127349658346581297985672134861493572792156483453728961679814325218935746534267819"
+}

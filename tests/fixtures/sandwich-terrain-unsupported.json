@@ -1,0 +1,217 @@
+{
+  "source": {
+    "sudoku_id": "D8HP",
+    "sudoku": "SCv7_32_f2ear52ddq1j0445tspemib4ue9h1dhp80buragh1c226qk9031acq8qsnnba7ci6o73anek1cce0vbuuc8c62dabqacvokj43ei053drk7br13kkvnh6dc0q06nqlsj5q759lvd04p88ilsaeprqig124ci4htrj0sv0iolj19m1bgohq5i6fkk2ofbafvhlf558s3jdmieksuh539u82a414kme27ar3kg9ejvn4jib2gnv981l4aktnkikbbkvujdkbeo6b3706b77959fttp4r408ec169c0ko8cssprlh6a8d29ma92uo87o2iofe0ca94hf04bf9q0tc6v8aoglij2ov04ec03spu1bkh9i8qso3r18u806s29n38t9pcg9fgktqlgrpps3ovajtbcau8k6h3vpa8pjbqu578l9tkhj7ndfdmt7s6llgeh98nt77h4eptjmg7s6p034ruagckdtrk7stv56qpi93leuvg1vut60d6gr6rrk8qhsq5e9dotjivg1mgdcpe0",
+    "solution": "281679345937425681564831729623718594875942136419563872148257963392186457756394218",
+    "name": "Terrain Variants I: Diamond Sandwich",
+    "author": null,
+    "description": "Terrain: colored cell values change when they are counted towards all variant rules. Variant rules may also be tweaked.\n1. yellow (doubler): cell value x2\n2. green (hills): cell value +3\n3. purple (valleys): cell value -3\n\nTerrain Sandwich: only the maximum sandwich sum is shown if more than one pairs of 1-9 present in a row or column",
+    "difficulty": 7,
+    "comment_count": 7,
+    "solve_count": 13,
+    "likes": 5,
+    "user_like": 0,
+    "host_id": 12130,
+    "host_name": "hanson [茅森月哥]",
+    "custom_constraints": true,
+    "published": true,
+    "published_date_utc": "2026-02-18 09:25:08",
+    "open_graph_image": 1,
+    "blocked": false,
+    "sudokuHash": "D8HP"
+  },
+  "payload": {
+    "gridSize": 9,
+    "colours": [
+      "green",
+      "purple",
+      "yellow"
+    ],
+    "givenColours": ",,,0,,1,,,,,,0,,,,1,,,,0,2,,,,2,1,,0,,,,,,,,1,,,,,,,,,,1,,,,,,,,0,,1,2,,,,2,0,,,,1,,,,0,,,,,,1,,0,,,",
+    "givenConstraints": [
+      {
+        "id": 10,
+        "type": "cosmeticText",
+        "segments": [
+          {
+            "cells": [
+              [
+                -0.5,
+                3.5
+              ]
+            ],
+            "parameters": {
+              "text": "35"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                6.5
+              ]
+            ],
+            "parameters": {
+              "text": "49"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                5.5
+              ]
+            ],
+            "parameters": {
+              "text": "1"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                7.5
+              ]
+            ],
+            "parameters": {
+              "text": "-1"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                8.5
+              ]
+            ],
+            "parameters": {
+              "text": "9"
+            }
+          },
+          {
+            "cells": [
+              [
+                2.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "26"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                0.5
+              ]
+            ],
+            "parameters": {
+              "text": "0"
+            }
+          },
+          {
+            "cells": [
+              [
+                1.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "10"
+            }
+          },
+          {
+            "cells": [
+              [
+                8.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "0"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                4.5
+              ]
+            ],
+            "parameters": {
+              "text": "6"
+            }
+          },
+          {
+            "cells": [
+              [
+                0.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "23"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                2.5
+              ]
+            ],
+            "parameters": {
+              "text": "19"
+            }
+          },
+          {
+            "cells": [
+              [
+                3.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "35"
+            }
+          },
+          {
+            "cells": [
+              [
+                7.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "24"
+            }
+          },
+          {
+            "cells": [
+              [
+                4.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "23"
+            }
+          }
+        ],
+        "settings": {
+          "gridZoomOut": 1,
+          "textSize": 88
+        }
+      },
+      {
+        "id": 11,
+        "type": "sandwich",
+        "segments": [],
+        "settings": {}
+      }
+    ],
+    "userColours": ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+    "userCellCandidatesColours": ""
+  }
+}

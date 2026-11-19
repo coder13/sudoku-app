@@ -7,11 +7,12 @@ import { createServer, type ViteDevServer } from 'vite'
 import type { VariantPuzzle, VariantRule } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { enter, makeGame } from '../src/sudoku/game.ts'
+import { isVariantId, VARIANTS, variantDifficulties } from '../src/sudoku/variants.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/parity-big-eight.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
-let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, CompletedPuzzle: Component
+let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, CompletedPuzzle: Component, VariantPreview: Component
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom',
     server: { middlewareMode: true, hmr: false, ws: false, watch: null }, optimizeDeps: { noDiscovery: true, include: [] } })
@@ -19,9 +20,23 @@ before(async () => {
   ;({ MobilePanelLayout } = await server.ssrLoadModule('/src/components/MobilePanelLayout.tsx'))
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
 })
 
-test('the real sharing and completion screens retain the imported puzzle without an uncalibrated recipe', async () => {
+test('New Puzzle offers Odd/Even with both marker kinds and verified Easy/Medium choices', () => {
+  assert.ok(isVariantId('parity'))
+  assert.equal(VARIANTS.parity.name, 'Odd/Even')
+  assert.match(VARIANTS.parity.rule, /Unmarked cells allow either/)
+  assert.deepEqual(variantDifficulties('parity'), ['easy', 'medium'])
+  const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'parity' }))
+  assert.match(html, /data-variant="parity"/)
+  assert.match(html, /variant-parity-odd/)
+  assert.match(html, /variant-parity-even/)
+  assert.equal([...html.matchAll(/<circle /g)].length, 2)
+  assert.equal([...html.matchAll(/<rect /g)].length, 2)
+})
+
+test('the real sharing and completion screens retain the imported puzzle and offer another checked puzzle', async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: {
     location: { hostname: 'example.test', origin: 'https://example.test' },
@@ -36,8 +51,9 @@ test('the real sharing and completion screens retain the imported puzzle without
     game.position.entries = [...fixture.solution].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
     const completed = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
       ratingPending: false, shortcutEnabled: false, showGuides: true, onChooseDifficulty() {}, onChooseVariant() {} }))
-    assert.match(completed, /Choose another puzzle/)
-    assert.doesNotMatch(completed, /Next medium puzzle/)
+    assert.match(completed, /Next medium puzzle/)
+    assert.match(completed, /Choose difficulty/)
+    assert.match(completed, /Choose variant/)
   } finally {
     if (previous) Object.defineProperty(globalThis, 'window', previous)
     else Reflect.deleteProperty(globalThis, 'window')

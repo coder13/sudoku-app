@@ -148,7 +148,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -160,6 +160,49 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
         cells.push(segment.cells[0])
       }
       rules.push({ type: 'parity', cells, parity: constraint.type })
+    } else if (constraint.type === 'littleKiller') {
+      if (hasData(constraint.settings) && (!record(constraint.settings) || Object.keys(constraint.settings).some(key => key !== 'colour'))) {
+        throw new Error('This Sudoku Coach Little Killer clue uses unsupported settings.')
+      }
+      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Little Killer clues.')
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 || !Array.isArray(segment.cells[0]) ||
+          segment.cells[0].length !== 2 || !segment.cells[0].every(value => Number.isInteger(value) && value >= -1 && value <= 9) ||
+          !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'positive' && key !== 'value') ||
+          typeof segment.parameters.positive !== 'boolean' || !Number.isInteger(segment.parameters.value) || Number(segment.parameters.value) < 1) {
+          throw new Error('This Sudoku Coach puzzle has an invalid or cosmetic Little Killer clue.')
+        }
+        const [x, y] = segment.cells[0] as number[]
+        const inside = (row: number, column: number) => row >= 0 && row < 9 && column >= 0 && column < 9
+        if (inside(y, x)) throw new Error('This Sudoku Coach Little Killer clue must start outside the grid.')
+        let dr = segment.parameters.positive ? -1 : 1, dc = 1
+        if (!inside(y + dr, x + dc)) { dr = -dr; dc = -dc }
+        if (!inside(y + dr, x + dc)) throw new Error('This Sudoku Coach Little Killer arrow misses the grid.')
+        const cells: number[] = []
+        for (let row = y + dr, column = x + dc; inside(row, column); row += dr, column += dc) cells.push(row * 9 + column)
+        const direction = dr < 0 ? dc < 0 ? 'north-west' : 'north-east' : dc < 0 ? 'south-west' : 'south-east'
+        rules.push({ type: 'little-killer', direction, cells, sum: Number(segment.parameters.value) })
+      }
+    } else if (constraint.type === 'sandwich') {
+      const settings = constraint.settings
+      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => key !== 'outsideLevel' && key !== 'textColour') ||
+        settings.outsideLevel !== undefined && settings.outsideLevel !== 1)) {
+        throw new Error('This Sudoku Coach Sandwich clue uses unsupported settings.')
+      }
+      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Sandwich clues.')
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length || !record(segment.parameters) ||
+          Object.keys(segment.parameters).some(key => !['side', 'index', 'value'].includes(key))) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Sandwich clue.')
+        }
+        const { side, index, value } = segment.parameters
+        if (typeof side !== 'string' || !['top', 'right', 'bottom', 'left'].includes(side) || !Number.isInteger(index) || Number(index) < 0 || Number(index) > 8 ||
+          !Number.isInteger(value) || Number(value) < 0 || Number(value) > 35) throw new Error('This Sudoku Coach puzzle has an invalid Sandwich clue.')
+        const direction = side === 'top' ? 'south' : side === 'bottom' ? 'north' : side === 'left' ? 'east' : 'west'
+        const cells = Array.from({ length: 9 }, (_, i) => side === 'top' ? i * 9 + Number(index) : side === 'bottom' ? (8 - i) * 9 + Number(index)
+          : side === 'left' ? Number(index) * 9 + i : Number(index) * 9 + 8 - i)
+        rules.push({ type: 'sandwich', direction, cells, sum: Number(value) })
+      }
     } else if (constraint.type === 'quadruple') {
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||

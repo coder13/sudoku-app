@@ -18,14 +18,15 @@ export function assertGroupLineProof(
   assert.equal(domains.length, cells.length)
   const masks = [0, 0, 0]
   for (let digit = 1; digit <= 9; digit++) masks[type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3] |= 1 << (digit - 1)
+  const path = rule.cells
   const assigned: number[] = [],
     support = cells.map(() => 0)
   let completions = 0
   function visit() {
-    for (let i = 0; i < rule.cells.length; i++)
-      for (let j = i + 1; j < Math.min(i + 3, rule.cells.length); j++) {
-        const a = assigned[cells.indexOf(rule.cells[i])],
-          b = assigned[cells.indexOf(rule.cells[j])]
+    for (let i = 0; i < path.length; i++)
+      for (let j = i + 1; j < Math.min(i + 3, path.length); j++) {
+        const a = assigned[cells.indexOf(path[i])],
+          b = assigned[cells.indexOf(path[j])]
         if (a !== undefined && b !== undefined && a === b) return
       }
     if (assigned.length === cells.length) {

@@ -1,0 +1,119 @@
+{
+  "sourceAppHead": "cbd8f0551729604e2ab430b5498c2b173b5833e9",
+  "sourceHost": "darwin arm64",
+  "engineSha256": "5e46c19112ec78cf40d718a258d01dac2e1e47627cd893ec32c7ea69bc5744b8",
+  "patterns": [
+    {
+      "name": "clover",
+      "source": {
+        "title": "Palindrome Sudoku",
+        "author": "clover!",
+        "date": "2025-09-08",
+        "page": "https://www.gmpuzzles.com/blog/2025/09/palindrome-sudoku-by-clover/",
+        "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/250908-PalindromeSudoku.pdf",
+        "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250908-PalindromeSudoku-soln.pdf"
+      },
+      "provenance": "Complete Palindrome path geometries. Fresh pure-template completions/givens are generated; the original full source retains all companions.",
+      "lines": [
+        [
+          0,
+          10,
+          20,
+          30,
+          31,
+          32
+        ],
+        [
+          3,
+          13,
+          23,
+          33,
+          34,
+          35
+        ],
+        [
+          45,
+          46,
+          47,
+          57,
+          67,
+          77
+        ],
+        [
+          48,
+          49,
+          50,
+          60,
+          70,
+          80
+        ]
+      ]
+    },
+    {
+      "name": "newman",
+      "source": {
+        "title": "Anti-Knight Palindrome Sudoku",
+        "author": "Philip Newman",
+        "date": "2025-09-25",
+        "page": "https://www.gmpuzzles.com/blog/2025/09/anti-knight-palindrome-sudoku-by-philip-newman/",
+        "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2025/250925-AntiknightPalindromeSudoku.pdf",
+        "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250925-AntiknightPalindromeSudoku-soln.pdf"
+      },
+      "provenance": "Complete Palindrome path geometries. Fresh pure-template completions/givens are generated; the original full source retains all companions.",
+      "lines": [
+        [
+          73,
+          74,
+          66,
+          58
+        ],
+        [
+          57,
+          49,
+          41,
+          33,
+          25,
+          35
+        ],
+        [
+          56,
+          48
+        ],
+        [
+          24,
+          32
+        ],
+        [
+          23,
+          31,
+          39,
+          47,
+          55,
+          45
+        ],
+        [
+          7,
+          6,
+          14,
+          22
+        ],
+        [
+          75,
+          76,
+          68,
+          60,
+          52,
+          44
+        ],
+        [
+          5,
+          4,
+          12,
+          20,
+          28,
+          36
+        ]
+      ]
+    }
+  ]
+}

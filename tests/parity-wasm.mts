@@ -14,6 +14,7 @@ import { coachCode } from './helpers/coach-code.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { countParitySolutions } from './helpers/parity-oracle.ts'
+import { assertParityProof } from './helpers/parity-proof.ts'
 useWasmWorker()
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/parity-big-eight.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
@@ -73,6 +74,7 @@ test('Odd/Even teaching, technique counts and paged proofs use the actual marker
   const examples = await runEngine({ type: 'practice-examples', technique: 'parity', variant: true })
   assert.equal(examples.length, 3)
   for (const example of examples) {
+    assertParityProof(example.position.puzzle, example.deduction)
     const view = lessonExample({ ...example, practice: example })
     assert.ok('variant' in view.deduction.evidence)
     assert.match(view.deduction.evidence.variant.description, /r[1-9]c[1-9] has an (odd circle|even square)/i)

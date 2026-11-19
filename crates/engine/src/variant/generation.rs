@@ -39,6 +39,14 @@ pub struct VariantGenerationOptions {
     /// Rule ID whose removal must leave multiple solutions. Use `jigsaw` to remove region uniqueness.
     pub required_rule: Option<String>,
     /// Previously emitted puzzles to exclude, including equivalent rotations and reflections.
+    /// Whispers path direction, segmentation and duplicate edges do not change identity.
+    /// Palindrome and Clone matching-digit components are compared transitively;
+    /// free odd centers and alternative drawings do not add constraints.
+    /// Entropic walks use their original sliding-window different-group pairs,
+    /// independently of path direction, decomposition or unrestricted singletons.
+    /// Global Entropy and Entropic allow group-preserving digit renamings when every
+    /// companion rule also preserves those renamings. Exact duplicate rules
+    /// do not distinguish played puzzles. Public definitions remain unchanged.
     /// Optional drawing paths do not distinguish otherwise identical logical puzzles.
     pub exclude: Vec<VariantPuzzle>,
 }

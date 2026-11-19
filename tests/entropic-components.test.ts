@@ -12,7 +12,7 @@ import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-ex
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
-import { variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { generationVariant, isVariantId, variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { assertEntropicProof } from './helpers/entropic-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 
@@ -26,7 +26,10 @@ let Board: Component,
   MobilePanelLayout: Component,
   SharePuzzle: Component,
   HintCard: Component,
-  SolutionPath: Component
+  SolutionPath: Component,
+  VariantPreview: Component,
+  CompletedPuzzle: Component
+let renderNewPuzzle: (path: string, preference?: { variant: string; difficulty: string }) => Promise<string>
 before(async () => {
   server = await createServer({
     configFile: false,
@@ -39,6 +42,9 @@ before(async () => {
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
 })
 after(async () => {
   await server?.close()
@@ -129,8 +135,9 @@ test('sharing a progressed Entropic mixed source retains its complete original r
     value: { location: { hostname: 'example.test', origin: 'https://example.test' } },
   })
   try {
+    const id = variantIdForPuzzle(source.puzzle); assert.ok(id !== 'classic')
     const variant = {
-      id: variantIdForPuzzle(source.puzzle),
+      id,
       puzzle: source.puzzle,
       solution: source.solution,
     }
@@ -199,4 +206,51 @@ test('the real lesson and hint/solution components explain an independently chec
   const wrong = structuredClone(source.deduction)
   wrong.actions = [{ eliminate: { cell: 50, digit: 4 } }]
   assert.throws(() => assertEntropicProof(source.position.puzzle, wrong))
+})
+
+
+test('New Puzzle offers Medium Entropic Lines with complete published preview paths and actual navigation', async () => {
+  assert.ok(isVariantId('entropic'))
+  assert.deepEqual(variantDifficulties('entropic'), ['medium'])
+  const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'entropic' }))
+  const paths = [...preview.matchAll(/class="variant-entropic"><polyline points="([^"]+)"/g)].map(match => match[1])
+  const expected = [fixture.puzzle.rules[0].cells, fixture.puzzle.rules[6].cells]
+    .map((cells: number[]) => cells.map(cell => `${cell % 9 + .5},${Math.floor(cell / 9) + .5}`).join(' '))
+  assert.deepEqual(paths, expected)
+  const choice = await renderNewPuzzle('/puzzles/new?variant=entropic&ruleset=dutch')
+  assert.match(choice, /Choose a variant/)
+  assert.match(choice, /\/puzzles\/new\/difficulty\?variant=entropic/)
+  assert.doesNotMatch(choice, /ruleset=dutch/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=entropic')
+  assert.match(difficulty, /Choose difficulty/)
+  assert.match(difficulty, /\/puzzles\/new\?variant=entropic/)
+  assert.match(difficulty, /value="medium"/)
+  assert.doesNotMatch(difficulty, /value="(?:easy|hard)"/)
+  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'entropic', difficulty: 'easy' }), /Start medium puzzle/)
+})
+
+test('completed pure Entropic Lines offers another puzzle and a mixed Coach source retains every companion', () => {
+  const mixed = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8'))
+    .examples.find((source: { url: string }) => source.url.endsWith('Ksy3'))
+  for (const source of [fixture, mixed]) {
+    const id = variantIdForPuzzle(source.puzzle); assert.ok(id !== 'classic')
+    const game = { ...makeGame('entropic-complete', 'Entropic Lines', source.puzzle.givens, 'imported'),
+      variant: { id, puzzle: source.puzzle, solution: source.solution } }
+    game.position.entries = [...source.solution as string].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
+    const definition = structuredClone(game.variant)
+    const html = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
+      ratingPending: false, shortcutEnabled: false, showGuides: true, onResumePuzzle() {}, onChooseDifficulty() {}, onChooseVariant() {} }))
+    if (source === fixture) {
+      assert.equal(generationVariant(game.variant), 'entropic')
+      assert.match(html, /Next medium puzzle/)
+      assert.match(html, /Choose difficulty/)
+      assert.match(html, /Choose variant/)
+    } else {
+      assert.equal(generationVariant(game.variant), undefined)
+      assert.match(html, /Choose another puzzle/)
+      assert.doesNotMatch(html, /Next medium puzzle/)
+      assert.equal(game.variant.puzzle.rules.length, 32)
+    }
+    assert.deepEqual(game.variant, definition)
+  }
 })

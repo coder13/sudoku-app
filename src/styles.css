@@ -1371,15 +1371,15 @@ svg { flex-shrink: 0; }
   z-index: -1;
 }
 .board-body:has(> .board-links) .center-marks > [data-mark="strike"]::before { background: var(--center-note-bg); }
-.board-links {
+.board-links, .board-outside-clues {
   position: absolute;
   inset: 2px;
   width: calc(100% - 4px);
   height: calc(100% - 4px);
   overflow: visible;
   pointer-events: none;
-  z-index: 2;
 }
+.board-links { z-index: 2; }
 .board-links :is(line, polyline) { transition: stroke var(--board-shape-motion); }
 .board-links marker path { transition: fill var(--board-shape-motion); }
 .draft-tip { display: flex; align-items: center; justify-content: center; gap: var(--space-8); width: calc(var(--board-frame-width) - var(--board-guide-width)); margin: var(--space-18) auto 0; translate: var(--board-guide-offset) 0; color: var(--muted); font-size: 0.8125rem; }
@@ -1799,7 +1799,7 @@ svg { flex-shrink: 0; }
     repeating-linear-gradient(to right, transparent 0 calc(100% / 9 - 1px), var(--preview-cell-line) calc(100% / 9 - 1px) calc(100% / 9)),
     repeating-linear-gradient(to bottom, transparent 0 calc(100% / 9 - 1px), var(--preview-cell-line) calc(100% / 9 - 1px) calc(100% / 9));
 }
-.new-puzzle-variant-preview .variant-knight { position: relative; font-size: 3rem; }
+.new-puzzle-variant-preview :is(.variant-knight, .variant-king) { position: relative; font-size: 3rem; }
 .new-puzzle-variant-copy { grid-column: 1 / -1; }
 .new-puzzle-variant-copy > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
 .new-puzzle-variant-copy h2 { font-size: 1.125rem; }
@@ -3533,7 +3533,13 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     var(--board-bg);
   overflow: hidden;
 }
-.variant-knight { font-size: 1.6875rem; line-height: 1; color: var(--board-ink); }
+.variant-knight, .variant-king { font-size: 1.6875rem; line-height: 1; color: var(--board-ink); }
+.variant-non-consecutive-preview { fill: none; stroke: var(--board-ink); stroke-width: .12; }
+.variant-non-consecutive-preview text { fill: var(--board-ink); stroke: none; text-anchor: middle; font-size: 1.6px; }
+.variant-non-consecutive-preview .variant-preview-caption { font-size: .65px; }
+.variant-entropy-preview rect { fill: var(--board-bg); stroke: var(--board-ink); stroke-width: .14; }
+.variant-entropy-preview path { fill: none; stroke: var(--board-ink); stroke-width: .08; }
+.variant-entropy-preview text { fill: var(--board-ink); font-size: 1.9px; font-weight: 600; text-anchor: middle; }
 .variant-preview[data-variant="jigsaw"] { background: var(--board-bg); }
 .variant-preview-regions { fill: none; stroke: var(--grid-strong); stroke-width: .23; }
 .variant-clues { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -3557,6 +3563,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-extra-region rect { fill: var(--board-selected-border); opacity: .1; }
 .variant-extra-region path { fill: none; stroke: var(--board-selected-border); stroke-opacity: .4; stroke-width: .025; }
 .variant-parity { fill: var(--board-ink); fill-opacity: .13; stroke: var(--board-ink); stroke-opacity: .4; stroke-width: .022; }
+.variant-preview .variant-parity { fill-opacity: .28; stroke-opacity: .8; stroke-width: .07; }
 .variant-diagonal { stroke: var(--board-selected-border); opacity: .26; stroke-width: .032; }
 .variant-preview .variant-diagonal { opacity: .65; stroke-width: .2; }
 .variant-cage-edge { fill: none; stroke: var(--board-ink); opacity: .52; stroke-width: .022; stroke-dasharray: .067 .049; }
@@ -3713,8 +3720,20 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-whispers-gap { fill: var(--board-ink); stroke: none; }
 .variant-whispers-gap-halo { fill: none; stroke: var(--board-bg); stroke-width: .07; }
 .variant-whispers-label-leader { stroke: #72a54e; stroke-width: .025; stroke-dasharray: .05 .04; }
+.variant-preview .variant-whispers polyline { stroke-width: .23; opacity: 1; }
+.variant-preview .variant-whispers-gap, .variant-preview .variant-whispers-gap-halo { font-size: .65px; }
+
+.variant-ruleset-selector { display: grid; width: 100%; min-width: 0; border: 0; margin: 0; padding: 0; gap: .35rem; }
+.variant-ruleset-selector legend { font-weight: 600; margin-bottom: .5rem; }
+.variant-ruleset-selector label { display: flex; align-items: center; gap: .75rem; min-height: 48px; padding: .6rem; border-radius: 6px; cursor: pointer; }
+.variant-ruleset-selector label:has(input:checked) { background: var(--selected-bg); }
+.variant-ruleset-selector input { width: 18px; height: 18px; min-height: 18px; margin: 0; padding: 0; flex: none; accent-color: var(--purple); }
+.variant-ruleset-selector span { display: grid; gap: .2rem; }
+.variant-ruleset-selector small { font-size: .8rem; color: var(--muted); }
+.variant-ruleset-selector:disabled label { cursor: default; opacity: .65; }
 
 .variant-entropic polyline { fill: none; stroke: #bc6c27; stroke-width: .105; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: .19 .1; opacity: .88; }
+.variant-preview .variant-entropic polyline { stroke-width: .17; stroke-dasharray: .27 .27; opacity: 1; }
 .variant-entropic circle { fill: #bc6c27; stroke: none; }
 .variant-entropic-overlap line { stroke-linecap: round; }
 .variant-modular polyline { fill: none; stroke: #288e93; stroke-width: .105; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
@@ -3807,3 +3826,25 @@ a.game-row { text-decoration: none; color: inherit; }
     .puzzles-difficulty-page .new-puzzle-step > :not(.new-puzzle-variant-summary, .difficulty-selector) { grid-column: 1 / -1; }
   }
 }
+
+/* Outside clues have their own cell-sized gutters. Grid and link coordinates stay local. */
+.board-frame.has-outside-clues {
+  grid-template-columns: var(--board-guide-width, 20px) minmax(0, var(--outside-left-track)) minmax(0, 9fr) minmax(0, var(--outside-right-track));
+  grid-template-rows: var(--board-guide-height, 19px) auto auto auto auto;
+  grid-template-areas: ". . columns ." ". . top ." "rows left board right" ". . bottom ." ". legend legend legend";
+}
+.outside-clue-legend { grid-area: legend; padding-block-start: 6px; text-align: center; font-size: 12px; color: var(--board-ink); }
+.board-frame[data-overlay="true"] > .outside-clue-legend { visibility: hidden; }
+.board-outside-clues { color: var(--board-ink); z-index: 1; }
+.has-outside-clues > .col-labels { padding-inline: 2px; }
+.has-outside-clues > .row-labels { padding-block: 2px; }
+.board-outside-clues text { font-family: inherit; font-size: .36px; font-weight: 720; fill: currentColor; text-anchor: middle; dominant-baseline: central; }
+.outside-diagonal-arrow { fill: none; stroke: currentColor; stroke-width: .035; stroke-linecap: round; }
+.outside-clues-top { grid-area: top; aspect-ratio: 9 / var(--outside-top); pointer-events: none; }
+.outside-clues-bottom { grid-area: bottom; aspect-ratio: 9 / var(--outside-bottom); pointer-events: none; }
+.variant-little-killer-preview text { font-size: 1.7px; font-weight: 750; fill: var(--board-ink); }
+.variant-little-killer-preview path { fill: none; stroke: var(--board-ink); stroke-width: .35; }
+.variant-skyscrapers-preview text { font-size: 2px; font-weight: 750; fill: var(--board-ink); }
+.variant-skyscrapers-preview path { fill: var(--board-ink); stroke: none; }
+.variant-sandwich-preview, .variant-x-sum-preview { display: grid; text-align: center; font-size: 9px; line-height: 1.5; color: var(--board-ink); }
+.variant-sandwich-preview > :first-child, .variant-x-sum-preview > :first-child { font-weight: 750; }

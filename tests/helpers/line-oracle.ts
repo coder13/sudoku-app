@@ -15,6 +15,10 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
   const entropyAreas: number[][] = []
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
   const regionParts: number[][][] = []
+  const diagonalSums: { cells: readonly number[]; sum: number }[] = []
+  const skyscrapers: { cells: readonly number[]; count: number }[] = []
+  const xSums: { cells: readonly number[]; total: number }[] = []
+  const sandwiches: { cells: readonly number[]; total: number }[] = []
   const betweenTriples: (readonly [number, number, number])[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
@@ -51,6 +55,10 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
       }
       regionParts.push(parts)
     }
+    else if (rule.type === 'little-killer') diagonalSums.push({ cells: rule.cells, sum: rule.sum })
+    else if (rule.type === 'skyscrapers') skyscrapers.push({ cells: rule.cells, count: rule.count })
+    else if (rule.type === 'x-sum') xSums.push({ cells: rule.cells, total: rule.sum })
+    else if (rule.type === 'sandwich') sandwiches.push({ cells: rule.cells, total: rule.sum })
     else if (rule.type === 'between') rule.cells.slice(1, -1).forEach(cell =>
       betweenTriples.push([rule.cells[0], cell, rule.cells[rule.cells.length - 1]]))
     else if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
@@ -106,6 +114,18 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
     lastSupport.set(scope, { key, supported })
     return supported
   }
+  // Break equally sized domain ties with the cells involved in more clue relations.
+  // This changes search order only; all support comes from direct digit enumeration.
+  const involvement = Array<number>(81).fill(0)
+  if (diagonalSums.length) {
+    const scopes = [
+      ...sets.map(clue => clue.cells), ...diagonalSums.map(clue => clue.cells),
+      ...sandwiches.map(clue => clue.cells), ...regionParts.flat(), ...betweenTriples,
+      ...entropyAreas, ...quadruples.map(clue => clue.cells), ...edges.map(([a, b]) => [a, b]),
+    ]
+    for (const scope of scopes) for (const cell of scope) involvement[cell] += Math.max(1, scope.length - 1)
+  }
+  diagonalSums.sort((a, b) => a.cells.length - b.cells.length)
   let count = 0, nodes = 0, solution: string | undefined
   const solutions: string[] = []
   function search(input: number[][]) {
@@ -147,6 +167,130 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
         triple.forEach((cell, i) => {
           const keep = domains[cell].filter(digit => supported[i].has(digit))
           changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        })
+      }
+      for (const clue of diagonalSums) {
+        const supported = supportFor(clue, clue.cells, domains, () => {
+          const result = clue.cells.map(() => new Set<number>()), assigned = clue.cells.map(() => 0)
+          const order = clue.cells.map((_, i) => i)
+            .sort((a, b) => domains[clue.cells[a]].length - domains[clue.cells[b]].length)
+          function enumerate(depth: number, sum: number) {
+            if (depth === order.length) {
+              if (sum === clue.sum) assigned.forEach((digit, i) => result[i].add(digit))
+              return
+            }
+            const options = order.slice(depth).map(i => domains[clue.cells[i]].filter(digit =>
+              !assigned.some((other, j) => other === digit && houses.some(house =>
+                house.includes(clue.cells[i]) && house.includes(clue.cells[j])))))
+            if (options.some(values => !values.length) ||
+              sum + options.reduce((total, values) => total + Math.min(...values), 0) > clue.sum ||
+              sum + options.reduce((total, values) => total + Math.max(...values), 0) < clue.sum) return
+            const i = order[depth]
+            for (const digit of options[0]) {
+              assigned[i] = digit; enumerate(depth + 1, sum + digit); assigned[i] = 0
+            }
+          }
+          enumerate(0, 0)
+          return result
+        })
+        clue.cells.forEach((cell, i) => {
+          const keep = domains[cell].filter(digit => supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        })
+      }
+      for (const clue of skyscrapers) {
+        const supported = supportFor(clue, clue.cells, domains, () => {
+          const result = clue.cells.map(() => new Set<number>()), values: number[] = []
+          function enumerate(index: number, used: Set<number>, maximum: number, visible: number) {
+            if (visible > clue.count || visible + 9 - maximum < clue.count) return
+            if (index === clue.cells.length) {
+              if (visible === clue.count) values.forEach((digit,i) => result[i].add(digit))
+              return
+            }
+            for (const digit of domains[clue.cells[index]]) if (!used.has(digit)) {
+              used.add(digit); values.push(digit)
+              enumerate(index+1,used,Math.max(maximum,digit),visible + (digit > maximum ? 1 : 0))
+              values.pop();used.delete(digit)
+            }
+          }
+          enumerate(0,new Set<number>(),0,0)
+          return result
+        })
+        clue.cells.forEach((cell,i) => {
+          const keep = domains[cell].filter(digit => supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length;domains[cell]=keep
+        })
+      }
+      for (const clue of xSums) {
+        const supported = supportFor(clue, clue.cells, domains, () => {
+          const result = clue.cells.map(() => new Set<number>()), values = clue.cells.map(() => 0)
+          const order = [0, ...clue.cells.map((_, i) => i).slice(1).sort((a,b) => domains[clue.cells[a]].length - domains[clue.cells[b]].length)]
+          function enumerate(depth: number, used: Set<number>) {
+            const length = values[0]
+            if (length) {
+              let minimum = 0, maximum = 0
+              for (let i = 0; i < length; i++) {
+                if (values[i]) { minimum += values[i]; maximum += values[i] }
+                else {
+                  const options = domains[clue.cells[i]].filter(digit => !used.has(digit))
+                  if (!options.length) return
+                  minimum += Math.min(...options); maximum += Math.max(...options)
+                }
+              }
+              if (minimum > clue.total || maximum < clue.total) return
+            }
+            if (depth === order.length) {
+              if (values.slice(0,length).reduce((sum,digit)=>sum+digit,0) === clue.total) values.forEach((digit,i)=>result[i].add(digit))
+              return
+            }
+            const index=order[depth]
+            for(const digit of domains[clue.cells[index]]) if(!used.has(digit)) {
+              values[index]=digit;used.add(digit);enumerate(depth+1,used);used.delete(digit);values[index]=0
+            }
+          }
+          enumerate(0,new Set<number>())
+          return result
+        })
+        clue.cells.forEach((cell,i)=>{
+          const keep=domains[cell].filter(digit=>supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length;domains[cell]=keep
+        })
+      }
+      for (const clue of sandwiches) {
+        const supported = supportFor(clue, clue.cells, domains, () => {
+          const result = clue.cells.map(() => new Set<number>()), values = clue.cells.map(() => 0)
+          const order = clue.cells.map((_, i) => i).sort((a,b) => domains[clue.cells[a]].length - domains[clue.cells[b]].length)
+          function enumerate(depth: number, used: Set<number>) {
+            const first = values.indexOf(1), last = values.indexOf(9)
+            if (first >= 0 && last >= 0) {
+              const lo = Math.min(first,last), hi = Math.max(first,last)
+              let minimum = 0, maximum = 0
+              for (let i = lo+1; i < hi; i++) {
+                if (values[i]) { minimum += values[i]; maximum += values[i] }
+                else {
+                  const options = domains[clue.cells[i]].filter(digit => !used.has(digit))
+                  if (!options.length) return
+                  minimum += Math.min(...options); maximum += Math.max(...options)
+                }
+              }
+              if (minimum > clue.total || maximum < clue.total) return
+            }
+            if (depth === order.length) {
+              const lo = Math.min(first,last), hi = Math.max(first,last)
+              if (values.slice(lo+1,hi).reduce((sum,digit)=>sum+digit,0) === clue.total) values.forEach((digit,i)=>result[i].add(digit))
+              return
+            }
+            const index=order[depth]
+            for(const digit of domains[clue.cells[index]]) if(!used.has(digit)) {
+              values[index]=digit;used.add(digit);enumerate(depth+1,used);used.delete(digit);values[index]=0
+            }
+          }
+          enumerate(0,new Set<number>())
+          return result
+        })
+        clue.cells.forEach((cell,i)=>{
+          const keep=domains[cell].filter(digit=>supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length;domains[cell]=keep
         })
       }
       for (const parts of regionParts) {
@@ -253,7 +397,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
       if (domains.some(digits => digits.length === 0)) return
     } while (changed)
     let cell = -1
-    domains.forEach((digits, i) => { if (digits.length > 1 && (cell < 0 || digits.length < domains[cell].length)) cell = i })
+    domains.forEach((digits, i) => { if (digits.length > 1 && (cell < 0 || digits.length < domains[cell].length || digits.length === domains[cell].length && involvement[i] > involvement[cell])) cell = i })
     if (cell < 0) { const result = domains.map(digits => digits[0]).join(''); solution ??= result; solutions.push(result); count++; return }
     for (const digit of domains[cell]) {
       const next = [...domains]; next[cell] = [digit]; search(next)

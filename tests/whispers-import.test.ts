@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { inflateSync } from 'node:zlib'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
-import { conflictsOf, enter, makeGame, redo, undo } from '../src/sudoku/game.ts'
+import { conflictsOf, enter, makeGame, redo, undo, type Game } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { generationVariant, isPlayablePuzzle, variantDigitExclusions, variantPeers, variantRuleDescriptions } from '../src/sudoku/variants.ts'
@@ -23,7 +23,7 @@ test('Brain Zaps has its published unique completion and needs its Whispers rule
 test('Whispers import preserves every ordered cell, minimum difference and shared puzzle definition', async () => {
   const imported = await detectPuzzle(coachCode({ givenDigits: fixture.puzzle.givens, givenConstraints: constraints }))
   assert.deepEqual(imported.variant, { id: 'whispers', puzzle: fixture.puzzle })
-  assert.equal(generationVariant(imported.variant), undefined)
+  assert.equal(generationVariant(imported.variant), 'whispers')
   assert.deepEqual((await detectPuzzle('#variant=' + encodeURIComponent(JSON.stringify(imported.variant)))).variant, imported.variant)
   assert.equal(variantRuleDescriptions(fixture.puzzle).filter(text => text.includes('differ by at least 5')).length, 4)
   for (const gap of [1, 2, 4, 5, 8]) {
@@ -53,7 +53,7 @@ test('line adjacency controls digit conflicts, candidate cleanup and undo withou
   const entries = [...puzzle.givens]; entries[0] = '4'; entries[10] = '8'
   assert.deepEqual([...conflictsOf(entries.join(''), puzzle)], [0, 10])
   entries[10] = '9'; assert.equal(conflictsOf(entries.join(''), puzzle).size, 0)
-  let game = { ...makeGame('whispers-history', 'Whispers', puzzle.givens, 'imported'), variant: { id: 'whispers' as const, puzzle, solution: fixture.solution } }
+  let game: Game = { ...makeGame('whispers-history', 'Whispers', puzzle.givens, 'imported'), variant: { id: 'whispers' as const, puzzle, solution: fixture.solution } }
   game = enter(game, [10, 30], 'center', 8); game = enter(game, [10], 'corner', 8)
   const next = enter(game, [0], 'value', 4)
   assert.equal(next.position.center[10], 0); assert.equal(next.position.corner[10], 0)
@@ -96,7 +96,7 @@ test('a closed Whispers walk preserves its closing rule during import, conflicts
   const puzzle = imported.variant!.puzzle
   const values = [...puzzle.givens]; values[0] = '2'; values[10] = '9'; values[20] = '5'
   assert.deepEqual([...conflictsOf(values.join(''), puzzle)], [0, 20])
-  let game = { ...makeGame('whispers-closed', 'Whispers loop', puzzle.givens, 'imported'), variant: { id: 'whispers' as const, puzzle, solution: fixture.solution } }
+  let game: Game = { ...makeGame('whispers-closed', 'Whispers loop', puzzle.givens, 'imported'), variant: { id: 'whispers' as const, puzzle, solution: fixture.solution } }
   game = enter(game, [20], 'center', 5)
   const changed = enter(game, [0], 'value', 2)
   assert.equal(changed.position.center[20], 0)
