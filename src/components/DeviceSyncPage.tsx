@@ -61,12 +61,10 @@ export function DeviceSyncPage() {
       }
     }
     void refresh()
-    const interval = window.setInterval(refresh, 10_000)
-    document.addEventListener('visibilitychange', refresh)
+    const unsubscribe = deviceSync.onDevicesChanged(refresh)
     return () => {
       listVersion.current++
-      window.clearInterval(interval)
-      document.removeEventListener('visibilitychange', refresh)
+      unsubscribe()
     }
   }, [status.linked, screen])
   useEffect(() => {

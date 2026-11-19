@@ -26,8 +26,8 @@ const initial: Room = { games: [], active: null, stoppedPlaying: false, storageA
 const listeners = new Set<() => void>()
 const storedSnapshots = new WeakMap<Game, string>()
 const playListeners = new Set<(id: string | null) => void>()
-const editListeners = new Set<() => void>()
-const announceEdit = () => editListeners.forEach(listener => listener())
+const editListeners = new Set<(id: string, handoff: boolean) => void>()
+const announceEdit = (id: string, handoff = false) => editListeners.forEach(listener => listener(id, handoff))
 const ratingEvents = new Map<string, RatingEvent>()
 const unsavedRatingEvents = new Set<string>()
 let room = initial
@@ -408,7 +408,7 @@ export const roomStore = {
     playListeners.add(listener)
     return () => { playListeners.delete(listener) }
   },
-  onEdit(listener: () => void) {
+  onEdit(listener: (id: string, handoff: boolean) => void) {
     editListeners.add(listener)
     return () => { editListeners.delete(listener) }
   },
@@ -451,7 +451,7 @@ export const roomStore = {
     const next = { ...room, games, playerRating: playerRatingFor(games), storageAvailable: room.storageAvailable && saved && seenSaved }
     if (game.savedForLater) publish(next)
     else playPuzzle(next, game)
-    announceEdit()
+    if (saved) announceEdit(game.id)
   },
   update(id: string, update: (game: Game) => Game) {
     const current = room.games.find((game) => game.id === id)
@@ -484,7 +484,11 @@ export const roomStore = {
       writeGame(next)
       if (played) localStorage.setItem(activityPrefix + id, String(Date.now()))
     })
-    if (played || next.elapsed === merged.elapsed) announceEdit()
+    if (saved && (played || next.elapsed === merged.elapsed)) {
+      const paused = next.paused && !merged.paused
+      const finished = next.position.entries !== merged.position.entries && isSolved(next) && !isSolved(merged)
+      announceEdit(id, paused || finished)
+    }
     const seenSaved = puzzleIdentity(current) === puzzleIdentity(next) && current.source === next.source || rememberPuzzle(next)
     const outcome = next.ratingAttempt?.outcome
     const newOutcome = outcome && !ratingEvents.has(outcome.id)
@@ -518,7 +522,7 @@ export const roomStore = {
     const remembered = remember(room.stoppedPlaying ? '' : active)
     publish({ ...room, games, active, playerRating: playerRatingFor(games),
       storageAvailable: room.storageAvailable && saved && remembered && seenSaved && outcomeSaved })
-    announceEdit()
+    if (saved) announceEdit(id, true)
     if (wasActive) playListeners.forEach(listener => listener(null))
   },
 }

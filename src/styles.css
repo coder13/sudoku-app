@@ -793,6 +793,8 @@ svg { flex-shrink: 0; }
 .puzzle-menu-wrap { position: relative; }
 .puzzle-menu { width: 235px; }
 .puzzle-menu button { min-height: 38px; font-size: 0.8125rem; }
+.puzzle-sync-menu-status { margin: 0 var(--space-10) var(--space-6) 36px; color: var(--muted); font-size: 0.75rem; }
+.puzzle-sync-warning { color: var(--danger-ink); font-size: 0.75rem; }
 .puzzle-stage { position: relative; min-width: 0; }
 .puzzle-placeholder-stage { position: relative; }
 .puzzle-grid-reservation { visibility: hidden; pointer-events: none; }

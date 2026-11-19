@@ -66,7 +66,7 @@ export default defineConfig(({ command }) => ({
     host: '0.0.0.0',
     port: 8766,
     // Preserve the browser's Host so the local Worker can verify the request origin.
-    proxy: { '/api/v1': { target: 'http://127.0.0.1:8788', changeOrigin: false } },
+    proxy: { '/api/v1': { target: 'http://127.0.0.1:8788', changeOrigin: false, ws: true } },
     strictPort: true,
     fs: { allow: [process.cwd(), realpathSync('node_modules')] },
     allowedHosts: ['twilight'],

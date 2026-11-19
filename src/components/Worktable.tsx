@@ -2,10 +2,11 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { Braces, Check, CheckCheck, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LogOut, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, Share2, X } from 'lucide-react'
+import { Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LogOut, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, Share2, X } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
+import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
@@ -172,13 +173,14 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 }
 
 export function Worktable({
-  game, games, placeholder, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
+  game, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
   beginResize, toggleMulti, onDifficultyChange, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onStopPlaying,
   cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
   games: Game[]
   placeholder?: ReactNode
+  storageAvailable?: boolean
   preferredDifficulty: DifficultyPreference
   modalOpen: boolean
   advancedModes: AdvancedModes
@@ -1778,6 +1780,24 @@ export function Worktable({
     </button>
     {hintMenuAction}
   </>
+  const syncStatus = useSyncExternalStore(deviceSync.subscribePuzzle, () => deviceSync.puzzleStatus(game.id), () => 'none')
+  const showPuzzleSync = syncStatus !== 'none' && !placeholder && !draft
+  const syncWarning = showPuzzleSync && storageAvailable && (
+    syncStatus === 'offline' ? 'Offline. Changes saved on this device.' :
+    syncStatus === 'failed' ? 'Couldn’t sync. Changes saved on this device.' : ''
+  )
+  const syncMenuStatus = {
+    none: '',
+    checking: 'Checking cloud save…',
+    pending: 'Cloud save pending.',
+    saving: 'Saving to the cloud…',
+    saved: 'Saved in the cloud.',
+    offline: 'Offline. Changes saved on this device.',
+    'offline-clean': 'Offline. Connect to sync this puzzle.',
+    failed: 'Couldn’t sync. Changes saved on this device.',
+    'check-failed': 'Couldn’t verify the cloud save.',
+    conflict: 'Your changes are in a conflict copy.',
+  }[syncStatus]
   const puzzleOptionItems = <>
     {hintMenuAction}
     <button onClick={() => { void runCheck() }} disabled={busy}>
@@ -1795,6 +1815,15 @@ export function Worktable({
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle
     </button>
+    {showPuzzleSync && <>
+      <button type="button" disabled={!storageAvailable || syncStatus === 'saving' || syncStatus === 'offline' || syncStatus === 'offline-clean'}
+        onClick={() => { void deviceSync.syncPuzzle(game.id) }}>
+        <CloudUpload size={17} aria-hidden="true" /> Sync now
+      </button>
+      <p className="puzzle-sync-menu-status" role="status">
+        {storageAvailable ? syncMenuStatus : 'Local storage is unavailable.'}
+      </p>
+    </>}
     <button onClick={() => { setPuzzleMenuOpen(false); setResetOpen(true) }}>
       <RotateCcw size={17} /> Reset puzzle
     </button>
@@ -1894,6 +1923,7 @@ export function Worktable({
             <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
           </span>}
           {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
+          {syncWarning && <span className="puzzle-sync-warning" role="status">{syncWarning}</span>}
           {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
             {formatTime(game.elapsed)}
           </span>}

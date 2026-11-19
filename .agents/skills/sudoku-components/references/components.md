@@ -31,7 +31,7 @@ Search by component name or browse the sections below.
 | [PuzzleAnalysis](../../../../src/components/PuzzleAnalysis.tsx) | `PuzzleAnalysis` owns the analysis interaction. `PuzzleAnalysisCard` wraps the analysis in a standalone card. `PuzzleAnalysisContents` embeds the report in an existing surface. `AnalysisTable` lays out the report’s technique counts. |
 | [PuzzleCheckResult](../../../../src/components/PuzzleCheckResult.tsx) | `PuzzleCheckResult` displays the outcome of an explicit puzzle check. |
 | [SolutionPath](../../../../src/components/SolutionPath.tsx) | `SolutionPath` embeds a list of logical solving steps. `SolutionDialog` presents that path in a modal. |
-| [Worktable](../../../../src/components/Worktable.tsx) | `Worktable` coordinates interactions, solving tools, and state for a playable puzzle. |
+| [Worktable](../../../../src/components/Worktable.tsx) | `Worktable` coordinates interactions, solving tools, and state for a playable puzzle. Its puzzle card menu owns puzzle-specific sync actions and routine status. |
 | [CompletedPuzzle](../../../../src/components/CompletedPuzzle.tsx) | `CompletedPuzzle` shows the result and next actions after a solve. `PuzzleDifficulty` displays the puzzle’s grade. |
 
 ## Layout and navigation

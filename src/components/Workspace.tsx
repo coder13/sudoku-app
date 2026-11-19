@@ -554,7 +554,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           {linkError && <p className="workspace-error" role="alert">{linkError}</p>}
           <PlayWorkspace resizable={desktopStandard}>
             {game || !mobile ? (
-              <Worktable game={game ?? pendingWorkspaceGame} placeholder={game ? undefined : emptyPuzzleContent} games={games} preferredDifficulty={difficulty}
+              <Worktable game={game ?? pendingWorkspaceGame} placeholder={game ? undefined : emptyPuzzleContent} games={games} storageAvailable={storageAvailable} preferredDifficulty={difficulty}
                 modalOpen={panel !== null || menuOpen || resizeMode || settingsRoute}
                 advancedModes={advancedModes} appearance={appearance} highlighting={highlighting}
                 errorMode={errorMode} cellReferenceStyle={cellReferenceStyle} multi={multi} actionsRef={worktableActions}
