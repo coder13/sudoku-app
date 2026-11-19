@@ -44,7 +44,7 @@ test('the learning path follows tier order and teaches prerequisites first', () 
     ['Beginner', 'Easy', 'Medium', 'Tricky', 'Hard', 'Very Hard', 'Expert', 'Master', 'Extreme', 'Impossible'])
   assert.deepEqual(lessonGroups.filter(group => group.variant).map(group => group.title),
     ['X Sudoku', 'Killer Sudoku', 'Chess variants', 'Thermometer', 'Arrow', 'Kropki',
-      'Other cell and pair rules', 'Other line rules', 'Outside clues', 'Quadruple Sudoku'])
+      'Other cell and pair rules', 'Other line rules', 'Outside clues', 'Quadruple Sudoku', 'Algebraic Cages'])
   const classicIds = new Set(classic.flatMap(group => group.lessons.map(lesson => lesson.id)))
   const seen = new Set<string>()
   let previous = -1

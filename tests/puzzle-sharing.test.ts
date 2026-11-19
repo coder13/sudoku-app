@@ -59,6 +59,29 @@ test('Mini Sudoku shares keep the four-by-four grid specification', async () => 
   } finally { sqlite.close() }
 })
 
+test('the public Algebraic Cages share contains rules and givens without private play state', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const rules = [
+      { type: 'algebraic-cage', cells: [0], label: 'n+2', total: { type: 'variable', name: 'n', offset: 2 } },
+      { type: 'algebraic-cage', cells: [4], label: 'n', total: { type: 'variable', name: 'n', offset: 0 } },
+    ] as const
+    const game = { ...makeGame('private-cages', 'Cage practice', '0000000201400000', 'custom', undefined, MINI_GRID),
+      algebraic: { rules, solution: '3214143221434321' } }
+    const definition = puzzleDefinitionForSharing(enter(game, [0], 'value', 3))
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), {
+      version: 1, title: game.title, givens: game.givens, grid: MINI_GRID, algebraic: { rules },
+    })
+    for (const algebraic of [
+      { rules, solution: game.algebraic.solution }, { rules: [{ ...rules[0], cells: [16] }] },
+      { rules: [...rules, rules[0]] }, { rules: [{ ...rules[0], label: 'n+3' }] },
+    ]) await assert.rejects(api('shares', 'POST', { ...definition, algebraic }), { status: 400 })
+    await assert.rejects(api('shares', 'POST', { ...definition, givens: STARTER, grid: undefined }), { status: 400 })
+  } finally { sqlite.close() }
+})
+
 test('the sharing API rejects save state and malformed or oversized definitions', async () => {
   const { sqlite, fetcher } = syncDatabase()
   try {
