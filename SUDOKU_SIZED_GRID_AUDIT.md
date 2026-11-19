@@ -47,3 +47,30 @@ The algebraic score adds one point for a naked single, two for a hidden single, 
 | Medium | 1,000 | 28–51 | 145 µs | 505 µs | 18 µs |
 
 These release-Wasm timings include the request and response. The app binary grew by 196,266 bytes against the shipped Mini Sudoku build, or 56,546 bytes with gzip. Wasm linear memory after both batches was 1.38 MiB. [Issue 225](https://github.com/coder13/sudoku-app/issues/225) tracks release integration.
+
+## Six-by-six mixed-rule research
+
+The 6×6 decoder and Wasm solver verified the two published Classic exports and both mixed exports. The mixed grids retained their main diagonals, even-cell markers and both Thermometers. The corrected sample's completion agrees with the independent solver. Removing any of its three rule types gives multiple solutions. Candidate propagation passes restrictions through shared Thermometer cells, including cases where a parity marker tightens the entire path.
+
+On the published grid, applying the propagated masks before choosing the next search cell reduced the median native release verification from about 136 to 42 µs and the median exact solve from 114 to 16 µs. The candidate-only pass stayed below 1 µs. The baseline and optimized runs agreed on the exact grid, every rule ablation, and the presence of the solution digit in each empty cell’s candidate mask.
+
+The Play branch opens published 6×6 Sudoku Coach URLs and preserves both rectangular layouts through preview, play, saved attempts, and public share definitions. GErF's original export passed a desktop import and play-through, including the Technique Finder, an applied Thermometer hint, undo and redo, reload, all 36 final digits, and the clues on the recipient's mobile board. Browser testing used a local app and a simulated share response. The Pages share handler was checked separately with SQLite for both box orientations.
+
+Basic house, diagonal, parity, and Thermometer steps leave GErF incomplete after five deductions. The engine now tests candidate assumptions only when those techniques produce no step. It follows ordinary deductions inside each assumption and records the cell, house, or clue that makes it impossible. The full replay reaches the independently verified completion in 51 steps, including six such eliminations. The singles action uses the regular rules and singles.
+
+An alternating benchmark checked 1,200 warm release-Wasm requests per build against GErF. Direct serialization produces the same hints and trace as the intermediate JSON tree. The median initial hint request fell from 21.2 to 17.1 µs. Median full replay fell from 372.9 to 291.8 µs, with a 95th percentile of 311.0 µs. Separate measurements of exact verification, solve, and candidates were approximately 46, 27, and 5 µs. These timings include serialization and exclude browser scheduling and rendering.
+
+The five original SudokuPad exports from TVDK's pack are plain JSON in SCL envelopes. Thermometers combine a path in `lines` with a circular bulb in `underlays`. Renban and Region Sum Lines use the same general-purpose line field. Arrow also requires `arrows` and circle overlays. Kropki uses overlays. The encoded drawing properties and authored rule text both guide import. Treating every line or circle as a logical constraint would change some of these puzzles.
+
+The unmodified [TVDK Thermometer export](https://sudokupad.app/mitbe9yf43) passed import, exact verification against its authored solution, and a 59-step walkthrough. Two drawn paths are stored tip-first. The importer locates the bulb and follows the path in the required direction. It expands skipped cells along straight stretches. A desktop and mobile browser check confirmed all six Thermometers, the final grid, and author credit on the shared preview. The remaining source exports are tracked in [Renban #272](https://github.com/coder13/sudoku-app/issues/272), [Arrow #273](https://github.com/coder13/sudoku-app/issues/273), [Kropki Pairs #274](https://github.com/coder13/sudoku-app/issues/274), and [Region Sum Lines #275](https://github.com/coder13/sudoku-app/issues/275).
+
+The first New Puzzle recipes generate rectangular Classic 6×6 grids in both orientations. Easy uses 16–19 givens and a replay of naked singles. Medium uses 11–14 givens and a replay that includes a hidden single or locked candidate. Each layout and difficulty returned 1,000 distinct puzzles in 1,000 seeds. An independent counter verified one solution for every puzzle in a separate 128-puzzle sample.
+
+| Box layout | Difficulty | Median generation | 95th percentile |
+| --- | --- | ---: | ---: |
+| 2×3 | Easy | 27.8 µs | 44.0 µs |
+| 2×3 | Medium | 322.8 µs | 1,466.2 µs |
+| 3×2 | Easy | 24.1 µs | 29.4 µs |
+| 3×2 | Medium | 162.2 µs | 644.0 µs |
+
+Desktop keyboard and mobile touch checks covered the layout picker, both generation levels, adding a thermometer and two companion rule types, editing and removing clues, undo and redo after reload, exact draft verification, and a public share through the Pages handler backed by SQLite. Game definitions retain rule types and direction independently of solving progress.

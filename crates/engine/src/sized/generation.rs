@@ -120,3 +120,99 @@ fn solved_by_singles(layout: &SizedGrid, mut puzzle: [u8; 16], solution: [u8; 16
     }
     puzzle == solution
 }
+
+/// Generate a uniquely solvable 6 × 6 puzzle with the requested box orientation.
+/// Easy uses naked singles. Medium needs at least one hidden single or locked candidate.
+pub fn generate_six(
+    spec: GridSpec,
+    seed: u32,
+    difficulty: MiniDifficulty,
+    exclude: &[Vec<u8>],
+) -> Option<[u8; 36]> {
+    if spec.size != 6 || !matches!((spec.box_rows, spec.box_columns), (2, 3) | (3, 2)) {
+        return None;
+    }
+    let layout = SizedGrid::new(spec)?;
+    let excluded: HashSet<&[u8]> = exclude.iter().map(Vec::as_slice).collect();
+    let mut random = Random::from_seed(seed);
+    let (minimum, spread) = match difficulty {
+        MiniDifficulty::Easy => (16, 4),
+        MiniDifficulty::Medium => (11, 4),
+    };
+    for _ in 0..160 {
+        let solution = six_solution(spec, &mut random);
+        let mut puzzle = solution;
+        let mut order: [usize; 36] = std::array::from_fn(|cell| cell);
+        random.shuffle(&mut order);
+        let target = minimum + random.index(spread);
+        let mut clues = 36;
+        for cell in order {
+            puzzle[cell] = 0;
+            if layout.analyze(&puzzle, 2_000) == Analysis::Unique {
+                clues -= 1;
+                if clues == target {
+                    break;
+                }
+            } else {
+                puzzle[cell] = solution[cell];
+            }
+        }
+        if clues != target || excluded.contains(puzzle.as_slice()) {
+            continue;
+        }
+        if recipe_matches(&layout, puzzle, solution, difficulty) {
+            return Some(puzzle);
+        }
+    }
+    None
+}
+
+fn six_solution(spec: GridSpec, random: &mut Random) -> [u8; 36] {
+    let mut digits = [1, 2, 3, 4, 5, 6];
+    random.shuffle(&mut digits);
+    let rows = shuffle_groups(spec.box_rows, random);
+    let columns = shuffle_groups(spec.box_columns, random);
+    std::array::from_fn(|cell| {
+        let row = rows[cell / 6];
+        let column = columns[cell % 6];
+        digits[(row % spec.box_rows * spec.box_columns + row / spec.box_rows + column) % 6]
+    })
+}
+
+fn shuffle_groups(width: usize, random: &mut Random) -> [usize; 6] {
+    let mut groups = [0, 1, 2];
+    random.shuffle(&mut groups[..6 / width]);
+    let mut order: [usize; 6] =
+        std::array::from_fn(|cell| groups[cell / width] * width + cell % width);
+    for group in order.chunks_exact_mut(width) {
+        random.shuffle(group);
+    }
+    order
+}
+
+fn recipe_matches(
+    layout: &SizedGrid,
+    mut puzzle: [u8; 36],
+    solution: [u8; 36],
+    difficulty: MiniDifficulty,
+) -> bool {
+    let mut beyond_naked_singles = false;
+    let mut removed = [0; 36];
+    while let Some(step) = layout.next_deduction(&puzzle, &removed) {
+        if step.technique != SizedTechnique::NakedSingle {
+            if difficulty == MiniDifficulty::Easy {
+                return false;
+            }
+            beyond_naked_singles = true;
+        }
+        for action in step.actions {
+            match action {
+                crate::HintAction::Place(candidate) => puzzle[candidate.cell] = candidate.digit,
+                crate::HintAction::Eliminate(candidate) => {
+                    removed[candidate.cell] |= 1 << (candidate.digit - 1)
+                }
+            }
+        }
+    }
+    puzzle == solution && (difficulty == MiniDifficulty::Easy || beyond_naked_singles)
+}

@@ -168,13 +168,14 @@ export function saveDifficulty(value: DifficultyPreference) {
   catch { /* The setting remains active for this session. */ }
 }
 
-export type NewPuzzlePreference = { variant: NewPuzzleId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId }
+export type NewPuzzlePreference = { variant: NewPuzzleId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId; boxRows?: 2 | 3 }
 
 export function readNewPuzzlePreference(storage?: Pick<Storage, 'getItem'>): NewPuzzlePreference | null {
   try {
     const value = JSON.parse((storage ?? localStorage).getItem(NEW_PUZZLE_KEY) ?? 'null') as Partial<NewPuzzlePreference> | null
     if (isNewPuzzleId(value?.variant) && isDifficultyPreference(value.difficulty)) {
-      if (isSizedPuzzleId(value.variant)) return { variant: value.variant, difficulty: miniDifficulty(value.difficulty) }
+      if (isSizedPuzzleId(value.variant)) return { variant: value.variant, difficulty: miniDifficulty(value.difficulty),
+        ...(value.variant === 'six' && (value.boxRows === 2 || value.boxRows === 3) ? { boxRows: value.boxRows } : {}) }
       const ruleset = generationRuleset(value.variant, value.ruleset)
       return { variant: value.variant, difficulty: variantDifficulty(value.variant, value.difficulty),
         ...(ruleset ? { ruleset: ruleset.id } : {}) }

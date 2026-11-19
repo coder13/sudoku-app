@@ -170,6 +170,26 @@ export type SizedVariantPosition = SizedClassicPosition & {
   }[]
 }
 
+export type SixGrid = { size: 6 } & ({ boxRows: 2; boxColumns: 3 } | { boxRows: 3; boxColumns: 2 })
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' }>
+  | { type: 'thermometer'; cells: readonly number[] }
+export type SizedConstraintPosition = SizedClassicPosition & { grid: SixGrid; rules: readonly SizedConstraintRule[] }
+type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
+  | { operation: 'analyze' | 'solve' | 'candidates' }
+  | { operation: 'hints'; eliminations?: readonly number[]; limit: number }
+  | { operation: 'trace'; eliminations?: readonly number[]; singlesOnly?: boolean }
+)
+
+export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction }
+  | { type: 'rule'; rule: number; actions: DeductionAction[] }
+  | { type: 'contradiction'; assumption: Candidate; placements: Candidate[]; failure: SizedConstraintFailure }
+
+type SizedConstraintFailure = { type: 'cell'; cell: number }
+  | { type: 'missing-digit' | 'repeated-digit'; house: House; digit: number }
+  | { type: 'rule'; rule: number }
+
+type SizedConstraintTracePosition = Omit<SizedClassicTracePosition, 'deduction'> & { deduction: SizedConstraintStep | null }
+
 export type AlgebraicBounds = {
   variables: Record<string, [number, number]>
   cages: { cage: number; sumLower: number; sumUpper: number }[]
@@ -206,6 +226,8 @@ type SizedVariantRequest = { type: 'sized-variant'; position: SizedVariantPositi
 export type EngineRequest =
   | SizedClassicRequest
   | SizedVariantRequest
+  | SizedConstraintRequest
+  | { type: 'generate-six'; seed: number; difficulty: 'easy' | 'medium'; grid: SixGrid; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-algebraic'; seed: number; difficulty?: AlgebraicRating['difficulty']; exclude?: readonly SizedVariantPosition[] }
   | { type: 'capabilities' }
@@ -578,6 +600,13 @@ export type EngineResult<T extends EngineRequest> =
     T['operation'] extends 'trace' ? SizedClassicTracePosition[] | null :
     number[] | null
   ) :
+  T extends SizedConstraintRequest ? (
+    T['operation'] extends 'analyze' ? Analysis :
+    T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
+    T['operation'] extends 'hints' ? { candidates: number[]; choices: SizedConstraintStep[] } | null :
+    T['operation'] extends 'trace' ? SizedConstraintTracePosition[] | null :
+    number[] | null
+  ) :
   T extends SizedVariantRequest ? (
     T['operation'] extends 'analyze' ? Analysis :
     T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
@@ -587,7 +616,7 @@ export type EngineResult<T extends EngineRequest> =
     T['operation'] extends 'trace' ? AlgebraicTracePosition[] | null :
     AlgebraicCageProof | null
   ) :
-  T extends { type: 'generate-mini' } ? number[] :
+  T extends { type: 'generate-mini' | 'generate-six' } ? number[] :
   T extends { type: 'generate-algebraic' } ? SizedVariantPosition :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
@@ -692,6 +721,7 @@ function connectionFor(request: EngineRequest, options: WorkerOptions) {
   switch (request.type) {
     case 'generate':
     case 'generate-mini':
+    case 'generate-six':
     case 'generate-algebraic':
     case 'generate-constrained':
     case 'generate-targeted':

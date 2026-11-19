@@ -35,7 +35,7 @@ test('global Non-Consecutive imports preserve the named rule and reject unknown 
     { type: 'nonconsecutive', segments: [{ cells: [0, 1] }], settings: {} },
     { type: 'nonconsecutive', segments: [], settings: { cyclic: true } },
   ]) await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [constraint] })), /unsupported/)
-  await assert.rejects(detectPuzzle(exports.examples[1].code), /9 × 9/)
+  await assert.rejects(detectPuzzle(exports.examples[1].code), /6 × 6.*unsupported active rule/)
 })
 
 test('real Coach white dots exempt exactly their edges, independent of source order', async () => {

@@ -22,6 +22,19 @@ export const MiniSudoku: Story = {
     candidates: [1, ...Array<number>(15).fill(0)], selected: [0] },
   decorators: [(Story) => <Width width={320}><Story /></Width>],
 }
+export const SixWithCombinedRules: Story = {
+  args: {
+    grid: { size: 6, boxRows: 2, boxColumns: 3 }, givens: '0'.repeat(36), values: '0'.repeat(36),
+    sixRules: [
+      { type: 'diagonal', diagonal: 'main' },
+      { type: 'parity', parity: 'even', cells: [3, 15] },
+      { type: 'parity', parity: 'odd', cells: [25] },
+      { type: 'thermometer', cells: [12, 13, 20, 27] },
+    ],
+    selected: [20], candidates: Array.from({ length: 36 }, (_, cell) => cell === 20 ? 0b101000 : 0),
+  },
+  decorators: [(Story) => <Width width={385}><Story /></Width>],
+}
 export const AlgebraicCageCaptions: Story = {
   args: {
     grid: MINI_GRID, givens: '0'.repeat(16), values: '0'.repeat(16),
