@@ -1,8 +1,8 @@
 import { Button, IconButton } from './Button'
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import type { Difficulty, LogicalSolution, MoveAvailability } from '../sudoku/engine'
-import { techniqueLabel, type CellReferenceStyle } from '../sudoku/hints'
+import type { Difficulty, LogicalSolution, MoveAvailability, PuzzleRating } from '../sudoku/engine'
+import { techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { deductionResults } from '../sudoku/lesson-diagram'
 import { Modal } from './Modal'
 
@@ -21,6 +21,12 @@ type Props = {
   embedded?: boolean
   cellReferenceStyle?: CellReferenceStyle
   techniqueDifficulties?: Readonly<Partial<Record<string, Difficulty>>>
+}
+
+export function solutionEndSummary(status: PuzzleRating['status']): PuzzleHint {
+  return status === 'stalled'
+    ? { title: 'Last position', text: 'The solver reached the end of its available moves.' }
+    : { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
 }
 
 /** Keep the read-only preview and walkthrough together on a small screen. */
@@ -45,11 +51,10 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   cellReferenceStyle, techniqueDifficulties }: Props) {
   const list = useRef<HTMLOListElement>(null)
   const close = useRef<HTMLButtonElement>(null)
-  const steps = state.status === 'ready' ? state.trace.steps : undefined
-  const count = steps?.length ?? 0
-  const finished = state.status === 'ready' && state.trace.rating.status !== 'stalled'
-  const lastLabel = finished ? 'Final grid' : 'Last position'
-  const moveAvailability = state.status === 'ready' ? state.trace.moveAvailability : undefined
+  const trace = state.status === 'ready' ? state.trace : undefined
+  const count = trace?.steps.length ?? 0
+  const last = trace && solutionEndSummary(trace.rating.status)
+  const moveAvailability = trace?.moveAvailability
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
 
   useEffect(() => {
@@ -91,7 +96,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
       <header className="solution-path-heading">
         <div>
           {!embedded && <h2>Solution</h2>}
-          {steps && <p>{count} {count === 1 ? 'step' : 'steps'} from the givens</p>}
+          {trace && <p>{count} {count === 1 ? 'step' : 'steps'} from the givens</p>}
         </div>
         {!embedded && <IconButton ref={close} type="button" variant="quiet" onClick={onClose} aria-label="Return to puzzle" title="Return to puzzle">
           <X size={18} aria-hidden="true" />
@@ -102,9 +107,9 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
         <p role="status">{state.message}</p>
         <Button type="button" onClick={onRetry}>Try again</Button>
       </div>}
-      {steps && <>
+      {trace && last && <>
         <ol className="solution-path-steps" ref={list} role="list" aria-label="Solving steps" onKeyDown={navigate}>
-          {steps.map((step, stepIndex) => {
+          {trace.steps.map((step, stepIndex) => {
             const bottleneck = bottleneckLabel(moveAvailability?.[stepIndex])
             return <li key={stepIndex}>
               <button type="button" className="solution-path-step" aria-current={index === stepIndex ? 'step' : undefined}
@@ -122,8 +127,8 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
             <button type="button" className="solution-path-step solution-path-last" aria-current={index === count ? 'step' : undefined}
               tabIndex={index === count ? 0 : -1} onClick={() => onSelect(count)}>
               <span>
-                <strong>{lastLabel}</strong>
-                {!finished && <small>The solver reached the end of its available moves.</small>}
+                <strong>{last.title}</strong>
+                {trace.rating.status === 'stalled' && <small>{last.text}</small>}
                 {lastBottleneck && <small className="solution-step-bottleneck">{lastBottleneck}</small>}
               </span>
             </button>
@@ -132,7 +137,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
         <footer className="solution-path-footer">
           <div className="solution-path-navigation">
             <IconButton type="button" aria-label="Previous step" disabled={index === 0} onClick={() => onSelect(index - 1)}><ArrowLeft size={16} /></IconButton>
-            <span role="status">{index < count ? `Step ${index + 1} of ${count}` : lastLabel}</span>
+            <span role="status">{index < count ? `Step ${index + 1} of ${count}` : last.title}</span>
             <IconButton type="button" aria-label="Next step" disabled={index >= count} onClick={() => onSelect(index + 1)}><ArrowRight size={16} /></IconButton>
           </div>
         </footer>

@@ -4,6 +4,7 @@ import { after, before, test } from 'node:test'
 import { createElement, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
+import type { PuzzleRating } from '../src/sudoku/engine.ts'
 import { isSolved, makeGame } from '../src/sudoku/game.ts'
 import { HINT_CANDIDATES_ERROR, HINT_ERROR } from '../src/sudoku/hints.ts'
 import { PUZZLE_VARIANTS, type PuzzleVariantId } from '../src/sudoku/variants.ts'
@@ -17,6 +18,7 @@ let server: ViteDevServer
 let Worktable: (props: Record<string, unknown>) => ReactNode
 let SolutionDialog: (props: Record<string, unknown>) => ReactNode
 let SolutionPath: (props: Record<string, unknown>) => ReactNode
+let solutionEndSummary: typeof import('../src/components/SolutionPath.tsx').solutionEndSummary
 let HintCard: (props: Record<string, unknown>) => ReactNode
 let ChainsPanel: (props: Record<string, unknown>) => ReactNode
 let Board: (props: Record<string, unknown>) => ReactNode
@@ -30,7 +32,7 @@ before(async () => {
     optimizeDeps: { noDiscovery: true, include: [] } })
   ;({ Button } = await server.ssrLoadModule('/src/components/Button.tsx'))
   ;({ Worktable } = await server.ssrLoadModule('/src/components/Worktable.tsx'))
-  ;({ SolutionDialog, SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ SolutionDialog, SolutionPath, solutionEndSummary } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ ChainsPanel } = await server.ssrLoadModule('/src/components/ChainsPanel.tsx'))
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
@@ -154,6 +156,32 @@ test('mobile solutions render a read-only Jigsaw preview, explanation, and navig
   assert.match(html, /aria-label="Next step"/)
   assert.match(html, /Final grid/)
   assert.match(html, /aria-label="Close dialog"/)
+})
+
+test('solution previews and walkthroughs distinguish a stalled path from a completed grid', () => {
+  const cases = [
+    { status: 'stalled', title: 'Last position', text: 'The solver reached the end of its available moves.' },
+    { status: { solved: 'easy' }, title: 'Final grid', text: 'The solution is complete. The final grid is shown.' },
+  ] satisfies { status: PuzzleRating['status']; title: string; text: string }[]
+  for (const { status, title, text } of cases) {
+    const steps = [{ technique: 'arrow', actions: [{ eliminate: { cell: 9, digit: 9 } }] }]
+    const props = {
+      state: { status: 'ready', trace: { steps, rating: { status } } },
+      index: steps.length, onSelect() {}, onRetry() {}, onClose() {},
+    }
+    const summary = solutionEndSummary(status)
+    const path = renderToStaticMarkup(createElement(SolutionPath, props))
+    assert.ok(path.includes(`<strong>${title}</strong>`))
+    assert.ok(path.includes(`role="status">${title}</span>`))
+
+    const desktop = renderToStaticMarkup(createElement(HintCard, { hint: summary, onClose() {} }))
+    const mobile = renderToStaticMarkup(createElement(SolutionDialog, { ...props, grid: null, explanation: summary }))
+    for (const html of [desktop, mobile]) {
+      assert.ok(html.includes(title))
+      assert.ok(html.includes(text))
+      assert.ok(!html.includes(status === 'stalled' ? 'Final grid' : 'Last position'))
+    }
+  }
 })
 
 function worktableTree(id: Exclude<PuzzleVariantId, 'mixed'>, workspaceMode: 'standard' | 'advanced', solved = false) {
