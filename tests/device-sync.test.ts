@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { makeGame, EMPTY, enter, isSolved, undo, type Game } from '../src/sudoku/game.ts'
+import { makeGame, EMPTY, enter, isSolved, setGamePaused, undo, type Game } from '../src/sudoku/game.ts'
 import { GAME_PREFIX } from '../src/sudoku/storage.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
 import { ratingAttemptFor } from '../src/sudoku/player-rating.ts'
 import { activityPrefix, inProgress } from '../src/sudoku/puzzle-activity.ts'
+import { readTiming, TIMING_KEY } from '../src/sudoku/puzzle-timing.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
@@ -327,6 +328,34 @@ test('settings seed missing choices, merge individual offline edits and reflect 
     await assert.rejects(anon('settings', 'PATCH', { seeds: {}, edits: {} }), { status: 401 })
     await phone('devices/' + second.id, 'DELETE')
     await assert.rejects(computer('settings', 'PATCH', { seeds: {}, edits: {} }), { status: 401 })
+  } finally { sqlite.close() }
+})
+
+test('pause on open and the last puzzle pause state travel between linked devices', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const a = client(creator, phone), b = client(second, computer)
+    a.storage.setItem(TIMING_KEY, JSON.stringify({ showTimer: false }))
+    assert.equal(readTiming(a.storage).pauseOnOpen, true)
+    const game = enter(makeGame('paused', 'Paused puzzle', EMPTY, 'imported'), [0], 'value', 1)
+    a.write(setGamePaused(game, true, { onOpen: true }))
+    await a.run(); await b.run()
+    assert.equal(readTiming(b.storage).pauseOnOpen, true)
+    assert.equal(b.read(game.id)?.paused, true)
+
+    a.storage.setItem(TIMING_KEY, JSON.stringify({ ...readTiming(a.storage), pauseOnOpen: false }))
+    await a.run(); await b.run()
+    assert.equal(readTiming(b.storage).pauseOnOpen, false)
+    assert.equal(b.read(game.id)?.paused, true)
+
+    b.write(setGamePaused(b.read(game.id)!, false))
+    await b.run(); await a.run()
+    assert.equal(a.read(game.id)?.paused, false)
+
+    b.storage.setItem(TIMING_KEY, JSON.stringify({ ...readTiming(b.storage), pauseOnOpen: true }))
+    await b.run(); await a.run()
+    assert.equal(readTiming(a.storage).pauseOnOpen, true)
+    assert.equal(readTiming(a.storage).showTimer, false)
   } finally { sqlite.close() }
 })
 
