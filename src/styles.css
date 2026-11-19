@@ -1629,6 +1629,8 @@ svg { flex-shrink: 0; }
 }
 .settings-tabs :is(button[aria-selected="true"], a[data-status="active"]) { background: var(--selected-bg); color: var(--dark-purple); }
 .settings-panel { min-width: 0; height: 100%; overflow-y: auto; padding-right: var(--space-4); }
+:is(.settings-panel, .settings-mobile) { scrollbar-width: none; }
+:is(.settings-panel, .settings-mobile)::-webkit-scrollbar { display: none; }
 .settings-section { display: grid; align-content: start; gap: var(--space-14); }
 .settings-section h3 { margin: 0; font-size: 1.25rem; letter-spacing: -.025em; }
 .settings-intro { margin-top: -8px; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
