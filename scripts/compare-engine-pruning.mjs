@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy] [--global-entropy-corpus] [--modular] [--modular-corpus]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy', '--global-entropy-corpus', '--modular', '--modular-corpus'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy] [--global-entropy-corpus] [--modular] [--modular-corpus] [--little-killer]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy', '--global-entropy-corpus', '--modular', '--modular-corpus', '--little-killer'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -200,6 +200,27 @@ async function compare(request, label) {
   assert.deepEqual(actual, expected, label)
   comparisons++
   return actual
+}
+if (options.includes('--little-killer')) {
+  for (const control of ['newman', 'murphy', 'mixed', 'jigsaw-mixed', 'menace']) {
+    const name = `little-killer-${control}`
+    const { puzzle, solution } = await read(`../tests/fixtures/${name}.json`)
+    fixtures.push({ name, position: { puzzle } })
+    if (control !== 'menace') continue
+
+    const entries = solution.slice(0, 3) + '0'.repeat(78)
+    const progress = { puzzle, entries }
+    const masks = await compare({ type: 'variant', operation: 'candidates', position: progress }, `${name}: progressed candidates`)
+    const removable = masks.map((mask, cell) => mask & ~(1 << (Number(solution[cell]) - 1)))
+    const cell = removable.findIndex(mask => mask !== 0)
+    assert.ok(cell >= 0)
+    const eliminations = masks.map((_, index) => index === cell ? removable[cell] & -removable[cell] : 0)
+    fixtures.push({ name: `${name}-progress`, position: { ...progress, eliminations } })
+
+    const rules = puzzle.rules.map((rule, index) => index === 0 ? { ...rule, sum: rule.sum + 1 } : rule)
+    const nearMiss = { puzzle: { ...puzzle, rules }, entries: solution }
+    assert.equal(await compare({ type: 'variant', operation: 'analyze', position: nearMiss, maxNodes: 1 }, `${name}: sum off by one`), 'conflict')
+  }
 }
 for (const { name, position } of fixtures) {
   for (const operation of ['candidates', 'analyze', 'solve']) await compare({ type: 'variant', operation, position, maxNodes: 20_000 }, `${name}: ${operation}`)
