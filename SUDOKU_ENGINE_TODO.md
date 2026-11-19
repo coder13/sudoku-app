@@ -923,7 +923,7 @@ The isolated worktree is `codex/sudoku-entropic-rating-audit`, based on main `68
 Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app/issues/162). Broader latency and real browser-worker costs remain in [issue 88](https://github.com/coder13/sudoku-app/issues/88).
 
 
-## Modular Lines New Puzzle preparation
+## Modular Lines New Puzzle release
 
 - [x] Preserve complete published mixed sources. Construct new pure Modular templates through the explicit Entropic-to-remainder digit bijection, keeping every original pure-template path.
 - [x] Calibrate three geometries over seeds 1–100 with independent uniqueness, line dependence and Medium completion. At fourteen to twenty givens, yields are 97/98/97. At fourteen to seventeen, yields are 80/96/90. Keep blank yields and construction provenance explicit.
@@ -933,4 +933,12 @@ Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app
 - [x] Repair Modular history identity with shared original-window relations and explicit safe digit partitions. Preserve touching paths, revisits, public clues/proofs and mixed numeric rules. Pass the reduced variants all-target check and all 381 native cases, including seven Cargo examples.
 - [x] Wire Medium Modular New Puzzle, thirty complete constructed recipes, shared-renderer previews with valid remainder digits, stories, navigation and next-puzzle actions. Verify 108 app aliases, all eighteen archived cases, sixty full independent replays, multiple hints, storage/sharing and one hundred distinct actual requests without search limits.
 - [x] Pass all 497 Wasm contracts and repeat all 669 app tests after integrating the mobile/sync main release. Pass strict types and the 131-component catalog, 171 production routes and three offline checks. Preserve 675 preceding requests, 320 legacy outcomes, 1,137 further complete native pairs and twenty-three input/Board SSR controls. Record native history overhead, actual callers, memory and package costs in the [audit](SUDOKU_MODULAR_GENERATION_AUDIT.md).
-- [ ] Pass Modular exact-head capability/profile/docs/app/Wasm CI and ready deployment. Verify the active deployed engine, merge the reviewed head and establish fetched-main ancestry/source equality before marking generation released.
+- [x] Pass exact-head [CI 44579006354](https://github.com/coder13/sudoku-app/actions/runs/44579006354): 381 native, 669 app and 497 Wasm tests, sixteen capabilities, four profiles and strict docs/types/catalog. Pass Cloudflare and Netlify deployment with every recipe and eighteen history repairs against both downloaded engines. Merge [PR 229](https://github.com/coder13/sudoku-app/pull/229), head `efecc5d`, at `8b2f8d8`. Establish fetched-main ancestry and whole-tree equality. Keep the source worktree pinned.
+
+## Renban New Puzzle preparation
+
+- [x] Preserve complete pure Clover, Jh4o, KUUo and BSms controls and the original mixed sources. Calibrate seeds 1–100 independently at seventeen/twenty givens and from blank templates.
+- [x] Select thirty distinct candidates across Clover, Jh4o and BSms geometry. Retain full Medium traces, multiple hints, 380 direct Renban proofs and 3,497 completion-checked actions.
+- [x] Enumerate all 362,880 digit bijections. Record length-specific symmetries, including Jh4o's 240 valid renamings, and seventeen reproduced history failures. [Research and limits](SUDOKU_RENBAN_GENERATION_RESEARCH.md).
+- [ ] Repair private Renban identity while preserving complete cell sets, public geometry, mixed companions and proof references. Cover all archived failures and independent near misses.
+- [ ] Integrate calibrated Medium New Puzzle, previews and all app/history/storage flows. Pass native/Wasm/app checks, audit performance and packages, and merge only after exact-head release gates pass.

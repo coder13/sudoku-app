@@ -5,7 +5,7 @@ import { validActionHistory } from './action-history.ts'
 import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
-import { COLORS, createGameId, isSolved, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
+import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
@@ -21,6 +21,7 @@ const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
 const ACTIVE = PREFIX + 'active'
 const READY = PREFIX + 'initialized'
 const BUILT_IN_STARTER_ID = 'warmup'
+const FIRST_PUZZLE = '000204009930600000105000000367400000040005607059060042003080920090007008000900000'
 const sources = ['starter', 'generated', 'imported', 'collection', 'custom', 'draft']
 
 type Room = { games: Game[]; active: string | null; stoppedPlaying: boolean; storageAvailable: boolean; playerRating: PlayerRating }
@@ -33,6 +34,7 @@ const announceEdit = (id: string, handoff = false) => editListeners.forEach(list
 const ratingEvents = new Map<string, RatingEvent>()
 const unsavedRatingEvents = new Set<string>()
 let room = initial
+let firstVisit: boolean | undefined
 
 function publish(next: Room) {
   room = next
@@ -300,8 +302,10 @@ function hydrate() {
     })
     const games = storedGames.filter((game) => game.source !== 'starter' && game.id !== BUILT_IN_STARTER_ID)
 
-    const initialized = Boolean(readSaved(localStorage, READY)) ||
-      persist(() => localStorage.setItem(READY, '1'))
+    const initialized = Boolean(readSaved(localStorage, READY))
+    // Keep the original result when connect() hydrates again.
+    firstVisit ??= !initialized && !storedGames.length && !keys.some(key => key.startsWith(SEEN_PREFIX) || key.startsWith(RATING_PREFIX))
+    const initializedStorage = initialized || persist(() => localStorage.setItem(READY, '1'))
     let tabActive: string | null = null
     try {
       migrateStorage(sessionStorage)
@@ -318,7 +322,7 @@ function hydrate() {
       active: last === '' ? null : sorted.find((game) => game.id === last && (game.id === tabActive || !game.savedForLater))?.id ??
         sorted.find((game) => !game.savedForLater)?.id ?? null,
       stoppedPlaying: last === '',
-      storageAvailable: migrated && removedStarter && initialized && outcomesSaved,
+      storageAvailable: migrated && removedStarter && initializedStorage && outcomesSaved,
       playerRating: playerRatingFor(sorted),
     })
   } catch {
@@ -460,7 +464,12 @@ export const roomStore = {
   stopPlaying(id: string) {
     if (room.active === id) { publishSelection(room, null); playListeners.forEach(listener => listener(null)) }
   },
+  startFirstPuzzle() {
+    if (firstVisit === false || room.games.length || room.stoppedPlaying) return
+    roomStore.add({ ...makeGame(createGameId(), 'Puzzle 1', FIRST_PUZZLE, 'generated'), difficulty: 'medium', score: 888 })
+  },
   add(game: Game) {
+    firstVisit = false
     if (game.ratingAttempt && seenPuzzle(game)) game = { ...game, ratingAttempt: undefined }
     const seenSaved = rememberPuzzle(game)
     const saved = persist(() => writeGame(game))

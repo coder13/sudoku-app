@@ -27,6 +27,42 @@ test('4×4 progress, masks and undo survive a save and reload', async () => {
   })), undefined)
 })
 
+test('first visit opens one Medium puzzle, and deleting it does not start another', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: new EventTarget(), configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?first-visit')
+    const disconnect = roomStore.connect()
+    const opened: (string | null)[] = []
+    const unsubscribe = roomStore.onPlay(id => opened.push(id))
+    roomStore.startFirstPuzzle()
+    roomStore.startFirstPuzzle()
+    const { games, active } = roomStore.getSnapshot()
+    assert.equal(games.length, 1)
+    assert.equal(games[0].difficulty, 'medium')
+    assert.equal(games[0].paused, false)
+    assert.equal(active, games[0].id)
+    assert.deepEqual(opened, [active])
+    unsubscribe()
+    disconnect()
+
+    const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?first-visit-reload')
+    assert.equal(reloaded.getSnapshot().active, active)
+    reloaded.remove(games[0].id)
+    reloaded.startFirstPuzzle()
+    assert.deepEqual(reloaded.getSnapshot().games, [])
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
 test('readable puzzles remain available when initializing storage cannot write', async () => {
   const local = new MemoryStorage()
   const original = makeGame('read-only', 'Read-only storage', EMPTY, 'custom')

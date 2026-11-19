@@ -1,6 +1,6 @@
 # Modular Lines New Puzzle integration
 
-Base: main `e4e6b60`, including the walkthrough fix from PR 198, mobile/sync integration from PR 228 and roadmap additions from PR 226 and Cloudflare deployment automation from PR 201. This isolated change adds Medium Modular Lines New Puzzle and repairs equivalent played-history exclusions. Exact-head CI, deployment and release remain pending.
+Released through [PR 229](https://github.com/coder13/sudoku-app/pull/229) at main `8b2f8d8`, reviewed head `efecc5d`. Medium Modular Lines New Puzzle and equivalent played-history exclusions pass the release gates. The base includes PRs 198, 201, 226 and 228.
 
 ## Rules, constructions and original sources
 
@@ -22,7 +22,7 @@ Thirty selected recipes retain five seventeen-given and five twenty-given exampl
 
 Actual New Puzzle uses the existing bounded fresh search, checked fallbacks and complete played history. Recipes permit the generic twelve-attempt fresh retry after the checked pool is exhausted. Exact checks retain their 20,000-node budget. A known seed-42 fresh miss reaches its checked fallback. The separate hundred-request history sample succeeds without repeats or search limits. It does not establish every seed/history or independently trigger the exhausted-pool retry path.
 
-The chooser reuses existing controls, supported difficulty handling and route/search validation. A complete shared-renderer preview shows six valid remainder-class digits on one original path. Saved unsupported levels resolve to Medium. Completed pure constructions offer another Modular puzzle. Completed mixed originals retain all companions and ask the player to choose another puzzle. Static light/dark exports at 290/540 pixels use actual SVG/CSS. They do not establish browser layout, paint, keyboard or interaction coverage.
+The chooser reuses existing controls, supported difficulty handling and route/search validation. A complete shared-renderer preview shows six valid remainder-class digits on complete original paths. Saved unsupported levels resolve to Medium. Completed pure constructions offer another Modular puzzle. Completed mixed originals retain all companions and ask the player to choose another puzzle. Static light/dark exports at 290/540 pixels use actual SVG/CSS. They do not establish browser layout, paint, keyboard or interaction coverage.
 
 ## Private history identity and shared structure
 
@@ -86,6 +86,12 @@ Fresh Darwin Wasm is 3,417,504 raw / 895,333 default-Node-gzip bytes, SHA-256 `c
 
 Final client asset sums are JavaScript 6,387,777 raw / 2,092,783 gzip and CSS 316,396 / 44,538. A fresh main `8b4ed99` UI baseline gives deltas of +10,671 / +424 JavaScript and +238 / +26 CSS bytes. Both distributions include the same main walkthrough, mobile and sync changes. The baseline uses the verified unchanged pre-Modular engine artifact. Totals sum default Node gzip per asset and exclude HTML, service workers and manifests. All five generated metadata JSON files and both lockfiles are byte-identical.
 
-The first head `20c6227` passes CI 44573337200 with 381 native, 660 app and 497 Wasm tests, capability/profile/docs gates and ready deployment. Main then merged PR 228. The combined head must pass fresh exact-head CI for sixteen capability combinations, four profiles, strict full/core/variants docs and the full app/Wasm suites. Ready exact-head deployments, including the new Cloudflare job, downloaded-engine checks, reviewed-head merge and fetched-main source equality remain release gates. Retain the original dirty R&D checkout. Continue source-format, grid/symbol/Fog, mixed human-solving and broader performance work in their existing issues.
+The first head `20c6227` passes CI 44573337200. Main then merged PRs 228 and 201. The final reviewed head `efecc5d` passes [CI 44579006354](https://github.com/coder13/sudoku-app/actions/runs/44579006354). It passes 381 native, 669 app and 497 Wasm tests, sixteen capability combinations, four profiles, strict full/core/variants docs and types/catalog.
+
+[Cloudflare run 44579006294](https://github.com/coder13/sudoku-app/actions/runs/44579006294) deploys successfully. Its checkout `26a6315` has an identical tree to the reviewed head. Both the immutable Cloudflare preview and Netlify preview are ready. Read-only HTTP confirms the active assets, all thirty recipes and complete preview geometry. Independent checks against each downloaded engine pass all recipes and eighteen repaired histories.
+
+The Cloudflare Linux Wasm is 3,417,440 raw bytes, SHA-256 `fa3c34c5d4ac594f42b3cda3666aea4308f349342fdbc52ab4379481e10a6313`. Netlify builds the same source at that size with SHA-256 `b4ada7186980c3be2fa6ee0739b9e9f983e073d6cec2c27e73eb2b209a94b255`. These host-specific builds differ in bytes. Their source and behavioral checks pass separately.
+
+Fetched main contains the reviewed head and merge, with an identical tree immediately after release. The source worktree stays clean and pinned. Twenty-three variants plus Classic now appear in New Puzzle. Renban, Inequality, XV, Two-cell sums and Quadruple remain in issue 189. Continue source-format, Fog, mixed human-solving and broader performance work in their existing issues.
 
 Raw calibration, independent construction/partition checks, exclusions, history probes, complete response comparisons and measurements remain under `/tmp/sudoku-modular-generation-research`. The isolated source worktree is `/private/tmp/sudoku-modular-new-puzzle`.
