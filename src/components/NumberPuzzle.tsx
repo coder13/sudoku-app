@@ -17,7 +17,10 @@ type BoardCell = {
   block?: boolean
 }
 
-type Hint = { cell: number; value: number; marked: number[]; reasons: string[] }
+type Hint = { cell: number; value: number; marked: number[] } & (
+  | { reasons: string[]; renderExplanation?: never }
+  | { renderExplanation: (cellName: (index: number) => string) => ReactNode; reasons?: never }
+)
 
 export type NumberBoard = {
   width: number
@@ -309,10 +312,10 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           ? `The ${hasClueCells ? 'highlighted clues' : 'listed rules'} leave only ${hint.value} for ${cellName(hint.cell)}.` : status}
       </div>
       {hint && <div className="number-puzzle-hint">
-        <details className="number-puzzle-help">
+        {hint.renderExplanation ? hint.renderExplanation(cellName) : <details className="number-puzzle-help">
           <summary>{hasClueCells ? 'Clues used' : 'Rules used'}</summary>
           <ul>{hint.reasons.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
-        </details>
+        </details>}
         <Button onClick={() => enter(hint.value, hint.cell, false)}>Place {hint.value}</Button>
       </div>}
       {result.complete && (next

@@ -1,6 +1,8 @@
 # Engine and app UI parity
 
-Main `8b2f8d8` has app acceptance and UI for all 27 native rule types plus Jigsaw layouts: twenty-eight named variants plus Classic. Twenty-three variants plus Classic are offered in New Puzzle. Native family UI coverage is complete. Five older playable families still need New Puzzle recipes. Authored-source formats, grid/symbol extensions, Fog and remaining human-solving coverage are separate work.
+Main `548bba6` has 9×9 app acceptance and UI for all 27 native rule types plus Jigsaw layouts: twenty-eight named variants plus Classic. Twenty-four variants plus Classic are offered in New Puzzle. Native 9×9 family UI coverage is complete. Four older playable families still need New Puzzle recipes. Sized Sudoku and standalone puzzle families have separate inventories.
+
+Authored-source formats, grid/symbol extensions, Fog and remaining human-solving coverage are separate work.
 
 | Rule family | Engine | App integration | Issue |
 | --- | --- | --- | --- |
@@ -28,7 +30,7 @@ The first source controls are Philip Newman's [Between, the Lines](https://www.g
 
 Region Sum Lines reached main through [PR 193](https://github.com/coder13/sudoku-app/pull/193) at `3706a0f`, including complete source/import/render/play/help integration and a checked Medium New Puzzle recipe. All exact-head native, capability, profile, app/Wasm, documentation and deployment checks pass in [CI 44460015789](https://github.com/coder13/sudoku-app/actions/runs/44460015789). Five complete sources retain their unique printed solutions and all companion clues. Closed drawing paths and both grouping modes survive storage, sharing and native transforms. [Source, generation, compatibility and performance audit](SUDOKU_REGION_SUM_AUDIT.md). Three Coach human paths remain partial, and FaxQ currently has one available hint; the remaining coverage and latency work is tracked in [192](https://github.com/coder13/sudoku-app/issues/192).
 
-The user explicitly confirmed generation parity for all thirteen originally import-only families. Anti-King, Non-Consecutive, Odd/Even, Whispers, Palindrome, Global Entropy, Entropic Lines and Modular Lines are released. Add verified New Puzzle recipes for the five remaining families: Renban, Inequality, XV, Two-cell sums and Quadruple. Existing generation/worker APIs already support these rules. Keep generation and all play/help flows in each family’s integration and verify every advertised difficulty.
+The user explicitly confirmed generation parity for all thirteen originally import-only families. Anti-King, Non-Consecutive, Odd/Even, Whispers, Palindrome, Global Entropy, Entropic Lines, Modular Lines and Renban are released. Add verified New Puzzle recipes for the four remaining families: Inequality, XV, Two-cell sums and Quadruple. Existing generation/worker APIs already support these rules. Keep generation and all play/help flows in each family’s integration and verify every advertised difficulty.
 
 Between calibration checks twenty of twenty Easy seeds and nineteen of forty one-attempt Medium seeds. Every accepted puzzle is independently unique and needs the Between rule. Three known Medium seeds provide the bounded fallback. App generation now passes full played-puzzle exclusions to the engine, including square symmetries; a reproduced rotated-duplicate fallback is covered by a regression.
 
@@ -63,4 +65,18 @@ Entropic Lines New Puzzle reached main through [PR 222](https://github.com/coder
 
 Modular Lines New Puzzle reached main through [PR 229](https://github.com/coder13/sudoku-app/pull/229) at `8b2f8d8`, reviewed head `efecc5d`. Every exact-head gate passes in [CI 44579006354](https://github.com/coder13/sudoku-app/actions/runs/44579006354). This includes 381 native, 669 app and 497 Wasm tests, sixteen capabilities, four profiles and strict docs/types/catalog. Thirty constructed Medium recipes keep every original pure-template path. Generated puzzles are independently unique, Modular-dependent and fully solved with multiple hints. Eighteen history repairs preserve public definitions, proof references, numeric companions and scoring version 8. One hundred successive actual requests are distinct without search limits. Cloudflare and Netlify previews pass source, recipe, preview and downloaded-engine checks. Fetched main contains the reviewed head and merge with an identical tree. Twenty-three variants plus Classic now have New Puzzle choices. Five older families remain in [189](https://github.com/coder13/sudoku-app/issues/189). [Construction, release and performance audit](SUDOKU_MODULAR_GENERATION_AUDIT.md).
 
-Renban preparation retains thirty independently checked Medium candidates and seventeen reproduced exclusion failures. Jh4o's long lines permit 240 digit renamings, so complement alone does not cover its valid aliases. No Renban New Puzzle release is claimed. [Research and next steps](SUDOKU_RENBAN_GENERATION_RESEARCH.md).
+Renban New Puzzle reached main through [PR 269](https://github.com/coder13/sudoku-app/pull/269) at `548bba6`, reviewed head `67b69f1`.
+[CI 44604336026](https://github.com/coder13/sudoku-app/actions/runs/44604336026) passes 395 native tests, 702 app tests and 510 Wasm contracts, sixteen capability combinations, four profiles and strict Cargo docs/types/catalog.
+Thirty checked Medium recipes retain complete source sets, independent uniqueness, Renban dependence, multiple hints and full proof replay.
+
+Private identity repairs cover all thirty archived aliases, including seventeen former failures, without rewriting source drawings, mixed companions or proof references.
+A hundred successive actual requests remain distinct without search limits. Storage, history and UUID sharing pass.
+The 40-point Medium technique and scoring version 8 remain unchanged. Three completion templates provide fresh givens; [262](https://github.com/coder13/sudoku-app/issues/262) tracks broader completion diversity.
+
+Cloudflare preview checks verify the exact source tree, every deployed recipe, 225 direct opening proofs and all thirty exclusions against the downloaded engine.
+[Production deployment](https://github.com/coder13/sudoku-app/actions/runs/44606496440) started for the merge commit.
+Netlify's preview fails before compilation because repository checkout returns HTTP 403. That provider-access failure remains recorded on the PR.
+
+Twenty-four 9×9 variants plus Classic now have New Puzzle choices. Four older families remain in [189](https://github.com/coder13/sudoku-app/issues/189).
+The original BSms human path remains partial in [158](https://github.com/coder13/sudoku-app/issues/158).
+[Generation, costs and limits](SUDOKU_RENBAN_GENERATION_AUDIT.md).

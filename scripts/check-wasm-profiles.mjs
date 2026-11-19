@@ -49,6 +49,7 @@ try {
       [expected.variants, { type: 'variant', operation: 'solve', position: { puzzle: { version: 1, givens: solved } } }],
       [expected.variants, { type: 'techniques', variant: true }],
       [expected.generation, { type: 'generate-mini', difficulty: 'medium', seed: 17 }],
+      [expected.generation, { type: 'generate-six', difficulty: 'medium', seed: 17, grid: { size: 6, boxRows: 2, boxColumns: 3 } }],
       [expected.generation, { type: 'generate-constrained', seed: 17, maxAttempts: 1, clues: 81, score: [0, 0], templates: [solved] }],
       [expected.teaching, { type: 'practice-examples', technique: 'naked-single' }],
     ]) {

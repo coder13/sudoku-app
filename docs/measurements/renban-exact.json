@@ -1,0 +1,1224 @@
+{
+  "manifest": {
+    "host": {
+      "platform": "linux",
+      "arch": "x64",
+      "node": "v22.23.1",
+      "v8": "12.4.254.21-node.56"
+    },
+    "fixture": {
+      "file": "tests/fixtures/little-killer-menace.json",
+      "sha256": "82cce79aa71fa38a3af6c06da94fa16d145f69abb6416b1d93c357660b2bbbd2"
+    },
+    "artifacts": [
+      {
+        "sha256": "416de74a24e1910ab2208529b41c6ddc430eb7ac5cd4596169d88dc6d3086e2a",
+        "rawBytes": 3718817,
+        "gzipBytes": 985067
+      },
+      {
+        "sha256": "90795e9304e9f358995d3002a37759dd8f2cdcd456b1481e88e03c49257dcf14",
+        "rawBytes": 3719150,
+        "gzipBytes": 983992
+      }
+    ],
+    "warmups": 1,
+    "samples": 5,
+    "cases": [
+      {
+        "operation": "analyze",
+        "maxNodes": 1000000,
+        "expected": {
+          "value": "unique"
+        }
+      },
+      {
+        "operation": "solve",
+        "maxNodes": 1000000,
+        "expected": {
+          "value": "945836172837152496261947853476591238328674519519283647782419365694325781153768924"
+        }
+      },
+      {
+        "operation": "preview"
+      },
+      {
+        "operation": "analyze",
+        "maxNodes": 20000,
+        "expected": {
+          "value": "search-limit"
+        }
+      },
+      {
+        "operation": "solve",
+        "maxNodes": 20000,
+        "expected": {
+          "code": "search-limit"
+        }
+      }
+    ],
+    "defaultNodes": 1000000,
+    "workerCount": 1,
+    "seeds": []
+  },
+  "commits": {
+    "baseline": "3414314732bc347f83d95b985c27be71f91d7d1c",
+    "candidate": "7541b005e52bd060a158cf0f1963d335ea2fe281"
+  },
+  "hardware": {
+    "cpu": "AMD Ryzen 7 7840U",
+    "cores": 8,
+    "threads": 16,
+    "ramKiB": 63572688,
+    "linux": "7.1.8-arch1-3",
+    "affinity": [
+      6,
+      7
+    ]
+  },
+  "toolchain": "rustc 1.92.0 (ded5c06cf, LLVM 21.1.3), Cargo 1.92.0, release with LTO",
+  "comparisons": {
+    "requests": 5178,
+    "corpusPositions": 31,
+    "positivePracticePositions": 363,
+    "detectors": 121
+  },
+  "appTechniqueOrder": [
+    "hidden-single-box",
+    "full-house",
+    "naked-single",
+    "hidden-single",
+    "parity",
+    "anti-king",
+    "anti-knight",
+    "non-consecutive",
+    "inequality",
+    "clone",
+    "kropki",
+    "non-consecutive-locked-candidates-2",
+    "xv",
+    "adjacent-total",
+    "palindrome",
+    "non-consecutive-bivalue",
+    "between",
+    "non-consecutive-locked-candidates-3",
+    "non-consecutive-trivalue",
+    "global-entropy",
+    "thermometer",
+    "cage-combinations",
+    "arrow",
+    "quadruple",
+    "whispers",
+    "entropic",
+    "modular",
+    "whispers-house-support",
+    "renban",
+    "region-sum",
+    "locked-candidates",
+    "little-killer",
+    "cage-house-sum",
+    "locked-pair",
+    "locked-triple",
+    "pointing",
+    "claiming",
+    "naked-pair",
+    "naked-triple",
+    "hidden-pair",
+    "hidden-triple",
+    "x-wing",
+    "swordfish",
+    "skyscraper",
+    "two-string-kite",
+    "empty-rectangle",
+    "skyscrapers",
+    "sandwich",
+    "x-sum",
+    "naked-quadruple",
+    "hidden-quadruple",
+    "jellyfish",
+    "bug-plus-one",
+    "w-wing",
+    "xy-wing",
+    "xyz-wing",
+    "unique-rectangle-1",
+    "unique-rectangle-2",
+    "unique-rectangle-3",
+    "unique-rectangle-4",
+    "unique-rectangle-5",
+    "unique-rectangle-6",
+    "hidden-rectangle",
+    "finned-x-wing",
+    "sashimi-x-wing",
+    "finned-swordfish",
+    "sashimi-swordfish",
+    "finned-jellyfish",
+    "sashimi-jellyfish",
+    "simple-coloring",
+    "3d-medusa",
+    "x-chain",
+    "xy-chain",
+    "wxyz-wing",
+    "unique-loop",
+    "aic",
+    "discontinuous-nice-loop",
+    "continuous-nice-loop",
+    "grouped-aic",
+    "sue-de-coq",
+    "als-xz",
+    "als-xy-wing",
+    "als-chain",
+    "death-blossom",
+    "unique-rectangle-aic",
+    "unique-rectangle-discontinuous-nice-loop",
+    "unique-rectangle-continuous-nice-loop",
+    "fireworks",
+    "firework-w-wing",
+    "firework-l-wing",
+    "firework-als-wing",
+    "firework-aic",
+    "aligned-pair-exclusion",
+    "als-aic",
+    "als-discontinuous-nice-loop",
+    "als-continuous-nice-loop",
+    "exocet",
+    "forcing-chain",
+    "aligned-triplet-exclusion",
+    "tridagon",
+    "tridagon-aic",
+    "tridagon-forcing-net",
+    "dynamic-forcing-net",
+    "advanced-forcing-net",
+    "senior-exocet",
+    "double-exocet",
+    "franken-fish",
+    "mutant-fish",
+    "kraken-fish-1",
+    "kraken-fish-2",
+    "nested-forcing-net",
+    "pattern-overlay",
+    "pairwise-pattern-overlay",
+    "triple-pattern-overlay",
+    "quadruple-pattern-overlay",
+    "quintuple-pattern-overlay"
+  ],
+  "wasm": {
+    "analyze 1000000": {
+      "samplesMs": [
+        [
+          10102.708425999997,
+          10050.710664999999,
+          10108.998353000003,
+          10091.431702999995,
+          10062.589720000004
+        ],
+        [
+          5540.656393999998,
+          5422.728377000007,
+          5401.407008999995,
+          5407.178807000004,
+          5406.327304999999
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          10091.431702999995,
+          10108.998353000003
+        ],
+        [
+          5407.178807000004,
+          5540.656393999998
+        ]
+      ]
+    },
+    "solve 1000000": {
+      "samplesMs": [
+        [
+          8762.918766999996,
+          8764.842835000018,
+          8769.348551000003,
+          8750.733429000014,
+          8757.563540000003
+        ],
+        [
+          4722.332244999998,
+          4724.560578000004,
+          4724.197221000009,
+          4707.729515000014,
+          4728.853510999994
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          8762.918766999996,
+          8769.348551000003
+        ],
+        [
+          4724.197221000009,
+          4728.853510999994
+        ]
+      ]
+    },
+    "preview": {
+      "samplesMs": [
+        [
+          19164.974925999995,
+          18918.213484000007,
+          19452.077907000028,
+          19174.949902000022,
+          31721.77562999999
+        ],
+        [
+          10142.167539999995,
+          11255.060304999992,
+          16151.966210999992,
+          10190.646297,
+          25655.864868999983
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          19174.949902000022,
+          31721.77562999999
+        ],
+        [
+          11255.060304999992,
+          25655.864868999983
+        ]
+      ]
+    },
+    "analyze 20000": {
+      "samplesMs": [
+        [
+          276.784141000011,
+          281.55451300001005,
+          271.70936899998924,
+          285.3850420000381,
+          279.1493330000085
+        ],
+        [
+          155.67494799999986,
+          148.90899500000523,
+          160.0292780000018,
+          147.92529099999228,
+          158.31113099999493
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          279.1493330000085,
+          285.3850420000381
+        ],
+        [
+          155.67494799999986,
+          160.0292780000018
+        ]
+      ]
+    },
+    "solve 20000": {
+      "samplesMs": [
+        [
+          282.5590250000241,
+          263.5384259999846,
+          259.1736299999757,
+          264.6264029999729,
+          271.97881300002337
+        ],
+        [
+          174.76053400000092,
+          144.50519799999893,
+          145.17125099996338,
+          145.50176700000884,
+          145.67503800004488
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          264.6264029999729,
+          282.5590250000241
+        ],
+        [
+          145.50176700000884,
+          174.76053400000092
+        ]
+      ]
+    }
+  },
+  "wasmFirst": [
+    {
+      "build": 0,
+      "phase": "instantiate",
+      "elapsedMs": 15.00128699999999,
+      "wasmCapacityBytes": 1376256,
+      "processMaxRssKiB": 139228
+    },
+    {
+      "build": 0,
+      "phase": "first",
+      "operation": "analyze",
+      "elapsedMs": 10149.689698,
+      "response": {
+        "value": "unique"
+      },
+      "wasmCapacityBytes": 1441792,
+      "processMaxRssKiB": 140636
+    },
+    {
+      "build": 1,
+      "phase": "instantiate",
+      "elapsedMs": 13.052851999998893,
+      "wasmCapacityBytes": 1376256,
+      "processMaxRssKiB": 143860
+    },
+    {
+      "build": 1,
+      "phase": "first",
+      "operation": "analyze",
+      "elapsedMs": 5408.983378999999,
+      "response": {
+        "value": "unique"
+      },
+      "wasmCapacityBytes": 1441792,
+      "processMaxRssKiB": 145396
+    }
+  ],
+  "wasmEndCapacityBytes": [
+    1572864,
+    1572864
+  ],
+  "wasmPreviewPhases": [
+    {
+      "build": 1,
+      "round": 1,
+      "calls": {
+        "analyze": 5403.659400000004,
+        "solve": 4702.711780000012,
+        "rate": 35.21467899999698
+      }
+    },
+    {
+      "build": 0,
+      "round": 1,
+      "calls": {
+        "analyze": 10318.689786000003,
+        "solve": 8790.499210000009,
+        "rate": 55.23529700000654
+      }
+    },
+    {
+      "build": 0,
+      "round": 2,
+      "calls": {
+        "analyze": 10077.632688000012,
+        "solve": 8791.034635000018,
+        "rate": 49.073995999991894
+      }
+    },
+    {
+      "build": 1,
+      "round": 2,
+      "calls": {
+        "analyze": 5413.7122059999965,
+        "solve": 5788.807333000004,
+        "rate": 52.14678000001004
+      }
+    },
+    {
+      "build": 1,
+      "round": 3,
+      "calls": {
+        "analyze": 10232.169541999989,
+        "solve": 5887.392859000014,
+        "rate": 31.347257999994326
+      }
+    },
+    {
+      "build": 0,
+      "round": 3,
+      "calls": {
+        "analyze": 10476.208130999992,
+        "solve": 8923.670863999985,
+        "rate": 51.507972999999765
+      }
+    },
+    {
+      "build": 0,
+      "round": 4,
+      "calls": {
+        "analyze": 10125.251370999962,
+        "solve": 9003.083599000005,
+        "rate": 45.66391000000294
+      }
+    },
+    {
+      "build": 1,
+      "round": 4,
+      "calls": {
+        "analyze": 5433.863563999999,
+        "solve": 4731.315849000006,
+        "rate": 24.860495000029914
+      }
+    },
+    {
+      "build": 1,
+      "round": 5,
+      "calls": {
+        "analyze": 12918.486612000037,
+        "solve": 12620.443539,
+        "rate": 116.34726400004001
+      }
+    },
+    {
+      "build": 0,
+      "round": 5,
+      "calls": {
+        "analyze": 20833.590122999973,
+        "solve": 10840.85038399999,
+        "rate": 46.8856510000187
+      }
+    }
+  ],
+  "native": {
+    "analyze 1000000": {
+      "samplesMs": [
+        [
+          5888.615127,
+          5971.624577,
+          5538.678237,
+          5589.161405,
+          5542.575454
+        ],
+        [
+          2697.256906,
+          3400.748437,
+          2624.065265,
+          2628.801652,
+          3129.886376
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          5589.161405,
+          5971.624577
+        ],
+        [
+          2697.256906,
+          3400.748437
+        ]
+      ]
+    },
+    "solve 1000000": {
+      "samplesMs": [
+        [
+          4860.100917,
+          5064.226036,
+          5009.912962,
+          4868.380051,
+          4913.934062
+        ],
+        [
+          2289.656479,
+          2285.442364,
+          2276.184397,
+          2298.805377,
+          2282.674362
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          4913.934062,
+          5064.226036
+        ],
+        [
+          2285.442364,
+          2298.805377
+        ]
+      ]
+    },
+    "analyze 20000": {
+      "samplesMs": [
+        [
+          148.870621,
+          146.80819,
+          147.697515,
+          149.717237,
+          152.122862
+        ],
+        [
+          71.649034,
+          70.410301,
+          70.462007,
+          70.438821,
+          70.329389
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          148.870621,
+          152.122862
+        ],
+        [
+          70.438821,
+          71.649034
+        ]
+      ]
+    },
+    "solve 20000": {
+      "samplesMs": [
+        [
+          146.471106,
+          149.413764,
+          146.544998,
+          150.631165,
+          153.90501
+        ],
+        [
+          70.558484,
+          70.644372,
+          70.739661,
+          70.914672,
+          70.663193
+        ]
+      ],
+      "medianP95Ms": [
+        [
+          149.413764,
+          153.90501
+        ],
+        [
+          70.663193,
+          70.914672
+        ]
+      ]
+    }
+  },
+  "nativeBinaries": [
+    {
+      "sha256": "97cbea7526897f07c3ba95ea0712e8574797013e2104aed3c3cd618342903478",
+      "rawBytes": 5155488
+    },
+    {
+      "sha256": "fb5baaaae83e4301ca553dee3b0d89ae7d928bf848e1635f87ca78849dffa038",
+      "rawBytes": 5156072
+    }
+  ],
+  "coldWasm": [
+    {
+      "sha256": "90795e9304e9f358995d3002a37759dd8f2cdcd456b1481e88e03c49257dcf14",
+      "instantiateMs": 13.559874000000008,
+      "firstAnalyzeMs": 5449.994344000001,
+      "maxRssKiB": 108640,
+      "capacityBytes": 1441792,
+      "result": "unique"
+    },
+    {
+      "sha256": "416de74a24e1910ab2208529b41c6ddc430eb7ac5cd4596169d88dc6d3086e2a",
+      "instantiateMs": 13.643391000000008,
+      "firstAnalyzeMs": 10037.918628,
+      "maxRssKiB": 107484,
+      "capacityBytes": 1441792,
+      "result": "unique"
+    },
+    {
+      "sha256": "416de74a24e1910ab2208529b41c6ddc430eb7ac5cd4596169d88dc6d3086e2a",
+      "instantiateMs": 13.571629999999999,
+      "firstAnalyzeMs": 10117.900109,
+      "maxRssKiB": 107748,
+      "capacityBytes": 1441792,
+      "result": "unique"
+    },
+    {
+      "sha256": "90795e9304e9f358995d3002a37759dd8f2cdcd456b1481e88e03c49257dcf14",
+      "instantiateMs": 13.580026999999994,
+      "firstAnalyzeMs": 5660.123063,
+      "maxRssKiB": 108008,
+      "capacityBytes": 1441792,
+      "result": "unique"
+    },
+    {
+      "sha256": "90795e9304e9f358995d3002a37759dd8f2cdcd456b1481e88e03c49257dcf14",
+      "instantiateMs": 13.333059999999996,
+      "firstAnalyzeMs": 5481.040362,
+      "maxRssKiB": 108464,
+      "capacityBytes": 1441792,
+      "result": "unique"
+    },
+    {
+      "sha256": "416de74a24e1910ab2208529b41c6ddc430eb7ac5cd4596169d88dc6d3086e2a",
+      "instantiateMs": 13.402349000000008,
+      "firstAnalyzeMs": 9930.770749,
+      "maxRssKiB": 107808,
+      "capacityBytes": 1441792,
+      "result": "unique"
+    }
+  ],
+  "controls": [
+    {
+      "name": "little-killer-newman",
+      "fixtureSha256": "8ab9729e1e1dcacbf7ec9b9c5650d606ffaea6a3cf3aba477bd1478b14750890",
+      "solution": "583692741916437825274158369741563982625819437398274156862941573439725618157386294",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "medianP95Ms": [
+        [
+          0.7753199999999936,
+          1.1637460000000033
+        ],
+        [
+          0.7638379999999927,
+          1.164326999999986
+        ]
+      ]
+    },
+    {
+      "name": "little-killer-newman",
+      "fixtureSha256": "8ab9729e1e1dcacbf7ec9b9c5650d606ffaea6a3cf3aba477bd1478b14750890",
+      "solution": "583692741916437825274158369741563982625819437398274156862941573439725618157386294",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "medianP95Ms": [
+        [
+          0.7601399999999785,
+          1.1386469999999917
+        ],
+        [
+          0.753056000000015,
+          1.1335080000000062
+        ]
+      ]
+    },
+    {
+      "name": "little-killer-murphy",
+      "fixtureSha256": "b516294816ced4bc1d2301dac5db1caa788be894771c3134d4e6e2e3b6d01e0f",
+      "solution": "127849635358726941496351872865973124213485796749162583632598417971634258584217369",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "medianP95Ms": [
+        [
+          0.8475200000000314,
+          0.9041300000000092
+        ],
+        [
+          0.8512670000000071,
+          0.8844020000000228
+        ]
+      ]
+    },
+    {
+      "name": "little-killer-murphy",
+      "fixtureSha256": "b516294816ced4bc1d2301dac5db1caa788be894771c3134d4e6e2e3b6d01e0f",
+      "solution": "127849635358726941496351872865973124213485796749162583632598417971634258584217369",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "medianP95Ms": [
+        [
+          0.4266810000000305,
+          0.604426999999987
+        ],
+        [
+          0.4228130000000192,
+          0.5995979999999577
+        ]
+      ]
+    },
+    {
+      "name": "little-killer-mixed",
+      "fixtureSha256": "14a45bf3adf363a33fbc3afb274169abd40a1932425d6073ee786633b126cda7",
+      "solution": "127849635358726941496351872865973124213485796749162583632598417971634258584217369",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "medianP95Ms": [
+        [
+          0.5401309999999739,
+          0.7895579999999427
+        ],
+        [
+          0.5125379999999495,
+          0.8067109999999502
+        ]
+      ]
+    },
+    {
+      "name": "little-killer-mixed",
+      "fixtureSha256": "14a45bf3adf363a33fbc3afb274169abd40a1932425d6073ee786633b126cda7",
+      "solution": "127849635358726941496351872865973124213485796749162583632598417971634258584217369",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "medianP95Ms": [
+        [
+          0.5098930000000337,
+          0.7782860000000937
+        ],
+        [
+          0.4836319999999432,
+          0.727657000000022
+        ]
+      ]
+    },
+    {
+      "name": "little-killer-jigsaw-mixed",
+      "fixtureSha256": "8570aa5c119a4cc0e867d7ce6f4f6bc0f4a3223564a3ae2d733b060b781a8e16",
+      "solution": "473891265265743981891625743529138476147269538386457129914382657658974312732516894",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "medianP95Ms": [
+        [
+          1.1736550000000534,
+          1.4543320000000222
+        ],
+        [
+          1.1655090000000428,
+          1.3966199999999844
+        ]
+      ]
+    },
+    {
+      "name": "little-killer-jigsaw-mixed",
+      "fixtureSha256": "8570aa5c119a4cc0e867d7ce6f4f6bc0f4a3223564a3ae2d733b060b781a8e16",
+      "solution": "473891265265743981891625743529138476147269538386457129914382657658974312732516894",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "medianP95Ms": [
+        [
+          1.1433059999999386,
+          1.2914449999999533
+        ],
+        [
+          1.1363230000000613,
+          1.1812199999999393
+        ]
+      ]
+    },
+    {
+      "name": "renban-clover",
+      "fixtureSha256": "5fbba1df146f38a3a6965ed1c95891077331b4e0d2b66917c8b9e260e7bf969a",
+      "solution": "891623745654179823237854691128967534349285167765431289916542378472318956583796412",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "medianP95Ms": [
+        [
+          0.17445999999995365,
+          0.2745549999999639
+        ],
+        [
+          0.06037800000012794,
+          0.11064499999997679
+        ]
+      ]
+    },
+    {
+      "name": "renban-clover",
+      "fixtureSha256": "5fbba1df146f38a3a6965ed1c95891077331b4e0d2b66917c8b9e260e7bf969a",
+      "solution": "891623745654179823237854691128967534349285167765431289916542378472318956583796412",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "medianP95Ms": [
+        [
+          0.20353700000009667,
+          0.30261899999982234
+        ],
+        [
+          0.07134799999994357,
+          0.13328999999998814
+        ]
+      ]
+    },
+    {
+      "name": "renban-killer-clover",
+      "fixtureSha256": "12e02b5bbba96b953744beb2fd252b64ce9857ffe0939773f3e05bfa9b89a085",
+      "solution": "297681543351249786684375219128956437976413852543827691812794365439562178765138924",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "medianP95Ms": [
+        [
+          0.2066530000001876,
+          0.3523459999998977
+        ],
+        [
+          0.12972199999990153,
+          0.24186099999997168
+        ]
+      ]
+    },
+    {
+      "name": "renban-killer-clover",
+      "fixtureSha256": "12e02b5bbba96b953744beb2fd252b64ce9857ffe0939773f3e05bfa9b89a085",
+      "solution": "297681543351249786684375219128956437976413852543827691812794365439562178765138924",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "medianP95Ms": [
+        [
+          0.20290499999987333,
+          0.22407700000007935
+        ],
+        [
+          0.12837999999987915,
+          0.14255800000000818
+        ]
+      ]
+    },
+    {
+      "name": "inequality-palindrome14",
+      "fixtureSha256": "d4144f82f33abcf458ee1f32bc7fa81627f0ddd440d3bd40225607f3863a4a95",
+      "solution": "459273186618459372327618549846135927195726438732984651264597813973841265581362794",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 2,
+      "samples": 7,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "medianP95Ms": [
+        [
+          485.1120009999995,
+          492.4686539999998
+        ],
+        [
+          485.33875400000034,
+          486.7442030000002
+        ]
+      ]
+    },
+    {
+      "name": "inequality-palindrome14",
+      "fixtureSha256": "d4144f82f33abcf458ee1f32bc7fa81627f0ddd440d3bd40225607f3863a4a95",
+      "solution": "459273186618459372327618549846135927195726438732984651264597813973841265581362794",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 2,
+      "samples": 7,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "medianP95Ms": [
+        [
+          399.99373299999934,
+          406.0255219999999
+        ],
+        [
+          400.91296599999987,
+          405.25304400000095
+        ]
+      ]
+    }
+  ],
+  "generation": [
+    {
+      "generation": "classic",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          1.108,
+          5.173
+        ],
+        [
+          1.072,
+          4.793
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "x-sudoku",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          0.999,
+          1.558
+        ],
+        [
+          1.078,
+          2.676
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "killer",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          4.101,
+          5.82
+        ],
+        [
+          4.109,
+          5.332
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "jigsaw-killer",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          3.905,
+          5.519
+        ],
+        [
+          3.95,
+          5.506
+        ]
+      ],
+      "memoryBytes": [
+        1507328,
+        1507328
+      ]
+    },
+    {
+      "generation": "windoku",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          1.016,
+          2.338
+        ],
+        [
+          0.965,
+          2.313
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "little-killer-newman",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          5.79,
+          8.63
+        ],
+        [
+          5.22,
+          9.133
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "little-killer-murphy",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          2.709,
+          3.889
+        ],
+        [
+          2.843,
+          3.582
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    }
+  ],
+  "fixtureOracle": {
+    "fixtureSha256": "82cce79aa71fa38a3af6c06da94fa16d145f69abb6416b1d93c357660b2bbbd2",
+    "oracle": {
+      "count": 1,
+      "solution": "945836172837152496261947853476591238328674519519283647782419365694325781153768924",
+      "nodes": 88809,
+      "maxNodes": 200000,
+      "elapsedMs": 85435.230331
+    }
+  },
+  "hashes": {
+    "paired-wasm.jsonl": "85b51418e14c3eef13894eb0c0c802fb5a088ae42121b1422589a5963afd3bfa",
+    "paired-native.jsonl": "99bcd9998cf09662f6faf98f6547174f1f1a1594234ae9ae00d0ba7a759e4346",
+    "paired-controls.jsonl": "be170ecce81afef2588f2dd4f1ef27e006ecc43d62d533cdb5cd3fad5fb7af58",
+    "paired-cold-wasm.jsonl": "f5b1ec807536e060ef8220edb1e5b715d377e3885a899abb688b2098b227e482",
+    "generation-recipes.json": "af4f1a53c7bb321708b012a23c982969acc11c7ae1ad6db5a98cceb31da2a55e",
+    "paired-generation.jsonl": "9fb8165a1f7507782abbbeb5d99013c15dd61e80de9fbdd20f0f09187915ac7e",
+    "paired-responses-current.log": "0328788685547f624361ca86ecea1b4137fa7710c7ae315942255c91de41e53c",
+    "baseline-wasm.cpuprofile": "8e865dc9ae113e799059a32941584ccea2bdefc2dc4bdf76f208ab3df866baac"
+  }
+}

@@ -38,7 +38,7 @@ test('three unmodified modern Coach sources import while unsupported complete ex
         assert.deepEqual((await detectPuzzle(source.code)).variant!.puzzle, current.puzzle)
         continue
       }
-      const reason = source.url.endsWith('9uMo') ? /9\s*×\s*9/ : /format|version/i
+      const reason = source.url.endsWith('9uMo') ? /6 × 6.*unsupported active rule/ : /format|version/i
       await assert.rejects(detectPuzzle(source.code), reason)
       continue
     }
@@ -91,7 +91,7 @@ test('Renban candidates and both Pencil modes retain the allowed interval throug
   assert.deepEqual(undo(entered).position, game.position); assert.deepEqual(redo(undo(entered)).position, entered.position)
   const entries = [...empty]; entries[27] = '1'
   assert.deepEqual(fillEntries(game, entries.join('')).position.center, entered.position.center)
-  assert.equal(generationVariant({ id: 'renban' }), undefined)
+  assert.equal(generationVariant({ id: 'renban' }), 'renban')
   const distant: VariantPuzzle = { version: 1, givens: empty, rules: [{ type: 'renban', cells: [0,13,26] }] }
   const display = variantHouseMasks(distant, '3' + empty.slice(1))
   assert.equal(display[13] & 4, 0); assert.equal(display[26] & 4, 0)

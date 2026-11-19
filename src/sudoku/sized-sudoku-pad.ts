@@ -55,19 +55,21 @@ export function isSizedSudokuPadCode(code: unknown): code is string {
   return typeof code === 'string' && code.length <= MAX_CODE && /^(?:scl|ctc)[A-Za-z0-9+/=]+$/i.test(code)
 }
 
-/** Decode the plain-JSON SCL envelope used by the supported 4×4 arithmetic export. */
-export function decodeSizedSudokuPad(code: string): SizedSudokuPadImport {
+/** Decode the plain-JSON SCL envelope used by the supported sized exports. */
+export function decodeSudokuPadEnvelope(code: string): unknown {
   if (!isSizedSudokuPadCode(code)) {
     return reject('This SudokuPad code is damaged or too large.')
   }
   const decoded = lzString.decompressFromBase64(code.slice(3))
   if (!decoded || decoded.length > MAX_DECODED) return reject('This SudokuPad code is empty or too large.')
-  let data: unknown
   try {
-    data = JSON.parse(decoded)
+    return JSON.parse(decoded)
   } catch {
     return reject('This SudokuPad code does not contain a supported puzzle export.')
   }
+}
+
+export function decodeSizedSudokuPad(code: string, data = decodeSudokuPadEnvelope(code)): SizedSudokuPadImport {
   if (!record(data) || Object.keys(data).some(key => !FIELDS.includes(key)) ||
     typeof data.id !== 'string' || !data.id || !record(data.metadata) ||
     Object.keys(data.metadata).some(key => !METADATA.includes(key))) {

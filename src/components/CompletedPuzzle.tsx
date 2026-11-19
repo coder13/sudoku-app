@@ -8,7 +8,7 @@ import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { gameGenerationVariant, gameVariantId, isSizedPuzzleId, miniDifficulties, miniDifficulty, MINI_NAME } from '../sudoku/new-puzzle'
+import { gameGenerationVariant, gameVariantId, isSizedPuzzleId, miniDifficulties, miniDifficulty, MINI_NAME, SIX_NAME } from '../sudoku/new-puzzle'
 import { variantDifficulties, variantDifficulty, variantDifficultyLabel, variantName } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
@@ -20,7 +20,7 @@ import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 
 function activePuzzleSummary(game: Game) {
   const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
-  const name = game.grid && !game.algebraic ? MINI_NAME
+  const name = game.grid?.size === 6 ? SIX_NAME : game.grid && !game.algebraic ? MINI_NAME
     : game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
   const progress = !game.started ? 'Not started' : game.timeUntracked ? 'In progress' : `${formatTime(game.elapsed)} played`
   return [name, rating, progress].filter(Boolean).join(' · ')
@@ -61,6 +61,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = gameGenerationVariant(game)
   const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
+  const boxRows = game.grid?.size === 6 ? game.grid.boxRows : undefined
   const needsChoice = !inCollection && !recipe
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
@@ -98,8 +99,8 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(nextDifficulty, undefined, recipe, { ruleset })
-  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, generate, onChooseVariant, online, nextDifficulty])
+    } else void generate(nextDifficulty, undefined, recipe, { ruleset, boxRows })
+  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, boxRows, generate, onChooseVariant, online, nextDifficulty])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext

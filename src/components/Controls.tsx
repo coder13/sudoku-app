@@ -38,7 +38,7 @@ type Props = {
   onDigitHighlightMatchChange?: (match: DigitHighlightMatch) => void
   hasCellSelection: boolean
   values: string
-  gridSize?: 4 | 9
+  gridSize?: 4 | 6 | 9
   input: (digit: number) => void
   undo: () => void
   redo: () => void
@@ -200,7 +200,7 @@ export function Controls(props: Props) {
               </div>
             )}
             {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
-            <div className={`keypad ${colors ? 'palette' : gridSize === 4 ? 'mini-keypad' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
+            <div className={`keypad ${colors ? 'palette' : gridSize === 4 ? 'mini-keypad' : gridSize === 6 ? 'six-keypad' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
                 const singleHighlight = props.highlightedDigitMask === (1 << (digit - 1))
                 const armed = props.selectedDigit === digit || (canHighlightDigits && singleHighlight)

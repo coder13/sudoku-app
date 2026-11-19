@@ -82,3 +82,50 @@ Fixed-template generation succeeds for twenty of twenty distinct, independently 
 An alternating paired run checks Between, Region Sum, Clone, Sandwich, Classic, Killer and Diagonal controls against the preceding shipping app. Each operation has ten warmups and forty samples. Input positions match exactly. Median input changes range from -0.0006 to +0.0061 ms; Sandwich changes 0.0809 to 0.0870 ms. SSR medians vary within about 0.009 ms. Tail regressions remain visible: Between SSR p95 changes 1.223 to 2.218 ms and Killer 1.332 to 1.621 ms. These measurements do not establish a general speedup. Full paired data is retained in the session's `paired-app.json`; production native code and Wasm are unchanged.
 
 Summed production `dist/client/assets` files, per-file Node gzip at its default level, change JS from 6,263,040 / 2,069,934 to 6,269,903 / 2,071,696 raw/gzip bytes (+6,863 / +1,762). CSS changes from 301,232 / 41,633 to 301,338 / 41,666 (+106 / +33). Wasm changes by zero bytes. HTML/service-worker files are excluded from this asset-only comparison.
+
+## Short Renban support and exact import
+
+The Renban ModE fixture retains zero givens, fourteen Renban lines, and four Little Killer sums. Its SHA-256 is recorded with the [measurement data](docs/measurements/renban-exact.json). The independent digit-array counter found the published solution and proved uniqueness in 88,809 of 200,000 nodes. The full fixture remains in [little-killer-menace.json](tests/fixtures/little-killer-menace.json).
+
+The release Wasm CPU profile at main `3429f0b` sampled four exact requests. Of 72,802 exclusive samples, 25,715 were in the digit-set matcher and 17,594 were in line support. Sum support and its wide-shift helper accounted for 19,652 samples. The import caller sends separate uniqueness and solve requests before it rates the puzzle. [Issue #192](https://github.com/coder13/sudoku-app/issues/192)
+
+A two-cell Renban uses the other cell's mask shifted by one digit in each direction. A three-cell Renban checks all six ascending cell orders. For each order, shifts align the masks with the smallest digit. The intersection finds every valid minimum. Reverse shifts give the supported digits for each cell. Longer lines use the interval matcher. The independent tuple tests cover every pair of two-cell masks, every subset of each three-digit window, mixed windows, and impossible assignments.
+
+### Paired release measurements
+
+Both builds used Linux x86-64 on an AMD Ryzen 7 7840U with eight cores, 16 threads, and 60.6 GiB RAM. Rust 1.92.0 built the release profile with LTO. Node 22.23.1 ran the app Wasm. The baseline was `3414314` and the candidate was `7541b00`. Each build used its own Cargo cache and target directory.
+
+Each Wasm case used one warmup and five samples per build. Build order alternated on logical CPUs 6 and 7. The p95 is the largest of the five samples. The import measurements include serialization and the app caller in a single Node process. Browser worker transfer, layout, and rendering are outside this measurement.
+
+| Operation | Baseline median / p95 (ms) | Candidate median / p95 (ms) |
+| --- | ---: | ---: |
+| Wasm uniqueness, 1,000,000 nodes | 10,091.4 / 10,109.0 | 5,407.2 / 5,540.7 |
+| Wasm solve, 1,000,000 nodes | 8,762.9 / 8,769.3 | 4,724.2 / 4,728.9 |
+| Wasm import preview | 19,174.9 / 31,721.8 | 11,255.1 / 25,655.9 |
+| Wasm uniqueness, 20,000 nodes | 279.1 / 285.4 | 155.7 / 160.0 |
+| Wasm solve, 20,000 nodes | 264.6 / 282.6 | 145.5 / 174.8 |
+| Native CLI uniqueness, 1,000,000 nodes | 5,589.2 / 5,971.6 | 2,697.3 / 3,400.7 |
+| Native CLI solve, 1,000,000 nodes | 4,913.9 / 5,064.2 | 2,285.4 / 2,298.8 |
+
+Native timings include a fresh CLI process for each sample. Both builds returned the published solution and verified uniqueness at the default budget. Both exhausted the 20,000-node searches. The import reports a stalled rating at zero points with scoring version 8. Five previews per build completed, with longer exact calls near the end of the series.
+
+Three fresh Node processes per build had a median first uniqueness call of 10,037.9 ms and 5,481.0 ms. Median instantiation was 13.57 ms and 13.56 ms. Median process peak RSS was 105.2 MiB and 105.9 MiB. Both Wasm instances reached 1,572,864 bytes of linear-memory capacity in the paired run. The buffer size measures capacity. App Wasm gained 333 raw bytes and saved 1,075 gzip bytes. The native CLI gained 584 bytes.
+
+Seven additional exact controls covered Renban, mixed rules, Jigsaw, and FzzD. Clover's Renban/Killer solve median fell from 0.203 ms to 0.128 ms. The FzzD solve median rose from 399.99 ms to 400.91 ms. The [measurement data](docs/measurements/renban-exact.json) includes all control summaries and the raw Renban ModE timing samples.
+
+The generation controls returned 140 identical results from seven recipes and seeds 1–20. Each request allowed six attempts and 20,000 nodes. Each recipe returned twenty distinct puzzles. Independent counts include uniqueness and rule dependence for both Little Killer recipes. X-Sudoku generation had the largest slower tail, from 1.56 ms to 2.68 ms p95.
+
+### Reproduction and validation
+
+Build the app Wasm at each pinned commit with `npm run build:wasm`. Use a separate Cargo target directory for each build. Run these commands from the candidate worktree.
+
+```sh
+node --experimental-strip-types scripts/bench-renban-exact.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm --renban --little-killer
+cargo test --locked --release -p sudoku-app-engine --all-features
+node --experimental-strip-types --test tests/little-killer-wasm.mts tests/renban-wasm.mts
+```
+
+The integrated comparison matched 5,178 full responses on 31 corpus positions and 363 practice positions. It covered all 121 detector IDs, every hint page, explicit removals, disabled techniques, and a sum off by one. The app request used the 116-ID order in the measurement data.
+
+The initial candidate passed 381 native tests and doctests, 678 app tests, and 497 Wasm contracts. The native capability matrix, four Wasm profiles, and strict Rust docs also passed. The integrated candidate passed types and 28 of 29 focused Wasm tests. The failing Little Killer storage test also fails on the integrated baseline. Its Node window fixture lacks the location used by UUID sharing. [Reproduction on PR #254](https://github.com/coder13/sudoku-app/pull/254#issuecomment-7019829091)
