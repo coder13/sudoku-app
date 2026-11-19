@@ -52,6 +52,10 @@ export const VARIANTS = {
     name: 'Entropic Lines',
     rule: 'Each three successive positions on an Entropic line contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',
   },
+  modular: {
+    name: 'Modular Lines',
+    rule: 'Each three successive positions on a Modular line contain one digit from {1, 4, 7}, one from {2, 5, 8} and one from {3, 6, 9}. These groups have different remainders when divided by 3. The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent. Digits may repeat if all other puzzle rules allow it.',
+  },
   palindrome: {
     name: 'Palindrome',
     rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
@@ -105,10 +109,6 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
-  modular: {
-    name: 'Modular Lines',
-    rule: 'Each three successive positions on a Modular line contain one digit from {1, 4, 7}, one from {2, 5, 8} and one from {3, 6, 9}. These groups have different remainders when divided by 3. The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent. Digits may repeat if all other puzzle rules allow it.',
-  },
   renban: {
     name: 'Renban',
     rule: 'Each Renban line contains a set of consecutive digits in any order, without repetition. Connected branches of one clue form one set. Overlapping clues stay independent.',

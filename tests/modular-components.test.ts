@@ -12,7 +12,7 @@ import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-ex
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
-import { variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { generationVariant, isVariantId, variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { assertModularProof } from './helpers/modular-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 
@@ -26,7 +26,10 @@ let Board: Component,
   MobilePanelLayout: Component,
   SharePuzzle: Component,
   HintCard: Component,
-  SolutionPath: Component
+  SolutionPath: Component,
+  VariantPreview: Component,
+  CompletedPuzzle: Component
+let renderNewPuzzle: (path: string, preference?: { variant: string; difficulty: string }) => Promise<string>
 before(async () => {
   server = await createServer({
     configFile: false,
@@ -39,6 +42,9 @@ before(async () => {
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
 })
 after(async () => {
   await server?.close()
@@ -125,8 +131,9 @@ test('sharing a progressed Modular mixed source retains its complete original ru
     value: { location: { hostname: 'example.test', origin: 'https://example.test' } },
   })
   try {
+    const id = variantIdForPuzzle(source.puzzle); assert.ok(id !== 'classic')
     const variant = {
-      id: variantIdForPuzzle(source.puzzle),
+      id,
       puzzle: source.puzzle,
       solution: source.solution,
     }
@@ -195,4 +202,55 @@ test('the real lesson and hint/solution components explain an independently chec
   const wrong = structuredClone(source.deduction)
   wrong.actions = [{ eliminate: { cell: 41, digit: 3 } }]
   assert.throws(() => assertModularProof(source.position.puzzle, wrong))
+})
+
+
+test('New Puzzle offers Medium Modular Lines with complete geometry, valid remainder digits and actual navigation', async () => {
+  assert.ok(isVariantId('modular'))
+  assert.deepEqual(variantDifficulties('modular'), ['medium'])
+  const construction = JSON.parse(readFileSync(new URL('./fixtures/modular-generation.json', import.meta.url), 'utf8')).sources[0]
+  const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'modular' }))
+  const paths = [...preview.matchAll(/class="variant-modular"><polyline points="([^"]+)"/g)].map(match => match[1])
+  const expected = [construction.lines[0], construction.lines[6]]
+    .map((cells: number[]) => cells.map(cell => `${cell % 9 + .5},${Math.floor(cell / 9) + .5}`).join(' '))
+  assert.deepEqual(paths, expected)
+  const digits = [...preview.matchAll(/<text[^>]*>([1-9])<\/text>/g)].map(match => Number(match[1]))
+  assert.deepEqual(digits, construction.lines[0].map((cell: number) => Number(construction.completionTemplate[cell])))
+  for (let start = 0; start + 2 < digits.length; start++) assert.equal(new Set(digits.slice(start, start + 3).map(digit => digit % 3)).size, 3)
+  const choice = await renderNewPuzzle('/puzzles/new?variant=modular&ruleset=dutch')
+  assert.match(choice, /Choose a variant/)
+  assert.match(choice, /\/puzzles\/new\/difficulty\?variant=modular/)
+  assert.doesNotMatch(choice, /ruleset=dutch/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=modular')
+  assert.match(difficulty, /Choose difficulty/)
+  assert.match(difficulty, /\/puzzles\/new\?variant=modular/)
+  assert.match(difficulty, /value="medium"/)
+  assert.doesNotMatch(difficulty, /value="(?:easy|hard)"/)
+  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'modular', difficulty: 'easy' }), /Start medium puzzle/)
+})
+
+test('completed constructed Modular puzzles offer another puzzle while full published mixed originals retain every companion', () => {
+  const constructed = JSON.parse(readFileSync(new URL('./fixtures/modular-generation.json', import.meta.url), 'utf8')).example
+  const coach = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples.find((source: { url: string }) => source.url.endsWith('Hu9m'))
+  for (const source of [constructed, fixture, coach]) {
+    const id = variantIdForPuzzle(source.puzzle); assert.ok(id !== 'classic')
+    const game = { ...makeGame('modular-complete', 'Modular Lines', source.puzzle.givens, 'imported'),
+      variant: { id, puzzle: source.puzzle, solution: source.solution } }
+    game.position.entries = [...source.solution as string].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
+    const definition = structuredClone(game.variant)
+    const html = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
+      ratingPending: false, shortcutEnabled: false, showGuides: true, onResumePuzzle() {}, onChooseDifficulty() {}, onChooseVariant() {} }))
+    if (source === constructed) {
+      assert.equal(generationVariant(game.variant), 'modular')
+      assert.match(html, /Next medium puzzle/)
+      assert.match(html, /Choose difficulty/)
+      assert.match(html, /Choose variant/)
+    } else {
+      assert.equal(generationVariant(game.variant), undefined)
+      assert.match(html, /Choose another puzzle/)
+      assert.doesNotMatch(html, /Next medium puzzle/)
+      assert.equal(game.variant.puzzle.rules.length, source === fixture ? 12 : 35)
+    }
+    assert.deepEqual(game.variant, definition)
+  }
 })

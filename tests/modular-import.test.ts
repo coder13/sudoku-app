@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
-import { conflictsOf, enter, fillEntries, makeGame, undo, redo } from '../src/sudoku/game.ts'
+import { conflictsOf, enter, fillEntries, makeGame, undo, redo, type Game } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import {
@@ -96,7 +96,7 @@ test('both Pencil modes, bulk input, histories and walkthrough peer masks use th
     rules: [{ type: 'modular', cells: [0, 13, 26, 32] }],
   }
   const solution = load('newman').solution
-  let game = {
+  let game: Game = {
     ...makeGame('modular-input', 'Modular Lines', empty, 'imported'),
     variant: { id: 'modular' as const, puzzle, solution },
   }
@@ -120,14 +120,14 @@ test('both Pencil modes, bulk input, histories and walkthrough peer masks use th
   // Full group removal remains an explained step in walkthrough displays.
   assert.ok(masks[13] & 8)
   assert.ok(masks[32] & 2)
-  assert.equal(generationVariant({ id: 'modular' }), undefined)
+  assert.equal(generationVariant({ id: 'modular' }), 'modular')
 })
 
 test('all grid transforms preserve complete mixed sources and their independent printed completions', () => {
   for (const source of [load('newman'), ...load('coach').examples.filter((s: { puzzle?: VariantPuzzle }) => s.puzzle)])
     for (let symmetry = 0; symmetry < 8; symmetry++) {
       const changed = reflectVariant(source.puzzle, symmetry)
-      assert.equal(changed.rules.length, source.puzzle.rules.length)
+      assert.equal(changed.rules!.length, source.puzzle.rules.length)
       assert.equal(isPlayablePuzzle(variantIdForPuzzle(changed), changed), true)
       assertVariantCompletion(changed, transformedBoard(source.solution, symmetry))
     }

@@ -95,3 +95,11 @@ export const EntropicDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=entropic" />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 }
+
+export const ModularVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=modular" />,
+}
+export const ModularDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=modular" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}

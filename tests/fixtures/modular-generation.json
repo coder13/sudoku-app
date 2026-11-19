@@ -1,0 +1,378 @@
+{
+  "sourceAppHead": "1b5b6e38216e6ef792cb1f56af4c0eab330cdc06",
+  "sourceEngineSha256": "68c06e8ac772a5c834752cad4f45a0e5d808adc8085bafdff25729225118df40",
+  "provenance": "Constructed Modular templates by a partition-preserving digit bijection from all paths of complete pure Entropic fixtures; new puzzle construction, not a published Modular transcription.",
+  "mapping": [
+    0,
+    1,
+    4,
+    7,
+    2,
+    5,
+    8,
+    3,
+    6,
+    9
+  ],
+  "technique": {
+    "aliases": [],
+    "cost": 27,
+    "difficulty": "medium",
+    "id": "modular",
+    "requiresUniqueSolution": false
+  },
+  "sources": [
+    {
+      "id": "clover-modular-construction",
+      "geometrySource": {
+        "title": "Entropic Lines Sudoku, Numeric Keypad",
+        "author": "clover!",
+        "date": "2026-01-06",
+        "page": "https://www.gmpuzzles.com/blog/2026/01/entropic-lines-sudoku-by-clover/",
+        "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2026/260106-EntropicLinesSudoku-NumericKeypad.pdf",
+        "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2026/260106-EntropicLinesSudoku-NumericKeypad-soln.pdf",
+        "puzzleSha256": "b32d28d9751e8a87d1d2fcaf2704de678bc86963330822b05fdb4b878fa25939",
+        "solutionSha256": "eaa7db67f04b3c59bb26a3a6028e1c1c99220b8ad8a16f185a5d9c3b35fc3828"
+      },
+      "lines": [
+        [
+          2,
+          1,
+          0,
+          9,
+          18,
+          19
+        ],
+        [
+          14,
+          5,
+          4,
+          3,
+          12,
+          21,
+          22
+        ],
+        [
+          15,
+          6,
+          7,
+          8,
+          17,
+          26,
+          25
+        ],
+        [
+          28,
+          27,
+          36,
+          45,
+          46,
+          47,
+          38
+        ],
+        [
+          42,
+          33,
+          34,
+          35,
+          44,
+          53,
+          52
+        ],
+        [
+          55,
+          54,
+          63,
+          72,
+          73,
+          74,
+          65
+        ],
+        [
+          58,
+          59,
+          68,
+          77,
+          76,
+          75,
+          66
+        ],
+        [
+          61,
+          62,
+          71,
+          80,
+          79,
+          78,
+          69
+        ]
+      ],
+      "completionTemplate": "462579183851362974379184265916257438284936517735418629548623791697841352123795846"
+    },
+    {
+      "id": "EoGB-modular-construction",
+      "geometrySource": {
+        "url": "https://sudoku.coach/en/s/EoGB",
+        "title": "Entropic Snake",
+        "author": "adboe"
+      },
+      "lines": [
+        [
+          73,
+          74,
+          75,
+          67,
+          76,
+          77,
+          78,
+          68,
+          58,
+          59,
+          60,
+          69,
+          70,
+          61,
+          62,
+          52,
+          42,
+          51,
+          41,
+          50,
+          40,
+          49,
+          48,
+          39,
+          38,
+          28,
+          37,
+          27,
+          19,
+          18,
+          9,
+          0,
+          10,
+          1,
+          11,
+          2,
+          3,
+          12,
+          13,
+          21,
+          22,
+          14,
+          15,
+          16,
+          25,
+          24,
+          33,
+          34,
+          35,
+          44,
+          53
+        ]
+      ],
+      "completionTemplate": "942716853756328194831495726495261387327854619618973245564187932283649571179532468"
+    },
+    {
+      "id": "BSEJ-modular-construction",
+      "geometrySource": {
+        "url": "https://sudoku.coach/en/s/BSEJ",
+        "title": "Entropic Web",
+        "author": "joe"
+      },
+      "lines": [
+        [
+          6,
+          7,
+          8,
+          17,
+          26,
+          35,
+          44,
+          53,
+          62,
+          71,
+          80,
+          79,
+          78,
+          77,
+          76,
+          75,
+          74,
+          73,
+          72,
+          63,
+          54,
+          45,
+          36,
+          27,
+          18,
+          9,
+          0,
+          1,
+          2,
+          3
+        ],
+        [
+          12,
+          11,
+          10,
+          19,
+          28,
+          37,
+          46,
+          55,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          25,
+          34
+        ],
+        [
+          22,
+          21,
+          20,
+          29,
+          38
+        ],
+        [
+          47,
+          56,
+          57
+        ],
+        [
+          58,
+          59,
+          60
+        ],
+        [
+          48,
+          49,
+          50
+        ],
+        [
+          51,
+          42,
+          41
+        ]
+      ],
+      "completionTemplate": "723489561965172348841653729482965137396718452517234986158327694634891275279546813"
+    }
+  ],
+  "example": {
+    "puzzle": {
+      "givens": "002009003000062000000100200010050000084000000000000620008000791000000000000000000",
+      "regions": {
+        "type": "boxes"
+      },
+      "rules": [
+        {
+          "cells": [
+            2,
+            1,
+            0,
+            9,
+            18,
+            19
+          ],
+          "type": "modular"
+        },
+        {
+          "cells": [
+            14,
+            5,
+            4,
+            3,
+            12,
+            21,
+            22
+          ],
+          "type": "modular"
+        },
+        {
+          "cells": [
+            15,
+            6,
+            7,
+            8,
+            17,
+            26,
+            25
+          ],
+          "type": "modular"
+        },
+        {
+          "cells": [
+            28,
+            27,
+            36,
+            45,
+            46,
+            47,
+            38
+          ],
+          "type": "modular"
+        },
+        {
+          "cells": [
+            42,
+            33,
+            34,
+            35,
+            44,
+            53,
+            52
+          ],
+          "type": "modular"
+        },
+        {
+          "cells": [
+            55,
+            54,
+            63,
+            72,
+            73,
+            74,
+            65
+          ],
+          "type": "modular"
+        },
+        {
+          "cells": [
+            58,
+            59,
+            68,
+            77,
+            76,
+            75,
+            66
+          ],
+          "type": "modular"
+        },
+        {
+          "cells": [
+            61,
+            62,
+            71,
+            80,
+            79,
+            78,
+            69
+          ],
+          "type": "modular"
+        }
+      ],
+      "version": 1
+    },
+    "solution": "462579183851362974379184265916257438284936517735418629548623791697841352123795846"
+  }
+}
