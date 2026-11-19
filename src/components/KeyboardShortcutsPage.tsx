@@ -1,3 +1,4 @@
+import { Button, iconButtonClassName } from './Button'
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft, RotateCcw } from 'lucide-react'
 import { useState, useSyncExternalStore, type KeyboardEvent } from 'react'
@@ -78,17 +79,17 @@ export function KeyboardShortcutsPage() {
   return <main className="shortcuts-page">
     <div className="shortcuts-page-inner">
       <header className="shortcuts-page-heading">
-        <Link to="/" className="icon-button shortcuts-back" aria-label="Back to Play"><ChevronLeft size={21} /></Link>
+        <Link to="/" className={iconButtonClassName('secondary', 'shortcuts-back')} aria-label="Back to Play"><ChevronLeft size={21} /></Link>
         <div><h1>Keyboard shortcuts</h1><p>View every shortcut and change the single-key commands that fit your workflow.</p></div>
-        <button type="button" className="button secondary shortcuts-reset-all" onClick={() => {
+        <Button type="button" className="shortcuts-reset-all" onClick={() => {
           shortcutStore.resetAll()
           setEditing(null)
           setMessage('Keyboard shortcuts reset to their defaults.')
-        }}><RotateCcw size={17} /> Reset all</button>
+        }}><RotateCcw size={17} /> Reset all</Button>
       </header>
 
       <p className="shortcuts-save-note" role="status" aria-live="polite">
-        {message || 'Changes save automatically on this device.'}
+        {message || 'Changes save automatically.'}
       </p>
 
       {editableSections.map((category) => {
@@ -103,10 +104,10 @@ export function KeyboardShortcutsPage() {
             const capturing = editing === definition.id
             return <div className="shortcut-row" key={definition.id}>
               <span className="shortcut-copy"><strong>{definition.label}</strong><small>{definition.description}</small></span>
-              {changed && <button type="button" className="button borderless shortcut-reset" onClick={() => {
+              {changed && <Button type="button" variant="quiet" className="shortcut-reset" onClick={() => {
                 shortcutStore.reset(definition.id)
                 setMessage(`${definition.label} reset to ${shortcutLabel(DEFAULT_SHORTCUTS[definition.id])}.`)
-              }}>Reset</button>}
+              }}>Reset</Button>}
               <button type="button" className={`shortcut-binding${capturing ? ' is-capturing' : ''}`}
                 data-shortcut-capture="true" aria-label={`Change shortcut for ${definition.label}. Current shortcut ${shortcutLabel(shortcuts[definition.id])}`}
                 onClick={() => { setEditing(definition.id); setMessage(`Press a new key for ${definition.label}.`) }}

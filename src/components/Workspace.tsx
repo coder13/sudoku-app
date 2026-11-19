@@ -1,3 +1,4 @@
+import { Button, IconButton, buttonClassName } from './Button'
 import { Link, useLocation, useMatch, useNavigate } from '@tanstack/react-router'
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
@@ -11,10 +12,14 @@ import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import {
   DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, INPUT_SIZE_STEP, MAX_INPUT_SIZE,
-  MIN_INPUT_SIZE, readNewPuzzlePreference, readPanelHeight, readPreferences, saveAdvancedModes, saveAppearance, saveCellReferenceStyle, saveDifficulty, saveErrorMode,
+  ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY, ERROR_MODE_KEY, HIGHLIGHT_KEY,
+  INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, MIN_INPUT_SIZE, readNewPuzzlePreference, readPanelHeight, readPreferences, saveAdvancedModes, saveAppearance, saveCellReferenceStyle, saveDifficulty, saveErrorMode,
   saveHighlightPreferences, saveInputSize, savePanelHeight, saveWorkspaceMode, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_WORKSPACE_MODE,
   saveNewPuzzlePreference, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
 } from '../sudoku/preferences'
+import { deviceSync } from '../sudoku/device-sync'
+import { inProgress } from '../sudoku/puzzle-activity'
+import { ResumePuzzles } from './ResumePuzzles'
 import { roomStore } from '../sudoku/storage'
 import { generationVariant } from '../sudoku/variants'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
@@ -55,6 +60,9 @@ function saveAdvancedPanelVisibility(value: AdvancedPanelVisibility) {
   try { localStorage.setItem(ADVANCED_PANEL_VISIBILITY_KEY, JSON.stringify(value)) }
   catch { /* Panel visibility remains active for this session. */ }
 }
+
+const shellPreferenceKeys = new Set([ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY,
+  ERROR_MODE_KEY, HIGHLIGHT_KEY, INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY])
 
 const PlayContent = createContext<ReactNode>(null)
 type PuzzlesContentValue = {
@@ -119,7 +127,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const resizeStartHeight = useRef(panelHeight)
   const resizeStartInputSize = useRef(inputSize)
   const automaticPuzzleStarted = useRef(false)
-  const game = games.find((item) => item.id === active)
+  const requested = useMatch({ from: '/', shouldThrow: false, select: m => m.search.puzzle })
+  const sync = useSyncExternalStore(deviceSync.subscribe, deviceSync.getSnapshot, deviceSync.getServerSnapshot)
+  const homePreview = useRef<string | null>(null)
+  const followingHome = Boolean(requested && requested === homePreview.current)
+  const game = games.find(item => item.id === (requested ?? active))
+  const resumable = playRoute && (!requested || followingHome) && workspaceReady ? inProgress(games) : []
+  const showLibrary = !requested && resumable.length > 1
+  const soleId = resumable.length === 1 ? resumable[0].id : undefined
   const newPuzzleDefaults: NewPuzzlePreference = newPuzzlePreference ?? {
     variant: generationVariant(game?.variant) ?? 'classic',
     difficulty: game?.generatedWithAuto ? 'auto' : game?.difficulty ?? difficulty,
@@ -155,23 +170,37 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const disconnect = roomStore.connect()
+    const disconnectSync = deviceSync.connect()
     const disconnectDownloads = collectionDownloads.connect()
-    const preferences = readPreferences()
-    setAdvancedModesState(preferences.advancedModes)
-    savedAppearance.current = preferences.appearance
-    setAppearance(preferences.appearance)
-    setHighlightingState(preferences.highlighting)
-    setErrorModeState(preferences.errorMode)
-    setCellReferenceStyleState(preferences.cellReferenceStyle)
-    setInputSizeState(preferences.inputSize)
-    setDifficultyState(preferences.difficulty)
-    setNewPuzzlePreference(readNewPuzzlePreference())
-    setPreferredWorkspaceMode(preferences.workspaceMode)
+    function refreshPreferences(key: string | null) {
+      const matches = (setting: string) => key === null || key === setting
+      const preferences = readPreferences()
+      if (matches(ADVANCED_MODE_KEY)) setAdvancedModesState(preferences.advancedModes)
+      if (matches(APPEARANCE_KEY)) {
+        savedAppearance.current = preferences.appearance
+        setAppearance(preferences.appearance)
+      }
+      if (matches(HIGHLIGHT_KEY)) setHighlightingState(preferences.highlighting)
+      if (matches(ERROR_MODE_KEY)) setErrorModeState(preferences.errorMode)
+      if (matches(CELL_REFERENCE_STYLE_KEY)) setCellReferenceStyleState(preferences.cellReferenceStyle)
+      if (matches(INPUT_SIZE_KEY)) setInputSizeState(preferences.inputSize)
+      if (matches(DIFFICULTY_KEY)) setDifficultyState(preferences.difficulty)
+      if (matches(NEW_PUZZLE_KEY)) setNewPuzzlePreference(readNewPuzzlePreference())
+      if (matches(WORKSPACE_MODE_KEY)) setPreferredWorkspaceMode(preferences.workspaceMode)
+    }
+    function onStorage(event: StorageEvent) {
+      if (event.storageArea === localStorage && (event.key === null || shellPreferenceKeys.has(event.key))) refreshPreferences(event.key)
+    }
+    window.addEventListener('storage', onStorage)
+    refreshPreferences(null)
     setAdvancedPanels(readAdvancedPanelVisibility())
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
     setWorkspaceReady(true)
-    return () => { disconnect(); disconnectDownloads() }
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      disconnect(); disconnectSync(); disconnectDownloads()
+    }
   }, [])
   useEffect(() => {
     if (!workspaceReady || savedAppearance.current === appearance) return
@@ -197,21 +226,42 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setPanel(null)
     void navigate({ to: '/puzzles/new', search: {} })
   }, [mobile, navigate, panel])
+  useEffect(() => roomStore.onPlay(id => {
+    homePreview.current = null
+    if (!id && !new URLSearchParams(window.location.search).has('puzzle')) return
+    void navigate({ to: '/', search: id ? { puzzle: id } : {}, viewTransition: false })
+  }), [navigate])
   useEffect(() => {
-    if (!workspaceReady || !playRoute || stoppedPlaying || PUZZLE_LINK.test(window.location.hash)) return
-    if (game) {
+    if (!workspaceReady || !playRoute || PUZZLE_LINK.test(window.location.hash)) return
+    if (requested) {
+      // Home may have resumed the only local save just before another device's
+      // upload arrived. Keep following home until the player uses the board.
+      if (followingHome && resumable.length > 1) {
+        homePreview.current = null
+        void navigate({ to: '/', search: {}, replace: true, viewTransition: false })
+        return
+      }
+      if (game) roomStore.view(requested)
       automaticPuzzleStarted.current = false
       return
     }
-    if (games.length) {
-      const next = games.find((item) => !item.savedForLater)
-      if (next) roomStore.select(next.id)
-      return
+    if (showLibrary || !sync.ready || (stoppedPlaying && !soleId)) return
+    const next = soleId ?? game?.id ?? games.find(item => !item.savedForLater)?.id
+    if (next) {
+      homePreview.current = next
+      void navigate({ to: '/', search: { puzzle: next }, replace: true, viewTransition: false })
+    } else if (!games.length && !sync.linked && !automaticPuzzleStarted.current) {
+      automaticPuzzleStarted.current = true
+      void automaticPuzzle.generate(difficulty)
     }
-    if (automaticPuzzleStarted.current) return
-    automaticPuzzleStarted.current = true
-    void automaticPuzzle.generate(difficulty)
-  }, [workspaceReady, playRoute, game, games.length, stoppedPlaying, difficulty, linkError])
+  }, [workspaceReady, playRoute, requested, game?.id, games.length, soleId, showLibrary, followingHome, resumable.length, sync.ready, sync.linked, stoppedPlaying, difficulty, navigate, linkError])
+  useEffect(() => {
+    if (!followingHome) { if (!playRoute) homePreview.current = null; return }
+    const pin = () => { homePreview.current = null }
+    window.addEventListener('pointerdown', pin, true)
+    window.addEventListener('keydown', pin, true)
+    return () => { window.removeEventListener('pointerdown', pin, true); window.removeEventListener('keydown', pin, true) }
+  }, [followingHome, playRoute])
   useEffect(() => {
     if (!playing) return
     let attempt = 0
@@ -386,7 +436,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   function createPuzzle() {
     setPanel(null)
     roomStore.add({ ...makeGame(createGameId(), 'Untitled puzzle', EMPTY, 'draft'), returnId: active ?? undefined })
-    if (!playing) void navigate({ to: '/' })
   }
 
   function editPuzzle() {
@@ -405,17 +454,17 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const emptyPuzzleContent = <div className="empty-puzzle-content" role={automaticPuzzle.busy ? 'status' : undefined}>
     <h2>{automaticPuzzle.busy ? 'Generating a puzzle…' : 'Start a Sudoku'}</h2>
     {automaticPuzzle.error && <p className="workspace-error" role="alert">{automaticPuzzle.error}</p>}
-    {!automaticPuzzle.busy && <button className="button primary" onClick={() => {
+    {!automaticPuzzle.busy && <Button variant="primary" onClick={() => {
       if (stoppedPlaying || games.length || (mobile && !automaticPuzzle.error)) { openNewPuzzle(); return }
       automaticPuzzleStarted.current = true
       void automaticPuzzle.generate(difficulty)
-    }}><Plus size={18} /> {automaticPuzzle.error ? 'Try again' : 'New puzzle'}</button>}
-    {games.length > 0 && <Link className="button secondary" to="/puzzles/browse">Your puzzles</Link>}
+    }}><Plus size={18} /> {automaticPuzzle.error ? 'Try again' : 'New puzzle'}</Button>}
+    {games.length > 0 && <Link className={buttonClassName()} to="/puzzles/browse">Your puzzles</Link>}
   </div>
 
   return (
     <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
-      enabled={playing && workspaceReady && desktopStandard}>
+      enabled={playing && !showLibrary && workspaceReady && desktopStandard}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
           <Link to="/" className="wordmark" onClick={() => setMenuOpen(false)}>
@@ -433,30 +482,30 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           </nav>
           <div className="topbar-actions" ref={menuRef}>
             {advancedShell && !settingsRoute && <div className="advanced-region-controls" role="group" aria-label="Workspace panels">
-              <button className="icon-button" aria-pressed={activeLeftPanelOpen}
+              <IconButton aria-pressed={activeLeftPanelOpen}
                 aria-label={`${activeLeftPanelOpen ? 'Collapse' : 'Expand'} left panel`}
                 title={`${activeLeftPanelOpen ? 'Collapse' : 'Expand'} ${learning ? 'articles' : 'puzzles'} panel`}
-                onClick={() => setPanelVisibility(learning ? 'articles' : 'left')}><PanelLeft size={17} /></button>
+                onClick={() => setPanelVisibility(learning ? 'articles' : 'left')}><PanelLeft size={17} /></IconButton>
               {playing && <>
-                <button className="icon-button" aria-pressed={advancedPanels.right}
+                <IconButton aria-pressed={advancedPanels.right}
                   aria-label={`${advancedPanels.right ? 'Collapse' : 'Expand'} right panel`}
                   title={`${advancedPanels.right ? 'Collapse' : 'Expand'} right panels`}
-                  onClick={() => setPanelVisibility('right')}><PanelRight size={17} /></button>
-                <button className="icon-button" aria-pressed={advancedPanels.bottom}
+                  onClick={() => setPanelVisibility('right')}><PanelRight size={17} /></IconButton>
+                <IconButton aria-pressed={advancedPanels.bottom}
                   aria-label={`${advancedPanels.bottom ? 'Collapse' : 'Expand'} bottom panel`}
                   title={`${advancedPanels.bottom ? 'Collapse' : 'Expand'} assistance panel`}
-                  onClick={() => setPanelVisibility('bottom')}><PanelBottom size={17} /></button>
+                  onClick={() => setPanelVisibility('bottom')}><PanelBottom size={17} /></IconButton>
               </>}
             </div>}
-            <button className="icon-button desktop-color-mode-toggle" onClick={cycleColorMode}
+            <IconButton className="desktop-color-mode-toggle" onClick={cycleColorMode}
               aria-label={`Color mode: ${COLOR_MODE_LABELS[appearance.colorMode]}. Switch to ${COLOR_MODE_LABELS[nextColorMode]} mode.`}
               title={`${COLOR_MODE_LABELS[appearance.colorMode]} color mode`}>
               <ColorModeIcon size={19} />
-            </button>
-            <button ref={menuButtonRef} className="icon-button app-menu-trigger" aria-label="Open options menu" title="Options"
+            </IconButton>
+            <IconButton ref={menuButtonRef} className="app-menu-trigger" aria-label="Open options menu" title="Options"
               aria-expanded={menuOpen} aria-controls="app-menu" onClick={() => setMenuOpen((open) => !open)}>
               <Menu size={20} />
-            </button>
+            </IconButton>
             <Presence open={menuOpen}>{(presence) => <div className="app-menu" id="app-menu" data-presence={presence}
               aria-hidden={presence === 'exit' || undefined} inert={presence === 'exit' || undefined}>
               <Link className="mobile-menu-only" to="/" onClick={() => setMenuOpen(false)}><Play size={17} /> Play</Link>
@@ -477,6 +526,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
               <Link to="/puzzles/statistics" onClick={() => setMenuOpen(false)}>
                 <BarChart3 size={17} /> Statistics
               </Link>
+              <Link to="/sync" onClick={() => setMenuOpen(false)}><Monitor size={17} /> Device sync</Link>
               <button onClick={openSettings}><SlidersHorizontal size={17} /> Settings</button>
               <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
@@ -492,6 +542,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       }}>
       <PlayContent.Provider value={playing && !workspaceReady ? (
         <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
+      ) : playRoute && showLibrary ? <ResumePuzzles games={resumable} /> : playRoute && requested && !game ? (
+        <main className="page sync-page"><h1>{sync.linked && !sync.ready ? 'Loading puzzle…' : 'Puzzle unavailable on this device'}</h1>
+          <p>{sync.linked ? sync.message : 'Link the device that has this puzzle to open it here.'}</p>
+          <Link className={buttonClassName('primary')} to="/sync">Device sync</Link>
+          <Link className={buttonClassName()} to="/" search={{}}>Return to puzzles</Link>
+        </main>
       ) : playing ? (
         <main id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace">
           {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}
@@ -529,20 +585,20 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       <MotionSurface>{playing && resizeMode && <div className="resize-session-bar" role="region" aria-label="Resize panels">
         <span className="resize-session-copy"><strong>Resize input panel</strong><small>Drag the handle or adjust digit size.</small></span>
         <span className="resize-size-controls" role="group" aria-label="Digit size">
-          <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
-            onClick={() => setInputSizeState(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></button>
-          <button className="icon-button" aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
-            onClick={() => setInputSizeState(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></button>
+          <IconButton aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
+            onClick={() => setInputSizeState(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></IconButton>
+          <IconButton aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
+            onClick={() => setInputSizeState(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></IconButton>
         </span>
         <span className="resize-session-actions">
-          <button className="button secondary" onClick={cancelResize}>Cancel</button>
-          <button className="button primary" onClick={finishResize}>Save</button>
+          <Button onClick={cancelResize}>Cancel</Button>
+          <Button variant="primary" onClick={finishResize}>Save</Button>
         </span>
       </div>}</MotionSurface>
 
       {panel === 'new' && !mobile && <NewPuzzle close={close} difficulty={newPuzzleDefaults.difficulty} initialVariant={newPuzzleDefaults.variant}
         onDifficultyChange={setDifficulty} onPuzzleStart={rememberNewPuzzle} onCreate={createPuzzle} onImport={openImport} />}
-      {panel === 'import' && <ImportPuzzle close={close} onPlay={() => { close(); void navigate({ to: '/' }) }} />}
+      {panel === 'import' && <ImportPuzzle close={close} onPlay={close} />}
       {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
       {settingsRoute && <Settings close={closeSettings} section={settingsSection}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}

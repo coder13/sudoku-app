@@ -1,3 +1,4 @@
+import { Button, IconButton } from './Button'
 import { ArrowLeft, X } from 'lucide-react'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { DeductionAction } from '../sudoku/engine'
@@ -74,15 +75,15 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
     <div className="lesson-practice-guide-bar">
       <span>{step === null ? 'Walkthrough' : `Step ${step + 1} of ${clues.length + 1}`}</span>
       <div className="lesson-practice-guide-actions">
-        <button type="button" className="icon-button" aria-label="Previous step" disabled={step === null || step === 0}
-          onClick={() => setStep((step ?? 0) - 1)}><ArrowLeft size={16} aria-hidden="true" /></button>
-        <button ref={nextButton} type="button" className="button secondary" disabled={!ready || solution || Boolean(result)}
-          onClick={() => setStep((step ?? -1) + 1)}>{step === clues.length - 1 ? 'Show solution' : 'Show next step'}</button>
-        <button type="button" className="icon-button borderless" aria-label="Hide steps" disabled={step === null}
+        <IconButton type="button" aria-label="Previous step" disabled={step === null || step === 0}
+          onClick={() => setStep((step ?? 0) - 1)}><ArrowLeft size={16} aria-hidden="true" /></IconButton>
+        <Button ref={nextButton} type="button" disabled={!ready || solution || Boolean(result)}
+          onClick={() => setStep((step ?? -1) + 1)}>{step === clues.length - 1 ? 'Show solution' : 'Show next step'}</Button>
+        <IconButton type="button" variant="quiet" aria-label="Hide steps" disabled={step === null}
           onClick={() => {
             setStep(null)
             requestAnimationFrame(() => nextButton.current?.focus({ preventScroll: true }))
-          }}><X size={16} aria-hidden="true" /></button>
+          }}><X size={16} aria-hidden="true" /></IconButton>
       </div>
     </div>
     <div className="lesson-practice-step" tabIndex={0} role="group" aria-label="Step details" ref={stepBody}>
@@ -113,15 +114,15 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
     onEdit={() => { setResult(null); setGuidance(undefined) }}>
     {({ actions, reset, reveal }) => <>
       <div className="lesson-practice-actions">
-        {solution ? <button type="button" className="button secondary" onClick={() => {
+        {solution ? <Button type="button" onClick={() => {
           reveal(puzzle.suggestion); setStep(null); setGuidance(undefined); setResult({ actions: [puzzle.suggestion], revealed: true })
-        }}>Apply one move</button> : <button type="button" className={`button ${result ? 'secondary' : 'primary'}`} disabled={!result && !actions.length}
+        }}>Apply one move</Button> : <Button type="button" variant={result ? 'secondary' : 'primary'} disabled={!result && !actions.length}
           onClick={() => {
             if (result) { reset(); setResult(null); setGuidance(undefined); return }
             const invalid = actions.find((action) => !puzzle.answers.some((answer) => sameAction(answer, action)))
             if (invalid) setGuidance(retryGuidance(invalid, puzzle.answers, technique))
             else if (actions.length) { setStep(null); setResult({ actions, revealed: false }) }
-          }}>{result ? 'Reset puzzle' : 'Check move'}</button>}
+          }}>{result ? 'Reset puzzle' : 'Check move'}</Button>}
       </div>
       <p className="lesson-practice-feedback" role="status" data-result={result ? 'correct' : undefined}>
         {result ? `${result.revealed ? 'One possible move.' : 'Correct.'} ${result.actions.map(actionText).join(' ')}`

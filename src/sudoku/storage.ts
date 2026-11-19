@@ -1,3 +1,4 @@
+import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
 import { isDifficulty } from './difficulty.ts'
@@ -12,7 +13,7 @@ import { puzzleTiming } from './puzzle-timing.ts'
 
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
-const GAME_PREFIX = PREFIX + 'game:'
+export const GAME_PREFIX = PREFIX + 'game:'
 const RATING_PREFIX = PREFIX + 'rating-result:'
 const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
 const ACTIVE = PREFIX + 'active'
@@ -23,6 +24,10 @@ const sources = ['starter', 'generated', 'imported', 'collection', 'custom', 'dr
 type Room = { games: Game[]; active: string | null; stoppedPlaying: boolean; storageAvailable: boolean; playerRating: PlayerRating }
 const initial: Room = { games: [], active: null, stoppedPlaying: false, storageAvailable: true, playerRating: initialPlayerRating }
 const listeners = new Set<() => void>()
+const storedSnapshots = new WeakMap<Game, string>()
+const playListeners = new Set<(id: string | null) => void>()
+const editListeners = new Set<() => void>()
+const announceEdit = () => editListeners.forEach(listener => listener())
 const ratingEvents = new Map<string, RatingEvent>()
 const unsavedRatingEvents = new Set<string>()
 let room = initial
@@ -54,7 +59,7 @@ function validPosition(value: unknown): value is Position {
     (eliminations === undefined || validDigits(eliminations, 511))
 }
 
-function readGame(id: string, data: string | null): Game | undefined {
+export function readGame(id: string, data: string | null): Game | undefined {
   if (!data) return
   try {
     const value = JSON.parse(data) as Game
@@ -85,11 +90,18 @@ function readGame(id: string, data: string | null): Game | undefined {
         (attempt.outcome && (attempt.outcome.gameId !== id || attempt.outcome.givens !== value.givens ||
           attempt.outcome.difficulty !== attempt.grade.difficulty ||
           normalizePuzzleIdentity(attempt.outcome.puzzleKey ?? attempt.outcome.givens) !== puzzleIdentity(value))))) delete value.ratingAttempt
+      storedSnapshots.set(value, data)
       return value
     }
   } catch {
     // Skip isolated corrupt records so the rest of the library still opens.
   }
+}
+
+function writeGame(game: Game) {
+  const raw = JSON.stringify(game)
+  localStorage.setItem(GAME_PREFIX + game.id, raw)
+  storedSnapshots.set(game, raw)
 }
 
 function persist(write: () => void): boolean {
@@ -326,13 +338,15 @@ function onStorage(event: StorageEvent) {
   if (!key.startsWith(GAME_PREFIX)) return
   const id = key.slice(GAME_PREFIX.length)
   const incoming = readGame(id, readSaved(localStorage, key))
+  const outcomeSaved = rememberOutcome(incoming?.ratingAttempt?.outcome)
   const games = room.games.filter((game) => game.id !== id)
   if (incoming) games.push(incoming)
   const sorted = orderGames(games)
   // Filing a puzzle in another tab can leave it open in this one.
   const active = room.stoppedPlaying || sorted.some((game) => game.id === room.active)
     ? room.active : sorted.find((game) => !game.savedForLater)?.id ?? null
-  publish({ ...room, games: sorted, active, playerRating: playerRatingFor(sorted) })
+  publish({ ...room, games: sorted, active, storageAvailable: room.storageAvailable && outcomeSaved,
+    playerRating: playerRatingFor(sorted) })
 }
 
 function remember(id: string | null) {
@@ -363,7 +377,7 @@ function withSavedForLater(state: Room, game: Game, savedForLater: true | undefi
   }
   if (savedForLater && (current.source === 'draft' || isSolved(current))) return state
   const updated = { ...current, savedForLater }
-  const saved = persist(() => localStorage.setItem(key, JSON.stringify(updated)))
+  const saved = persist(() => writeGame(updated))
   return { ...state, games: state.games.map(item => item.id === game.id ? updated : item),
     storageAvailable: state.storageAvailable && saved }
 }
@@ -375,12 +389,9 @@ function publishSelection(state: Room, active: string | null) {
 }
 
 function playPuzzle(state: Room, game: Game) {
-  const previous = state.games.find(item => item.id === state.active)
-  if (previous?.started && previous.id !== game.id && game.source !== 'draft') {
-    state = withSavedForLater(state, previous, true)
-  }
   if (game.savedForLater) state = withSavedForLater(state, game, undefined)
   publishSelection(state, game.id)
+  playListeners.forEach(listener => listener(game.id))
 }
 
 // Hydrate before React reads the store. This also keeps Vite hot replacement
@@ -392,6 +403,23 @@ export const roomStore = {
   subscribe(listener: () => void) {
     listeners.add(listener)
     return () => { listeners.delete(listener) }
+  },
+  onPlay(listener: (id: string | null) => void) {
+    playListeners.add(listener)
+    return () => { playListeners.delete(listener) }
+  },
+  onEdit(listener: () => void) {
+    editListeners.add(listener)
+    return () => { editListeners.delete(listener) }
+  },
+  view(id: string) {
+    const game = room.games.find(item => item.id === id)
+    if (game && (room.active !== id || game.savedForLater)) {
+      publishSelection(game.savedForLater ? withSavedForLater(room, game, undefined) : room, id)
+    }
+  },
+  refreshPuzzle(id: string) {
+    onStorage({ storageArea: localStorage, key: GAME_PREFIX + id } as StorageEvent)
   },
   getSnapshot: () => room,
   getServerSnapshot: () => initial,
@@ -409,34 +437,54 @@ export const roomStore = {
     if (!game) return
     const next = withSavedForLater(room, game, true)
     if (next === room) return
-    if (room.active === id) publishSelection(next, null)
+    if (room.active === id) { publishSelection(next, null); playListeners.forEach(listener => listener(null)) }
     else publish(next)
   },
   stopPlaying(id: string) {
-    if (room.active === id) publishSelection(room, null)
+    if (room.active === id) { publishSelection(room, null); playListeners.forEach(listener => listener(null)) }
   },
   add(game: Game) {
     if (game.ratingAttempt && seenPuzzle(game)) game = { ...game, ratingAttempt: undefined }
     const seenSaved = rememberPuzzle(game)
-    const saved = persist(() => localStorage.setItem(GAME_PREFIX + game.id, JSON.stringify(game)))
+    const saved = persist(() => writeGame(game))
     const games = orderGames([game, ...room.games])
     const next = { ...room, games, playerRating: playerRatingFor(games), storageAvailable: room.storageAvailable && saved && seenSaved }
     if (game.savedForLater) publish(next)
     else playPuzzle(next, game)
+    announceEdit()
   },
   update(id: string, update: (game: Game) => Game) {
     const current = room.games.find((game) => game.id === id)
     if (!current) return
-    const merged = mergeStoredMetadata(current)
+    let merged = current
+    if (room.storageAvailable) {
+      // Another tab may have just installed a remote save or tombstone. Use
+      // the latest persisted board even before its storage event is delivered.
+      try {
+        const raw = readSaved(localStorage, GAME_PREFIX + id)
+        if (raw === null) { roomStore.refreshPuzzle(id); return }
+        if (storedSnapshots.get(current) !== raw) merged = readGame(id, raw) ?? current
+      } catch { /* Continue in memory if browser storage changes availability. */ }
+    } else {
+      merged = mergeStoredMetadata(current)
+    }
     let next = update(merged)
-    if (current === next) return
+    if (merged === next) {
+      if (merged !== current) roomStore.refreshPuzzle(id)
+      return
+    }
     if (!puzzleTiming.getSnapshot().trackTime && next.source !== 'draft' && next.started &&
-      (next.position !== current.position || !current.started) && !isSolved(current)) next = markSolveUntimed(next)
-    if (!current.ratingAttempt && next.ratingAttempt && seenPuzzle(next)) next = { ...next, ratingAttempt: undefined }
-    if (next.ratingAttempt && !next.ratingAttempt.outcome && next.position.entries !== current.position.entries && isSolved(next)) {
+      (next.position !== merged.position || !merged.started) && !isSolved(merged)) next = markSolveUntimed(next)
+    if (!merged.ratingAttempt && next.ratingAttempt && seenPuzzle(next)) next = { ...next, ratingAttempt: undefined }
+    if (next.ratingAttempt && !next.ratingAttempt.outcome && next.position.entries !== merged.position.entries && isSolved(next)) {
       next = finishAttempt(next, 'solved')
     }
-    const saved = persist(() => localStorage.setItem(GAME_PREFIX + id, JSON.stringify(next)))
+    const played = next.position !== merged.position || next.started !== merged.started
+    const saved = persist(() => {
+      writeGame(next)
+      if (played) localStorage.setItem(activityPrefix + id, String(Date.now()))
+    })
+    if (played || next.elapsed === merged.elapsed) announceEdit()
     const seenSaved = puzzleIdentity(current) === puzzleIdentity(next) && current.source === next.source || rememberPuzzle(next)
     const outcome = next.ratingAttempt?.outcome
     const newOutcome = outcome && !ratingEvents.has(outcome.id)
@@ -454,6 +502,7 @@ export const roomStore = {
     roomStore.update(id, (game) => isSolved(game) ? game : finishAttempt(game, finish))
   },
   remove(id: string) {
+    const wasActive = room.active === id
     const removed = room.games.find((game) => game.id === id)
     const seenSaved = !removed || rememberPuzzle(removed)
     const games = room.games.filter((game) => game.id !== id)
@@ -463,10 +512,13 @@ export const roomStore = {
       localStorage.removeItem(legacyKey(key))
       localStorage.removeItem(key)
       localStorage.removeItem(puzzleSelectionKey(id))
+      localStorage.removeItem(activityPrefix + id)
     })
     const outcomeSaved = rememberOutcome(removed && (removed.ratingAttempt?.outcome ?? hintEvidence(removed)))
     const remembered = remember(room.stoppedPlaying ? '' : active)
     publish({ ...room, games, active, playerRating: playerRatingFor(games),
       storageAvailable: room.storageAvailable && saved && remembered && seenSaved && outcomeSaved })
+    announceEdit()
+    if (wasActive) playListeners.forEach(listener => listener(null))
   },
 }

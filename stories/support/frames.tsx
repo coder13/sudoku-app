@@ -1,3 +1,4 @@
+import { Button } from '../../src/components/Button'
 import { createContext, useContext, useState, type CSSProperties, type ReactNode } from 'react'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { SudokuShell, Workspace } from '../../src/components/Workspace'
@@ -22,7 +23,7 @@ export function DialogStory({ label, children, initialOpen = true }: {
 }) {
   const [open, setOpen] = useState(initialOpen)
   return <>
-    <button className="button secondary" onClick={() => setOpen(true)}>{label}</button>
+    <Button onClick={() => setOpen(true)}>{label}</Button>
     {open && children(() => setOpen(false))}
   </>
 }

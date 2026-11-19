@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { useEffect, useRef, useState } from 'react'
 import { imageCanvas } from '../sudoku/photo-image'
 
@@ -70,9 +71,9 @@ export function PuzzleCamera({ onCapture, onCancel }: {
     {error && <p className="form-error" role="alert">{error}</p>}
     {!ready && !error && <p role="status">Opening camera…</p>}
     <div className="dialog-actions">
-      <button type="button" className="button secondary" onClick={onCancel}>Cancel</button>
-      <button type="button" className="button primary" onClick={capture}
-        disabled={!ready || capturing}>{capturing ? 'Capturing…' : 'Capture photo'}</button>
+      <Button type="button" onClick={onCancel}>Cancel</Button>
+      <Button type="button" variant="primary" onClick={capture}
+        disabled={!ready || capturing}>{capturing ? 'Capturing…' : 'Capture photo'}</Button>
     </div>
   </section>
 }

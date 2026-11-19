@@ -1,3 +1,4 @@
+import { Button, IconButton } from './Button'
 import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
 import type { TechniqueCatalog } from '../sudoku/engine'
@@ -177,7 +178,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
       </div>}
       {catalogError && <div role="alert" className="analysis-error">
         <p>{catalogError}</p>
-        <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Try again</button>
+        <Button onClick={() => setRetry((value) => value + 1)}>Try again</Button>
       </div>}
       {catalog && !positionProblem && <>
         <label className="analysis-zero-filter">
@@ -188,7 +189,7 @@ export function PuzzleAnalysisContents({ game, active = true, onSelectTechnique 
           ? <AnalysisTable groups={visibleGroups} results={results} solved={solved} onSelectTechnique={onSelectTechnique} />
           : <p className="analysis-empty" role="status">No techniques with candidates.</p>}
         {!solved && completed === total && Object.values(results).some((result) => 'error' in result) &&
-          <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>Retry failed scans</button>}
+          <Button onClick={() => setRetry((value) => value + 1)}>Retry failed scans</Button>}
       </>}
     </div>
   )
@@ -201,8 +202,8 @@ export function PuzzleAnalysisCard({ game, close, onSelectTechnique }: {
     <section className="surface puzzle-analysis-card" aria-label={TECHNIQUE_FINDER_TITLE}>
       <div className="puzzle-analysis-card-heading">
         <h2>{TECHNIQUE_FINDER_TITLE}</h2>
-        <button type="button" className="icon-button borderless" onClick={close} aria-label={`Close ${TECHNIQUE_FINDER_TITLE.toLowerCase()}`}
-          title="Close card"><X size={18} /></button>
+        <IconButton type="button" variant="quiet" onClick={close} aria-label={`Close ${TECHNIQUE_FINDER_TITLE.toLowerCase()}`}
+          title="Close card"><X size={18} /></IconButton>
       </div>
       <div className="puzzle-analysis-card-body">
         <PuzzleAnalysisContents game={game} onSelectTechnique={onSelectTechnique} />

@@ -29,6 +29,8 @@
   --hint-card-width: 430px;
   --board-frame-limit: min(529px, max(240px, calc(100dvh - 240px)));
   --puzzle-padding-inline: var(--space-12);
+  --button-hover-shadow: 0 2px 5px #00000024;
+  --button-press-shadow: inset 0 1px 3px #00000023;
   --motion-fast-duration: 110ms;
   --motion-standard-duration: 150ms;
   --motion-overlay-duration: 240ms;
@@ -97,7 +99,7 @@ svg { flex-shrink: 0; }
 :where(
   .app-menu :is(button, a), .puzzle-context-menu button, .desktop-insight-tabs button, .advanced-browser-tabs button,
   .advanced-browser-list button, .desktop-dockview .dv-tab, .chain-row, .chain-swatches, .chain-color-input i,
-  .cell-color-swatch, .game-row, .game-row-with-options, .puzzles-section-links a, .new-option, .option-icon,
+  .cell-color-swatch, .game-row, .game-row-with-options, .puzzles-section-links a, .choice-button, .option-icon,
   .main-menu-tabs :is(button, a), .main-menu-mobile-list :is(button, a),
   .variant-option, .main-difficulty-options label, .difficulty-options button,
   .settings-tabs :is(button, a), .settings-mobile-menu :is(button, a), .settings-header-back, .settings-menu-icon,
@@ -214,8 +216,7 @@ svg { flex-shrink: 0; }
 .button:disabled, .icon-button:disabled { opacity: .48; }
 .primary { background: var(--primary-bg); color: var(--primary-ink); box-shadow: 0 2px 3px #00000016; }
 .secondary, .icon-button { background: var(--surface-raised); border-color: var(--border); color: var(--control-ink); }
-.soft { background: var(--surface-muted); color: var(--dark-purple); }
-.quiet { color: var(--control-ink); background: var(--surface-muted); }
+.quiet { color: var(--control-ink); background: transparent; }
 .danger { background: #9c2f42; color: #fff; }
 .icon-button { min-height: 36px; width: 36px; padding: 0; }
 .button[aria-pressed="true"], .icon-button[aria-pressed="true"] {
@@ -224,7 +225,7 @@ svg { flex-shrink: 0; }
   color: var(--dark-purple);
 }
 .borderless { border-color: transparent; background: transparent; box-shadow: none; }
-.button:not(:disabled):active, .icon-button:not(:disabled):active { transform: scale(.97); transition-duration: var(--motion-press-duration); }
+.button:not(:disabled):active, .icon-button:not(:disabled):active { box-shadow: var(--button-press-shadow); transition-duration: var(--motion-press-duration); }
 
 .page {
   height: calc(100dvh - 71px);
@@ -2533,10 +2534,9 @@ svg { flex-shrink: 0; }
 .file-picker { position: relative; cursor: pointer; }
 .file-picker input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
 .new-options { display: grid; gap: var(--space-8); margin-top: var(--space-16); padding-top: var(--space-16); border-top: 1px solid var(--border); }
-.new-option {
-  text-align: left;
-  display: flex;
-  align-items: center;
+.choice-button {
+  text-align: start; white-space: normal; justify-content: flex-start;
+  display: flex; align-items: center;
   gap: var(--space-12);
   border: 1px solid var(--border);
   background: var(--surface-raised);
@@ -2544,8 +2544,8 @@ svg { flex-shrink: 0; }
   padding: var(--space-12);
   min-height: 67px;
 }
-.new-option strong, .new-option small { display: block; }
-.new-option small { color: var(--muted); margin-top: var(--space-2); }
+.choice-button strong, .choice-button small { display: block; }
+.choice-button small { color: var(--muted); margin-top: var(--space-2); font-weight: 400; line-height: 1.4; }
 .option-icon { background: var(--surface-muted); color: var(--dark-purple); border-radius: 9px; display: grid; place-items: center; width: 42px; height: 42px; flex-shrink: 0; }
 .stop-puzzle-options { display: grid; gap: var(--space-8); }
 .stop-puzzle-options small { line-height: 1.45; }
@@ -2554,12 +2554,13 @@ svg { flex-shrink: 0; }
 kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--surface-muted); padding: 3px 5px; white-space: nowrap; }
 
 @media (hover: hover) {
-  .button:not(:disabled):hover, .icon-button:not(:disabled):hover { transform: translateY(-1px); }
+  .button:is(.primary, .secondary, .danger):not(:disabled, :active, [aria-disabled="true"]):hover,
+  .icon-button:not(.borderless, :disabled, :active, [aria-disabled="true"]):hover { box-shadow: var(--button-hover-shadow); }
   .primary:not(:disabled):hover { background: var(--primary-hover); }
   .secondary:not(:disabled):hover, .icon-button:not(:disabled):hover { background: var(--surface-hover); border-color: var(--border-strong); }
-  .quiet:not(:disabled):hover, .input-switch button:not(:disabled):hover, .key:not(:disabled):hover, .new-option:not(:disabled):hover { background: var(--surface-hover); }
+  .quiet:not(:disabled):hover, .input-switch button:not(:disabled):hover, .key:not(:disabled):hover, .choice-button:not(:disabled):hover { background: var(--surface-hover); }
   .key.tone-key:not(:disabled):hover { background: var(--tone); border-color: #644d78; }
-  .soft:not(:disabled):hover, .game-row:hover { background: var(--surface-active); }
+  .game-row:hover { background: var(--surface-active); }
   .app-menu button:not(:disabled):hover { background: var(--surface-hover); }
   .button[aria-pressed="true"]:not(:disabled):hover,
   .icon-button[aria-pressed="true"]:not(:disabled):hover,
@@ -3370,3 +3371,62 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-modular polyline { fill: none; stroke: #288e93; stroke-width: .105; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
 .variant-modular circle { fill: #288e93; stroke: none; }
 .variant-modular-overlap line { stroke-linecap: round; }
+
+.page.sync-page {
+  max-width: 640px; overflow-y: auto; display: flex; flex-direction: column;
+  align-items: stretch; gap: var(--space-14); padding-block: var(--space-24);
+}
+.sync-page h1 { font-size: 1.6rem; }
+.sync-page h2 { font-size: 1.1rem; }
+.sync-page p { color: var(--muted); line-height: 1.5; }
+.sync-page section, .sync-page label { display: grid; gap: var(--space-8); }
+.sync-page input { width: 100%; padding: 10px; border: 1px solid var(--border-strong); border-radius: 6px; color: inherit; background: var(--surface); font: inherit; }
+.sync-page details > * { margin-block: var(--space-8); }
+.sync-page .button { align-self: flex-start; justify-self: start; }
+a.game-row { text-decoration: none; color: inherit; }
+.page.device-sync-page { gap: var(--space-16); padding-inline: clamp(var(--space-16), 4vw, var(--space-24)); }
+.sync-heading, .sync-panel-heading { display: flex; align-items: center; gap: var(--space-8); }
+.sync-panel-heading { justify-content: space-between; }
+.device-sync-page .icon-button, .device-sync-page .button, .device-sync-page summary { min-height: 44px; }
+.device-sync-page .icon-button { width: 44px; flex: none; }
+.device-sync-page summary { align-content: center; cursor: pointer; }
+.device-sync-page details form { display: grid; gap: var(--space-8); }
+.sync-panel { padding: var(--space-16); border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.sync-panel.sync-invitation {
+  box-sizing: border-box; width: min(100%, 19rem); align-self: flex-start;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-12);
+}
+.sync-invitation .sync-panel-heading { justify-content: space-between; gap: var(--space-4); }
+.sync-invitation .sync-panel-heading h2 { margin: 0; }
+.sync-code-frame {
+  width: min(100%, 196px); padding: 6px; box-sizing: border-box;
+  border: 1px solid #626873; background-color: #f8f9fb;
+  background-image: linear-gradient(to right, #626873 2px, transparent 2px),
+    linear-gradient(to bottom, #626873 2px, transparent 2px),
+    linear-gradient(to right, #aab0ba 1px, transparent 1px),
+    linear-gradient(to bottom, #aab0ba 1px, transparent 1px);
+  background-size: calc(100% / 3) 100%, 100% calc(100% / 3), calc(100% / 9) 100%, 100% calc(100% / 9);
+}
+.sync-code { display: block; width: 100%; height: auto; background: white; image-rendering: pixelated; }
+.sync-invitation-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.sync-invitation-actions p { margin: 0; font-size: 0.875rem; }
+.sync-invitation-actions .button { flex: none; }
+.sync-devices { list-style: none; padding: 0; margin: 0; }
+.sync-devices li { display: flex; align-items: center; gap: var(--space-8); min-height: 58px; padding-block: var(--space-6); border-bottom: 1px solid var(--border); }
+.sync-device-label {
+  min-width: 0; flex: 1; overflow-wrap: anywhere;
+  font-size: 0.9375rem; font-weight: 500; line-height: 1.4;
+}
+.sync-device-label small { display: block; color: var(--muted); font-size: 0.8125rem; font-weight: 400; }
+.sync-rename { display: flex; align-items: center; gap: var(--space-6); width: 100%; }
+.sync-rename input { flex: 1; min-width: 0; min-height: 44px; }
+.device-sync-page .sync-devices .button { align-self: center; }
+.sync-device-actions { position: relative; flex: none; }
+.sync-device-menu { top: calc(100% + 2px); width: max-content; min-width: 144px; }
+.sync-device-menu[data-above] { top: auto; bottom: calc(100% + 2px); }
+.sync-device-menu button { min-height: 44px; }
+
+.sync-choices, .sync-recover { display: grid; gap: var(--space-12); }
+.sync-choices .choice-button { justify-self: stretch; }
+.sync-camera { display: block; width: 100%; max-height: 40vh; object-fit: contain; background: #141414; border-radius: 8px; }
+.sync-camera[hidden] { display: none; }

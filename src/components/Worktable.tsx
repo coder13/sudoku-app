@@ -1,3 +1,4 @@
+import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
@@ -1876,9 +1877,9 @@ export function Worktable({
         <span className="puzzle-paused-icon" aria-hidden="true"><Pause size={25} /></span>
         <h2>Puzzle paused</h2>
         {showElapsedTime && <p>Your elapsed time is stopped.</p>}
-        <button type="button" className="button primary" onClick={() => {
+        <Button type="button" variant="primary" onClick={() => {
           roomStore.update(game.id, (current) => setGamePaused(current, false))
-        }}><Play size={17} aria-hidden="true" /> Resume puzzle</button>
+        }}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
       </div>
     </div>
   )
@@ -1900,19 +1901,19 @@ export function Worktable({
         <div className="puzzle-actions">
           {presentationDraft ? (
             <>
-              <button className="button secondary" onClick={() => setCancelDraftOpen(true)}><X size={17} /> Cancel</button>
-              <button className="button primary publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</button>
+              <Button onClick={() => setCancelDraftOpen(true)}><X size={17} /> Cancel</Button>
+              <Button variant="primary" className="publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</Button>
             </>
           ) : (
             <>
-              {variant && <button type="button" className="button soft variant-rules-button" onClick={() => setVariantRulesOpen(true)}
+              {variant && <Button type="button" variant="quiet" className="variant-rules-button" onClick={() => setVariantRulesOpen(true)}
                 aria-label={`${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
                 <Info size={16} aria-hidden="true" />{variant.id === 'mixed' ? 'Mixed rules' : variantName(variant)}
-              </button>}
-              {solved && !previewing && <button className="button soft puzzle-view-toggle" aria-pressed={showSolvedGrid} onClick={() => {
+              </Button>}
+              {solved && !previewing && <Button variant="quiet" className="puzzle-view-toggle" aria-pressed={showSolvedGrid} onClick={() => {
                 setSolvedView(showSolvedGrid ? 'results' : 'grid')
-              }}>{showSolvedGrid ? 'View results' : 'View grid'}</button>}
-              {timing.showPause && !solved && game.started && !previewing && <button type="button" className="icon-button borderless puzzle-pause-trigger"
+              }}>{showSolvedGrid ? 'View results' : 'View grid'}</Button>}
+              {timing.showPause && !solved && game.started && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
                 aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'} title={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
                 aria-pressed={game.paused} onClick={() => {
                   setActionsOpen(false)
@@ -1923,9 +1924,9 @@ export function Worktable({
                   <Pause className="pause-toggle-pause" size={18} />
                   <Play className="pause-toggle-play" size={18} />
                 </span>
-              </button>}
+              </IconButton>}
               <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
-                <button ref={puzzleMenuButtonRef} className="icon-button borderless puzzle-menu-trigger" aria-label="Open puzzle options"
+                <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"
                   title="Puzzle options" disabled={Boolean(placeholder)} aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
                   onClick={(event) => {
                     if (mobile) event.currentTarget.focus({ preventScroll: true })
@@ -1933,7 +1934,7 @@ export function Worktable({
                     setPuzzleMenuOpen((open) => !open)
                   }}>
                   <MoreHorizontal size={20} />
-                </button>
+                </IconButton>
                 {puzzleMenu}
               </div>
             </>
@@ -2007,12 +2008,12 @@ export function Worktable({
     <section className="advanced-spoiler-panel" aria-label="Hint">
       <span className="advanced-spoiler-icon" aria-hidden="true"><Lightbulb size={21} /></span>
       <div><h2>Hint</h2><p>Hint contents stay hidden until you choose to reveal them.</p></div>
-      <button className="button primary" disabled={busy || solved || draft || game.paused} onClick={() => { void showHint() }}>
+      <Button variant="primary" disabled={busy || solved || draft || game.paused} onClick={() => { void showHint() }}>
         <Eye size={17} /> {busy && hintRevealed ? 'Finding a hint…' : 'Reveal hint'}
-      </button>
-      <button className="button secondary" disabled={busy || solved || draft || game.paused} onClick={() => { void showHint('all') }}>
+      </Button>
+      <Button disabled={busy || solved || draft || game.paused} onClick={() => { void showHint('all') }}>
         <ListFilter size={17} /> Analyze all moves
-      </button>
+      </Button>
     </section>
   )
   const solutionPathPanel = solutionPathRevealed && solutionPath ? (
@@ -2024,9 +2025,9 @@ export function Worktable({
     <section className="advanced-spoiler-panel" aria-label="Solution">
       <span className="advanced-spoiler-icon" aria-hidden="true"><ListOrdered size={21} /></span>
       <div><h2>Solution</h2><p>The solving steps stay hidden until you choose to reveal them.</p></div>
-      <button className="button primary" disabled={busy || draft || game.paused} onClick={() => { void showSolutionPath() }}>
+      <Button variant="primary" disabled={busy || draft || game.paused} onClick={() => { void showSolutionPath() }}>
         <Eye size={17} /> Reveal solution
-      </button>
+      </Button>
     </section>
   )
   const clueCount = [...givens].filter((digit) => digit !== '0').length
@@ -2097,11 +2098,11 @@ export function Worktable({
                       aria-selected={activeDesktopTab.id === id} tabIndex={activeDesktopTab.id === id ? 0 : -1}
                       onClick={() => openDesktopView(id)}>{label}</button>)}
                   </div>
-                  <button type="button" className="icon-button borderless desktop-insight-close"
+                  <IconButton type="button" variant="quiet" className="desktop-insight-close"
                     aria-label={`Close ${activeDesktopTab.label.toLowerCase()} tab`}
                     onClick={() => activeDesktopTab.id === 'solution' ? closeSolutionPath() : closeDesktopView(activeDesktopTab.id)}>
                     <X size={18} aria-hidden="true" />
-                  </button>
+                  </IconButton>
                 </div>
                 <div className="desktop-insight-body" id="desktop-insight-content" role="tabpanel"
                   aria-labelledby={`desktop-insight-tab-${activeDesktopTab.id}`}>
@@ -2151,8 +2152,8 @@ export function Worktable({
         <p>{game.timeUntracked ? 'Remove all placed digits, candidates, and colors from this puzzle?'
           : 'Remove all placed digits, candidates, colors, and elapsed time from this puzzle?'}</p>
         <div className="dialog-actions">
-          <button className="button secondary" onClick={() => setResetOpen(false)}>Cancel</button>
-          <button className="button danger" onClick={() => {
+          <Button onClick={() => setResetOpen(false)}>Cancel</Button>
+          <Button variant="danger" onClick={() => {
             roomStore.update(game.id, restartGame)
             setSelected([])
             setColorBrush(null)
@@ -2163,7 +2164,7 @@ export function Worktable({
             setHintRevealed(false)
             setSolutionPath(null)
             setResetOpen(false)
-          }}>Reset puzzle</button>
+          }}>Reset puzzle</Button>
         </div>
       </Modal>
       <Modal title={game.editingId ? 'Cancel puzzle editing?' : 'Cancel puzzle creation?'} open={cancelDraftOpen}
@@ -2172,8 +2173,8 @@ export function Worktable({
           ? 'Discard your changes and return to the saved puzzle?'
           : 'Discard this draft and return to your previous puzzle?'}</p>
         <div className="dialog-actions">
-          <button className="button secondary" onClick={() => setCancelDraftOpen(false)}>Keep editing</button>
-          <button className="button danger" onClick={onCancelDraft}>{game.editingId ? 'Discard changes' : 'Discard draft'}</button>
+          <Button onClick={() => setCancelDraftOpen(false)}>Keep editing</Button>
+          <Button variant="danger" onClick={onCancelDraft}>{game.editingId ? 'Discard changes' : 'Discard draft'}</Button>
         </div>
       </Modal>
     </>

@@ -1,3 +1,4 @@
+import { IconButton } from './Button'
 import { useId, useMemo, useSyncExternalStore } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { DIFFICULTY_LABELS, type DifficultyPreference } from '../sudoku/difficulty'
@@ -56,18 +57,18 @@ export function DifficultySelector({ value, recommended, variant, disabled = fal
           move(event.key === 'ArrowLeft' ? -1 : 1)
         }
       }}>
-        <button type="button" className="icon-button" aria-label="Decrease difficulty"
+        <IconButton type="button" aria-label="Decrease difficulty"
           aria-describedby={`${id}-value`} disabled={disabled || index <= 0} onClick={() => move(-1)}>
           <ChevronLeft size={22} aria-hidden="true" />
-        </button>
+        </IconButton>
         <div className="difficulty-stepper-value" id={`${id}-value`} role="status" aria-live="polite" aria-atomic="true">
           <strong>{DIFFICULTY_LABELS[selected]}</strong>
           <small>{index + 1} of {levels.length}</small>
         </div>
-        <button type="button" className="icon-button" aria-label="Increase difficulty"
+        <IconButton type="button" aria-label="Increase difficulty"
           aria-describedby={`${id}-value`} disabled={disabled || index >= levels.length - 1} onClick={() => move(1)}>
           <ChevronRight size={22} aria-hidden="true" />
-        </button>
+        </IconButton>
       </div>
       <dl className="difficulty-selection-stats" aria-label={`${DIFFICULTY_LABELS[selected]} results`}>
         <div><dt>Solved</dt><dd>{selectedStats?.solved ?? 0}</dd></div>

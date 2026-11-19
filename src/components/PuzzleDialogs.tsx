@@ -1,3 +1,4 @@
+import { Button, ChoiceButton } from './Button'
 import { DifficultySelector } from './DifficultySelector'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Dices, FileUp, PencilLine, Trash2 } from 'lucide-react'
@@ -40,7 +41,7 @@ export function ManagePuzzle({ game, close }: {
 
   return <Modal title={game.title} onClose={close}>
     <div className="stop-puzzle-options">
-      {!game.savedForLater && <button type="button" className="new-option" onClick={() => {
+      {!game.savedForLater && <ChoiceButton type="button" onClick={() => {
         roomStore.saveForLater(game.id)
         close()
       }}
@@ -48,16 +49,16 @@ export function ManagePuzzle({ game, close }: {
         <span className="option-icon"><Bookmark size={20} aria-hidden="true" /></span>
         <span><strong id={`${id}-save`}>Save for later</strong>
           <small id={`${id}-save-description`}>Resume this puzzle later with your progress saved.</small></span>
-      </button>}
-      <button type="button" className="new-option delete-puzzle-option" onClick={deletePuzzle}
+      </ChoiceButton>}
+      <ChoiceButton type="button" className="delete-puzzle-option" onClick={deletePuzzle}
         aria-labelledby={`${id}-delete`} aria-describedby={`${id}-delete-description`}>
         <span className="option-icon"><Trash2 size={20} aria-hidden="true" /></span>
         <span><strong id={`${id}-delete`}>Delete puzzle</strong>
           <small id={`${id}-delete-description`}>Remove the puzzle and its progress from Your puzzles.</small></span>
-      </button>
+      </ChoiceButton>
     </div>
     <div className="dialog-actions stop-puzzle-footer">
-      <button type="button" className="button secondary" onClick={close}>Cancel</button>
+      <Button type="button" onClick={close}>Cancel</Button>
     </div>
   </Modal>
 }
@@ -95,22 +96,22 @@ export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDif
         <div className="new-puzzle-setup">
           <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
           {error && <p className="form-error" role="alert">{error}</p>}
-          <button type="submit" className="button primary puzzle-start-button" disabled={busy}>
+          <Button type="submit" variant="primary" className="puzzle-start-button" disabled={busy}>
             <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
-          </button>
+          </Button>
         </div>
         <div className="new-options">
-          <button type="button" className="new-option" disabled={busy} onClick={onImport}>
+          <ChoiceButton type="button" disabled={busy} onClick={onImport}>
             <span className="option-icon"><FileUp size={21} aria-hidden="true" /></span>
             <strong>Import a puzzle</strong>
-          </button>
-          <button type="button" className="new-option" disabled={busy} onClick={() => {
+          </ChoiceButton>
+          <ChoiceButton type="button" disabled={busy} onClick={() => {
             onCreate()
             close()
           }}>
             <span className="option-icon"><PencilLine size={21} /></span>
             <span><strong>Create by hand</strong><small>Enter your own givens on a blank grid.</small></span>
-          </button>
+          </ChoiceButton>
         </div>
       </form>
     </Modal>
@@ -161,7 +162,7 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
         <textarea id="share-output" ref={text} value={value} readOnly rows={format === 'grid' ? 9 : 3} spellCheck={false} />
         <div className="dialog-actions spread">
           <span className="dialog-status" role="status">{status}</span>
-          <button className="button primary" onClick={copy}><Clipboard size={16} /> Copy</button>
+          <Button variant="primary" onClick={copy}><Clipboard size={16} /> Copy</Button>
         </div>
       </div>
     </Modal>
@@ -211,7 +212,7 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
         <input id="draft-name" value={title} maxLength={72} onChange={(event) => setTitle(event.target.value)} autoFocus required placeholder="Name your puzzle" />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="submit" className="button primary" disabled={busy || !title.trim()}>{busy ? 'Checking…' : 'Save and play'}</button>
+          <Button type="submit" variant="primary" disabled={busy || !title.trim()}>{busy ? 'Checking…' : 'Save and play'}</Button>
         </div>
       </form>
     </Modal>

@@ -1,7 +1,9 @@
+import { IconButton } from './Button'
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { exitDelay, usePresence } from './Presence'
 
+/** Use when a task needs a blocking dialog with managed focus and dismissal. */
 export function Modal({ title, onClose, className = '', leading, children, open = true, motionSpeed = 'standard' }: {
   title: string
   onClose: () => void
@@ -58,7 +60,7 @@ export function Modal({ title, onClose, className = '', leading, children, open 
         <div className="dialog-heading">
           {leading}
           <h2 id={id}>{title}</h2>
-          <button className="icon-button" aria-label="Close dialog" disabled={exiting} onClick={requestClose}><X size={21} /></button>
+          <IconButton aria-label="Close dialog" disabled={exiting} onClick={requestClose}><X size={21} /></IconButton>
         </div>
         {children}
       </div>

@@ -1,3 +1,4 @@
+import { Button, IconButton } from './Button'
 import { Eraser, Eye, EyeOff, Link2, Plus, RotateCw, Trash2, Undo2 } from 'lucide-react'
 import type { Deduction, DeductionAction } from '../sudoku/engine'
 import { chainCandidate, type LinkStrength } from '../sudoku/chains'
@@ -97,22 +98,22 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
       </label>}
     </div>
     <div className="chain-toolbar chain-draw-tools">
-      <button type="button" className={`button ${sketch.drawing ? 'secondary' : 'primary'}`}
+      <Button type="button" variant={sketch.drawing ? 'secondary' : 'primary'}
         title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={sketch.toggle}>
         <Link2 size={15} aria-hidden="true" /> {drawLabel}
-      </button>
+      </Button>
       <div className="chain-edit-actions">
-        <button type="button" className="button secondary" disabled={!sketch.drawing || sketch.pending === null}
-          title="End path (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</button>
-        <button type="button" className="icon-button borderless" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
+        <Button type="button" disabled={!sketch.drawing || sketch.pending === null}
+          title="End path (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</Button>
+        <IconButton type="button" variant="quiet" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
           aria-keyshortcuts="Control+Z Meta+Z"
           disabled={!sketch.canUndo} onClick={sketch.undo}>
           <Undo2 size={16} aria-hidden="true" />
-        </button>
-        <button type="button" className="icon-button borderless" aria-label="Clear links" title="Clear links"
+        </IconButton>
+        <IconButton type="button" variant="quiet" aria-label="Clear links" title="Clear links"
           disabled={!sketch.hasLinks} onClick={sketch.clear}>
           <Eraser size={16} aria-hidden="true" />
-        </button>
+        </IconButton>
       </div>
     </div>
     {status && <p role="status">{status}</p>}
@@ -126,8 +127,8 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
         {branched && <p>Remove a branch to analyze the path.</p>}
         {results.length > 0 && <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>}
         {(results.length > 0 || canFinishLoop) && <div className="chain-toolbar">
-          {results.length > 0 && <button type="button" className="button primary" onClick={() => onApply(chain.actions)}>Apply edits</button>}
-          {canFinishLoop && <button type="button" className="button secondary" onClick={() => sketch.finishLoop(chain)}>Complete loop</button>}
+          {results.length > 0 && <Button type="button" variant="primary" onClick={() => onApply(chain.actions)}>Apply edits</Button>}
+          {canFinishLoop && <Button type="button" onClick={() => sketch.finishLoop(chain)}>Complete loop</Button>}
         </div>}
         {results.length > 0 && chain.explanation && <details className="chain-links">
           <summary>Why this works</summary><p>{chain.explanation}</p>
@@ -141,7 +142,7 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
         {sketch.medusas.length > 1 && <h2>{`${nodes.length} candidates starting at ${pointName(chainCandidate(nodes[0]))}`}</h2>}
         {results.length > 0 ? <>
           <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>
-          <button type="button" className="button primary" onClick={() => onApply(actions)}>Apply edits</button>
+          <Button type="button" variant="primary" onClick={() => onApply(actions)}>Apply edits</Button>
           {explanation && <details className="chain-links"><summary>Why this works</summary><p>{explanation}</p></details>}
         </> : <p>{explanation}</p>}
       </article>
@@ -150,10 +151,10 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
   return <section className="chains-panel" aria-label="Chains">
     {unavailable ? <p role="status">{unavailable}</p> : <>
       <div className="chain-panel-tools">
-        <button type="button" className="button secondary" title={`New chain (${newKey})`} aria-keyshortcuts={newKey}
+        <Button type="button" title={`New chain (${newKey})`} aria-keyshortcuts={newKey}
           disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
           <Plus size={15} aria-hidden="true" /> New chain
-        </button>
+        </Button>
         {digitHighlight && <label>
           <span>Highlight digit</span>
           <select value={digitHighlight.digit ?? ''} onChange={(event) => digitHighlight.onChange(Number(event.target.value) || null)}>
@@ -183,19 +184,19 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
                 </span>
                 {name}
               </button>
-              {selected && openPath && <button type="button" className="icon-button borderless" aria-label="Complete loop"
+              {selected && openPath && <IconButton type="button" variant="quiet" aria-label="Complete loop"
                 title={canFinishOpenPath ? 'Complete loop' : 'No loop completion found'}
                 disabled={!canFinishOpenPath} onClick={() => sketch.finishLoop(openPath)}>
                 <RotateCw size={16} aria-hidden="true" />
-              </button>}
-              <button type="button" className="icon-button borderless" aria-label={visibilityLabel} title={visibilityLabel}
+              </IconButton>}
+              <IconButton type="button" variant="quiet" aria-label={visibilityLabel} title={visibilityLabel}
                 onClick={() => sketch.toggleVisibility(id)}>
                 <VisibilityIcon size={16} aria-hidden="true" />
-              </button>
-              <button type="button" className="icon-button borderless" aria-label={deleteLabel} title={deleteLabel}
+              </IconButton>
+              <IconButton type="button" variant="quiet" aria-label={deleteLabel} title={deleteLabel}
                 disabled={sketch.sketches.length === 1 && edges.length === 0} onClick={() => sketch.deleteSketch(id)}>
                 <Trash2 size={16} aria-hidden="true" />
-              </button>
+              </IconButton>
             </div>
             {title && <h2>{title}</h2>}
             {paths.length > 0

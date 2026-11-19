@@ -1,6 +1,7 @@
+import { notifySettingsEdit } from './settings-events.ts'
 import type { EngineRequest } from './engine.ts'
 
-const KEY = 'sudoku-app:v1:disabled-hint-techniques'
+export const DISABLED_HINTS_KEY = 'sudoku-app:v1:disabled-hint-techniques'
 
 function isTechniqueList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((id) => typeof id === 'string' && id.length > 0)
@@ -9,7 +10,7 @@ function isTechniqueList(value: unknown): value is string[] {
 
 export function readDisabledHintTechniques(storage?: Pick<Storage, 'getItem'>): string[] {
   try {
-    const ids: unknown = JSON.parse((storage ?? localStorage).getItem(KEY) ?? 'null')
+    const ids: unknown = JSON.parse((storage ?? localStorage).getItem(DISABLED_HINTS_KEY) ?? 'null')
     return isTechniqueList(ids) ? ids : []
   } catch {
     return []
@@ -20,7 +21,8 @@ export function saveDisabledHintTechniques(ids: readonly string[], storage?: Pic
   if (!isTechniqueList(ids)) return false
   try {
     const target = storage ?? localStorage
-    target.setItem(KEY, JSON.stringify(ids))
+    target.setItem(DISABLED_HINTS_KEY, JSON.stringify(ids))
+    if (!storage) notifySettingsEdit()
     return true
   } catch {
     return false

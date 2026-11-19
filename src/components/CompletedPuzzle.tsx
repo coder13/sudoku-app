@@ -1,3 +1,4 @@
+import { Button, IconButton, buttonClassName } from './Button'
 import { DifficultySelector } from './DifficultySelector'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
@@ -136,17 +137,17 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
             {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
               ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
               : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
-              : <button className="button primary completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
+              : <Button variant="primary" className="completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
               onClick={playNext}>
               {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
               {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
-            </button>}
+            </Button>}
             {collectionEntry ? <>
-              <Link className="button secondary" to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
-              <Link className="button secondary" to="/puzzles">Choose a different puzzle</Link>
+              <Link className={buttonClassName()} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
+              <Link className={buttonClassName()} to="/puzzles">Choose a different puzzle</Link>
             </> : !needsChoice && <>
-              <button className="button secondary" onClick={onChooseDifficulty}>Choose difficulty</button>
-              <button className="button secondary" aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</button>
+              <Button onClick={onChooseDifficulty}>Choose difficulty</Button>
+              <Button aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
             </>}
           </div>
         </div>
@@ -181,9 +182,9 @@ export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack 
       aria-labelledby="difficulty-title">
       <div className="completion difficulty-choice">
         <header className="difficulty-heading">
-          <button className="icon-button borderless difficulty-back" onClick={onBack} disabled={busy} aria-label="Back to results">
+          <IconButton variant="quiet" className="difficulty-back" onClick={onBack} disabled={busy} aria-label="Back to results">
             <ArrowLeft size={19} />
-          </button>
+          </IconButton>
           <div>
             <h1 id="difficulty-title" ref={heading} tabIndex={-1}>Choose difficulty</h1>
             <p>For the next generated puzzle</p>
@@ -191,9 +192,9 @@ export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack 
         </header>
         {error && <p className="form-error" role="alert">{error}</p>}
         <DifficultySelector value={selection} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
-        <button type="button" className="button primary puzzle-start-button" disabled={busy} onClick={() => { void selectDifficulty(selection) }}>
+        <Button type="button" variant="primary" className="puzzle-start-button" disabled={busy} onClick={() => { void selectDifficulty(selection) }}>
           {busy ? 'Generating…' : 'Start puzzle'} <ArrowRight size={18} aria-hidden="true" />
-        </button>
+        </Button>
       </div>
     </section>
   )
