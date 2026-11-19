@@ -247,14 +247,30 @@ fn played_entropy_keys_keep_cross_group_changes_and_numeric_companions_distinct(
         };
     }
     assert_ne!(generation_key(&original), generation_key(&crossed));
-    let companions: Vec<PuzzleRule> = serde_json::from_value(serde_json::json!([
-        { "type": "parity", "cells": [80], "parity": "odd" },
-        { "type": "inequality", "less": 0, "greater": 40 },
-        { "type": "killer-cages", "cages": [{ "cells": [60, 61], "sum": 10 }] },
-        { "type": "modular", "cells": [0, 10, 20] },
-        { "type": "whispers", "cells": [0, 40], "minDifference": 5 }
-    ]))
-    .unwrap();
+    let companions = [
+        PuzzleRule::Parity {
+            cells: vec![80],
+            parity: crate::variant::Parity::Odd,
+        },
+        PuzzleRule::Inequality {
+            less: 0,
+            greater: 40,
+        },
+        PuzzleRule::KillerCages {
+            cages: vec![crate::variant::KillerCage {
+                cells: vec![60, 61],
+                sum: 10,
+            }],
+            cover_grid: false,
+        },
+        PuzzleRule::Modular {
+            cells: vec![0, 10, 20],
+        },
+        PuzzleRule::Whispers {
+            cells: vec![0, 40],
+            min_difference: 5,
+        },
+    ];
     for companion in companions {
         let mut mixed = original.clone();
         mixed.rules.push(companion);
