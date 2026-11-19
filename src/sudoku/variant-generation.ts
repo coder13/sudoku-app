@@ -12,7 +12,7 @@ export type VariantSeed = {
   layout?: string
   lines?: number[][]
   cloneGroups?: number[][][]
-  outside?: { cells: number[]; direction: string; sum: number }[]
+  outside?: ({ cells: number[]; direction: string } & ({ sum: number; count?: never } | { count: number; sum?: never }))[]
   regions?: string
 }
 
@@ -61,15 +61,24 @@ export function variantGenerationRequest(
     case 'little-killer':
       for (const clue of recipe.outside!) {
         const direction = clue.direction
+        if (typeof clue.sum !== 'number') throw new Error('Missing diagonal recipe total.')
         if (direction !== 'north-east' && direction !== 'south-east' && direction !== 'south-west' && direction !== 'north-west') throw new Error('Invalid diagonal recipe direction.')
-        rules.push({ type: 'little-killer', ...clue, direction })
+        rules.push({ type: 'little-killer', cells: clue.cells, sum: clue.sum, direction })
       }
       break
     case 'sandwich': case 'x-sum':
       for (const clue of recipe.outside!) {
         const direction = clue.direction
+        if (typeof clue.sum !== 'number') throw new Error('Missing outside-clue recipe total.')
         if (direction !== 'north' && direction !== 'east' && direction !== 'south' && direction !== 'west') throw new Error('Invalid outside-clue recipe direction.')
-        rules.push({ type: id, ...clue, direction })
+        rules.push({ type: id, cells: clue.cells, sum: clue.sum, direction })
+      }
+      break
+    case 'skyscrapers':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (typeof clue.count !== 'number' || direction !== 'north' && direction !== 'east' && direction !== 'south' && direction !== 'west') throw new Error('Invalid visibility-clue recipe.')
+        rules.push({ type: 'skyscrapers', cells: clue.cells, count: clue.count, direction })
       }
       break
     case 'clone':
@@ -122,7 +131,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           const direction = row < 0 ? column < 0 ? 'north-west' : 'north-east' : column < 0 ? 'south-west' : 'south-east'
           return { ...rule, cells: rule.cells.map(cell), direction }
         }
-        case 'sandwich': case 'x-sum': {
+        case 'sandwich': case 'x-sum': case 'skyscrapers': {
           const cells = rule.cells.map(cell), step = cells[1] - cells[0]
           return { ...rule, cells, direction: step === 1 ? 'east' : step === -1 ? 'west' : step === 9 ? 'south' : 'north' }
         }

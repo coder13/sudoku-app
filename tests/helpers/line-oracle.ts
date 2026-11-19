@@ -16,6 +16,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
   const regionParts: number[][][] = []
   const diagonalSums: { cells: readonly number[]; sum: number }[] = []
+  const skyscrapers: { cells: readonly number[]; count: number }[] = []
   const xSums: { cells: readonly number[]; total: number }[] = []
   const sandwiches: { cells: readonly number[]; total: number }[] = []
   const betweenTriples: (readonly [number, number, number])[] = []
@@ -55,6 +56,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
       regionParts.push(parts)
     }
     else if (rule.type === 'little-killer') diagonalSums.push({ cells: rule.cells, sum: rule.sum })
+    else if (rule.type === 'skyscrapers') skyscrapers.push({ cells: rule.cells, count: rule.count })
     else if (rule.type === 'x-sum') xSums.push({ cells: rule.cells, total: rule.sum })
     else if (rule.type === 'sandwich') sandwiches.push({ cells: rule.cells, total: rule.sum })
     else if (rule.type === 'between') rule.cells.slice(1, -1).forEach(cell =>
@@ -194,6 +196,29 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
         clue.cells.forEach((cell, i) => {
           const keep = domains[cell].filter(digit => supported[i].has(digit))
           changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        })
+      }
+      for (const clue of skyscrapers) {
+        const supported = supportFor(clue, clue.cells, domains, () => {
+          const result = clue.cells.map(() => new Set<number>()), values: number[] = []
+          function enumerate(index: number, used: Set<number>, maximum: number, visible: number) {
+            if (visible > clue.count || visible + 9 - maximum < clue.count) return
+            if (index === clue.cells.length) {
+              if (visible === clue.count) values.forEach((digit,i) => result[i].add(digit))
+              return
+            }
+            for (const digit of domains[clue.cells[index]]) if (!used.has(digit)) {
+              used.add(digit); values.push(digit)
+              enumerate(index+1,used,Math.max(maximum,digit),visible + (digit > maximum ? 1 : 0))
+              values.pop();used.delete(digit)
+            }
+          }
+          enumerate(0,new Set<number>(),0,0)
+          return result
+        })
+        clue.cells.forEach((cell,i) => {
+          const keep = domains[cell].filter(digit => supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length;domains[cell]=keep
         })
       }
       for (const clue of xSums) {

@@ -15,6 +15,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   'little-killer': [],
   sandwich: [],
   'x-sum': [],
+  skyscrapers: [],
   clone: [{ type: 'clone', groups: [[10, 50], [11, 51], [19, 59], [20, 60]] }],
   thermometer: [{ type: 'thermometer', cells: [10, 19, 29, 30] }, { type: 'thermometer', cells: [68, 58, 49, 48] }],
   arrow: [{ type: 'arrow', circle: 28, cells: [29, 39, 40] }, { type: 'arrow', circle: 61, cells: [52, 43] }],
@@ -41,6 +42,7 @@ export function VariantPreview({ variant }: { variant: VariantId }) {
     {variant === 'little-killer' && <svg className="variant-clues variant-little-killer-preview" viewBox="0 0 9 9"><text x="1.8" y="2.2">12</text><path d="M3 3L6.7 6.7M5.2 6.7H6.7V5.2" /></svg>}
     {variant === 'sandwich' && <span className="variant-sandwich-preview"><span>10</span><span>1 · 2 3 5 · 9</span></span>}
     {variant === 'x-sum' && <span className="variant-x-sum-preview"><span>10</span><span>3 + 2 + 5</span></span>}
+    {variant === 'skyscrapers' && <svg className="variant-clues variant-skyscrapers-preview" viewBox="0 0 9 9" focusable="false"><text x=".4" y="5.2">3</text><path d="M2 7V5H3V7M4 7V2H5V7M6 7V3H7V7M7.5 7V1H8.5V7" /></svg>}
     {variant === 'anti-knight' && <span className="variant-knight">♞</span>}
   </span>
 }

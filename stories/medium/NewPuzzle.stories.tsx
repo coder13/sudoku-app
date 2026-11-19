@@ -35,3 +35,7 @@ export const Mobile: Story = {
 export const XSumsDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=x-sum" />,
 }
+
+export const SkyscrapersDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=skyscrapers" />,
+}

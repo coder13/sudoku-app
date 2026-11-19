@@ -1,3 +1,5 @@
+import skyscrapersMurphy from '../../tests/fixtures/skyscrapers-murphy.json'
+import skyscrapersMixed from '../../tests/fixtures/skyscrapers-jigsaw-mixed.json'
 import xSumNewman from '../../tests/fixtures/x-sum-newman.json'
 import xSumMixed from '../../tests/fixtures/x-sum-jigsaw-mixed.json'
 import type { Meta, StoryObj } from '@storybook/react-vite'
@@ -143,4 +145,14 @@ export const XSumsCompact: Story = { ...XSums, parameters: { ...XSums.parameters
 export const MixedOutsideClues: Story = {
   args: candidateGrid(xSumMixed.puzzle as VariantPuzzle, 'Jigsaw with X-Sums, Sandwich and Little Killer clues'),
   parameters: { gridWidth: 290, docs: { description: { story: 'S/X prefixes and the visible legend distinguish otherwise ambiguous row and column totals. Diagonal arrows retain their separate Little Killer meaning; candidate links stay aligned.' } } },
+}
+
+export const Skyscrapers: Story = {
+  args: candidateGrid(skyscrapersMurphy.puzzle as VariantPuzzle, 'Skyscrapers visibility clues'),
+  parameters: { docs: { description: { story: 'Each outside number counts the visible buildings from that edge. This is the visibility variant, distinct from the Classic single-digit Skyscraper technique.' } } },
+}
+export const SkyscrapersCompact: Story = { ...Skyscrapers, parameters: { ...Skyscrapers.parameters, gridWidth: 290 } }
+export const AllOutsideFamilies: Story = {
+  args: candidateGrid(skyscrapersMixed.puzzle as VariantPuzzle, 'Jigsaw with all four outside clue families'),
+  parameters: { gridWidth: 290, docs: { description: { story: 'S/X/Sk prefixes and the visible legend preserve every outside total and visibility count. Little Killer arrows retain their separate diagonal meaning.' } } },
 }

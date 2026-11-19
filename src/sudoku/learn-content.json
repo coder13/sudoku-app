@@ -8065,7 +8065,16 @@
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "Bill Murphy: Pick Up",
+              "href": "https://www.gmpuzzles.com/blog/2025/12/skyscraper-sudoku-by-bill-murphy/"
+            },
+            {
+              "label": "John Bulten: Tau Cross",
+              "href": "https://www.gmpuzzles.com/blog/2021/05/skyscrapers-sudoku-by-john-bulten/"
+            }
+          ],
           "difficulty": "hard"
         },
         {
