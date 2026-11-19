@@ -3,7 +3,6 @@ import { useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Deduction, DeductionAction } from '../sudoku/engine'
 import { CHAIN_COLOR_PAIRS, chainColor, chainPairIndex, type ChainColor } from '../sudoku/chain-sketch'
 import { chainCandidate, type LinkStrength } from '../sudoku/chains'
-import { DIGITS } from '../sudoku/game'
 import { cellReference, techniqueLabel, type CellReferenceOptions } from '../sudoku/hints'
 import { cellName, deductionResults } from '../sudoku/lesson-diagram'
 import { shortcutLabel, type ShortcutPreferences } from '../sudoku/shortcuts'
@@ -19,7 +18,7 @@ type Props = {
   onApply: (actions: readonly DeductionAction[]) => boolean
   shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'newChain'>
   compact?: boolean
-  digitHighlight?: { digit: number | null; onChange: (digit: number | null) => void }
+  strongLinks?: { shown: boolean; hasHighlights: boolean; count: number; toggle: () => void }
   unavailable?: string
   inspection?: ChainInspection
 }
@@ -183,7 +182,7 @@ function ChainActionsMenu({ actions }: {
   </>
 }
 
-export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighlight, unavailable, inspection }: Props) {
+export function ChainsPanel({ sketch, onApply, shortcuts, compact, strongLinks, unavailable, inspection }: Props) {
   const chainLabelId = useId()
   const [colorsOpen, setColorsOpen] = useState(false)
   const [failedActions, setFailedActions] = useState<readonly DeductionAction[] | null>(null)
@@ -287,15 +286,15 @@ export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighligh
           title="Apply deductions from all chains" onClick={() => setFailedActions(onApply(sketch.allActions) ? null : sketch.allActions)}>
           Apply edits
         </Button>
+        {strongLinks && <Button aria-pressed={strongLinks.shown} onClick={strongLinks.toggle}>Show strong links</Button>}
       </div>
       {failedActions === sketch.allActions && <p role="status">Some chain edits conflict or the grid has changed.</p>}
-      {digitHighlight && <label>
-        <span>Highlight digit</span>
-        <select value={digitHighlight.digit ?? ''} onChange={(event) => digitHighlight.onChange(Number(event.target.value) || null)}>
-          <option value="">None</option>
-          {DIGITS.map((digit) => <option key={digit}>{digit}</option>)}
-        </select>
-      </label>}
+      {strongLinks?.shown && <div className="strong-link-tool">
+        {!sketch.drawing && <p>Select a candidate to toggle its digit, or use the keypad.</p>}
+        {strongLinks.hasHighlights && <p role="status">{!strongLinks.count ? 'No strong links between the highlighted candidates.'
+          : sketch.drawing ? `${strongLinks.count} strong ${strongLinks.count === 1 ? 'link' : 'links'} between highlighted candidates.`
+          : active.hidden ? 'Show this chain to start a path.' : 'Select a marked endpoint to start drawing.'}</p>}
+      </div>}
       <ul className="chain-list" aria-label="Drawn chains">
         {sketch.sketches.map(({ id, color, secondColor, hidden, edges, types, paths, hasColorBreak }, index) => {
           const name = `Chain ${index + 1}`

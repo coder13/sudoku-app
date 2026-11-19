@@ -61,7 +61,7 @@
     "steps": [
       {
         "title": "Find a candidate",
-        "description": "R2C4 means row 2, column 4. The small 5 in the center is one possible digit. The ring marks it for this step.",
+        "description": "R2C4 means row 2, column 4. The small 5 in the center is one possible digit. Blue marks it for this step.",
         "marks": [
           {
             "cell": 12,
@@ -88,7 +88,7 @@
       },
       {
         "title": "Read the result",
-        "description": "A red strike marks a removal and a green ring marks a placement. During a trial, both apply only to that trial.",
+        "description": "Red marks a removal. Green marks a placement. During a trial, both apply only to that trial.",
         "marks": [
           {
             "cell": 12,
@@ -3014,7 +3014,7 @@
   },
   "fish-count": {
     "title": "Three rows need three columns",
-    "note": "The rings show every possible 5 in rows 3, 5, and 7. The candidate to test is in row 4.",
+    "note": "The highlights show every possible 5 in rows 3, 5, and 7. The candidate to test is in row 4.",
     "region": {
       "row": 2,
       "column": 2,

@@ -201,9 +201,10 @@ export function Controls(props: Props) {
             <PuzzleKeypad variant={colors ? 'palette' : gridSize === 4 ? 'mini' : gridSize === 6 ? 'six' : undefined}
               label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
+                const highlighted = hasCandidate(props.highlightedDigitMask ?? 0, digit)
                 const singleHighlight = props.highlightedDigitMask === (1 << (digit - 1))
-                const armed = props.selectedDigit === digit || (canHighlightDigits && singleHighlight)
-                const pressed = armed || (canHighlightDigits && hasCandidate(props.highlightedDigitMask ?? 0, digit))
+                const armed = props.selectedDigit === digit || (props.chainDrawing ? highlighted : canHighlightDigits && singleHighlight)
+                const pressed = armed || (canHighlightDigits && highlighted)
                 const progress = props.draft || colors ? 'off' : props.advancedModes.keypadProgress
                 const remaining = Math.max(0, gridSize - counts[digit])
                 const digitLabel = props.chainDrawing ? `${armed ? 'Clear highlight for' : 'Highlight'} ${digit}`
@@ -248,7 +249,7 @@ export function Controls(props: Props) {
                   aria-label={props.chainDrawing ? 'Clear digit highlight' : 'Highlight mode'}
                   aria-pressed={props.chainDrawing ? undefined : props.highlightMode} aria-keyshortcuts={shortcutLabel(shortcuts.highlightMode)}
                   onClick={props.chainDrawing ? () => props.input(0) : props.toggleHighlightMode}
-                  disabled={props.disabled || (props.chainDrawing && props.selectedDigit === null)}>
+                  disabled={props.disabled || (props.chainDrawing && !props.highlightedDigitMask && props.selectedDigit === null)}>
                   <Highlighter size={18} />
                 </IconButton>
                 {props.compact && props.highlightMode && !props.chainDrawing && props.onDigitHighlightMatchChange && (

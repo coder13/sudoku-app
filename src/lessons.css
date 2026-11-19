@@ -308,7 +308,11 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 .foundation-step-copy h4 { margin: 0; font-size: 0.9375rem; }
 .foundation-notation { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px; }
 .foundation-notation code { padding: 3px 5px; border-radius: 4px; font-size: 0.8125rem; }
-.foundation-notation code[data-active] { background: var(--lesson-pattern-fill); color: var(--lesson-pattern); box-shadow: inset 0 -2px var(--lesson-pattern); }
+.foundation-notation code[data-active] { color: var(--lesson-pattern); }
+.foundation-visual[data-candidate-style="shape"] .foundation-notation code[data-active] {
+  background: var(--lesson-pattern-fill);
+  box-shadow: inset 0 -2px var(--lesson-pattern);
+}
 .foundation-states { display: flex; flex-wrap: wrap; gap: var(--space-6); list-style: none; padding: 0; margin: 0; }
 .foundation-states li { padding: 3px 8px; border: 1px solid var(--border-strong); border-radius: 5px; font-size: 0.75rem; }
 .foundation-key .foundation-key-item { align-items: center; }

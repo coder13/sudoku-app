@@ -75,6 +75,22 @@ export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle)
 
 export type ChainGraph = ReturnType<typeof makeChainGraph>
 
+export function highlightedStrongLinks(graph: ChainGraph, digitMask: number): ChainEdge[] {
+  if (!digitMask) return []
+  const seen = new Set<string>()
+  const links: ChainEdge[] = []
+  for (const group of graph.constraints) {
+    if (group.length !== 2) continue
+    const [from, to] = group
+    if (!hasCandidate(digitMask, chainCandidate(from).digit) || !hasCandidate(digitMask, chainCandidate(to).digit)) continue
+    const key = [Math.min(from, to), Math.max(from, to)].join(':')
+    if (seen.has(key)) continue
+    seen.add(key)
+    links.push([from, to])
+  }
+  return links
+}
+
 function alternate(links: readonly LinkStrength[], first: LinkStrength) {
   const roles = links.map((_, i) => i % 2 === 0 ? first : opposite(first))
   return roles.every((role, i) => role === 'weak' || links[i] === 'strong') ? roles : undefined

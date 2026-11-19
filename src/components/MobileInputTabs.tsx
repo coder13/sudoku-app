@@ -1,16 +1,17 @@
 import { type ReactNode, type Ref, useId, useLayoutEffect, useRef, useState } from 'react'
-import { MoreHorizontal, Palette, PencilLine, X } from 'lucide-react'
+import { MoreHorizontal, Palette, PencilLine, ScanSearch, X } from 'lucide-react'
 import { IconButton } from './Button'
 import type { MobileInputTab, MobileInputTool } from '../sudoku/play-session'
 
-const labels = { digits: 'Digits', colors: 'Colors', chains: 'Chains' }
+const labels = { digits: 'Digits', colors: 'Colors', chains: 'Chains', subsets: 'Subsets' }
 
-function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCandidates, onOpen }: {
+function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCandidates, onOpen, onOpenSubsets }: {
   disabled: boolean
   colorsOnly?: boolean
   candidatesDisabled?: boolean
   onGenerateCandidates?: () => void
   onOpen: (opener: HTMLButtonElement | null) => void
+  onOpenSubsets?: (opener: HTMLButtonElement | null) => void
 }) {
   const id = useId()
   const [open, setOpen] = useState(false)
@@ -61,6 +62,9 @@ function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCa
       {onGenerateCandidates && <button type="button" disabled={candidatesDisabled} onClick={() => { close(); onGenerateCandidates() }}>
         <PencilLine size={17} aria-hidden="true" /> Generate candidates
       </button>}
+      {onOpenSubsets && <button type="button" onClick={() => { close(); onOpenSubsets(trigger.current) }}>
+        <ScanSearch size={17} aria-hidden="true" /> Subsets
+      </button>}
       <button type="button" onClick={() => { close(); onOpen(trigger.current) }}>
         <Palette size={17} aria-hidden="true" /> {colorsOnly ? 'Colors' : 'Colors & Chains'}
       </button>
@@ -70,7 +74,7 @@ function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCa
 
 /** Show Digits and any open solving tools in the mobile input card. Worktable owns the saved tab selection. */
 export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, colorsOnly, onOpenTools,
-  candidatesDisabled, onGenerateCandidates, onSelect, onClose }: {
+  candidatesDisabled, onGenerateCandidates, onOpenSubsets, onSelect, onClose }: {
   active: MobileInputTab
   open: MobileInputTool[]
   panels: Record<MobileInputTab, ReactNode>
@@ -78,13 +82,14 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
   toolsDisabled: boolean
   colorsOnly?: boolean
   onOpenTools?: (opener: HTMLButtonElement | null) => void
+  onOpenSubsets?: (opener: HTMLButtonElement | null) => void
   candidatesDisabled?: boolean
   onGenerateCandidates?: () => void
   onSelect: (tab: MobileInputTab) => void
   onClose: (tab: MobileInputTool) => void
 }) {
   const id = useId()
-  const tabs = (['digits', 'colors', 'chains'] as const).filter((tab) => tab === 'digits' || open.includes(tab))
+  const tabs = (['digits', 'colors', 'chains', 'subsets'] as const).filter((tab) => tab === 'digits' || open.includes(tab))
   const toolToClose = active === 'digits' ? open.at(0) : active
   const hasInputCard = Boolean(open.length || onOpenTools)
 
@@ -116,7 +121,7 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
           role={open.length ? 'tabpanel' : undefined} aria-labelledby={open.length ? `${id}-tab-${tab}` : undefined}
           className={digits ? 'mobile-input-digits' : 'mobile-input-tool'} hidden={!digits && !selected} inert={!selected}
           tabIndex={!digits && selected ? 0 : undefined} data-no-panel-hold={!digits || undefined}>
-          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} colorsOnly={colorsOnly} onOpen={onOpenTools}
+          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} colorsOnly={colorsOnly} onOpen={onOpenTools} onOpenSubsets={onOpenSubsets}
             candidatesDisabled={candidatesDisabled} onGenerateCandidates={onGenerateCandidates} />}
           {panels[tab]}
         </div>

@@ -38,11 +38,9 @@ const screenLabels: Record<Section, string> = {
   hints: 'Hints',
 }
 
-const candidateStyles: { id: CandidateHighlightStyle; label: string; description: string }[] = [
-  { id: 'text', label: 'Candidate color', description: 'Change only the matching candidate’s color.' },
-  { id: 'spotlight', label: 'Candidate spot', description: 'Add a small background behind the matching candidate.' },
-  { id: 'cell', label: 'Cell tint', description: 'Tint every cell that contains the matching candidate.' },
-  { id: 'outline', label: 'Cell outline', description: 'Outline every cell that contains the matching candidate.' },
+const candidateStyles: { id: CandidateHighlightStyle; label: string }[] = [
+  { id: 'text', label: 'Font color' },
+  { id: 'shape', label: 'Font color + shape' },
 ]
 
 export function HighlightSettings({ highlighting, setHighlighting }: {
@@ -73,14 +71,14 @@ export function HighlightSettings({ highlighting, setHighlighting }: {
             <span><strong>Matching candidates</strong><small>Highlight candidates matching the active digit.</small></span>
           </label>
         </fieldset>
-        <fieldset className="highlight-style-options" disabled={!highlighting.matchingCandidates}>
+        <fieldset className="highlight-style-options">
           <legend>Candidate highlight style</legend>
           {candidateStyles.map((style) => (
             <label key={style.id}>
               <input type="radio" name={candidateStyleGroup} value={style.id}
                 checked={highlighting.candidateStyle === style.id}
                 onChange={() => setHighlighting({ ...highlighting, candidateStyle: style.id })} />
-              <span><strong>{style.label}</strong><small>{style.description}</small></span>
+              <span><strong>{style.label}</strong></span>
             </label>
           ))}
         </fieldset>

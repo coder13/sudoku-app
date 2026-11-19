@@ -239,6 +239,15 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     setHovered(null)
   }
 
+  function beginAt(candidate: Candidate) {
+    if (!enabled || active.hidden) return
+    const node = candidateId(candidate)
+    setDrawingIntent(true)
+    setHovered(null)
+    setStatus('')
+    updateActive((sketch) => ({ ...sketch, highlightedDigit: candidate.digit }), node, true)
+  }
+
   function select(candidate: Candidate) {
     if (!enabled || !drawing || !graph || active.hidden) return
     const id = candidateId(candidate)
@@ -285,7 +294,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   return {
     drawing,
     annotations: preview ? { ...committed, links: [preview, ...(committed.links ?? [])] } : committed,
-    sketches: analyzed, active, status, pending, select, finishLoop, stop, endPath, setHighlightedDigit,
+    sketches: analyzed, active, status, pending, beginAt, select, finishLoop, stop, endPath, setHighlightedDigit,
     suspend: () => setDrawingIntent(false),
     chains: canAnalyze ? activeAnalysis?.chains ?? [] : [],
     medusas: canAnalyze ? activeAnalysis?.medusas ?? [] : [],

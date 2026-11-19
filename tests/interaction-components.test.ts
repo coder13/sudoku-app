@@ -180,7 +180,24 @@ test('desktop and mobile candidate-layout controls use independent radio groups'
 test('desktop and mobile candidate-highlight controls use independent radio groups', () => {
   assertIndependentGroups(radioGroups('HighlightSettings', {
     highlighting: preferences.DEFAULT_HIGHLIGHT_PREFERENCES, setHighlighting() {},
-  }), 4)
+  }), 2)
+})
+
+test('font color highlights candidate digits without tinting their cells', () => {
+  const highlight = (candidateStyle: string) => boardTree({ highlightedDigitMask: 1, highlightedDigitMatch: 'any',
+    highlighting: { ...(preferences.DEFAULT_HIGHLIGHT_PREFERENCES as object), candidateStyle },
+    annotations: { candidates: new Map([[0, new Map([[1, { color: 'red', mark: 'strike', label: 'can be removed' }]])]]) },
+  })
+  const text = highlight('text')
+  const shape = highlight('shape')
+  assert.ok(text.some(({ props }) => props['data-candidate-style'] === 'text'))
+  assert.ok(!text.some(({ props }) => String(props.className).includes('candidate-highlight-light')))
+  assert.ok(shape.some(({ props }) => String(props.className).includes('candidate-highlight-light')))
+  for (const tree of [text, shape]) {
+    const matches = tree.filter(({ props }) => String(props.className).includes('candidate-match'))
+    assert.deepEqual(matches.map(({ props }) => props.children), [1, 1])
+    assert.equal(matches[0].props['data-mark'], 'strike')
+  }
 })
 
 test('desktop and mobile workspace-mode controls use independent radio groups', () => {

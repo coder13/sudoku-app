@@ -84,7 +84,7 @@
       {
         "type": "text",
         "paragraphs": [
-          "A ring marks a candidate to examine. A red strike marks a candidate to remove. A green ring marks a digit you can place."
+          "Blue marks a candidate to examine. Red marks a candidate to remove. Green marks a digit you can place."
         ]
       },
       {

@@ -66,18 +66,32 @@ export const MobileInputTools: Story = {
     await expect(tabs).not.toBeInTheDocument()
   },
 }
-export const PuzzleCardTools: Story = {
+export const PuzzlePanelToggles: Story = {
   args: { game: inProgress, games: [inProgress] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
-  play: async ({ canvas, userEvent }) => {
-    const shortcut = canvas.getByRole('button', { name: 'Open Colors & Chains from puzzle card' })
-    await expect(shortcut).toBeVisible()
-    await expect(shortcut).toHaveAttribute('data-edge', 'bottom')
-    await expect(shortcut.closest('.puzzle-actions')).toBeNull()
-    shortcut.focus()
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (!canvasElement.querySelector('.mobile-panel-layout')) return
+    const options = canvas.getByRole('button', { name: 'Open puzzle options' })
+    await userEvent.click(options)
+    const colors = canvas.getByRole('button', { name: 'Colors', pressed: false })
+    colors.focus()
     await userEvent.keyboard('{Enter}')
+    await expect(colors).toHaveAttribute('aria-pressed', 'true')
+    await expect(colors).toHaveFocus()
     await expect(canvas.getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
-    await expect(canvas.getByRole('tab', { name: 'Chains' })).toBeVisible()
+    await expect(canvas.queryByRole('tab', { name: 'Chains' })).not.toBeInTheDocument()
+    const chains = canvas.getByRole('button', { name: 'Chains', pressed: false })
+    await userEvent.click(chains)
+    const subsets = canvas.getByRole('button', { name: 'Subsets', pressed: false })
+    await userEvent.click(subsets)
+    await expect(canvas.getByRole('tab', { name: 'Subsets' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(canvas.getByRole('button', { name: 'Colors', pressed: true }))
+    await expect(canvas.queryByRole('tab', { name: 'Colors' })).not.toBeInTheDocument()
+    await expect(canvas.getByRole('tab', { name: 'Subsets' })).toHaveAttribute('aria-selected', 'true')
+    await expect(options).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect(options).toHaveAttribute('aria-expanded', 'false')
+    await expect(options).toHaveFocus()
   },
 }
 const branchRoot = candidateId({ cell: 50, digit: 4 })
@@ -96,8 +110,9 @@ export const RemoveBranchTip: Story = {
   args: { game: branchedGame, games: [branchedGame] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Open Colors & Chains from puzzle card' }))
-    await userEvent.click(canvas.getByRole('tab', { name: 'Chains' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Chains', pressed: false }))
+    await userEvent.keyboard('{Escape}')
     const grid = within(await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' }))
     const chain = canvas.getByRole('button', { name: /^Chain 1$/ })
     const branchNotation = /, 4r6c6 = 1r6c6/
