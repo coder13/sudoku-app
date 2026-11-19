@@ -2,6 +2,8 @@ import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'rea
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
+import { newChainSketch } from '../../src/sudoku/chain-sketch'
+import { candidateId, type ChainEdge } from '../../src/sudoku/chains'
 import { EMPTY, makeGame, paintCells, replaceCandidates } from '../../src/sudoku/game'
 import { playSession } from '../../src/sudoku/play-session'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
@@ -74,6 +76,46 @@ export const PuzzleCardTools: Story = {
     await userEvent.keyboard('{Enter}')
     await expect(canvas.getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
     await expect(canvas.getByRole('tab', { name: 'Chains' })).toBeVisible()
+  },
+}
+const branchRoot = candidateId({ cell: 50, digit: 4 })
+const branchTip = candidateId({ cell: 50, digit: 1 })
+const branchedLinks: ChainEdge[] = [
+  [candidateId({ cell: 23, digit: 2 }), candidateId({ cell: 23, digit: 4 })],
+  [candidateId({ cell: 23, digit: 4 }), branchRoot],
+  [branchRoot, candidateId({ cell: 32, digit: 4 })],
+  [branchRoot, branchTip],
+]
+const branchedGame = {
+  ...starter,
+  chainSketch: { sketches: [{ ...newChainSketch(1), history: [[], branchedLinks] }], activeId: 1, pending: null },
+}
+export const RemoveBranchTip: Story = {
+  args: { game: branchedGame, games: [branchedGame] },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Colors & Chains from puzzle card' }))
+    await userEvent.click(canvas.getByRole('tab', { name: 'Chains' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Draw links' }))
+    const grid = within(canvas.getByRole('grid', { name: 'Sudoku grid for drawing links' }))
+    const chain = canvas.getByRole('button', { name: /^Chain 1$/ })
+    const branchNotation = /, 4r6c6 = 1r6c6/
+    const junction = grid.getByRole('button', { name: /^4 in row 6, column 6\b/ })
+    await userEvent.click(junction)
+    await userEvent.click(junction)
+    await expect(junction).toHaveAttribute('aria-pressed', 'false')
+    await expect(chain).toHaveTextContent(branchNotation)
+
+    const tip = grid.getByRole('button', { name: /^1 in row 6, column 6\b/ })
+    await userEvent.click(tip)
+    await expect(tip).toHaveAttribute('aria-pressed', 'true')
+    tip.focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(canvas.getByText('Branch tip removed.')).toBeVisible()
+    await expect(chain).not.toHaveTextContent(branchNotation)
+    await expect(tip).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo edit' }))
+    await expect(chain).toHaveTextContent(branchNotation)
   },
 }
 export const TemporaryPencil: Story = {

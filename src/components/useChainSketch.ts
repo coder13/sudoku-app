@@ -239,6 +239,14 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   function select(candidate: Candidate) {
     if (!enabled || !drawing || !graph || active.hidden) return
     const id = candidateId(candidate)
+    if (pending === id) {
+      const remaining = edges.filter(edge => !edge.includes(id))
+      if (remaining.length === edges.length - 1) {
+        changeEdges(remaining)
+        setStatus('Branch tip removed.')
+        return
+      }
+    }
     const mark = (sketch: ChainSketch) => sketch.highlightedDigit === candidate.digit ? sketch : { ...sketch, highlightedDigit: candidate.digit }
     const name = `${candidate.digit} in ${cellName(candidate.cell)}`
     const alreadyLinked = edges.some(edge => edge.includes(id))
