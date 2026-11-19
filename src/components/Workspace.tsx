@@ -20,6 +20,7 @@ import {
 import { deviceSync } from '../sudoku/device-sync'
 import { roomStore } from '../sudoku/storage'
 import { generationVariant } from '../sudoku/variants'
+import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
@@ -262,7 +263,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setPanel(null)
     const variant = game?.variant ? generationVariant(game.variant) : 'classic'
     if (step === 'difficulty' && variant) {
-      void navigate({ to: '/puzzles/new/difficulty', search: { variant } })
+      void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: puzzleGenerationRuleset(game?.variant?.puzzle) } })
     } else {
       void navigate({ to: '/puzzles/new', search: {} })
     }

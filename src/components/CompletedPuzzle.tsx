@@ -15,6 +15,7 @@ import { collectionProgress, findCollectionGame, getGameCollection, nextCollecti
 import { openNextCollectionPuzzle } from '../sudoku/collection-play'
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { useOnlineStatus } from './useOnlineStatus'
+import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 
 function activePuzzleSummary(game: Game) {
   const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
@@ -56,6 +57,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const progress = collectionEntry && collectionDifficulty
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = generationVariant(game.variant)
+  const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
   const needsChoice = !inCollection && Boolean(game.variant && !recipe)
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = inProgress(games).find(puzzle =>
@@ -92,8 +94,8 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(preferredDifficulty, undefined, recipe)
-  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, generate, onChooseVariant, online, preferredDifficulty])
+    } else void generate(preferredDifficulty, undefined, recipe, { ruleset })
+  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, generate, onChooseVariant, online, preferredDifficulty])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext

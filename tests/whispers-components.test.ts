@@ -11,11 +11,14 @@ import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-ex
 import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
 import { assertLineHouseProof } from './helpers/line-house-truth.ts'
+import { isVariantId, variantDifficulties } from '../src/sudoku/variants.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
-let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, HintCard: Component, SolutionPath: Component
+let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, HintCard: Component, SolutionPath: Component, VariantPreview: Component, VariantRulesetSelector: Component, CompletedPuzzle: Component
+let renderNewPuzzle: (path: string, preference?: { variant: string; difficulty: string; ruleset?: string }) => Promise<string>
+let validateSearch: (search: Record<string, unknown>) => Record<string, unknown>
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false, watch: null }, optimizeDeps: { noDiscovery: true, include: [] } })
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
@@ -23,6 +26,11 @@ before(async () => {
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ VariantRulesetSelector } = await server.ssrLoadModule('/src/components/VariantRulesetSelector.tsx'))
+  ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
+  validateSearch = (await server.ssrLoadModule('/src/routes/puzzles.new.tsx')).Route.options.validateSearch
 })
 after(async () => { await server?.close() })
 
@@ -102,4 +110,51 @@ test('a closed line is drawn through its last edge and names both neighbors at i
   assert.ok(html.includes('points="0.5,0.5 1.5,1.5 2.5,2.5 0.5,0.5"'))
   const label = html.match(/data-cell="0"[^>]*aria-label="([^"]+)"/)![1]
   assert.match(label, /minimum difference 4 with row 2, column 2 and row 3, column 3/)
+})
+
+
+test('New Puzzle exposes Medium Whispers with accurate line previews and accessible preset radios', () => {
+  assert.ok(isVariantId('whispers'))
+  assert.deepEqual(variantDifficulties('whispers'), ['medium'])
+  for (const [ruleset, gap] of [['german', 5], ['dutch', 4]]) {
+    const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'whispers', ruleset }))
+    assert.match(preview, new RegExp(`data-min-difference="${gap}"`))
+    if (gap === 4) assert.match(preview, /≥4/)
+    const choices = renderToStaticMarkup(createElement(VariantRulesetSelector, { variant: 'whispers', value: ruleset, disabled: true, onChange() {} }))
+    assert.match(choices, /<fieldset[^>]*disabled/)
+    assert.match(choices.match(new RegExp(`<input[^>]*value="${ruleset}"[^>]*>`))![0], /checked/)
+    assert.match(choices, /German Whispers/); assert.match(choices, /Dutch Whispers/)
+    assert.match(choices, /aria-labelledby=/); assert.match(choices, /aria-describedby=/)
+    assert.match(choices, /differ by at least 5/); assert.match(choices, /differ by at least 4/)
+  }
+  assert.equal(renderToStaticMarkup(createElement(VariantRulesetSelector, { variant: 'parity', onChange() {} })), '')
+})
+
+test('actual New Puzzle routes preserve styles in Continue/Back links, saved choices and difficulty selection', async () => {
+  assert.deepEqual(validateSearch({ variant: 'whispers', ruleset: 'dutch' }), { variant: 'whispers', ruleset: 'dutch' })
+  assert.deepEqual(validateSearch({ variant: 'parity', ruleset: 'dutch' }), { variant: 'parity' })
+  assert.deepEqual(validateSearch({ variant: 'whispers', ruleset: 'invalid' }), { variant: 'whispers' })
+  assert.deepEqual(validateSearch({ variant: 'missing', ruleset: 'german' }), {})
+  for (const ruleset of ['german', 'dutch']) {
+    const choice = await renderNewPuzzle('/puzzles/new?variant=whispers&ruleset=' + ruleset)
+    assert.match(choice, /Choose a variant/)
+    assert.match(choice, new RegExp(`/puzzles/new/difficulty\\?variant=whispers&amp;ruleset=${ruleset}`))
+    const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=whispers&ruleset=' + ruleset)
+    assert.match(difficulty, /Choose difficulty/)
+    assert.match(difficulty, new RegExp(`${ruleset === 'german' ? 'German' : 'Dutch'} Whispers`))
+    assert.match(difficulty, new RegExp(`/puzzles/new\\?variant=whispers&amp;ruleset=${ruleset}`))
+    assert.match(difficulty, /Start medium puzzle/)
+    assert.doesNotMatch(difficulty, /value="easy"/)
+  }
+  const saved = await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'whispers', difficulty: 'medium', ruleset: 'dutch' })
+  assert.match(saved, /Dutch Whispers/)
+  assert.match(saved.match(/<input[^>]*value="dutch"[^>]*>/)![0], /checked/)
+})
+
+test('the completed published Whispers puzzle offers a verified next Medium puzzle', () => {
+  const game = { ...makeGame('whispers-complete', 'Brain Zaps', fixture.puzzle.givens, 'imported'), variant: { id: 'whispers' as const, puzzle: fixture.puzzle, solution: fixture.solution } }
+  game.position.entries = [...fixture.solution].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
+  const html = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
+    ratingPending: false, shortcutEnabled: false, showGuides: true, onResumePuzzle() {}, onChooseDifficulty() {}, onChooseVariant() {} }))
+  assert.match(html, /Next medium puzzle/); assert.match(html, /Choose difficulty/); assert.match(html, /Choose variant/)
 })

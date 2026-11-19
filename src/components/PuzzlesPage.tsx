@@ -15,6 +15,8 @@ import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
 import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId, type PuzzleVariantId } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
 import { VariantPreview } from './VariantPreview'
+import { VariantRulesetSelector } from './VariantRulesetSelector'
+import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { PuzzleCollections } from './PuzzleCollections'
 import { collectionDifficulties, getCollectionPuzzle, getCollection } from '../sudoku/collections'
@@ -130,8 +132,9 @@ function PuzzleLibrary({ games, active, manage, loading, section }: {
   </div>
 }
 
-function NewPuzzleVariant({ variant, onCreate }: {
+function NewPuzzleVariant({ variant, ruleset, onCreate }: {
   variant: VariantId
+  ruleset?: GenerationRulesetId
   onCreate: () => void
 }) {
   const navigate = useNavigate()
@@ -154,7 +157,7 @@ function NewPuzzleVariant({ variant, onCreate }: {
       <IconButton aria-label="Previous variant" onClick={() => browse(-1)}>
         <ChevronLeft size={22} aria-hidden="true" />
       </IconButton>
-      <div className="new-puzzle-variant-preview"><VariantPreview variant={variant} /></div>
+      <div className="new-puzzle-variant-preview"><VariantPreview variant={variant} ruleset={ruleset} /></div>
       <IconButton aria-label="Next variant" onClick={() => browse(1)}>
         <ChevronRight size={22} aria-hidden="true" />
       </IconButton>
@@ -163,7 +166,10 @@ function NewPuzzleVariant({ variant, onCreate }: {
         <p>{rule}</p>
       </div>
     </div>
-    <Link to="/puzzles/new/difficulty" search={{ variant }} state={{ fromPuzzleVariantPicker: true }}
+    <VariantRulesetSelector variant={variant} value={ruleset} onChange={next => {
+      void navigate({ to: '/puzzles/new', search: { variant, ruleset: next }, replace: true, resetScroll: false })
+    }} />
+    <Link to="/puzzles/new/difficulty" search={{ variant, ruleset }} state={{ fromPuzzleVariantPicker: true }}
       className={buttonClassName('primary')}>Continue <ArrowRight size={18} aria-hidden="true" /></Link>
     <div className="new-puzzle-actions">
       <Button onClick={onCreate}><PencilLine size={18} aria-hidden="true" />Create puzzle</Button>
@@ -172,28 +178,34 @@ function NewPuzzleVariant({ variant, onCreate }: {
   </section>
 }
 
-function NewPuzzleDifficulty({ variant, difficulty, save }: {
+function NewPuzzleDifficulty({ variant, ruleset, difficulty, save }: {
   variant: VariantId
+  ruleset?: GenerationRulesetId
   difficulty: DifficultyPreference
   save: (preference: NewPuzzlePreference) => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
+  const navigate = useNavigate()
+  const preset = generationRuleset(variant, ruleset)
   const { recommended } = usePlayerRating()
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
   const selected = variantDifficulty(variant, selection ?? difficulty)
   const autoLabel = variantDifficultyLabel(variant, 'auto', recommended)
   function start() {
     const onGenerated = () => {
-      save({ variant, difficulty: selected })
+      save({ variant, difficulty: selected, ...(preset ? { ruleset: preset.id } : {}) })
     }
-    void generate(selected, onGenerated, variant)
+    void generate(selected, onGenerated, variant, { ruleset: preset?.id })
   }
 
   return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
     <p className="new-puzzle-variant-summary">
-      <VariantPreview variant={variant} />
-      <span>{VARIANTS[variant].name}</span>
+      <VariantPreview variant={variant} ruleset={ruleset} />
+      <span>{preset?.name ?? VARIANTS[variant].name}</span>
     </p>
+    <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
+      void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: next }, replace: true, resetScroll: false })
+    }} />
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
     <Button variant="primary" className="puzzle-start-button" disabled={busy} onClick={start}>
@@ -280,6 +292,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
   const screen = section === 'new' ? difficultyScreen ? 'difficulty' : 'variant' : undefined
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
+  const ruleset = generationRuleset(variant, newPuzzleSearch?.ruleset ?? newPuzzlePreference.ruleset)?.id
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
     : screen === 'variant' ? 'Choose a variant'
       : section === 'puzzles' ? 'Puzzles'
@@ -303,8 +316,8 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     if (current === 'new') {
       if (!preferencesReady) return <p className="main-menu-empty" role="status">Loading…</p>
       return difficultyScreen
-        ? <NewPuzzleDifficulty key={variant} variant={variant} difficulty={newPuzzlePreference.difficulty} save={savePuzzlePreference} />
-        : <NewPuzzleVariant variant={variant} onCreate={onCreatePuzzle} />
+        ? <NewPuzzleDifficulty key={variant} variant={variant} ruleset={ruleset} difficulty={newPuzzlePreference.difficulty} save={savePuzzlePreference} />
+        : <NewPuzzleVariant variant={variant} ruleset={ruleset} onCreate={onCreatePuzzle} />
     }
     return <Statistics games={games} />
   }
@@ -319,7 +332,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
             : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
           : difficultyScreen ? (fromVariantPicker && canGoBack
             ? <IconButton className="puzzles-back" aria-label="Back to variant" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
-            : <Link to="/puzzles/new" search={{ variant }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
+            : <Link to="/puzzles/new" search={{ variant, ruleset }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
               aria-label="Back to variant"><ChevronLeft size={21} /></Link>)
             : section !== 'puzzles' && <Link to="/" search={{}} className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
         <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{pageTitle}</h1>

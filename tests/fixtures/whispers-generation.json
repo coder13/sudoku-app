@@ -1,0 +1,47 @@
+{
+  "sourceAppHead": "c6d583c5554f46f8247ab02838963eefa52a9398",
+  "sourceHost": "darwin arm64",
+  "engineSha256": "291a61e8b43a92921902173415725a098219e69a8582c8fa4cfc44ef926dc8f7",
+  "source": "https://www.gmpuzzles.com/blog/2026/01/german-whispers-sudoku-by-philip-newman-5/",
+  "provenance": "All four Brain Zaps path geometries. Blank templates sample new completions and givens. The Dutch minimum-4 preset is a separate generated experiment; the unchanged original published control keeps minimum 5.",
+  "lines": [
+    [
+      12,
+      4,
+      13,
+      5,
+      14,
+      6,
+      15,
+      7
+    ],
+    [
+      10,
+      18,
+      28,
+      27,
+      37,
+      45,
+      46
+    ],
+    [
+      34,
+      35,
+      43,
+      53,
+      52,
+      62,
+      70
+    ],
+    [
+      73,
+      65,
+      74,
+      66,
+      75,
+      67,
+      76,
+      68
+    ]
+  ]
+}

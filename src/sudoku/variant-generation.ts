@@ -12,6 +12,7 @@ export type VariantSeed = {
   cageSizes?: number[]
   dotCount?: number
   markedCells?: number[]
+  minDifference?: number
   layout?: string
   lines?: number[][]
   cloneGroups?: number[][][]
@@ -63,6 +64,9 @@ export function variantGenerationRequest(
       break
     case 'thermometer': case 'between': case 'region-sum':
       for (const cells of recipe.lines!) rules.push({ type: id, cells })
+      break
+    case 'whispers':
+      for (const cells of recipe.lines!) rules.push({ type: 'whispers', cells, minDifference: recipe.minDifference! })
       break
     case 'little-killer':
       for (const clue of recipe.outside!) {

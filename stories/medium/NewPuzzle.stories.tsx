@@ -63,3 +63,11 @@ export const OddEvenVariant: Story = {
 export const OddEvenDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=parity" />,
 }
+
+export const GermanWhispers: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=whispers&ruleset=german" />,
+}
+export const DutchWhispers: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=whispers&ruleset=dutch" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
