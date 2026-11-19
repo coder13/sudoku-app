@@ -24,7 +24,7 @@ export const CELL_REFERENCE_LABELS = {
   verbose: 'Verbose',
 }
 export type CellReferenceStyle = keyof typeof CELL_REFERENCE_LABELS
-export type CellReferenceOptions = { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle }
+export type CellReferenceOptions = { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle; gridSize?: number }
 export const DEFAULT_CELL_REFERENCE_STYLE: CellReferenceStyle = 'automatic'
 
 export function isCellReferenceStyle(value: unknown): value is CellReferenceStyle {
@@ -43,6 +43,7 @@ export const HINT_CANDIDATES_ERROR: PuzzleHint = {
 }
 
 const TECHNIQUE_LABELS: Record<string, string> = {
+  'algebraic-cage-bounds': 'Algebraic cage bounds',
   'whispers-house-support': 'Whispers and shared houses',
   '3d-medusa': '3D Medusa',
   'non-consecutive-locked-candidates-2': 'Non-Consecutive locked candidates (2 cells)',
@@ -99,9 +100,9 @@ export function techniqueLabel(technique: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
-export function cellReference(cell: number, style: CellReferenceStyle, difficulty?: Difficulty) {
-  const row = Math.floor(cell / 9) + 1
-  const column = cell % 9 + 1
+export function cellReference(cell: number, style: CellReferenceStyle, difficulty?: Difficulty, gridSize = 9) {
+  const row = Math.floor(cell / gridSize) + 1
+  const column = cell % gridSize + 1
   const advanced = difficulty !== undefined && ['tricky', 'hard', 'very-hard', 'expert', 'master', 'unfair', 'extreme', 'impossible'].includes(difficulty)
   const concise = style === 'concise' || (style === 'automatic' && advanced)
   return concise ? `r${row}c${column}` : `row ${row}, column ${column}`
@@ -115,40 +116,40 @@ export function describeHintDigits({ pattern, actions }: HintChoice): string {
 }
 
 export function describeHintRemovals(deduction: Deduction, {
-  difficulty, cellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE,
-}: { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle } = {}): HintRemoval[] {
+  difficulty, cellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE, gridSize,
+}: CellReferenceOptions = {}): HintRemoval[] {
   const removals = new Map<number, Set<string>>()
   for (const action of deduction.actions) {
     if (!('eliminate' in action)) continue
     const { cell, digit } = action.eliminate
     const cells = removals.get(digit) ?? new Set<string>()
-    cells.add(cellReference(cell, cellReferenceStyle, difficulty))
+    cells.add(cellReference(cell, cellReferenceStyle, difficulty, gridSize))
     removals.set(digit, cells)
   }
   return [...removals].map(([digit, cells]) => ({ digit, cells: [...cells] }))
 }
 
 export function describeHint(deduction: Deduction, {
-  difficulty, cellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE,
-}: { difficulty?: Difficulty; cellReferenceStyle?: CellReferenceStyle } = {}): PuzzleHint {
+  difficulty, cellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE, gridSize,
+}: CellReferenceOptions = {}): PuzzleHint {
   const title = techniqueLabel(deduction.technique)
   const action = deduction.actions[0]
   if (!action) return { title, text: 'Look for this technique in the current grid.' }
 
-  const location = (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
+  const location = (cell: number) => cellReference(cell, cellReferenceStyle, difficulty, gridSize)
   if ('place' in action) {
     const { cell, digit } = action.place
     return { title, text: `Place ${digit} in ${location(cell)}.` }
   }
 
-  const text = describeHintRemovals(deduction, { difficulty, cellReferenceStyle }).map(({ digit, cells }) =>
+  const text = describeHintRemovals(deduction, { difficulty, cellReferenceStyle, gridSize }).map(({ digit, cells }) =>
     `Remove ${digit} from ${locationList.format(cells)}.`).join(' ')
   return { title, text }
 }
 
-export function describeSingleHint([cell, digit]: [number, number], style: CellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE): PuzzleHint {
+export function describeSingleHint([cell, digit]: [number, number], style: CellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE, gridSize = 9): PuzzleHint {
   return {
     title: 'Single',
-    text: `Place ${digit} in ${cellReference(cell, style, 'easy')}.`,
+    text: `Place ${digit} in ${cellReference(cell, style, 'easy', gridSize)}.`,
   }
 }

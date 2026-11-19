@@ -1,5 +1,7 @@
 import { EngineError, runEngine, type Difficulty, type VariantPosition } from './engine.ts'
 import { type Game, type Position, valuesOf } from './game.ts'
+import { miniCandidates } from './mini-play.ts'
+import { algebraicCandidates } from './algebraic-play.ts'
 import { readDisabledHintTechniques } from './hint-preferences.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from './variant-generation.ts'
 import { variantIdForPuzzle, type PlayableVariant, type VariantGame } from './variants.ts'
@@ -60,6 +62,8 @@ export function variantPosition(
 }
 
 export async function playCandidates(game: Game) {
+  if (game.algebraic) return algebraicCandidates(game.algebraic, valuesOf(game), game.position.eliminations)
+  if (game.grid) return miniCandidates(valuesOf(game), game.position.eliminations)
   if (!game.variant) return runEngine({ type: 'notes', values: valuesOf(game) })
   try {
     return await runEngine({ type: 'variant', operation: 'candidates', position: variantPosition(game.variant, game.position) })

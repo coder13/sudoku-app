@@ -6,20 +6,22 @@ import { difficultyStatistics } from '../sudoku/difficulty-statistics'
 import type { Difficulty } from '../sudoku/engine'
 import { formatTime } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
-import { variantDifficulties, variantDifficulty, type VariantId } from '../sudoku/variants'
+import { isSizedPuzzleId, miniDifficulties, miniDifficulty, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { variantDifficulties, variantDifficulty } from '../sudoku/variants'
 
 export function DifficultySelector({ value, recommended, variant, disabled = false, onChange }: {
   value: DifficultyPreference
   recommended: Difficulty
-  variant?: VariantId
+  variant?: NewPuzzleId
   disabled?: boolean
   onChange: (value: DifficultyPreference) => void
 }) {
   const id = useId()
   const { games } = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot, roomStore.getServerSnapshot)
   const statistics = useMemo(() => difficultyStatistics(games, variant), [games, variant])
-  const levels = variantDifficulties(variant).filter((level): level is Difficulty => level !== 'auto')
-  const selected = variantDifficulty(variant, value === 'auto' ? recommended : value) as Difficulty
+  const sized = isSizedPuzzleId(variant)
+  const levels: readonly Difficulty[] = sized ? miniDifficulties : variantDifficulties(variant).filter((level): level is Difficulty => level !== 'auto')
+  const selected = sized ? miniDifficulty(value) : variantDifficulty(variant, value === 'auto' ? recommended : value)
   const index = levels.indexOf(selected)
   const selectedStats = statistics.get(selected)
 
@@ -75,9 +77,9 @@ export function DifficultySelector({ value, recommended, variant, disabled = fal
         <div><dt>Average time</dt><dd aria-label={averageTime(selected) === '–' ? 'No average time yet' : undefined}>{averageTime(selected)}</dd></div>
       </dl>
     </div>
-    <label className="difficulty-selector-auto">
+    {!sized && <label className="difficulty-selector-auto">
       <input type="checkbox" checked={value === 'auto'} onChange={(event) => onChange(event.target.checked ? 'auto' : selected)} />
       Adjust difficulty automatically
-    </label>
+    </label>}
   </fieldset>
 }

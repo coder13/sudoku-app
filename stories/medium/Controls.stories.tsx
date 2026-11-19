@@ -23,6 +23,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const DigitPad: Story = {}
+export const MiniSudoku: Story = { args: { compact: true, gridSize: 4, values: '0234341221434321' } }
 export const MobileCandidateMatching: Story = {
   args: { compact: true, highlightMode: true, highlightedDigitMask: 3, digitHighlightMatch: 'all', onDigitHighlightMatchChange: fn() },
 }

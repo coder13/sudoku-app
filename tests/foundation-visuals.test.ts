@@ -26,10 +26,11 @@ test('visual marks and link endpoints stay on visible candidates within the crop
     for (const step of visual.steps) {
       if (!visual.region) continue
       const { row, column, rows, columns } = visual.region
+      const size = visual.grid?.size ?? 9
       const { candidates } = foundationBoard(visual, step)
       const visible = ({ cell, digit }: { cell: number; digit: number }) => {
-        assert.ok(Math.floor(cell / 9) >= row && Math.floor(cell / 9) < row + rows, id)
-        assert.ok(cell % 9 >= column && cell % 9 < column + columns, id)
+        assert.ok(Math.floor(cell / size) >= row && Math.floor(cell / size) < row + rows, id)
+        assert.ok(cell % size >= column && cell % size < column + columns, id)
         assert.ok(candidates[cell] & (1 << (digit - 1)), `${id}: missing ${digit} in cell ${cell}`)
       }
       step.marks?.forEach(visible)

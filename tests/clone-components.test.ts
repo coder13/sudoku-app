@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { enter, makeGame } from '../src/sudoku/game.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { boardLinkEndpoints } from '../src/sudoku/board-link-geometry.ts'
@@ -87,9 +87,10 @@ test('sharing after progress keeps the original Clone definition and every compa
       const variant = { id, puzzle: source.puzzle, solution: source.solution }
       const game = { ...makeGame('clone-share', 'Clone', source.puzzle.givens, 'imported'), variant }
       const cell = source.puzzle.givens.indexOf('0')
-      const html = renderToStaticMarkup(createElement(SharePuzzle, { game: enter(game, [cell], 'value', Number(source.solution[cell])), close() {} }))
-      const code = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-      assert.deepEqual((await detectPuzzle(code)).variant, { id, puzzle: source.puzzle })
+      const progressed = enter(game, [cell], 'value', Number(source.solution[cell]))
+      const html = renderToStaticMarkup(createElement(SharePuzzle, { game: progressed, close() {} }))
+      assert.match(html, /Create link/)
+      assert.deepEqual((await publishFixture(progressed)).variant, { id, puzzle: source.puzzle })
     }
   } finally { if (prior) Object.defineProperty(globalThis, 'window', prior); else Reflect.deleteProperty(globalThis, 'window') }
 })

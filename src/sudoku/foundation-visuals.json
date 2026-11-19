@@ -1,4 +1,54 @@
 {
+  "algebraic-cage-bounds": {
+    "title": "Match the range for n",
+    "note": "Find the n−4 cage at R1C4 and the n+2 cage in row 3.",
+    "grid": { "size": 4, "boxRows": 2, "boxColumns": 2 },
+    "region": { "row": 0, "column": 0, "rows": 4, "columns": 4 },
+    "algebraicCages": [
+      { "type": "algebraic-cage", "cells": [3], "label": "n−4", "total": { "type": "variable", "name": "n", "offset": -4 } },
+      { "type": "algebraic-cage", "cells": [8, 9], "label": "n+2", "total": { "type": "variable", "name": "n", "offset": 2 } }
+    ],
+    "candidates": { "3": [1, 2, 3, 4] },
+    "key": ["removal", "result"],
+    "steps": [
+      {
+        "title": "Use the one-cell cage",
+        "description": "R1C4 can contain 1 through 4. Its total is n−4, so n can be 5 through 8."
+      },
+      {
+        "title": "Check the two-cell cage",
+        "description": "The two largest distinct digits are 3 and 4. Their sum is 7, so n+2 is at most 7. That puts n at 5 or less."
+      },
+      {
+        "title": "Use the value both cages allow",
+        "description": "Only n = 5 meets both bounds. Then n−4 equals 1. Place 1 in R1C4.",
+        "marks": [
+          { "cell": 3, "digit": 1, "kind": "result" },
+          { "cell": 3, "digit": 2, "kind": "removal" },
+          { "cell": 3, "digit": 3, "kind": "removal" },
+          { "cell": 3, "digit": 4, "kind": "removal" }
+        ]
+      }
+    ]
+  },
+  "algebraic-cage-practice": {
+    "title": "Find the candidate to remove",
+    "note": "Compare the m−2 cage at R2C1 with the m+2 cage in row 4.",
+    "grid": { "size": 4, "boxRows": 2, "boxColumns": 2 },
+    "region": { "row": 0, "column": 0, "rows": 4, "columns": 4 },
+    "algebraicCages": [
+      { "type": "algebraic-cage", "cells": [4], "label": "m−2", "total": { "type": "variable", "name": "m", "offset": -2 } },
+      { "type": "algebraic-cage", "cells": [14, 15], "label": "m+2", "total": { "type": "variable", "name": "m", "offset": 2 } }
+    ],
+    "candidates": { "4": [1, 2, 3, 4] },
+    "key": [],
+    "steps": [
+      {
+        "title": "Start with the highest two-cell total",
+        "description": "Use the greatest possible sum for the m+2 cage to bound the digit in R2C1."
+      }
+    ]
+  },
   "diagram-key": {
     "title": "Reading the marks",
     "note": "Use the row and column labels to find a cell. This diagram shows how the app marks each step.",

@@ -8266,6 +8266,60 @@
           ]
         }
       ]
+    },
+    {
+      "title": "Algebraic Cages",
+      "overview": "Find the possible cage totals when several cages use the same letter.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "algebraic-cage-bounds",
+          "title": "Algebraic cage bounds",
+          "kind": "foundation",
+          "difficulty": "easy",
+          "summary": "A letter in a cage label is a shared positive integer. Compare the smallest and largest totals for cages with the same letter. Their ranges can narrow the letter to one value or rule out candidates in a cage.",
+          "blocks": [
+            { "type": "heading", "id": "where-to-start", "title": "Find cages that share a letter" },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for the same letter on two or more cages. Start with a short cage or one with filled cells. Add the smallest and largest distinct digits the cage can use. Each sum gives an endpoint for its possible total.",
+                "Convert each cage’s total range into a range for the letter. If the label is n+2, subtract 2 from both endpoints. Keep only the values all cages allow. Use that common range to check which candidates can still fit each cage."
+              ]
+            },
+            { "type": "foundation-visual", "visual": "algebraic-cage-bounds" },
+            {
+              "type": "text",
+              "paragraphs": [
+                "In the example, n is 5 even though the grid uses digits 1 to 4. The letter gives you a cage total. Only a digit can fill a cell."
+              ]
+            },
+            { "type": "heading", "id": "try-cage-bounds", "title": "Try it on another grid" },
+            { "type": "foundation-visual", "visual": "algebraic-cage-practice" },
+            {
+              "type": "concept-check",
+              "title": "Check your move",
+              "questions": [
+                {
+                  "prompt": "Which candidate can you remove from R2C1?",
+                  "options": ["1", "2", "3", "4"],
+                  "answer": 3,
+                  "explanation": "The m+2 cage has at most 3+4, so m is at most 5. Then m−2 is at most 3. Remove candidate 4 from R2C1."
+                },
+                {
+                  "prompt": "If m is 5, which digits can fill the m+2 cage?",
+                  "options": ["2 and 4", "3 and 4", "Either 3 or 4 in both cells"],
+                  "answer": 1,
+                  "explanation": "The cage total is 7. The only distinct digits from 1 to 4 that add to 7 are 3 and 4. These clues allow either order."
+                }
+              ]
+            }
+          ],
+          "references": [
+            { "label": "Algebraic Cages I by zainasaur20", "href": "https://sudokupad.app/babxk5ixus" }
+          ]
+        }
+      ]
     }
   ]
 }

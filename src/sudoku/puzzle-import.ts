@@ -1,9 +1,15 @@
 import lzString from 'lz-string'
+import type { CollectionReference } from './collection-reference.ts'
 import type { VariantPuzzle, VariantRule } from './engine.ts'
-import { parsePuzzle } from './formats.ts'
+import { parsePuzzle, textGridCells } from './formats.ts'
+import { isGridText, isMiniGrid, MINI_GRID, type MiniGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
+import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
+import { decodeSizedSudokuPad } from './sized-sudoku-pad.ts'
+import { isAlgebraicCageList } from './algebraic-cages.ts'
+import type { AlgebraicDefinition } from './algebraic-game.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000
@@ -18,12 +24,26 @@ const COACH_FIELDS = new Set([
 ])
 const FPUZZLES_FIELDS = new Set(['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage', 'killercage', 'clone', 'diagonal+', 'diagonal-'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
+const PLAIN_MINI_RULES = /^\s*(?:normal|standard) 4\s*[×x]\s*4 sudoku rules apply[.!]?\s*$/i
 
 export type ImportFormat = 'Sudoku Coach' | 'Sudoku Exchange' | 'SudokuPad' | 'f-puzzles' | 'Puzzle link' | 'HoDoKu' | 'Text grid'
 export type ImportedPuzzle = {
   givens: string
   format: ImportFormat
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
+  grid?: MiniGrid
+  algebraic?: AlgebraicDefinition
+  title?: string
+  sharedPuzzleId?: string
+  collection?: CollectionReference
+}
+
+export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
+  const { givens, variant, collection, title, grid, algebraic } = await downloadSharedPuzzle(id, signal)
+  const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
+  if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the shared givens.')
+  const cages = sizing ? { rules: sizing.rules, source: sizing.source } : algebraic && 'rules' in algebraic ? algebraic : undefined
+  return { givens, variant, collection, title, grid, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -62,6 +82,14 @@ function readRegions(labels: unknown): VariantPuzzle['regions'] {
   if (regions.length === 9 && regions.every((region) => region.length === 9 &&
     region.every((cell) => standardRegion(cell) === standardRegion(region[0])))) return
   return { type: 'jigsaw', regions }
+}
+
+function hasMiniBoxes(labels: unknown): boolean {
+  if (!Array.isArray(labels) || labels.length !== 16 || labels.some(label => !Number.isInteger(label) || label < 0)) return false
+  const topLeftCells = [0, 2, 8, 10]
+  const expected = topLeftCells.map(cell => labels[cell])
+  return new Set(expected).size === 4 && labels.every((label, cell) =>
+    label === expected[Math.floor(cell / 8) * 2 + Math.floor(cell % 4 / 2)])
 }
 
 function makeImportedPuzzle(format: ImportFormat, givens: string, rules: VariantRule[], regions: VariantPuzzle['regions']): ImportedPuzzle {
@@ -132,11 +160,27 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     throw new Error('This Sudoku Coach code could not be opened. Copy the full puzzle code and try again.')
   }
   const data = parseJSON(text, 'Sudoku Coach')
-  if (!record(data) || data.gridSize !== 9) throw new Error('Import supports 9 × 9 Sudoku Coach puzzles.')
+  if (!record(data) || data.gridSize !== 4 && data.gridSize !== 9) {
+    throw new Error('Import supports 4 × 4 and 9 × 9 Sudoku Coach grids.')
+  }
   for (const [key, value] of Object.entries(data)) {
     if (!COACH_FIELDS.has(key) && !key.startsWith('user') && hasData(value)) {
       throw new Error(`This Sudoku Coach puzzle uses an unsupported field (${key}).`)
     }
+  }
+  if (data.gridSize === MINI_GRID.size) {
+    const givens = data.givenDigits === undefined ? '0'.repeat(MINI_GRID.size ** 2) : data.givenDigits
+    if (!isGridText(givens, MINI_GRID)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
+    if (data.regions !== undefined && !hasMiniBoxes(data.regions)) {
+      throw new Error('Mini Sudoku import requires four 2 × 2 boxes.')
+    }
+    if (data.givenConstraints !== undefined && (!Array.isArray(data.givenConstraints) || data.givenConstraints.length)) {
+      throw new Error('This 4 × 4 Sudoku Coach puzzle has rules that Mini Sudoku cannot import yet.')
+    }
+    if (['quickDrawLineSegments', 'quickDrawSymbols', 'givenColours', 'colours'].some(key => hasData(data[key]))) {
+      throw new Error('This 4 × 4 Sudoku Coach puzzle contains markings that Mini Sudoku cannot import yet.')
+    }
+    return { givens, format: 'Sudoku Coach', grid: MINI_GRID }
   }
   const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
   if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
@@ -417,21 +461,24 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
   // f-puzzles uses LZ-String Base64. Limit compressed input before decoding it.
   const data = parseJSON(input.startsWith('{') ? input :
     /^[A-Za-z0-9+/=]{1,10000}$/.test(code) ? lzString.decompressFromBase64(code) : '', format)
-  if (!record(data) || data.size !== 9 || !Array.isArray(data.grid) || data.grid.length !== 9) {
-    throw new Error('Import supports 9 × 9 f-puzzles grids.')
+  if (!record(data) || data.size !== 4 && data.size !== 9 || !Array.isArray(data.grid) || data.grid.length !== data.size) {
+    throw new Error('Import supports 4 × 4 and 9 × 9 f-puzzles grids.')
   }
+  const size = data.size
+  const mini = size === MINI_GRID.size
   for (const [key, value] of Object.entries(data)) {
     if (!FPUZZLES_FIELDS.has(key) && hasData(value)) throw new Error(`This f-puzzles rule is not supported yet (${key}).`)
   }
-  if (hasData(data.ruleset) && (typeof data.ruleset !== 'string' || !PLAIN_RULES.test(data.ruleset))) {
+  if (hasData(data.ruleset) && (typeof data.ruleset !== 'string' ||
+    !PLAIN_RULES.test(data.ruleset) && !(mini && PLAIN_MINI_RULES.test(data.ruleset)))) {
     throw new Error('This f-puzzles export contains custom rules text. Import requires rules the app can read from the board.')
   }
   const labels: unknown[] = []
   const digits: string[] = []
   for (const row of data.grid) {
-    if (!Array.isArray(row) || row.length !== 9) throw new Error('This f-puzzles export has an invalid grid.')
+    if (!Array.isArray(row) || row.length !== size) throw new Error('This f-puzzles export has an invalid grid.')
     for (const cell of row) {
-      if (!record(cell) || (cell.given && !/^[1-9]$/.test(String(cell.value)))) {
+      if (!record(cell) || (cell.given && !(mini ? /^[1-4]$/ : /^[1-9]$/).test(String(cell.value)))) {
         throw new Error('This f-puzzles export has invalid givens.')
       }
       for (const [key, value] of Object.entries(cell)) {
@@ -439,9 +486,18 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
           throw new Error(`This f-puzzles cell clue is not supported yet (${key}).`)
         }
       }
-      labels.push(cell.region === undefined ? standardRegion(digits.length) : cell.region)
+      const index = digits.length
+      const region = mini ? Math.floor(index / 8) * 2 + Math.floor(index % 4 / 2) : standardRegion(index)
+      labels.push(cell.region === undefined ? region : cell.region)
       digits.push(cell.given ? String(cell.value) : '0')
     }
+  }
+  if (mini) {
+    if (!hasMiniBoxes(labels)) throw new Error('Mini Sudoku import requires four 2 × 2 boxes.')
+    if (['killercage', 'clone', 'diagonal+', 'diagonal-'].some(key => hasData(data[key]))) {
+      throw new Error('This 4 × 4 f-puzzles grid has rules that Mini Sudoku cannot import yet.')
+    }
+    return { givens: digits.join(''), grid: MINI_GRID, format }
   }
   const rules: VariantRule[] = []
   for (const key of ['diagonal+', 'diagonal-']) {
@@ -474,11 +530,25 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
   return makeImportedPuzzle(format, digits.join(''), rules, readRegions(labels))
 }
 
-function fromSudokuPad(code: string): ImportedPuzzle {
+function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): ImportedPuzzle {
   if (/^scf/i.test(code)) return digitRuns(code.slice(3), 'SudokuPad')
   if (FP_CODE.test(code)) return fromFPuzzles(code.replace(FP_CODE, ''), 'SudokuPad')
-  if (/^(scl|ctc)/i.test(code)) throw new Error('This SudokuPad link uses a format the app cannot import yet. For Classic puzzles, copy the 81 givens.')
+  if (/^(scl|ctc)/i.test(code)) {
+    const { givens, grid, rules, source } = decodeSizedSudokuPad(code)
+    return { givens, grid, algebraic: { rules, source }, format }
+  }
   throw new Error('This SudokuPad link does not contain the puzzle data. For Classic puzzles, copy the 81 givens.')
+}
+
+async function fromSudokuPadLink(id: string): Promise<ImportedPuzzle> {
+  const response = await fetch(`/api/v1/import/sudokupad/${id}`)
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({}))
+    throw new Error(typeof error === 'string' ? error : 'Could not open the published SudokuPad puzzle.')
+  }
+  const { code } = await response.json()
+  if (typeof code !== 'string' || code.length > MAX_IMPORT_LENGTH) throw new Error('This link does not contain a supported puzzle export.')
+  return fromSudokuPad(code)
 }
 
 export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
@@ -487,8 +557,31 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   const link = /^(?:www\.)?(?:sudoku\.coach|sudokuexchange\.com|(?:beta\.)?sudokupad\.app|f-puzzles\.com)\//i.test(text)
     ? `https://${text}` : text
   const base = 'https://sudoku.invalid'
-  const url = /^(https?:\/\/|#(?:puzzle|variant)=)/i.test(link) && URL.canParse(link, base) ? new URL(link, base) : null
+  const ownOrigin = globalThis.window?.location?.origin
+  const url = /^(https?:\/\/|#(?:puzzle|variant|sized)=|\/\?share=)/i.test(link) && URL.canParse(link, base)
+    ? new URL(link, ownOrigin ?? base) : null
   if (url) {
+    if (url.origin === ownOrigin && url.pathname === '/' && url.searchParams.has('share')) {
+      const id = url.searchParams.get('share')
+      if (!isSharedPuzzleId(id)) throw new Error('This puzzle link is invalid.')
+      return importSharedPuzzle(id)
+    }
+    if (url.hash.startsWith('#sized=')) {
+      const shared = parseJSON(new URLSearchParams(url.hash.slice(1)).get('sized') ?? '', 'Puzzle link')
+      if (record(shared) && shared.version === 2 && typeof shared.sudokuPad === 'string' &&
+        Object.keys(shared).every(key => key === 'version' || key === 'sudokuPad') && /^(scl|ctc)/i.test(shared.sudokuPad)) {
+        return fromSudokuPad(shared.sudokuPad, 'Puzzle link')
+      }
+      if (!record(shared) || shared.version !== 2 || !isMiniGrid(shared.grid) || !isGridText(shared.givens, MINI_GRID) ||
+        Object.keys(shared).some(key => !['version', 'grid', 'givens', 'rules'].includes(key))) {
+        throw new Error('This link is missing a supported sized Sudoku puzzle.')
+      }
+      if (shared.rules !== undefined) {
+        if (!isAlgebraicCageList(shared.rules)) throw new Error('This sized puzzle has unsupported rules or invalid algebraic cages.')
+        return { givens: shared.givens, format: 'Puzzle link', grid: MINI_GRID, algebraic: { rules: shared.rules } }
+      }
+      return { givens: shared.givens, format: 'Puzzle link', grid: MINI_GRID }
+    }
     if (url.hash.startsWith('#variant=')) {
       const shared = parseJSON(new URLSearchParams(url.hash.slice(1)).get('variant') ?? '', 'Puzzle link')
       if (!record(shared) || !isPuzzleVariantId(shared.id) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle)) {
@@ -503,13 +596,17 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
       if (/^\/(?:[a-z]{2}\/)?s\//i.test(url.pathname)) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
       const code = url.pathname.match(/^\/(?:[a-z]{2}\/)?(?:play|solver|construct)\/([^/]+)\/?$/i)?.[1] ?? ''
       if (code.toLowerCase().startsWith('scv')) return fromCoach(decodeURIComponent(code))
+      if (/^[0-4.]{16}$/.test(code)) return { givens: code.replaceAll('.', '0'), format: 'Sudoku Coach', grid: MINI_GRID }
       if (/^[0-9.]{81}$/.test(code)) return { givens: parsePuzzle(code), format: 'Sudoku Coach' }
       throw new Error('This Sudoku Coach link does not contain a puzzle code. Open it and use Copy → Puzzle.')
     }
     if (host === 'sudokuexchange.com' && /^\/play\/?$/.test(url.pathname)) return digitRuns(url.searchParams.get('s') ?? '', 'Sudoku Exchange')
     if (host === 'f-puzzles.com') return fromFPuzzles(url.searchParams.get('load') ?? '', 'f-puzzles')
     if (['sudokupad.app', 'beta.sudokupad.app', 'sudokupad.svencodes.com', 'app.crackingthecryptic.com'].includes(host)) {
-      return fromSudokuPad(decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, ''))
+      const code = decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, '')
+      if ((host === 'sudokupad.app' || host === 'beta.sudokupad.app') && /^[A-Za-z0-9_-]{1,64}$/.test(code) &&
+        !/^(?:scl|ctc|scf|fpuz)/i.test(code)) return fromSudokuPadLink(code)
+      return fromSudokuPad(code)
     }
     throw new Error('This link format is not supported. Try pasting the puzzle code or its 81 givens.')
   }
@@ -517,5 +614,7 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   if (/^(scf|scl|ctc)/i.test(text)) return fromSudokuPad(text)
   if (FP_CODE.test(text)) return fromFPuzzles(text.replace(FP_CODE, ''), 'f-puzzles')
   if (text.startsWith('{') || /^N4[A-Za-z0-9+/=]+$/.test(text)) return fromFPuzzles(text, 'f-puzzles')
+  const mini = textGridCells(text).replaceAll('.', '0')
+  if (isGridText(mini, MINI_GRID)) return { givens: mini, format: 'Text grid', grid: MINI_GRID }
   return { givens: parsePuzzle(text), format: text.startsWith(':') ? 'HoDoKu' : 'Text grid' }
 }
