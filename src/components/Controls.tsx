@@ -204,18 +204,21 @@ export function Controls(props: Props) {
                 const singleHighlight = props.highlightedDigitMask === (1 << (digit - 1))
                 const armed = props.selectedDigit === digit || (canHighlightDigits && singleHighlight)
                 const pressed = armed || (canHighlightDigits && hasCandidate(props.highlightedDigitMask ?? 0, digit))
+                const progress = props.draft || colors ? 'off' : props.advancedModes.keypadProgress
+                const remaining = Math.max(0, gridSize - counts[digit])
                 const digitLabel = props.chainDrawing ? `${armed ? 'Clear highlight for' : 'Highlight'} ${digit}`
                   : `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
                 return (
                   <button type="button" key={digit}
-                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && !colors && counts[digit] === gridSize ? 'all-placed' : ''} ${pressed ? 'selected-key' : ''}`}
-                    aria-label={colors ? COLORS[digit - 1] : digitLabel}
+                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${progress === 'dim' && counts[digit] === gridSize ? 'all-placed' : ''} ${pressed ? 'selected-key' : ''}`}
+                    aria-label={colors ? COLORS[digit - 1] : progress === 'count' ? `${digitLabel}, ${remaining} remaining` : digitLabel}
                     aria-keyshortcuts={colors ? digit <= 9 ? `${digit}` : undefined : `${props.chainDrawing ? `${digit} ` : ''}Shift+${digit} F${digit}`}
                     aria-pressed={pressed} disabled={props.disabled} data-no-panel-hold={canHighlightDigits || undefined}
                     onPointerDown={(event) => digitHold.start(event, toggleDigitHighlight && (() => toggleDigitHighlight(digit, props.compact ? digitHighlightMatch : 'all')))}
                     onPointerMove={digitHold.move}
                     onContextMenu={(event) => digitContextMenu(event, digit)} onClick={(event) => clickDigit(event, digit)}>
                     {colors ? <span className="swatch" /> : <span>{digit}</span>}
+                    {progress === 'count' && <span className="key-remaining" aria-hidden="true">{remaining}</span>}
                   </button>
                 )
               })}

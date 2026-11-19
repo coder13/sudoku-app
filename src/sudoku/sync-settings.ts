@@ -43,6 +43,8 @@ const defaults = snapshot(groups({ getItem: () => null }))
 export async function syncSettings(storage: Storage, checkpoint: string, request: SyncRequest, remote: SettingsValues) {
   const previousRaw = storage.getItem(checkpoint)
   const previous: SettingsValues = JSON.parse(previousRaw ?? '{}')
+  // An old default in the checkpoint does not represent a local choice.
+  if (previous['error-mode'] === '"all"' && storage.getItem(ERROR_MODE_KEY) === null) delete previous['error-mode']
   const before = snapshot(groups(storage))
   const seeds: SettingsValues = {}, edits: SettingsValues = {}
   for (const [id, value] of Object.entries(before)) {
