@@ -238,7 +238,11 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         Some(_)
             if matches!(
                 operation,
-                Operation::Analyze | Operation::Solve | Operation::SolveUnique | Operation::Candidates | Operation::SolveSingles
+                Operation::Analyze
+                    | Operation::Solve
+                    | Operation::SolveUnique
+                    | Operation::Candidates
+                    | Operation::SolveSingles
             ) =>
         {
             return Err((

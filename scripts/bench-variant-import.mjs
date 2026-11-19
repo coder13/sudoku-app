@@ -69,6 +69,7 @@ async function sample(build, source, phase, round, saved) {
     engineCalls: calls.map(({ request, reply, elapsedMs }) => ({
       type: request.type, operation: request.operation, elapsedMs, replySha256: sha256(JSON.stringify(reply)),
     })),
+    ...(phase === 'cold' || phase === 'warmup' ? { preview, replies: calls.map(call => call.reply) } : {}),
     previewSha256: sha256(JSON.stringify(preview)), wasmCapacityBytes: build.memory.buffer.byteLength,
     processMaxRssKiB: process.resourceUsage().maxRSS })
   calls = undefined
@@ -105,7 +106,7 @@ for (const [index, source] of sources.entries()) {
 
 const engineFixtures = JSON.parse(await readFile(new URL('../crates/engine/benches/fixtures/variants.json', import.meta.url)))
 const controls = [
-  ...engineFixtures.map(({ name, position }) => ({ name, position })),
+  ...engineFixtures.map(({ name, position }) => ({ name, position: { puzzle: position } })),
   ...sources.slice(1).map(({ name, puzzle, solution }) => {
     const cell = puzzle.givens.indexOf('0')
     const entries = Array(81).fill('0')
@@ -120,6 +121,7 @@ const controls = [
 for (const { name, ...control } of controls) {
   const base = { type: 'variant', ...control }
   const old = await request(builds[0], { ...base, operation: 'analyze' })
+  assert('value' in old, JSON.stringify({ name, old }))
   assert.deepEqual(await request(builds[1], { ...base, operation: 'analyze' }), old)
   const result = await request(builds[1], { ...base, operation: 'solve-unique' })
   assert.equal(result.value.status, old.value)
