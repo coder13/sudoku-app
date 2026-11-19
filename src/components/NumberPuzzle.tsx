@@ -7,7 +7,7 @@ import { Button, IconButton, buttonClassName, iconButtonClassName } from './Butt
 import './puzzle-games.css'
 import './number-puzzle.css'
 
-type NumberGame = 'kakuro' | 'calcudoku'
+export type NumberGame = 'kakuro' | 'calcudoku' | 'futoshiki'
 
 type BoardCell = {
   label?: string

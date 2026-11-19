@@ -134,3 +134,18 @@ export const CalcudokuFromGameTypes: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
   },
 }
+
+export const FutoshikiFromGameTypes: Story = {
+  ...ChooseVariant,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Futoshiki/ }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Easy/ }))
+    const cell = await canvas.findByRole('button', { name: /^R2C3, empty/ })
+    await expect(cell).toHaveAccessibleName(/R2C3 is less than R2C2/)
+    await userEvent.click(cell)
+    await userEvent.keyboard('ArrowLeft')
+    await expect(canvas.getByRole('button', { name: /^R2C2, empty/ })).toHaveFocus()
+  },
+}
