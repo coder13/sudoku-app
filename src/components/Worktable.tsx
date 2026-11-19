@@ -159,8 +159,8 @@ type CandidatePress = {
   cancelled: boolean
 }
 
-type DigitHighlight = { mask: number; match: DigitHighlightMatch }
-const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all' }
+type DigitHighlight = { mask: number; match: DigitHighlightMatch; modeOverridden: boolean }
+const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all', modeOverridden: false }
 
 function isAltClick(event: Pick<MouseEvent, 'altKey' | 'shiftKey' | 'ctrlKey' | 'metaKey'>) {
   return event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey
@@ -254,11 +254,12 @@ export function Worktable({
   const [desktopViews, setDesktopViews] = usePlayPreference('desktopViews')
   const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
-  const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
-  useLayoutEffect(() => {
-    if (candidateCount(highlightedDigitMask) > 1) setHighlightMode(true)
-  }, [highlightedDigitMask, setHighlightMode])
-  const [pencil, setPencil] = usePlayPreference('pencil')
+  const [savedHighlightMode, setSavedHighlightMode] = usePlayPreference('highlightMode')
+  const [savedPencil, setPencil] = usePlayPreference('pencil')
+  // A multi-digit highlight temporarily takes precedence over the saved input mode.
+  const automaticHighlightMode = candidateCount(highlightedDigitMask) > 1 && !digitHighlight.modeOverridden
+  const highlightMode = savedHighlightMode || automaticHighlightMode
+  const pencil = savedPencil && !automaticHighlightMode
   const [pencilModifier, setPencilModifier] = useState(false)
   const [candidatePreviewCell, setCandidatePreviewCell] = useState<number | null>(null)
   const [candidateKind, setCandidateKind] = usePlayPreference('candidateKind')
@@ -284,7 +285,7 @@ export function Worktable({
   const [hintRevealed, setHintRevealed] = useState(false)
   const mobile = useMobileLayout()
   const desktop = !mobile
-  const colorMode = desktop && savedColorMode
+  const colorMode = desktop && savedColorMode && !automaticHighlightMode
   const [mobileInput, setMobileInput] = useState(defaultMobileInput)
   const [mobileRearranging, setMobileRearranging] = useState(false)
   const rearranging = mobile && mobileRearranging
@@ -1030,11 +1031,14 @@ export function Worktable({
   }
 
   function clearHighlightedDigits() {
-    setDigitHighlight((current) => current.mask ? { ...current, mask: 0 } : current)
+    setDigitHighlight((current) => current.mask ? { ...defaultDigitHighlight, match: current.match } : current)
   }
 
-  function showDigitHighlights(next: SetStateAction<DigitHighlight>) {
-    setDigitHighlight(next)
+  function showDigitHighlights(mask: SetStateAction<number>, match: DigitHighlightMatch) {
+    setDigitHighlight((current) => {
+      const nextMask = typeof mask === 'function' ? mask(current.mask) : mask
+      return { mask: nextMask, match, modeOverridden: current.modeOverridden && candidateCount(nextMask) > 1 }
+    })
     setSelectedDigit(null)
     setHighlightCandidatePairs(false)
     setColorBrush(null)
@@ -1043,15 +1047,12 @@ export function Worktable({
 
   function toggleDigitHighlight(digit: number, match: DigitHighlightMatch) {
     const previous = selectedDigit ? 1 << (selectedDigit - 1) : 0
-    showDigitHighlights((current) => {
-      const mask = (current.mask || previous) ^ (1 << (digit - 1))
-      return { mask, match }
-    })
+    showDigitHighlights((current) => (current || previous) ^ (1 << (digit - 1)), match)
   }
 
   function changeDigitHighlightMatch(match: DigitHighlightMatch) {
     const previous = selectedDigit ? 1 << (selectedDigit - 1) : 0
-    showDigitHighlights((current) => ({ mask: current.mask || previous, match }))
+    showDigitHighlights((current) => current || previous, match)
   }
 
   function highlightCellCandidates(mask: number) {
@@ -1060,7 +1061,7 @@ export function Worktable({
     pendingDoubleClickSingle.current = null
     setCandidatePreviewCell(null)
     setSelected([])
-    showDigitHighlights({ mask, match: 'any' })
+    showDigitHighlights(mask, 'any')
   }
 
   function cellHighlightMask(index: number) {
@@ -1104,16 +1105,22 @@ export function Worktable({
     if (!colorMode) setColorBrush(alternate)
   }
 
+  function setHighlightMode(enabled: boolean) {
+    setDigitHighlight((current) => !current.modeOverridden && candidateCount(current.mask) > 1
+      ? { ...current, modeOverridden: true } : current)
+    setSavedHighlightMode(enabled)
+  }
+
   function toggleHighlightMode() {
     if (brush !== null && colorTarget === 'candidate') {
-      setHighlightMode((current) => !current)
+      setHighlightMode(!highlightMode)
       return
     }
     setColorBrush(null)
     setEraseMode(false)
     setPencil(false)
     setColorMode(false)
-    setHighlightMode((current) => !current)
+    setHighlightMode(!highlightMode)
   }
 
   function continueColorGroup() {
@@ -1467,7 +1474,7 @@ export function Worktable({
         setEraseMode(false)
         setColorMode(false)
         setHighlightMode(false)
-        setPencil((current) => !current)
+        setPencil(!pencil)
       } else if (!draft && shortcutMatches(event, shortcuts, 'highlightMode')) {
         event.preventDefault()
         toggleHighlightMode()
@@ -2226,7 +2233,7 @@ export function Worktable({
   const inputPanel = (
       <div className="workspace-controls" data-show-completion={showMobileResults || undefined}>
         <Controls mode={mode} pencil={pencilActive} togglePencil={() => {
-          setColorBrush(null); setEraseMode(false); setColorMode(false); setHighlightMode(false); setPencil((current) => !current)
+          setColorBrush(null); setEraseMode(false); setColorMode(false); setHighlightMode(false); setPencil(!pencil)
         }}
           candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
           colorMode={colorMode} colorTarget={colorTarget} setColorTarget={changeColorTarget} toggleColorMode={() => {
