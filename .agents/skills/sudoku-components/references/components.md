@@ -108,7 +108,7 @@ Search by component name or browse the sections below.
 | --- | --- |
 | [Game types](../../../../src/routes/puzzles.games.tsx) | `GameTypePicker` lists the games available from the Sudoku variant picker. |
 | [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` supplies the board and ordered hint steps for each clue. |
-| [Kakuro play route](../../../../src/routes/puzzles.kakuro_.$puzzle.tsx) | `KakuroPlayRoute` opens a catalog puzzle from its URL. |
-| [Number puzzle](../../../../src/components/NumberPuzzle.tsx) | `NumberGameDifficulty` uses the shared selector, remembers the last difficulty, and lists local progress. `NumberGamePlay` uses the shared Play layout, keypad, Hint, Solution, and Technique finder. It receives a game-specific board, check, hints, and exact solver. `NumberGameHeading` and `NumberPuzzleBoard` handle internal navigation and play. |
+| [Kakuro play route](../../../../src/routes/puzzles.kakuro_.$puzzle.tsx) | `KakuroPlayRoute` opens a catalog or generated puzzle from its URL. |
+| [Number puzzle](../../../../src/components/NumberPuzzle.tsx) | `NumberGameDifficulty` uses the shared selector, remembers the last difficulty, and lists local progress. It can start a catalog or generated puzzle. `NumberGamePlay` uses the shared Play layout, keypad, Hint, Solution, and Technique finder. It receives a game-specific board, check, hints, and exact solver. `NumberGameHeading` and `NumberPuzzleBoard` handle internal navigation and play. |
 | [Calcudoku](../../../../src/components/Calcudoku.tsx) | `CalcudokuDifficultyPage` selects difficulty. `CalcudokuPlay` supplies arithmetic cage borders, clue labels, and rules. |
-| [Calcudoku play route](../../../../src/routes/puzzles.calcudoku_.$puzzle.tsx) | `CalcudokuPlayRoute` opens a catalog puzzle from its URL. |
+| [Calcudoku play route](../../../../src/routes/puzzles.calcudoku_.$puzzle.tsx) | `CalcudokuPlayRoute` opens a catalog or generated puzzle from its URL. |

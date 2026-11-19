@@ -1,4 +1,4 @@
-import { calcudokuCatalog, type CalcudokuEntry } from '../calcudoku/catalog'
+import { calcudokuCatalog, generatedCalcudokuEntry, type CalcudokuEntry } from '../calcudoku/catalog'
 import { operatorSymbol } from '../calcudoku/engine'
 import { cellLabel, checkLatin, findLatinHints, solveLatin } from '../latin/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
@@ -9,6 +9,7 @@ const calcudoku: NumberGameConfig<CalcudokuEntry> = {
   rules: 'Use every number from 1 to the grid size once in each row and column. Each cage’s numbers must match its target and operation.',
   techniques: ['Row and column', 'Cage arithmetic'],
   entries: calcudokuCatalog,
+  generatedEntry: generatedCalcudokuEntry,
   board: ({ puzzle }) => {
     const { size, cages, givens } = puzzle
     const cageAt = new Map(cages.flatMap(cage => cage.cells.map(cell => [cell, cage] as const)))

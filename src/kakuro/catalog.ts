@@ -1,4 +1,5 @@
-import { createKakuro, type KakuroPuzzle } from './engine.ts'
+import type { KakuroPuzzle } from './engine.ts'
+import { decodeGeneratedNumberPuzzle, kakuroFromRecipe } from '../number-puzzles/generated.ts'
 import { generatedKakuroRecipes } from './generated-recipes.ts'
 
 import { numberPuzzleDifficulties, type NumberPuzzleEntry } from '../number-puzzles/catalog.ts'
@@ -30,10 +31,16 @@ export const kakuroCatalog: readonly KakuroEntry[] = numberPuzzleDifficulties.fl
     id: `${difficulty}-${index + 1}`,
     difficulty,
     number: index + 1,
-    puzzle: createKakuro(width, grid.split(' ').map(token => {
-      if (token === '.') return null
-      const [down, across] = token.split('/')
-      return { down: down ? Number(down) : undefined, across: across ? Number(across) : undefined }
-    })),
+    puzzle: kakuroFromRecipe([width, grid]),
   })),
 )
+
+export function generatedKakuroEntry(id: string, number: number): KakuroEntry | null {
+  const generated = decodeGeneratedNumberPuzzle(id, 'kakuro')
+  if (!generated) return null
+  try {
+    return { id, number, difficulty: generated.difficulty, generated: true, puzzle: kakuroFromRecipe(generated.recipe) }
+  } catch {
+    return null
+  }
+}
