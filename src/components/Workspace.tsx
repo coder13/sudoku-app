@@ -79,9 +79,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const settingsRoute = Boolean(useMatch({ from: '/settings', shouldThrow: false }))
   const homeRoute = Boolean(useMatch({ from: '/', shouldThrow: false }))
   const puzzlesRoute = Boolean(useMatch({ from: '/puzzles', shouldThrow: false }))
-  const requested = useMatch({ from: '/', shouldThrow: false, select: m => m.search.puzzle })
-  const playRoute = homeRoute && Boolean(requested)
-  const playing = playRoute || settingsRoute
+  const puzzleParam = useMatch({ from: '/', shouldThrow: false, select: m => m.search.puzzle })
   const learning = Boolean(useMatch({ from: '/learn', shouldThrow: false }))
   const settingsParam = useMatch({ from: '/settings/$section', shouldThrow: false, select: ({ params }) => params.section })
   const settingsSection = isSettingsSection(settingsParam) ? settingsParam : null
@@ -105,6 +103,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [puzzleBrowserView, setPuzzleBrowserView] = usePlayPreference('puzzleBrowserView')
   const [panelHeight, setPanelHeight] = useState(280)
   const [workspaceReady, setWorkspaceReady] = useState(false)
+  // Static hosting serves the same home HTML for every puzzle query.
+  const requested = workspaceReady ? puzzleParam : undefined
+  const playRoute = homeRoute && Boolean(requested)
+  const playing = playRoute || settingsRoute
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
   const savedAppearance = useRef(appearance)
