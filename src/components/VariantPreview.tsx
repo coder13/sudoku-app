@@ -16,6 +16,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   'non-consecutive': [],
   parity: [{ type: 'parity', cells: [20, 48], parity: 'odd' }, { type: 'parity', cells: [24, 60], parity: 'even' }],
   whispers: [],
+  'global-entropy': [],
   palindrome: [{ type: 'palindrome', cells: [0, 10, 20, 30, 31, 32] }, { type: 'palindrome', cells: [48, 49, 50, 60, 70, 80] }],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
@@ -53,6 +54,12 @@ export function VariantPreview({ variant, ruleset }: { variant: VariantId; rules
     {variant === 'sandwich' && <span className="variant-sandwich-preview"><span>10</span><span>1 · 2 3 5 · 9</span></span>}
     {variant === 'x-sum' && <span className="variant-x-sum-preview"><span>10</span><span>3 + 2 + 5</span></span>}
     {variant === 'skyscrapers' && <svg className="variant-clues variant-skyscrapers-preview" viewBox="0 0 9 9" focusable="false"><text x=".4" y="5.2">3</text><path d="M2 7V5H3V7M4 7V2H5V7M6 7V3H7V7M7.5 7V1H8.5V7" /></svg>}
+    {variant === 'global-entropy' && <svg className="variant-clues variant-entropy-preview" viewBox="0 0 9 9" focusable="false">
+      <rect x="1.5" y="1.5" width="6" height="6" rx=".2" />
+      <path d="M4.5 1.5v6M1.5 4.5h6" />
+      <text x="3" y="3.7">2</text><text x="6" y="3.7">5</text>
+      <text x="3" y="6.7">8</text><text x="6" y="6.7">1</text>
+    </svg>}
     {variant === 'anti-knight' && <span className="variant-knight">♞</span>}
     {variant === 'anti-king' && <Crown className="variant-king" size="1em" aria-hidden="true" focusable="false" />}
     {variant === 'non-consecutive' && <svg className="variant-clues variant-non-consecutive-preview" viewBox="0 0 9 9" focusable="false">

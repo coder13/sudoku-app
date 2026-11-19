@@ -79,3 +79,11 @@ export const PalindromeDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=palindrome" />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 }
+
+export const GlobalEntropyVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=global-entropy" />,
+}
+export const GlobalEntropyDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=global-entropy" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}

@@ -44,6 +44,10 @@ export const VARIANTS = {
     name: 'Whispers',
     rule: 'Digits in neighboring cells along a line must differ by at least the line’s minimum. German Whispers uses a minimum of 5; Dutch Whispers uses 4.',
   },
+  'global-entropy': {
+    name: 'Global Entropy',
+    rule: 'Every 2 × 2 area contains a low digit (1–3), a medium digit (4–6) and a high digit (7–9). This includes areas across box or region borders. One group appears twice. Equal digits can repeat diagonally if all other puzzle rules allow it.',
+  },
   palindrome: {
     name: 'Palindrome',
     rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
@@ -97,10 +101,6 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
-  'global-entropy': {
-    name: 'Global Entropy',
-    rule: 'Every 2 × 2 area contains a low digit (1–3), a medium digit (4–6) and a high digit (7–9). This includes areas across box or region borders. One group appears twice. Equal digits can repeat diagonally if all other puzzle rules allow it.',
-  },
   entropic: {
     name: 'Entropic Lines',
     rule: 'Each three successive positions on an Entropic line contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',

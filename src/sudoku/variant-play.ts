@@ -38,6 +38,18 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
       if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
     }
   }
+  const recipe = recipes[initial]
+  if (recipe.retryAttempts) {
+    const request = variantGenerationRequest(id, difficulty, recipe, techniqueOrder, seed)
+    request.maxNodes = 20_000
+    request.maxAttempts = recipe.retryAttempts
+    if (excluded.length) request.exclude = excluded
+    try {
+      return await runEngine(request)
+    } catch (error) {
+      if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
+    }
+  }
   throw new EngineError('No puzzle found for this difficulty.', 'search-limit')
 }
 

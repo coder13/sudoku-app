@@ -93,7 +93,7 @@ test('both Pencil modes clear incompatible groups after input and batch fill, wi
   const givens = [...empty]
   givens[48] = '3'; givens[49] = '5'
   const puzzle: VariantPuzzle = { ...plain, givens: givens.join('') }
-  const game = { ...makeGame('entropy', 'Global Entropy', puzzle.givens), variant: { id: 'global-entropy' as const, puzzle, solution: published.solution } }
+  const game = { ...makeGame('entropy', 'Global Entropy', puzzle.givens, 'imported'), variant: { id: 'global-entropy' as const, puzzle, solution: published.solution } }
   assertVariantCompletion(puzzle, published.solution)
   game.position.center = Array(81).fill(511)
   game.position.corner = Array(81).fill(511)
@@ -119,12 +119,13 @@ test('every square symmetry retains all global and companion clues, completion a
     const puzzle = reflectVariant(source.puzzle, symmetry)
     const transformed = transformedBoard(source.solution, symmetry)
     assertVariantCompletion(puzzle, transformed)
+    assert.ok(puzzle.rules)
     assert.equal(puzzle.rules.filter((rule: { type: string }) => rule.type === 'global-entropy').length, 1)
     assert.equal(puzzle.rules.length, source.puzzle.rules.length)
     assert.match(variantRuleDescriptions(puzzle).join(' '), /Every 2 × 2 area/)
     assert.ok(isPlayablePuzzle(variantIdForPuzzle(puzzle), puzzle))
   }
-  assert.equal(generationVariant({ id: 'global-entropy' }), undefined)
+  assert.equal(generationVariant({ id: 'global-entropy' }), 'global-entropy')
 })
 
 test('global imports reject local cells, unknown parameters and invalid definitions', async () => {

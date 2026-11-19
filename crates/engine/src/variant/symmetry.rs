@@ -29,21 +29,27 @@ pub(super) fn generation_key(puzzle: &VariantPuzzle) -> VariantPuzzle {
 }
 
 pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
-    key_impl(puzzle, false)
+    key_impl(puzzle, false, |_| {})
 }
 
-fn key_impl(puzzle: &VariantPuzzle, generation_edges: bool) -> VariantPuzzle {
-    let rename_digits = puzzle.rules.iter().all(|rule| {
-        matches!(
-            rule,
-            PuzzleRule::Diagonal { .. }
-                | PuzzleRule::ExtraHouse { .. }
-                | PuzzleRule::AntiKnight {}
-                | PuzzleRule::AntiKing {}
-                | PuzzleRule::Palindrome { .. }
-                | PuzzleRule::Clone { .. }
-        )
-    });
+fn digit_invariant(rule: &PuzzleRule) -> bool {
+    matches!(
+        rule,
+        PuzzleRule::Diagonal { .. }
+            | PuzzleRule::ExtraHouse { .. }
+            | PuzzleRule::AntiKnight {}
+            | PuzzleRule::AntiKing {}
+            | PuzzleRule::Palindrome { .. }
+            | PuzzleRule::Clone { .. }
+    )
+}
+
+fn key_impl(
+    puzzle: &VariantPuzzle,
+    generation_edges: bool,
+    normalize: impl Fn(&mut VariantPuzzle),
+) -> VariantPuzzle {
+    let rename_digits = puzzle.rules.iter().all(digit_invariant);
     SquareTransform::ALL
         .into_iter()
         .map(|transform| {
@@ -71,6 +77,7 @@ fn key_impl(puzzle: &VariantPuzzle, generation_edges: bool) -> VariantPuzzle {
                     *given = *entry;
                 }
             }
+            normalize(&mut copy);
             copy.rules.sort_unstable();
             copy
         })
