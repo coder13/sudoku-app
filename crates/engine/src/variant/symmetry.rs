@@ -229,6 +229,12 @@ impl SquareTransform {
                 self.markers(consecutive);
                 self.markers(ratio_two);
             }
+            LabeledDots { marks, .. } => {
+                for mark in &mut *marks {
+                    self.unordered(&mut mark.cells);
+                }
+                marks.sort_unstable();
+            }
             Xv { five, ten } => {
                 self.markers(five);
                 self.markers(ten);

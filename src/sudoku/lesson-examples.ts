@@ -52,6 +52,7 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
         ...(rule.consecutive?.negative ? ['All white dots are given.'] : []),
         ...(rule.ratioTwo?.negative ? ['All black dots are given.'] : []),
       ]
+      case 'labeled-dots': return rule.marks.map(mark => `${rule.relation === 'ratio' ? 'Ratio' : 'Difference'} ${mark.value} · ${cells(mark.cells)}`)
       case 'xv': return ([['V', rule.five], ['X', rule.ten]] as const).flatMap(([label, marks]) => [
         ...(marks?.pairs ?? []).map((pair) => `${label} · ${cells(pair)}`),
         ...(marks?.negative ? [`All ${label} marks are given.`] : []),

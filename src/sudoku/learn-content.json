@@ -7067,6 +7067,45 @@
           ],
           "references": [],
           "difficulty": "easy"
+        },
+        {
+          "id": "labeled-dots",
+          "title": "Difference and ratio dots",
+          "summary": "A number on a white dot gives the difference between its digits. On a black dot, the number gives the ratio of the larger digit to the smaller digit.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a partner for each candidate"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "With a white 3 dot next to 5, look for 2 or 8 on the other side. Both differ from 5 by 3.",
+                "With a black 3 dot next to 6, the other digit is 2. It cannot be 18 because 18 is outside the grid's digit range."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "labeled-dots",
+              "copy": {
+                "description": "A white 3 dot touches the 5 in R2C6. Only 2 or 8 can go in R1C6, so remove 1."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "labeled-dots", "title": "Difference and ratio dots" }
+              ],
+              "guide": {
+                "start": "Read the printed value. Check the color of the dot.",
+                "check": "For white, add or subtract the value. For black, multiply or divide by the value.",
+                "reason": "Remove a candidate if neither result fits the other cell."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
         }
       ]
     },

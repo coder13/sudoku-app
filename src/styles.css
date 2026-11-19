@@ -3628,6 +3628,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-dot { stroke-width: .033; }
 .variant-dot-white { fill: #fff; stroke: #222; }
 .variant-dot-black { fill: #161616; stroke: #eee; }
+.variant-dot-value { text-anchor: middle; dominant-baseline: central; font-weight: 700; }
+.variant-dot-value-black { fill: #fff; }
+.variant-dot-value-white { fill: #161616; }
 .variant-preview .variant-dot { r: .23px; }
 .variant-preview .variant-arrow-line, .variant-preview .variant-arrow-circle { stroke-width: .13; }
 .variant-rules-button { margin-right: auto; }

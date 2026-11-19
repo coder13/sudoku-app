@@ -1,6 +1,6 @@
 use super::{ExampleSeed, seed};
 use crate::{
-    ClueDirection, Diagonal, KillerCage, MarkedPairs, Parity as CellParity, PuzzleRule,
+    ClueDirection, Diagonal, DotRelation, KillerCage, LabeledDot, MarkedPairs, Parity as CellParity, PuzzleRule,
     VariantPosition, VariantPuzzle, VariantTechnique, parse_givens,
 };
 
@@ -425,6 +425,38 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                         diagonal: Diagonal::Anti,
                     },
                 ],
+            ),
+        ],
+        LabeledDots => [
+            seed(
+                "534670902672095348198342567859760423426853791713924856961537284287419635345286179",
+                5,
+                1,
+                [PuzzleRule::LabeledDots {
+                    relation: DotRelation::Difference,
+                    marks: vec![LabeledDot { cells: [5, 14], value: 3 }],
+                    negative: false,
+                }],
+            ),
+            seed(
+                "534678010672195348198342567859761423426853791713924856961537084287419635345286179",
+                6,
+                2,
+                [PuzzleRule::LabeledDots {
+                    relation: DotRelation::Ratio,
+                    marks: vec![LabeledDot { cells: [6, 15], value: 3 }],
+                    negative: false,
+                }],
+            ),
+            seed(
+                "534678912670095348198340567859761423426853791713924856961537284287419635345086179",
+                12,
+                2,
+                [PuzzleRule::LabeledDots {
+                    relation: DotRelation::Ratio,
+                    marks: vec![LabeledDot { cells: [12, 21], value: 3 }],
+                    negative: false,
+                }],
             ),
         ],
         Kropki => [

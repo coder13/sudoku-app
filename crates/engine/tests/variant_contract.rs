@@ -1,7 +1,7 @@
 #![cfg(all(feature = "variants"))]
 
 use sudoku_app_engine::{
-    Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
+    Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, DotRelation, KillerCage, LabeledDot, MarkedPairs,
     Parity, PuzzleRule, VariantDefinitionError, VariantHouseKind, VariantPositionError,
     VariantPuzzle, analyze, candidates, parse_givens,
 };
@@ -12,6 +12,34 @@ const X_SOLUTION: &str =
     "658492731974316582132875694461523978387149256295768143849251367726934815513687429";
 const EMPTY: [u8; 81] = [0; 81];
 const NO_REMOVALS: [u16; 81] = [0; 81];
+
+#[test]
+fn labeled_dots_keep_their_value_and_apply_only_their_own_negative_rule() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules = vec![
+        PuzzleRule::LabeledDots {
+            relation: DotRelation::Difference,
+            marks: vec![LabeledDot { cells: [0, 1], value: 2 }],
+            negative: true,
+        },
+        PuzzleRule::LabeledDots {
+            relation: DotRelation::Ratio,
+            marks: vec![LabeledDot { cells: [0, 1], value: 3 }, LabeledDot { cells: [9, 10], value: 2 }],
+            negative: false,
+        },
+    ];
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[0] = 1;
+    assert_eq!(compiled.candidates(&entries, &NO_REMOVALS).unwrap()[1], 1 << 2);
+    entries = EMPTY;
+    entries[9] = 1;
+    entries[10] = 2;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+    entries[9] = 2;
+    entries[10] = 4;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_ok());
+}
 
 fn irregular_regions() -> Vec<Vec<usize>> {
     let mut regions: Vec<Vec<usize>> = (0..9)

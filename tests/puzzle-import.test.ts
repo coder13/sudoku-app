@@ -250,8 +250,8 @@ test('Coach white and black dot layers keep independent negative flags and share
   assert.ok(variantRuleDescriptions(imported.variant.puzzle).some(rule => rule.includes('Every adjacent pair of consecutive digits')))
   assert.ok(!variantRuleDescriptions(imported.variant.puzzle).some(rule => rule.includes('Every adjacent pair with one digit double')))
   for (const constraint of [
-    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 2 } }], settings: {} },
-    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 3 } }], settings: {} },
+    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 9 } }], settings: {} },
+    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 10 } }], settings: {} },
     { type: 'ratio', segments: [{ cells: [7, 7], parameters: {} }], settings: {} },
     { type: 'ratio', segments: [{ cells: [7, 8], parameters: {} }], settings: { negativeConstraint: 'true' } },
   ]) await assert.rejects(detectPuzzle(coach({ givenConstraints: [constraint] })), /not supported|invalid|unsupported/)

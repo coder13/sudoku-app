@@ -85,6 +85,20 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
       }
       return { description, reason: 'Each crossed-out digit has no partner in the other cell that fits the dot rules.' }
     }
+    case 'labeled-dots': {
+      const mark = rule.marks.find(mark => hasMarkedPair([mark.cells], a, b))
+      if (mark) return {
+        description: rule.relation === 'ratio'
+          ? `Across the black dot at ${pair}, the larger digit is ${mark.value} times the smaller one.`
+          : `Across the white dot at ${pair}, the digits differ by ${mark.value}.`,
+        reason: 'A crossed-out digit has no partner that fits the mark.',
+      }
+      return {
+        description: rule.relation === 'ratio' ? 'This edge has no black dot, so neither digit can double the other.'
+          : 'This edge has no white dot, so its digits cannot differ by 1.',
+        reason: 'Every possible partner for a crossed-out digit would require a dot here.',
+      }
+    }
     case 'adjacent-total': {
       const description = `The clue between ${pair} gives a total of ${rule.sum}.`
       const fixed = domains.findIndex(mask => onlyCandidate(mask) !== null)

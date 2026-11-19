@@ -117,6 +117,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
   },
+  'labeled-dots': {
+    name: 'Difference and Ratio Dots',
+    rule: 'A number on a white dot gives the difference. A number on a black dot gives the ratio. With a blank dot, use a difference of 1 or a ratio of 2.',
+  },
   xv: {
     name: 'XV',
     rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
@@ -314,6 +318,7 @@ export function sumLabel(sum: number) {
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
   let excluded = 0
   let v = false, x = false, negativeV = false, negativeX = false
+  let markedDots = 0, negativeDots = 0
   const edge = cellsShareEdge(from, to)
   for (const rule of puzzle?.rules ?? []) {
     if ((rule.type === 'entropic' || rule.type === 'modular') && rule.cells.includes(from) && rule.cells.includes(to)) {
@@ -340,6 +345,20 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
         if (from === rule.less ? other <= digit : other >= digit) excluded |= 1 << (other - 1)
       }
     }
+    if (rule.type === 'labeled-dots' && edge) {
+      const ratio = rule.relation === 'ratio'
+      const bit = ratio ? 2 : 1
+      if (rule.negative) negativeDots |= bit
+      for (const { cells: [a, b], value } of rule.marks) {
+        if (!(a === from && b === to || a === to && b === from)) continue
+        markedDots |= bit
+        for (let other = 1; other <= 9; other++) {
+          if (ratio ? Math.max(digit, other) !== value * Math.min(digit, other) : Math.abs(digit - other) !== value) {
+            excluded |= 1 << (other - 1)
+          }
+        }
+      }
+    }
     if (rule.type === 'palindrome' && palindromePartner(rule.cells, from) === to) {
       excluded |= 511 & ~(1 << (digit - 1))
     }
@@ -360,6 +379,9 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
     if (v && sum !== 5 || x && sum !== 10 ||
       !v && !x && (negativeV && sum === 5 || negativeX && sum === 10)) excluded |= 1 << (other - 1)
   }
+  const bannedDots = negativeDots & ~markedDots
+  if (bannedDots & 1) excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
+  if (bannedDots & 2) excluded |= (digit <= 4 ? 1 << (2 * digit - 1) : 0) | (digit % 2 === 0 ? 1 << (digit / 2 - 1) : 0)
   return excluded
 }
 
@@ -367,7 +389,8 @@ export function nonConsecutiveDescription(puzzle: VariantPuzzle, rule: Extract<V
   const exceptions = rule.except ?? []
   if (!exceptions.length) return PUZZLE_VARIANTS['non-consecutive'].rule
   const marked = exceptions.every(([a, b]) => puzzle.rules?.some(other =>
-    other.type === 'kropki' && hasMarkedPair(other.consecutive?.pairs, a, b)))
+    other.type === 'kropki' && hasMarkedPair(other.consecutive?.pairs, a, b) ||
+    other.type === 'labeled-dots' && other.relation === 'difference' && other.marks.some(mark => hasMarkedPair([mark.cells], a, b))))
   const reference = (cell: number) => `r${Math.floor(cell / 9) + 1}c${cell % 9 + 1}`
   const detail = marked ? 'The white-dot pairs are exempt from this rule.' :
     `These pairs are exempt: ${exceptions.map(([a, b]) => `${reference(a)} and ${reference(b)}`).join('; ')}.`
@@ -443,6 +466,15 @@ function isPlayableRule(rule: VariantRule): boolean {
       marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) &&
         marks.pairs.every((pair) => validCells(pair, 2) && pair.length === 2)))
+    case 'labeled-dots': {
+      const ratio = rule.relation === 'ratio'
+      return Object.keys(rule).every(key => ['type', 'relation', 'marks', 'negative'].includes(key)) &&
+        (ratio || rule.relation === 'difference') && (rule.negative === undefined || typeof rule.negative === 'boolean') &&
+        Array.isArray(rule.marks) && (rule.marks.length > 0 || rule.negative === true) &&
+        rule.marks.every(mark => mark && Object.keys(mark).every(key => key === 'cells' || key === 'value') &&
+          validCells(mark.cells, 2) && mark.cells.length === 2 && cellsShareEdge(mark.cells[0], mark.cells[1]) &&
+          Number.isInteger(mark.value) && mark.value >= (ratio ? 2 : 1) && mark.value <= (ratio ? 9 : 8))
+    }
     case 'adjacent-total': return validCells(rule.cells, 2) && rule.cells.length === 2 && cellsShareEdge(rule.cells[0], rule.cells[1]) &&
       Number.isInteger(rule.sum) && rule.sum >= 3 && rule.sum <= 17
     case 'xv': return [rule.five, rule.ten].every(marks => marks === undefined ||
@@ -505,6 +537,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   thermometer: VARIANTS.thermometer.name,
   arrow: VARIANTS.arrow.name,
   kropki: VARIANTS.kropki.name,
+  'labeled-dots': PUZZLE_VARIANTS['labeled-dots'].name,
   whispers: PUZZLE_VARIANTS.whispers.name,
   palindrome: PUZZLE_VARIANTS.palindrome.name,
   between: PUZZLE_VARIANTS.between.name,
@@ -629,6 +662,12 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         descriptions.push('Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other.')
         if (rule.consecutive?.negative) descriptions.push('Every adjacent pair of consecutive digits has a white dot.')
         if (rule.ratioTwo?.negative) descriptions.push('Every adjacent pair with one digit double the other has a black dot.')
+        break
+      case 'labeled-dots':
+        descriptions.push(PUZZLE_VARIANTS['labeled-dots'].rule)
+        if (rule.negative) descriptions.push(rule.relation === 'difference'
+          ? 'Digits across an edge without a white dot cannot differ by 1.'
+          : 'Digits across an edge without a black dot cannot have a ratio of 2.')
         break
       default:
         if (isVariantId(rule.type)) descriptions.push(VARIANTS[rule.type].rule)

@@ -60,6 +60,18 @@ export const Jigsaw: Story = {
   } } },
 }
 
+export const LabeledDots: Story = {
+  args: candidateGrid({
+    version: 1,
+    givens: '130000000' + '0'.repeat(72),
+    rules: [
+      { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 1], value: 2 }] },
+      { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 3 }] },
+    ],
+  }, 'Sudoku with labeled Difference and Ratio dots'),
+  parameters: { gridWidth: 290 },
+}
+
 export const BetweenLines: Story = {
   args: candidateGrid(betweenNewman.puzzle as VariantPuzzle, 'Between Lines Sudoku grid'),
   parameters: { docs: { description: { story: 'Between, the Lines by Philip Newman. Two outlined circles bound each independent path. Every interior digit is strictly between the endpoint digits; interior digits can repeat when the other rules allow it.' } } },
