@@ -39,6 +39,43 @@ function engineRequests() {
   return { raw, run }
 }
 
+test('sized Classic requests use the structured worker protocol', async () => {
+  const { raw, run } = engineRequests()
+  const request = {
+    type: 'sized-classic',
+    position: { version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits: [...'0234341221434321'].map(Number) },
+  } as const
+  assert.equal(await run({ ...request, operation: 'analyze' }), 'unique')
+  assert.equal((await run({ ...request, operation: 'candidates' }))?.[0], 1)
+  const step = await run({ ...request, operation: 'next-deduction' })
+  assert.deepEqual(step?.actions, [{ place: { cell: 0, digit: 1 } }])
+  assert.equal((await run({ ...request, operation: 'solve' }))?.join(''), '1234341221434321')
+
+  const invalid = await raw({ ...request, operation: 'next-deduction', eliminations: [16] })
+  assert.ok('error' in invalid)
+  assert.equal(invalid.code, 'invalid-eliminations')
+  assert.equal(await run({ type: 'analyze', values: STARTER }), 'unique')
+})
+
+test('Mini Sudoku generation, hint alternatives, and trace share the verified answer', async () => {
+  const { run } = engineRequests()
+  const generation = { type: 'generate-mini', seed: 7, difficulty: 'medium' } as const
+  const digits = await run(generation)
+  const exclude = await run({ ...generation, exclude: [digits] })
+  assert.notDeepEqual(exclude, digits)
+  const request = {
+    type: 'sized-classic', position: { version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits },
+  } as const
+  const hints = await run({ ...request, operation: 'hints', limit: 256 })
+  assert.ok(hints?.choices.length)
+  const trace = await run({ ...request, operation: 'trace' })
+  assert.ok(trace)
+  assert.equal(trace.length, digits.filter(digit => digit === 0).length + 1)
+  assert.deepEqual(trace.at(-1)?.digits, await run({ ...request, operation: 'solve' }))
+  assert.equal(trace.at(-1)?.deduction, null)
+  assert.deepEqual(trace[0].deduction, hints.choices[0])
+})
+
 test('technique counts match full deductions before and after a candidate edit', async () => {
   const { raw, run } = engineRequests()
   const values = STARTER

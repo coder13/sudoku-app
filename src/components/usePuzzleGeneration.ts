@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { type DifficultyPreference } from '../sudoku/difficulty'
-import { EngineError } from '../sudoku/engine'
+import { EngineError, runEngine } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
-import { VARIANTS, variantDifficulty, type VariantId } from '../sudoku/variants'
+import { MINI_GRID } from '../sudoku/grid'
+import { miniDifficulty, MINI_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { VARIANTS, variantDifficulty } from '../sudoku/variants'
 import { generationRuleset, type VariantGenerationOptions } from '../sudoku/variant-rulesets'
 
 export function usePlayerRating() {
@@ -26,15 +28,25 @@ export function usePuzzleGeneration() {
     return () => { mounted.current = false }
   }, [])
 
-  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: VariantId = 'classic', options?: VariantGenerationOptions) {
+  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions) {
     if (pending.current) return
     pending.current = true
     setBusy(true)
     setError('')
     try {
+      const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+      if (variant === 'mini') {
+        const difficulty = miniDifficulty(preference)
+        const exclude = roomStore.playedMiniGivens().map(givens => Array.from(givens, Number))
+        const givens = (await runEngine({ type: 'generate-mini', seed, difficulty, exclude })).join('')
+        if (!mounted.current) return
+        const game = makeGame(createGameId(), nextPuzzleTitle(`${MINI_NAME} `), givens, 'generated', undefined, MINI_GRID)
+        roomStore.add({ ...game, difficulty, score: null })
+        onGenerated?.()
+        return
+      }
       const auto = preference === 'auto'
       const difficulty = variantDifficulty(variant, auto ? roomStore.getSnapshot().playerRating.recommended : preference)
-      const seed = crypto.getRandomValues(new Uint32Array(1))[0]
       if (variant !== 'classic') {
         const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games, options)
         if (!mounted.current) return
@@ -52,7 +64,7 @@ export function usePuzzleGeneration() {
         onGenerated?.()
         return
       }
-      const previousPuzzles = roomStore.getSnapshot().games.filter(game => !game.variant).map(game => game.givens)
+      const previousPuzzles = roomStore.getSnapshot().games.filter(game => !game.variant && !game.grid).map(game => game.givens)
       const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, auto ? await techniqueHistory.readProgress() : undefined, previousPuzzles)
       if (!mounted.current) return
       const game = makeGame(createGameId(), nextPuzzleTitle(), givens, 'generated')

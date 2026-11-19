@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { isDifficulty } from '../sudoku/difficulty'
 import type { SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
-import { isPuzzleVariantId } from '../sudoku/variants'
+import { isGameVariantId } from '../sudoku/new-puzzle'
 
 function dateParam(value: unknown) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000-')) return
@@ -11,7 +11,7 @@ function dateParam(value: unknown) {
 
 export const Route = createFileRoute('/puzzles/solved')({
   validateSearch: (search): SolvedPuzzleFilters => ({
-    variant: isPuzzleVariantId(search.variant) ? search.variant : undefined,
+    variant: isGameVariantId(search.variant) ? search.variant : undefined,
     difficulty: isDifficulty(search.difficulty) || search.difficulty === 'unrated' ? search.difficulty : undefined,
     from: dateParam(search.from),
     to: dateParam(search.to),

@@ -8,6 +8,8 @@ import {
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
+import { MINI_GRID } from '../sudoku/grid'
+import { gameGenerationVariant, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { puzzleLinkHash } from '../sudoku/formats'
 import { createGameId, EMPTY, makeGame, setGamePaused, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
@@ -22,7 +24,6 @@ import {
 } from '../sudoku/preferences'
 import { deviceSync } from '../sudoku/device-sync'
 import { roomStore } from '../sudoku/storage'
-import { generationVariant } from '../sudoku/variants'
 import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
@@ -39,7 +40,7 @@ import { Worktable, type WorktableActions } from './Worktable'
 
 type Panel = 'import' | 'share' | 'publish' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
-const PUZZLE_LINK = /^(?:puzzle|variant)=/
+const PUZZLE_LINK = /^(?:puzzle|variant|sized)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
 const ADVANCED_PANEL_VISIBILITY_KEY = 'sudoku-app:v1:advanced-panel-visibility'
 const DEFAULT_ADVANCED_PANEL_VISIBILITY: AdvancedPanelVisibility = { left: true, right: true, bottom: true, articles: true }
@@ -128,8 +129,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const game = games.find(item => item.id === (requested ?? active))
   const playableGivens = game?.source === 'draft' ? undefined : game?.givens
   const puzzleVariant = game?.variant
-  const canonicalPuzzleHash = useMemo(() => playableGivens ? puzzleLinkHash({ givens: playableGivens, variant: puzzleVariant }) : '',
-    [playableGivens, puzzleVariant])
+  const puzzleGrid = game?.grid
+  const canonicalPuzzleHash = useMemo(() => playableGivens ? puzzleLinkHash({ givens: playableGivens, variant: puzzleVariant, grid: puzzleGrid }) : '',
+    [playableGivens, puzzleVariant, puzzleGrid])
   const locationHash = locationHref.split('#', 2)[1] ?? ''
   const puzzleLink = PUZZLE_LINK.test(locationHash)
   const hasRequestedGame = Boolean(requested && game)
@@ -137,7 +139,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const viewedPuzzle = playRoute && game && game.source !== 'draft' ? game.id : null
   const peerPuzzle = playedPeerPuzzle()
   const newPuzzleDefaults: NewPuzzlePreference = newPuzzlePreference ?? {
-    variant: generationVariant(game?.variant) ?? 'classic',
+    variant: gameGenerationVariant(game) ?? 'classic',
     difficulty: game?.generatedWithAuto ? 'auto' : game?.difficulty ?? difficulty,
   }
   const mobile = useMobileLayout()
@@ -335,7 +337,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   function openNewPuzzle(step?: 'difficulty') {
     setPanel(null)
-    const variant = game?.variant ? generationVariant(game.variant) : 'classic'
+    const variant = gameGenerationVariant(game)
     if (step === 'difficulty' && variant) {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: puzzleGenerationRuleset(game?.variant?.puzzle) } })
     } else {
@@ -453,14 +455,16 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     })
   }
 
-  function createPuzzle() {
+  function createPuzzle(variant?: NewPuzzleId) {
     setPanel(null)
-    roomStore.add({ ...makeGame(createGameId(), 'Untitled puzzle', EMPTY, 'draft'), returnId: active ?? undefined })
+    const grid = variant === 'mini' ? MINI_GRID : undefined
+    const givens = grid ? '0'.repeat(grid.size ** 2) : EMPTY
+    roomStore.add({ ...makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid), returnId: active ?? undefined })
   }
 
   function editPuzzle() {
     if (!game || game.source !== 'custom') return
-    const draft = makeGame(createGameId(), game.title, EMPTY, 'draft')
+    const draft = makeGame(createGameId(), game.title, '0'.repeat(game.givens.length), 'draft', undefined, game.grid)
     roomStore.add({ ...draft, editingId: game.id, returnId: game.id, position: { ...draft.position, entries: game.givens } })
   }
 
@@ -585,7 +589,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onOpenHintPanel={() => setPanelVisibility('bottom', true)}
                 onOpenRightPanel={() => setPanelVisibility('right', true)}
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
-                onNewPuzzle={openNewPuzzle} onCreatePuzzle={createPuzzle} onEditPuzzle={editPuzzle}
+                onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.grid ? 'mini' : undefined)} onEditPuzzle={editPuzzle}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
                 onStopPlaying={() => {
                   if (!game) return

@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from 'react'
 import type { Candidate, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
+import { CLASSIC_GRID, type MiniGrid } from '../sudoku/grid'
 import { activeHighlightDigit, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
@@ -14,6 +15,7 @@ import { BoardMarks, type BoardMark } from './BoardMarks'
 type Props = {
   descriptionId?: string
   variantPuzzle?: VariantPuzzle
+  grid?: MiniGrid
   givens: string
   values: string
   position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors'>>
@@ -59,17 +61,19 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle, grid: miniGrid, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
 }: Props) {
+  const grid = miniGrid ?? CLASSIC_GRID
+  const { size: gridSize, boxRows, boxColumns } = grid
   const variantRules = variantPuzzle?.rules
   const outside = useMemo(() => outsideClueLayout(variantRules), [variantRules])
   const hasOutside = Object.values(outside.depths).some(Boolean)
   const clones = cloneLayout(variantRules)
   const disjoint = useMemo(() => disjointGroupRuleIndices(variantRules ?? []), [variantRules])
-  const gridLabel = [label, variantRules?.some(rule => rule.type === 'global-entropy')
+  const gridLabel = [miniGrid ? `4 × 4 ${label.toLowerCase()}` : label, variantRules?.some(rule => rule.type === 'global-entropy')
     && 'Global Entropy: every 2 × 2 area needs a low digit 1–3, a medium digit 4–6 and a high digit 7–9, including across box or region borders.',
     disjoint.size && DISJOINT_GROUPS_RULE].filter(Boolean).join(' ')
   const regions = variantPuzzle?.regions
@@ -98,14 +102,16 @@ export function Board({
   const usesDigitSlots = (cell: number) => layout === 'grid' || annotationSlots?.has(cell)
   // An outside total needs its complete row or column visible in teaching diagrams.
   const visibleRegion = hasOutside ? undefined : region
-  const rows = visibleRegion ? DIGITS.slice(visibleRegion.row, visibleRegion.row + visibleRegion.rows) : DIGITS
-  const columns = visibleRegion ? DIGITS.slice(visibleRegion.column, visibleRegion.column + visibleRegion.columns) : DIGITS
-  const size = { ...(visibleRegion && { '--board-rows': rows.length, '--board-columns': columns.length }),
+  const coordinates = miniGrid ? DIGITS.slice(0, gridSize) : DIGITS
+  const rows = visibleRegion ? coordinates.slice(visibleRegion.row, visibleRegion.row + visibleRegion.rows) : coordinates
+  const columns = visibleRegion ? coordinates.slice(visibleRegion.column, visibleRegion.column + visibleRegion.columns) : coordinates
+  const size = { ...((visibleRegion || miniGrid) && { '--board-rows': rows.length, '--board-columns': columns.length }),
+    ...(miniGrid && { '--candidate-rows': boxRows, '--candidate-columns': boxColumns }),
     ...(hasOutside && Object.fromEntries(Object.entries(outside.depths).map(([side, depth]) => ['--outside-' + side, depth]))),
     ...(hasOutside && { '--outside-left-track': `${outside.depths.left}fr`, '--outside-right-track': `${outside.depths.right}fr` }),
   } as CSSProperties
   const playableCell = (cell: number) => values[cell] === '0' &&
-    rows.includes(Math.floor(cell / 9) + 1) && columns.includes(cell % 9 + 1)
+    rows.includes(Math.floor(cell / gridSize) + 1) && columns.includes(cell % gridSize + 1)
   const gridMask = (cell: number) => candidates?.[cell] ??
     ((position?.corner[cell] ?? 0) | (usesDigitSlots(cell) ? position?.center[cell] ?? 0 : 0))
   const centerMask = (cell: number) => usesDigitSlots(cell) ? 0 : position?.center[cell] ?? 0
@@ -167,12 +173,12 @@ export function Board({
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {rows.map((row) => (
-            <div className="grid-row" role="row" data-box-edge={!regionsAt && row % 3 === 0 || undefined} key={row}>
+            <div className="grid-row" role="row" data-box-edge={!regionsAt && row % boxRows === 0 || undefined} key={row}>
               {columns.map((col) => {
-                const index = (row - 1) * 9 + col - 1
+                const index = (row - 1) * gridSize + col - 1
                 const regionAtCell = regionsAt?.[index]
                 const cageTotal = cageTotals.get(index)
-                const alternateBox = (Math.floor((row - 1) / 3) + Math.floor((col - 1) / 3)) % 2 === 1
+                const alternateBox = (Math.floor((row - 1) / boxRows) + Math.floor((col - 1) / boxColumns)) % 2 === 1
                 const value = Number(values[index])
                 const fixed = givens[index] !== '0'
                 const center = position?.center[index] ?? 0
@@ -239,7 +245,7 @@ export function Board({
                 const classes = [
                   'cell',
                   fixed ? 'given' : 'entry',
-                  !filterCandidates && highlighting.relatedCells && selected.some((cell) => peer(index, cell, variantPuzzle)) ? 'peer' : '',
+                  !filterCandidates && highlighting.relatedCells && selected.some((cell) => peer(index, cell, variantPuzzle, grid)) ? 'peer' : '',
                   highlighting.matchingDigits && value === focusDigit ? 'matching' : '',
                   candidateHighlightStyle === 'cell' ? matchesWithExtras ? 'candidate-highlight-light' : 'candidate-highlight-cell' : '',
                   candidateHighlightStyle === 'outline' ? 'candidate-highlight-outline' : '',
@@ -255,7 +261,7 @@ export function Board({
                   const colorClass = color ? `candidate-color color-${color}` : ''
                   const previewEdit = digit === preview?.digit && slotted === previewSlotted ? previewAction : undefined
                   const style = {
-                    gridArea: slotted ? `${Math.floor((digit - 1) / 3) + 1} / ${(digit - 1) % 3 + 1}` : undefined,
+                    gridArea: slotted ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
                     '--annotation-color': annotation?.color,
                   } as CSSProperties
                   const highlightClass = !previewEdit && digit === focusDigit && candidateHighlightStyle && candidateHighlightStyle !== 'cell'
@@ -302,9 +308,9 @@ export function Board({
                   <Cell role="gridcell" key={col} data-cell={index} data-clone={clones.at[index]?.label} className={classes} style={cellStyle} aria-label={label}
                     data-pointer-focused={pointerFocusedCell === index || undefined}
                     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
-                    data-box-edge={!regionsAt && col % 3 === 0 || undefined}
-                    data-region-right={regionsAt && col < 9 && regionAtCell !== regionsAt[index + 1] || undefined}
-                    data-region-bottom={regionsAt && row < 9 && regionAtCell !== regionsAt[index + 9] || undefined}
+                    data-box-edge={!regionsAt && col % boxColumns === 0 || undefined}
+                    data-region-right={regionsAt && col < gridSize && regionAtCell !== regionsAt[index + 1] || undefined}
+                    data-region-bottom={regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize] || undefined}
                     data-alternate-box={!regionsAt && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
                     type={onCell && 'button'} tabIndex={onCell ? (active === index ? 0 : -1) : undefined}
                     aria-selected={onCell ? inSelection : undefined}
