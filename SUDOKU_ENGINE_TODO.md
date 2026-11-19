@@ -227,6 +227,12 @@ This pass reached main at `a1aeb27` through [PR 143](https://github.com/coder13/
 - [x] Pass CI on reviewed head `b027404`, merge the focused improvement and verify remote main ancestry. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44297435642)
 - [x] Complete inequality app integration separately through [PR 145](https://github.com/coder13/sudoku-app/pull/145). The exact-search repair preserves its honest 98-point logical stall.
 
+### Renban ModE exact search measured
+
+- [x] Profile the complete zero-given puzzle with all fourteen Renban lines and four Little Killer sums. Independently prove that the published completion is unique.
+- [x] Compare short Renban digit masks with independent tuple enumeration and 5,178 full engine responses. Measure native exact search and the app import preview. [Audit and raw samples](SUDOKU_LITTLE_KILLER_AUDIT.md#short-renban-support-and-exact-import)
+- [ ] Pass the engine and deployment gates on the reviewed head. Then merge and check fetched main. [Issue #192](https://github.com/coder13/sudoku-app/issues/192)
+
 ### Non-Consecutive integration merged
 
 This stage reached main at `8439f6d` through [PR 112](https://github.com/coder13/sudoku-app/pull/112). The reviewed worktree remains available on `codex/sudoku-nonconsecutive-integration`. [Non-Consecutive issue](https://github.com/coder13/sudoku-app/issues/44)
