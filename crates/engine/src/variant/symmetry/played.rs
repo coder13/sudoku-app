@@ -8,6 +8,7 @@ use crate::CELLS;
 pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     let mut logical = puzzle.clone();
     normalize_equalities(&mut logical);
+    normalize_entropic(&mut logical);
     // Whispers constrains neighboring pairs, independently of path direction,
     // segmentation or repeated edges. Keep this normalization private to played
     // exclusions; public definitions and proof indices retain the original paths.
@@ -53,22 +54,48 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     // public canonical definitions keep their original structure.
     logical.rules.sort_unstable();
     logical.rules.dedup();
-    let entropy = logical
-        .rules
-        .iter()
-        .any(|rule| matches!(rule, PuzzleRule::GlobalEntropy {}))
-        && logical.rules.iter().all(|rule| {
-            digit_invariant(rule)
-                || matches!(
-                    rule,
-                    PuzzleRule::GlobalEntropy {} | PuzzleRule::Entropic { .. }
-                )
-        });
+    let entropy = logical.rules.iter().any(|rule| {
+        matches!(
+            rule,
+            PuzzleRule::GlobalEntropy {} | PuzzleRule::Entropic { .. }
+        )
+    }) && logical.rules.iter().all(|rule| {
+        digit_invariant(rule)
+            || matches!(
+                rule,
+                PuzzleRule::GlobalEntropy {} | PuzzleRule::Entropic { .. }
+            )
+    });
     key_impl(&logical, true, |copy| {
         if entropy {
             rename_groups(&mut copy.givens, &[0, 0, 0, 0, 1, 1, 1, 2, 2, 2]);
         }
     })
+}
+
+// Sliding triples require three different groups. Their pairwise restrictions
+// preserve reversed/split walks without joining independent touching paths.
+// A one-cell walk adds no restriction; a conflicting revisit retains its loop.
+fn normalize_entropic(puzzle: &mut VariantPuzzle) {
+    let mut edges = std::collections::BTreeSet::new();
+    puzzle.rules.retain(|rule| {
+        let PuzzleRule::Entropic { cells } = rule else {
+            return true;
+        };
+        for (index, &cell) in cells.iter().enumerate() {
+            for &other in cells.iter().skip(index + 1).take(2) {
+                let mut pair = [cell, other];
+                pair.sort_unstable();
+                edges.insert(pair);
+            }
+        }
+        false
+    });
+    puzzle
+        .rules
+        .extend(edges.into_iter().map(|cells| PuzzleRule::Entropic {
+            cells: cells.to_vec(),
+        }));
 }
 
 // First appearances name the three equal-sized digit groups and their members.

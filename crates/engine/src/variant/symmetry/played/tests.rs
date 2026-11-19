@@ -294,3 +294,185 @@ fn played_group_names_ignore_empty_cells_and_unused_members() {
     assert_eq!(&givens[..5], &[1, 0, 2, 4, 1]);
     assert!(givens[5..].iter().all(|&digit| digit == 0));
 }
+
+fn entropic(cells: &[usize]) -> PuzzleRule {
+    PuzzleRule::Entropic {
+        cells: cells.to_vec(),
+    }
+}
+
+#[test]
+fn played_entropic_walks_use_original_window_pairs_under_every_grid_symmetry() {
+    let original = VariantPuzzle {
+        rules: vec![entropic(&[0, 12, 24, 40, 52]), entropic(&[52, 64, 80])],
+        ..VariantPuzzle::classic([0; CELLS])
+    };
+    let mut given = original.clone();
+    for (cell, digit) in [
+        (0, 1),
+        (12, 4),
+        (24, 7),
+        (40, 2),
+        (52, 5),
+        (64, 8),
+        (80, 3),
+        (28, 9),
+    ] {
+        given.givens[cell] = digit;
+    }
+    let expected = generation_key(&given);
+    let pairs = [
+        [0, 12],
+        [0, 24],
+        [12, 24],
+        [12, 40],
+        [24, 40],
+        [24, 52],
+        [40, 52],
+        [52, 64],
+        [52, 80],
+        [64, 80],
+    ];
+    let decomposed: Vec<_> = pairs.iter().map(|cells| entropic(cells)).collect();
+    let mut duplicate = decomposed.clone();
+    duplicate.extend(decomposed.clone());
+    let alternatives = [
+        vec![entropic(&[80, 64, 52]), entropic(&[52, 40, 24, 12, 0])],
+        vec![
+            entropic(&[0, 12, 24]),
+            entropic(&[12, 24, 40]),
+            entropic(&[24, 40, 52]),
+            entropic(&[52, 64, 80]),
+        ],
+        decomposed,
+        duplicate,
+    ];
+    for rules in alternatives {
+        for transform in SquareTransform::ALL {
+            let mut equivalent = VariantPuzzle {
+                rules: rules.clone(),
+                ..given.clone()
+            };
+            transform.puzzle(&mut equivalent);
+            assert_eq!(generation_key(&equivalent), expected);
+        }
+    }
+    assert_eq!(given.rules, original.rules);
+    let public = canonical_variant(&original).unwrap();
+    assert!(
+        public
+            .rules
+            .iter()
+            .any(|rule| matches!(rule, PuzzleRule::Entropic { cells } if cells.len() == 5))
+    );
+}
+
+#[test]
+fn played_pure_entropic_keys_cover_every_group_bijection_and_grid_symmetry() {
+    const PERMUTATIONS: [[u8; 3]; 6] = [
+        [0, 1, 2],
+        [0, 2, 1],
+        [1, 0, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+        [2, 1, 0],
+    ];
+    let mut original = VariantPuzzle {
+        rules: vec![entropic(&[0, 10, 20])],
+        ..VariantPuzzle::classic([0; CELLS])
+    };
+    original.givens[..9].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    original.givens[40] = 7;
+    original.givens[70] = 3;
+    let expected = generation_key(&original);
+    let mut checked = 0;
+    for groups in PERMUTATIONS {
+        for low in PERMUTATIONS {
+            for medium in PERMUTATIONS {
+                for high in PERMUTATIONS {
+                    let members = [low, medium, high];
+                    for transform in SquareTransform::ALL {
+                        let mut renamed = original.clone();
+                        for digit in &mut renamed.givens {
+                            if *digit != 0 {
+                                let group = usize::from((*digit - 1) / 3);
+                                *digit = groups[group] * 3
+                                    + members[group][usize::from((*digit - 1) % 3)]
+                                    + 1;
+                            }
+                        }
+                        transform.puzzle(&mut renamed);
+                        assert_eq!(generation_key(&renamed), expected);
+                        checked += 1;
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(checked, 1296 * 8);
+}
+
+#[test]
+fn played_entropic_keys_preserve_independent_paths_conflicting_revisits_and_numeric_rules() {
+    let definition = |rules| VariantPuzzle {
+        rules,
+        ..VariantPuzzle::classic([0; CELLS])
+    };
+    let separate = definition(vec![entropic(&[0, 12, 24]), entropic(&[24, 40, 52])]);
+    let joined = definition(vec![entropic(&[0, 12, 24, 40, 52])]);
+    assert_ne!(generation_key(&separate), generation_key(&joined));
+    let triangle = definition(vec![entropic(&[0, 12, 24])]);
+    assert_eq!(
+        generation_key(&triangle),
+        generation_key(&definition(vec![entropic(&[0, 12, 24, 0])]))
+    );
+    assert_ne!(
+        generation_key(&triangle),
+        generation_key(&definition(vec![entropic(&[0, 12, 0])]))
+    );
+    assert_ne!(
+        generation_key(&definition(vec![])),
+        generation_key(&definition(vec![entropic(&[0, 12, 0])]))
+    );
+    let singleton = definition(vec![entropic(&[40])]);
+    assert_eq!(
+        generation_key(&singleton),
+        generation_key(&definition(vec![]))
+    );
+    assert_eq!(canonical_variant(&singleton).unwrap().rules.len(), 1);
+    let mut original = triangle;
+    original.givens[..9].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    original.givens[40] = 7;
+    original.givens[70] = 3;
+    let mut crossed = original.clone();
+    for digit in &mut crossed.givens {
+        *digit = match *digit {
+            3 => 4,
+            4 => 3,
+            digit => digit,
+        };
+    }
+    assert_ne!(generation_key(&original), generation_key(&crossed));
+    for companion in [
+        PuzzleRule::Parity {
+            cells: vec![80],
+            parity: crate::variant::Parity::Odd,
+        },
+        PuzzleRule::Inequality {
+            less: 0,
+            greater: 40,
+        },
+    ] {
+        let mut mixed = original.clone();
+        mixed.rules.push(companion);
+        let mut renamed = mixed.clone();
+        for digit in &mut renamed.givens {
+            *digit = match *digit {
+                1 => 2,
+                2 => 1,
+                digit => digit,
+            };
+        }
+        assert_ne!(generation_key(&mixed), generation_key(&renamed));
+    }
+}

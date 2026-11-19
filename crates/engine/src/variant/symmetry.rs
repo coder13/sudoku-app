@@ -57,7 +57,9 @@ fn key_impl(
             transform.puzzle(&mut copy);
             if generation_edges {
                 for rule in &mut copy.rules {
-                    if let PuzzleRule::Whispers { cells, .. } = rule {
+                    if let PuzzleRule::Whispers { cells, .. } | PuzzleRule::Entropic { cells } =
+                        rule
+                    {
                         cells.sort_unstable();
                     }
                 }

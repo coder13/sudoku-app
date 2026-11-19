@@ -48,6 +48,10 @@ export const VARIANTS = {
     name: 'Global Entropy',
     rule: 'Every 2 × 2 area contains a low digit (1–3), a medium digit (4–6) and a high digit (7–9). This includes areas across box or region borders. One group appears twice. Equal digits can repeat diagonally if all other puzzle rules allow it.',
   },
+  entropic: {
+    name: 'Entropic Lines',
+    rule: 'Each three successive positions on an Entropic line contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',
+  },
   palindrome: {
     name: 'Palindrome',
     rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
@@ -101,10 +105,6 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
-  entropic: {
-    name: 'Entropic Lines',
-    rule: 'Each three successive positions on an Entropic line contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',
-  },
   modular: {
     name: 'Modular Lines',
     rule: 'Each three successive positions on a Modular line contain one digit from {1, 4, 7}, one from {2, 5, 8} and one from {3, 6, 9}. These groups have different remainders when divided by 3. The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent. Digits may repeat if all other puzzle rules allow it.',
