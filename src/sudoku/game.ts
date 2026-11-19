@@ -218,8 +218,8 @@ export function isSolved(game: Game): boolean {
   return game.source !== 'draft' && (game.variant ? values === game.variant.solution : !values.includes('0') && !conflictsOf(values, undefined, game.grid).size)
 }
 
-export function setGamePaused(game: Game, paused: boolean): Game {
-  if (game.paused === paused || game.source === 'draft' || !game.started || isSolved(game)) return game
+export function setGamePaused(game: Game, paused: boolean, { onOpen = false } = {}): Game {
+  if (game.paused === paused || game.source === 'draft' || (paused && !game.started && !onOpen) || isSolved(game)) return game
   return { ...game, paused }
 }
 

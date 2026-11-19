@@ -12,3 +12,13 @@ Avoid `take`, `takes`, `taking`, `taken`, and `took` in Learn articles, practice
 # Component system
 
 When adding, choosing, or changing UI components, use the [Sudoku components skill](.agents/skills/sudoku-components/SKILL.md). Update its component catalog in the same change as additions, renames, removals, or changes to when a component should be used. Keep usage notes and Storybook examples for shared components current.
+
+# Shipping
+
+When asked to ship work in this repository, carry it through the start of the production deployment.
+
+1. Open a pull request into `main` and run the relevant checks.
+2. Merge the pull request into `main` once it is ready.
+3. Confirm that the **Cloudflare Pages** deployment for the merge commit has started.
+
+Report the merged pull request and note that the deployment started.

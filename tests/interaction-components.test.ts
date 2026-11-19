@@ -3,6 +3,7 @@ import { after, before, test } from 'node:test'
 import { createElement, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
+import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 
 let server: ViteDevServer
 let Board: (props: Record<string, unknown>) => ReactNode
@@ -22,6 +23,24 @@ before(async () => {
 })
 
 after(async () => { await server?.close() })
+
+test('a saved puzzle URL renders the same initial shell as the prerendered home page', async () => {
+  const { getRouter } = await server.ssrLoadModule('/src/router.tsx') as typeof import('../src/router.tsx')
+
+  async function renderHome(path: string) {
+    const router = getRouter()
+    router.update({ ...router.options, history: createMemoryHistory({ initialEntries: [path] }) })
+    await router.load()
+    return renderToStaticMarkup(createElement(RouterProvider, { router }))
+  }
+
+  const home = await renderHome('/')
+  const savedPuzzle = await renderHome('/?puzzle=saved-puzzle')
+  const openingTag = /<main\b[^>]*>/
+  const homeMain = home.match(openingTag)?.[0]
+  assert.match(homeMain ?? '', /puzzles-home/)
+  assert.equal(savedPuzzle.match(openingTag)?.[0], homeMain)
+})
 
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
   if (Array.isArray(node)) return node.flatMap(elements)
