@@ -120,6 +120,21 @@ export const KakuroFromGameTypes: Story = {
   },
 }
 
+export const CalcudokuFromGameTypes: Story = {
+  ...ChooseVariant,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Calcudoku/ }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Easy/ }))
+    const cell = await canvas.findByRole('button', { name: /^R1C1, empty/ })
+    await userEvent.click(cell)
+    await userEvent.keyboard('1')
+    await expect(cell).toHaveAccessibleName(/^R1C1, 1/)
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+  },
+}
+
 export const RenbanVariant: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new?variant=renban" />,
 }

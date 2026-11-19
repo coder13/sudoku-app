@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { after, before, test } from 'node:test'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { conflictsOf, enter, makeGame } from '../src/sudoku/game.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { isVariantId, VARIANTS, variantDifficulties } from '../src/sudoku/variants.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/nonconsecutive-coach.json', import.meta.url), 'utf8')).examples[0] as {
@@ -91,8 +92,9 @@ test('sharing after a move preserves mixed exceptions and completion retains the
       variant: { id: 'mixed' as const, puzzle, solution: fixture.solution } }
     const progressed = enter(game, [1], 'value', Number(fixture.solution[1]))
     const shared = renderToStaticMarkup(createElement(SharePuzzle, { game: progressed, close() {} }))
-    const payload = shared.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-    assert.deepEqual((await detectPuzzle(payload)).variant, { id: 'mixed', puzzle })
+    assert.match(shared, /Create link/)
+    assert.doesNotMatch(shared, /id="share-output"/)
+    assert.deepEqual((await publishFixture(progressed)).variant, { id: 'mixed', puzzle })
     game.position.entries = [...fixture.solution].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
     const completed = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
       ratingPending: false, shortcutEnabled: false, showGuides: true, onChooseDifficulty() {}, onChooseVariant() {} }))

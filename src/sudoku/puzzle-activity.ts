@@ -1,6 +1,6 @@
 import { isSolved, type Game } from './game.ts'
 import type { Difficulty } from './engine.ts'
-import type { PuzzleVariantId } from './variants.ts'
+import { gameVariantId, type GameVariantId } from './new-puzzle.ts'
 
 export const activityPrefix = 'sudoku-app:v1:played:'
 
@@ -18,7 +18,7 @@ export function inProgress(games: readonly Game[], storage?: Storage) {
 }
 
 export type SolvedPuzzleFilters = {
-  variant?: PuzzleVariantId
+  variant?: GameVariantId
   difficulty?: Difficulty | 'unrated'
   from?: string
   to?: string
@@ -50,7 +50,7 @@ export function solveDate(timestamp: number) {
 
 export function matchesSolvedFilters({ game, solvedAt }: { game: Game; solvedAt: number }, filters: SolvedPuzzleFilters) {
   const { variant, difficulty, from, to } = filters
-  if (variant && (game.variant?.id ?? 'classic') !== variant) return false
+  if (variant && gameVariantId(game) !== variant) return false
   if (difficulty && (game.difficulty ?? 'unrated') !== difficulty) return false
   const day = solveDate(solvedAt)
   return (!from || day >= from) && (!to || day <= to)

@@ -39,6 +39,7 @@ export const roomStore: typeof appStore = {
   onEdit() { return () => {} },
   view(id) { if (room.active !== id) publish({ ...room, active: id }) },
   refreshPuzzle() {},
+  playedMiniGivens: () => room.games.filter(game => game.grid && game.source !== 'draft').map(game => game.givens),
   getSnapshot: () => room,
   getServerSnapshot: () => room,
   connect: () => () => {},

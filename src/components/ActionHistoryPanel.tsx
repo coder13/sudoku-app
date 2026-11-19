@@ -22,28 +22,29 @@ function actionTitle(entry: ActionHistoryEntry) {
   return `${added ? 'Added' : removed ? 'Removed' : 'Changed'} ${entry.changes.length} candidate${entry.changes.length === 1 ? '' : 's'}`
 }
 
-function changeDetails(changes: readonly ActionChange[], style: CellReferenceStyle, difficulty: Game['difficulty']) {
+function changeDetails(changes: readonly ActionChange[], style: CellReferenceStyle, difficulty: Game['difficulty'], gridSize: number) {
   const cells = new Map<number, string[]>()
   for (const change of changes) {
     const text = change.kind === 'candidate' ? `${change.added ? '+' : '−'}${change.digit}`
       : change.after === 0 ? `cleared ${change.before}` : change.before === 0 ? String(change.after) : `${change.before} → ${change.after}`
     cells.set(change.cell, [...(cells.get(change.cell) ?? []), text])
   }
-  return [...cells].map(([cell, edits]) => `${cellReference(cell, style, difficulty ?? undefined)}: ${edits.join(', ')}`).join(' · ')
+  return [...cells].map(([cell, edits]) => `${cellReference(cell, style, difficulty ?? undefined, gridSize)}: ${edits.join(', ')}`).join(' · ')
 }
 
-function actionDetails(entry: ActionHistoryEntry, style: CellReferenceStyle, difficulty: Game['difficulty']) {
+function actionDetails(entry: ActionHistoryEntry, style: CellReferenceStyle, difficulty: Game['difficulty'], gridSize: number) {
   if (entry.kind === 'candidates') return null
-  if (entry.kind !== 'singles') return changeDetails(entry.changes, style, difficulty)
+  if (entry.kind !== 'singles') return changeDetails(entry.changes, style, difficulty, gridSize)
   const singles = entry.changes.filter((change) => change.kind === 'entry' && change.after > 0)
-  const details = changeDetails(singles.slice(0, 3), style, difficulty)
+  const details = changeDetails(singles.slice(0, 3), style, difficulty, gridSize)
   return singles.length > 3 ? `${details} · and ${singles.length - 3} more` : details
 }
 
-export function ActionHistoryPanel({ entries = [], cellReferenceStyle = 'concise', difficulty }: {
+export function ActionHistoryPanel({ entries = [], cellReferenceStyle = 'concise', difficulty, gridSize = 9 }: {
   entries?: readonly ActionHistoryEntry[]
   cellReferenceStyle?: CellReferenceStyle
   difficulty?: Game['difficulty']
+  gridSize?: number
 }) {
   return <details className="completion-techniques action-history">
     <summary>
@@ -54,7 +55,7 @@ export function ActionHistoryPanel({ entries = [], cellReferenceStyle = 'concise
     <div className="completion-techniques-panel">
       {entries.length === 0 ? <p>No actions were recorded for this solve.</p>
         : <ol aria-label="Solve actions">{entries.map((entry, index) => {
-          const details = actionDetails(entry, cellReferenceStyle, difficulty)
+          const details = actionDetails(entry, cellReferenceStyle, difficulty, gridSize)
           return <li key={entry.id}>
             <div className="action-history-heading">
               <strong className={entry.technique ? 'action-history-technique' : undefined}><span className="action-history-number">{index + 1}.</span> {actionTitle(entry)}</strong>

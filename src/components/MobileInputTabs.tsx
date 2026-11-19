@@ -6,8 +6,9 @@ const labels = { digits: 'Digits', colors: 'Colors', chains: 'Chains' }
 export type MobileInputTab = keyof typeof labels
 export type MobileInputTool = Exclude<MobileInputTab, 'digits'>
 
-function InputToolsMenu({ disabled, onOpen }: {
+function InputToolsMenu({ disabled, colorsOnly, onOpen }: {
   disabled: boolean
+  colorsOnly?: boolean
   onOpen: (opener: HTMLButtonElement | null) => void
 }) {
   const id = useId()
@@ -57,19 +58,20 @@ function InputToolsMenu({ disabled, onOpen }: {
         close()
       }}>
       <button type="button" onClick={() => { close(); onOpen(trigger.current) }}>
-        <Palette size={17} aria-hidden="true" /> Colors &amp; Chains
+        <Palette size={17} aria-hidden="true" /> {colorsOnly ? 'Colors' : 'Colors & Chains'}
       </button>
     </div>
   </div>
 }
 
 /** Show Digits and any open solving tools in the mobile input card. Worktable owns the saved tab selection. */
-export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, onOpenTools, onSelect, onClose }: {
+export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, colorsOnly, onOpenTools, onSelect, onClose }: {
   active: MobileInputTab
   open: MobileInputTool[]
   panels: Record<MobileInputTab, ReactNode>
   activeTabRef: Ref<HTMLButtonElement>
   toolsDisabled: boolean
+  colorsOnly?: boolean
   onOpenTools?: (opener: HTMLButtonElement | null) => void
   onSelect: (tab: MobileInputTab) => void
   onClose: (tab: MobileInputTool) => void
@@ -107,7 +109,7 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
           role={open.length ? 'tabpanel' : undefined} aria-labelledby={open.length ? `${id}-tab-${tab}` : undefined}
           className={digits ? 'mobile-input-digits' : 'mobile-input-tool'} hidden={!digits && !selected} inert={!selected}
           tabIndex={!digits && selected ? 0 : undefined} data-no-panel-hold={!digits || undefined}>
-          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} onOpen={onOpenTools} />}
+          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} colorsOnly={colorsOnly} onOpen={onOpenTools} />}
           {panels[tab]}
         </div>
       })}
