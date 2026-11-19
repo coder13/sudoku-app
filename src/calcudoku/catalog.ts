@@ -1,3 +1,4 @@
+import { calcudokuFromRecipe, decodeGeneratedNumberPuzzle } from '../number-puzzles/generated.ts'
 import { createCalcudoku, type Cage, type CageOperator, type CalcudokuPuzzle } from './engine.ts'
 import { numberPuzzleDifficulties, type NumberPuzzleEntry } from '../number-puzzles/catalog.ts'
 
@@ -46,3 +47,13 @@ export const calcudokuCatalog: readonly CalcudokuEntry[] = numberPuzzleDifficult
     return { id: `${difficulty}-${i + 1}`, number: i + 1, difficulty, puzzle: createCalcudoku(size, cages) }
   })
 })
+
+export function generatedCalcudokuEntry(id: string, number: number): CalcudokuEntry | null {
+  const generated = decodeGeneratedNumberPuzzle(id, 'calcudoku')
+  if (!generated) return null
+  try {
+    return { id, number, difficulty: generated.difficulty, generated: true, puzzle: calcudokuFromRecipe(generated.recipe) }
+  } catch {
+    return null
+  }
+}

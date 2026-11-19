@@ -1,4 +1,4 @@
-import { kakuroCatalog, type KakuroEntry } from '../kakuro/catalog'
+import { kakuroCatalog, generatedKakuroEntry, type KakuroEntry } from '../kakuro/catalog'
 import { checkKakuro, findKakuroHints, solveKakuro } from '../kakuro/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 import './kakuro.css'
@@ -16,6 +16,7 @@ const kakuro: NumberGameConfig<KakuroEntry> = {
   rules: 'Fill each white cell with a digit from 1 to 9. Use each digit only once per run. The digits must add up to the clue.',
   techniques: ['Run sum', 'Crossing run sums'],
   entries: kakuroCatalog,
+  generatedEntry: generatedKakuroEntry,
   hasClueCells: true,
   board: ({ puzzle }) => ({
     width: puzzle.width,
