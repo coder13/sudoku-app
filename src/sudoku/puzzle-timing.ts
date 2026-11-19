@@ -2,11 +2,12 @@ import { notifySettingsEdit } from './settings-events.ts'
 type PuzzleTiming = {
   showTimer: boolean
   showPause: boolean
+  pauseOnOpen: boolean
   trackTime: boolean
 }
 
 export const TIMING_KEY = 'sudoku-app:v1:puzzle-timing'
-const defaults: PuzzleTiming = { showTimer: true, showPause: true, trackTime: true }
+const defaults: PuzzleTiming = { showTimer: true, showPause: true, pauseOnOpen: true, trackTime: true }
 const listeners = new Set<() => void>()
 
 export function readTiming(storage?: Pick<Storage, 'getItem'>): PuzzleTiming {
@@ -16,6 +17,7 @@ export function readTiming(storage?: Pick<Storage, 'getItem'>): PuzzleTiming {
     return {
       showTimer: saved?.showTimer !== false,
       showPause: saved?.showPause !== false,
+      pauseOnOpen: saved?.pauseOnOpen !== false,
       trackTime: saved?.trackTime !== false,
     }
   } catch { return defaults }

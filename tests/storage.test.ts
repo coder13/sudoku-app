@@ -10,7 +10,7 @@ import { WINDOKU_REGIONS } from '../src/sudoku/variants.ts'
 import { puzzleTiming } from '../src/sudoku/puzzle-timing.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 
-test('first visit opens one Medium puzzle, and deleting it does not start another', async () => {
+test('first visit opens one paused Medium puzzle, and deleting it does not start another', async () => {
   const local = new MemoryStorage()
   Object.defineProperties(globalThis, {
     window: { value: new EventTarget(), configurable: true },
@@ -28,7 +28,7 @@ test('first visit opens one Medium puzzle, and deleting it does not start anothe
     const { games, active } = roomStore.getSnapshot()
     assert.equal(games.length, 1)
     assert.equal(games[0].difficulty, 'medium')
-    assert.equal(games[0].paused, false)
+    assert.equal(games[0].paused, true)
     assert.equal(active, games[0].id)
     assert.deepEqual(opened, [active])
     unsubscribe()
@@ -40,6 +40,26 @@ test('first visit opens one Medium puzzle, and deleting it does not start anothe
     reloaded.startFirstPuzzle()
     assert.deepEqual(reloaded.getSnapshot().games, [])
   } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('first visit respects an unchecked pause on open preference', async () => {
+  Object.defineProperties(globalThis, {
+    window: { value: new EventTarget(), configurable: true },
+    localStorage: { value: new MemoryStorage(), configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+
+  try {
+    puzzleTiming.set('pauseOnOpen', false)
+    const { roomStore } = await import('../src/sudoku/storage.ts?first-visit-unpaused')
+    roomStore.startFirstPuzzle()
+    assert.equal(roomStore.getSnapshot().games[0]?.paused, false)
+  } finally {
+    puzzleTiming.set('pauseOnOpen', true)
     delete (globalThis as { window?: unknown }).window
     delete (globalThis as { localStorage?: unknown }).localStorage
     delete (globalThis as { sessionStorage?: unknown }).sessionStorage
