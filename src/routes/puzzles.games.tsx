@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
-import { Calculator, ChevronLeft, ChevronRight, Grid3X3, Hash } from 'lucide-react'
+import { Calculator, ChevronLeft, ChevronRight, Grid3X3, Hash, MoveHorizontal, Route as PathIcon } from 'lucide-react'
 import { useEffect, useRef } from 'react'
+import type { NumberGame } from '../components/NumberPuzzle'
 import { iconButtonClassName } from '../components/Button'
 import '../components/puzzle-games.css'
 
@@ -46,6 +47,16 @@ function GameTypePicker() {
           <span className="game-row-copy"><strong>Calcudoku</strong><small>Fill a grid with arithmetic cage clues.</small></span>
           <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
         </Link></li>
+        <li><Link className="game-row" to="/puzzles/futoshiki" state={{ fromPuzzleGameTypes: true }}>
+          <MoveHorizontal size={24} aria-hidden="true" />
+          <span className="game-row-copy"><strong>Futoshiki</strong><small>Use inequality signs to compare neighboring numbers.</small></span>
+          <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
+        </Link></li>
+        <li><Link className="game-row" to="/puzzles/hidato" state={{ fromPuzzleGameTypes: true }}>
+          <PathIcon size={24} aria-hidden="true" />
+          <span className="game-row-copy"><strong>Hidato</strong><small>Connect consecutive numbers to form a path.</small></span>
+          <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
+        </Link></li>
       </ul>
     </div>
   </main>
@@ -56,6 +67,6 @@ declare module '@tanstack/history' {
     fromSudokuVariant?: boolean
     fromPuzzleGameTypes?: boolean
     fromKakuroDifficulty?: boolean
-    fromNumberDifficulty?: 'kakuro' | 'calcudoku'
+    fromNumberDifficulty?: NumberGame
   }
 }

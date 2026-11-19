@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { readFile, readdir, stat } from 'node:fs/promises'
 import test from 'node:test'
 import { calcudokuCatalog } from '../src/calcudoku/catalog.ts'
+import { futoshikiCatalog } from '../src/futoshiki/catalog.ts'
+import { hidatoCatalog } from '../src/hidato/catalog.ts'
 import { kakuroCatalog } from '../src/kakuro/catalog.ts'
 
 // Run after Vite build and scripts/build-offline.mjs. Compare the actual build
@@ -56,5 +58,35 @@ test('each Calcudoku puzzle has a precached board', async () => {
     const html = await readFile(new URL('.' + path, client), 'utf8')
     assert.ok(html.includes('aria-label="Calcudoku board"'), `${id} prerenders its board`)
     assert.equal([...html.matchAll(/class="number-puzzle-cell"/g)].length, puzzle.size ** 2)
+  }
+})
+
+test('generated Kakuro and Calcudoku links have precached shells and a generation worker', async () => {
+  for (const game of ['kakuro', 'calcudoku']) {
+    const path = `/puzzles/${game}/generated/index.html`
+    assert.ok((await stat(new URL('.' + path, client))).isFile(), path)
+    assert.ok(cached.has(path), path)
+  }
+  assert.ok(assets.some(path => /generation\.worker-[^/]+\.js$/.test(path)))
+})
+
+test('each Futoshiki puzzle precaches every inequality sign', async () => {
+  for (const { id, puzzle } of futoshikiCatalog) {
+    const path = `/puzzles/futoshiki/${id}/index.html`
+    assert.ok(cached.has(path), `${id} has a precached shell`)
+    const html = await readFile(new URL('.' + path, client), 'utf8')
+    assert.ok(html.includes('aria-label="Futoshiki board"'), `${id} prerenders its board`)
+    assert.equal([...html.matchAll(/class="futoshiki-sign"/g)].length, puzzle.inequalities.length)
+  }
+})
+
+test('each Hidato puzzle precaches its playable cells and both endpoints', async () => {
+  for (const { id, puzzle } of hidatoCatalog) {
+    const path = `/puzzles/hidato/${id}/index.html`
+    assert.ok(cached.has(path), `${id} has a precached shell`)
+    const html = await readFile(new URL('.' + path, client), 'utf8')
+    assert.ok(html.includes('aria-label="Hidato board"'), `${id} prerenders its board`)
+    assert.equal([...html.matchAll(/class="number-puzzle-cell"/g)].length, puzzle.cells.length)
+    assert.equal([...html.matchAll(/class="number-puzzle-endpoint"/g)].length, 2)
   }
 })

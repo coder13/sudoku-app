@@ -99,7 +99,7 @@ export function DifficultyOptions<Level extends Difficulty>({ levels, selected, 
 }
 
 /** Use to present the selected puzzle, difficulty controls, and start action. */
-export function PuzzleDifficultyStep({ name, preview, children, busy = false, disabled, error, startLabel, onStart }: {
+export function PuzzleDifficultyStep({ name, preview, children, busy = false, disabled, error, startLabel, onStart, actions }: {
   name: string
   preview: ReactNode
   children: ReactNode
@@ -108,6 +108,7 @@ export function PuzzleDifficultyStep({ name, preview, children, busy = false, di
   error?: string | null
   startLabel: string
   onStart: () => void
+  actions?: ReactNode
 }) {
   return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
     <p className="new-puzzle-variant-summary">{preview}<span>{name}</span></p>
@@ -116,5 +117,6 @@ export function PuzzleDifficultyStep({ name, preview, children, busy = false, di
     <Button variant="primary" className="puzzle-start-button" disabled={busy || disabled} onClick={onStart}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : startLabel}
     </Button>
+    {actions}
   </section>
 }

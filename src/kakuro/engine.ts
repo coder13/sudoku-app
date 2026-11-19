@@ -103,38 +103,25 @@ function runSupport(run: KakuroRun, domains: readonly number[], memo: Int8Array)
 
   const order = allowed.map((_, i) => i).sort((a, b) => digitCounts[allowed[a]] - digitCounts[allowed[b]])
   const support = allowed.map(() => 0)
-  // A memo entry of 2 also marks that its cell support has been collected.
   memo.fill(0)
-  function canAssign(remaining: number): boolean {
+  function collectSupport(remaining: number): boolean {
     if (!remaining) return true
     if (memo[remaining]) return memo[remaining] > 0
-    const index = order[order.length - digitCounts[remaining]]
-    for (let choices = remaining & allowed[index]; choices; choices &= choices - 1) {
-      if (canAssign(remaining ^ (choices & -choices))) {
-        memo[remaining] = 1
-        return true
-      }
-    }
-    memo[remaining] = -1
-    return false
-  }
-
-  function collect(remaining: number): void {
-    if (!remaining || memo[remaining] === 2) return
-    memo[remaining] = 2
-    const index = order[order.length - digitCounts[remaining]]
+    const index = order[length - digitCounts[remaining]]
+    let supported = 0
     for (let choices = remaining & allowed[index]; choices; choices &= choices - 1) {
       const digit = choices & -choices
-      const next = remaining ^ digit
-      if (canAssign(next)) {
-        support[index] |= digit
-        collect(next)
-      }
+      if (collectSupport(remaining ^ digit)) supported |= digit
     }
+    // Each prefix uses digits from a valid sum combination. A matching
+    // suffix completes that run, so it can contribute support here.
+    support[index] |= supported
+    memo[remaining] = supported ? 1 : -1
+    return supported !== 0
   }
 
   for (const combination of combinations) {
-    if ((combination & union) === combination && canAssign(combination)) collect(combination)
+    if ((combination & union) === combination) collectSupport(combination)
     if (support.every((mask, i) => mask === allowed[i])) break
   }
   return support[0] ? support : null
