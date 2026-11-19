@@ -58,9 +58,11 @@ export function KeyboardShortcutsPage() {
       setMessage('Shortcut change canceled.')
       return
     }
-    const key = editableShortcutKey(event.nativeEvent)
+    const key = editableShortcutKey(event.nativeEvent, definition.id)
     if (!key) {
-      setMessage('Choose a letter key or question mark without Ctrl, Command, or Alt.')
+      setMessage(definition.id === 'pauseOrSwitchView'
+        ? 'Choose Space, a letter key, or question mark without Ctrl, Command, or Alt.'
+        : 'Choose a letter key or question mark without Ctrl, Command, or Alt.')
       return
     }
     const conflict = shortcutConflict(shortcuts, definition.id, key)
@@ -79,7 +81,7 @@ export function KeyboardShortcutsPage() {
   return <main className="shortcuts-page">
     <div className="shortcuts-page-inner">
       <header className="shortcuts-page-heading">
-        <Link to="/" search={{}} className={iconButtonClassName('secondary', 'shortcuts-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>
+        <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'shortcuts-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>
         <div><h1>Keyboard shortcuts</h1><p>View every shortcut and change the single-key commands that fit your workflow.</p></div>
         <Button type="button" className="shortcuts-reset-all" onClick={() => {
           shortcutStore.resetAll()

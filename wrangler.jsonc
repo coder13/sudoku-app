@@ -2,6 +2,9 @@
   "name": "klyn-sudoku",
   "pages_build_output_dir": "./dist/client",
   "compatibility_date": "2026-06-01",
+  "durable_objects": {
+    "bindings": [{"name": "SYNC_EVENTS", "class_name": "SyncEvents", "script_name": "klyn-sudoku-sync-events"}]
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -12,6 +15,9 @@
   ],
   "env": {
     "preview": {
+      "durable_objects": {
+        "bindings": [{"name": "SYNC_EVENTS", "class_name": "SyncEvents", "script_name": "klyn-sudoku-sync-events"}]
+      },
       "d1_databases": [
         {
           "binding": "DB",

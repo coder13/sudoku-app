@@ -1,7 +1,9 @@
 import { IconButton } from './Button'
-import { Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useRef, useState } from 'react'
+import { Component, Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react'
 import { GripVertical, X } from 'lucide-react'
-import { MotionSurface, usePresentContent } from './Presence'
+import { MobileHintSwipe, type HintSwipeActions } from './MobileHintSwipe'
+import { MobileInputResizeHandle } from './MobileInputResizeHandle'
+import { MotionSurface, motionDuration, usePresentContent } from './Presence'
 import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
@@ -15,6 +17,8 @@ type Props = {
   blocked: boolean
   puzzleId: string
   withHint: boolean
+  resizableInput?: boolean
+  hintSwipe?: HintSwipeActions
 }
 type Hold = { pointerId: number; x: number; y: number; timer: number }
 type Drag = {
@@ -35,12 +39,93 @@ type Drag = {
 type DragView = { id: MobilePanelId; x: number; y: number; drop: PanelDrop | null }
 const MOVE_THRESHOLD = 10
 
+type MotionProps = {
+  root: RefObject<HTMLDivElement | null>
+  withHint: boolean
+  rearranging: boolean
+  children: ReactNode
+}
+type LayoutSnapshot = {
+  duration: number
+  cards: { element: HTMLElement; rect: DOMRect }[]
+  hint?: { element: HTMLElement; left: number; top: number; width: number }
+}
+
+class MobileHintMotion extends Component<MotionProps, Record<string, never>, LayoutSnapshot | null> {
+  private animations: Animation[] = []
+
+  // Measure the currently visible cards before React changes the grid or flex layout.
+  getSnapshotBeforeUpdate(previous: MotionProps): LayoutSnapshot | null {
+    const { root, withHint, rearranging } = this.props
+    if (previous.withHint === withHint || previous.rearranging || rearranging || !root.current) return null
+    const duration = motionDuration('standard')
+    if (!duration) return null
+
+    const cards = Array.from(root.current.querySelectorAll<HTMLElement>(
+      '[data-mobile-panel="puzzle"] .puzzle, [data-mobile-panel="input"] > .mobile-panel-content',
+    ), (element) => ({ element, rect: element.getBoundingClientRect() }))
+    const hint = root.current.querySelector<HTMLElement>('[data-mobile-panel="hint"]')
+    return { duration, cards, hint: !withHint && hint ? {
+      element: hint, left: hint.offsetLeft, top: hint.offsetTop, width: hint.getBoundingClientRect().width,
+    } : undefined }
+  }
+
+  componentDidUpdate(previous: MotionProps, _state: unknown, snapshot?: LayoutSnapshot | null) {
+    const { root, withHint, rearranging } = this.props
+    if (previous.withHint === withHint && previous.rearranging === rearranging) return
+    this.cancelAnimations()
+
+    const hint = root.current?.querySelector<HTMLElement>('[data-mobile-panel="hint"]')
+    if (withHint && hint) {
+      for (const property of ['--hint-exit-left', '--hint-exit-top', '--hint-exit-width', '--hint-exit-visibility']) {
+        hint.style.removeProperty(property)
+      }
+    }
+    if (!snapshot) return
+
+    // Let the other cards move immediately while the outgoing hint fades in its old slot.
+    if (snapshot.hint) {
+      const { element, left, top, width } = snapshot.hint
+      element.style.setProperty('--hint-exit-left', `${left}px`)
+      element.style.setProperty('--hint-exit-top', `${top}px`)
+      element.style.setProperty('--hint-exit-width', `${width}px`)
+      element.style.setProperty('--hint-exit-visibility', 'visible')
+    }
+
+    const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+    for (const { element, rect } of snapshot.cards) {
+      if (!element.isConnected) continue
+      const next = element.getBoundingClientRect()
+      if (!next.width || !next.height) continue
+      const x = rect.left - next.left
+      const y = rect.top - next.top
+      const scaleX = rect.width / next.width
+      const scaleY = rect.height / next.height
+      if (x === 0 && y === 0 && scaleX === 1 && scaleY === 1) continue
+      this.animations.push(element.animate([
+        { transform: `translate(${x}px, ${y}px) scale(${scaleX}, ${scaleY})`, transformOrigin: 'top left' },
+        { transform: 'none', transformOrigin: 'top left' },
+      ], { duration: snapshot.duration, easing }))
+    }
+  }
+
+  private cancelAnimations() {
+    this.animations.forEach((animation) => animation.cancel())
+    this.animations = []
+  }
+
+  componentWillUnmount() { this.cancelAnimations() }
+
+  render() { return this.props.children }
+}
+
 export function MobilePanelLayout(props: Props) {
   const [order, setOrder] = useState(readMobilePanelOrder)
   const [dragView, setDragView] = useState<DragView | null>(null)
   const [announcement, setAnnouncement] = useState('')
   const [saveFailed, setSaveFailed] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const inputId = useId()
   const closeButton = useRef<HTMLButtonElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const hold = useRef<Hold | null>(null)
@@ -51,7 +136,7 @@ export function MobilePanelLayout(props: Props) {
   latest.current = props
   const { content: hint, exiting: hintExiting } = usePresentContent(props.panels.hint)
   const panels = { ...props.panels, hint: hint || undefined }
-  const visible = order.filter((id) => panels[id])
+  const visible = order.filter((id) => props.panels[id])
 
   function cancelHold() {
     if (hold.current) window.clearTimeout(hold.current.timer)
@@ -238,7 +323,7 @@ export function MobilePanelLayout(props: Props) {
     finishDrag(false)
   }, [visible.join(',')])
 
-  return <div ref={root} className={`mobile-panel-layout${props.withHint || hintExiting ? ' with-hint' : ''}`}
+  const layout = <div ref={root} className={`mobile-panel-layout${props.withHint ? ' with-hint' : ''}`}
     data-rearranging={props.rearranging || undefined} style={{ '--mobile-secondary-count': visible.length - 1 } as CSSProperties}
     onPointerDownCapture={startHold}
     onContextMenuCapture={(event) => { if (hold.current || props.rearranging) event.preventDefault() }}
@@ -252,18 +337,24 @@ export function MobilePanelLayout(props: Props) {
       <div><strong>Rearrange cards</strong><small id="mobile-panel-instructions">
         {saveFailed ? 'Order saved for this session only.' : 'Drag cards to move them. Changes save automatically.'}
       </small></div>
-      <IconButton ref={closeButton} type="button" variant="quiet" aria-label="Finish rearranging cards" onClick={exit}>
+      <IconButton ref={closeButton} variant="quiet" aria-label="Finish rearranging cards" onClick={exit}>
         <X size={22} aria-hidden="true" />
       </IconButton>
     </div>}</MotionSurface>
     <div className="mobile-panel-space" aria-hidden="true" />
-    {visible.map((id, index) => {
+    {order.filter((id) => panels[id]).map((id) => {
       const panel = panels[id]!
       const exiting = id === 'hint' && hintExiting
+      const index = visible.indexOf(id)
       const moving = dragView?.id === id
       const drop = dragView?.drop?.id === id ? dragView.drop.edge : undefined
+      const resizeEdge = id === 'input' && props.resizableInput && panels.puzzle
+        ? order.indexOf('puzzle') < order.indexOf('input') ? 'top' : 'bottom'
+        : undefined
       return <Fragment key={id}>
         <div className={`mobile-panel${id === 'hint' ? ' motion-surface' : ''}`} data-mobile-panel={id} data-first={index === 0 || undefined}
+          data-after-gap={index > 1 || undefined}
+          id={id === 'input' ? inputId : undefined} data-resize-edge={resizeEdge}
           data-presence={id === 'hint' ? exiting ? 'exit' : 'open' : undefined} inert={exiting || undefined} aria-hidden={exiting || undefined}
           data-dragging={moving || undefined} data-drop={drop} role="group" aria-label={`${panel.title} card`}
           style={{
@@ -271,7 +362,12 @@ export function MobilePanelLayout(props: Props) {
             ...(moving ? { transform: `translate(${dragView.x}px, ${dragView.y}px)` } : {}),
           } as CSSProperties}>
           <div className="mobile-panel-content" inert={props.rearranging} aria-hidden={props.rearranging || undefined}>
-            {panel.content}
+            {resizeEdge && <MobileInputResizeHandle inputId={inputId} edge={resizeEdge}
+              disabled={props.blocked || props.rearranging} withHint={props.withHint} />}
+            {id === 'hint' ? <MobileHintSwipe exiting={exiting}
+              actions={exiting || props.rearranging || props.blocked ? undefined : props.hintSwipe}>
+              {panel.content}
+            </MobileHintSwipe> : panel.content}
           </div>
           {props.rearranging && <div className="mobile-panel-editor" data-panel-editor>
             <button type="button" className="mobile-panel-drag" aria-label={`Move ${panel.title.toLowerCase()} card`}
@@ -287,4 +383,6 @@ export function MobilePanelLayout(props: Props) {
     <div className="mobile-panel-space" aria-hidden="true" />
     <span className="sr-only" role="status">{announcement}</span>
   </div>
+
+  return <MobileHintMotion root={root} withHint={props.withHint} rearranging={props.rearranging}>{layout}</MobileHintMotion>
 }

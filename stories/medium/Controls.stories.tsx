@@ -18,11 +18,14 @@ const meta = {
     input: fn(), undo: fn(), redo: fn(), canUndo: true, canRedo: false, disabled: false, draft: false,
     inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(), beginResize: fn(), multi: false, toggleMulti: fn(),
   },
-  render: (args) => <Width width={395}><InputExample key={`${args.mode}-${args.pencil}`} {...args} /></Width>,
+  render: (args) => <Width width={args.compact ? 320 : 395}><InputExample key={`${args.mode}-${args.pencil}`} {...args} /></Width>,
 } satisfies Meta<typeof Controls>
 export default meta
 type Story = StoryObj<typeof meta>
 export const DigitPad: Story = {}
+export const MobileCandidateMatching: Story = {
+  args: { compact: true, highlightMode: true, highlightedDigitMask: 3, digitHighlightMatch: 'all', onDigitHighlightMatchChange: fn() },
+}
 export const CenterAndCorner: Story = {
   args: { mode: 'corner', pencil: true, advancedModes: { ...meta.args.advancedModes, candidateLayout: 'center-corner' } },
 }
@@ -38,6 +41,7 @@ function InputExample(args: Props) {
   const [digit, setDigit] = useState(args.selectedDigit)
   const [erase, setErase] = useState(args.eraseMode)
   const [highlight, setHighlight] = useState(args.highlightMode)
+  const [match, setMatch] = useState(args.digitHighlightMatch)
   const [multi, setMulti] = useState(args.multi)
   const [height, setHeight] = useState(args.panelHeight)
   const pencil = mode === 'candidate' || mode === 'center' || mode === 'corner'
@@ -45,6 +49,7 @@ function InputExample(args: Props) {
     onSwitchShade={() => setDigit((current) => current === null ? null : alternateColorShade(current) ?? current)}
     colorTarget={colorTarget} setColorTarget={(target) => { args.setColorTarget(target); setColorTarget(target); setDigit(null) }}
     eraseMode={erase} highlightMode={highlight} selectedDigit={digit} multi={multi} panelHeight={height}
+    digitHighlightMatch={match} onDigitHighlightMatchChange={args.onDigitHighlightMatchChange && setMatch}
     setPanelHeight={setHeight}
     input={(value) => { args.input(value); setDigit((current) => current === value ? null : value) }}
     togglePencil={() => { args.togglePencil(); setMode(pencil ? 'value' : args.advancedModes.candidateLayout === 'grid' ? 'candidate' : kind) }}

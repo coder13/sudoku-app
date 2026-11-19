@@ -1,34 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Candidate } from '../sudoku/engine'
+import {
+  CHAIN_COLORS, initialChainSketch, MAX_CHAIN_HISTORY, newChainSketch, removeUnavailableChains,
+  type ChainColor, type ChainSketch, type ChainSketchState, type ChainType,
+} from '../sudoku/chain-sketch'
 import {
   analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainExtensionStrength, completeChainLoop, sameEdge,
   type ChainAnalysis, type ChainEdge, type ChainGraph, type LinkStrength,
 } from '../sudoku/chains'
+import type { Game } from '../sudoku/game'
 import { cellName } from '../sudoku/lesson-diagram'
+import { roomStore } from '../sudoku/storage'
 import type { BoardAnnotations, BoardLink, CandidateAnnotation } from './BoardAnnotations'
 
-export const CHAIN_COLORS = ['Blue', 'Orange', 'Purple', 'Teal', 'Pink', 'Green'] as const
-type ChainColor = typeof CHAIN_COLORS[number]
-type ChainType = 'alternating' | 'medusa'
-
+export { CHAIN_COLORS }
 export const chainColor = (color: ChainColor) => `var(--chain-${color.toLowerCase()})`
-
-type Sketch = {
-  id: number
-  type: ChainType
-  color: ChainColor
-  secondColor: ChainColor
-  hidden: boolean
-  history: ChainEdge[][]
-}
-
-function newSketch(id: number): Sketch {
-  const colorIndex = (id - 1) % CHAIN_COLORS.length
-  return {
-    id, type: 'alternating', color: CHAIN_COLORS[colorIndex],
-    secondColor: CHAIN_COLORS[(colorIndex + 1) % CHAIN_COLORS.length], hidden: false, history: [[]],
-  }
-}
 
 type ChainPath = { nodes: readonly number[]; strengths: readonly LinkStrength[] }
 
@@ -37,7 +23,7 @@ function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[], chains: rea
     const paths: { nodes: number[]; strengths: LinkStrength[] }[] = []
     for (const [from, to] of links) {
       const strength = graph.strength(from, to)
-      if (!strength || (type === 'medusa' && strength !== 'strong')) continue
+      if (!strength) continue
       const previous = paths.at(-1)
       if (previous?.nodes.at(-1) === from) {
         previous.nodes.push(to)
@@ -55,17 +41,17 @@ function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[], chains: rea
   })
 }
 
-export function useChainSketch(graph: ChainGraph | null, positionKey: string, canDraw: boolean) {
-  const [drawing, setDrawing] = useState(false)
-  const [pending, setPending] = useState<number | null>(null)
+export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit }: {
+  canDraw: boolean; graphCurrent: boolean; canAnalyze: boolean; startHighlightDigit: number | null
+}) {
+  const [drawingIntent, setDrawingIntent] = useState<boolean | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
-  const [sketches, setSketches] = useState(() => [newSketch(1)])
-  const [activeId, setActiveId] = useState(1)
-  const nextId = useRef(2)
   const [status, setStatus] = useState('')
+  const { sketches, activeId, pending } = game.chainSketch ?? initialChainSketch
   const active = sketches.find(({ id }) => id === activeId) ?? sketches[0]
   const edges = active.history.at(-1)!
-  const enabled = canDraw && Boolean(graph)
+  const enabled = canDraw && canAnalyze && Boolean(graph)
+  const drawing = enabled && (drawingIntent ?? pending !== null)
 
   const analyzed = useMemo(() => graph ? sketches.map((sketch) => {
     const edges = sketch.history.at(-1)!
@@ -78,7 +64,7 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
   const activeAnalysis = analyzed.find(({ id }) => id === active.id)
   const loopCompletions = useMemo(() => {
     const completions = new Map<ChainAnalysis, ChainEdge[]>()
-    if (!graph || !activeAnalysis || activeAnalysis.hidden) return completions
+    if (!graph || !canAnalyze || !activeAnalysis || activeAnalysis.hidden) return completions
     const drawnNodes = edges.flat()
     for (const chain of activeAnalysis.chains) {
       if (!chain.canComplete) continue
@@ -88,10 +74,10 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
       if (result.status === 'found') completions.set(chain, result.edges)
     }
     return completions
-  }, [graph, activeAnalysis, edges])
+  }, [graph, canAnalyze, activeAnalysis, edges])
   const linkTargets = useMemo(() => {
     const targets = new Map<number, LinkStrength>()
-    if (!graph || active.hidden || pending === null) return targets
+    if (!graph || !drawing || active.hidden || pending === null) return targets
     for (const candidate of graph.candidates) {
       const edge: ChainEdge = [pending, candidate]
       if (edges.some((existing) => sameEdge(edge, existing))) continue
@@ -101,25 +87,29 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
       if (strength) targets.set(candidate, strength)
     }
     return targets
-  }, [graph, pending, edges, active.type, active.hidden])
+  }, [graph, drawing, pending, edges, active.type, active.hidden])
 
   useEffect(() => {
-    setPending(null)
+    setDrawingIntent(null)
     setHovered(null)
-    setSketches([newSketch(1)])
-    setActiveId(1)
-    nextId.current = 2
     setStatus('')
-  }, [positionKey])
+  }, [game.id])
 
   useEffect(() => {
-    if (!enabled) {
-      setDrawing(false)
-      setPending(null)
-      setHovered(null)
-      setStatus('')
-    }
-  }, [enabled])
+    if (!drawing) setHovered(null)
+  }, [drawing])
+
+  useEffect(() => {
+    const saved = game.chainSketch
+    if (!graph || !graphCurrent || !saved) return
+    const candidates = new Set(graph.candidates)
+    const next = removeUnavailableChains(saved, (node) => !candidates.has(node))
+    if (next === saved) return
+    roomStore.update(game.id, (current) => current.chainSketch === saved &&
+      current.givens === game.givens && current.position.entries === game.position.entries &&
+      current.position.center === game.position.center && current.position.corner === game.position.corner &&
+      current.position.eliminations === game.position.eliminations ? { ...current, chainSketch: next } : current)
+  }, [game.id, game.chainSketch, game.givens, game.position, graph, graphCurrent])
 
   const committed = useMemo<BoardAnnotations>(() => {
     const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
@@ -146,6 +136,11 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
       for (const { nodes } of sketch.chains) {
         for (const node of nodes) mark(node, { color, label: `linked candidate, ${sketch.color} chain` })
       }
+      if (sketch.type === 'medusa') {
+        for (const { nodes } of sketch.paths) {
+          for (const node of nodes) mark(node, { color, label: 'linked Medusa candidate' })
+        }
+      }
       for (const medusa of sketch.medusas) {
         for (const node of medusa.nodes) {
           const side = medusa.sides.get(node)
@@ -156,7 +151,7 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
       }
     }
 
-    const activeProofs = activeAnalysis && !active.hidden ? [...activeAnalysis.chains, ...activeAnalysis.medusas] : []
+    const activeProofs = canAnalyze && activeAnalysis && !active.hidden ? [...activeAnalysis.chains, ...activeAnalysis.medusas] : []
     for (const { actions } of activeProofs) {
       for (const action of actions) {
         if ('place' in action) {
@@ -169,12 +164,12 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
         }
       }
     }
-    if (pending !== null) {
+    if (!active.hidden && pending !== null) {
       const { cell, digit } = chainCandidate(pending)
       if (!candidateMarks.get(cell)?.has(digit)) mark(pending, { color: 'var(--chain-selected)', label: 'selected for linking' })
     }
     return { candidates: candidateMarks, links }
-  }, [analyzed, active.id, active.type, active.hidden, activeAnalysis, pending])
+  }, [analyzed, active.id, active.type, active.hidden, activeAnalysis, canAnalyze, pending])
 
   const preview = useMemo<BoardLink | undefined>(() => {
     if (pending === null || hovered === null) return
@@ -185,77 +180,105 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
     }
   }, [pending, hovered, linkTargets])
 
-  function updateActive(update: (sketch: Sketch) => Sketch) {
-    setSketches((previous) => previous.map((sketch) => sketch.id === active.id ? update(sketch) : sketch))
+  function save(change: (state: ChainSketchState) => ChainSketchState) {
+    roomStore.update(game.id, (current) => {
+      const saved = current.chainSketch ?? initialChainSketch
+      const chainSketch = change(saved)
+      return chainSketch === saved ? current : { ...current, chainSketch }
+    })
+  }
+
+  function updateActive(update: (sketch: ChainSketch) => ChainSketch, endpoint?: number | null, requireCurrentPath = false) {
+    save((state) => {
+      if (state.activeId !== active.id) return state
+      const current = state.sketches.find(({ id }) => id === active.id)!
+      if (requireCurrentPath && (current.history.at(-1) !== edges || state.pending !== pending)) return state
+      const next = update(current)
+      const nextPending = endpoint === undefined ? state.pending : endpoint
+      if (next === current && nextPending === state.pending) return state
+      return { ...state, pending: nextPending, sketches: state.sketches.map(sketch => sketch === current ? next : sketch) }
+    })
+  }
+
+  function setHighlightedDigit(digit: number | null) {
+    save((state) => {
+      const current = state.sketches.find(({ id }) => id === state.activeId)!
+      if (current.highlightedDigit === digit) return state
+      return { ...state, sketches: state.sketches.map(sketch => sketch === current ? { ...sketch, highlightedDigit: digit } : sketch) }
+    })
   }
 
   function endPath() {
-    setPending(null)
+    save((state) => state.pending === null ? state : { ...state, pending: null })
     setHovered(null)
     setStatus('')
   }
 
   function switchSketch(id: number) {
-    if (id === active.id) return
-    endPath()
-    setActiveId(id)
+    save((state) => id === state.activeId || !state.sketches.some(sketch => sketch.id === id)
+      ? state : { ...state, activeId: id, pending: null })
+    setHovered(null)
+    setStatus('')
   }
 
-  function changeEdges(next: ChainEdge[], endpoint: number | null = null) {
-    updateActive((sketch) => ({ ...sketch, history: [...sketch.history, next] }))
-    setPending(endpoint)
+  function changeEdges(next: ChainEdge[], endpoint: number | null = null, highlightedDigit?: number) {
+    updateActive((sketch) => ({ ...sketch, highlightedDigit: highlightedDigit ?? sketch.highlightedDigit,
+      history: [...sketch.history.slice(1 - MAX_CHAIN_HISTORY), next] }), endpoint, true)
     setHovered(null)
   }
 
   function select(candidate: Candidate) {
     if (!enabled || !drawing || !graph || active.hidden) return
     const id = candidateId(candidate)
+    const mark = (sketch: ChainSketch) => sketch.highlightedDigit === candidate.digit ? sketch : { ...sketch, highlightedDigit: candidate.digit }
     const name = `${candidate.digit} in ${cellName(candidate.cell)}`
     if (pending === null) {
-      setPending(id)
+      updateActive(mark, id)
       setStatus('')
       return
     }
     if (pending === id) {
-      endPath()
+      updateActive(mark, null)
+      setHovered(null)
+      setStatus('')
       return
     }
     const link: ChainEdge = [pending, id]
     const existing = edges.findIndex((edge) => sameEdge(edge, link))
     if (existing !== -1) {
-      changeEdges(edges.filter((_, index) => index !== existing), id)
+      changeEdges(edges.filter((_, index) => index !== existing), id, candidate.digit)
       setStatus('Link removed.')
     } else if (linkTargets.has(id)) {
-      changeEdges([...edges, link], id)
+      changeEdges([...edges, link], id, candidate.digit)
       setStatus('')
-    } else if (active.type === 'medusa') {
-      setStatus('Choose a candidate with a strong link to the selected candidate.')
-    } else if (!graph.strength(...link)) {
-      setStatus(`No link to ${name}. Choose a different candidate.`)
     } else {
-      setStatus('Choose a link that keeps the chain alternating.')
+      setHighlightedDigit(candidate.digit)
+      setStatus(active.type === 'medusa' ? 'Choose a candidate with a strong link to the selected candidate.'
+        : !graph.strength(...link) ? `No link to ${name}. Choose a different candidate.`
+          : 'Choose a link that keeps the chain alternating.')
     }
   }
 
   function finishLoop(chain: ChainAnalysis) {
     const extension = loopCompletions.get(chain)
     if (!extension) return
-    setDrawing(true)
-    changeEdges([...edges, ...extension])
+    setDrawingIntent(true)
+    changeEdges([...edges, ...extension], null, drawing ? undefined : startHighlightDigit ?? undefined)
     setStatus(`Loop completed with ${extension.length} ${extension.length === 1 ? 'link' : 'links'}.`)
   }
 
   function stop() {
-    setDrawing(false)
+    setDrawingIntent(false)
     endPath()
   }
 
   return {
-    drawing: enabled && drawing,
+    drawing,
     annotations: preview ? { ...committed, links: [preview, ...(committed.links ?? [])] } : committed,
-    sketches: analyzed, active, status, pending, select, finishLoop, stop, endPath,
-    chains: activeAnalysis?.chains ?? [],
-    medusas: activeAnalysis?.medusas ?? [],
+    sketches: analyzed, active, status, pending, select, finishLoop, stop, endPath, setHighlightedDigit,
+    suspend: () => setDrawingIntent(false),
+    chains: canAnalyze ? activeAnalysis?.chains ?? [] : [],
+    medusas: canAnalyze ? activeAnalysis?.medusas ?? [] : [],
     hasLinks: edges.length > 0,
     canUndo: active.history.length > 1,
     canFinishLoop: (chain: ChainAnalysis) => loopCompletions.has(chain),
@@ -266,41 +289,47 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
     toggle() {
       if (drawing) stop()
       else if (enabled) {
-        setDrawing(true)
+        if (startHighlightDigit !== null) setHighlightedDigit(startHighlightDigit)
+        setDrawingIntent(true)
         setStatus('')
       }
     },
     switchSketch,
     addSketch() {
-      if (edges.length === 0) return
-      const empty = sketches.find(({ history }) => history.at(-1)?.length === 0)
-      if (empty) {
-        switchSketch(empty.id)
-        return
-      }
-      const sketch = newSketch(nextId.current++)
-      setSketches((previous) => [...previous, sketch])
-      switchSketch(sketch.id)
+      save((state) => {
+        const current = state.sketches.find(({ id }) => id === state.activeId)!
+        if (!current.history.at(-1)?.length) return state
+        const empty = state.sketches.find(({ history }) => !history.at(-1)?.length)
+        if (empty) return { ...state, activeId: empty.id, pending: null }
+        const sketch = newChainSketch(Math.max(...state.sketches.map(({ id }) => id)) + 1)
+        return { sketches: [...state.sketches, sketch], activeId: sketch.id, pending: null }
+      })
+      setHovered(null)
+      setStatus('')
     },
     toggleVisibility(id: number) {
-      setSketches((previous) => previous.map((sketch) => sketch.id === id ? { ...sketch, hidden: !sketch.hidden } : sketch))
-      if (id === active.id) endPath()
+      save((state) => ({ ...state, pending: id === state.activeId ? null : state.pending,
+        sketches: state.sketches.map((sketch) => sketch.id === id ? { ...sketch, hidden: !sketch.hidden } : sketch) }))
+      setHovered(null)
+      setStatus('')
     },
     deleteSketch(id: number) {
-      const index = sketches.findIndex((sketch) => sketch.id === id)
-      const remaining = sketches.filter((sketch) => sketch.id !== id)
-      const next = remaining.length ? remaining : [newSketch(1)]
-      if (!remaining.length) nextId.current = 2
-      setSketches(next)
-      if (id === active.id) {
-        setActiveId(next[Math.min(index, next.length - 1)].id)
-        endPath()
-      }
+      save((state) => {
+        const index = state.sketches.findIndex((sketch) => sketch.id === id)
+        if (index === -1) return state
+        const sketches = state.sketches.filter((sketch) => sketch.id !== id)
+        if (!sketches.length) return initialChainSketch
+        return id === state.activeId ? { sketches, activeId: sketches[Math.min(index, sketches.length - 1)].id, pending: null }
+          : { ...state, sketches }
+      })
+      setHovered(null)
+      setStatus('')
     },
     setType(type: ChainType) {
       if (edges.length) return
-      updateActive((sketch) => ({ ...sketch, type, history: [[]] }))
-      endPath()
+      updateActive((sketch) => ({ ...sketch, type, history: [[]] }), null)
+      setHovered(null)
+      setStatus('')
     },
     setColor(color: ChainColor, second = false) {
       updateActive((sketch) => {
@@ -310,8 +339,8 @@ export function useChainSketch(graph: ChainGraph | null, positionKey: string, ca
       })
     },
     undo() {
-      updateActive((sketch) => ({ ...sketch, history: sketch.history.length > 1 ? sketch.history.slice(0, -1) : sketch.history }))
-      endPath()
+      updateActive((sketch) => sketch.history.length > 1 ? { ...sketch, history: sketch.history.slice(0, -1) } : sketch, null)
+      setHovered(null)
       setStatus('Link edit undone.')
     },
     clear() {
