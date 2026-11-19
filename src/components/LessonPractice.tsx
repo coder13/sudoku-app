@@ -110,7 +110,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
 
   return <LessonWorkbench puzzle={puzzle} label={`Practice grid for ${technique}`} annotations={annotations}
     initialPencil={canRemove && !canPlace}
-    preview={solution} guide={guide}
+    preview={solution} showTools guide={guide}
     onEdit={() => { setResult(null); setGuidance(undefined) }}>
     {({ actions, reset, reveal }) => <>
       <div className="lesson-practice-actions">
