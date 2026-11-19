@@ -56,7 +56,8 @@ test('all four gutters retain zero, repeated labels and every candidate and link
   const html = renderToStaticMarkup(board(puzzle, { showGuides: false, candidates: Array(81).fill(511), onCandidate() {}, annotations: { links: [
     { from: { cell: 0, digit: 1 }, to: { cell: 40, digit: 9 }, color: '#f00' },
   ] } }))
-  for (const side of ['top','right','bottom','left']) assert.ok(html.includes('outside-clues-' + side))
+  assert.ok(html.includes('class="board-outside-clues" viewBox="0 0 9 9"'))
+  assert.equal([...html.matchAll(/data-outside-clue="sandwich"/g)].length, 5)
   assert.ok(html.includes('--outside-left-track:1.4fr'))
   assert.ok(html.includes('data-outside-lane="1"'))
   assert.ok(html.includes('guides-hidden has-outside-clues'))

@@ -15,6 +15,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
   const entropyAreas: number[][] = []
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
   const regionParts: number[][][] = []
+  const diagonalSums: { cells: readonly number[]; sum: number }[] = []
   const sandwiches: { cells: readonly number[]; total: number }[] = []
   const betweenTriples: (readonly [number, number, number])[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
@@ -52,6 +53,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
       }
       regionParts.push(parts)
     }
+    else if (rule.type === 'little-killer') diagonalSums.push({ cells: rule.cells, sum: rule.sum })
     else if (rule.type === 'sandwich') sandwiches.push({ cells: rule.cells, total: rule.sum })
     else if (rule.type === 'between') rule.cells.slice(1, -1).forEach(cell =>
       betweenTriples.push([rule.cells[0], cell, rule.cells[rule.cells.length - 1]]))
@@ -108,6 +110,18 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
     lastSupport.set(scope, { key, supported })
     return supported
   }
+  // Break equally sized domain ties with the cells involved in more clue relations.
+  // This changes search order only; all support comes from direct digit enumeration.
+  const involvement = Array<number>(81).fill(0)
+  if (diagonalSums.length) {
+    const scopes = [
+      ...sets.map(clue => clue.cells), ...diagonalSums.map(clue => clue.cells),
+      ...sandwiches.map(clue => clue.cells), ...regionParts.flat(), ...betweenTriples,
+      ...entropyAreas, ...quadruples.map(clue => clue.cells), ...edges.map(([a, b]) => [a, b]),
+    ]
+    for (const scope of scopes) for (const cell of scope) involvement[cell] += Math.max(1, scope.length - 1)
+  }
+  diagonalSums.sort((a, b) => a.cells.length - b.cells.length)
   let count = 0, nodes = 0, solution: string | undefined
   const solutions: string[] = []
   function search(input: number[][]) {
@@ -147,6 +161,35 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
           return result
         })
         triple.forEach((cell, i) => {
+          const keep = domains[cell].filter(digit => supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        })
+      }
+      for (const clue of diagonalSums) {
+        const supported = supportFor(clue, clue.cells, domains, () => {
+          const result = clue.cells.map(() => new Set<number>()), assigned = clue.cells.map(() => 0)
+          const order = clue.cells.map((_, i) => i)
+            .sort((a, b) => domains[clue.cells[a]].length - domains[clue.cells[b]].length)
+          function enumerate(depth: number, sum: number) {
+            if (depth === order.length) {
+              if (sum === clue.sum) assigned.forEach((digit, i) => result[i].add(digit))
+              return
+            }
+            const options = order.slice(depth).map(i => domains[clue.cells[i]].filter(digit =>
+              !assigned.some((other, j) => other === digit && houses.some(house =>
+                house.includes(clue.cells[i]) && house.includes(clue.cells[j])))))
+            if (options.some(values => !values.length) ||
+              sum + options.reduce((total, values) => total + Math.min(...values), 0) > clue.sum ||
+              sum + options.reduce((total, values) => total + Math.max(...values), 0) < clue.sum) return
+            const i = order[depth]
+            for (const digit of options[0]) {
+              assigned[i] = digit; enumerate(depth + 1, sum + digit); assigned[i] = 0
+            }
+          }
+          enumerate(0, 0)
+          return result
+        })
+        clue.cells.forEach((cell, i) => {
           const keep = domains[cell].filter(digit => supported[i].has(digit))
           changed ||= keep.length !== domains[cell].length; domains[cell] = keep
         })
@@ -292,7 +335,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
       if (domains.some(digits => digits.length === 0)) return
     } while (changed)
     let cell = -1
-    domains.forEach((digits, i) => { if (digits.length > 1 && (cell < 0 || digits.length < domains[cell].length)) cell = i })
+    domains.forEach((digits, i) => { if (digits.length > 1 && (cell < 0 || digits.length < domains[cell].length || digits.length === domains[cell].length && involvement[i] > involvement[cell])) cell = i })
     if (cell < 0) { const result = domains.map(digits => digits[0]).join(''); solution ??= result; solutions.push(result); count++; return }
     for (const digit of domains[cell]) {
       const next = [...domains]; next[cell] = [digit]; search(next)

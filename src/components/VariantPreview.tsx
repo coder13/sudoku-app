@@ -12,6 +12,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   'anti-knight': [],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
+  'little-killer': [],
   sandwich: [],
   clone: [{ type: 'clone', groups: [[10, 50], [11, 51], [19, 59], [20, 60]] }],
   thermometer: [{ type: 'thermometer', cells: [10, 19, 29, 30] }, { type: 'thermometer', cells: [68, 58, 49, 48] }],
@@ -36,6 +37,7 @@ export function VariantPreview({ variant }: { variant: VariantId }) {
     {variant === 'jigsaw' && <svg className="variant-clues" viewBox="0 0 9 9" focusable="false">
       <path className="variant-preview-regions" d={previewRegionEdges} />
     </svg>}
+    {variant === 'little-killer' && <svg className="variant-clues variant-little-killer-preview" viewBox="0 0 9 9"><text x="1.8" y="2.2">12</text><path d="M3 3L6.7 6.7M5.2 6.7H6.7V5.2" /></svg>}
     {variant === 'sandwich' && <span className="variant-sandwich-preview"><span>10</span><span>1 · 2 3 5 · 9</span></span>}
     {variant === 'anti-knight' && <span className="variant-knight">♞</span>}
   </span>

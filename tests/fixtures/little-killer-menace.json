@@ -1,0 +1,174 @@
+{
+  "title": "Renban ModE",
+  "author": "Mr.Menace",
+  "published": "2025-09-05",
+  "source": "https://www.gmpuzzles.com/blog/2025/09/renban-little-killer-sudoku-by-mr-menace/",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2025/250905-RenbanLittleKillerSudoku-RenbanModE.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250905-RenbanLittleKillerSudoku-RenbanModE-soln.pdf",
+  "pdfSha256": "05522ec6c1e98ae0ed487e913076ca6e9da30a084b140291d10b8e95f74ca0da",
+  "solutionPdfSha256": "b59ef39cff6c162b732710391d546a2a331388ce45d80145f9085274793845ed",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "rules": [
+      {
+        "type": "little-killer",
+        "direction": "north-east",
+        "cells": [
+          27,
+          19,
+          11,
+          3
+        ],
+        "sum": 25
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-west",
+        "cells": [
+          35,
+          25,
+          15,
+          5
+        ],
+        "sum": 23
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-east",
+        "cells": [
+          76,
+          68,
+          60,
+          52,
+          44
+        ],
+        "sum": 27
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-west",
+        "cells": [
+          76,
+          66,
+          56,
+          46,
+          36
+        ],
+        "sum": 15
+      },
+      {
+        "type": "renban",
+        "cells": [
+          3,
+          11,
+          19
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          10,
+          18
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          4,
+          13,
+          22
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          5,
+          15,
+          25
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          28,
+          29,
+          30
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          32,
+          33,
+          34
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          27,
+          36,
+          45
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          35,
+          44,
+          53
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          38,
+          39,
+          40,
+          41,
+          42
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          46,
+          56,
+          66
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          52,
+          60,
+          68
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          63,
+          73
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          71,
+          79
+        ]
+      },
+      {
+        "type": "renban",
+        "cells": [
+          75,
+          76,
+          77
+        ]
+      }
+    ]
+  },
+  "solution": "945836172837152496261947853476591238328674519519283647782419365694325781153768924"
+}

@@ -8014,7 +8014,16 @@
               }
             }
           ],
-          "references": [],
+          "references": [
+            {
+              "label": "Bill Murphy: New Body Rhumba",
+              "href": "https://www.gmpuzzles.com/blog/2025/06/little-killer-sudoku-by-bill-murphy/"
+            },
+            {
+              "label": "Philip Newman: Triforce",
+              "href": "https://www.gmpuzzles.com/blog/2025/07/little-killer-sudoku-by-philip-newman/"
+            }
+          ],
           "difficulty": "medium"
         },
         {

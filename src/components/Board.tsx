@@ -149,7 +149,8 @@ export function Board({
 
   return (
     <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}`} data-overlay={overlay?.visible} style={size}>
-      {hasOutside && (['top', 'right', 'bottom', 'left'] as const).map(side => <OutsideClues key={side} side={side} layout={outside} hidden={overlay?.visible} />)}
+      {outside.depths.top > 0 && <div className="outside-clues-top" aria-hidden="true" />}
+      {outside.depths.bottom > 0 && <div className="outside-clues-bottom" aria-hidden="true" />}
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
@@ -310,6 +311,7 @@ export function Board({
           ))}
         </div>
         <BoardMarks items={variantClues} />
+        {hasOutside && <OutsideClues layout={outside} hidden={overlay?.visible} />}
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}

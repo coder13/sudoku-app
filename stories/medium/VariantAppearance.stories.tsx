@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
 import betweenNewman from '../../tests/fixtures/between-newman.json'
 import regionSumNewman from '../../tests/fixtures/region-sum-newman.json'
+import littleKillerMurphy from '../../tests/fixtures/little-killer-murphy.json'
+import littleKillerNewman from '../../tests/fixtures/little-killer-newman.json'
 import sandwichMurphy from '../../tests/fixtures/sandwich-murphy.json'
 import cloneMurphy from '../../tests/fixtures/clone-murphy.json'
 import { Board } from '../../src/components/Board'
@@ -119,4 +121,14 @@ export const SandwichAllEdges: Story = {
     { type: 'sandwich', direction: 'east', cells: [0,1,2,3,4,5,6,7,8], sum: 0 },
   ] }, 'Outside clues on all four edges with repeated zero totals'),
   parameters: { gridWidth: 290 },
+}
+
+export const LittleKiller: Story = {
+  args: candidateGrid(littleKillerMurphy.puzzle as VariantPuzzle, 'Little Killer Sudoku grid'),
+  parameters: { docs: { description: { story: 'New Body Rhumba by Bill Murphy. Each arrow identifies the full diagonal whose digits sum to its outside total. Repeats are allowed when the Sudoku houses permit them.' } } },
+}
+export const LittleKillerCompact: Story = { ...LittleKiller, parameters: { ...LittleKiller.parameters, gridWidth: 290 } }
+export const LittleKillerCorners: Story = {
+  args: candidateGrid(littleKillerNewman.puzzle as VariantPuzzle, 'Little Killer Sudoku with corner arrows'),
+  parameters: { gridWidth: 290, docs: { description: { story: 'Triforce by Philip Newman preserves both printed directions of its long diagonals. All four corners have their own space outside the cell grid.' } } },
 }

@@ -40,6 +40,10 @@ export const VARIANTS = {
     name: 'Region Sum Lines',
     rule: 'Each blue line has parts with the same total. Region borders divide the line unless its listed groups say otherwise. Different lines can have different totals.',
   },
+  'little-killer': {
+    name: 'Little Killer',
+    rule: 'Digits along each indicated diagonal must add to its outside total. Follow the arrow through the whole diagonal. Digits may repeat along a diagonal if the other puzzle rules allow it.',
+  },
   sandwich: {
     name: 'Sandwich',
     rule: 'An outside clue gives the sum of the digits strictly between 1 and 9 in its row or column. Do not include 1 or 9 in the total. A zero means 1 and 9 are next to each other. Unmarked rows and columns have no Sandwich total.',
@@ -385,6 +389,8 @@ function validJigsawRegions(regions: unknown): boolean {
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
   switch (rule.type) {
+    case 'little-killer': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
+      Number.isInteger(rule.sum) && validOutsideRay(rule.cells, rule.direction, true) && rule.sum >= rule.cells.length && rule.sum <= rule.cells.length * 9
     case 'sandwich': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
       Number.isInteger(rule.sum) && rule.sum >= 0 && rule.sum <= 35 && validOutsideRay(rule.cells, rule.direction)
     case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
@@ -471,6 +477,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   'region-sum': VARIANTS['region-sum'].name,
   entropic: PUZZLE_VARIANTS.entropic.name,
   modular: PUZZLE_VARIANTS.modular.name,
+  'little-killer': VARIANTS['little-killer'].name,
   sandwich: VARIANTS.sandwich.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
   renban: PUZZLE_VARIANTS.renban.name,
@@ -511,6 +518,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const disjoint = disjointGroupRuleIndices(puzzle.rules ?? [])
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     switch (rule.type) {
+      case 'little-killer':
+        descriptions.push(VARIANTS['little-killer'].rule, outsideClueLabel(rule))
+        break
       case 'sandwich':
         descriptions.push(VARIANTS.sandwich.rule, outsideClueLabel(rule))
         break
