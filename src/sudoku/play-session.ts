@@ -1,4 +1,4 @@
-export type MobileInputTool = 'colors' | 'chains'
+export type MobileInputTool = 'colors' | 'chains' | 'subsets'
 export type MobileInputTab = 'digits' | MobileInputTool
 type MobileInput = { open: MobileInputTool[]; active: MobileInputTab }
 export const defaultMobileInput: MobileInput = { open: [], active: 'digits' }
@@ -18,7 +18,7 @@ function readSession(storage: SessionStorage): PlaySession {
   if (typeof value?.puzzleId !== 'string') return initial
   const input = value.mobileInput
   const open = Array.isArray(input?.open)
-    ? [...new Set<MobileInputTool>(input.open.filter((tool: unknown) => tool === 'colors' || tool === 'chains'))]
+    ? [...new Set<MobileInputTool>(input.open.filter((tool: unknown) => tool === 'colors' || tool === 'chains' || tool === 'subsets'))]
     : []
   return {
     puzzleId: value.puzzleId,

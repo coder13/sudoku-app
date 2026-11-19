@@ -28,6 +28,7 @@ type DockContent = {
   puzzle: ReactNode
   input: ReactNode
   chains?: ReactNode
+  subsets?: ReactNode
   cellColors: ReactNode
   hint: ReactNode
   solutionPath: ReactNode
@@ -41,14 +42,17 @@ type DockContent = {
   focusAnalysisRequest: number
   focusSolutionRequest: number
   focusChainsRequest?: number
+  focusSubsetsRequest?: number
   focusColorsRequest?: number
+  onInputVisibleChange?: (visible: boolean) => void
+  onSubsetsVisibleChange?: (visible: boolean) => void
   onChainsVisibleChange?: (visible: boolean) => void
   onColorsVisibleChange?: (visible: boolean) => void
   onSolutionVisibleChange?: (visible: boolean) => void
 }
 type PanelVisibility = Pick<DockContent, 'showLeft' | 'showRight' | 'showBottom'> & { showChains: boolean }
 const DockContentContext = createContext<DockContent>({
-  puzzle: null, input: null, chains: null, cellColors: null, hint: null, solutionPath: null, techniques: null, details: null, browser: null,
+  puzzle: null, input: null, chains: null, subsets: null, cellColors: null, hint: null, solutionPath: null, techniques: null, details: null, browser: null,
   showLeft: true, showRight: true, showBottom: true, focusHintRequest: 0, focusAnalysisRequest: 0, focusSolutionRequest: 0,
   focusChainsRequest: 0, onChainsVisibleChange: () => {}, onSolutionVisibleChange: () => {},
 })
@@ -57,8 +61,17 @@ function PuzzlePanel() {
   return <div className="dock-panel-content dock-puzzle-panel">{useContext(DockContentContext).puzzle}</div>
 }
 
-function InputPanel() {
-  return <div className="dock-panel-content dock-input-panel">{useContext(DockContentContext).input}</div>
+function InputPanel({ api }: IDockviewPanelProps) {
+  const { input, onInputVisibleChange } = useContext(DockContentContext)
+  useEffect(() => {
+    onInputVisibleChange?.(api.isVisible)
+    const subscription = api.onDidVisibilityChange(({ isVisible }) => onInputVisibleChange?.(isVisible))
+    return () => {
+      subscription.dispose()
+      onInputVisibleChange?.(false)
+    }
+  }, [api, onInputVisibleChange])
+  return <div className="dock-panel-content dock-input-panel">{input}</div>
 }
 
 function ChainsDockPanel({ api }: IDockviewPanelProps) {
@@ -73,6 +86,19 @@ function ChainsDockPanel({ api }: IDockviewPanelProps) {
     }
   }, [api, onChainsVisibleChange])
   return <div className="dock-panel-content">{chains}</div>
+}
+
+function SubsetsDockPanel({ api }: IDockviewPanelProps) {
+  const { subsets, onSubsetsVisibleChange } = useContext(DockContentContext)
+  useEffect(() => {
+    onSubsetsVisibleChange?.(api.isVisible)
+    const subscription = api.onDidVisibilityChange(({ isVisible }) => onSubsetsVisibleChange?.(isVisible))
+    return () => {
+      subscription.dispose()
+      onSubsetsVisibleChange?.(false)
+    }
+  }, [api, onSubsetsVisibleChange])
+  return <div className="dock-panel-content">{subsets}</div>
 }
 
 function CellColorsPanel({ api }: IDockviewPanelProps) {
@@ -138,7 +164,7 @@ function FixedPanelTab(props: IDockviewPanelHeaderProps) {
 }
 
 const components = {
-  puzzle: PuzzlePanel, input: InputPanel, chains: ChainsDockPanel, cellColors: CellColorsPanel, hint: HintPanel,
+  puzzle: PuzzlePanel, input: InputPanel, chains: ChainsDockPanel, subsets: SubsetsDockPanel, cellColors: CellColorsPanel, hint: HintPanel,
   solutionPath: SolutionPathPanel, techniques: TechniquesDockPanel, details: DetailsPanel, browser: BrowserPanel,
 }
 
@@ -192,6 +218,13 @@ function addRightPanels(api: DockviewApi, showChains: boolean) {
       position: { referencePanel: input },
     })
   } else if (!showChains) removePanels(api, ['chains'])
+  if (!api.getPanel('subsets')) {
+    api.addPanel({
+      id: 'subsets', component: 'subsets', title: 'Subsets', inactive: true,
+      minimumWidth: 240, minimumHeight: 130,
+      position: { referencePanel: input },
+    })
+  }
   const details = api.getPanel('details') ?? api.addPanel({
       id: 'details', component: 'details', title: 'Puzzle details',
       minimumWidth: 240, minimumHeight: 130, initialHeight: detailsPanelHeight(api),
@@ -242,7 +275,7 @@ function syncPanelRegions(api: DockviewApi, { showLeft, showRight, showBottom, s
   if (showRight) {
     addInputPanel(api)
     addRightPanels(api, showChains)
-  } else removePanels(api, ['techniques', 'solution-path', 'cell-colors', 'details', 'chains', 'input'])
+  } else removePanels(api, ['techniques', 'solution-path', 'cell-colors', 'details', 'chains', 'subsets', 'input'])
   if (showBottom) addHintPanel(api)
   else removePanels(api, ['hint'])
 }
@@ -287,9 +320,9 @@ export function resetDesktopPanelLayout() {
 }
 
 export function DesktopDockLayout({
-  puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
-  focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusColorsRequest,
-  onChainsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
+  puzzle, input, chains, subsets, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
+  focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusSubsetsRequest, focusColorsRequest,
+  onChainsVisibleChange, onInputVisibleChange, onSubsetsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
 }: DockContent) {
   const [layoutReady, setLayoutReady] = useState(false)
   const apiRef = useRef<DockviewApi | null>(null)
@@ -366,6 +399,10 @@ export function DesktopDockLayout({
   }, [focusChainsRequest, showRight])
 
   useEffect(() => {
+    if (focusSubsetsRequest && showRight) apiRef.current?.getPanel('subsets')?.api.setActive()
+  }, [focusSubsetsRequest, showRight])
+
+  useEffect(() => {
     if (focusColorsRequest && showRight) apiRef.current?.getPanel('cell-colors')?.api.setActive()
   }, [focusColorsRequest, showRight])
 
@@ -388,9 +425,9 @@ export function DesktopDockLayout({
 
   return (
     <DockContentContext.Provider value={{
-      puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
-      focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusColorsRequest,
-      onChainsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
+      puzzle, input, chains, subsets, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
+      focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusSubsetsRequest, focusColorsRequest,
+      onChainsVisibleChange, onInputVisibleChange, onSubsetsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
     }}>
       <section ref={rootRef} className={`desktop-dock ${layoutReady ? 'dock-ready' : ''}`} aria-label="Advanced workspace panels">
         <DockviewReact className="desktop-dockview" theme={sudokuDockTheme} components={components}
