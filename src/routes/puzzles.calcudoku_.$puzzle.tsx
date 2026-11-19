@@ -8,9 +8,9 @@ import { generatedNumberTokens, rememberGeneratedNumberPuzzle } from '../number-
 export const Route = createFileRoute('/puzzles/calcudoku_/$puzzle')({
   staticData: { standalonePuzzlePage: true },
   head: () => ({ meta: [{ title: 'Play Calcudoku' }] }),
+  validateSearch: (search): { board?: string } => ({ board: generatedNumberToken(search.board) }),
   // Generated links share one offline shell, so render their search data on the client.
   ssr: ({ params }) => params.status === 'success' && params.value.puzzle === 'generated' ? 'data-only' : true,
-  validateSearch: (search): { board?: string } => ({ board: generatedNumberToken(search.board) }),
   loader: ({ params }) => {
     if (params.puzzle === 'generated') return 'generated'
     const entry = calcudokuCatalog.find(candidate => candidate.id === params.puzzle)
