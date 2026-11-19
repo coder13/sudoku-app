@@ -1,4 +1,5 @@
 import { COLORS, type ColorTarget } from './game.ts'
+import type { MobileInputTool } from './play-session.ts'
 
 export const MODE_BADGE_EDGES = ['top', 'right', 'bottom', 'left'] as const
 export type ModeBadgePosition = { edge: typeof MODE_BADGE_EDGES[number]; offset: number }
@@ -13,6 +14,7 @@ const DEFAULT_DESKTOP_PANEL_WIDTHS: DesktopPanelWidths = { input: DEFAULT_DESKTO
 const DESKTOP_VIEW_IDS = ['solution', 'techniques', 'colors', 'chains', 'subsets'] as const
 export type DesktopPuzzleView = typeof DESKTOP_VIEW_IDS[number]
 type DesktopViewPreferences = { open: DesktopPuzzleView[]; active: DesktopPuzzleView | null }
+const ADVANCED_TOOLS = ['chains', 'subsets', 'colors'] as const satisfies readonly MobileInputTool[]
 
 export type PlayPreferences = {
   pencil: boolean
@@ -31,6 +33,7 @@ export type PlayPreferences = {
   desktopLayoutWidth: number
   desktopPanelWidths: DesktopPanelWidths
   desktopViews: DesktopViewPreferences
+  closedAdvancedTools: MobileInputTool[]
 }
 
 // Keep this key independent of the app build and service-worker cache version.
@@ -53,6 +56,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   desktopLayoutWidth: DEFAULT_DESKTOP_LAYOUT_WIDTH,
   desktopPanelWidths: DEFAULT_DESKTOP_PANEL_WIDTHS,
   desktopViews: { open: [], active: null },
+  closedAdvancedTools: [],
 }
 const INPUT_MODE_KEYS = ['eraseMode', 'colorMode', 'highlightMode', 'pencil'] as const
 
@@ -96,6 +100,7 @@ function parseDesktopViews(value: unknown): DesktopViewPreferences {
 export function parsePlayPreferences(value: unknown): PlayPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { ...DEFAULT_PLAY_PREFERENCES }
   const saved = value as Record<string, unknown>
+  const closedAdvancedTools = saved.closedAdvancedTools
   // Invalid or older records can omit fields without losing the valid settings.
   const activeMode = INPUT_MODE_KEYS.find((key) => saved[key] === true)
   return {
@@ -118,6 +123,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     desktopPanelWidths: parseDesktopPanelWidths(saved.desktopPanelWidths, saved.desktopInputWidth),
     desktopViews: parseDesktopViews(saved.desktopViews ??
       (saved.colorsPanelOpen === true ? { open: ['colors'], active: 'colors' } : undefined)),
+    closedAdvancedTools: Array.isArray(closedAdvancedTools) ? ADVANCED_TOOLS.filter(tool => closedAdvancedTools.includes(tool)) : [],
   }
 }
 

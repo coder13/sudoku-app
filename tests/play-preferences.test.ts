@@ -122,6 +122,17 @@ test('saved desktop tools put Colors before Chains and keep the selected tab', (
   })
 })
 
+test('closed advanced tools survive a reload without affecting standard desktop views', () => {
+  const storage = memoryStorage(JSON.stringify({ desktopViews: { open: ['chains'], active: 'chains' } }))
+  const store = createPlayPreferenceStore(storage)
+  assert.deepEqual(store.getSnapshot().closedAdvancedTools, [])
+  store.set('closedAdvancedTools', ['chains', 'subsets'])
+  const reloaded = createPlayPreferenceStore(storage).getSnapshot()
+  assert.deepEqual(reloaded.closedAdvancedTools, ['chains', 'subsets'])
+  assert.deepEqual(reloaded.desktopViews, { open: ['chains'], active: 'chains' })
+  assert.deepEqual(parsePlayPreferences({ closedAdvancedTools: ['colors', 'colors', 'unknown'] }).closedAdvancedTools, ['colors'])
+})
+
 test('the mode badge position survives reloads and other play setting changes', () => {
   const storage = memoryStorage(JSON.stringify({ pencil: true }))
   const store = createPlayPreferenceStore(storage)

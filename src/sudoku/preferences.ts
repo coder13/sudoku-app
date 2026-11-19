@@ -40,7 +40,7 @@ export type AppearancePreferences = {
   appTextZoom: number
 }
 
-export type CandidateHighlightStyle = 'text' | 'spotlight' | 'cell' | 'outline'
+export type CandidateHighlightStyle = 'text' | 'shape'
 export type HighlightPreferences = {
   relatedCells: boolean
   matchingDigits: boolean
@@ -73,7 +73,7 @@ export const DEFAULT_HIGHLIGHT_PREFERENCES: HighlightPreferences = {
   relatedCells: true,
   matchingDigits: true,
   matchingCandidates: true,
-  candidateStyle: 'cell',
+  candidateStyle: 'shape',
 }
 export const DEFAULT_INPUT_SIZE = 210
 export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = 'standard'
@@ -93,7 +93,6 @@ export const CELL_REFERENCE_STYLE_KEY = 'sudoku-app:v1:hint-cell-reference-style
 
 const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'conflicts', 'none'])
 const COLOR_MODES = new Set<ColorMode>(['system', 'light', 'dark'])
-const CANDIDATE_HIGHLIGHT_STYLES = new Set<CandidateHighlightStyle>(['text', 'spotlight', 'cell', 'outline'])
 
 export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
   let advancedModes = DEFAULT_ADVANCED_MODES
@@ -153,14 +152,12 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
     const savedHighlighting = JSON.parse(target.getItem(HIGHLIGHT_KEY) ?? 'null') as
       (Partial<HighlightPreferences> & { defaultsVersion?: number }) | null
     if (savedHighlighting) {
-      const candidateStyle = savedHighlighting.defaultsVersion !== 2 && savedHighlighting.candidateStyle === 'text'
-        ? DEFAULT_HIGHLIGHT_PREFERENCES.candidateStyle : savedHighlighting.candidateStyle
       highlighting = {
         relatedCells: savedHighlighting.relatedCells !== false,
         matchingDigits: savedHighlighting.matchingDigits !== false,
         matchingCandidates: savedHighlighting.matchingCandidates !== false,
-        candidateStyle: candidateStyle && CANDIDATE_HIGHLIGHT_STYLES.has(candidateStyle)
-          ? candidateStyle : DEFAULT_HIGHLIGHT_PREFERENCES.candidateStyle,
+        candidateStyle: savedHighlighting.defaultsVersion === 2 && savedHighlighting.candidateStyle === 'text'
+          ? 'text' : DEFAULT_HIGHLIGHT_PREFERENCES.candidateStyle,
       }
     }
   } catch { /* Keep defaults when preferences cannot be read. */ }

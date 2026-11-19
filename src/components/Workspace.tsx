@@ -39,6 +39,7 @@ import { SyncConnectionStatus } from './SyncConnectionStatus'
 import { usePageAppearance } from './usePageAppearance'
 import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
+import { CandidateHighlightStyleContext } from './Board'
 
 type Panel = 'import' | 'share' | 'publish' | 'cages' | 'six-rules' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
@@ -497,6 +498,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     <Link className={buttonClassName('primary')} to="/puzzles/new"><Plus size={18} />New puzzle</Link>
   </div>
   return (
+    <CandidateHighlightStyleContext.Provider value={highlighting.candidateStyle}>
     <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
       enabled={playing && workspaceReady && desktopStandard}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
@@ -665,5 +667,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         key={game.id} game={game} layout={game.grid} close={close} />}
       {panel === 'cages' && game?.position.draftCages && <EditCages game={game} close={close} />}
     </DesktopPlayLayout>
+    </CandidateHighlightStyleContext.Provider>
   )
 }

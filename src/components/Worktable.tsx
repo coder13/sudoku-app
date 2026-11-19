@@ -79,6 +79,11 @@ const desktopInsightTabs = [
   { id: 'subsets', label: 'Subsets' },
 ] as const
 
+const puzzleTools = [
+  { id: 'chains', label: 'Chains', Icon: Link2 },
+  { id: 'subsets', label: 'Subsets', Icon: ScanSearch },
+  { id: 'colors', label: 'Colors', Icon: Palette },
+] as const
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -287,6 +292,7 @@ export function Worktable({
   const [focusSubsetsRequest, setFocusSubsetsRequest] = useState(0)
   const [showStrongLinks, setShowStrongLinks] = useState(false)
   const [desktopViews, setDesktopViews] = usePlayPreference('desktopViews')
+  const [closedAdvancedTools, setClosedAdvancedTools] = usePlayPreference('closedAdvancedTools')
   const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [savedHighlightMode, setSavedHighlightMode] = usePlayPreference('highlightMode')
@@ -457,14 +463,15 @@ export function Worktable({
   const { active: activeMobileInput, open: openMobileTools } = mobileToolsAvailable
     ? grid ? { active: mobileInput.active === 'chains' ? 'digits' : mobileInput.active, open: mobileInput.open.filter(tab => tab !== 'chains') }
       : mobileInput : defaultMobileInput
+  const openPuzzleTools = mobile ? openMobileTools : advancedWorkspace
+    ? puzzleTools.filter(({ id }) => showRightPanel && !closedAdvancedTools.includes(id) && (!grid || id !== 'chains')).map(({ id }) => id)
+    : openInsightTabs.map(({ id }) => id)
   const chainsVisible = !grid && (mobile ? activeMobileInput === 'chains'
     : advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains')
   const subsetsVisible = mobile ? activeMobileInput === 'subsets'
     : advancedWorkspace ? showRightPanel && desktopSubsetsVisible : activeDesktopTab?.id === 'subsets'
-  const colorsPanelOpen = mobile ? openMobileTools.includes('colors')
-    : advancedWorkspace ? showRightPanel : openInsightTabs.some(({ id }) => id === 'colors')
-  const chainsPanelOpen = mobile ? openMobileTools.includes('chains')
-    : advancedWorkspace ? showRightPanel : openInsightTabs.some(({ id }) => id === 'chains')
+  const colorsPanelOpen = openPuzzleTools.includes('colors')
+  const chainsPanelOpen = openPuzzleTools.includes('chains')
   const chainKeypadVisible = !grid && chainsPanelOpen && (mobile ? activeMobileInput === 'digits'
     : advancedWorkspace && desktopInputVisible)
   const drawingIntent = savedPlayState?.drawingIntent ?? null
@@ -862,11 +869,10 @@ export function Worktable({
   }, [sketch.drawing])
 
   useLayoutEffect(() => {
-    const tab = activeDesktopTab?.id
-    if (!advancedWorkspace && (tab === 'chains' && focusChainsRequest || tab === 'subsets' && focusSubsetsRequest)) {
-      insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${tab}"]`)?.focus({ preventScroll: true })
+    if (!advancedWorkspace && focusChainsRequest && activeDesktopTab?.id === 'chains') {
+      insightTabsRef.current?.querySelector<HTMLButtonElement>('[data-insight-tab="chains"]')?.focus({ preventScroll: true })
     }
-  }, [advancedWorkspace, focusChainsRequest, focusSubsetsRequest, activeDesktopTab?.id])
+  }, [focusChainsRequest])
 
   useLayoutEffect(() => {
     if (!focusMobileInput.current) return
@@ -892,7 +898,7 @@ export function Worktable({
 
   useLayoutEffect(() => {
     if (paintingCandidates) {
-      if (!puzzleStageRef.current?.hasAttribute('data-pointer-input') && !document.activeElement?.closest('.hint-card-visuals')) {
+      if (!puzzleMenuOpen && !puzzleStageRef.current?.hasAttribute('data-pointer-input') && !document.activeElement?.closest('.hint-card-visuals')) {
         boardRef.current?.querySelector<HTMLElement>('.paint-candidate[tabindex="0"]')?.focus({ preventScroll: true })
       }
     } else if (restoreCellFocus.current !== null) {
@@ -2004,19 +2010,20 @@ export function Worktable({
     aria-keyshortcuts={shortcutLabel(shortcuts.solveSingles)}>
     <CheckCheck size={17} /> Solve all singles <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.solveSingles)}</kbd>
   </button>
-  function selectMobileInput(tab: MobileInputTab, openBothTools = false) {
+  function selectMobileInput(tab: MobileInputTab, tools: MobileInputTool[] = []) {
     if (tab !== 'digits') changeHintVisuals('player')
     playSession.set(id, 'mobileInput', (current) => ({
-      open: tab === 'subsets' ? [...new Set<MobileInputTool>([...current.open, tab])]
-        : openBothTools ? [...new Set<MobileInputTool>([...(grid ? ['colors'] as const : ['colors', 'chains'] as const), ...current.open])]
-        : current.open,
+      open: tools.length ? [...new Set([...current.open, ...tools])] : current.open,
       active: tab,
     }))
   }
 
-  function closeMobileInput(tool: MobileInputTool) {
-    focusMobileInput.current = openMobileTools.length === 1
-    playSession.set(id, 'mobileInput', (current) => ({ open: current.open.filter((tab) => tab !== tool), active: 'digits' }))
+  function closeMobileInput(tool: MobileInputTool, fromMenu = false) {
+    if (!fromMenu) focusMobileInput.current = openMobileTools.length === 1
+    playSession.set(id, 'mobileInput', (current) => ({
+      open: current.open.filter((tab) => tab !== tool),
+      active: current.active === tool ? 'digits' : current.active,
+    }))
   }
 
   function openMobileInput(tool: MobileInputTool, opener = puzzleMenuButtonRef.current) {
@@ -2025,21 +2032,29 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     focusMobileInput.current = true
-    selectMobileInput(tool, true)
+    selectMobileInput(tool, tool === 'subsets' ? [tool] : grid ? ['colors'] : ['colors', 'chains'])
+  }
+
+  function openDesktopTool(tool: MobileInputTool, alsoOpenChains = false) {
+    changeHintVisuals('player')
+    if (tool === 'colors') {
+      setColorMode(false)
+      if (sketch.drawing) sketch.suspend()
+    }
+    if (advancedWorkspace) {
+      if (previewing) closeSolutionPath()
+      setClosedAdvancedTools(current => current.includes(tool) ? current.filter(id => id !== tool) : current)
+      onOpenRightPanel()
+      const activateTool = { colors: setFocusColorsRequest, chains: setFocusChainsRequest, subsets: setFocusSubsetsRequest }[tool]
+      activateTool(request => request + 1)
+    } else openDesktopView(tool, alsoOpenChains && !grid ? 'chains' : undefined)
   }
 
   function showColors(openChains = false) {
     if (mobile) { openMobileInput('colors'); return }
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    changeHintVisuals('player')
-    setColorMode(false)
-    if (sketch.drawing) sketch.suspend()
-    if (advancedWorkspace) {
-      if (previewing) closeSolutionPath()
-      onOpenRightPanel()
-      setFocusColorsRequest((request) => request + 1)
-    } else openDesktopView('colors', openChains && !grid ? 'chains' : undefined)
+    openDesktopTool('colors', openChains)
   }
 
   const colorsAction = desktop && puzzleToolsAvailable && (
@@ -2051,13 +2066,9 @@ export function Worktable({
     if (mobile) { openMobileInput('chains'); return }
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    changeHintVisuals('player')
-    if (advancedWorkspace) {
-      if (previewing) closeSolutionPath()
-      else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
-      onOpenRightPanel()
-    } else openDesktopView('chains')
-    setFocusChainsRequest((request) => request + 1)
+    if (advancedWorkspace && !previewing) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+    openDesktopTool('chains')
+    if (!advancedWorkspace) setFocusChainsRequest(request => request + 1)
   }
 
   function openDesktopView(view: DesktopPuzzleView, alsoOpen?: DesktopPuzzleView) {
@@ -2070,27 +2081,27 @@ export function Worktable({
     })
   }
 
-  function closeDesktopView(view: DesktopPuzzleView) {
+  function closeDesktopView(view: DesktopPuzzleView, fromMenu = false) {
     const remaining = openInsightTabs.filter(({ id }) => id !== view)
-    const next = remaining.find(({ id }) => id === 'techniques') ?? remaining[0]
+    const next = remaining.find(({ id }) => id === activeDesktopTab?.id) ??
+      remaining.find(({ id }) => id === 'techniques') ?? remaining[0]
     setDesktopViews((current) => {
       const open = current.open.filter((id) => id !== view)
       return { open, active: next?.id ?? open[0] ?? null }
     })
+    if (fromMenu) return
     if (next) {
       insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`)?.focus({ preventScroll: true })
     } else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
   }
-  function showSubsets() {
-    if (mobile) { openMobileInput('subsets'); return }
-    setPuzzleMenuOpen(false)
-    setActionsOpen(false)
-    changeHintVisuals('player')
-    if (advancedWorkspace) {
-      if (previewing) closeSolutionPath()
-      onOpenRightPanel()
-    } else openDesktopView('subsets')
-    setFocusSubsetsRequest((request) => request + 1)
+  function togglePuzzleTool(tool: MobileInputTool) {
+    const open = openPuzzleTools.includes(tool)
+    if (mobile) {
+      if (open) closeMobileInput(tool, true)
+      else selectMobileInput(tool, [tool])
+    } else if (!open) openDesktopTool(tool)
+    else if (advancedWorkspace) setClosedAdvancedTools(current => [...current, tool])
+    else closeDesktopView(tool, true)
   }
 
   function showAnalysis() {
@@ -2119,16 +2130,6 @@ export function Worktable({
     <button onClick={showAnalysis}>
       <ListFilter size={17} /> {TECHNIQUE_FINDER_TITLE}
     </button>
-  )
-  const chainsAction = !grid && desktop && puzzleToolsAvailable && (
-    <button onClick={showChains}><Link2 size={17} /> Chains</button>
-  )
-  const subsetsAction = puzzleToolsAvailable && (
-    <button onClick={showSubsets} disabled={disabled}><ScanSearch size={17} /> Subsets</button>
-  )
-  const colorToolsLabel = grid ? 'Colors' : 'Colors & Chains'
-  const mobileToolsAction = mobileToolsAvailable && (
-    <button onClick={() => showColors()} disabled={disabled}><Palette size={17} /> {colorToolsLabel}</button>
   )
   const hintMenuAction = !draft && !solved && <button onClick={() => { void showHint() }} disabled={busy}>
     <Lightbulb size={17} /> View hint
@@ -2174,14 +2175,16 @@ export function Worktable({
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
-    {(solutionAction || analysisAction || chainsAction || subsetsAction || colorsAction || mobileToolsAction) && <>
+    {(solutionAction || analysisAction || puzzleToolsAvailable) && <>
       <div className="app-menu-separator" role="separator" />
       {solutionAction}
       {analysisAction}
-      {chainsAction}
-      {subsetsAction}
-      {colorsAction}
-      {mobileToolsAction}
+      {puzzleToolsAvailable && puzzleTools.filter(({ id }) => !grid || id !== 'chains').map(({ id, label, Icon }) => (
+        <button key={id} type="button" disabled={disabled} aria-pressed={openPuzzleTools.includes(id)}
+          onClick={() => togglePuzzleTool(id)}>
+          <Icon size={17} aria-hidden="true" /> {label}
+        </button>
+      ))}
       <div className="app-menu-separator" role="separator" />
     </>}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
@@ -2225,7 +2228,10 @@ export function Worktable({
     <div ref={puzzleMenuPopupRef} className={`app-menu puzzle-menu${mobile ? ' mobile-puzzle-menu' : ''}`} id="puzzle-menu"
       popover={mobile ? 'manual' : undefined} data-presence={puzzleMenuExiting ? 'exit' : 'open'}
       aria-hidden={puzzleMenuExiting || undefined} inert={puzzleMenuExiting || undefined}
-      onClickCapture={() => puzzleMenuButtonRef.current?.focus({ preventScroll: true })}>
+      onClickCapture={event => {
+        if (event.target instanceof Element && event.target.closest('button[aria-pressed]')) return
+        puzzleMenuButtonRef.current?.focus({ preventScroll: true })
+      }}>
       {puzzleOptionItems}
     </div>
   )
@@ -2242,7 +2248,7 @@ export function Worktable({
   const solutionGrid = (
     <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={sixRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
-      label="Solution preview" showGuides={appearance.showGuides} />
+      label="Solution preview" showGuides={appearance.showGuides} highlighting={highlighting} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : (sketch.drawing || browsingStrongLinks) && chainMasks ? (
@@ -2371,11 +2377,6 @@ export function Worktable({
                   <Pause className="pause-toggle-pause" size={18} />
                   <Play className="pause-toggle-play" size={18} />
                 </span>
-              </IconButton>}
-              {puzzleToolsAvailable && <IconButton className="puzzle-tools-trigger" type="button"
-                aria-label={`Open ${colorToolsLabel} from puzzle card`} title={colorToolsLabel} disabled={disabled}
-                onClick={event => mobile ? openMobileInput('colors', event.currentTarget) : showColors(true)}>
-                <Palette size={18} aria-hidden="true" />
               </IconButton>}
               <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
                 <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"
@@ -2550,7 +2551,10 @@ export function Worktable({
           inputTitle: showMobileResults ? 'Next puzzle' : openMobileTools.length ? 'Input' : 'Keypad',
           hintPlaceholder: <PlayHint mobile><HintCard hint={{ title: 'Puzzle hints', text: 'Hints will appear here.' }} onClose={() => {}} /></PlayHint>,
         }}
-        advanced={advancedWorkspace ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel} chains={chainsPanel} subsets={subsetsPanel} cellColors={cellColorsPanel}
+        advanced={advancedWorkspace ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel}
+          chains={!grid && !closedAdvancedTools.includes('chains') ? chainsPanel : undefined}
+          subsets={!closedAdvancedTools.includes('subsets') ? subsetsPanel : undefined}
+          cellColors={!closedAdvancedTools.includes('colors') ? cellColorsPanel : undefined}
           hint={advancedHintPanel} solutionPath={solutionPathPanel}
           techniques={!draft
             ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />

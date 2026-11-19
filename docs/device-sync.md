@@ -14,7 +14,7 @@ The app opens a saved puzzle and reads saved settings from this browser first. T
 
 The app also keeps a local copy of the linked-device list. The Device sync page shows the saved list while it checks the cloud. If the app cannot connect, the saved puzzle, settings, and device list stay available. A reload keeps the play state in this tab. A new visit uses the saved pause-on-open setting. An explicit pause or resume still syncs.
 
-Use the palette icon on the puzzle card to open Colors and Chains. A reload restores the open tools and chain drawing mode in this tab. The puzzle save includes chain links and the selected endpoint. An app update uses the same saved state.
+Open Colors or Chains from **Puzzle options**. A reload restores the open tools and chain drawing mode in this tab. The puzzle save includes chain links and the selected endpoint. An app update uses the same saved state.
 
 Changes are saved locally first. Edits share an upload about two seconds after the most recent edit. If edits continue without a break, the app uploads about a minute after the first unsynced edit. Pausing, resuming, or solving a puzzle sends changes right away. Switching puzzles or backgrounding the app can also send pending changes sooner. Elapsed time is included with puzzle saves and does not trigger periodic uploads on its own. Use **Puzzle options → Sync now** to send the current puzzle immediately and check its cloud save. The menu shows saves in progress and sync warnings. If pending changes are offline or fail to sync, the puzzle card shows their status. Failed uploads retry with backoff while the app is open.
 

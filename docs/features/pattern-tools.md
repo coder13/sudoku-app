@@ -1,6 +1,8 @@
 # Pattern tools in Play
 
-Open **Subsets** from the puzzle menu or the mobile input tools.
+In **Puzzle options**, select **Chains**, **Subsets**, or **Colors** to open or close that panel. The menu stays open so you can change several panels before you close it.
+
+You can also open **Subsets** from the mobile input tools.
 
 - Select one empty cell to mark matching candidates in its row, column, and box. For jigsaw puzzles, the grid uses the region for that cell.
 - Select more cells to mark the candidates that all selected cells share. The marks appear in the selected cells.
@@ -11,3 +13,5 @@ Open **Chains** and select **Show strong links**. Use the shared keypad or selec
 The overlay stays visible when you switch to the mobile Digits tab or the Advanced workspace Input tab.
 
 The grid badge shows a chain icon while **Chains** is active and you draw links. Select the badge to stop the drawing.
+
+In **Settings → Highlighting**, choose **Font color** or **Font color + shape**. This setting applies to candidate highlights in Play and Learn.
