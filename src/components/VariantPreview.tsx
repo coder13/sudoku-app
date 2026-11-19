@@ -1,9 +1,9 @@
 import type { NewPuzzleId } from '../sudoku/new-puzzle'
-import type { VariantRule } from '../sudoku/engine'
+import type { SizedVariantPosition, VariantRule } from '../sudoku/engine'
 import { Crown } from 'lucide-react'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
 import { regionMembership, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
-import { VariantClues } from './VariantClues'
+import { AlgebraicCages, VariantClues } from './VariantClues'
 import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 
 const previews: Record<VariantId, readonly VariantRule[]> = {
@@ -44,9 +44,17 @@ const previewRegionEdges = previewRegions.flatMap((region, cell) => {
   return edges
 }).join(' ')
 
+const algebraicPreview: SizedVariantPosition['rules'] = [
+  { type: 'algebraic-cage', cells: [3], label: 'n−4', total: { type: 'variable', name: 'n', offset: -4 } },
+  { type: 'algebraic-cage', cells: [8, 9], label: 'n+2', total: { type: 'variable', name: 'n', offset: 2 } },
+]
+
 /** Show a compact example of a generatable variant's grid markings alongside its name. */
 export function VariantPreview({ variant, ruleset }: { variant: NewPuzzleId; ruleset?: GenerationRulesetId }) {
   if (variant === 'mini') return <span className="variant-preview" data-variant="mini" aria-hidden="true" />
+  if (variant === 'algebraic-cages') return <span className="variant-preview" data-variant={variant} aria-hidden="true">
+    <AlgebraicCages rules={algebraicPreview} captions />
+  </span>
   const rules: readonly VariantRule[] = variant === 'whispers'
     ? [{ type: 'whispers', cells: [11, 21, 31, 39, 47, 57], minDifference: generationRuleset(variant, ruleset)!.minDifference }]
     : previews[variant]

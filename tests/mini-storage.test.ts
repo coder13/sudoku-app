@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { enter, makeGame, redo, restartGame, undo } from '../src/sudoku/game.ts'
+import { enter, makeGame, move, redo, restartGame, undo } from '../src/sudoku/game.ts'
 import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 
@@ -17,4 +17,17 @@ test('4×4 progress, masks and undo survive a save and reload', () => {
   assert.equal(readGame(played.id, JSON.stringify({
     ...played, position: { ...played.position, corner: [16, ...Array(15).fill(0)] },
   })), undefined)
+})
+
+test('an algebraic draft keeps its cages in undo history and rejects overlapping or misplaced cage state', () => {
+  const draft = makeGame('cage-draft', 'Cage draft', '0'.repeat(16), 'draft', 0, MINI_GRID)
+  draft.position.draftCages = []
+  const cage = { type: 'algebraic-cage', cells: [0], label: 'n', total: { type: 'variable', name: 'n', offset: 0 } } as const
+  const edited = move(draft, { ...draft.position, draftCages: [cage] })
+  const loaded = readGame(edited.id, JSON.stringify(edited))!
+  assert.deepEqual(loaded.position.draftCages, [cage])
+  assert.deepEqual(undo(loaded).position.draftCages, [])
+  assert.deepEqual(redo(undo(loaded)).position.draftCages, [cage])
+  assert.equal(readGame(loaded.id, JSON.stringify({ ...loaded, source: 'custom' })), undefined)
+  assert.equal(readGame(loaded.id, JSON.stringify({ ...loaded, position: { ...loaded.position, draftCages: [cage, cage] } })), undefined)
 })

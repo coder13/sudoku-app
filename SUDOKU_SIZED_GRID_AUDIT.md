@@ -4,7 +4,7 @@
 
 The source review identifies several distinct compatibility requirements:
 
-- Sudoku Coach publishes [a 6×6 solve](https://sudoku.coach/en/s/7Pyk) and [a 6×6 Thermo puzzle](https://sudoku.coach/en/s/GEnq). Each accepted import must preserve the layout, givens, and every rule. The two examples are queued in [issue 230](https://github.com/coder13/sudoku-app/issues/230).
+- Sudoku Coach publishes [a 6×6 solve](https://sudoku.coach/en/s/7Pyk) and [a mixed 6×6 puzzle](https://sudoku.coach/en/s/GErF). Both exports specify 36 cells and six 2×3 boxes. An independent search found one solution to the mixed puzzle and multiple solutions when it removed any of the main diagonal, even cells, or Thermometers. Import needs all three rules together. [Issue 230](https://github.com/coder13/sudoku-app/issues/230) tracks the player and import work.
 - SudokuPad hosts [TVDK's 6×6 variant set](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?chlang=en&id=000RIQ). It supplies separate Thermometer, Renban, Arrow, Kropki, and Region Sum Lines controls. [Algebraic Cages I](https://sudokupad.app/babxk5ixus) is a 4×4 control with three related cage totals, tracked in [issue 225](https://github.com/coder13/sudoku-app/issues/225).
 - [Krazydad Hex Sudoku](https://krazydad.com/hexsudoku/) offers 16×16 puzzles in both hexadecimal and decimal notation. A displayed zero can be a given. Preserve external symbols separately from the engine's digit IDs and empty-cell encoding. [Issue 233](https://github.com/coder13/sudoku-app/issues/233) follows this work.
 - [Krazydad's five-grid Samurai](https://krazydad.com/samurai/index.php?sv=SAM5_v1) requires shared cells at the four overlaps. [Issue 234](https://github.com/coder13/sudoku-app/issues/234) tracks composition separately.
@@ -30,3 +30,20 @@ Run `node scripts/bench-sized-grids.mjs BASELINE_WASM [SIZED_WASM]` with release
 Direct serialization removes the intermediate JSON tree. On an alternating comparison of the same 16×16 trace, the median fell from 1.81 ms to 1.23 ms and the 95th percentile fell from 2.23 ms to 1.48 ms. Wasm linear memory after that trace fell from 4.19 MiB to 2.25 MiB. The before and after outputs were equal.
 
 The app Wasm grew from 3,417,504 to 3,479,007 bytes, or 24,514 additional bytes with gzip. The 9×9 reference grid's early checks kept the same result and linear-memory footprint. Median local verification, candidate, and solve times were in the same microsecond range. The generator found a puzzle for each of 1,000 sampled seeds per recipe without exclusions. Median generation was 7 µs for Easy and 23 µs for Medium. Native tests separately verify exclusions and solution counts.
+
+## Algebraic Cages research
+
+The original [Algebraic Cages I](https://sudokupad.app/babxk5ixus) export has three distinct cages and no givens. The exact solver verifies a unique completion with `x = 6`. The 21 logical steps reach the same grid. The first proof combines all three cage bounds to rule out 2, 3, and 4 from R1C1. The branch preserves the author's labels, rules, cage membership, and source export through preview, desktop and mobile Play, Finder, walkthrough, and sharing. A separate Wasm contract fixture makes the classic grid ambiguous so a regression that drops the arithmetic will fail.
+
+An alternating benchmark used 1,800 samples per build and operation on the original source. The median hint request fell from 30.4 to 21.5 µs and the median walkthrough from 155.5 to 100.8 µs. The optimized build reused the position's cage bounds and serialized proofs directly. Independent verification and exact solving remained about 22 and 18 µs. The final app-profile build used about 1.38 MiB of Wasm linear memory after the requests, down from 1.50 MiB. The two builds returned equal results for every request shape in the benchmark.
+
+A generation prototype tested 256 seeds against an independent enumeration of all completed 4×4 grids. Each output had one solution, needed every cage, and had a complete logical replay. The Rust generator applies those checks before returning a puzzle. The app’s editor verifies a draft with its exact cage rules before saving. Cage edits use the same undo history as digit edits. An algebraic share keeps the original SudokuPad export or the app’s typed cage definition under the existing UUID sharing contract. The Learn lesson uses synthetic boards with engine-verified candidate removals.
+
+The algebraic score adds one point for a naked single, two for a hidden single, three for a locked candidate, and four for a cage deduction. Cage proofs have the highest cost because the player must compare compatible sums and check distinct digit assignments. A complete walkthrough is Easy at 27 points or less and Medium at 28 points or more. In an untargeted sample of 1,024 generated puzzles, 415 fell in the Easy band. This is a walkthrough measure. It does not feed the player’s 9×9 adaptive rating.
+
+| Requested level | Distinct in 1,000 timed seeds | Score range | Median generation | 95th percentile generation | Median rating |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Easy | 1,000 | 19–27 | 207 µs | 863 µs | 17 µs |
+| Medium | 1,000 | 28–51 | 145 µs | 505 µs | 18 µs |
+
+These release-Wasm timings include the request and response. The app binary grew by 196,266 bytes against the shipped Mini Sudoku build, or 56,546 bytes with gzip. Wasm linear memory after both batches was 1.38 MiB. [Issue 225](https://github.com/coder13/sudoku-app/issues/225) tracks release integration.
