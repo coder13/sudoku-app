@@ -536,7 +536,7 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   const link = /^(?:www\.)?(?:sudoku\.coach|sudokuexchange\.com|(?:beta\.)?sudokupad\.app|f-puzzles\.com)\//i.test(text)
     ? `https://${text}` : text
   const base = 'https://sudoku.invalid'
-  const ownOrigin = typeof window === 'undefined' ? undefined : window.location.origin
+  const ownOrigin = globalThis.window?.location?.origin
   const url = /^(https?:\/\/|#(?:puzzle|variant|sized)=|\/\?share=)/i.test(link) && URL.canParse(link, base)
     ? new URL(link, ownOrigin ?? base) : null
   if (url) {
