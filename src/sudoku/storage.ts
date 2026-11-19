@@ -484,10 +484,10 @@ export const roomStore = {
       writeGame(next)
       if (played) localStorage.setItem(activityPrefix + id, String(Date.now()))
     })
-    if (saved && !derived && (played || next.elapsed === merged.elapsed)) {
-      const paused = next.paused && !merged.paused
+    const pauseChanged = next.paused !== merged.paused
+    if (saved && !derived && (played || pauseChanged || next.elapsed === merged.elapsed)) {
       const finished = next.position.entries !== merged.position.entries && isSolved(next) && !isSolved(merged)
-      announceEdit(id, paused || finished)
+      announceEdit(id, pauseChanged || finished)
     }
     const seenSaved = puzzleIdentity(current) === puzzleIdentity(next) && current.source === next.source || rememberPuzzle(next)
     const outcome = next.ratingAttempt?.outcome

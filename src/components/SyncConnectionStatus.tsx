@@ -32,6 +32,6 @@ export function SyncConnectionStatus({ connection, detailed = false }: { connect
       <div><dt>Last successful cloud check</dt><dd>{lastCheck === null ? 'Waiting' : <time dateTime={new Date(lastCheck).toISOString()}>{timeOf(lastCheck)}</time>}</dd></div>
       <div><dt>Last live notification</dt><dd>{lastNotification === null ? 'None this session' : <time dateTime={new Date(lastNotification).toISOString()}>{timeOf(lastNotification)}</time>}</dd></div>
     </dl>
-    <p>During play, edits upload about once a minute. Use <strong>Sync now</strong> in Puzzle options to send a puzzle sooner.</p>
+    <p>Edits sync about two seconds after your last move, or once a minute if you keep playing. Pausing, resuming, or solving a puzzle syncs right away. You can also choose <strong>Sync now</strong> in Puzzle options.</p>
   </div>
 }

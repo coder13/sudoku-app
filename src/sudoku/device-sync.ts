@@ -47,8 +47,9 @@ function credentials(): Credentials | null {
 }
 
 type PuzzleStatus = 'none' | 'checking' | 'pending' | 'saving' | 'saved' | 'offline' | 'offline-clean' | 'failed' | 'check-failed' | 'conflict'
-type PendingEdit = { due: number }
-const batchDelay = 60_000
+type PendingEdit = { due: number; deadline: number }
+const editDebounce = 2_000
+const batchLimit = 60_000
 const checkDelay = 250
 const puzzleListeners = new Set<() => void>()
 const pending = new Map<string, PendingEdit>()
@@ -106,16 +107,26 @@ function currentDevice() {
   return active
 }
 
-function queueEdit(id: string, due: number) {
+function queueEdit(id: string, at: number, { debounce = false } = {}) {
   const previous = pending.get(id)
-  // An edit made during an upload starts a new batch. A slow response
-  // must never turn continuous editing back into a request per move.
-  pending.set(id, { due: Math.min(due, previous === uploading.get(id) ? Infinity : previous?.due ?? Infinity) })
+  const edit = { due: at + (debounce ? editDebounce : 0), deadline: at + (debounce ? batchLimit : 0) }
+  // Edits during an upload start a new batch and keep their own deadline.
+  if (previous && previous !== uploading.get(id)) {
+    edit.deadline = Math.min(edit.deadline, previous.deadline)
+    if (!debounce) edit.due = Math.min(edit.due, previous.due)
+  }
+  edit.due = Math.min(edit.due, edit.deadline)
+  pending.set(id, edit)
+}
+
+function expediteEdit(edit: PendingEdit, due: number) {
+  edit.deadline = Math.min(edit.deadline, due)
+  edit.due = Math.min(edit.due, due)
 }
 
 function expedite() {
   const due = Date.now()
-  for (const edit of pending.values()) edit.due = due
+  for (const edit of pending.values()) expediteEdit(edit, due)
   arm()
 }
 
@@ -242,7 +253,7 @@ async function flush() {
         // that puzzle with the latest save at backoff, alongside its old batch.
         for (const id of edits.keys()) {
           const edit = pending.get(id)
-          if (edit) edit.due = Math.min(edit.due, retryAt)
+          if (edit) expediteEdit(edit, retryAt)
         }
       }
       reportError(target, error)
@@ -286,7 +297,7 @@ async function syncPuzzle(id: string) {
         if (!stillLinked(target)) return
         recordCloudCheck(state.ready)
         if (!result.failures.has(id) && !result.copies.has(id) && await target.engine.pending(id)) {
-          if (!pending.has(id)) queueEdit(id, Date.now() + batchDelay)
+          if (!pending.has(id)) queueEdit(id, Date.now(), { debounce: true })
         }
       } catch (error) {
         if (!stillLinked(target)) return
@@ -337,7 +348,9 @@ export const deviceSync = {
       failures.delete(id)
       checkFailures.delete(id)
       conflicts.delete(id)
-      queueEdit(id, Date.now() + (handoff ? checkDelay : batchDelay))
+      const now = Date.now()
+      if (handoff) queueEdit(id, now + checkDelay)
+      else queueEdit(id, now, { debounce: true })
       puzzlesChanged()
       arm()
     })
@@ -346,7 +359,7 @@ export const deviceSync = {
       const next = roomStore.getSnapshot().active
       if (selected && next !== selected && pending.has(selected)) {
         const edit = pending.get(selected)!
-        edit.due = Math.min(edit.due, Date.now() + checkDelay)
+        expediteEdit(edit, Date.now() + checkDelay)
         arm()
       }
       selected = next
