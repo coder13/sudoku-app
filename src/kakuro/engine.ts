@@ -239,3 +239,11 @@ export function solveKakuro(
   const status = limited ? 'search-limit' : (['unsolvable', 'unique', 'multiple'] as const)[solutions.length]
   return { status, solution: solutions[0] ?? null, nodes }
 }
+
+// Count the candidates left after run deductions. A fully resolved puzzle
+// has exactly one candidate per white cell.
+export function countKakuroCandidates(puzzle: KakuroPuzzle): number | null {
+  const domains = createDomains(puzzle, [])
+  if (!propagate(puzzle, domains)) return null
+  return domains.reduce((count, mask) => count + digitCounts[mask], 0)
+}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { kakuroRecipeSignature } from '../scripts/generate-kakuro-catalog.mts'
 import { kakuroCatalog } from '../src/kakuro/catalog.ts'
 import { checkKakuro, createKakuro, findKakuroHint, solveKakuro, type KakuroPuzzle } from '../src/kakuro/engine.ts'
 
@@ -69,7 +70,22 @@ test('every Kakuro recipe has one independently counted solution and a complete 
       path[hint.cell] = hint.digit
       depth = Math.max(depth, hint.depth)
     }
-    assert.equal(depth, { easy: 1, medium: 2, hard: 4 }[difficulty], id)
+    assert.equal(depth === 1 ? 'easy' : depth === 2 ? 'medium' : 'hard', difficulty, id)
+  }
+})
+
+test('each difficulty adds eight distinct puzzles in four layouts after the starter puzzles', () => {
+  const signatures = new Set(kakuroCatalog.map(({ puzzle }) => kakuroRecipeSignature(puzzle)))
+  assert.equal(signatures.size, kakuroCatalog.length)
+
+  for (const [difficulty, starterCount] of [['easy', 3], ['medium', 3], ['hard', 2]] as const) {
+    const entries = kakuroCatalog.filter(entry => entry.difficulty === difficulty)
+    assert.equal(entries.length, starterCount + 8)
+    assert.deepEqual(entries.map(({ id }) => id),
+      entries.map((_, index) => `${difficulty}-${index + 1}`))
+    const layouts = new Set(entries.slice(starterCount).map(({ puzzle }) =>
+      `${puzzle.width}:${puzzle.cells.map(cell => cell === null ? '.' : '/').join('')}`))
+    assert.equal(layouts.size, 4)
   }
 })
 
