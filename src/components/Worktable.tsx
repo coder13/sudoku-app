@@ -1666,7 +1666,7 @@ export function Worktable({
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={!rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
-      showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle}
+      showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle} onResumePuzzle={roomStore.select}
       onChooseDifficulty={() => onNewPuzzle('difficulty')} onChooseVariant={() => onNewPuzzle()} />
   ) : null
   const solveSinglesAction = <button onClick={() => { void solveAllSingles() }} disabled={busy || !hasSingles}

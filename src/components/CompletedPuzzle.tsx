@@ -5,16 +5,25 @@ import { ArrowRight, Check, CircleCheck } from 'lucide-react'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
+import { inProgress } from '../sudoku/puzzle-activity'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { generationVariant, variantDifficulties, variantDifficulty, variantDifficultyLabel } from '../sudoku/variants'
+import { generationVariant, variantDifficulties, variantDifficulty, variantDifficultyLabel, variantName } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
-import { collectionProgress, getGameCollection, nextCollectionPuzzle } from '../sudoku/collections'
+import { collectionProgress, findCollectionGame, getGameCollection, nextCollectionPuzzle } from '../sudoku/collections'
 import { openNextCollectionPuzzle } from '../sudoku/collection-play'
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { useOnlineStatus } from './useOnlineStatus'
 
-export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, onChooseDifficulty, onChooseVariant }: {
+function activePuzzleSummary(game: Game) {
+  const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
+  const name = game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
+  const progress = !game.started ? 'Not started' : game.timeUntracked ? 'In progress' : `${formatTime(game.elapsed)} played`
+  return [name, rating, progress].filter(Boolean).join(' · ')
+}
+
+/** Show solve results and continue with the next active puzzle, a collection puzzle, or a new puzzle. */
+export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
   game: Game
   games: Game[]
   preferredDifficulty: DifficultyPreference
@@ -22,6 +31,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   shortcutEnabled: boolean
   showGuides: boolean
   cellReferenceStyle?: CellReferenceStyle
+  onResumePuzzle: (id: string) => void
   onChooseDifficulty: () => void
   onChooseVariant: () => void
 }) {
@@ -45,6 +55,10 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = generationVariant(game.variant)
   const needsChoice = !inCollection && Boolean(game.variant && !recipe)
+  const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
+  const nextActive = inProgress(games).find(puzzle =>
+    puzzle.id !== game.id && puzzle.id !== nextCollectionAttempt?.id && puzzle.source !== 'draft')
+  const resumeFirst = Boolean(nextActive && (!inCollection || !collectionNext))
   const nextDifficulty = variantDifficulty(recipe, preferredDifficulty)
   const nextLabel = needsChoice ? 'Choose another puzzle' : nextDifficulty === 'auto'
     ? `Next ${variantDifficultyLabel(recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
@@ -78,21 +92,33 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
       })
     } else void generate(preferredDifficulty, undefined, recipe)
   }, [canPlayNext, inCollection, needsChoice, game.id, recipe, generate, onChooseVariant, online, preferredDifficulty])
+  const canResume = !busy && !loadingNext
+  const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
+  const continuePlaying = resumeFirst ? resume : playNext
+  const canContinue = resumeFirst ? canResume : canPlayNext
+  const resumeAction = nextActive && (
+    <Button variant={resumeFirst ? 'primary' : 'secondary'} className="completion-resume"
+      aria-keyshortcuts={resumeFirst ? shortcutLabel(shortcuts.nextPuzzle) : undefined}
+      disabled={!canResume} onClick={resume}>
+      <span><strong>Play next active puzzle</strong><small>{activePuzzleSummary(nextActive)}</small></span>
+      <ArrowRight size={18} aria-hidden="true" />
+    </Button>
+  )
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
 
   useEffect(() => {
-    if (!shortcutEnabled || !canPlayNext) return
+    if (!shortcutEnabled || !canContinue) return
     function keydown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.repeat || !shortcutMatches(event, shortcuts, 'nextPuzzle')) return
       const target = event.target
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, dialog'))) return
       event.preventDefault()
-      playNext()
+      continuePlaying()
     }
     window.addEventListener('keydown', keydown)
     return () => window.removeEventListener('keydown', keydown)
-  }, [canPlayNext, playNext, shortcutEnabled, shortcuts])
+  }, [canContinue, continuePlaying, shortcutEnabled, shortcuts])
 
   return (
     <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
@@ -133,20 +159,26 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
           </p>}
           {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
           <div className="completion-actions">
-            {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
-              ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
-              : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
-              : <Button variant="primary" className="completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)} disabled={!canPlayNext}
-              onClick={playNext}>
-              {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
-              {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
-            </Button>}
-            {collectionEntry ? <>
-              <Link className={buttonClassName()} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
-              <Link className={buttonClassName()} to="/puzzles">Choose a different puzzle</Link>
-            </> : !needsChoice && <>
-              <Button disabled={busy} onClick={onChooseDifficulty}>Choose difficulty</Button>
-              <Button disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
+            {!inCollection && nextActive ? <>
+              {resumeAction}
+              <Button className="completion-next" disabled={busy} onClick={onChooseVariant}>New puzzle</Button>
+            </> : <>
+              {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
+                ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
+                : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
+                : <Button variant="primary" className="completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)}
+                  disabled={!canPlayNext} onClick={playNext}>
+                  {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
+                  {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
+                </Button>}
+              {resumeAction}
+              {collectionEntry ? <>
+                <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
+                <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles">Choose a different puzzle</Link>
+              </> : !needsChoice && <>
+                <Button disabled={busy} onClick={onChooseDifficulty}>Choose difficulty</Button>
+                <Button disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
+              </>}
             </>}
           </div>
         </div>

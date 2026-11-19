@@ -2096,6 +2096,16 @@ svg { flex-shrink: 0; }
 .completion-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
 .completion-actions .button { white-space: normal; }
 .completion-next { grid-column: 1 / -1; }
+.completion-actions .completion-resume {
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-height: 58px;
+  padding: var(--space-8) var(--space-12);
+  text-align: start;
+}
+.completion-resume > span { display: grid; gap: var(--space-2); }
+.completion-resume small { font-size: 0.8125em; font-weight: 550; }
 
 @container (max-width: 360px) {
   .completion { padding: var(--space-12); gap: var(--space-10); }
@@ -3084,6 +3094,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-completion .completion-stats dt { font-size: 0.6875rem; }
   .mobile-completion .completion-stats dd { font-size: 1rem; }
   .mobile-completion .completion-actions .button { min-height: 44px; padding-inline: var(--space-6); font-size: 0.8125rem; }
+  .mobile-completion .completion-actions .completion-resume { min-height: 56px; padding-inline: var(--space-10); }
   .mobile-completion .completion-actions .secondary { min-height: 40px; margin-block: var(--space-2); padding-inline: var(--space-4); font-size: 0.75rem; }
   .mobile-completion .completion-next svg { display: none; }
 
