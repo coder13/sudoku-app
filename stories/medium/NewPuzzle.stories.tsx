@@ -158,7 +158,7 @@ export const HidatoTwoDigitEntry: Story = {
     await userEvent.click(cell)
     const input = canvas.getByRole('textbox', { name: 'Number from 1 to 23' })
     await userEvent.type(input, '12')
-    await userEvent.click(canvas.getByRole('button', { name: 'Place', exact: true }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Place$/ }))
     await expect(cell).toHaveAccessibleName(/^R1C2, 12/)
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
   },
