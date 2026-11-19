@@ -292,7 +292,7 @@ svg { flex-shrink: 0; }
 :is(.desktop-layout-edge, .desktop-layout-divider):focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .desktop-play-resizable[data-layout-resizing] :is(.standard-workspace-page, .standard-workspace-page *),
 .desktop-play-resizable .workspace[data-layout-resizing] * { cursor: col-resize !important; }
-.standard-puzzle-stack { grid-area: puzzle; min-width: 0; min-height: 0; display: grid; align-content: start; gap: var(--space-12); overflow: auto; }
+.standard-puzzle-stack { grid-area: puzzle; min-width: 0; min-height: 0; display: grid; align-content: start; overflow: auto; }
 .standard-input-stack {
   grid-area: controls;
   min-width: 0;
@@ -360,11 +360,17 @@ svg { flex-shrink: 0; }
   box-shadow: none;
 }
 
-.standard-puzzle-stack > .hint-dock {
-  inline-size: calc(100% - 2 * var(--space-8));
-  margin-top: 0;
+.standard-hint-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--motion-standard);
 }
-.desktop-play-resizable .standard-puzzle-stack > .hint-dock { margin-inline: var(--space-8); }
+.standard-hint-slot[data-open="true"] { grid-template-rows: 1fr; }
+.standard-hint-slot > div { display: flow-root; min-height: 0; overflow: clip; overflow-clip-margin: 6px; }
+.standard-hint-slot .hint-dock {
+  inline-size: calc(100% - 2 * var(--space-8));
+}
+.desktop-play-resizable .standard-hint-slot .hint-dock { margin-inline: var(--space-8); }
 .workspace-initializing { visibility: hidden; }
 .desktop-dock { width: 100%; height: 100%; min-height: 0; }
 .desktop-dock:not(.dock-ready) { visibility: hidden; }
@@ -473,7 +479,15 @@ svg { flex-shrink: 0; }
 .dock-input-panel { display: flex; align-items: flex-start; justify-content: center; }
 .dock-input-panel .workspace-controls { width: 100%; }
 .dock-hint-panel { display: flex; align-items: flex-start; }
+.dock-hint-content { position: relative; display: grid; width: 100%; min-height: 100%; }
 .dock-hint-panel .hint-dock { width: 100%; margin: 0; }
+.dock-hint-content > .hint-dock[data-presence="exit"] {
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: 100%;
+  z-index: 1;
+  background: var(--surface);
+}
 .dock-hint-panel .hint-dock .hint-card {
   width: 100%;
   max-height: none;
@@ -778,7 +792,7 @@ svg { flex-shrink: 0; }
   .puzzle[data-input-mode="pencil"]::after { background: none; mask: none; }
 }
 .standard-workspace-page :is(.puzzle[data-input-mode], [data-solved-edge] > .puzzle),
-.standard-workspace-page .standard-puzzle-stack:has(> .puzzle-column > .puzzle[data-input-mode]) > .hint-dock {
+.standard-workspace-page .standard-puzzle-stack:has(> .puzzle-column > .puzzle[data-input-mode]) .standard-hint-slot .hint-dock {
   max-inline-size: max(240px, calc(var(--board-frame-width) + 2 * var(--puzzle-padding-inline) + 2px));
   margin-inline: auto;
 }
@@ -2344,7 +2358,6 @@ svg { flex-shrink: 0; }
 .motion-surface.surface { transition: opacity var(--motion-standard), transform var(--motion-standard),
   background-color var(--motion-standard), border-color var(--motion-standard), box-shadow var(--motion-standard); }
 .motion-surface:is(.update-prompt, .resize-session-bar) { --surface-motion-offset: -6px; }
-.mobile-panel.motion-surface { --surface-motion-offset: 0px; transition: opacity var(--motion-standard); }
 .motion-surface[data-presence="exit"] { opacity: 0; transform: translateY(var(--surface-motion-offset, 4px)); pointer-events: none; }
 @starting-style {
   .motion-surface[data-presence="open"] { opacity: 0; transform: translateY(var(--surface-motion-offset, 4px)); }
@@ -2877,6 +2890,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     padding-bottom: var(--space-8);
   }
   .standard-workspace-page .workspace:has(> .mobile-panel-layout) {
+    position: relative;
     height: auto;
     min-height: 100%;
     display: flex;
@@ -2887,7 +2901,15 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   /* Stable sibling panels keep their state and the original spacing when reordered. */
   .mobile-panel-layout { display: contents; -webkit-touch-callout: none; }
   .mobile-panel { position: relative; flex: none; min-width: 0; }
-  .mobile-panel + .mobile-panel { margin-top: 8px; }
+  .mobile-panel[data-after-gap] { margin-top: 8px; }
+  .mobile-panel[data-mobile-panel="hint"] { z-index: 1; }
+  .mobile-panel[data-presence="exit"] {
+    position: absolute;
+    top: var(--hint-exit-top);
+    left: var(--hint-exit-left);
+    width: var(--hint-exit-width);
+    visibility: var(--hint-exit-visibility, hidden);
+  }
   .mobile-panel-space { flex: 1 0 0; }
   .mobile-panel-gap { flex-basis: 8px; }
   .workspace:has(.mobile-panel-layout[data-rearranging]) { padding-top: 64px; }
@@ -2940,6 +2962,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     font-weight: 700;
   }
   .mobile-panel[data-dragging] { z-index: 64; pointer-events: none; }
+  .mobile-panel.motion-surface[data-dragging] { transition: none; }
   .mobile-panel[data-dragging] .mobile-panel-editor { outline-style: solid; box-shadow: 0 8px 24px #0003; }
   .mobile-panel[data-drop]::after {
     content: '';
@@ -3060,6 +3083,37 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzle-actions-sheet .dialog-heading button svg { width: 18px; height: 18px; }
   .puzzle-actions-sheet .puzzle-menu button:focus-visible { outline-offset: -2px; }
 
+  .hint-swipe { position: relative; border-radius: var(--radius); overflow: clip; }
+  .hint-swipe[data-enabled] :is(.hint-swipe-card, .hint-card) { touch-action: pan-y pinch-zoom; }
+  .hint-swipe-card { translate: var(--hint-swipe-offset) 0; transition: translate var(--motion-standard); }
+  .hint-swipe[data-dragging] .hint-swipe-card { transition: none; user-select: none; }
+  .hint-swipe-feedback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    background: var(--surface-hover-strong);
+    color: var(--ink);
+    pointer-events: none;
+  }
+  .hint-swipe-feedback > span {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-4);
+    width: 76px;
+    padding-inline: var(--space-4);
+    text-align: center;
+    font-size: .75rem;
+    font-weight: 730;
+  }
+  .hint-swipe[data-direction="apply"] .hint-swipe-feedback {
+    justify-content: flex-start;
+    background: light-dark(#d7f2e2, #234537);
+    color: light-dark(#17543b, #b7eed0);
+  }
+  .hint-swipe[data-direction="apply"][data-ready] .hint-swipe-feedback { background: #24704c; color: white; }
+
   .mobile-hint-panel.hint-dock {
     position: static;
     display: block;
@@ -3067,7 +3121,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     padding: 0;
   }
   .mobile-hint-panel .hint-card { width: 100%; height: 100%; padding: var(--space-4) var(--space-10) var(--space-6); }
-  .mobile-panel-layout.with-hint .mobile-hint-panel { height: clamp(130px, 24dvh, 205px); }
+  .mobile-panel-layout .mobile-hint-panel { height: clamp(130px, 24dvh, 205px); }
   .mobile-panel-layout .mobile-hint-panel .hint-card { max-height: 100%; }
   .mobile-hint-panel .hint-card-heading { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 0 var(--space-6); }
   .mobile-hint-panel .hint-card-heading-buttons { gap: 0; }
@@ -3124,13 +3178,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .board-overlay .completion { padding: var(--space-12); gap: var(--space-8); }
   .mobile-panel .completion-results { border: 1px solid var(--border); }
   .mobile-panel .completion-summary { gap: var(--space-12); }
-  .board-overlay .completion-heading {
-    grid-template-columns: 32px minmax(0, 1fr);
-    column-gap: var(--space-8);
-    justify-items: start;
-    text-align: start;
-  }
-  .board-overlay .completion-icon { display: grid; width: 32px; height: 32px; grid-row: 1 / span 2; }
+  .board-overlay .completion-icon { display: grid; width: 32px; height: 32px; }
   .board-overlay .completion-heading p { display: block; }
   .mobile-panel .completion-heading h1 { color: var(--ink); }
   .board-overlay .completion-result > div { padding-block: var(--space-6); }
@@ -3159,9 +3207,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     align-items: center;
   }
   .mobile-panel-space { display: none; }
-  .mobile-panel + .mobile-panel { margin-top: 0; }
+  .mobile-panel[data-after-gap] { margin-top: 0; }
   .mobile-panel[data-first] { grid-column: 1; grid-row: 1 / span var(--mobile-secondary-count); }
-  .mobile-panel:not([data-first]) { grid-column: 2; grid-row: var(--mobile-panel-row); }
+  .mobile-panel:not([data-first], [data-presence="exit"]) { grid-column: 2; grid-row: var(--mobile-panel-row); }
   .standard-workspace-page .puzzle,
   .standard-workspace-page .workspace:has(.mobile-panel-layout.with-hint) .puzzle {
     /* Hint and keypad share the other column, so neither reduces grid height. */

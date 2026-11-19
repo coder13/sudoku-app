@@ -1521,7 +1521,7 @@ export function Worktable({
   }
 
   function applyCandidateRecovery() {
-    if (!recovery || !visibleHint || !fullHint) return
+    if (!recovery || !visibleHint) return
     edit((current) => matchesHintPosition(current, visibleHint.position) ? restoreCandidate(current, recovery) : current, 'recovery')
     setHint(null)
     setHintRevealed(false)
@@ -1547,7 +1547,7 @@ export function Worktable({
   }
 
   function applyHint() {
-    if (!fullHint || !deduction || !hintCandidates || !visibleHint) return
+    if (!deduction || !hintCandidates || !visibleHint) return
     applyToCurrentPosition(deduction.actions, hintCandidates, visibleHint.position, deduction.technique)
     setHint(null)
     setHintRevealed(false)
@@ -1609,14 +1609,14 @@ export function Worktable({
   const hintTechnique = solutionHintPanel ? replayedSolutionStep?.deduction.technique
     : visibleHint && !recovery ? deduction?.technique : undefined
   const hintLesson = hintTechnique ? lessonRoutes.get(hintTechnique) : undefined
-  const hasHintDetails = !solutionHintPanel && (recovery || (deduction && hintCandidates))
+  const applyHintAction = solutionHintPanel ? undefined
+    : recovery ? { label: 'Restore candidate', onClick: applyCandidateRecovery }
+      : deduction && hintCandidates ? { label: 'Apply hint', onClick: applyHint } : undefined
   const revealLabel = hintStage === 'technique' ? recovery ? 'Show cell' : 'Show digits'
     : hintStage === 'digits' ? aicEndpoints(deduction) ? 'Show endpoints' : 'Show location'
       : 'Show explanation'
-  const hintAction = !hasHintDetails ? undefined
-    : !fullHint ? { label: revealLabel, onClick: () => changeHintDetail(1) }
-      : recovery ? { label: 'Restore candidate', onClick: applyCandidateRecovery }
-        : { label: 'Apply hint', onClick: applyHint }
+  const hintAction = applyHintAction && (fullHint ? applyHintAction : { label: revealLabel, onClick: () => changeHintDetail(1) })
+  const closeHint = () => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)
   const explanation = solutionHintPanel ? stepDiagram : hintDiagram
   const revealedDeduction = solutionHintPanel ? replayedSolutionStep?.deduction : fullHint && !recovery ? deduction : undefined
   const recoveryExplanation = !solutionHintPanel && recovery && fullHint
@@ -1630,14 +1630,14 @@ export function Worktable({
         removals={revealedDeduction ? describeHintRemovals(revealedDeduction, {
           difficulty: techniqueDifficulties[revealedDeduction.technique], cellReferenceStyle,
         }) : undefined}
-        onClose={() => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)}
+        onClose={closeHint}
         onShown={!solutionHintPanel && deduction ? markHintVisible : undefined}
         visuals={availableHintAnnotations && !disabled && !solved ? {
           visible: !playerVisualsSelected,
           onToggle: () => changeHintVisuals(playerVisualsSelected ? 'hint' : 'player'),
         } : undefined}
         action={hintAction}
-        lessDetail={hasHintDetails ? { disabled: hintStage === 'technique', onClick: () => changeHintDetail(-1) } : undefined}
+        lessDetail={applyHintAction ? { disabled: hintStage === 'technique', onClick: () => changeHintDetail(-1) } : undefined}
         secondaryAction={!solutionHintPanel && recoveryLocationVisible && recovery.movesAgo
           ? { label: 'Review move', expanded: visibleHint?.reviewingRemoval ?? false,
             onClick: () => setHint((current) => current?.recovery ? { ...current, reviewingRemoval: !current.reviewingRemoval } : current) }
@@ -2045,8 +2045,9 @@ export function Worktable({
           aria-label="Next puzzle options" hidden={!showMobileResults} data-no-panel-hold />}
       </div>
   )
-  const advancedHintPanel = hintPanel || (
-    <section className="advanced-spoiler-panel" aria-label="Hint">
+  const advancedHintPanel = <div className="dock-hint-content">
+    <MotionSurface>{hintPanel}</MotionSurface>
+    {!hintPanel && <section className="advanced-spoiler-panel motion-surface" data-presence="open" aria-label="Hint">
       <span className="advanced-spoiler-icon" aria-hidden="true"><Lightbulb size={21} /></span>
       <div><h2>Hint</h2><p>Hint contents stay hidden until you choose to reveal them.</p></div>
       <Button variant="primary" disabled={busy || solved || draft || game.paused} onClick={() => { void showHint() }}>
@@ -2055,8 +2056,8 @@ export function Worktable({
       <Button disabled={busy || solved || draft || game.paused} onClick={() => { void showHint('all') }}>
         <ListFilter size={17} /> Analyze all moves
       </Button>
-    </section>
-  )
+    </section>}
+  </div>
   const solutionPathPanel = solutionPathRevealed && solutionPath ? (
     <SolutionPath state={solutionPath} index={solutionStep}
       cellReferenceStyle={cellReferenceStyle} techniqueDifficulties={techniqueDifficulties}
@@ -2117,7 +2118,9 @@ export function Worktable({
         : desktop
           ? <><div className="standard-puzzle-stack">
               {puzzlePanel}
-              <MotionSurface>{hintPanel}</MotionSurface>
+              <div className="standard-hint-slot" data-open={Boolean(hintPanel)}>
+                <div><MotionSurface>{hintPanel}</MotionSurface></div>
+              </div>
             </div><div className="standard-input-stack" id="standard-digit-input">
               {inputPanel}
               <MotionSurface>{activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
@@ -2154,6 +2157,7 @@ export function Worktable({
               </section>}</MotionSurface>
             </div></>
           : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
+            hintSwipe={mobileHintOpen ? { dismiss: closeHint, apply: applyHintAction } : undefined}
             blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisDialogOpen ||
               dialogResult !== null || resetOpen || cancelDraftOpen}
             onRearrangingChange={(active) => {
