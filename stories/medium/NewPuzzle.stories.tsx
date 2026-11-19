@@ -137,7 +137,7 @@ export const KakuroFromGameTypes: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Increase difficulty' }))
     await expect(canvas.getByRole('button', { name: 'Start medium puzzle' })).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Decrease difficulty' }))
-    await userEvent.click(await canvas.findByRole('button', { name: 'Start easy puzzle' }))
+    await userEvent.click(await canvas.findByRole('link', { name: 'Play a catalog puzzle' }))
     const cell = await canvas.findByRole('button', { name: /^R2C3, empty/ })
     await userEvent.click(cell)
     await userEvent.keyboard('1')
@@ -165,7 +165,7 @@ export const CalcudokuFromGameTypes: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
     await userEvent.click(await canvas.findByRole('link', { name: /Calcudoku/ }))
-    await userEvent.click(await canvas.findByRole('button', { name: 'Start easy puzzle' }))
+    await userEvent.click(await canvas.findByRole('link', { name: 'Play a catalog puzzle' }))
     const cell = await canvas.findByRole('button', { name: /^R1C1, empty/ })
     await userEvent.click(cell)
     await userEvent.keyboard('1')
