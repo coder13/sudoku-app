@@ -32,7 +32,7 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 ## App integration
 
-The current priority is UI parity for all seven rule families already in the engine, plus New Puzzle generation for every supported variant, including the thirteen import-only families. [Parity inventory and acceptance](SUDOKU_ENGINE_UI_PARITY.md)
+All seven formerly missing engine families now have app UI. The current priority is New Puzzle generation for every supported variant: Anti-King is released, and twelve of the original thirteen import-only families still need recipes. [Parity inventory and acceptance](SUDOKU_ENGINE_UI_PARITY.md)
 
 - [x] Integrate Between Lines with complete import, visible/accessibly labelled clues, input/candidates, history, persistence, sharing, hints, Finder/pages and solutions. [PR 190](https://github.com/coder13/sudoku-app/pull/190)
 - [x] Preserve the complete published Newman grid/solution and Raumplaner’s original zero-given Between/black-dot export. Independently verify both unique completions, original path order and all companion rules.
