@@ -9,9 +9,10 @@ import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { puzzleLinkHash } from '../sudoku/formats'
-import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
+import { createGameId, EMPTY, makeGame, setGamePaused, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
+import { puzzleTiming } from '../sudoku/puzzle-timing'
 import {
   DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, INPUT_SIZE_STEP, MAX_INPUT_SIZE,
   ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY, ERROR_MODE_KEY, HIGHLIGHT_KEY,
@@ -105,6 +106,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [puzzleBrowserView, setPuzzleBrowserView] = usePlayPreference('puzzleBrowserView')
   const [panelHeight, setPanelHeight] = useState(280)
   const [workspaceReady, setWorkspaceReady] = useState(false)
+  const [openingOnLaunch, setOpeningOnLaunch] = useState(homeRoute)
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
   const savedAppearance = useRef(appearance)
@@ -225,6 +227,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', zoomText, true)
   }, [workspaceReady])
   useEffect(() => roomStore.onPlay(id => {
+    const openingSharedLink = PUZZLE_LINK.test(window.location.hash.slice(1))
+    if (!openingSharedLink) setOpeningOnLaunch(false)
     if (!id && !new URLSearchParams(window.location.search).has('puzzle')) return
     if (id) {
       const next = roomStore.getSnapshot().games.find(game => game.id === id)
@@ -234,7 +238,21 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     else void navigate({ to: '/puzzles/browse', viewTransition: false })
   }), [navigate])
   useEffect(() => {
-    if (!workspaceReady || !homeRoute || requested || stoppedPlaying || linkError || puzzleLink) return
+    if (!workspaceReady) return
+    if (!homeRoute || (stoppedPlaying && !requested) || linkError) {
+      if (openingOnLaunch) setOpeningOnLaunch(false)
+      return
+    }
+    if (requested) {
+      // Wait for linked preferences and puzzle state before the timer can run.
+      if (!openingOnLaunch || !sync.ready || openingPuzzleLink) return
+      if (game && puzzleTiming.getSnapshot().pauseOnOpen) {
+        roomStore.update(game.id, current => setGamePaused(current, true, { onOpen: true }))
+      }
+      setOpeningOnLaunch(false)
+      return
+    }
+    if (puzzleLink) return
     const localLaunch = hasLocalPuzzleAtLaunch.current
     // Open a local save without waiting for the network. A cloud-only launch
     // waits for the full list so the first download cannot select an older puzzle.
@@ -242,7 +260,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const resumable = inProgress(games)
     const puzzle = (localLaunch ? resumable.find(item => item.id === active) : undefined) ?? resumable[0]
     if (puzzle) void navigate({ to: '/', search: { puzzle: puzzle.id }, replace: true, viewTransition: false })
-  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, games, active, navigate, puzzleLink])
+    else if (openingOnLaunch && sync.ready) setOpeningOnLaunch(false)
+  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, games, game, active, navigate, puzzleLink, openingOnLaunch, openingPuzzleLink])
   useEffect(() => {
     if (!workspaceReady || !requested || !hasRequestedGame) return
     const location = new URL(window.location.href)
@@ -528,6 +547,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
       ) : playRoute && openingPuzzleLink ? (
         <main className="page sync-page"><h1>Opening puzzle…</h1></main>
+      ) : playRoute && game && openingOnLaunch ? (
+        <main className="page sync-page"><h1>Loading puzzle…</h1></main>
       ) : playRoute && !game ? (
         <main className="page sync-page"><h1>{sync.linked && !sync.ready ? 'Loading puzzle…' : 'Puzzle unavailable on this device'}</h1>
           {linkError ? <p role="alert">{linkError}</p> : <p>{sync.linked

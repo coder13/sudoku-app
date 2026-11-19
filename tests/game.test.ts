@@ -41,9 +41,18 @@ test('saved puzzle state is independent from its source and survives a reset', (
   assert.equal(reset.archived, true)
 })
 
-test('only a started puzzle can be paused and resumed', () => {
+test('a puzzle can be paused on open before its first move', () => {
   assert.equal(setGamePaused(STARTER_GAME, true), STARTER_GAME)
+  const unopened = setGamePaused(STARTER_GAME, true, { onOpen: true })
+  assert.equal(unopened.paused, true)
+  assert.equal(unopened.started, false)
+  assert.deepEqual(setGamePaused(unopened, false), STARTER_GAME)
 
+  const draft = makeGame('draft', 'Draft', STARTER, 'draft')
+  assert.equal(setGamePaused(draft, true, { onOpen: true }), draft)
+})
+
+test('a started puzzle can be paused and resumed', () => {
   const started = enter(STARTER_GAME, [2], 'candidate', 4)
   const paused = setGamePaused(started, true)
   assert.equal(paused.paused, true)
