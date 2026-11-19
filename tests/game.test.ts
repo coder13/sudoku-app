@@ -201,6 +201,23 @@ test('entering a digit removes peer candidates and undo restores them', () => {
   assert.deepEqual(undo(filled).position, marked.position)
 })
 
+test('turning automatic cleanup off preserves peer candidates when a digit is placed', () => {
+  const bit = 1 << (4 - 1)
+  const marked = enter(STARTER_GAME, [2, 3, 18], 'candidate', 4)
+  const masks = Array(81).fill(bit)
+  const placements = [
+    enter(marked, [2], 'value', 4, { removeCandidates: false }),
+    applyDeduction(marked, [{ place: { cell: 2, digit: 4 } }], masks, false),
+  ]
+  for (const placed of placements) {
+    assert.equal(placed.position.entries[2], '4')
+    assert.equal(placed.position.corner[2], 0)
+    assert.equal(placed.position.corner[3], bit)
+    assert.equal(placed.position.corner[18], bit)
+    assert.deepEqual(undo(placed).position, marked.position)
+  }
+})
+
 test('candidate input consolidates legacy center notes into the 3x3 note grid', () => {
   const center = [...STARTER_GAME.position.center]
   center[2] = 1 << (4 - 1)

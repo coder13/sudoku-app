@@ -16,9 +16,9 @@ import type { ChainSketchState } from './chain-sketch.ts'
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
 export type ColorTarget = 'cell' | 'candidate'
-export type ErrorMode = 'all' | 'incorrect' | 'none'
+export type ErrorMode = 'all' | 'incorrect' | 'conflicts' | 'none'
 export type Source = 'starter' | 'generated' | 'imported' | 'collection' | 'custom' | 'draft'
-export type EnterOptions = { allowMultipleValues?: boolean; toggleValue?: boolean; candidateAction?: 'add' | 'remove' }
+export type EnterOptions = { allowMultipleValues?: boolean; toggleValue?: boolean; candidateAction?: 'add' | 'remove'; removeCandidates?: boolean }
 
 export type Position = {
   entries: string
@@ -356,7 +356,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
         if (entries[i] !== '0' && entries[i] !== String(value)) replacedEntry = true
         entries = entries.slice(0, i) + value + entries.slice(i + 1)
       }
-      if (value) {
+      if (value && options.removeCandidates !== false) {
         const bit = 1 << (value - 1)
         const clearCandidates = (mask: number, i: number) => editable.reduce((remaining, cell) =>
           remaining & ~((peer(cell, i, game.variant?.puzzle) ? bit : 0) |
@@ -366,8 +366,9 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
         center = center.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
         corner = corner.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
       } else {
-        center = center.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
-        corner = corner.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
+        const clearCell = (mask: number, i: number) => editable.includes(i) && (value || game.position.entries[i] === '0') ? 0 : mask
+        center = center.map(clearCell)
+        corner = corner.map(clearCell)
       }
     } else {
       const empty = editable.filter((i) => entries[i] === '0')
@@ -446,7 +447,7 @@ export function hintEliminations(values: string, displayedCandidates: readonly n
   })
 }
 
-export function fillEntries(game: Game, nextValues: string): Game {
+export function fillEntries(game: Game, nextValues: string, removeCandidates = true): Game {
   if (!/^[0-9]{81}$/.test(nextValues)) return game
   const entries = [...game.position.entries]
   const center = [...game.position.center]
@@ -459,17 +460,19 @@ export function fillEntries(game: Game, nextValues: string): Game {
     entries[index] = String(digit)
     center[index] = 0
     corner[index] = 0
-    const bit = 1 << (digit - 1)
-    for (let peerIndex = 0; peerIndex < 81; peerIndex++) {
-      const removed = (peer(index, peerIndex, game.variant?.puzzle) ? bit : 0) |
-        variantDigitExclusions(game.variant?.puzzle, index, peerIndex, digit)
-      center[peerIndex] &= ~removed
-      corner[peerIndex] &= ~removed
+    if (removeCandidates) {
+      const bit = 1 << (digit - 1)
+      for (let peerIndex = 0; peerIndex < 81; peerIndex++) {
+        const removed = (peer(index, peerIndex, game.variant?.puzzle) ? bit : 0) |
+          variantDigitExclusions(game.variant?.puzzle, index, peerIndex, digit)
+        center[peerIndex] &= ~removed
+        corner[peerIndex] &= ~removed
+      }
     }
     changed = true
   }
 
-  if (changed) {
+  if (changed && removeCandidates) {
     const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
     const ruleMasks = placedRuleState(game.variant?.puzzle, values)?.allowed
     if (ruleMasks) for (let cell = 0; cell < 81; cell++) {
@@ -480,14 +483,14 @@ export function fillEntries(game: Game, nextValues: string): Game {
   return changed ? move(game, { ...game.position, entries: entries.join(''), center, corner }) : game
 }
 
-export function applyDeduction(game: Game, actions: readonly DeductionAction[], candidates: readonly number[]): Game {
+export function applyDeduction(game: Game, actions: readonly DeductionAction[], candidates: readonly number[], removeCandidates = true): Game {
   const first = actions[0]
   if (!first) return game
   const values = valuesOf(game)
   if ('place' in first) {
     const { cell, digit } = first.place
     if (values[cell] !== '0' || !hasCandidate(candidates[cell], digit)) return game
-    return fillEntries(game, values.slice(0, cell) + digit + values.slice(cell + 1))
+    return fillEntries(game, values.slice(0, cell) + digit + values.slice(cell + 1), removeCandidates)
   }
 
   const { center, corner } = game.position

@@ -26,6 +26,9 @@ export const DigitPad: Story = {}
 export const MobileCandidateMatching: Story = {
   args: { compact: true, highlightMode: true, highlightedDigitMask: 3, digitHighlightMatch: 'all', onDigitHighlightMatchChange: fn() },
 }
+export const MobileRemainingDigits: Story = {
+  args: { compact: true, advancedModes: { ...meta.args.advancedModes, keypadProgress: 'count' } },
+}
 export const CenterAndCorner: Story = {
   args: { mode: 'corner', pencil: true, advancedModes: { ...meta.args.advancedModes, candidateLayout: 'center-corner' } },
 }

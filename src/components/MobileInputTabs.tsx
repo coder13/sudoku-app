@@ -1,13 +1,15 @@
 import { type ReactNode, type Ref, useId, useLayoutEffect, useRef, useState } from 'react'
-import { MoreHorizontal, Palette, X } from 'lucide-react'
+import { MoreHorizontal, Palette, PencilLine, X } from 'lucide-react'
 import { IconButton } from './Button'
 
 const labels = { digits: 'Digits', colors: 'Colors', chains: 'Chains' }
 export type MobileInputTab = keyof typeof labels
 export type MobileInputTool = Exclude<MobileInputTab, 'digits'>
 
-function InputToolsMenu({ disabled, onOpen }: {
+function InputToolsMenu({ disabled, candidatesDisabled, onGenerateCandidates, onOpen }: {
   disabled: boolean
+  candidatesDisabled?: boolean
+  onGenerateCandidates?: () => void
   onOpen: (opener: HTMLButtonElement | null) => void
 }) {
   const id = useId()
@@ -29,7 +31,7 @@ function InputToolsMenu({ disabled, onOpen }: {
       menu.style.top = `${Math.max(gap, opensAbove ? anchor.top - gap - menu.offsetHeight : anchor.bottom + gap)}px`
     }
     position()
-    menu.querySelector('button')?.focus({ preventScroll: true })
+    menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
     window.addEventListener('resize', position)
     window.addEventListener('scroll', position, true)
     return () => {
@@ -56,6 +58,9 @@ function InputToolsMenu({ disabled, onOpen }: {
         event.preventDefault()
         close()
       }}>
+      {onGenerateCandidates && <button type="button" disabled={candidatesDisabled} onClick={() => { close(); onGenerateCandidates() }}>
+        <PencilLine size={17} aria-hidden="true" /> Generate all candidates
+      </button>}
       <button type="button" onClick={() => { close(); onOpen(trigger.current) }}>
         <Palette size={17} aria-hidden="true" /> Colors &amp; Chains
       </button>
@@ -64,13 +69,16 @@ function InputToolsMenu({ disabled, onOpen }: {
 }
 
 /** Show Digits and any open solving tools in the mobile input card. Worktable owns the saved tab selection. */
-export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, onOpenTools, onSelect, onClose }: {
+export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, onOpenTools,
+  candidatesDisabled, onGenerateCandidates, onSelect, onClose }: {
   active: MobileInputTab
   open: MobileInputTool[]
   panels: Record<MobileInputTab, ReactNode>
   activeTabRef: Ref<HTMLButtonElement>
   toolsDisabled: boolean
   onOpenTools?: (opener: HTMLButtonElement | null) => void
+  candidatesDisabled?: boolean
+  onGenerateCandidates?: () => void
   onSelect: (tab: MobileInputTab) => void
   onClose: (tab: MobileInputTool) => void
 }) {
@@ -107,7 +115,8 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
           role={open.length ? 'tabpanel' : undefined} aria-labelledby={open.length ? `${id}-tab-${tab}` : undefined}
           className={digits ? 'mobile-input-digits' : 'mobile-input-tool'} hidden={!digits && !selected} inert={!selected}
           tabIndex={!digits && selected ? 0 : undefined} data-no-panel-hold={!digits || undefined}>
-          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} onOpen={onOpenTools} />}
+          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} onOpen={onOpenTools}
+            candidatesDisabled={candidatesDisabled} onGenerateCandidates={onGenerateCandidates} />}
           {panels[tab]}
         </div>
       })}

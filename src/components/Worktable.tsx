@@ -948,28 +948,33 @@ export function Worktable({
     setCandidatePreviewCell(null)
   }, [canPreviewCandidates, candidateMode, selectedDigit, temporaryPencil])
 
+  const showSolutionErrors = errorMode === 'all' || errorMode === 'incorrect'
   useEffect(() => {
     let current = true
-    setSolution(variant?.solution ?? null)
-    if (!draft && !variant) {
+    setSolution(showSolutionErrors ? variant?.solution ?? null : null)
+    if (!draft && showSolutionErrors && !variant) {
       void runEngine({ type: 'solve', values: game.givens })
         .then((result) => { if (current) setSolution(result) })
         .catch(() => { /* Checking still works if the solution cannot be loaded. */ })
     }
     return () => { current = false }
-  }, [draft, game.givens, variant])
+  }, [draft, game.givens, showSolutionErrors, variant])
 
   const errors = useMemo(() => {
     const result = new Set<number>()
     if (errorMode === 'none' || draft) return result
+    if (errorMode === 'conflicts') return conflicts
     if (errorMode === 'all') conflicts.forEach((index) => result.add(index))
-    if (solution) {
+    if (showSolutionErrors && solution) {
       for (let index = 0; index < 81; index++) {
         if (game.position.entries[index] !== '0' && game.position.entries[index] !== solution[index]) result.add(index)
       }
     }
     return result
-  }, [conflicts, draft, errorMode, game.position.entries, solution])
+  }, [conflicts, draft, errorMode, game.position.entries, showSolutionErrors, solution])
+
+  const nakedSinglesRequest = useRef(0)
+  useEffect(() => () => { nakedSinglesRequest.current++ }, [advancedModes.autoPlaceNakedSingles, advancedModes.autoRemoveCandidates, disabled, id, modalOpen])
 
   function edit(transform: (current: Game) => Game, kind: ActionKind = transform === undo ? 'undo' : transform === redo ? 'redo' : 'edit',
     options?: { technique?: string; actions?: readonly DeductionAction[] }) {
@@ -979,14 +984,43 @@ export function Worktable({
 
   function enterFromInput(cells: number[], digit: number, inputMode: Mode, options?: EnterOptions) {
     if (inputMode === 'color') changeHintVisuals('player')
+    let placement: Game | undefined
     edit((current) => {
       const origin = current
-      const next = enter(origin, cells, inputMode, digit, options)
+      const next = enter(origin, cells, inputMode, digit, { removeCandidates: advancedModes.autoRemoveCandidates, ...options })
       const actions = playerActions(origin, next, cells, inputMode, digit)
       if (actions.length && !completed) void observeTechniqueActions(origin, actions, 'independent',
         hintEliminations(valuesOf(origin), completeCandidateMasks(origin), origin.position.eliminations))
+      if (advancedModes.autoPlaceNakedSingles && !draft && !completed && !next.paused && inputMode === 'value' && digit &&
+        cells.some(cell => next.position.entries[cell] === String(digit) && origin.position.entries[cell] !== String(digit))) placement = next
       return next
     })
+    if (placement) void placeNakedSingles(placement)
+  }
+
+  async function placeNakedSingles(origin: Game) {
+    const request = ++nakedSinglesRequest.current
+    const entered = valuesOf(origin)
+    if (isSolved(origin) || conflictsOf(entered, origin.variant?.puzzle).size) return
+    try {
+      const available = await playCandidates(origin)
+      if (request !== nakedSinglesRequest.current || !available || available.some((mask, cell) => entered[cell] === '0' && !mask)) return
+      const placements = available.flatMap((mask, cell) => {
+        const digit = entered[cell] === '0' ? onlyCandidate(mask) : null
+        return digit === null ? [] : [{ place: { cell, digit } }]
+      })
+      if (!placements.length) return
+      const result = [...entered]
+      for (const { place } of placements) result[place.cell] = String(place.digit)
+      const filled = result.join('')
+      if (conflictsOf(filled, origin.variant?.puzzle).size) return
+      updateWorkingGame((current) => {
+        if (current.paused || current.position !== origin.position) return current
+        const next = recordAction(current, fillEntries(current, filled, advancedModes.autoRemoveCandidates), 'singles')
+        void observeTechniqueActions(current, placements, 'automated')
+        return current.ratingAttempt ? { ...next, ratingAttempt: addSinglesAssistance(current.ratingAttempt, 'partial') } : next
+      })
+    } catch { /* The player's move remains saved if the engine cannot find candidates. */ }
   }
 
   function toggleChainHighlight(digit: number) {
@@ -1545,12 +1579,12 @@ export function Worktable({
     try {
       const masks = await playCandidates(game)
       const current = readWorkingGame()
-      if (!current || valuesOf(current) !== values) return
+      if (!current || current.position !== game.position) return
       if (!masks) {
         setDialogResult({ title: 'Puzzle action', text: 'Candidates cannot be generated until the grid conflicts are resolved.', tone: 'error' })
         return
       }
-      updateWorkingGame((latest) => valuesOf(latest) === values
+      updateWorkingGame((latest) => latest.position === current.position
         ? recordAction(latest, replaceCandidates(latest, masks), 'candidates') : latest)
     } catch (error) {
       setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
@@ -1578,7 +1612,7 @@ export function Worktable({
       const assistance = values === givens && !removedCandidates && !result.includes('0') ? 'all' : 'partial'
       updateWorkingGame((latest) => {
         if (valuesOf(latest) !== values || latest.position.eliminations !== eliminations) return latest
-        const next = recordAction(latest, fillEntries(latest, result), 'singles')
+        const next = recordAction(latest, fillEntries(latest, result, advancedModes.autoRemoveCandidates), 'singles')
         if (completed) return next
         const placements = [...result].flatMap((digit, cell) => digit !== '0' && values[cell] !== digit ? [{ place: { cell, digit: Number(digit) } }] : [])
         void observeTechniqueActions(latest, placements, 'automated')
@@ -1721,7 +1755,7 @@ export function Worktable({
     edit((current) => {
       const currentPosition = matchesHintPosition(current, hintSnapshot ?? hintPosition)
       if (!currentPosition) return current
-      const next = applyDeduction(current, actions, candidates)
+      const next = applyDeduction(current, actions, candidates, advancedModes.autoRemoveCandidates)
       applied = next !== current
       if (applied && !hintSnapshot && !completed) void observeTechniqueActions(current, actions, 'independent',
         hintEliminations(valuesOf(current), completeCandidateMasks(current), current.position.eliminations))
@@ -2145,7 +2179,7 @@ export function Worktable({
         <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
           data-input-mode={gridInputMode}
           data-desktop-solved={desktop && completed && !previewing || undefined}
-          style={{ '--board-font-scale': appearance.gridTextScale } as CSSProperties}>
+          style={{ '--board-font-scale': appearance.gridTextScale, '--candidate-font-scale': appearance.candidateTextSize / 100 } as CSSProperties}>
         {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
           {difficulty && <span className="puzzle-difficulty">
             <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
@@ -2412,6 +2446,7 @@ export function Worktable({
                 content: <MobileInputTabs active={activeMobileInput} open={openMobileTools}
                   panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel }} activeTabRef={activeMobileInputTabRef}
                   toolsDisabled={disabled} onOpenTools={mobileToolsAvailable ? opener => openMobileInput('colors', opener) : undefined}
+                  onGenerateCandidates={mobileToolsAvailable ? () => { void generateCandidates() } : undefined} candidatesDisabled={busy}
                   onSelect={selectMobileInput} onClose={closeMobileInput} />,
               },
             }} />}
