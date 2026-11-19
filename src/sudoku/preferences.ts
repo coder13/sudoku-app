@@ -18,8 +18,13 @@ export type AdvancedModes = {
   colorsEnabled: boolean
   multiSelectButton: boolean
   autoGenerateCandidates: boolean
+  autoRemoveCandidates: boolean
+  autoPlaceNakedSingles: boolean
+  keypadProgress: 'off' | 'dim' | 'count'
   doubleClickSingles: boolean
 }
+
+export const CANDIDATE_TEXT_SIZES = [85, 100, 115, 130] as const
 
 export type WorkspaceMode = 'standard' | 'advanced'
 
@@ -31,6 +36,7 @@ export type AppearancePreferences = {
   darkTheme: ThemeId
   showGuides: boolean
   gridTextScale: number
+  candidateTextSize: typeof CANDIDATE_TEXT_SIZES[number]
   appTextZoom: number
 }
 
@@ -47,16 +53,20 @@ export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
   colorsEnabled: false,
   multiSelectButton: false,
   autoGenerateCandidates: false,
+  autoRemoveCandidates: true,
+  autoPlaceNakedSingles: false,
+  keypadProgress: 'dim',
   doubleClickSingles: true,
 }
 
-export const DEFAULT_ERROR_MODE: ErrorMode = 'all'
+export const DEFAULT_ERROR_MODE: ErrorMode = 'conflicts'
 export const DEFAULT_APPEARANCE: AppearancePreferences = {
   colorMode: 'system',
   lightTheme: 'violet',
   darkTheme: DEFAULT_DARK_THEME,
   showGuides: false,
   gridTextScale: DEFAULT_GRID_TEXT_SCALE,
+  candidateTextSize: 100,
   appTextZoom: DEFAULT_APP_TEXT_ZOOM,
 }
 export const DEFAULT_HIGHLIGHT_PREFERENCES: HighlightPreferences = {
@@ -81,7 +91,7 @@ export const DIFFICULTY_KEY = 'sudoku-app:v1:difficulty'
 export const NEW_PUZZLE_KEY = 'sudoku-app:v1:new-puzzle'
 export const CELL_REFERENCE_STYLE_KEY = 'sudoku-app:v1:hint-cell-reference-style'
 
-const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'none'])
+const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'conflicts', 'none'])
 const COLOR_MODES = new Set<ColorMode>(['system', 'light', 'dark'])
 const CANDIDATE_HIGHLIGHT_STYLES = new Set<CandidateHighlightStyle>(['text', 'spotlight', 'cell', 'outline'])
 
@@ -111,6 +121,9 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
         colorsEnabled: savedModes.colorsEnabled === true,
         multiSelectButton: savedModes.multiSelectButton === true,
         autoGenerateCandidates: savedModes.autoGenerateCandidates === true,
+        autoRemoveCandidates: savedModes.autoRemoveCandidates !== false,
+        autoPlaceNakedSingles: savedModes.autoPlaceNakedSingles === true,
+        keypadProgress: savedModes.keypadProgress === 'off' || savedModes.keypadProgress === 'count' ? savedModes.keypadProgress : 'dim',
         doubleClickSingles: savedModes.doubleClickSingles !== false,
       }
     }
@@ -132,6 +145,7 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
         darkTheme: darkTheme && THEME_IDS_SET.has(darkTheme) ? darkTheme : DEFAULT_APPEARANCE.darkTheme,
         showGuides: savedAppearance.showGuides === true,
         gridTextScale: clampGridTextScale(savedAppearance.gridTextScale),
+        candidateTextSize: CANDIDATE_TEXT_SIZES.find(size => size === savedAppearance.candidateTextSize) ?? DEFAULT_APPEARANCE.candidateTextSize,
         appTextZoom: typeof savedAppearance.appTextZoom === 'number' && Number.isFinite(savedAppearance.appTextZoom)
           ? clampAppTextZoom(Math.round(savedAppearance.appTextZoom)) : DEFAULT_APP_TEXT_ZOOM,
       }

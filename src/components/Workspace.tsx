@@ -478,6 +478,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (returnId) roomStore.select(returnId)
   }
 
+  const activePuzzles = inProgress(games)
+  const onlyActivePuzzle = activePuzzles.length === 1 ? activePuzzles[0] : undefined
   const emptyPuzzleContent = <div className="empty-puzzle-content">
     <Link className={buttonClassName('primary')} to="/puzzles/new"><Plus size={18} />New puzzle</Link>
   </div>
@@ -487,7 +489,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
           <div className="topbar-brand">
-            <Link to="/puzzles/browse" className="wordmark" onClick={() => setMenuOpen(false)}>
+            <Link to={onlyActivePuzzle ? '/' : '/puzzles/browse'} search={onlyActivePuzzle && { puzzle: onlyActivePuzzle.id }}
+              className="wordmark" onClick={() => setMenuOpen(false)}>
               <span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>Sudoku
             </Link>
             <SyncConnectionStatus connection={syncConnection} />
