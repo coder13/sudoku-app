@@ -1,7 +1,7 @@
-import { Button } from './Button'
-import { useEffect, useRef, useState } from 'react'
+import { Button, buttonClassName } from './Button'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type jsQR from 'jsqr'
-import { createPairingScanTracker, pairingTicket } from '../sudoku/pairing-link'
+import { createPairingScanTracker, isProductionSyncOrigin, readPairingLink, sharesPairingService } from '../sudoku/pairing-link'
 
 function readCode(source: CanvasImageSource, width: number, height: number, decode: typeof jsQR, maxEdge: number) {
   const scale = Math.min(1, maxEdge / Math.max(width, height))
@@ -15,13 +15,25 @@ function readCode(source: CanvasImageSource, width: number, height: number, deco
   return decode(image.data, image.width, image.height)?.data
 }
 
-export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => void }) {
+export function PairingScanner({ pairingOrigin, onTicket }: {
+  pairingOrigin: string
+  onTicket: (ticket: string) => void
+}) {
   const video = useRef<HTMLVideoElement>(null)
   const file = useRef<HTMLInputElement>(null)
   const scanVersion = useRef(0)
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [error, setError] = useState('')
+  const [otherOrigin, setOtherOrigin] = useState<string | null>(null)
+  const matchingScanner = otherOrigin && isProductionSyncOrigin(otherOrigin) ? new URL('/sync/scan', otherOrigin) : null
+  const checkCode = useCallback((text: string) => {
+    const link = readPairingLink(text)
+    const mismatch = link && !sharesPairingService(link.origin, pairingOrigin) ? link.origin : null
+    setOtherOrigin(mismatch)
+    setError(link ? '' : 'Use the QR code from Device sync on your other device.')
+    return mismatch ? null : link?.ticket ?? null
+  }, [pairingOrigin])
 
   useEffect(() => {
     const element = video.current!
@@ -51,10 +63,7 @@ export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => voi
             let ticket = null
             if (!document.hidden && element.readyState >= 2 && element.videoWidth) {
               const text = readCode(element, element.videoWidth, element.videoHeight, decode, 800)
-              if (text) {
-                ticket = pairingTicket(text, location.origin)
-                setError(ticket ? '' : 'Use the code from Device sync on your other device.')
-              }
+              if (text) ticket = checkCode(text)
             }
             const confirmed = observe(ticket, performance.now())
             if (confirmed) { stop(); onTicket(confirmed); return }
@@ -74,11 +83,12 @@ export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => voi
       document.removeEventListener('visibilitychange', resetScan)
       stop()
     }
-  }, [onTicket])
+  }, [checkCode, onTicket])
 
   async function scanPhoto(photo: File) {
     const version = ++scanVersion.current
     setError('')
+    setOtherOrigin(null)
     if (photo.size > 20 * 1024 * 1024) { setError('Choose a QR photo under 20 MB.'); return }
     const url = URL.createObjectURL(photo)
     try {
@@ -87,9 +97,12 @@ export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => voi
       const [, { default: decode }] = await Promise.all([image.decode(), import('jsqr')])
       if (version !== scanVersion.current) return
       const text = readCode(image, image.naturalWidth, image.naturalHeight, decode, 1600)
-      const ticket = text && pairingTicket(text, location.origin)
+      if (!text) {
+        setError('No QR code found. Try a closer photo with the whole code in view.')
+        return
+      }
+      const ticket = checkCode(text)
       if (ticket) onTicket(ticket)
-      else setError(text ? 'Use the code from Device sync on your other device.' : 'No QR code found. Try a closer photo with the whole code in view.')
     } catch {
       if (version === scanVersion.current) setError('Couldn’t read that photo. Try a screenshot or another image.')
     } finally { URL.revokeObjectURL(url) }
@@ -99,6 +112,11 @@ export function PairingScanner({ onTicket }: { onTicket: (ticket: string) => voi
     <video ref={video} className="sync-camera" hidden={Boolean(cameraError)} muted playsInline autoPlay aria-label="QR scanner camera" />
     {cameraError ? <p role="status">{cameraError}</p> : !cameraReady && <p role="status">Opening camera…</p>}
     {error && <p role="alert">{error}</p>}
+    {otherOrigin && <p className="sync-scan-origin" role="alert">This code is for{' '}
+      <strong>{matchingScanner?.host ?? otherOrigin}</strong>.
+      {!matchingScanner && ' Open Device sync at that address and scan again.'}
+    </p>}
+    {matchingScanner && <a className={buttonClassName('primary')} href={matchingScanner.href}>Scan on {matchingScanner.host}</a>}
     <input ref={file} type="file" accept="image/*" hidden aria-label="QR photo" onChange={event => {
       const photo = event.target.files?.[0]
       event.target.value = ''

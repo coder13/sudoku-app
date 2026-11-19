@@ -5,6 +5,8 @@ import { SudokuShell, Workspace } from '../../src/components/Workspace'
 import { LearnLayout } from '../../src/routes/learn'
 import { LessonPage } from '../../src/routes/learn.$technique'
 import { LessonOverview } from '../../src/routes/learn.index'
+import { Route as ImportRoute } from '../../src/routes/import'
+import { Route as NewPuzzleRoute } from '../../src/routes/puzzles.new'
 
 export const noop = () => {}
 
@@ -41,6 +43,13 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
       component: () => shell ? <SudokuShell><Outlet /></SudokuShell> : <Outlet />,
     })
     const index = createRoute({ getParentRoute: () => root, path: '/', component: IndexSlot })
+    const importPuzzle = createRoute({ getParentRoute: () => root, path: 'import', component: ImportRoute.options.component })
+    const puzzles = createRoute({ getParentRoute: () => root, path: 'puzzles' })
+    const newPuzzle = createRoute({
+      getParentRoute: () => puzzles, path: 'new',
+      validateSearch: NewPuzzleRoute.options.validateSearch,
+    })
+    const difficulty = createRoute({ getParentRoute: () => newPuzzle, path: 'difficulty' })
     const learn = createRoute({
       getParentRoute: () => root,
       path: 'learn',
@@ -55,7 +64,7 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
       notFoundComponent: () => null,
     })
     return createRouter({
-      routeTree: root.addChildren([index, learn.addChildren([overview, lesson])]),
+      routeTree: root.addChildren([index, importPuzzle, puzzles.addChildren([newPuzzle.addChildren([difficulty])]), learn.addChildren([overview, lesson])]),
       history: createMemoryHistory({ initialEntries: [path] }),
       defaultPreload: false,
     })

@@ -170,7 +170,7 @@ function worktableTree(id: Exclude<PuzzleVariantId, 'mixed'>, workspaceMode: 'st
       highlighting: preferences.DEFAULT_HIGHLIGHT_PREFERENCES, errorMode: 'none',
       cellReferenceStyle: 'concise', workspaceMode, multi: false, actionsRef: { current: null },
       inputSize: 210, panelHeight: 280, setPanelHeight() {}, beginResize() {}, toggleMulti() {},
-      onDifficultyChange() {}, onShare() {}, onPublish() {}, onCancelDraft() {}, onNewPuzzle() {},
+      onShare() {}, onPublish() {}, onCancelDraft() {}, onNewPuzzle() {},
       onCreatePuzzle() {}, onEditPuzzle() {}, onStopPlaying() {},
       showLeftPanel: true, showRightPanel: true, showBottomPanel: true,
       onOpenHintPanel() {}, onOpenRightPanel() {}, puzzleBrowserView: 'active', setPuzzleBrowserView() {},

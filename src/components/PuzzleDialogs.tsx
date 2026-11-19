@@ -1,18 +1,12 @@
 import { Button, ChoiceButton } from './Button'
-import { DifficultySelector } from './DifficultySelector'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
-import { Bookmark, Clipboard, Dices, FileUp, PencilLine, Trash2 } from 'lucide-react'
-import type { DifficultyPreference } from '../sudoku/difficulty'
+import { Bookmark, Clipboard, Trash2 } from 'lucide-react'
 import { runEngine } from '../sudoku/engine'
 import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
 import { isSolved, makeGame, valuesOf, type Game } from '../sudoku/game'
-import type { NewPuzzlePreference } from '../sudoku/preferences'
-import { variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
-import { VariantSelector } from './VariantSelector'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
 import { SelectControl } from './SelectControl'
-import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { validation } from './PuzzleCheckResult'
 
 function useMounted() {
@@ -63,60 +57,6 @@ export function ManagePuzzle({ game, close }: {
   </Modal>
 }
 
-export function NewPuzzle({ close, difficulty, initialVariant = 'classic', onDifficultyChange, onPuzzleStart, onCreate, onImport }: {
-  close: () => void
-  difficulty: DifficultyPreference
-  initialVariant?: VariantId
-  onDifficultyChange: (difficulty: DifficultyPreference) => void
-  onPuzzleStart?: (preference: NewPuzzlePreference) => void
-  onCreate: () => void
-  onImport: () => void
-}) {
-  const { busy, error, generate } = usePuzzleGeneration()
-  const { recommended } = usePlayerRating()
-  const [variant, setVariant] = useState<VariantId>(initialVariant)
-  const [selection, setSelection] = useState<DifficultyPreference | null>(null)
-  const selected = variantDifficulty(variant, selection ?? difficulty)
-  const autoLabel = variantDifficultyLabel(variant, 'auto', recommended)
-
-  function submit(event: FormEvent) {
-    event.preventDefault()
-    const done = () => {
-      onDifficultyChange(selected)
-      onPuzzleStart?.({ variant, difficulty: selected })
-      close()
-    }
-    void generate(selected, done, variant)
-  }
-
-  return (
-    <Modal title="New puzzle" onClose={close} className="new-puzzle-dialog">
-      <form className="dialog-form new-puzzle-form" onSubmit={submit}>
-        <VariantSelector value={variant} onChange={setVariant} busy={busy} />
-        <div className="new-puzzle-setup">
-          <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
-          {error && <p className="form-error" role="alert">{error}</p>}
-          <Button type="submit" variant="primary" className="puzzle-start-button" disabled={busy}>
-            <Dices size={18} /> {busy ? 'Generating…' : selected === 'auto' ? `Start ${autoLabel}` : 'Generate a puzzle'}
-          </Button>
-        </div>
-        <div className="new-options">
-          <ChoiceButton type="button" disabled={busy} onClick={onImport}>
-            <span className="option-icon"><FileUp size={21} aria-hidden="true" /></span>
-            <strong>Import a puzzle</strong>
-          </ChoiceButton>
-          <ChoiceButton type="button" disabled={busy} onClick={() => {
-            onCreate()
-            close()
-          }}>
-            <span className="option-icon"><PencilLine size={21} /></span>
-            <span><strong>Create by hand</strong><small>Enter your own givens on a blank grid.</small></span>
-          </ChoiceButton>
-        </div>
-      </form>
-    </Modal>
-  )
-}
 const formats: [ShareFormat, string][] = [
   ['link', 'Puzzle link'],
   ['givens', '81-character givens'],

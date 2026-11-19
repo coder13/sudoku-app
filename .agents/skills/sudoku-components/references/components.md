@@ -32,13 +32,13 @@ Search by component name or browse the sections below.
 | [PuzzleCheckResult](../../../../src/components/PuzzleCheckResult.tsx) | `PuzzleCheckResult` displays the outcome of an explicit puzzle check. |
 | [SolutionPath](../../../../src/components/SolutionPath.tsx) | `SolutionPath` embeds a list of logical solving steps. `SolutionDialog` presents that path in a modal. |
 | [Worktable](../../../../src/components/Worktable.tsx) | `Worktable` coordinates interactions, solving tools, and state for a playable puzzle. |
-| [CompletedPuzzle](../../../../src/components/CompletedPuzzle.tsx) | `CompletedPuzzle` shows the result and next actions after a solve. `PuzzleDifficulty` displays the puzzle’s grade. |
+| [CompletedPuzzle](../../../../src/components/CompletedPuzzle.tsx) | `CompletedPuzzle` shows the result and next actions after a solve. Use the new puzzle routes for choosing a different variant or difficulty. |
 
 ## Layout and navigation
 
 | Source | When to use it |
 | --- | --- |
-| [Workspace](../../../../src/components/Workspace.tsx) | `SudokuShell` owns application state and shared navigation. `Workspace` mounts the play slot for its route. `PuzzlesWorkspace` connects the puzzles route to shell state. |
+| [Workspace](../../../../src/components/Workspace.tsx) | `SudokuShell` owns application state and shared navigation and renders the puzzle hub. `Workspace` mounts the play slot for its route. |
 | [DesktopPlayLayout](../../../../src/components/DesktopPlayLayout.tsx) | `DesktopPlayLayout` arranges the play surface and its surrounding content. `PlayWorkspace` places play content in the appropriate layout. `PlayResizeHandle` adjusts the input panel during a resize session. |
 | [DesktopDockLayout](../../../../src/components/DesktopDockLayout.tsx) | `DesktopDockLayout` hosts the advanced desktop docking workspace. Its private panel adapters connect dock slots to existing feature views. `PuzzlePanel` hosts the grid. `InputPanel` hosts entry controls. `ChainsDockPanel` hosts chains. `CellColorsPanel` hosts brushes. `HintPanel` hosts hints. `SolutionPathPanel` hosts the solve path. `TechniquesDockPanel` hosts techniques. `DetailsPanel` hosts puzzle details. `BrowserPanel` hosts the puzzle browser. `FixedPanelTab` supplies a tab for a fixed panel. |
 | [MobilePanelLayout](../../../../src/components/MobilePanelLayout.tsx) | `MobilePanelLayout` arranges the small-screen play panels and supports reordering. |
@@ -47,15 +47,13 @@ Search by component name or browse the sections below.
 
 | Source | When to use it |
 | --- | --- |
-| [ResumePuzzles](../../../../src/components/ResumePuzzles.tsx) | `ResumePuzzles` shows the home list when several unfinished, active attempts are available. Include puzzles with no moves yet. |
-| [PuzzlesPage](../../../../src/components/PuzzlesPage.tsx) | `PuzzlesPage` composes the full puzzle hub. Its private `PuzzleLibrary` supports browsing and managing attempts. `MiniGrid` previews an attempt. `NewPuzzleSection` presents creation choices. `Statistics` summarizes solves. `TechniqueStatistics` shows progress by solving technique. |
+| [PuzzlesPage](../../../../src/components/PuzzlesPage.tsx) | `PuzzlesPage` serves the Puzzles home and its navigation. Its private `PuzzleLibrary` shows Active Puzzles in last-played order, offers a start action when there are none, and shows completed attempts on the Solved puzzles page. `MiniGrid` previews an attempt. `NewPuzzleVariant` browses variants and offers creation and import. `NewPuzzleDifficulty` opens on its own route to select a difficulty and start the puzzle. `Statistics` summarizes solves. `TechniqueStatistics` shows progress by solving technique. |
 | [PuzzleLibrary](../../../../src/components/PuzzleLibrary.tsx) | `PuzzleLibrary` renders a compact list of selectable attempts for callers that supply a selection callback. |
 | [AdvancedPuzzleBrowser](../../../../src/components/AdvancedPuzzleBrowser.tsx) | `AdvancedPuzzleBrowser` provides active, past, and saved views inside the advanced workspace. Its `MiniGrid` supplies a preview for each row. |
 | [PuzzleCollections](../../../../src/components/PuzzleCollections.tsx) | `PuzzleCollections` browses collection packs. `DownloadPuzzles` offers offline downloads. `CollectionCredits` attributes a collection. `PuzzleCollectionCredit` attributes the collection associated with a particular puzzle. |
-| [PuzzleDialogs](../../../../src/components/PuzzleDialogs.tsx) | `NewPuzzle` starts a puzzle from variant and difficulty choices. `ManagePuzzle` handles filing or deleting an attempt. `SharePuzzle` prepares a puzzle for another player. `SavePuzzle` saves a puzzle made in the editor. |
-| [MobileNewPuzzle](../../../../src/components/MobileNewPuzzle.tsx) | `MobileNewPuzzle` provides the small-screen creation flow through variant, difficulty, and start. |
+| [PuzzleDialogs](../../../../src/components/PuzzleDialogs.tsx) | `ManagePuzzle` handles filing or deleting an attempt. `SharePuzzle` prepares a puzzle for another player. `SavePuzzle` saves a puzzle made in the editor. |
 | [DifficultySelector](../../../../src/components/DifficultySelector.tsx) | `DifficultySelector` chooses a supported difficulty for the selected puzzle variant. |
-| [VariantSelector](../../../../src/components/VariantSelector.tsx) | `VariantSelector` chooses a puzzle ruleset. `VariantPreview` illustrates a ruleset before selection. |
+| [VariantPreview](../../../../src/components/VariantPreview.tsx) | `VariantPreview` illustrates a generatable variant’s grid markings. Pair it with the variant name when browsing or confirming a selection. |
 | [ImportPuzzle](../../../../src/components/ImportPuzzle.tsx) | `ImportPuzzle` handles puzzle text, files, and photo entry through preview and confirmation. |
 | [PuzzleCamera](../../../../src/components/PuzzleCamera.tsx) | `PuzzleCamera` captures a still image of a puzzle for import. |
 | [PhotoCropEditor](../../../../src/components/PhotoCropEditor.tsx) | `PhotoCropEditor` lets a player align the crop with a photographed grid before recognition. |
@@ -69,7 +67,7 @@ Search by component name or browse the sections below.
 | [KeyboardShortcutsPage](../../../../src/components/KeyboardShortcutsPage.tsx) | `KeyboardShortcutsPage` reviews, edits, and restores keyboard bindings. |
 | [DeviceSyncPage](../../../../src/components/DeviceSyncPage.tsx) | `DeviceSyncPage` renders the current sync route for enrollment, scanning, confirmation, recovery, invitations, or device management. Its header follows browser history. |
 | [PairingInvitation](../../../../src/components/PairingInvitation.tsx) | Use `PairingInvitation` on the inviting device to show the single-use code, expiry, and copy action. It uses the shared Sudoku QR generator. The close control belongs in its top-right corner. |
-| [PairingScanner](../../../../src/components/PairingScanner.tsx) | `PairingScanner` opens confirmation after the same device-link code stays in the live camera view for half a second. It reads a selected photo immediately. |
+| [PairingScanner](../../../../src/components/PairingScanner.tsx) | Use `PairingScanner` with the site address that issues codes for the current sync service. It opens confirmation after the same code stays in the live camera view for half a second, reads a selected photo immediately, and explains site mismatches. |
 | [LinkedDeviceRow](../../../../src/components/LinkedDeviceRow.tsx) | `LinkedDeviceRow` displays each device name in medium-weight body text beneath the section heading. The current device gets a smaller, muted label. Its `DeviceActionMenu` groups rename and unlink on narrow screens and manages menu keyboard focus. |
 
 ## Learning

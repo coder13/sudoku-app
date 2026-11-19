@@ -1,8 +1,6 @@
-import { Check, Search } from 'lucide-react'
-import { useId, useState } from 'react'
 import type { VariantRule } from '../sudoku/engine'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
-import { regionMembership, VARIANTS, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
+import { regionMembership, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
 import { VariantClues } from './VariantClues'
 
 const previews: Record<VariantId, readonly VariantRule[]> = {
@@ -27,6 +25,7 @@ const previewRegionEdges = previewRegions.flatMap((region, cell) => {
   return edges
 }).join(' ')
 
+/** Show a compact example of a generatable variant's grid markings alongside its name. */
 export function VariantPreview({ variant }: { variant: VariantId }) {
   return <span className="variant-preview" data-variant={variant} aria-hidden="true">
     {previews[variant].length > 0 && <VariantClues rules={previews[variant]} />}
@@ -35,40 +34,4 @@ export function VariantPreview({ variant }: { variant: VariantId }) {
     </svg>}
     {variant === 'anti-knight' && <span className="variant-knight">♞</span>}
   </span>
-}
-
-export function VariantSelector({ value, onChange, busy }: {
-  value: VariantId; onChange: (variant: VariantId) => void; busy: boolean
-}) {
-  const group = useId()
-  const description = useId()
-  const [query, setQuery] = useState('')
-  const search = query.trim().toLowerCase().replace(/[-\s]+/g, ' ')
-  const variants = (Object.keys(VARIANTS) as VariantId[]).filter((id) =>
-    VARIANTS[id].name.toLowerCase().replace(/[-\s]+/g, ' ').includes(search))
-
-  return <fieldset className="variant-picker" disabled={busy} aria-describedby={description}>
-    <legend>Sudoku variant</legend>
-    <label className="variant-search">
-      <Search size={17} aria-hidden="true" />
-      <span className="sr-only">Search variants</span>
-      <input type="search" value={query} placeholder="Search variants" autoComplete="off"
-        onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
-          if (event.key === 'Enter') event.preventDefault()
-        }} />
-    </label>
-    <div className="variant-options">
-      {variants.map((id) => <label key={id} className="variant-option">
-        <input className="sr-only" type="radio" name={group} value={id} checked={value === id} onChange={() => onChange(id)} />
-        <VariantPreview variant={id} />
-        <span>{VARIANTS[id].name}</span>
-        {value === id && <Check className="variant-check" size={14} aria-hidden="true" />}
-      </label>)}
-    </div>
-    {variants.length === 0 && <p className="variant-empty" role="status">No variants found. Try another search.</p>}
-    <p id={description} className="variant-description" aria-live="polite" aria-atomic="true">
-      <strong>{VARIANTS[value].name}</strong>
-      <span>{VARIANTS[value].rule}</span>
-    </p>
-  </fieldset>
 }

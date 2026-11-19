@@ -32,12 +32,12 @@ import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../sudoku/puzzle-help'
 import { playCandidates } from '../sudoku/variant-play'
-import { generationVariant, variantName, variantRuleDescriptions } from '../sudoku/variants'
+import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
 import { ChainsPanel } from './ChainsPanel'
-import { CompletedPuzzle, PuzzleDifficulty } from './CompletedPuzzle'
+import { CompletedPuzzle } from './CompletedPuzzle'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
@@ -173,7 +173,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 
 export function Worktable({
   game, games, placeholder, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onDifficultyChange, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onStopPlaying,
+  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onStopPlaying,
   cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -194,12 +194,11 @@ export function Worktable({
   setPanelHeight: Dispatch<SetStateAction<number>>
   beginResize: () => void
   toggleMulti: () => void
-  onDifficultyChange: (difficulty: DifficultyPreference) => void
   onShare: () => void
   onPublish: () => void
   onCancelDraft: () => void
   onStopPlaying: () => void
-  onNewPuzzle: (step?: 'variant' | 'difficulty') => void
+  onNewPuzzle: (step?: 'difficulty') => void
   onCreatePuzzle: () => void
   onEditPuzzle: () => void
   showLeftPanel: boolean
@@ -263,7 +262,7 @@ export function Worktable({
   const [solutionHintOpen, setSolutionHintOpen] = useState(false)
   const [focusHintRequest, setFocusHintRequest] = useState(0)
   const [focusChainsRequest, setFocusChainsRequest] = useState(0)
-  const [solvedView, setSolvedView] = useState<'results' | 'grid' | 'difficulty'>('results')
+  const [solvedView, setSolvedView] = useState<'results' | 'grid'>('results')
   const [ratingFailed, setRatingFailed] = useState(false)
   const [singlesCheck, setSinglesCheck] = useState<{ givens: string; variant: Game['variant']; needsMore: boolean }>()
   const boardRef = useRef<HTMLDivElement>(null)
@@ -356,9 +355,8 @@ export function Worktable({
         : [describeHintDigits(deduction), locationClue?.text].filter(Boolean).join(' '),
     }
   const showResults = solved && solvedView === 'results'
-  const showDifficulty = solved && solvedView === 'difficulty'
   const showSolvedGrid = solved && solvedView === 'grid'
-  const mobileResults = mobile && (showResults || showDifficulty)
+  const mobileResults = mobile && showResults
   const { id, givens, difficulty, score, variant, generatedWithAuto } = game
   const analysisDialogOpen = analysisOpen && mobile && !draft && !solved
   const needsRating = difficulty === undefined || score === undefined
@@ -1668,13 +1666,8 @@ export function Worktable({
   const completionPanel = showResults ? (
     <CompletedPuzzle game={game} games={games} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={!rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
-      showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle} onChooseDifficulty={() => {
-        if (mobile) onNewPuzzle('difficulty')
-        else setSolvedView('difficulty')
-      }} onChooseVariant={() => onNewPuzzle('variant')} />
-  ) : showDifficulty ? (
-    <PuzzleDifficulty value={preferredDifficulty} variant={generationVariant(variant)} showGuides={appearance.showGuides}
-      onBack={() => setSolvedView('results')} onChange={onDifficultyChange} />
+      showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle}
+      onChooseDifficulty={() => onNewPuzzle('difficulty')} onChooseVariant={() => onNewPuzzle()} />
   ) : null
   const solveSinglesAction = <button onClick={() => { void solveAllSingles() }} disabled={busy || !hasSingles}
     aria-keyshortcuts={shortcutLabel(shortcuts.solveSingles)}>

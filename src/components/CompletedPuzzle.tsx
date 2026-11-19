@@ -1,13 +1,12 @@
-import { Button, IconButton, buttonClassName } from './Button'
-import { DifficultySelector } from './DifficultySelector'
+import { Button, buttonClassName } from './Button'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react'
+import { ArrowRight, Check, CircleCheck } from 'lucide-react'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { generationVariant, variantDifficulties, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
+import { generationVariant, variantDifficulties, variantDifficulty, variantDifficultyLabel } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
 import { collectionProgress, getGameCollection, nextCollectionPuzzle } from '../sudoku/collections'
@@ -146,55 +145,11 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
               <Link className={buttonClassName()} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
               <Link className={buttonClassName()} to="/puzzles">Choose a different puzzle</Link>
             </> : !needsChoice && <>
-              <Button onClick={onChooseDifficulty}>Choose difficulty</Button>
-              <Button aria-haspopup="dialog" disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
+              <Button disabled={busy} onClick={onChooseDifficulty}>Choose difficulty</Button>
+              <Button disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
             </>}
           </div>
         </div>
-      </div>
-    </section>
-  )
-}
-
-export function PuzzleDifficulty({ value, showGuides, variant, onChange, onBack }: {
-  value: DifficultyPreference
-  variant?: VariantId
-  showGuides: boolean
-  onChange: (difficulty: DifficultyPreference) => void
-  onBack: () => void
-}) {
-  const { busy, error, generate } = usePuzzleGeneration()
-  const { recommended } = usePlayerRating()
-  const heading = useRef<HTMLHeadingElement>(null)
-  const [selection, setSelection] = useState<DifficultyPreference>(value)
-
-  useEffect(() => {
-    heading.current?.focus({ preventScroll: true })
-  }, [])
-
-  async function selectDifficulty(difficulty: DifficultyPreference) {
-    if (busy) return
-    await generate(difficulty, () => onChange(difficulty), variant)
-  }
-
-  return (
-    <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
-      aria-labelledby="difficulty-title">
-      <div className="completion difficulty-choice">
-        <header className="difficulty-heading">
-          <IconButton variant="quiet" className="difficulty-back" onClick={onBack} disabled={busy} aria-label="Back to results">
-            <ArrowLeft size={19} />
-          </IconButton>
-          <div>
-            <h1 id="difficulty-title" ref={heading} tabIndex={-1}>Choose difficulty</h1>
-            <p>For the next generated puzzle</p>
-          </div>
-        </header>
-        {error && <p className="form-error" role="alert">{error}</p>}
-        <DifficultySelector value={selection} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
-        <Button type="button" variant="primary" className="puzzle-start-button" disabled={busy} onClick={() => { void selectDifficulty(selection) }}>
-          {busy ? 'Generating…' : 'Start puzzle'} <ArrowRight size={18} aria-hidden="true" />
-        </Button>
       </div>
     </section>
   )
