@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
 import { EMPTY, makeGame, paintCells, replaceCandidates } from '../../src/sudoku/game'
+import { playSession } from '../../src/sudoku/play-session'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
 import {
   DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_INPUT_SIZE,
@@ -27,7 +28,10 @@ const meta = {
     showLeftPanel: true, showRightPanel: true, showBottomPanel: true, onOpenHintPanel: fn(), onOpenRightPanel: fn(),
     puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),
   },
-  beforeEach: ({ args }) => { seedRoom([args.game, ...args.games.filter(({ id }) => id !== args.game.id)]) },
+  beforeEach: ({ args }) => {
+    playSession.activate(null)
+    seedRoom([args.game, ...args.games.filter(({ id }) => id !== args.game.id)])
+  },
   render: (args) => <WorktableExample {...args} />,
 } satisfies Meta<typeof Worktable>
 export default meta
@@ -58,6 +62,18 @@ export const MobileInputTools: Story = {
     await expect(cell).not.toHaveClass('color-4')
     await userEvent.keyboard('{Enter}')
     await expect(tabs).not.toBeInTheDocument()
+  },
+}
+export const PuzzleCardTools: Story = {
+  args: { game: inProgress, games: [inProgress] },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const shortcut = canvas.getByRole('button', { name: 'Open Colors & Chains from puzzle card' })
+    await expect(shortcut).toBeVisible()
+    shortcut.focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(canvas.getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
+    await expect(canvas.getByRole('tab', { name: 'Chains' })).toBeVisible()
   },
 }
 export const TemporaryPencil: Story = {

@@ -2,7 +2,7 @@ import { Button, IconButton, buttonClassName } from './Button'
 import { Link, useLocation, useMatch, useNavigate, useRouterState } from '@tanstack/react-router'
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
-  ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
+  ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, LoaderCircle, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
   Monitor, Moon, SlidersHorizontal, Sun,
 } from 'lucide-react'
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
@@ -10,7 +10,7 @@ import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficu
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { MINI_GRID, sixGridForBoxRows } from '../sudoku/grid'
 import { gameGenerationVariant, isSizedPuzzleId, type NewPuzzleId } from '../sudoku/new-puzzle'
-import { createGameId, EMPTY, makeGame, setGamePaused, type ErrorMode } from '../sudoku/game'
+import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
@@ -23,6 +23,7 @@ import {
 } from '../sudoku/preferences'
 import { deviceSync } from '../sudoku/device-sync'
 import { roomStore } from '../sudoku/storage'
+import { playSession } from '../sudoku/play-session'
 import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
@@ -110,12 +111,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [puzzleBrowserView, setPuzzleBrowserView] = usePlayPreference('puzzleBrowserView')
   const [panelHeight, setPanelHeight] = useState(280)
   const [workspaceReady, setWorkspaceReady] = useState(false)
-  const [openingOnLaunch, setOpeningOnLaunch] = useState(homeRoute)
+  const [openingOnLaunch, setOpeningOnLaunch] = useState(true)
   // Static hosting serves the same home HTML for every puzzle query.
   const requested = workspaceReady ? puzzleParam : undefined
   const shared = workspaceReady ? shareParam : undefined
-  const playRoute = homeRoute && Boolean(requested)
-  const playing = playRoute || settingsRoute
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
   const savedAppearance = useRef(appearance)
@@ -126,12 +125,27 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const resizeStartHeight = useRef(panelHeight)
   const resizeStartInputSize = useRef(inputSize)
   const hasLocalPuzzleAtLaunch = useRef(false)
+  const reloading = useRef(false)
+  const session = useSyncExternalStore(playSession.subscribe, playSession.getSnapshot, playSession.getServerSnapshot)
   const sync = useSyncExternalStore(deviceSync.subscribe, deviceSync.getSnapshot, deviceSync.getServerSnapshot)
   const syncConnection = useSyncExternalStore(deviceSync.subscribeConnection, deviceSync.getConnection, deviceSync.getServerConnection)
   const peerPuzzles = useSyncExternalStore(deviceSync.subscribePresence, deviceSync.getPeerPuzzles, deviceSync.getServerPeerPuzzles)
-  const game = games.find(item => item.id === (requested ?? active))
   const locationHash = locationHref.split('#', 2)[1] ?? ''
   const puzzleLink = PUZZLE_LINK.test(locationHash)
+  const activePuzzles = inProgress(games)
+  const localLaunch = hasLocalPuzzleAtLaunch.current
+  const launchPuzzle = homeRoute && workspaceReady && shared === undefined && !requested &&
+    !stoppedPlaying && !linkError && !puzzleLink && (localLaunch || sync.ready)
+    ? (localLaunch ? activePuzzles.find(item => item.id === active) : undefined) ?? activePuzzles[0]
+    : undefined
+  const game = launchPuzzle ?? games.find(item => item.id === (requested ?? active))
+  const playRoute = homeRoute && Boolean(requested || launchPuzzle)
+  const playing = playRoute || settingsRoute
+  const missingPuzzle = playRoute && !game ? requested : undefined
+  const savedLaunchPause = session.puzzleId === game?.id && session.launchPaused
+  const pausedOnLaunch = openingOnLaunch && playRoute && !reloading.current
+    ? puzzleTiming.getSnapshot().pauseOnOpen
+    : savedLaunchPause
   const hasRequestedGame = Boolean(requested && game)
   const openingPuzzleLink = shared === undefined && puzzleLink && !hasRequestedGame && !linkError
   const viewedPuzzle = playRoute && game && game.source !== 'draft' ? game.id : null
@@ -158,7 +172,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     return inProgress(games).find(item => item.id === id && item.source !== 'draft')
   }
 
-  useEffect(() => { deviceSync.showPuzzle(viewedPuzzle) }, [viewedPuzzle])
+  useEffect(() => { deviceSync.showPuzzle(viewedPuzzle, missingPuzzle) }, [viewedPuzzle, missingPuzzle])
 
   function cycleColorMode() {
     setAppearance({ ...appearance, colorMode: nextColorMode })
@@ -179,6 +193,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   }, [navigate, shortcuts])
 
   useEffect(() => {
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    reloading.current = navigation?.type === 'reload'
     const disconnect = roomStore.connect()
     hasLocalPuzzleAtLaunch.current = inProgress(roomStore.getSnapshot().games).length > 0
     const disconnectSync = deviceSync.connect()
@@ -235,7 +251,11 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   useEffect(() => roomStore.onPlay(id => {
     const location = new URL(window.location.href)
     const legacyLink = PUZZLE_LINK.test(location.hash.slice(1))
-    if (!legacyLink) setOpeningOnLaunch(false)
+    if (!legacyLink) {
+      setOpeningOnLaunch(false)
+      if (id) playSession.set(id, 'launchPaused', false)
+      else playSession.activate(null)
+    }
     if (!id && !location.searchParams.has('puzzle')) return
     setLinkError('')
     if (id) {
@@ -250,34 +270,28 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       return
     }
     if (requested) {
-      // Wait for linked preferences and puzzle state before the timer can run.
-      if (!openingOnLaunch || !sync.ready || openingPuzzleLink) return
-      if (game && puzzleTiming.getSnapshot().pauseOnOpen) {
-        roomStore.update(game.id, current => setGamePaused(current, true, { onOpen: true }))
+      if (openingOnLaunch && game) {
+        playSession.set(game.id, 'launchPaused', pausedOnLaunch)
+        setOpeningOnLaunch(false)
       }
-      setOpeningOnLaunch(false)
       return
     }
     if (puzzleLink) return
-    const localLaunch = hasLocalPuzzleAtLaunch.current
-    // Open a local save without waiting for the network. A cloud-only launch
-    // waits for the full list so the first download cannot select an older puzzle.
-    if (!localLaunch && !sync.ready) return
-    const resumable = inProgress(games)
-    const puzzle = (localLaunch ? resumable.find(item => item.id === active) : undefined) ?? resumable[0]
-    if (puzzle) {
-      void navigate({ to: '/', search: { puzzle: puzzle.id }, replace: true, viewTransition: false })
+    if (launchPuzzle) {
+      void navigate({ to: '/', search: { puzzle: launchPuzzle.id }, replace: true, viewTransition: false })
       return
     }
+    if (!sync.ready) return
     if (!sync.linked) roomStore.startFirstPuzzle()
-    if (openingOnLaunch && sync.ready) setOpeningOnLaunch(false)
-  }, [workspaceReady, homeRoute, requested, shared, stoppedPlaying, linkError, sync.ready, sync.linked, games, game, active, navigate, puzzleLink, openingOnLaunch, openingPuzzleLink])
+    if (openingOnLaunch) setOpeningOnLaunch(false)
+  }, [workspaceReady, homeRoute, requested, shared, stoppedPlaying, linkError, sync.ready, sync.linked, game, launchPuzzle, navigate, puzzleLink, openingOnLaunch, pausedOnLaunch])
   useEffect(() => {
     if (!workspaceReady || !requested || !hasRequestedGame) return
     const location = new URL(window.location.href)
     // The address can change before the router finishes updating the matched puzzle.
     if (location.pathname !== '/' || location.searchParams.get('puzzle') !== requested) return
     roomStore.view(requested)
+    playSession.activate(requested)
     if (PUZZLE_LINK.test(location.hash.slice(1))) {
       void navigate({ to: '/', search: { puzzle: requested }, replace: true, viewTransition: false })
     }
@@ -478,7 +492,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (returnId) roomStore.select(returnId)
   }
 
-  const activePuzzles = inProgress(games)
   const onlyActivePuzzle = activePuzzles.length === 1 ? activePuzzles[0] : undefined
   const emptyPuzzleContent = <div className="empty-puzzle-content">
     <Link className={buttonClassName('primary')} to="/puzzles/new"><Plus size={18} />New puzzle</Link>
@@ -493,7 +506,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
               className="wordmark" onClick={() => setMenuOpen(false)}>
               <span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>Sudoku
             </Link>
-            <SyncConnectionStatus connection={syncConnection} />
+            <SyncConnectionStatus connection={syncConnection} loadingAccount={sync.loadingAccount} />
           </div>
           <nav className="primary-navigation" aria-label="Primary navigation">
             <Link to="/puzzles/browse" activeOptions={{ exact: true }}
@@ -556,7 +569,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {!standalonePuzzlePage && (puzzlesRoute || (homeRoute && !requested && shared === undefined && !(workspaceReady && openingPuzzleLink))) && (
+      {!standalonePuzzlePage && (puzzlesRoute || (homeRoute && !playRoute && shared === undefined && !(workspaceReady && openingPuzzleLink))) && (
         <PuzzlesPage games={games} active={active} setDifficulty={setDifficulty} newPuzzlePreference={newPuzzleDefaults}
           rememberNewPuzzle={rememberNewPuzzle} preferencesReady={workspaceReady}
           loadingPuzzles={!workspaceReady || (sync.linked && !sync.ready)} onCreatePuzzle={createPuzzle}
@@ -568,10 +581,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         <SharedPuzzlePage key={shared} id={shared} games={games} linked={sync.linked} syncReady={sync.ready} />
       ) : homeRoute && workspaceReady && openingPuzzleLink ? (
         <main className="page sync-page"><h1>Opening puzzle…</h1></main>
-      ) : playRoute && game && openingOnLaunch ? (
-        <main className="page sync-page"><h1>Loading puzzle…</h1></main>
+      ) : playRoute && !game && !sync.ready ? (
+        <main className="page sync-page">
+          <p className="sync-connection-label" role="status"><LoaderCircle size={16} className="loading-spinner" aria-hidden="true" /> Loading puzzle…</p>
+        </main>
       ) : playRoute && !game ? (
-        <main className="page sync-page"><h1>{sync.linked && !sync.ready ? 'Loading puzzle…' : 'Puzzle unavailable on this device'}</h1>
+        <main className="page sync-page"><h1>Puzzle unavailable on this device</h1>
           {linkError ? <p role="alert">{linkError}</p> : <p>{sync.linked
             ? sync.message || 'Open this puzzle on your other device and choose Sync now from Puzzle options.'
             : 'Link the device that has this puzzle to open it here.'}</p>}
@@ -590,6 +605,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 errorMode={errorMode} cellReferenceStyle={cellReferenceStyle} multi={multi} actionsRef={worktableActions}
                 inputSize={inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight} beginResize={beginResize}
                 toggleMulti={toggleMulti}
+                pausedOnLaunch={pausedOnLaunch}
+                onResumeLaunch={() => {
+                  if (game) playSession.set(game.id, 'launchPaused', false)
+                  setOpeningOnLaunch(false)
+                }}
+                loadingPuzzle={sync.loadingPuzzles}
                 sharedOnOtherDevice={Boolean(viewedPuzzle && syncConnection.mode === 'live' && peerPuzzles.includes(viewedPuzzle))}
                 catchUpPuzzle={peerPuzzle}
                 workspaceMode={workspaceMode}

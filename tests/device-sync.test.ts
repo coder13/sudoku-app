@@ -140,6 +140,41 @@ test('devices link without names and labels can be renamed only within the linke
   } finally { sqlite.close() }
 })
 
+test('a requested puzzle is available before library downloads and settings upload finish', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const first = client(creator, phone)
+    first.write(makeGame('older', 'Older puzzle', EMPTY, 'custom'))
+    first.write(makeGame('requested', 'Requested puzzle', EMPTY, 'custom'))
+    await first.run()
+
+    const storage = new MemoryStorage()
+    storage.setItem(ERROR_MODE_KEY, 'all')
+    const requests: string[] = []
+    const request: typeof computer = (path, method, body) => {
+      requests.push(path)
+      if (path.startsWith('changes')) assert.ok(storage.getItem(GAME_PREFIX + 'requested'))
+      if (path === 'settings') assert.ok(libraryLoaded)
+      return computer(path, method, body)
+    }
+    const engine = createSyncEngine(storage, second.id, request, () => {})
+    let libraryLoaded = false
+    await engine.run({
+      priority: 'requested',
+      onPuzzlesLoaded: () => {
+        assert.ok(storage.getItem(GAME_PREFIX + 'older'))
+        libraryLoaded = true
+      },
+    })
+    assert.deepEqual(requests, ['puzzles/requested', 'changes?after=0&settings=1', 'puzzles/older', 'settings'])
+
+    requests.length = 0
+    await engine.run({ priority: 'missing' })
+    assert.equal(requests[0], 'puzzles/missing')
+    assert.match(requests[1], /^changes\?after=/)
+  } finally { sqlite.close() }
+})
+
 test('two devices resume full independent saves, order by play, and retain both offline versions', async () => {
   const { sqlite, creator, phone, second, computer } = await library()
   try {
