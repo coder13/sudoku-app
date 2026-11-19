@@ -483,13 +483,13 @@ function readCoachSix(data: Record<string, unknown>) {
   const constraints = data.givenConstraints ?? []
   if (!Array.isArray(constraints)) throw new Error('This 6 × 6 puzzle has invalid rules.')
   const active = constraints.filter(rule => !(record(rule) &&
-    ['odd', 'even', 'thermometer', 'palindromeLine'].includes(String(rule.type)) &&
+    ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
-  if (active.some(rule => !record(rule) || !['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer'].includes(String(rule.type)))) {
+  if (active.some(rule => !record(rule) || !['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban'].includes(String(rule.type)))) {
     throw new Error('This 6 × 6 export includes an unsupported active rule.')
   }
   const rules = readCoachRules(active).map((rule): SizedConstraintRule => {
-    if (rule.type === 'diagonal') return rule
+    if (rule.type === 'diagonal' || rule.type === 'renban') return rule
     if ((rule.type === 'parity' || rule.type === 'thermometer') &&
       rule.cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 36) &&
       (rule.type !== 'thermometer' || rule.cells.length >= 2 && rule.cells.length <= 6 && new Set(rule.cells).size === rule.cells.length)) {

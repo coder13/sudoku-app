@@ -173,6 +173,7 @@ export type SizedVariantPosition = SizedClassicPosition & {
 export type SixGrid = { size: 6 } & ({ boxRows: 2; boxColumns: 3 } | { boxRows: 3; boxColumns: 2 })
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' }>
   | { type: 'thermometer'; cells: readonly number[] }
+  | Extract<VariantRule, { type: 'renban' }>
 export type SizedConstraintPosition = SizedClassicPosition & { grid: SixGrid; rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
   | { operation: 'analyze' | 'solve' | 'candidates' }
