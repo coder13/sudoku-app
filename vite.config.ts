@@ -4,6 +4,7 @@ import { defineConfig, type ProxyOptions } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { ocrAssetFileNames } from './scripts/ocr-assets.ts'
+import { kakuroCatalog } from './src/kakuro/catalog.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
 import { syncPageTitles } from './src/sudoku/sync-pages.ts'
 import { PRODUCTION_SYNC_ORIGIN } from './src/sudoku/pairing-link.ts'
@@ -63,6 +64,9 @@ function prerenderPages() {
     '/puzzles/browse',
     '/puzzles/new',
     '/puzzles/new/difficulty',
+    '/puzzles/games',
+    '/puzzles/kakuro',
+    ...kakuroCatalog.map(({ id }) => `/puzzles/kakuro/${id}`),
     '/puzzles/solved',
     '/puzzles/collections',
     '/puzzles/statistics',

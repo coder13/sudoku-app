@@ -1,5 +1,5 @@
 import { Button, IconButton, buttonClassName } from './Button'
-import { Link, useLocation, useMatch, useNavigate } from '@tanstack/react-router'
+import { Link, useLocation, useMatch, useNavigate, useRouterState } from '@tanstack/react-router'
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
@@ -79,6 +79,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const settingsRoute = Boolean(useMatch({ from: '/settings', shouldThrow: false }))
   const homeRoute = Boolean(useMatch({ from: '/', shouldThrow: false }))
   const puzzlesRoute = Boolean(useMatch({ from: '/puzzles', shouldThrow: false }))
+  const standalonePuzzlePage = useRouterState({
+    select: state => state.matches.at(-1)?.staticData.standalonePuzzlePage === true,
+  })
   const puzzleParam = useMatch({ from: '/', shouldThrow: false, select: m => m.search.puzzle })
   const learning = Boolean(useMatch({ from: '/learn', shouldThrow: false }))
   const settingsParam = useMatch({ from: '/settings/$section', shouldThrow: false, select: ({ params }) => params.section })
@@ -521,7 +524,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {(puzzlesRoute || (homeRoute && !requested)) && (
+      {!standalonePuzzlePage && (puzzlesRoute || (homeRoute && !requested)) && (
         <PuzzlesPage games={games} active={active} setDifficulty={setDifficulty} newPuzzlePreference={newPuzzleDefaults}
           rememberNewPuzzle={rememberNewPuzzle} preferencesReady={workspaceReady}
           loadingPuzzles={!workspaceReady || (sync.linked && !sync.ready)} onCreatePuzzle={createPuzzle}
