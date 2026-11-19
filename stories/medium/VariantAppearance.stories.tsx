@@ -60,6 +60,18 @@ export const Jigsaw: Story = {
   } } },
 }
 
+export const ConsecutiveLines: Story = {
+  args: candidateGrid({
+    version: 1,
+    givens: '000608000' + '0'.repeat(72),
+    rules: [
+      { type: 'consecutive-line', cells: [3, 4, 5], segments: [[4, 3], [5, 4]] },
+      { type: 'consecutive-line', cells: [11, 30, 49] },
+    ],
+  }, 'Consecutive Lines Sudoku grid'),
+  parameters: { gridWidth: 290 },
+}
+
 export const BetweenLines: Story = {
   args: candidateGrid(betweenNewman.puzzle as VariantPuzzle, 'Between Lines Sudoku grid'),
   parameters: { docs: { description: { story: 'Between, the Lines by Philip Newman. Two outlined circles bound each independent path. Every interior digit is strictly between the endpoint digits; interior digits can repeat when the other rules allow it.' } } },

@@ -612,6 +612,26 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 }],
             ),
         ],
+        Consecutive => [
+            seed(
+                "534608902672095348198342567859761423426853791713924856961537284287409635345286179",
+                4,
+                1,
+                [PuzzleRule::Consecutive { cells: vec![3, 4, 5], segments: None }],
+            ),
+            seed(
+                "534670902672095348198342567859760423426853791713924856961537284287419635345286179",
+                5,
+                1,
+                [PuzzleRule::Consecutive { cells: vec![4, 5, 6], segments: None }],
+            ),
+            seed(
+                "534678912672195348198342567859760423426803790713924856961537284287409635345286179",
+                40,
+                1,
+                [PuzzleRule::Consecutive { cells: vec![31, 40, 50], segments: None }],
+            ),
+        ],
         Between => [
             seed(
                 "700320006950061270060078150010640030003010040400000080004500710035006020097084360",

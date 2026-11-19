@@ -28,3 +28,30 @@ export function coachConnectedLines(paths: readonly (readonly number[])[]) {
   }
   return components
 }
+
+/** Coach requires all cells in one connected clue to differ. Each drawn
+ * edge also needs a difference of one, so its graph must form a single path. */
+export function coachConsecutiveLines(paths: readonly (readonly number[])[]) {
+  return coachConnectedLines(paths).map(({ cells, segments }) => {
+    const drawing = segments ?? [cells]
+    const neighbors = new Map(cells.map(cell => [cell, new Set<number>()]))
+    for (const path of drawing) for (let i = 1; i < path.length; i++) {
+      neighbors.get(path[i - 1])!.add(path[i])
+      neighbors.get(path[i])!.add(path[i - 1])
+    }
+    const first = cells.find(cell => neighbors.get(cell)!.size < 2)
+    const ordered: number[] = []
+    if (first !== undefined && !cells.some(cell => neighbors.get(cell)!.size > 2 || neighbors.get(cell)!.has(cell))) {
+      let current: number | undefined = first
+      while (current !== undefined && !ordered.includes(current)) {
+        const previous: number | undefined = ordered.at(-1)
+        ordered.push(current)
+        current = [...neighbors.get(current)!].find(neighbor => neighbor !== previous)
+      }
+    }
+    if (ordered.length !== cells.length || cells.length > 9) {
+      throw new Error('This Sudoku Coach Consecutive Line cannot form a run of distinct digits.')
+    }
+    return { cells: ordered, ...(segments && { segments }) }
+  })
+}

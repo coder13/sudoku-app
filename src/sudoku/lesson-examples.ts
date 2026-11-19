@@ -62,6 +62,7 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       case 'entropic': return [`Entropic line · ${path(rule.cells)}. Every three positions use low, medium and high digits.`]
       case 'modular': return [`Modular line · ${path(rule.cells)}. Every three positions use one digit from each group {1, 4, 7}, {2, 5, 8} and {3, 6, 9}.`]
       case 'renban': return [`Renban line · ${path(rule.cells)}`]
+      case 'consecutive-line': return [`Consecutive line · ${path(rule.cells)}`]
       case 'region-sum': return [`Region Sum line · ${path(rule.cells)}${rule.groupByRegion ? '. Combine visits to the same region.' : ''}`]
       case 'little-killer': return [`Little Killer ${rule.sum} · ${path(rule.cells)}`]
       case 'skyscrapers': return [`Skyscrapers ${rule.count} · ${path(rule.cells)}`]

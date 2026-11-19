@@ -161,6 +161,9 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'renban':
       return { description: `This line needs ${cells.length} different consecutive digits, in any order.`,
         reason: 'No consecutive set can fill every line cell with a crossed-out digit in its marked position.' }
+    case 'consecutive-line':
+      return { description: 'The digits increase by 1 from one end of this line to the other.',
+        reason: 'A crossed-out digit fits no increasing or decreasing run through these cells.' }
     case 'region-sum':
       return { description: rule.segments ? `These parts have equal totals: ${regionSumParts(rule, puzzle.regions)
         .map(part => part.map(at).join(' + ')).join(' = ')}.`

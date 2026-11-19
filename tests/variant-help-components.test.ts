@@ -44,6 +44,19 @@ before(async () => {
 })
 after(async () => { await server?.close() })
 
+test('the board shows which cells belong to a separated Consecutive Line', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Consecutive Lines Sudoku grid',
+    variantPuzzle: { version: 1, givens, rules: [
+      { type: 'consecutive-line', cells: [0, 40, 80], segments: [[40, 0], [80, 40]] },
+    ] },
+  }))
+  assert.match(html, /class="variant-consecutive-line"/)
+  assert.match(html, /class="variant-consecutive-jump"/)
+  assert.match(html, /Consecutive Line position 2 of 3, digits in order with a difference of one/)
+})
+
 test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
   const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
     new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))

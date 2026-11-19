@@ -285,6 +285,14 @@ rules! {
         /// Cell indices in order, starting at the bulb.
         cells: Vec<usize>,
     }
+    /// Require a run of consecutive digits in either direction along a path.
+    Consecutive => "consecutive-line" {
+        /// Cell indices in path order.
+        cells: Vec<usize>,
+        /// Optional authored segments. Their edges must match the logical path.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        segments: Option<Vec<Vec<usize>>>,
+    }
     /// Require an ordered line to read the same in both directions.
     Palindrome => "palindrome" {
         /// Distinct cell indices in logical order, paired from opposite ends.
@@ -611,6 +619,7 @@ impl VariantPuzzle {
                     compiled.quadruples.push(clue);
                 }
                 PuzzleRule::Arrow { .. }
+                | PuzzleRule::Consecutive { .. }
                 | PuzzleRule::Renban { .. }
                 | PuzzleRule::Entropic { .. }
                 | PuzzleRule::Modular { .. }

@@ -239,6 +239,7 @@ impl SquareTransform {
                 self.path(cells);
             }
             Palindrome { cells, segments }
+            | Consecutive { cells, segments }
             | Renban { cells, segments }
             | RegionSum {
                 cells, segments, ..

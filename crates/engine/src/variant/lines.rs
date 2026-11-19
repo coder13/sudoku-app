@@ -21,6 +21,7 @@ enum LineKind {
     EqualSums(Vec<Range<usize>>),
     Sum(u16),
     Renban,
+    Consecutive,
     ThreeGroups(groups::GroupLine),
     Between,
     Outside(OutsideClue),
@@ -57,6 +58,21 @@ impl LineConstraint {
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
                 (cells.clone(), LineKind::Renban)
+            }
+            PuzzleRule::Consecutive { cells, segments } => {
+                if !(1..=9).contains(&cells.len()) || !super::drawing_paths_cover(cells, segments) {
+                    return Err(invalid);
+                }
+                if let Some(paths) = segments {
+                    let edges = |pair: &[usize]| (pair[0].min(pair[1]), pair[0].max(pair[1]));
+                    let path_edges: std::collections::BTreeSet<_> =
+                        paths.iter().flat_map(|path| path.windows(2)).map(edges).collect();
+                    if path_edges != cells.windows(2).map(edges).collect() {
+                        return Err(invalid);
+                    }
+                }
+                puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
+                (cells.clone(), LineKind::Consecutive)
             }
             PuzzleRule::Entropic { cells } | PuzzleRule::Modular { cells } => {
                 let partition = if matches!(rule, PuzzleRule::Entropic { .. }) {
@@ -192,12 +208,26 @@ impl LineConstraint {
             }
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
             LineKind::Renban => renban_support::<9, 512>(domains, support),
+            LineKind::Consecutive => consecutive_support(domains, support),
             LineKind::ThreeGroups(line) => line.support(domains, support),
             LineKind::Between => between_support(domains, support),
             LineKind::Outside(clue) => {
                 clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());
             }
         }
+    }
+}
+
+fn consecutive_support(domains: &[u16], support: &mut [u16]) {
+    let last = domains.len() - 1;
+    let mut ascending = DIGITS;
+    let mut descending = DIGITS;
+    for (index, &domain) in domains.iter().enumerate() {
+        ascending &= domain >> index;
+        descending &= domain >> (last - index);
+    }
+    for (index, mask) in support.iter_mut().enumerate() {
+        *mask = (ascending << index) | (descending << (last - index));
     }
 }
 
