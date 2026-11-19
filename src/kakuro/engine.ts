@@ -168,19 +168,34 @@ function propagate(
   recordStep?: (run: KakuroRun, domains: readonly number[], support: readonly number[], depth: number) => void,
 ): boolean {
   const memo = new Int8Array(allDigits + 1)
+  const narrowedAt = new Uint32Array(domains.length)
+  const checkedAt = new Uint32Array(puzzle.runs.length)
+  let revision = 0
   let changed = true
   let depth = 0
   while (changed) {
     changed = false
     depth++
-    for (const run of puzzle.runs) {
+    for (const [index, run] of puzzle.runs.entries()) {
+      // Each value that survives a run check still belongs to a full
+      // assignment for that run. Check again only after another run
+      // narrows one of its cells.
+      if (depth > 1 && !run.cells.some(cell => narrowedAt[cell] > checkedAt[index])) continue
       const support = runSupport(run, domains, memo)
       if (!support) return false
       const firstChange = run.cells.findIndex((cell, i) => support[i] !== domains[cell])
-      if (firstChange === -1) continue
-      recordStep?.(run, domains, support, depth)
-      for (let i = firstChange; i < run.cells.length; i++) domains[run.cells[i]] = support[i]
-      changed = true
+      if (firstChange !== -1) {
+        recordStep?.(run, domains, support, depth)
+        revision++
+        for (let i = firstChange; i < run.cells.length; i++) {
+          const cell = run.cells[i]
+          if (domains[cell] === support[i]) continue
+          domains[cell] = support[i]
+          narrowedAt[cell] = revision
+        }
+        changed = true
+      }
+      checkedAt[index] = revision
     }
   }
   return true

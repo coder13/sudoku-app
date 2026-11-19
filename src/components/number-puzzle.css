@@ -158,10 +158,21 @@
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
-.number-puzzle-controls .keypad:not(.mini-keypad):not(:has(> :nth-child(4))) {
+.number-puzzle-controls .keypad:not(.mini-keypad, .choice-keypad):not(:has(> :nth-child(4))) {
   min-height: 0;
   aspect-ratio: 3 / 1;
   grid-template-rows: minmax(0, 1fr);
+}
+
+.controls.number-puzzle-controls .keypad-stack > .choice-keypad {
+  grid-template: minmax(44px, auto) / repeat(2, minmax(0, 1fr));
+  min-height: 0;
+  aspect-ratio: auto;
+  align-self: center;
+}
+
+.number-puzzle-controls .choice-keypad .key {
+  font-size: .875rem;
 }
 
 .number-puzzle-status:empty { display: none; }
@@ -184,6 +195,17 @@
     align-items: stretch;
     gap: 0;
     justify-self: center;
+  }
+
+  .number-puzzle-play.workspace:has(> .standard-input-stack) {
+    gap: var(--space-8);
+  }
+
+  .number-puzzle-play > .standard-puzzle-stack,
+  .number-puzzle-play > .standard-input-stack {
+    flex: none;
+    height: auto;
+    overflow: visible;
   }
 
   .number-puzzle-board-card,

@@ -1,0 +1,27 @@
+.number-puzzle-grid[data-game="rullo"] .number-puzzle-block {
+  display: grid;
+  place-items: center;
+  color: var(--board-ink);
+}
+
+.rullo-target {
+  font-size: clamp(.75rem, calc(43cqi / var(--number-puzzle-columns)), 1.25rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.number-puzzle-grid[data-game="rullo"] .number-puzzle-block[data-conflict="true"] {
+  background: var(--danger-bg);
+  color: var(--danger-ink);
+}
+
+.number-puzzle-grid[data-game="rullo"] [data-choice="1"] > span {
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+
+.number-puzzle-grid[data-game="rullo"] [data-choice="2"] > span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
