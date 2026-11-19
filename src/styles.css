@@ -1603,7 +1603,7 @@ svg { flex-shrink: 0; }
   font-weight: 650;
 }
 .dialog.settings-dialog {
-  width: min(760px, calc(100vw - 28px));
+  width: min(960px, calc(100vw - 28px));
   height: min(690px, calc(100dvh - 28px));
   overflow: hidden;
 }
