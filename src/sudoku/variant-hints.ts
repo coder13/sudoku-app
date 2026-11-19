@@ -174,7 +174,7 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
       return { description: `Look from ${at(a)}. The clue requires ${rule.count} visible ${rule.count === 1 ? 'building' : 'buildings'}.`,
         reason: 'Count the first building and each new tallest building. No order with a crossed-out digit in its cell gives the required count.' }
     case 'sandwich':
-      return { description: `Only the digits between 1 and 9 count toward the clue of ${rule.sum}.`,
+      return { description: `The Sandwich clue of ${rule.sum} covers ${at(a)} to ${at(cells[cells.length - 1])}. Only the digits strictly between 1 and 9 count; exclude both endpoints.${rule.sum === 0 ? ' A zero total means 1 and 9 are next to each other.' : ''}`,
         reason: 'No pair of endpoint positions allows that sum with a crossed-out candidate in its cell.' }
     case 'x-sum':
       return { description: `The digit in ${at(a)} tells how many cells to add, including itself. The sum must be ${rule.sum}.`,
