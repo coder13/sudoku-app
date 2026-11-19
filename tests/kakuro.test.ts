@@ -98,6 +98,21 @@ test('each difficulty adds eight distinct puzzles in four layouts after the star
   }
 })
 
+test('Kakuro signatures identify rotated, reflected, and complemented clues on rectangular boards', () => {
+  function rectangle(down: number[], across: number[]) {
+    return createKakuro(down.length + 1, [
+      {}, ...down.map(total => ({ down: total })),
+      ...across.flatMap(total => [{ across: total }, ...down.map(() => null)]),
+    ])
+  }
+
+  const original = kakuroRecipeSignature(rectangle([6, 8, 10], [9, 15]))
+  assert.equal(kakuroRecipeSignature(rectangle([10, 8, 6], [9, 15])), original)
+  assert.equal(kakuroRecipeSignature(rectangle([15, 9], [6, 8, 10])), original)
+  assert.equal(kakuroRecipeSignature(rectangle([14, 12, 10], [21, 15])), original)
+  assert.notEqual(kakuroRecipeSignature(rectangle([6, 8, 10], [10, 14])), original)
+})
+
 test('each clue step can be replayed from placed digits and earlier steps', () => {
   for (const { id, puzzle } of kakuroCatalog) {
     const tuples = new Map(puzzle.runs.map(run => [run, enumerateTuples(run)]))
