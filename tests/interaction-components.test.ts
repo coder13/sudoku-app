@@ -80,6 +80,22 @@ test('the shared grid uses 4×4 coordinates, box edges and candidate slots for M
   assert.deepEqual(buttons.map(({ props }) => (props.style as { gridArea: string }).gridArea), ['1 / 1', '2 / 2'])
 })
 
+test('algebraic cages retain labels and cell descriptions on the 4×4 grid', () => {
+  const tree = boardTree({
+    grid: { size: 4, boxRows: 2, boxColumns: 2 }, givens: '0'.repeat(16), values: '0'.repeat(16),
+    algebraicCages: [
+      { type: 'algebraic-cage', cells: [4, 5], label: 'n+2', total: { type: 'variable', name: 'n', offset: 2 } },
+      { type: 'algebraic-cage', cells: [8], label: 'n-1', total: { type: 'variable', name: 'n', offset: -1 } },
+    ],
+  })
+  const cells = tree.filter(({ props }) => props.role === 'gridcell')
+  assert.match(String(cells[4].props['aria-label']), /algebraic cage total n\+2/)
+  assert.match(String(cells[5].props['aria-label']), /algebraic cage total n\+2/)
+  assert.match(String(cells[8].props['aria-label']), /algebraic cage total n-1/)
+  const labels = tree.filter(({ props }) => props.className === 'variant-cage-total')
+  assert.deepEqual(labels.map(({ props }) => props.children), ['n+2', 'n-1'])
+})
+
 test('chain drawing exposes a keyboard tab stop and accepts keyboard candidate activation', () => {
   const selected: unknown[] = []
   const tree = boardTree({ onCandidate: (candidate: unknown) => selected.push(candidate) })

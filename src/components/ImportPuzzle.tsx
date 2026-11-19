@@ -4,6 +4,7 @@ import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { deviceSync } from '../sudoku/device-sync'
 import type { Game } from '../sudoku/game'
+import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
 import { findImportedPuzzle, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
@@ -18,7 +19,7 @@ import { PhotoPuzzleReview } from './PhotoPuzzleReview'
 import { PuzzleCamera } from './PuzzleCamera'
 export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
-function existingPuzzle(game: Pick<Game, 'givens' | 'variant' | 'sharedPuzzleId'>) {
+function existingPuzzle(game: Pick<Game, 'givens' | 'variant' | 'algebraic' | 'sharedPuzzleId'>) {
   const { games } = roomStore.getSnapshot()
   return game.sharedPuzzleId ? findSharedAttempt(games, game.sharedPuzzleId) : findImportedPuzzle(games, game)
 }
@@ -147,8 +148,13 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         <span className="import-preview-format">{preview.format}</span>
       </p>
       <Board grid={preview.game.grid} label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
-        variantPuzzle={preview.game.variant?.puzzle} showGuides={false} />
-      {preview.game.grid && <p>{MINI_RULE}</p>}
+        variantPuzzle={preview.game.variant?.puzzle} algebraicCages={preview.game.algebraic?.rules} showGuides={false} />
+      {preview.game.algebraic ? <>
+        {preview.game.algebraic.source?.author && <p>By {preview.game.algebraic.source.author}</p>}
+        <ul className="import-preview-rules">
+          {algebraicRules(preview.game.algebraic).map(rule => <li key={rule}>{rule}</li>)}
+        </ul>
+      </> : preview.game.grid && <p>{MINI_RULE}</p>}
       {preview.game.variant && <ul className="import-preview-rules">
         {variantRuleDescriptions(preview.game.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
