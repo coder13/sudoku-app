@@ -9,7 +9,12 @@ import './puzzle-games.css'
 import './kakuro.css'
 
 const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+const candidateList = new Intl.ListFormat('en', { type: 'disjunction' })
 const rules = 'Fill each white cell with a digit from 1 to 9. Use each digit only once per run. The digits must add up to the clue.'
+
+function describeCandidates(mask: number) {
+  return candidateList.format(digits.filter(digit => mask & (1 << (digit - 1))).map(String))
+}
 
 function KakuroHeading({ title, inPlay, children }: { title: string; inPlay?: boolean; children?: ReactNode }) {
   const heading = useRef<HTMLHeadingElement>(null)
@@ -259,10 +264,15 @@ function KakuroBoard({ entry }: { entry: KakuroEntry }) {
       </div>
       {hint && <div className="kakuro-hint">
         <details className="kakuro-help">
-          <summary>Clues used</summary>
-          <ul>{hint.runs.map(run => <li key={`${run.clue}-${run.direction}`}>
-            {run.total} {run.direction} at {cellName(run.clue)}
-          </li>)}</ul>
+          <summary>Show hint steps</summary>
+          <p>Each step uses the clue total, distinct digits, and the candidates left by earlier steps.</p>
+          <ol className="kakuro-hint-steps">{hint.steps.map(({ run, changes }, index) => <li key={index}>
+            <strong>{run.total} {run.direction} at {cellName(run.clue)}</strong>
+            <ul>{changes.map(({ cell, removedMask, remainingMask }) => <li key={cell}>
+              The clue rules out {describeCandidates(removedMask)} in {cellName(cell)}.
+              {' '}{cellName(cell)} can only be {describeCandidates(remainingMask)}.
+            </li>)}</ul>
+          </li>)}</ol>
         </details>
         <Button onClick={() => enter(hint.digit, hint.cell, false)}>Place {hint.digit}</Button>
       </div>}

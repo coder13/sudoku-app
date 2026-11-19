@@ -102,5 +102,5 @@ Search by component name or browse the sections below.
 | Module | Components and use |
 | --- | --- |
 | [Game types](../../../../src/routes/puzzles.games.tsx) | `GameTypePicker` lists the games available from the Sudoku variant picker. |
-| [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` owns the play page. `KakuroHeading` and `KakuroBoard` are private to these pages. |
+| [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` owns the play page. `KakuroHeading` and `KakuroBoard` are private to these pages. The play page can expand a hint into ordered steps that show which candidates each clue rules out. |
 | [Kakuro play route](../../../../src/routes/puzzles.kakuro_.$puzzle.tsx) | `KakuroPlayRoute` opens a catalog puzzle from its URL. |
