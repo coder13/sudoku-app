@@ -307,6 +307,7 @@ export function Worktable({
   const insightTabsRef = useRef<HTMLDivElement>(null)
   const activeMobileInputTabRef = useRef<HTMLButtonElement>(null)
   const focusMobileInput = useRef(false)
+  const mobileToolsOpener = useRef<HTMLButtonElement | null>(null)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
@@ -633,7 +634,7 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .chains-panel')
+    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .mobile-input-resize, .input-tools, .chains-panel')
       || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
@@ -807,7 +808,8 @@ export function Worktable({
   useLayoutEffect(() => {
     if (!focusMobileInput.current) return
     focusMobileInput.current = false
-    const target = activeMobileInputTabRef.current ?? puzzleMenuButtonRef.current
+    const opener = mobileToolsOpener.current
+    const target = activeMobileInputTabRef.current ?? (opener?.isConnected ? opener : puzzleMenuButtonRef.current)
     target?.focus({ preventScroll: true })
   }, [mobileInput])
 
@@ -1879,8 +1881,9 @@ export function Worktable({
     setMobileInput((current) => ({ open: current.open.filter((tab) => tab !== tool), active: 'digits' }))
   }
 
-  function openMobileInput(tool: MobileInputTool) {
+  function openMobileInput(tool: MobileInputTool, opener = puzzleMenuButtonRef.current) {
     if (!mobileToolsAvailable || disabled) return
+    mobileToolsOpener.current = opener
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     focusMobileInput.current = true
@@ -2248,7 +2251,7 @@ export function Worktable({
             if (colorsVisible) setColorBrush(null)
             setEraseMode(false); setPencil(false); setHighlightMode(false); setColorMode((current) => !current)
           }}
-          onOpenColors={desktop || advancedModes.colorsEnabled ? showColors : undefined} colorsActive={brush !== null} onSwitchShade={switchColorShade}
+          onOpenColors={desktop ? showColors : undefined} colorsActive={brush !== null} onSwitchShade={switchColorShade}
           highlightMode={highlightMode} toggleHighlightMode={toggleHighlightMode}
           eraseMode={eraseMode} toggleEraseMode={() => {
             if (colorsVisible) setColorBrush(null)
@@ -2384,6 +2387,7 @@ export function Worktable({
               </section>}</MotionSurface>
             </div></>
           : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
+            resizableInput={mobileToolsAvailable}
             hintSwipe={mobileHintOpen ? { dismiss: closeHint, apply: applyHintAction } : undefined}
             blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisDialogOpen ||
               dialogResult !== null || resetOpen || cancelDraftOpen}
@@ -2407,6 +2411,7 @@ export function Worktable({
                 title: showMobileResults ? 'Next puzzle' : openMobileTools.length ? 'Input' : 'Keypad',
                 content: <MobileInputTabs active={activeMobileInput} open={openMobileTools}
                   panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel }} activeTabRef={activeMobileInputTabRef}
+                  toolsDisabled={disabled} onOpenTools={mobileToolsAvailable ? opener => openMobileInput('colors', opener) : undefined}
                   onSelect={selectMobileInput} onClose={closeMobileInput} />,
               },
             }} />}

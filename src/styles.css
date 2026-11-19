@@ -1445,6 +1445,19 @@ svg { flex-shrink: 0; }
 .highlight-controls { display: flex; gap: var(--space-6); }
 .side-actions .puzzle-check-button { display: none; }
 .controls-actions-wrap { position: relative; display: grid; }
+.input-tools > .icon-button { width: 44px; min-height: 44px; }
+.input-tools-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-width: calc(100vw - 16px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  color: var(--ink);
+}
+.input-tools-menu:not(:popover-open) { display: none; }
+.input-tools-menu:not([style]) { visibility: hidden; }
+.input-tools-menu button { min-height: 44px; }
 .desktop-actions-menu, .mobile-puzzle-menu {
   position: fixed;
   inset: auto;
@@ -2948,11 +2961,15 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzle-zoom .board-frame { width: 100%; }
   .puzzle-zoom .sudoku-grid { overflow: clip; }
   .puzzle-zoom-content { transform-origin: top left; }
+  .puzzle-zoom[data-resize-preview] { overflow: clip; }
+  .puzzle-zoom[data-resize-preview] .puzzle-zoom-content {
+    contain: size layout paint;
+    will-change: scale;
+  }
   .puzzle-zoom[data-zoomed] { overflow: clip; border-radius: 8px; }
   .puzzle-zoom[data-zoomed], .puzzle-zoom[data-zoomed] .sudoku-grid { touch-action: none; }
   .puzzle-stage[data-pointer-input] .candidate-button:focus-visible { outline: none; }
   .standard-workspace-page .workspace:has(> .mobile-panel-layout) {
-    --mobile-input-panel-height: clamp(180px, 30dvh, 276px);
     position: relative;
     height: auto;
     min-height: 100%;
@@ -2963,6 +2980,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   /* Stable sibling panels keep their state and the original spacing when reordered. */
   .mobile-panel-layout { display: contents; -webkit-touch-callout: none; }
+  .standard-workspace-page:has(.mobile-panel-layout[data-input-resizing]) { overflow-anchor: none; }
   .mobile-panel { position: relative; flex: none; min-width: 0; }
   .mobile-panel[data-after-gap] { margin-top: 8px; }
   .mobile-panel[data-mobile-panel="hint"] { z-index: 1; }
@@ -2975,6 +2993,14 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .mobile-panel-space { flex: 1 0 0; }
   .mobile-panel-gap { flex-basis: 8px; }
+  /* Give the open tools the extra room between and around the cards. */
+  .mobile-panel-layout:has(.mobile-input-tabs[data-tools-open]) .mobile-panel-space { flex-grow: 0; }
+  .mobile-panel:has(.mobile-input-tabs[data-tools-open]),
+  .mobile-panel:has(.mobile-input-tabs[data-tools-open]) > .mobile-panel-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
   .workspace:has(.mobile-panel-layout[data-rearranging]) { padding-top: 64px; }
   .page:has(.mobile-panel-layout[data-rearranging]) { overflow-x: hidden; }
   .mobile-panel-layout[data-rearranging] { user-select: none; }
@@ -3065,13 +3091,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     /* Keep room for both the hint and digit input. Short screens can still scroll. */
     --board-frame-limit: max(130px, calc(100dvh - var(--topbar-height) - 540px));
   }
-  @media (orientation: portrait) {
-    .standard-workspace-page .workspace:has(.mobile-input-tabs) .puzzle {
-      --board-frame-limit: max(220px, calc(100dvh - var(--topbar-height) - var(--mobile-input-panel-height) - 126px));
-    }
-    .standard-workspace-page .workspace:has(.with-hint .mobile-input-tabs) .puzzle {
-      --board-frame-limit: max(130px, calc(100dvh - var(--topbar-height) - var(--mobile-input-panel-height) - clamp(130px, 24dvh, 205px) - 112px));
-    }
+  .standard-workspace-page .workspace:has(.mobile-panel-layout[data-input-sized]) .mobile-panel .puzzle {
+    min-height: var(--mobile-resized-puzzle-height);
+    --board-frame-limit: calc(var(--mobile-resized-puzzle-height) - var(--mobile-puzzle-chrome-height));
   }
   .standard-workspace-page .draft-tip {
     grid-area: draft;
@@ -3081,14 +3103,48 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
 
   .standard-workspace-page .compact-controls { height: auto; padding: var(--space-6); }
-  .mobile-input-tabs { --tool-target-size: 40px; }
+  .mobile-input-tabs {
+    --tool-target-size: 40px;
+    display: flex;
+    flex-direction: column;
+    height: var(--mobile-resized-input-height, auto);
+  }
+  .mobile-panel[data-resize-edge="top"] .mobile-input-tabs { padding-block-start: 16px; }
+  .mobile-panel[data-resize-edge="bottom"] .mobile-input-tabs { padding-block-end: 16px; }
+  .mobile-input-resize {
+    position: absolute;
+    inset-inline: 0;
+    z-index: 2;
+    width: 80px;
+    height: 28px;
+    margin-inline: auto;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    cursor: ns-resize;
+    touch-action: none;
+    user-select: none;
+  }
+  [data-resize-edge="top"] .mobile-input-resize { inset-block-start: -7px; }
+  [data-resize-edge="bottom"] .mobile-input-resize { inset-block-end: -7px; }
+  .mobile-input-resize::before {
+    content: '';
+    width: 32px;
+    height: 3px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--muted) 55%, var(--surface));
+  }
+  [data-input-resizing] .mobile-input-resize::before,
+  .mobile-input-resize:focus-visible::before { background: var(--muted); }
+  .mobile-input-resize[aria-disabled] { opacity: .5; cursor: default; }
+  .mobile-panel-layout[data-rearranging] .mobile-input-resize { visibility: hidden; }
   .mobile-input-toolbar {
     display: flex;
+    flex: none;
     align-items: stretch;
+    min-height: 45px;
     padding-inline: var(--space-6);
     border-bottom: 1px solid var(--border);
-    border-radius: var(--radius) var(--radius) 0 0;
-    background: var(--surface-muted);
   }
   .mobile-input-tablist { display: flex; flex: 1; min-width: 0; gap: var(--space-4); }
   .mobile-input-tablist button {
@@ -3107,14 +3163,34 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     position: relative;
     display: grid;
     align-items: center;
-    min-height: var(--mobile-input-panel-height);
   }
-  .mobile-input-panels > [role="tabpanel"]:not([inert]) > *,
+  .mobile-input-tabs[data-tools-open],
+  .mobile-input-tabs[data-tools-open] .mobile-input-panels { flex-grow: 1; }
+  .mobile-input-digits > .input-tools {
+    position: absolute;
+    inset-block-start: var(--space-6);
+    inset-inline-end: var(--space-6);
+    z-index: 1;
+    touch-action: manipulation;
+  }
+  .mobile-panel-layout[data-input-sized] .mobile-input-panels {
+    flex: 1;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .mobile-panel-layout[data-input-sized] .mobile-input-digits {
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .mobile-input-panels > [role="tabpanel"]:not([inert]) > * {
+    animation: mobile-input-enter var(--motion-standard-duration) var(--motion-enter);
+  }
   .mobile-input-tool .chain-row[data-active] .chain-editor {
     animation: mobile-input-enter var(--motion-fast-duration) var(--motion-enter);
   }
   @keyframes mobile-input-enter {
-    from { opacity: .85; transform: translateY(2px); }
+    from { opacity: .85; }
   }
   /* Keep the keypad's space reserved while a tool scrolls within the same slot. */
   .mobile-input-digits[inert] { visibility: hidden; }
@@ -3391,13 +3467,14 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 @media (max-width: 900px) and (orientation: landscape) and (min-width: 560px),
   (max-width: 1440px) and (pointer: coarse) and (orientation: landscape) and (min-width: 560px) {
   .standard-workspace-page .workspace:has(> .mobile-panel-layout) {
-    --mobile-input-panel-height: clamp(150px, calc(100dvh - var(--topbar-height) - 68px), 276px);
     display: grid;
     grid-template: auto / minmax(0, 1fr) minmax(0, .85fr);
     gap: 8px;
     align-content: center;
     align-items: center;
   }
+  .standard-workspace-page .workspace:has(.mobile-input-tabs[data-tools-open]) { align-content: stretch; }
+  .mobile-panel-layout:not([data-input-sized]) .mobile-panel:has(.mobile-input-tabs[data-tools-open]) { align-self: stretch; }
   .mobile-panel-space { display: none; }
   .mobile-panel[data-after-gap] { margin-top: 0; }
   .mobile-panel[data-first] { grid-column: 1; grid-row: 1 / span var(--mobile-secondary-count); }

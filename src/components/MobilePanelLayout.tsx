@@ -1,7 +1,8 @@
 import { IconButton } from './Button'
-import { Component, Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react'
+import { Component, Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react'
 import { GripVertical, X } from 'lucide-react'
 import { MobileHintSwipe, type HintSwipeActions } from './MobileHintSwipe'
+import { MobileInputResizeHandle } from './MobileInputResizeHandle'
 import { MotionSurface, motionDuration, usePresentContent } from './Presence'
 import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
@@ -16,6 +17,7 @@ type Props = {
   blocked: boolean
   puzzleId: string
   withHint: boolean
+  resizableInput?: boolean
   hintSwipe?: HintSwipeActions
 }
 type Hold = { pointerId: number; x: number; y: number; timer: number }
@@ -60,7 +62,7 @@ class MobileHintMotion extends Component<MotionProps, Record<string, never>, Lay
     if (!duration) return null
 
     const cards = Array.from(root.current.querySelectorAll<HTMLElement>(
-      '[data-mobile-panel="puzzle"] .puzzle, [data-mobile-panel="input"] .workspace-controls',
+      '[data-mobile-panel="puzzle"] .puzzle, [data-mobile-panel="input"] > .mobile-panel-content',
     ), (element) => ({ element, rect: element.getBoundingClientRect() }))
     const hint = root.current.querySelector<HTMLElement>('[data-mobile-panel="hint"]')
     return { duration, cards, hint: !withHint && hint ? {
@@ -123,6 +125,7 @@ export function MobilePanelLayout(props: Props) {
   const [announcement, setAnnouncement] = useState('')
   const [saveFailed, setSaveFailed] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const inputId = useId()
   const closeButton = useRef<HTMLButtonElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const hold = useRef<Hold | null>(null)
@@ -334,7 +337,7 @@ export function MobilePanelLayout(props: Props) {
       <div><strong>Rearrange cards</strong><small id="mobile-panel-instructions">
         {saveFailed ? 'Order saved for this session only.' : 'Drag cards to move them. Changes save automatically.'}
       </small></div>
-      <IconButton ref={closeButton} type="button" variant="quiet" aria-label="Finish rearranging cards" onClick={exit}>
+      <IconButton ref={closeButton} variant="quiet" aria-label="Finish rearranging cards" onClick={exit}>
         <X size={22} aria-hidden="true" />
       </IconButton>
     </div>}</MotionSurface>
@@ -345,9 +348,13 @@ export function MobilePanelLayout(props: Props) {
       const index = visible.indexOf(id)
       const moving = dragView?.id === id
       const drop = dragView?.drop?.id === id ? dragView.drop.edge : undefined
+      const resizeEdge = id === 'input' && props.resizableInput && panels.puzzle
+        ? order.indexOf('puzzle') < order.indexOf('input') ? 'top' : 'bottom'
+        : undefined
       return <Fragment key={id}>
         <div className={`mobile-panel${id === 'hint' ? ' motion-surface' : ''}`} data-mobile-panel={id} data-first={index === 0 || undefined}
           data-after-gap={index > 1 || undefined}
+          id={id === 'input' ? inputId : undefined} data-resize-edge={resizeEdge}
           data-presence={id === 'hint' ? exiting ? 'exit' : 'open' : undefined} inert={exiting || undefined} aria-hidden={exiting || undefined}
           data-dragging={moving || undefined} data-drop={drop} role="group" aria-label={`${panel.title} card`}
           style={{
@@ -355,6 +362,8 @@ export function MobilePanelLayout(props: Props) {
             ...(moving ? { transform: `translate(${dragView.x}px, ${dragView.y}px)` } : {}),
           } as CSSProperties}>
           <div className="mobile-panel-content" inert={props.rearranging} aria-hidden={props.rearranging || undefined}>
+            {resizeEdge && <MobileInputResizeHandle inputId={inputId} edge={resizeEdge}
+              disabled={props.blocked || props.rearranging} withHint={props.withHint} />}
             {id === 'hint' ? <MobileHintSwipe exiting={exiting}
               actions={exiting || props.rearranging || props.blocked ? undefined : props.hintSwipe}>
               {panel.content}

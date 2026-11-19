@@ -26,10 +26,14 @@ export function usePuzzleZoom(enabled: boolean, puzzleId: string, cancelGridPres
     if (!frame || !board || !Number.isFinite(next.scale)) return
     const previous = view.current
     const nextZoomed = next.scale > 1
-    const x = Math.min(0, Math.max(frame.clientWidth * (1 - next.scale), next.x))
-    const y = Math.min(0, Math.max(frame.clientHeight * (1 - next.scale), next.y))
+    const width = frame.clientWidth
+    const height = frame.clientHeight
+    const x = Math.min(0, Math.max(width * (1 - next.scale), next.x))
+    const y = Math.min(0, Math.max(height * (1 - next.scale), next.y))
     view.current = nextZoomed ? { scale: next.scale, x, y } : FULL_GRID
-    board.style.transform = nextZoomed ? `translate3d(${x}px, ${y}px, 0) scale(${next.scale})` : ''
+    // Percentage offsets also work while the resize preview scales a fixed-size board.
+    board.style.transform = nextZoomed && width && height
+      ? `translate3d(${100 * x / width}%, ${100 * y / height}%, 0) scale(${next.scale})` : ''
     if (nextZoomed !== (previous.scale > 1)) setZoomed(nextZoomed)
   }
 

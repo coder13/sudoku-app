@@ -253,7 +253,7 @@ export function Controls(props: Props) {
                 )}
               </div>
             )}
-            {!props.draft && (props.advancedModes.colorsEnabled || props.onOpenColors) && (
+            {!props.draft && !(props.compact && props.onActions) && (props.advancedModes.colorsEnabled || props.onOpenColors) && (
               <IconButton className="color-mode-button" title={`${props.onOpenColors ? 'Colors' : 'Color mode'} (${shortcutLabel(shortcuts.colorMode)})`}
                 aria-label={props.onOpenColors ? 'Open colors panel' : 'Color mode'}
                 aria-pressed={props.colorMode || props.colorsActive || false} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)}
