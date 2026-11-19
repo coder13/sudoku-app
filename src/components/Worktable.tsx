@@ -15,7 +15,7 @@ import {
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
-import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
+import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey } from '../sudoku/player-rating'
@@ -56,6 +56,7 @@ import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
+import { useTouchHold } from './useTouchHold'
 
 const desktopInsightTabs = [
   { id: 'solution', label: 'Solution' },
@@ -154,6 +155,13 @@ type CandidatePress = {
   cancelled: boolean
 }
 
+type DigitHighlight = { mask: number; match: DigitHighlightMatch }
+const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all' }
+
+function isAltClick(event: Pick<MouseEvent, 'altKey' | 'shiftKey' | 'ctrlKey' | 'metaKey'>) {
+  return event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey
+}
+
 function matchesHintPosition(game: Game, position: HintPosition) {
   const { center, corner, eliminations } = game.position
   return game.id === position.gameId && center === position.center && corner === position.corner &&
@@ -229,6 +237,8 @@ export function Worktable({
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
+  const [digitHighlight, setDigitHighlight] = useState(defaultDigitHighlight)
+  const highlightedDigitMask = digitHighlight.mask
   const [chainHighlightDigit, setChainHighlightDigit] = useState<number | null>(null)
   const [selectedColor, setSelectedColor] = usePlayPreference('selectedColor')
   const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
@@ -241,6 +251,9 @@ export function Worktable({
   const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [highlightMode, setHighlightMode] = usePlayPreference('highlightMode')
+  useLayoutEffect(() => {
+    if (candidateCount(highlightedDigitMask) > 1) setHighlightMode(true)
+  }, [highlightedDigitMask, setHighlightMode])
   const [pencil, setPencil] = usePlayPreference('pencil')
   const [pencilModifier, setPencilModifier] = useState(false)
   const [candidatePreviewCell, setCandidatePreviewCell] = useState<number | null>(null)
@@ -460,6 +473,12 @@ export function Worktable({
   const canPreviewCandidates = canDragCandidates && selected.length === 0 && brush === null && !solved &&
     !modalOpen && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen &&
     !variantRulesOpen && !analysisDialogOpen
+  const canHighlightCellCandidates = !disabled && !draft && !solved && !colorMode && !eraseMode && !sketch.drawing && brush === null &&
+    !paintingCandidates && !modalOpen && !hintAnnotations && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult &&
+    !resetOpen && !variantRulesOpen && !analysisDialogOpen
+  const cellHold = useTouchHold(mobile && canHighlightCellCandidates)
+  const cancelCellHold = cellHold.cancel
+  useLayoutEffect(() => cancelCellHold, [cancelCellHold, hintPosition])
   const trace = solutionPath?.status === 'ready' ? solutionPath.trace : undefined
   const previewPosition = trace?.positions?.[solutionStep]
   const replayedSolutionStep = useMemo(() => trace && replayStep(trace, solutionStep), [trace, solutionStep])
@@ -552,6 +571,7 @@ export function Worktable({
   useLayoutEffect(() => {
     puzzleCardRef.current?.closest<HTMLElement>('.dock-puzzle-panel')?.scrollTo(0, 0)
     setPointerFocusedCell(null)
+    setDigitHighlight(defaultDigitHighlight)
     setDialogResult(null)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -930,6 +950,7 @@ export function Worktable({
   }
 
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected) {
+    clearHighlightedDigits()
     if (brush !== null && inputMode === 'value') {
       highlightColorDigit(digit === 0 || digit === coloringDigit ? null : digit)
       return
@@ -964,10 +985,49 @@ export function Worktable({
     if (highlightMode && inputMode !== 'value') return
     if (!cells.length) {
       setHighlightCandidatePairs(false)
-      setSelectedDigit((current) => digit === 0 || current === digit ? null : digit)
+      const wasHighlighted = digit > 0 && highlightedDigitMask === (1 << (digit - 1))
+      setSelectedDigit((current) => digit === 0 || current === digit || wasHighlighted ? null : digit)
       return
     }
     enterFromInput(cells, digit, inputMode)
+  }
+
+  function clearHighlightedDigits() {
+    setDigitHighlight((current) => current.mask ? { ...current, mask: 0 } : current)
+  }
+
+  function showDigitHighlights(next: SetStateAction<DigitHighlight>) {
+    setDigitHighlight(next)
+    setSelectedDigit(null)
+    setHighlightCandidatePairs(false)
+    setColorBrush(null)
+    setEraseMode(false)
+  }
+
+  function toggleDigitHighlight(digit: number, match: DigitHighlightMatch) {
+    const previous = selectedDigit ? 1 << (selectedDigit - 1) : 0
+    showDigitHighlights((current) => {
+      const mask = (current.mask || previous) ^ (1 << (digit - 1))
+      return { mask, match }
+    })
+  }
+
+  function changeDigitHighlightMatch(match: DigitHighlightMatch) {
+    const previous = selectedDigit ? 1 << (selectedDigit - 1) : 0
+    showDigitHighlights((current) => ({ mask: current.mask || previous, match }))
+  }
+
+  function highlightCellCandidates(mask: number) {
+    candidatePress.current = null
+    dragSelection.current = null
+    pendingDoubleClickSingle.current = null
+    setCandidatePreviewCell(null)
+    setSelected([])
+    showDigitHighlights({ mask, match: 'any' })
+  }
+
+  function cellHighlightMask(index: number) {
+    return canHighlightCellCandidates && values[index] === '0' ? center[index] | corner[index] : 0
   }
 
   function changeColorTarget(target: ColorTarget) {
@@ -1045,6 +1105,13 @@ export function Worktable({
     !highlightMode && !colorMode && !eraseMode && brush === null && selectedDigit === null && !hintAnnotations
 
   function clickCell(index: number, event: MouseEvent) {
+    if (cellHold.suppressClick(event)) return
+    if (desktop && isAltClick(event)) {
+      event.preventDefault()
+      const mask = cellHighlightMask(index)
+      if (mask) highlightCellCandidates(mask)
+      return
+    }
     const press = candidatePress.current
     if (press && event.detail > 0) {
       // Touch generates a click after pointerup, even after leaving an implicitly captured cell.
@@ -1079,12 +1146,14 @@ export function Worktable({
       return
     }
     const selectingMultiple = !pencilActive && (event.metaKey || event.ctrlKey)
-    if (!givenDigit && !highlightMode && !selected.length && armedInput !== null && !event.shiftKey && !selectingMultiple) {
+    if (!givenDigit && !highlightMode && !selected.length && armedInput !== null && !highlightedDigitMask && !event.shiftKey && !selectingMultiple) {
       enterFromInput([index], armedInput, mode, { toggleValue: !draft && mode === 'value' })
       return
     }
-    if (givenDigit) setSelectedDigit(givenDigit)
-    else if (!highlightMode) setSelectedDigit(null)
+    if (!highlightedDigitMask) {
+      if (givenDigit) setSelectedDigit(givenDigit)
+      else if (!highlightMode) setSelectedDigit(null)
+    }
     if (event.shiftKey && selected.length) setSelected(rectangleSelection(anchor, index))
     else {
       setAnchor(index)
@@ -1115,6 +1184,9 @@ export function Worktable({
     setPointerFocusedCell(index)
     suppressCellClick.current = false
     candidatePress.current = null
+    if (desktop && isAltClick(event)) return
+    const maskToHighlight = mobile ? cellHighlightMask(index) : 0
+    cellHold.start(event, maskToHighlight ? () => highlightCellCandidates(maskToHighlight) : undefined)
     if (highlightMode) {
       dragSelection.current = {
         pointerId: event.pointerId,
@@ -1145,6 +1217,7 @@ export function Worktable({
   }
 
   function continueCellDrag(index: number | null, event: ReactPointerEvent) {
+    cellHold.move(event)
     if (event.pointerType === 'touch') {
       const press = candidatePress.current
       if (press?.pointerId === event.pointerId && index !== press.cell) {
@@ -1295,6 +1368,7 @@ export function Worktable({
         edit(key === 'y' || event.shiftKey ? redo : undo)
       } else if (!draft && !shortcut && highlightedDigit) {
         event.preventDefault()
+        clearHighlightedDigits()
         setHighlightCandidatePairs(false)
         setSelectedDigit(highlightedDigit)
       } else if (!draft && shortcut && !event.shiftKey && !event.isComposing) {
@@ -1315,8 +1389,10 @@ export function Worktable({
         const next = row * 9 + col
         setActive(next)
         const givenDigit = givenDigitAt(game.givens, next)
-        if (givenDigit) setSelectedDigit(givenDigit)
-        else if (!highlightMode) setSelectedDigit(null)
+        if (!highlightedDigitMask) {
+          if (givenDigit) setSelectedDigit(givenDigit)
+          else if (!highlightMode) setSelectedDigit(null)
+        }
         if (event.shiftKey) setSelected(rectangleSelection(anchor, next))
         else {
           setAnchor(next)
@@ -1832,6 +1908,7 @@ export function Worktable({
     <button aria-pressed={highlightCandidatePairs} disabled={solved} onClick={() => {
       if (sketch.drawing) setChainHighlightDigit(null)
       else setSelectedDigit(null)
+      clearHighlightedDigits()
       setHighlightCandidatePairs((current) => !current)
       setPuzzleMenuOpen(false)
       setActionsOpen(false)
@@ -1946,7 +2023,9 @@ export function Worktable({
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
       overlay={mobile && completionPanel ? { content: completionPanel, visible: showMobileResults } : undefined}
-      highlightedDigit={selectedDigit} selected={selected} active={active}
+      highlightedDigit={selectedDigit} highlightedDigitMask={hintAnnotations || colorMode || eraseMode ? 0 : highlightedDigitMask}
+      highlightedDigitMatch={digitHighlight.match}
+      selected={selected} active={active}
       pointerFocusedCell={pointerFocusedCell}
       highlightCandidateCount={!hintAnnotations && highlightCandidatePairs ? 2 : null}
       boardRef={boardRef} onCell={canSelectCell && !paintingCandidates ? clickCell : undefined}
@@ -2036,8 +2115,8 @@ export function Worktable({
             </>
           )}
         </div>
-        <div id={puzzleStageId} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
-          onContextMenu={preventControlClickMenu} onPointerUp={finishControlClick}
+        <div id={puzzleStageId} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
+          onContextMenu={(event) => { if (!cellHold.suppressContextMenu(event)) preventControlClickMenu(event) }} onPointerUp={finishControlClick}
           onBlur={(event) => {
             const cell = event.target.dataset.cell
             if (cell !== undefined) setPointerFocusedCell((current) => current === Number(cell) ? null : current)
@@ -2087,6 +2166,8 @@ export function Worktable({
             setColorBrush(null); setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
           }}
           selectedDigit={sketch.drawing ? chainHighlightDigit : colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0}
+          highlightedDigitMask={eraseMode ? 0 : highlightedDigitMask} onToggleDigitHighlight={!draft && !solved && !previewing ? toggleDigitHighlight : undefined}
+          digitHighlightMatch={digitHighlight.match} onDigitHighlightMatchChange={!draft && !solved && !previewing ? changeDigitHighlightMatch : undefined}
           values={values} input={sketch.drawing ? toggleChainHighlight : input} chainDrawing={sketch.drawing}
           undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
           onCheck={presentationDraft || previewing ? undefined : () => { void runCheck() }}
@@ -2261,6 +2342,7 @@ export function Worktable({
             setColorBrush(null)
             setSelectedColor(null)
             setSelectedDigit(null)
+            setDigitHighlight(defaultDigitHighlight)
             setHighlightCandidatePairs(false)
             setHint(null)
             setHintRevealed(false)

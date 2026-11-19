@@ -1,3 +1,5 @@
+export type DigitHighlightMatch = 'all' | 'any'
+
 export function activeHighlightDigit(
   values: string,
   selected: readonly number[],

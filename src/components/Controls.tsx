@@ -1,15 +1,17 @@
 import { Button, IconButton } from './Button'
 import {
-  type CSSProperties, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent,
+  type CSSProperties, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent,
   type ReactNode, type Ref, type SetStateAction,
   useEffect, useRef, useState, useSyncExternalStore,
 } from 'react'
 import { ArrowUpDown, Check, Delete, Eraser, Highlighter, Layers2, ListChecks, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
-import { alternateColorShade, COLORS, COLOR_FAMILIES, DIGITS, type ColorTarget, type Mode } from '../sudoku/game'
+import { alternateColorShade, COLORS, COLOR_FAMILIES, DIGITS, hasCandidate, type ColorTarget, type Mode } from '../sudoku/game'
+import type { DigitHighlightMatch } from '../sudoku/highlighting'
 import type { AdvancedModes } from '../sudoku/preferences'
 import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 import { ColorTargetPicker } from './CellColorPalette'
 import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
+import { useTouchHold } from './useTouchHold'
 
 type Props = {
   mode: Mode
@@ -30,6 +32,10 @@ type Props = {
   highlightMode: boolean
   toggleHighlightMode: () => void
   selectedDigit: number | null
+  highlightedDigitMask?: number
+  onToggleDigitHighlight?: (digit: number, match: DigitHighlightMatch) => void
+  digitHighlightMatch?: DigitHighlightMatch
+  onDigitHighlightMatchChange?: (match: DigitHighlightMatch) => void
   hasCellSelection: boolean
   values: string
   input: (digit: number) => void
@@ -61,6 +67,12 @@ export function Controls(props: Props) {
   const drag = useRef<{ y: number; height: number } | null>(null)
   const editsDisabled = props.disabled || props.chainDrawing
   const colors = !props.chainDrawing && props.mode === 'color'
+  const toggleDigitHighlight = !editsDisabled && !colors ? props.onToggleDigitHighlight : undefined
+  const canHighlightDigits = Boolean(toggleDigitHighlight)
+  const digitHighlightMatch = props.digitHighlightMatch ?? 'all'
+  const matchLabel = digitHighlightMatch === 'all' ? 'All' : 'Any'
+  const nextMatch = digitHighlightMatch === 'all' ? 'any' : 'all'
+  const digitHold = useTouchHold(canHighlightDigits)
   const candidateColors = colors && props.colorTarget === 'candidate'
   const darkColors = props.selectedDigit !== null && props.selectedDigit > COLOR_FAMILIES.length
   const choices = colors ? COLOR_FAMILIES.map((_, index) => index + 1 + (darkColors ? COLOR_FAMILIES.length : 0)) : DIGITS
@@ -131,6 +143,24 @@ export function Controls(props: Props) {
     event.preventDefault()
   }
 
+  function clickDigit(event: ReactMouseEvent<HTMLButtonElement>, digit: number) {
+    if (digitHold.suppressClick(event)) return
+    if (toggleDigitHighlight && (event.shiftKey || event.ctrlKey || event.metaKey)) {
+      digitHold.rememberClick(event.currentTarget)
+      toggleDigitHighlight(digit, event.shiftKey ? 'any' : 'all')
+    } else props.input(digit)
+  }
+
+  function digitContextMenu(event: ReactMouseEvent<HTMLButtonElement>, digit: number) {
+    if (!toggleDigitHighlight || digitHold.suppressContextMenu(event)) return
+    if (event.ctrlKey) {
+      // macOS can route Control-click through the context menu event.
+      event.preventDefault()
+      digitHold.rememberClick(event.currentTarget)
+      toggleDigitHighlight(digit, event.shiftKey ? 'any' : 'all')
+    }
+  }
+
   return (
     <section className={`surface controls${props.compact ? ' compact-controls' : ''}`} aria-label="Sudoku controls"
       style={{ '--controls-height': `${props.panelHeight}px`, '--input-size': `${props.inputSize}px` } as CSSProperties}>
@@ -169,16 +199,20 @@ export function Controls(props: Props) {
             {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
             <div className={`keypad ${colors ? 'palette' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
-                const armed = props.selectedDigit === digit
+                const singleHighlight = props.highlightedDigitMask === (1 << (digit - 1))
+                const armed = props.selectedDigit === digit || (canHighlightDigits && singleHighlight)
+                const pressed = armed || (canHighlightDigits && hasCandidate(props.highlightedDigitMask ?? 0, digit))
                 const digitLabel = props.chainDrawing ? `${armed ? 'Clear highlight for' : 'Highlight'} ${digit}`
                   : `${props.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
                 return (
                   <button type="button" key={digit}
-                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && !colors && counts[digit] === 9 ? 'all-placed' : ''} ${armed ? 'selected-key' : ''}`}
+                    className={`key ${colors ? `tone-key color-${digit}` : ''} ${!props.draft && !colors && counts[digit] === 9 ? 'all-placed' : ''} ${pressed ? 'selected-key' : ''}`}
                     aria-label={colors ? COLORS[digit - 1] : digitLabel}
                     aria-keyshortcuts={colors ? digit <= 9 ? `${digit}` : undefined : `${props.chainDrawing ? `${digit} ` : ''}Shift+${digit} F${digit}`}
-                    aria-pressed={armed} disabled={props.disabled}
-                    onClick={() => props.input(digit)}>
+                    aria-pressed={pressed} disabled={props.disabled} data-no-panel-hold={canHighlightDigits || undefined}
+                    onPointerDown={(event) => digitHold.start(event, toggleDigitHighlight && (() => toggleDigitHighlight(digit, props.compact ? digitHighlightMatch : 'all')))}
+                    onPointerMove={digitHold.move}
+                    onContextMenu={(event) => digitContextMenu(event, digit)} onClick={(event) => clickDigit(event, digit)}>
                     {colors ? <span className="swatch" /> : <span>{digit}</span>}
                   </button>
                 )
@@ -203,14 +237,21 @@ export function Controls(props: Props) {
               </IconButton>
             )}
             {!props.draft && (
-              <IconButton className="highlight-mode-button"
-                title={props.chainDrawing ? `Clear digit highlight (${shortcutLabel(shortcuts.highlightMode)})` : `Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
-                aria-label={props.chainDrawing ? 'Clear digit highlight' : 'Highlight mode'}
-                aria-pressed={props.chainDrawing ? undefined : props.highlightMode} aria-keyshortcuts={shortcutLabel(shortcuts.highlightMode)}
-                onClick={props.chainDrawing ? () => props.input(0) : props.toggleHighlightMode}
-                disabled={props.disabled || (props.chainDrawing && props.selectedDigit === null)}>
-                <Highlighter size={18} />
-              </IconButton>
+              <div className="highlight-controls">
+                <IconButton className="highlight-mode-button"
+                  title={props.chainDrawing ? `Clear digit highlight (${shortcutLabel(shortcuts.highlightMode)})` : `Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
+                  aria-label={props.chainDrawing ? 'Clear digit highlight' : 'Highlight mode'}
+                  aria-pressed={props.chainDrawing ? undefined : props.highlightMode} aria-keyshortcuts={shortcutLabel(shortcuts.highlightMode)}
+                  onClick={props.chainDrawing ? () => props.input(0) : props.toggleHighlightMode}
+                  disabled={props.disabled || (props.chainDrawing && props.selectedDigit === null)}>
+                  <Highlighter size={18} />
+                </IconButton>
+                {props.compact && props.highlightMode && !props.chainDrawing && props.onDigitHighlightMatchChange && (
+                  <Button className="candidate-match-button" data-no-panel-hold disabled={editsDisabled}
+                    aria-label={`${matchLabel} selected candidates. Switch to ${nextMatch}.`}
+                    onClick={() => props.onDigitHighlightMatchChange?.(nextMatch)}>{matchLabel}</Button>
+                )}
+              </div>
             )}
             {!props.draft && (props.advancedModes.colorsEnabled || props.onOpenColors) && (
               <IconButton className="color-mode-button" title={`${props.onOpenColors ? 'Colors' : 'Color mode'} (${shortcutLabel(shortcuts.colorMode)})`}
