@@ -14,7 +14,7 @@ export type BoardLink = {
   arrow?: boolean
 }
 
-export type CellAnnotation = { fill?: string; outline?: string; ink?: string; label?: string }
+export type CellAnnotation = { fill?: string; ink?: string; label?: string }
 export type CandidateAnnotation = { color: string; mark?: 'ring' | 'strike'; label?: string }
 
 export type BoardAnnotations = {

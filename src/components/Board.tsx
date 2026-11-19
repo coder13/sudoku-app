@@ -238,7 +238,6 @@ export function Board({
                 const cellStyle = cellAnnotation && {
                   '--cell-fill': error ? undefined : cellAnnotation.fill,
                   color: error ? undefined : cellAnnotation.ink,
-                  '--annotation-outline': cellAnnotation.outline,
                 } as CSSProperties
                 const candidateLabel = (candidateAnnotations || candidateColors) && [...new Set([...gridCandidates, ...centerCandidates])]
                   .map((digit) => {

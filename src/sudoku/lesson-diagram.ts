@@ -784,7 +784,7 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   for (const action of showActions ? deduction.actions : []) {
     if ('place' in action) {
       const { cell } = action.place
-      cells.set(cell, { ...cells.get(cell), outline: resultColor })
+      cells.set(cell, { ...cells.get(cell), fill: 'var(--lesson-result-fill)' })
       mark(action.place, resultColor, 'to place')
     } else {
       mark(action.eliminate, removalColor, 'to remove', true)

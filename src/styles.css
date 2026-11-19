@@ -909,6 +909,7 @@ svg { flex-shrink: 0; }
   --lesson-pattern: #214b9c;
   --lesson-accent: #805216;
   --lesson-result: #186444;
+  --lesson-result-fill: color-mix(in srgb, var(--lesson-result) 20%, var(--board-bg));
   --lesson-removal: #a02645;
 }
 :root:is([data-color-mode="dark"], [data-theme="andoku"]) :is(.learn-page, .puzzle-stage) {
@@ -1166,17 +1167,9 @@ svg { flex-shrink: 0; }
 }
 .cell-coloring .cell { cursor: crosshair; }
 .cell.conflict { --cell-fill: var(--danger-bg); color: var(--danger-ink); }
-.cell.selected { --cell-fill: var(--board-selected-bg); box-shadow: inset 0 0 0 2px var(--board-selected-border); }
-.cell.selected.colored { --cell-fill: var(--tone); }
-.cell.selected.conflict { --cell-fill: var(--danger-bg); box-shadow: inset 0 0 0 2px #b74560; }
-.cell::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  box-shadow: inset 0 0 0 2px var(--annotation-outline, transparent);
-  transition: box-shadow var(--board-shape-motion);
-}
+.cell.selected { --cell-fill: var(--board-selected-bg); }
+.cell.selected.colored { --cell-fill: color-mix(in srgb, var(--tone) 76%, var(--board-selected-bg)); }
+.cell.selected.conflict { --cell-fill: color-mix(in srgb, var(--danger-bg) 76%, var(--board-selected-bg)); }
 .cell:focus-visible { z-index: 1; outline-offset: -4px; }
 .cell[data-pointer-focused]:focus-visible { outline: none; }
 .color-1 { --tone: #f5c7d4; --tone-ink: light-dark(#9e3b62, #ffbad1); }
@@ -1301,13 +1294,12 @@ svg { flex-shrink: 0; }
 }
 .paint-candidate { cursor: crosshair; }
 @media (hover: hover) {
-  [data-candidate-style="shape"] .paint-candidate:hover { box-shadow: inset 0 0 0 1px var(--board-selected-border); }
+  [data-candidate-style="shape"] .paint-candidate:hover { background: var(--board-selected-bg); }
 }
 .chain-candidate { cursor: crosshair; }
 .chain-candidate[data-link-target]:where(:not([data-mark])) { color: var(--entry-ink); }
 [data-candidate-style="shape"] .chain-candidate[data-link-target] {
   background: color-mix(in srgb, var(--chain-preview) 15%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chain-preview) 75%, transparent);
 }
 .chain-candidate[aria-pressed="true"] { color: var(--chain-selected); }
 [data-candidate-style="shape"] .chain-candidate:is(:hover, [aria-pressed="true"]) { background: var(--board-selected-bg); }
@@ -1324,7 +1316,6 @@ svg { flex-shrink: 0; }
 [data-candidate-style="shape"] .candidate-color {
   background: var(--tone);
   color-scheme: light;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone), #201a23 26%);
 }
 [data-candidate-style="shape"] .candidate-marks .candidate-color {
   display: inline-grid;
@@ -1356,14 +1347,16 @@ svg { flex-shrink: 0; }
 .board-candidate::after {
   width: 1.35em;
   aspect-ratio: 1;
-  border: 1.5px solid currentColor;
   border-radius: 50%;
+  z-index: -1;
+  background: color-mix(in srgb, currentColor 22%, transparent);
 }
 .puzzle .candidate-marks .board-candidate::after { width: min(1.35em, calc(100cqmin / 3)); }
 .board-candidate::before { width: .75em; border-top: 1.5px solid currentColor; }
 .board-candidate[data-candidate-preview="remove"]::before { border-top-width: 1px; }
 [data-candidate-style="shape"] .board-candidate[data-mark="ring"]::after,
 [data-candidate-style="shape"] .board-candidate:is([data-mark="strike"], [data-candidate-preview="remove"])::before { opacity: 1; }
+[data-candidate-style="shape"] .board-candidate[data-mark="ring"] { isolation: isolate; }
 
 .board-body:has(> .board-links) .cell:focus-visible:has([data-mark]),
 .board-body:has(> .board-links) :is(.candidate-marks, .center-marks):has(> [data-mark]) {
@@ -1381,19 +1374,12 @@ svg { flex-shrink: 0; }
   -webkit-text-stroke: .24em var(--center-note-bg);
   paint-order: stroke fill;
 }
-.board-body:has(> .board-links) .board-candidate[data-mark="strike"]::before {
-  width: .95em;
-  height: 1em;
-  border: 1px solid currentColor;
-  border-radius: 2px;
-  background: var(--cell-fill);
-  z-index: -1;
+.board-body:has(> .board-links) .board-candidate[data-mark="strike"] {
+  -webkit-text-stroke: .24em var(--cell-fill);
+  paint-order: stroke fill;
 }
-.board-body:has(> .board-links) .center-marks > [data-mark="strike"]::before { background: var(--center-note-bg); }
+.board-body:has(> .board-links) .center-marks > [data-mark="strike"] { -webkit-text-stroke-color: var(--center-note-bg); }
 .chain-sketch .chain-candidate[data-mark="strike"] { background: transparent; box-shadow: none; }
-.chain-sketch .board-body:has(> .board-links) .board-candidate[data-mark="strike"]::before {
-  background: color-mix(in srgb, var(--chain-removal) 16%, var(--board-bg));
-}
 .board-links, .board-outside-clues {
   position: absolute;
   inset: 2px;

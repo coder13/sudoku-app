@@ -421,7 +421,7 @@ export function Worktable({
     return lessonDiagram({ deduction, candidates: hintCandidates }, deduction.pattern, { cellReferenceStyle, difficulty: hintDifficulty, grid })
   }, [fullHint, deduction, hintCandidates, cellReferenceStyle, hintDifficulty, grid])
   const availableHintAnnotations = hintDiagram?.annotations ?? locationClue?.annotations ?? (recoveryLocationVisible
-    ? { cells: new Map([[recovery.cell, { fill: 'var(--lesson-pattern-fill)', outline: 'var(--lesson-pattern)', label: 'Check candidates' }]]) }
+    ? { cells: new Map([[recovery.cell, { fill: 'var(--lesson-pattern-fill)', label: 'Check candidates' }]]) }
     : undefined)
   const playerVisualsSelected = visibleHint?.visuals === 'player'
   const hintAnnotations = playerVisualsSelected ? undefined : availableHintAnnotations
@@ -483,8 +483,10 @@ export function Worktable({
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.six === six ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
   const masks = currentNotes?.masks
-  const subsetMasks = useMemo(() => candidateToolMasks(masks, values, displayedCandidates, eliminations),
-    [masks, values, displayedCandidates, eliminations])
+  const completeSubsetMasks = useMemo(() => candidateToolMasks(masks, values, null, eliminations), [masks, values, eliminations])
+  const subsetMasks = useMemo(() => completeSubsetMasks && displayedCandidates
+    ? completeSubsetMasks.map((mask, cell) => mask & (displayedCandidates[cell] ?? 0x1ff)) : completeSubsetMasks,
+  [completeSubsetMasks, displayedCandidates])
   const autoGenerateCandidates = advancedModes.autoGenerateCandidates && !draft && !solved && needsInitialCandidates(game)
   const hasSingles = useMemo(() => !draft && !solved && Boolean(masks &&
     singleFromCandidates(values, displayedCandidates ?? masks, eliminations, variant?.puzzle, grid, six?.rules)),
@@ -514,7 +516,7 @@ export function Worktable({
   const strongLinks = useStrongLinkOverlay(strongLinksVisible ? chainGraph : null, strongLinkMask, sketch.annotations)
   const browsingStrongLinks = strongLinksVisible && !sketch.drawing
   const inspectSubset = subsetsVisible && !hintAnnotations && !disabled && !draft && !solved && !sketch.drawing && !browsingStrongLinks
-  const subset = useSubsets(inspectSubset ? subsetMasks : null, selected, values, grid ?? CLASSIC_GRID, variant?.puzzle)
+  const subset = useSubsets(inspectSubset ? subsetMasks : null, completeSubsetMasks, selected, values, grid ?? CLASSIC_GRID, variant?.puzzle)
   const canPaint = !cellColorsDisabled
   const colorsVisible = mobile ? activeMobileInput === 'colors'
     : advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
@@ -2005,7 +2007,7 @@ export function Worktable({
     : currentNotes?.failed ? 'The candidates did not load.'
     : currentNotes?.masks === null ? 'Resolve grid conflicts to inspect subsets.'
     : subsetMasks ? undefined : 'Loading candidates…'
-  const subsetsPanel = <SubsetsPanel count={inspectSubset ? subset.cells.length : 0} digits={subset.digits}
+  const subsetsPanel = <SubsetsPanel count={inspectSubset ? subset.cells.length : 0} digits={subset.digits} removalCount={subset.removalCount}
     onClear={() => setSelected([])} unavailable={subsetsUnavailable} />
   const completionPanel = showResults || (mobile && showSolvedGrid) ? (
     <CompletedPuzzle game={savedGame} games={games} catchUpPuzzle={catchUpPuzzle} preferredDifficulty={preferredDifficulty}

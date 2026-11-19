@@ -12,7 +12,7 @@ export function useGridClickAway(
     function pointerDown(event: PointerEvent) {
       const target = event.target
       if (!(target instanceof Element) || !grid.current || grid.current.contains(target)) return
-      if (latest.current.isInputTool(target)) return
+      if (target.closest('.app-menu-trigger, #app-menu, .settings-dialog') || latest.current.isInputTool(target)) return
       latest.current.onAway()
     }
     document.addEventListener('pointerdown', pointerDown)
