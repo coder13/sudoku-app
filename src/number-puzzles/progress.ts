@@ -1,3 +1,5 @@
+import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog.ts'
+
 export type NumberPosition = { values: number[]; notes: number[] }
 
 export function emptyNumberPosition(cells: number): NumberPosition {
@@ -27,4 +29,19 @@ export function saveNumberPosition(key: string, position: NumberPosition): boole
   } catch {
     return false
   }
+}
+
+export function loadNumberDifficulty(game: string): NumberPuzzleDifficulty | undefined {
+  try {
+    const saved = localStorage.getItem(`${game}.difficulty.v1`)
+    return numberPuzzleDifficulties.find(level => level === saved)
+  } catch {
+    return undefined
+  }
+}
+
+export function rememberNumberDifficulty(game: string, difficulty: NumberPuzzleDifficulty) {
+  try {
+    localStorage.setItem(`${game}.difficulty.v1`, difficulty)
+  } catch { /* The picker works without storage. */ }
 }

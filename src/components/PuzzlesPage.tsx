@@ -1,8 +1,8 @@
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
-import { DifficultySelector } from './DifficultySelector'
+import { DifficultySelector, PuzzleDifficultyStep } from './DifficultySelector'
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { getRouteApi, Link, useCanGoBack, useLocation, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { ArrowRight, BarChart3, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, PencilLine, Trophy } from 'lucide-react'
+import { ArrowRight, BarChart3, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, PencilLine, Trophy } from 'lucide-react'
 import {
   DIFFICULTY_LABELS, formatPuzzleRating, isDifficulty, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
@@ -20,18 +20,11 @@ import { VariantPreview } from './VariantPreview'
 import { VariantRulesetSelector } from './VariantRulesetSelector'
 import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
+import { PuzzlesSectionNav, puzzleSections, type PuzzleSection } from './PuzzlesSectionNav'
 import { PuzzleCollections } from './PuzzleCollections'
 import { SelectControl } from './SelectControl'
 import { collectionDifficulties, getCollectionPuzzle, getCollection } from '../sudoku/collections'
 
-const sections = {
-  puzzles: { to: '/puzzles/browse', label: 'Active Puzzles', icon: Grid3X3 },
-  new: { to: '/puzzles/new', label: 'New puzzle', icon: Dices },
-  solved: { to: '/puzzles/solved', label: 'Solved puzzles', icon: Trophy },
-  collections: { to: '/puzzles/collections', label: 'Collections', icon: BookOpen },
-  statistics: { to: '/puzzles/statistics', label: 'Statistics', icon: BarChart3 },
-} as const
-type Section = keyof typeof sections
 const newPuzzleRoute = getRouteApi('/puzzles/new')
 const collectionRoute = getRouteApi('/puzzles/collections')
 const solvedRoute = getRouteApi('/puzzles/solved')
@@ -248,22 +241,16 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
     void generate(selected, onGenerated, variant, { ruleset: preset?.id, boxRows })
   }
 
-  return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
-    <p className="new-puzzle-variant-summary">
-      <VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} />
-      <span>{preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : VARIANTS[variant].name)}</span>
-    </p>
+  const name = preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : VARIANTS[variant].name)
+  return <PuzzleDifficultyStep name={name} preview={<VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} />}
+    busy={busy} error={error} onStart={start}
+    startLabel={selected === 'auto' ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}>
     {variant === 'six' && <p>{sixGridForBoxRows(boxRows).boxRows} × {sixGridForBoxRows(boxRows).boxColumns} boxes</p>}
     {!sized && <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: next }, replace: true, resetScroll: false })
     }} />}
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
-    {error && <p className="form-error" role="alert">{error}</p>}
-    <Button variant="primary" className="puzzle-start-button" disabled={busy} onClick={start}>
-      <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
-        ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
-    </Button>
-  </section>
+  </PuzzleDifficultyStep>
 }
 
 function Statistics({ games }: { games: Game[] }) {
@@ -334,7 +321,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const routeId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
   const difficultyScreen = routeId === '/puzzles/new/difficulty'
   const section = difficultyScreen ? 'new'
-    : (Object.keys(sections) as Section[]).find((id) => sections[id].to === routeId) ?? 'puzzles'
+    : (Object.keys(puzzleSections) as PuzzleSection[]).find((id) => puzzleSections[id].to === routeId) ?? 'puzzles'
   const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
   const collection = getCollection(collectionSearch?.collection)
   const collectionPuzzle = getCollectionPuzzle(collectionSearch?.collection, collectionSearch?.puzzle)?.puzzle
@@ -348,7 +335,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
     : screen === 'variant' ? 'Choose a variant'
       : section === 'puzzles' ? 'Puzzles'
-        : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? sections[section].label
+        : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? puzzleSections[section].label
 
   useEffect(() => {
     if (screen) heading.current?.focus({ preventScroll: true })
@@ -359,7 +346,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     if (!isSizedPuzzleId(preference.variant)) setDifficulty(preference.difficulty)
   }
 
-  function content(current: Section) {
+  function content(current: PuzzleSection) {
     if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} manage={setManagingId} loading={loadingPuzzles} />
     if (current === 'solved') return <SolvedPuzzleLibrary games={games} active={active} loading={loadingPuzzles} />
     if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`}
@@ -388,12 +375,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
             : section !== 'puzzles' && <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
         <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{pageTitle}</h1>
       </header>
-      <nav className="main-menu-tabs" aria-label="Puzzles sections">
-        {Object.entries(sections).map(([id, { to, label, icon: Icon }]) => (
-          <Link key={id} to={to} search={{}} data-section={id} aria-current={section === id ? 'page' : undefined}
-            activeOptions={{ exact: id !== 'new', includeSearch: false }}><Icon size={18} aria-hidden="true" />{label}</Link>
-        ))}
-      </nav>
+      <PuzzlesSectionNav active={section} />
       <div className="main-menu-panel motion-screen" key={screen ?? section}>
         {error && <p className="workspace-error" role="alert">{error}</p>}
         {content(section)}

@@ -1,5 +1,5 @@
 import { kakuroCatalog, type KakuroEntry } from '../kakuro/catalog'
-import { checkKakuro, findKakuroHint } from '../kakuro/engine'
+import { checkKakuro, findKakuroHints, solveKakuro } from '../kakuro/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 import './kakuro.css'
 
@@ -14,6 +14,7 @@ const kakuro: NumberGameConfig<KakuroEntry> = {
   game: 'kakuro',
   name: 'Kakuro',
   rules: 'Fill each white cell with a digit from 1 to 9. Use each digit only once per run. The digits must add up to the clue.',
+  techniques: ['Run sum', 'Crossing run sums'],
   entries: kakuroCatalog,
   hasClueCells: true,
   board: ({ puzzle }) => ({
@@ -34,26 +35,27 @@ const kakuro: NumberGameConfig<KakuroEntry> = {
       const { complete, conflicts } = checkKakuro(puzzle, values)
       return { complete, marked: conflicts.flatMap(run => [run.clue, ...run.cells.filter(index => values[index])]) }
     },
-    hint: values => {
-      const hint = findKakuroHint(puzzle, values)
-      if (!hint) return null
-      return {
-        cell: hint.cell,
-        value: hint.digit,
-        marked: hint.runs.map(run => run.clue),
-        renderExplanation: cellName => <details className="number-puzzle-help">
-          <summary>Show hint steps</summary>
-          <p>Each step uses the clue total, distinct digits, and the candidates left by earlier steps.</p>
-          <ol className="kakuro-hint-steps">{hint.steps.map(({ run, changes }, index) => <li key={index}>
-            <strong>{run.total} {run.direction} at {cellName(run.clue)}</strong>
-            <ul>{changes.map(({ cell, removedMask, remainingMask }) => <li key={cell}>
-              The clue rules out {describeCandidates(removedMask)} in {cellName(cell)}.
-              {' '}{cellName(cell)} can only be {describeCandidates(remainingMask)}.
-            </li>)}</ul>
-          </li>)}</ol>
-        </details>,
-      }
+    solve: () => {
+      const result = solveKakuro(puzzle)
+      return result.status === 'unique' ? result.solution : null
     },
+    hints: (values, limit) => findKakuroHints(puzzle, values, limit).map(hint => ({
+      cell: hint.cell,
+      value: hint.digit,
+      technique: hint.runs.length === 1 ? 'Run sum' : 'Crossing run sums',
+      marked: hint.runs.map(run => run.clue),
+      renderExplanation: cellName => <details className="number-puzzle-help">
+        <summary>Show hint steps</summary>
+        <p>Each step uses the clue total, distinct digits, and the candidates left by earlier steps.</p>
+        <ol className="kakuro-hint-steps">{hint.steps.map(({ run, changes }, index) => <li key={index}>
+          <strong>{run.total} {run.direction} at {cellName(run.clue)}</strong>
+          <ul>{changes.map(({ cell, removedMask, remainingMask }) => <li key={cell}>
+            The clue rules out {describeCandidates(removedMask)} in {cellName(cell)}.
+            {' '}{cellName(cell)} can only be {describeCandidates(remainingMask)}.
+          </li>)}</ul>
+        </li>)}</ol>
+      </details>,
+    })),
   }),
 }
 

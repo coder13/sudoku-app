@@ -200,32 +200,37 @@ function propagate(
 }
 
 export function findKakuroHint(puzzle: KakuroPuzzle, values: readonly number[]): KakuroHint | null {
+  return findKakuroHints(puzzle, values, 1)[0] ?? null
+}
+
+export function findKakuroHints(puzzle: KakuroPuzzle, values: readonly number[], limit = Infinity): KakuroHint[] {
   const trace: KakuroHintStep[] = []
-  let placement: Pick<KakuroHint, 'cell' | 'digit' | 'depth'> | undefined
+  const placements: (Pick<KakuroHint, 'cell' | 'digit' | 'depth'> & { through: number })[] = []
   const consistent = propagate(puzzle, createDomains(puzzle, values), (run, domains, support, depth) => {
-    if (placement) return
+    if (placements.length >= limit) return
     const changes: KakuroCandidateChange[] = []
     for (const [i, cell] of run.cells.entries()) {
       const remainingMask = support[i]
       const removedMask = domains[cell] & ~remainingMask
       if (!removedMask) continue
       changes.push({ cell, removedMask, remainingMask })
-      if (!placement && digitCounts[remainingMask] === 1) {
-        placement = { cell, digit: digitFromMask(remainingMask), depth }
+      if (placements.length < limit && digitCounts[remainingMask] === 1) {
+        placements.push({ cell, digit: digitFromMask(remainingMask), depth, through: trace.length + 1 })
       }
     }
     trace.push({ run, changes })
   })
-  if (!consistent || !placement) return null
-
-  // Keep each step that narrowed a cell used by a later step in this proof.
-  const needed = new Set([placement.cell])
-  const steps = trace.reverse().filter(({ run, changes }) => {
-    if (!changes.some(({ cell }) => needed.has(cell))) return false
-    for (const cell of run.cells) needed.add(cell)
-    return true
-  }).reverse()
-  return { ...placement, runs: [...new Set(steps.map(step => step.run))], steps }
+  if (!consistent) return []
+  return placements.map(({ through, ...placement }) => {
+    // Keep each step that narrowed a cell used by a later step in this proof.
+    const needed = new Set([placement.cell])
+    const steps = trace.slice(0, through).reverse().filter(({ run, changes }) => {
+      if (!changes.some(({ cell }) => needed.has(cell))) return false
+      for (const cell of run.cells) needed.add(cell)
+      return true
+    }).reverse()
+    return { ...placement, runs: [...new Set(steps.map(step => step.run))], steps }
+  })
 }
 
 export type KakuroSolution = {
