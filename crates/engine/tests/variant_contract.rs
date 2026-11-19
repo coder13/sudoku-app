@@ -13,6 +13,30 @@ const X_SOLUTION: &str =
 const EMPTY: [u8; 81] = [0; 81];
 const NO_REMOVALS: [u16; 81] = [0; 81];
 
+#[test]
+fn lockout_support_respects_both_ends_and_strict_outside_digits() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules.push(PuzzleRule::Lockout { cells: vec![0, 40, 80] });
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[0] = 2;
+    entries[80] = 7;
+    assert_eq!(compiled.candidates(&entries, &NO_REMOVALS).unwrap()[40], 0b110000001);
+    for digit in 2..=7 {
+        entries[40] = digit;
+        assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+    }
+    entries[40] = 0;
+    entries[80] = 5;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+    entries[0] = 1;
+    entries[80] = 9;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    puzzle.rules = vec![PuzzleRule::Lockout { cells: vec![0, 80] }];
+    assert!(puzzle.compile().unwrap().candidates(&entries, &NO_REMOVALS).is_ok());
+}
+
 fn irregular_regions() -> Vec<Vec<usize>> {
     let mut regions: Vec<Vec<usize>> = (0..9)
         .map(|region| {

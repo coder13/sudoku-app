@@ -53,6 +53,7 @@ export type VariantRule =
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
   | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
   | { type: 'thermometer' | 'between'; cells: readonly number[] }
+  | { type: 'lockout'; cells: readonly number[] }
   | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'renban'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'entropic'; cells: readonly number[] }

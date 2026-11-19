@@ -338,6 +338,11 @@ rules! {
         /// Cell indices in line order, including both endpoints.
         cells: Vec<usize>,
     }
+    /// Endpoints differ by at least four and interior digits lie outside their range.
+    Lockout => "lockout" {
+        /// Cell indices in line order, including both endpoints.
+        cells: Vec<usize>,
+    }
     /// Require equal sums in the parts of a line divided by region borders.
     RegionSum => "region-sum" {
         /// Cell indices in line order. The puzzle's boxes or Jigsaw regions divide the line.
@@ -615,6 +620,7 @@ impl VariantPuzzle {
                 | PuzzleRule::Entropic { .. }
                 | PuzzleRule::Modular { .. }
                 | PuzzleRule::Between { .. }
+                | PuzzleRule::Lockout { .. }
                 | PuzzleRule::RegionSum { .. }
                 | PuzzleRule::Sandwich { .. }
                 | PuzzleRule::LittleKiller { .. }

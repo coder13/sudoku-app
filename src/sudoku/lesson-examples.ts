@@ -58,6 +58,7 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       ])
       case 'palindrome': return [`Palindrome · ${path(rule.cells)}`]
       case 'between': return [`Between line · ${path(rule.cells)}`]
+      case 'lockout': return [`Lockout line · ${path(rule.cells)}`]
       case 'whispers': return [`Whispers line · ${path(rule.cells)}. Minimum difference ${rule.minDifference}.`]
       case 'entropic': return [`Entropic line · ${path(rule.cells)}. Every three positions use low, medium and high digits.`]
       case 'modular': return [`Modular line · ${path(rule.cells)}. Every three positions use one digit from each group {1, 4, 7}, {2, 5, 8} and {3, 6, 9}.`]

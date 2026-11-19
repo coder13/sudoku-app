@@ -213,7 +213,7 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'lockoutLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -400,18 +400,21 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
         }
         rules.push({ type: constraint.type === 'entropicLine' ? 'entropic' : 'modular', cells: segment.cells })
       }
-    } else if (constraint.type === 'betweenLine') {
+    } else if (constraint.type === 'betweenLine' || constraint.type === 'lockoutLine') {
+      const lockout = constraint.type === 'lockoutLine'
+      const name = lockout ? 'Lockout' : 'Between'
       const settings = constraint.settings
       if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
-        !LINE_STYLING.has(key) && key !== 'bulbSize' && key !== 'bulbBorderThickness'))) {
-        throw new Error('This Sudoku Coach Between line uses unsupported settings.')
+        !LINE_STYLING.has(key) && key !== 'bulbSize' && key !== 'bulbBorderThickness' &&
+        !(lockout && (key === 'bulbFillColour' || key === 'bulbBorderColour'))))) {
+        throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
       }
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Between lines.')
+      if (!constraint.segments.length && !lockout) throw new Error('This Sudoku Coach puzzle has no Between lines.')
       for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Between line.')
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < (lockout ? 2 : 3) || hasData(segment.parameters)) {
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${name} line.`)
         }
-        rules.push({ type: 'between', cells: segment.cells })
+        rules.push({ type: lockout ? 'lockout' : 'between', cells: segment.cells })
       }
     } else if (constraint.type === 'whisper') {
       const settings = constraint.settings

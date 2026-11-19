@@ -7648,6 +7648,45 @@
           "difficulty": "easy"
         },
         {
+          "id": "lockout",
+          "title": "Lockout lines",
+          "summary": "The digits in the endpoint diamonds differ by at least 4. Each interior digit must be smaller than both endpoints or larger than both.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a gap of at least 4"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Try a candidate in each diamond. Keep the pair only if the difference is at least 4 and every interior cell has a digit outside that range.",
+                "The diamonds cannot be 1 and 9 if the line has an interior cell. No digit is smaller than 1 or larger than 9."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "lockout",
+              "copy": {
+                "description": "The diamonds hold 9 in R1C7 and 2 in R1C9. R1C8 must be below 2 or above 9, so remove 5."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "lockout", "title": "Lockout lines" }
+              ],
+              "guide": {
+                "start": "Read the endpoint diamonds.",
+                "check": "Find a pair at least 4 apart. Find an interior digit outside the range from the lower endpoint to the higher endpoint.",
+                "reason": "Remove a candidate if no valid endpoint pair lets that digit fit."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
           "id": "whispers",
           "title": "Whispers lines",
           "summary": "A Whispers line requires a minimum difference between neighboring digits. On a German Whispers line with a gap of at least 5, low and high digits alternate. No digit is far enough from 5 to be its neighbor.",
