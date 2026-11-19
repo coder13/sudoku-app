@@ -1,60 +1,14 @@
-.kakuro-heading small,
-.kakuro-rules,
-.kakuro-help p {
-  color: var(--muted);
-}
-
-.kakuro-rules {
-  margin: 0 0 1rem;
-  max-width: 48ch;
-}
-
-.kakuro-resume {
-  margin-top: 1.5rem;
-}
-
-.kakuro-resume h2 {
-  font-size: 1.1rem;
-  margin: 0 0 .5rem;
-}
-
-.kakuro-play {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(15rem, .65fr);
-  gap: 1rem;
-  align-items: start;
-}
-
-.kakuro-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--kakuro-columns), minmax(0, 1fr));
-  width: 100%;
-  max-width: 33rem;
-  gap: 1px;
-  padding: 1px;
-  background: var(--grid-strong);
-  color: var(--ink);
-  border: 1px solid var(--grid-strong);
-  container-type: inline-size;
-}
-
-.kakuro-grid > * {
-  aspect-ratio: 1;
-  min-width: 0;
-  min-height: 0;
-}
-
-.kakuro-clue {
+.number-puzzle-block {
   position: relative;
   background: var(--ink);
   color: var(--board-bg);
-  font-size: clamp(.68rem, calc(32cqi / var(--kakuro-columns)), 1rem);
+  font-size: clamp(.68rem, calc(32cqi / var(--number-puzzle-columns)), 1rem);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
-.kakuro-clue[data-clue="true"] {
+.number-puzzle-block[data-clue="true"] {
   background-image: linear-gradient(45deg, transparent 49%, var(--grid-strong) 49% 51%, transparent 51%);
 }
 
@@ -71,120 +25,6 @@
 .kakuro-clue-down {
   bottom: 11%;
   left: 9%;
-}
-
-.kakuro-cell {
-  position: relative;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  background: var(--board-bg);
-  color: var(--ink);
-  font: inherit;
-  font-size: clamp(1rem, calc(52cqi / var(--kakuro-columns)), 2rem);
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.kakuro-cell[aria-pressed="true"],
-.kakuro-actions [aria-pressed="true"] {
-  background: var(--surface-active);
-  box-shadow: inset 0 0 0 2px var(--selected-border);
-}
-
-.kakuro-cell:focus-visible {
-  z-index: 1;
-}
-
-.kakuro-grid [data-hint="true"] {
-  box-shadow: inset 0 0 0 2px var(--secondary-accent), inset 0 0 0 3px var(--board-bg);
-}
-
-.kakuro-cell[data-conflict="true"] {
-  color: var(--danger-ink);
-  background: var(--danger-bg);
-}
-
-.kakuro-clue[data-conflict="true"] {
-  box-shadow: inset 0 0 0 2px var(--danger-ink);
-}
-
-.kakuro-notes {
-  display: grid;
-  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
-  width: 90%;
-  height: 90%;
-  color: var(--candidate-ink);
-  font-size: clamp(.55rem, calc(23cqi / var(--kakuro-columns)), .8rem);
-  font-weight: 500;
-  line-height: 1;
-}
-
-.kakuro-notes > span {
-  display: grid;
-  place-items: center;
-}
-
-.kakuro-controls {
-  display: grid;
-  gap: .7rem;
-  padding: .85rem;
-}
-
-.kakuro-keypad {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(2.75rem, 1fr));
-  gap: .35rem;
-}
-
-.kakuro-keypad .button {
-  min-height: 2.75rem;
-  padding: .25rem;
-}
-
-.kakuro-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
-}
-
-.kakuro-actions > * {
-  min-height: 2.75rem;
-  min-width: 2.75rem;
-}
-
-.kakuro-status {
-  min-height: 1.5em;
-}
-
-.kakuro-help summary {
-  cursor: pointer;
-}
-
-.kakuro-help p {
-  margin: .5rem 0 0;
-}
-
-@media (max-width: 680px) {
-  .kakuro-play {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .kakuro-grid {
-    justify-self: center;
-  }
-}
-
-@media (max-width: 680px) and (min-width: 420px) {
-  .kakuro-keypad {
-    grid-template-columns: repeat(9, minmax(0, 1fr));
-  }
-}
-
-.kakuro-hint {
-  display: grid;
-  gap: .55rem;
 }
 
 .kakuro-hint-steps {

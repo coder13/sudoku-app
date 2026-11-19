@@ -41,9 +41,14 @@ try {
     const behavior = { rate, hints, catalog }
     if (reference) assert.deepEqual(behavior, reference, `${profile} changes Classic behavior`)
     else reference = behavior
+    assert.equal(request({
+      type: 'sized-classic', operation: 'analyze',
+      position: { version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits: [...'0234341221434321'].map(Number) },
+    }).value, 'unique')
     for (const [enabled, message] of [
       [expected.variants, { type: 'variant', operation: 'solve', position: { puzzle: { version: 1, givens: solved } } }],
       [expected.variants, { type: 'techniques', variant: true }],
+      [expected.generation, { type: 'generate-mini', difficulty: 'medium', seed: 17 }],
       [expected.generation, { type: 'generate-constrained', seed: 17, maxAttempts: 1, clues: 81, score: [0, 0], templates: [solved] }],
       [expected.teaching, { type: 'practice-examples', technique: 'naked-single' }],
     ]) {

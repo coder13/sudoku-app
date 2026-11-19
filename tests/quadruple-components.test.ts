@@ -6,7 +6,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import { enter, makeGame, type Game } from '../src/sudoku/game.ts'
 import type { VariantPuzzle, VariantRule } from '../src/sudoku/engine.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/quadruple-clover.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 let Button: (props: Record<string, unknown>) => ReactNode
@@ -107,16 +106,27 @@ test('Killer totals and their border gaps leave room for every Quadruple circle 
   assert.equal((total.props.style as { insetInlineStart: string }).insetInlineStart, '10%')
 })
 
-test('the real share dialog exports the complete starting definition without player progress', async () => {
+test('the real share dialog posts the starting definition only after Create link is clicked', async (t) => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { hostname: 'example.test', origin: 'https://example.test' } } })
   try {
     const current = enter(game(), [0], 'value', Number(fixture.solution[0]))
+    const fetch = t.mock.method(globalThis, 'fetch', async (_path: string, _options?: RequestInit) =>
+      Response.json({ id: '6f13cc96-59fc-4138-9d9d-6fd47f0703a7' }))
     const tree = capture(SharePuzzle, { game: current, close() {} })
-    const output = tree.find(({ type, props }) => type === 'textarea' && props.id === 'share-output')!
-    const imported = await detectPuzzle(String(output.props.value))
-    assert.deepEqual(imported.variant, { id: 'quadruple', puzzle: fixture.puzzle })
-    assert.equal(imported.givens, fixture.puzzle.givens)
+    assert.equal(fetch.mock.callCount(), 0)
+    assert.ok(!tree.some(({ props }) => props.id === 'share-output'))
+    const create = tree.find(({ type, props }) => type === 'button' && String(props.className).includes('primary'))
+    assert.ok(create)
+    await (create.props.onClick as () => Promise<void>)()
+    assert.equal(fetch.mock.callCount(), 1)
+    const [path, request] = fetch.mock.calls[0].arguments
+    assert.equal(path, '/api/v1/shares')
+    assert.equal(request?.method, 'POST')
+    assert.deepEqual(JSON.parse(String(request?.body)), {
+      version: 1, title: current.title, givens: fixture.puzzle.givens,
+      variant: { id: 'quadruple', puzzle: fixture.puzzle },
+    })
   } finally {
     if (previous) Object.defineProperty(globalThis, 'window', previous)
     else Reflect.deleteProperty(globalThis, 'window')

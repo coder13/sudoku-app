@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile, readdir, stat } from 'node:fs/promises'
 import test from 'node:test'
+import { calcudokuCatalog } from '../src/calcudoku/catalog.ts'
 import { kakuroCatalog } from '../src/kakuro/catalog.ts'
 
 // Run after Vite build and scripts/build-offline.mjs. Compare the actual build
@@ -44,6 +45,16 @@ test('each Kakuro puzzle has a precached board for direct and offline opens', as
     assert.ok(cached.has(path), `${id} has a precached shell`)
     const html = await readFile(new URL('.' + path, client), 'utf8')
     assert.ok(html.includes('aria-label="Kakuro board"'), `${id} prerenders its board`)
-    assert.equal([...html.matchAll(/class="kakuro-cell"/g)].length, puzzle.cells.filter(cell => cell === null).length)
+    assert.equal([...html.matchAll(/class="number-puzzle-cell"/g)].length, puzzle.cells.filter(cell => cell === null).length)
+  }
+})
+
+test('each Calcudoku puzzle has a precached board', async () => {
+  for (const { id, puzzle } of calcudokuCatalog) {
+    const path = `/puzzles/calcudoku/${id}/index.html`
+    assert.ok(cached.has(path), `${id} has a precached shell`)
+    const html = await readFile(new URL('.' + path, client), 'utf8')
+    assert.ok(html.includes('aria-label="Calcudoku board"'), `${id} prerenders its board`)
+    assert.equal([...html.matchAll(/class="number-puzzle-cell"/g)].length, puzzle.size ** 2)
   }
 })

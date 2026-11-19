@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { enter, makeGame } from '../src/sudoku/game.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { outsideClueLayout } from '../src/sudoku/outside-clues.ts'
@@ -144,11 +144,12 @@ test('sharing after progress preserves all outside clues and companion rules', a
       const variant = { id, puzzle: source.puzzle, solution: source.solution }
       const game = { ...makeGame('x-sum-share', 'X-Sums', source.puzzle.givens, 'imported'), variant }
       const cell = source.puzzle.givens.indexOf('0')
+      const progressed = enter(game, [cell], 'value', Number(source.solution[cell]))
       const html = renderToStaticMarkup(
-        createElement(SharePuzzle, { game: enter(game, [cell], 'value', Number(source.solution[cell])), close() {} }),
+        createElement(SharePuzzle, { game: progressed, close() {} }),
       )
-      const code = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-      assert.deepEqual((await detectPuzzle(code)).variant, { id, puzzle: source.puzzle })
+      assert.match(html, /Create link/)
+      assert.deepEqual((await publishFixture(progressed)).variant, { id, puzzle: source.puzzle })
     }
   } finally {
     if (prior) Object.defineProperty(globalThis, 'window', prior)

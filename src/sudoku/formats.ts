@@ -1,5 +1,3 @@
-import type { Game } from './game.ts'
-
 const GRID = /^[0-9.]{81}$/
 
 export const STARTER = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'
@@ -30,11 +28,7 @@ export function parsePuzzle(input: string): string {
     // HoDoKu prefixes player-entered values with a plus sign.
     cells = givens.replace(/\+[1-9]/g, '.')
   } else {
-    cells = text.split(/\r?\n/)
-      .map((line) => line.replace(/#.*$/, ''))
-      .filter((line) => !/^[\s+|:.'\-┌┬┐├┼┤└┴┘─│┏┳┓┣╋┫┗┻┛━┃]*[-─━][\s+|:.'\-┌┬┐├┼┤└┴┘─│┏┳┓┣╋┫┗┻┛━┃]*$/.test(line))
-      .join('')
-      .replace(/[\s|│┃]/g, '')
+    cells = textGridCells(text)
   }
 
   if (!GRID.test(cells)) {
@@ -43,25 +37,21 @@ export function parsePuzzle(input: string): string {
   return cells.replace(/\./g, '0')
 }
 
-export type ShareFormat = 'link' | 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
-
-export function puzzleLinkHash({ givens, variant }: Pick<Game, 'givens' | 'variant'>): string {
-  if (!variant) return `puzzle=${givens}`
-  const { version, rules, regions } = variant.puzzle
-  return `variant=${encodeURIComponent(JSON.stringify({ id: variant.id, puzzle: { version, givens, rules, regions } }))}`
+export function textGridCells(text: string): string {
+  return text.split(/\r?\n/)
+    .map((line) => line.replace(/#.*$/, ''))
+    .filter((line) => !/^[\s+|:.'\-┌┬┐├┼┤└┴┘─│┏┳┓┣╋┫┗┻┛━┃]*[-─━][\s+|:.'\-┌┬┐├┼┤└┴┘─│┏┳┓┣╋┫┗┻┛━┃]*$/.test(line))
+    .join('')
+    .replace(/[\s|│┃]/g, '')
 }
 
-export function puzzlePlayLink(game: Game, origin = ''): string {
-  const search = game.source === 'draft' ? '' : `?${new URLSearchParams({ puzzle: game.id })}`
-  return `${origin}/${search}#${puzzleLinkHash(game)}`
-}
+export type ShareFormat = 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
 
-export function exportPuzzle(givens: string, format: ShareFormat, origin = ''): string {
+export function exportPuzzle(givens: string, format: ShareFormat, size = 9): string {
   const dots = givens.replace(/0/g, '.')
   switch (format) {
-    case 'link': return `${origin}/#${puzzleLinkHash({ givens })}`
     case 'givens': return dots
-    case 'grid': return dots.match(/.{9}/g)?.join('\n') ?? ''
+    case 'grid': return dots.match(new RegExp(`.{${size}}`, 'g'))?.join('\n') ?? ''
     case 'hodoku': return `:0000:x:${dots}:::`
     case 'exchange': return `https://sudokuexchange.com/play/?s=${givens}`
     case 'coach': return `https://sudoku.coach/en/play/${givens}`
