@@ -164,10 +164,11 @@
   grid-template-rows: minmax(0, 1fr);
 }
 
-.number-puzzle-controls .choice-keypad {
+.controls.number-puzzle-controls .keypad-stack > .choice-keypad {
   grid-template: minmax(44px, auto) / repeat(2, minmax(0, 1fr));
   min-height: 0;
   aspect-ratio: auto;
+  align-self: center;
 }
 
 .number-puzzle-controls .choice-keypad .key {
@@ -194,6 +195,17 @@
     align-items: stretch;
     gap: 0;
     justify-self: center;
+  }
+
+  .number-puzzle-play.workspace:has(> .standard-input-stack) {
+    gap: var(--space-8);
+  }
+
+  .number-puzzle-play > .standard-puzzle-stack,
+  .number-puzzle-play > .standard-input-stack {
+    flex: none;
+    height: auto;
+    overflow: visible;
   }
 
   .number-puzzle-board-card,
