@@ -47,3 +47,9 @@ The algebraic score adds one point for a naked single, two for a hidden single, 
 | Medium | 1,000 | 28–51 | 145 µs | 505 µs | 18 µs |
 
 These release-Wasm timings include the request and response. The app binary grew by 196,266 bytes against the shipped Mini Sudoku build, or 56,546 bytes with gzip. Wasm linear memory after both batches was 1.38 MiB. [Issue 225](https://github.com/coder13/sudoku-app/issues/225) tracks release integration.
+
+## Six-by-six mixed-rule research
+
+The 6×6 decoder and Wasm solver verified the two published Classic exports and both mixed exports. The mixed grids retained their main diagonals, even-cell markers and both Thermometers. The corrected sample's completion agrees with the independent solver. Removing any of its three rule types gives multiple solutions. Candidate propagation passes restrictions through shared Thermometer cells, including cases where a parity marker tightens the entire path.
+
+On the published grid, applying the propagated masks before choosing the next search cell reduced the median native release verification from about 136 to 42 µs and the median exact solve from 114 to 16 µs. The candidate-only pass stayed below 1 µs. The baseline and optimized runs agreed on the exact grid, every rule ablation, and the presence of the solution digit in each empty cell’s candidate mask.

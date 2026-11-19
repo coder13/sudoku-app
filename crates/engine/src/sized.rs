@@ -7,15 +7,21 @@ mod algebraic;
 #[cfg(feature = "variants")]
 pub use algebraic::{
     AlgebraicBounds, AlgebraicCage, AlgebraicCageBound, AlgebraicCageProof, AlgebraicCompletion,
-    AlgebraicDifficulty, AlgebraicHints, AlgebraicRating, AlgebraicStep, AlgebraicTracePosition, CageTotal, SizedAlgebraicCages,
+    AlgebraicDifficulty, AlgebraicHints, AlgebraicRating, AlgebraicStep, AlgebraicTracePosition,
+    CageTotal, SizedAlgebraicCages,
 };
+
+#[cfg(feature = "variants")]
+mod constraints;
+#[cfg(feature = "variants")]
+pub use constraints::{SizedConstraint, SizedConstraintGrid, SizedDiagonal, SizedParity};
 
 #[cfg(feature = "generation")]
 mod generation;
-#[cfg(feature = "generation")]
-pub use generation::{MiniDifficulty, generate_mini};
 #[cfg(all(feature = "generation", feature = "variants"))]
 pub use generation::{GeneratedAlgebraic, generate_algebraic};
+#[cfg(feature = "generation")]
+pub use generation::{MiniDifficulty, generate_mini};
 
 /// Wire version for a sized Classic grid. Version 1 uses the original 9×9 format.
 pub const SIZED_GRID_VERSION: u8 = 2;
@@ -401,6 +407,16 @@ impl SizedGrid {
         limit: u8,
         mut permits: impl FnMut(&[u8]) -> bool,
     ) -> (Analysis, Option<Vec<u8>>) {
+        self.search_filtered::<false>(digits, budget, limit, |digits, _, _| permits(digits))
+    }
+
+    fn search_filtered<const FILTERED: bool>(
+        &self,
+        digits: &[u8],
+        budget: u32,
+        limit: u8,
+        mut filter: impl FnMut(&[u8], &[u16; 3 * MAX_SIZE], &mut [u16]) -> bool,
+    ) -> (Analysis, Option<Vec<u8>>) {
         let Some(mut used) = self.used_digits(digits) else {
             return (Analysis::Conflict, None);
         };
@@ -411,7 +427,13 @@ impl SizedGrid {
             count: 0,
             first: None,
         };
-        let completed = search.visit(&mut digits.to_vec(), &mut used, &mut permits);
+        let mut domains = [0; MAX_SIZE * MAX_SIZE];
+        let completed = search.visit::<FILTERED>(
+            &mut digits.to_vec(),
+            &mut used,
+            &mut domains[..digits.len()],
+            &mut filter,
+        );
         let outcome = match (completed, search.count) {
             (None, _) => Analysis::SearchLimit,
             (_, 0) => Analysis::Unsolvable,
@@ -431,14 +453,15 @@ struct Search<'a> {
 }
 
 impl Search<'_> {
-    fn visit(
+    fn visit<const FILTERED: bool>(
         &mut self,
         digits: &mut [u8],
         used: &mut [u16; 3 * MAX_SIZE],
-        permits: &mut impl FnMut(&[u8]) -> bool,
+        domains: &mut [u16],
+        filter: &mut impl FnMut(&[u8], &[u16; 3 * MAX_SIZE], &mut [u16]) -> bool,
     ) -> Option<()> {
         self.budget = self.budget.checked_sub(1)?;
-        if !permits(digits) {
+        if !filter(digits, used, domains) {
             return Some(());
         }
         let mut next = None;
@@ -447,7 +470,11 @@ impl Search<'_> {
             if digit != 0 {
                 continue;
             }
-            let mask = self.grid.available(cell, used);
+            let mask = if FILTERED {
+                domains[cell]
+            } else {
+                self.grid.available(cell, used)
+            };
             let count = mask.count_ones();
             if count < fewest {
                 next = Some((cell, mask));
@@ -468,7 +495,7 @@ impl Search<'_> {
             choices ^= bit;
             digits[cell] = offset as u8 + 1;
             self.grid.toggle(cell, bit, used);
-            let result = self.visit(digits, used, permits);
+            let result = self.visit::<FILTERED>(digits, used, domains, filter);
             self.grid.toggle(cell, bit, used);
             digits[cell] = 0;
             result?;

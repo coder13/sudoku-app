@@ -66,6 +66,8 @@ pub use sized::{
     AlgebraicStep, AlgebraicTracePosition,
     CageTotal, SizedAlgebraicCages,
 };
+#[cfg(feature = "variants")]
+pub use sized::{SizedConstraint, SizedConstraintGrid, SizedDiagonal, SizedParity};
 #[cfg(feature = "generation")]
 pub use sized::{MiniDifficulty, generate_mini};
 #[cfg(all(feature = "generation", feature = "variants"))]

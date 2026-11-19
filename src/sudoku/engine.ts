@@ -170,6 +170,12 @@ export type SizedVariantPosition = SizedClassicPosition & {
   }[]
 }
 
+export type SixGrid = { size: 6 } & ({ boxRows: 2; boxColumns: 3 } | { boxRows: 3; boxColumns: 2 })
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' }>
+  | { type: 'thermometer'; cells: readonly number[] }
+export type SizedConstraintPosition = SizedClassicPosition & { grid: SixGrid; rules: readonly SizedConstraintRule[] }
+type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition; operation: 'analyze' | 'solve' | 'candidates' }
+
 export type AlgebraicBounds = {
   variables: Record<string, [number, number]>
   cages: { cage: number; sumLower: number; sumUpper: number }[]
@@ -206,6 +212,7 @@ type SizedVariantRequest = { type: 'sized-variant'; position: SizedVariantPositi
 export type EngineRequest =
   | SizedClassicRequest
   | SizedVariantRequest
+  | SizedConstraintRequest
   | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-algebraic'; seed: number; difficulty?: AlgebraicRating['difficulty']; exclude?: readonly SizedVariantPosition[] }
   | { type: 'capabilities' }
@@ -577,6 +584,10 @@ export type EngineResult<T extends EngineRequest> =
     T['operation'] extends 'hints' ? { candidates: number[]; choices: SizedClassicDeduction[] } | null :
     T['operation'] extends 'trace' ? SizedClassicTracePosition[] | null :
     number[] | null
+  ) :
+  T extends SizedConstraintRequest ? (
+    T['operation'] extends 'analyze' ? Analysis :
+    T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null : number[] | null
   ) :
   T extends SizedVariantRequest ? (
     T['operation'] extends 'analyze' ? Analysis :

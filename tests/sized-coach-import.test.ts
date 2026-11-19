@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { decodeCoachSix } from '../src/sudoku/puzzle-import.ts'
+import { coachCode } from './helpers/coach-code.ts'
+
+const six = { gridSize: 6, givenDigits: '000000000000000000000000000030000400' }
+const rectangularRegions = (rows: number, columns: number) => Array.from({ length: 36 }, (_, cell) =>
+  Math.floor(cell / 6 / rows) * (6 / columns) + Math.floor(cell % 6 / columns) + 1)
+
+test('six-by-six Coach decoding preserves the box orientation, clue order and both diagonals', async () => {
+  const constraint = (type: string, paths: number[][]) => ({ type, segments: paths.map(cells => ({ cells, parameters: {} })), settings: {} })
+  const result = await decodeCoachSix(coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [
+    constraint('palindromeLine', []), constraint('diagonalNegative', []), constraint('even', [[5], [10]]),
+    constraint('thermometer', [[1, 7, 13], [23, 29]]), constraint('odd', []), constraint('diagonalPositive', []),
+  ] }))
+  assert.deepEqual(result, {
+    version: 2, grid: { size: 6, boxRows: 2, boxColumns: 3 }, givens: six.givenDigits, rules: [
+      { type: 'diagonal', diagonal: 'main' }, { type: 'parity', parity: 'even', cells: [5, 10] },
+      { type: 'thermometer', cells: [1, 7, 13] }, { type: 'thermometer', cells: [23, 29] }, { type: 'diagonal', diagonal: 'anti' },
+    ],
+  })
+  const tall = await decodeCoachSix(coachCode({ ...six, regions: rectangularRegions(3, 2) }))
+  assert.deepEqual(tall.grid, { size: 6, boxRows: 3, boxColumns: 2 })
+})
+
+test('six-by-six Coach decoding reports unsupported rules instead of importing a partial puzzle', async () => {
+  const puzzle = { ...six, regions: rectangularRegions(2, 3) }
+  await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, givenConstraints: [{ type: 'globalEntropy', segments: [] }] })), /unsupported active rule/)
+  await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, givenConstraints: [{ type: 'thermometer', segments: [{ cells: [1, 1] }] }] })), /invalid cell or path/)
+  await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, regions: Array(36).fill(0) })), /rectangular boxes/)
+})
