@@ -1,6 +1,6 @@
 # Anti-King New Puzzle integration
 
-Base: main `e99d294`, with reviewed Skyscrapers shipping source `20425be`. Release is pending. Anti-King already has faithful import, accessible desktop/mobile play, combined rules, hints/Finder, exact and human solutions, Learn/practice and storage/sharing coverage. This change adds New Puzzle access and calibrated Easy/Medium generation. Native Rust, lockfiles and scoring remain unchanged.
+Base: main `e99d294`, with reviewed Skyscrapers shipping source `20425be`. Released through PR 210 at main `90e9bd2`. Anti-King already has faithful import, accessible desktop/mobile play, combined rules, hints/Finder, exact and human solutions, Learn/practice and storage/sharing coverage. This change adds New Puzzle access and calibrated Easy/Medium generation. Native Rust, lockfiles and scoring remain unchanged.
 
 ## Rules and controls
 
@@ -18,7 +18,9 @@ The Anti-King technique remains 8 points, Easy, without a uniqueness premise; sc
 
 ## Validation
 
-Final local validation passes 635 app tests, 429 Wasm contracts, strict app/new-contract/benchmark TypeScript and the 123-component catalog. The final vector-preview build prerenders 171 routes and passes three actual-build offline checks. The Wasm and five generated JSON files match preceding main byte for byte. Production uses that verified existing compiled artifact; no local native rebuild is claimed. Exact-head CI/deployment and release remain pending. The original dirty R&D worktree is untouched. The other twelve older New Puzzle families remain in [189](https://github.com/coder13/sudoku-app/issues/189); full authored Coach formats remain in [7](https://github.com/coder13/sudoku-app/issues/7).
+Final local validation passes 635 app tests, 429 Wasm contracts, strict app/new-contract/benchmark TypeScript and the 123-component catalog. The final vector-preview build prerenders 171 routes and passes three actual-build offline checks. The Wasm and five generated JSON files match preceding main byte for byte. Production uses that verified existing compiled artifact; no local native rebuild is claimed. The original dirty R&D worktree is untouched. The other twelve older New Puzzle families remain in [189](https://github.com/coder13/sudoku-app/issues/189); full authored Coach formats remain in [7](https://github.com/coder13/sudoku-app/issues/7).
+
+[PR 210](https://github.com/coder13/sudoku-app/pull/210) reached main at `90e9bd2815e3d3e420adb2c05e5ca07aab55826c`, reviewed head `4798372e190720442a1fb0acb17cc6cdd66cb7e8`. Every gate passes in [CI 44504454939](https://github.com/coder13/sudoku-app/actions/runs/44504454939): 369 native tests including seven Cargo examples, sixteen capability combinations, four Wasm profiles, strict full/core/variants Cargo documentation, 635 app tests, 429 Wasm contracts, types/catalog and deployment. Fetched main contains the reviewed head and merge with identical shipping sources. Exact-head deploy `6afeccff8b5f24c8591d5a55` is ready. Read-only HTTP verifies both New Puzzle shells return 200 and their entry bundle contains the Anti-King name, ID and vector crown. The shells initialize client selection; these HTTP checks do not claim pointer/keyboard interaction. Deployed Wasm is 3,416,046 bytes with SHA-256 `f4f2a123db3a51b2d7873dc8354098204637dd402efa60ebad58b0e9accdc149`, unchanged from the preceding Linux release. This differs from the Darwin binary below because host code generation differs.
 
 ## Performance and compatibility
 
