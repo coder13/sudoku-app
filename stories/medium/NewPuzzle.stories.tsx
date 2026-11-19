@@ -47,3 +47,11 @@ export const AntiKingDifficulty: Story = {
 export const AntiKingVariant: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new?variant=anti-king" />,
 }
+
+export const NonConsecutiveVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=non-consecutive" />,
+}
+
+export const NonConsecutiveDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=non-consecutive" />,
+}

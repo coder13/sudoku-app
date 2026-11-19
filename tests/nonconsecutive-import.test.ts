@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
-import { conflictsOf, enter, fillEntries, makeGame, redo, undo } from '../src/sudoku/game.ts'
+import { conflictsOf, enter, fillEntries, makeGame, redo, undo, type Game } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { generationVariant, variantDigitExclusions, variantName, variantRuleDescriptions } from '../src/sudoku/variants.ts'
@@ -28,7 +28,7 @@ test('global Non-Consecutive imports preserve the named rule and reject unknown 
   const imported = await detectPuzzle(coachCode({ givenDigits: fixture.puzzle.givens, givenConstraints: [fixture.coachConstraint] }))
   assert.deepEqual(imported.variant, { id: 'non-consecutive', puzzle: fixture.puzzle })
   assert.equal(variantName(imported.variant), 'Non-Consecutive')
-  assert.equal(generationVariant(imported.variant), undefined)
+  assert.equal(generationVariant(imported.variant), 'non-consecutive')
   assert.match(variantRuleDescriptions(fixture.puzzle).join(' '), /1 and 9 are not consecutive/)
   assert.deepEqual((await detectPuzzle('#variant=' + encodeURIComponent(JSON.stringify(imported.variant)))).variant, imported.variant)
   for (const constraint of [
@@ -90,7 +90,7 @@ test('every cell pair and placed digit has exactly the edge exclusions, includin
 test('conflicts and both candidate styles follow restrictions and exceptions through entry, fill and undo', () => {
   const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [{ type: 'non-consecutive', except: [[0, 1]] }] }
   const variant = { id: 'non-consecutive' as const, puzzle, solution: fixture.solution }
-  let game = { ...makeGame('nc-history', 'NC', puzzle.givens, 'imported'), variant }
+  let game: Game = { ...makeGame('nc-history', 'NC', puzzle.givens, 'imported'), variant }
   for (const mode of ['center', 'corner'] as const) for (const digit of [3, 4, 5]) game = enter(game, [1, 9, 10], mode, digit)
   const before = game.position
   for (const next of [enter(game, [0], 'value', 4), fillEntries(game, '4' + '0'.repeat(80))]) {

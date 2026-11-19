@@ -12,6 +12,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   jigsaw: [],
   'anti-knight': [],
   'anti-king': [],
+  'non-consecutive': [],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
   'little-killer': [],
@@ -47,5 +48,10 @@ export function VariantPreview({ variant }: { variant: VariantId }) {
     {variant === 'skyscrapers' && <svg className="variant-clues variant-skyscrapers-preview" viewBox="0 0 9 9" focusable="false"><text x=".4" y="5.2">3</text><path d="M2 7V5H3V7M4 7V2H5V7M6 7V3H7V7M7.5 7V1H8.5V7" /></svg>}
     {variant === 'anti-knight' && <span className="variant-knight">♞</span>}
     {variant === 'anti-king' && <Crown className="variant-king" size="1em" aria-hidden="true" focusable="false" />}
+    {variant === 'non-consecutive' && <svg className="variant-clues variant-non-consecutive-preview" viewBox="0 0 9 9" focusable="false">
+      <path d="M.75 3h7.5v2.5H.75zM3.25 3v2.5M5.75 3v2.5" />
+      <text x="2" y="4.85">4</text><text x="4.5" y="4.85">8</text><text x="7" y="4.85">2</text>
+      <text className="variant-preview-caption" x="4.5" y="7.1">No ±1 neighbors</text>
+    </svg>}
   </span>
 }
