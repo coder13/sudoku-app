@@ -56,6 +56,10 @@ export const VARIANTS = {
     name: 'Modular Lines',
     rule: 'Each three successive positions on a Modular line contain one digit from {1, 4, 7}, one from {2, 5, 8} and one from {3, 6, 9}. These groups have different remainders when divided by 3. The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent. Digits may repeat if all other puzzle rules allow it.',
   },
+  renban: {
+    name: 'Renban',
+    rule: 'Each Renban line contains a set of consecutive digits in any order, without repetition. Connected branches of one clue form one set. Overlapping clues stay independent.',
+  },
   palindrome: {
     name: 'Palindrome',
     rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
@@ -109,10 +113,6 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
-  renban: {
-    name: 'Renban',
-    rule: 'Each Renban line contains a set of consecutive digits in any order, without repetition. Connected branches of one clue form one set. Overlapping clues stay independent.',
-  },
   inequality: {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
