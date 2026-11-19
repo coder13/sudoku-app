@@ -102,6 +102,7 @@ pub struct AlgebraicTracePosition {
     pub step: Option<AlgebraicStep>,
 }
 
+/// Supported steps and the candidate masks used to find them.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
 pub struct AlgebraicHints {
@@ -166,6 +167,14 @@ impl SizedAlgebraicCages {
         self.layout.used_digits(digits)?;
         let mut domains = self.empty_domains();
         self.intersect(digits, &mut domains)?;
+        self.bounds_from_domains(digits, &domains)
+    }
+
+    fn bounds_from_domains(
+        &self,
+        digits: &[u8],
+        domains: &[(i64, i64)],
+    ) -> Option<AlgebraicBounds> {
         let variables = self
             .variable_ids
             .iter()
@@ -203,8 +212,23 @@ impl SizedAlgebraicCages {
         {
             return None;
         }
-        let cage = self.cages.get(target)?;
         let bounds = self.bounds(digits)?;
+        let mut allowed = self.layout.candidates(digits)?;
+        for (mask, removed) in allowed.iter_mut().zip(eliminations) {
+            *mask &= !removed;
+        }
+        self.prove_cage(digits, &allowed, &bounds, target, node_budget)
+    }
+
+    fn prove_cage(
+        &self,
+        digits: &[u8],
+        allowed: &[u16],
+        bounds: &AlgebraicBounds,
+        target: usize,
+        node_budget: u32,
+    ) -> Option<AlgebraicCageProof> {
+        let cage = self.cages.get(target)?;
         let (total_lower, total_upper) = match &cage.total {
             CageTotal::Fixed(total) => (i64::from(*total), i64::from(*total)),
             CageTotal::Variable { name, offset } => {
@@ -212,7 +236,6 @@ impl SizedAlgebraicCages {
                 (low + i64::from(*offset), high + i64::from(*offset))
             }
         };
-        let legal = self.layout.candidates(digits)?;
         let mut open = Vec::new();
         let mut used = 0u16;
         let mut partial_sum = 0;
@@ -222,7 +245,7 @@ impl SizedAlgebraicCages {
                 used |= 1 << (digit - 1);
                 partial_sum += i64::from(digit);
             } else {
-                let mask = legal[cell] & !eliminations[cell];
+                let mask = allowed[cell];
                 if mask == 0 {
                     return None;
                 }
@@ -252,9 +275,9 @@ impl SizedAlgebraicCages {
                 })
             })
             .collect();
-        (!actions.is_empty()).then_some(AlgebraicCageProof {
+        (!actions.is_empty()).then(|| AlgebraicCageProof {
             target,
-            bounds,
+            bounds: bounds.clone(),
             total_lower,
             total_upper,
             actions,
@@ -281,16 +304,16 @@ impl SizedAlgebraicCages {
         proof_budget: u32,
         limit: usize,
     ) -> Option<AlgebraicHints> {
-        let mut domains = self.empty_domains();
-        self.layout.used_digits(digits)?;
-        self.intersect(digits, &mut domains)?;
         let classic = self.layout.hints(digits, eliminations, limit)?;
+        let mut domains = self.empty_domains();
+        self.intersect(digits, &mut domains)?;
         let mut choices: Vec<_> = classic
             .choices
             .into_iter()
             .map(AlgebraicStep::House)
             .collect();
         if choices.len() < limit {
+            let bounds = self.bounds_from_domains(digits, &domains)?;
             let mut order: Vec<_> = (0..self.cages.len()).collect();
             order.sort_by_key(|&index| self.cages[index].cells.len());
             let remaining = limit - choices.len();
@@ -298,7 +321,7 @@ impl SizedAlgebraicCages {
                 order
                     .into_iter()
                     .filter_map(|index| {
-                        self.proof_at(digits, eliminations, index, proof_budget)
+                        self.prove_cage(digits, &classic.candidates, &bounds, index, proof_budget)
                             .map(AlgebraicStep::Cage)
                     })
                     .take(remaining),

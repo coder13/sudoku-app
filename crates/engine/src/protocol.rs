@@ -385,6 +385,10 @@ enum ResponseValue {
     SizedTrace(Option<Vec<crate::SizedTracePosition>>),
     SizedHints(Option<crate::SizedHints>),
     SizedDeduction(Option<crate::SizedDeduction>),
+    #[cfg(feature = "variants")]
+    AlgebraicTrace(Option<Vec<crate::AlgebraicTracePosition>>),
+    #[cfg(feature = "variants")]
+    AlgebraicHints(Option<crate::AlgebraicHints>),
     HintPage(hint_pages::HintPage),
     Hints { choices: Vec<Hint>, available: usize },
     HintsWithPatterns {
@@ -981,7 +985,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
         }
         Request::SizedClassic { position, operation } => return sized::execute(position, operation),
         #[cfg(feature = "variants")]
-        Request::SizedVariant { position, operation } => sized_variant::execute(position, operation),
+        Request::SizedVariant { position, operation } => return sized_variant::execute(position, operation),
         #[cfg(feature = "generation")]
         Request::ImpossibleTemplates => Ok(json!(
             crate::impossible_templates()

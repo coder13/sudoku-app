@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde_json::json;
 
-use super::{ResultValue, puzzle_error};
+use super::{ResponseValue, ResultValue, puzzle_error};
 use crate::{
     AlgebraicCage, Analysis, CageTotal, GridSpec, SEARCH_LIMIT, SIZED_GRID_VERSION,
     SizedAlgebraicCages,
@@ -71,7 +71,7 @@ pub(super) enum Operation {
     },
 }
 
-pub(super) fn execute(definition: Definition, operation: Operation) -> ResultValue {
+pub(super) fn execute(definition: Definition, operation: Operation) -> ResultValue<ResponseValue> {
     let Definition {
         version,
         grid,
@@ -114,31 +114,38 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
         Ok(eliminations)
     };
     Ok(match operation {
-        Operation::Analyze => json!(match puzzle.analyze(&digits, SEARCH_LIMIT) {
-            Analysis::Unique => "unique",
-            analysis => puzzle_error(analysis).0,
-        }),
-        Operation::Solve => json!(puzzle.solve(&digits, SEARCH_LIMIT)),
-        Operation::Bounds => json!(puzzle.bounds(&digits)),
+        Operation::Analyze => {
+            ResponseValue::Json(json!(match puzzle.analyze(&digits, SEARCH_LIMIT) {
+                Analysis::Unique => "unique",
+                analysis => puzzle_error(analysis).0,
+            }))
+        }
+        Operation::Solve => ResponseValue::Json(json!(puzzle.solve(&digits, SEARCH_LIMIT))),
+        Operation::Bounds => ResponseValue::Json(json!(puzzle.bounds(&digits))),
         Operation::Hints {
             eliminations,
             limit,
-        } => {
-            json!(puzzle.hints(
-                &digits,
-                &removals(eliminations)?,
-                SEARCH_LIMIT,
-                limit.min(256)
-            ))
-        }
-        Operation::Trace { eliminations } => {
-            json!(puzzle.trace(digits, removals(eliminations)?, SEARCH_LIMIT))
-        }
+        } => ResponseValue::AlgebraicHints(puzzle.hints(
+            &digits,
+            &removals(eliminations)?,
+            SEARCH_LIMIT,
+            limit.min(256),
+        )),
+        Operation::Trace { eliminations } => ResponseValue::AlgebraicTrace(puzzle.trace(
+            digits,
+            removals(eliminations)?,
+            SEARCH_LIMIT,
+        )),
         Operation::CageProof { rule, eliminations } => {
             if rule >= puzzle.cages().len() {
                 return Err(("invalid-rule", "Choose an algebraic cage in the puzzle."));
             }
-            json!(puzzle.proof_at(&digits, &removals(eliminations)?, rule, SEARCH_LIMIT))
+            ResponseValue::Json(json!(puzzle.proof_at(
+                &digits,
+                &removals(eliminations)?,
+                rule,
+                SEARCH_LIMIT
+            )))
         }
     })
 }
