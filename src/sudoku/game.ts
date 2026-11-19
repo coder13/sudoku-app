@@ -2,6 +2,7 @@ import { STARTER } from './formats.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
+import { regionSumState } from './region-sum.ts'
 import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
@@ -166,14 +167,15 @@ export function valuesOf(game: Game): string {
 }
 
 function placedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
-  const areas = globalEntropyState(puzzle, values)
-  const lines = betweenState(puzzle, values)
-  if (!areas) return lines
-  if (!lines) return areas
-  return {
-    allowed: areas.allowed.map((mask, cell) => mask & lines.allowed[cell]),
-    conflicts: new Set([...areas.conflicts, ...lines.conflicts]),
+  const states = [globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values)]
+    .filter(state => state !== undefined)
+  const result = states[0]
+  if (!result) return
+  for (const state of states.slice(1)) {
+    for (let cell = 0; cell < 81; cell++) result.allowed[cell] &= state.allowed[cell]
+    for (const cell of state.conflicts) result.conflicts.add(cell)
   }
+  return result
 }
 
 export function conflictsOf(values: string, puzzle?: VariantPuzzle): Set<number> {

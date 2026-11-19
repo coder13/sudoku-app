@@ -14,6 +14,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
   const sets: { cells: readonly number[]; sum?: number }[] = []
   const entropyAreas: number[][] = []
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
+  const regionParts: number[][][] = []
   const betweenTriples: (readonly [number, number, number])[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
@@ -31,6 +32,21 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
         edges.push([rule.cells[i], rule.cells[j], (a, b) => rule.type === 'entropic'
           ? Math.floor((a - 1) / 3) !== Math.floor((b - 1) / 3) : a % 3 !== b % 3])
       }
+    }
+    else if (rule.type === 'region-sum') {
+      const parts: number[][] = [], ids: number[] = []
+      for (const cell of rule.cells) {
+        const id = regions.findIndex(region => region.includes(cell))
+        if (rule.groupByRegion) {
+          let index = ids.indexOf(id)
+          if (index < 0) { index = ids.length; ids.push(id); parts.push([]) }
+          parts[index].push(cell)
+        } else {
+          if (ids.at(-1) !== id) { ids.push(id); parts.push([]) }
+          parts.at(-1)!.push(cell)
+        }
+      }
+      regionParts.push(parts)
     }
     else if (rule.type === 'between') rule.cells.slice(1, -1).forEach(cell =>
       betweenTriples.push([rule.cells[0], cell, rule.cells[rule.cells.length - 1]]))
@@ -129,6 +145,32 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
           const keep = domains[cell].filter(digit => supported[i].has(digit))
           changed ||= keep.length !== domains[cell].length; domains[cell] = keep
         })
+      }
+      for (const parts of regionParts) {
+        // Enumerate numeric assignments in each region part. Every part belongs
+        // to one Sudoku region, so its digits must also be distinct.
+        const possibilities = parts.map(cells => {
+          const totals = new Map<number, Set<number>[]>()
+          const chosen: number[] = []
+          function enumerate(index: number, sum: number) {
+            if (index === cells.length) {
+              const supports = totals.get(sum) ?? cells.map(() => new Set<number>())
+              chosen.forEach((digit, i) => supports[i].add(digit))
+              totals.set(sum, supports); return
+            }
+            for (const digit of domains[cells[index]]) if (!chosen.includes(digit)) {
+              chosen.push(digit); enumerate(index + 1, sum + digit); chosen.pop()
+            }
+          }
+          enumerate(0, 0)
+          return totals
+        })
+        const common = [...possibilities[0].keys()].filter(total => possibilities.every(map => map.has(total)))
+        if (!common.length) return
+        parts.forEach((cells, part) => cells.forEach((cell, offset) => {
+          const keep = domains[cell].filter(digit => common.some(total => possibilities[part].get(total)![offset].has(digit)))
+          changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        }))
       }
       for (const clue of sets) {
         const supported = clue.cells.map(() => new Set<number>())

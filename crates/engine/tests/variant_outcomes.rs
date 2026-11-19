@@ -259,6 +259,7 @@ fn numeric_rules_distinguish_the_exact_outcomes() {
             PuzzleRule::RegionSum {
                 cells: vec![0, 1, 5],
                 group_by_region: false,
+                segments: None,
             },
             [1, 2],
             [8, 9],

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
 import betweenNewman from '../../tests/fixtures/between-newman.json'
+import regionSumNewman from '../../tests/fixtures/region-sum-newman.json'
 import { Board } from '../../src/components/Board'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
 import { jigsawLayout, variantSeeds } from '../../src/sudoku/variant-generation'
@@ -64,4 +65,22 @@ export const BetweenLinesCompact: Story = {
 export const BetweenSeparatedCells: Story = {
   args: candidateGrid({ version: 1, givens: '0'.repeat(81), rules: [{ type: 'between', cells: [0, 40, 80] }] }, 'Between line with separated cells'),
   parameters: { docs: { description: { story: 'The dashed connectors skip unmarked cells. The small dot identifies R5C5 as the one interior cell between the two endpoint circles.' } } },
+}
+
+export const RegionSumLines: Story = {
+  args: candidateGrid(regionSumNewman.puzzle as VariantPuzzle, 'Region Sum Lines Sudoku grid'),
+  parameters: { docs: { description: { story: 'Symmetease by Philip Newman. Region borders divide each blue path into parts with equal totals. Each line has its own total.' } } },
+}
+
+export const RegionSumLinesCompact: Story = {
+  ...RegionSumLines,
+  parameters: { ...RegionSumLines.parameters, gridWidth: 290 },
+}
+
+export const RegionSumClosedAndSeparated: Story = {
+  args: candidateGrid({ version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'region-sum', cells: [34, 33, 24, 25], segments: [[25, 34, 33, 24, 25]] },
+    { type: 'region-sum', cells: [28, 30, 38], groupByRegion: true },
+  ] }, 'Closed Region Sum path and combined region visits'),
+  parameters: { docs: { description: { story: 'The first clue keeps its closing edge. The second clue combines its two visits to the same region. Dashed connectors skip unmarked cells; dots identify the logical cells.' } } },
 }

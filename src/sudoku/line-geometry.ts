@@ -10,7 +10,7 @@ export function lineSkipsCells(cells: readonly number[]) {
 
 function paths(rule: VariantRule): readonly (readonly number[])[] {
   switch (rule.type) {
-    case 'palindrome': case 'renban': return rule.segments ?? [rule.cells]
+    case 'palindrome': case 'renban': case 'region-sum': return rule.segments ?? [rule.cells]
     case 'thermometer': case 'between': case 'whispers': case 'entropic': case 'modular': return [rule.cells]
     case 'arrow': return [[rule.circle, ...rule.cells]]
     default: return []
@@ -33,11 +33,11 @@ function* edges(lines: readonly (readonly number[])[]) {
   }
 }
 
-/** Separate set/group and Between clues that share a visible line segment. */
+/** Separate line clues that share a visible line segment. */
 export function coloredLineOverlapLanes(rules: readonly VariantRule[]) {
   const owners = new Map<number, number[]>()
   rules.forEach((rule, index) => {
-    if (rule.type !== 'renban' && rule.type !== 'entropic' && rule.type !== 'modular' && rule.type !== 'between') return
+    if (rule.type !== 'renban' && rule.type !== 'entropic' && rule.type !== 'modular' && rule.type !== 'between' && rule.type !== 'region-sum') return
     for (const edge of new Set(edges(paths(rule)))) {
       const list = owners.get(edge) ?? []
       list.push(index); owners.set(edge, list)

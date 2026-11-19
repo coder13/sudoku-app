@@ -1,7 +1,8 @@
 import { useId, useMemo } from 'react'
-import type { VariantRule } from '../sudoku/engine'
+import type { VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
+import { regionSumParts } from '../sudoku/region-sum'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
@@ -97,6 +98,19 @@ function BetweenClue({ cells, endpoints = false }: { cells: readonly number[]; e
   </g>
 }
 
+function RegionSumClue({ rule, color, number }: { rule: Extract<VariantRule, { type: 'region-sum' }>; color: string; number: number }) {
+  const paths = rule.segments ?? [rule.cells]
+  const separated = paths.some(lineSkipsCells)
+  return <g className="variant-region-sum" data-region-sum={number} style={{ color }}>
+    {paths.map((path, index) => lineSkipsCells(path)
+      ? <g key={index}>{path.slice(1).map((cell, i) => <line key={i} className={lineSkipsCells([path[i], cell]) ? 'variant-region-sum-jump' : undefined}
+        x1={center(path[i])[0]} y1={center(path[i])[1]} x2={center(cell)[0]} y2={center(cell)[1]} />)}</g>
+      : <polyline key={index} points={points(path)} />)}
+    {(separated ? rule.cells : paths.filter(path => path.length === 1).flat()).map(cell =>
+      <circle key={cell} className="variant-region-sum-node" cx={center(cell)[0]} cy={center(cell)[1]} r=".11" />)}
+  </g>
+}
+
 function InequalityClue({ less, greater, offset, compact = false }: { less: number; greater: number; offset: number; compact?: boolean }) {
   const [ax, ay] = center(less), [bx, by] = center(greater)
   const length = Math.hypot(bx - ax, by - ay)
@@ -175,9 +189,12 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const renbanIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'renban') renbanIndices.set(index, renbanIndices.size) })
   const renbanColor = (index: number) => ['#cf419c', '#8353be', '#d26878', '#aa48bf'][renbanIndices.get(index)! % 4]
+  const regionSumIndices = new Map<number, number>()
+  rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
+  const regionSumColor = (index: number) => ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0'][regionSumIndices.get(index)! % 4]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : 0
+    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
@@ -221,8 +238,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
       if (overlay === 'colored-line') {
         const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]] : undefined
-        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells)
-        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : renbanColor(index)
+        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(lineSkipsCells)
+        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : rule.type === 'region-sum' ? regionSumColor(index) : renbanColor(index)
         return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
           {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} endpoints={endpoints} dashed={dashed} color={color} />)}
         </g>
@@ -291,6 +308,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           </g>
         case 'between':
           return <BetweenClue key={index} cells={rule.cells} />
+        case 'region-sum':
+          return <RegionSumClue key={index} rule={rule} color={regionSumColor(index)} number={regionSumIndices.get(index)! + 1} />
         case 'thermometer':
           return <g key={index} className="variant-thermometer">
             <polyline points={points(rule.cells)} />
@@ -318,7 +337,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
 
 const reference = (cell: number) => `row ${y(cell) + 1}, column ${x(cell) + 1}`
 
-export function variantCellLabels(rules: readonly VariantRule[]) {
+export function variantCellLabels(rules: readonly VariantRule[], regions?: VariantPuzzle['regions']) {
   const labels: string[][] = Array.from({ length: 81 }, () => [])
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
@@ -398,6 +417,12 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
             : `Palindrome line, same digit as ${reference(partner)}`)
         }
         break
+      case 'region-sum': {
+        const number = rules.slice(0, index + 1).filter(rule => rule.type === 'region-sum').length
+        for (const [part, cells] of regionSumParts(rule, regions).entries()) for (const cell of cells) labels[cell].push(
+          `Region Sum line ${number}, part ${part + 1}, same total as the other parts; ${rule.groupByRegion ? 'visits to each region are combined' : 'separate visits stay separate'}`)
+        break
+      }
       case 'between': {
         const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
         const number = rules.slice(0, index + 1).filter(rule => rule.type === 'between').length

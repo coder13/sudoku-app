@@ -64,7 +64,7 @@ export function Board({
     disjoint.size && DISJOINT_GROUPS_RULE].filter(Boolean).join(' ')
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [regions])
-  const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules) : undefined, [variantRules])
+  const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
   const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
     ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
   const variantClues = useMemo(() => variantRules?.length

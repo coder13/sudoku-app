@@ -1,6 +1,7 @@
 import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
 import { DIGITS, onlyCandidate } from './game.ts'
 import { lineGroups } from './line-groups.ts'
+import { regionSumParts } from './region-sum.ts'
 import { cellReference, type CellReferenceOptions } from './hints.ts'
 import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName } from './variants.ts'
 
@@ -160,7 +161,9 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
       return { description: `This line needs ${cells.length} different consecutive digits, in any order.`,
         reason: 'No consecutive set can fill every line cell with a crossed-out digit in its marked position.' }
     case 'region-sum':
-      return { description: rule.groupByRegion ? 'Add all visits to the same region together. Each region needs the same total.'
+      return { description: rule.segments ? `These parts have equal totals: ${regionSumParts(rule, puzzle.regions)
+        .map(part => part.map(at).join(' + ')).join(' = ')}.`
+        : rule.groupByRegion ? 'Add all visits to the same region together. Each region needs the same total.'
         : 'Split the line at each region boundary. All parts must have the same sum.',
         reason: 'With a crossed-out digit in place, the parts have no total they can all reach.' }
     case 'little-killer':
