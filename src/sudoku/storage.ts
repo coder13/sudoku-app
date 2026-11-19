@@ -1,6 +1,7 @@
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
+import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
@@ -26,8 +27,8 @@ const initial: Room = { games: [], active: null, stoppedPlaying: false, storageA
 const listeners = new Set<() => void>()
 const storedSnapshots = new WeakMap<Game, string>()
 const playListeners = new Set<(id: string | null) => void>()
-const editListeners = new Set<() => void>()
-const announceEdit = () => editListeners.forEach(listener => listener())
+const editListeners = new Set<(id: string, handoff: boolean) => void>()
+const announceEdit = (id: string, handoff = false) => editListeners.forEach(listener => listener(id, handoff))
 const ratingEvents = new Map<string, RatingEvent>()
 const unsavedRatingEvents = new Set<string>()
 let room = initial
@@ -81,6 +82,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
       if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
       if (value.analysisUsed !== true) delete value.analysisUsed
+      if (value.chainSketch !== undefined && !validChainSketchState(value.chainSketch)) delete value.chainSketch
       if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory)) delete value.actionHistory
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
@@ -408,7 +410,7 @@ export const roomStore = {
     playListeners.add(listener)
     return () => { playListeners.delete(listener) }
   },
-  onEdit(listener: () => void) {
+  onEdit(listener: (id: string, handoff: boolean) => void) {
     editListeners.add(listener)
     return () => { editListeners.delete(listener) }
   },
@@ -451,9 +453,9 @@ export const roomStore = {
     const next = { ...room, games, playerRating: playerRatingFor(games), storageAvailable: room.storageAvailable && saved && seenSaved }
     if (game.savedForLater) publish(next)
     else playPuzzle(next, game)
-    announceEdit()
+    if (saved) announceEdit(game.id, !game.savedForLater && game.source !== 'draft')
   },
-  update(id: string, update: (game: Game) => Game) {
+  update(id: string, update: (game: Game) => Game, { derived = false } = {}) {
     const current = room.games.find((game) => game.id === id)
     if (!current) return
     let merged = current
@@ -468,7 +470,7 @@ export const roomStore = {
     } else {
       merged = mergeStoredMetadata(current)
     }
-    let next = update(merged)
+    let next = pruneChainsAfterMove(merged, update(merged))
     if (merged === next) {
       if (merged !== current) roomStore.refreshPuzzle(id)
       return
@@ -484,7 +486,11 @@ export const roomStore = {
       writeGame(next)
       if (played) localStorage.setItem(activityPrefix + id, String(Date.now()))
     })
-    if (played || next.elapsed === merged.elapsed) announceEdit()
+    const pauseChanged = next.paused !== merged.paused
+    if (saved && !derived && (played || pauseChanged || next.elapsed === merged.elapsed)) {
+      const finished = next.position.entries !== merged.position.entries && isSolved(next) && !isSolved(merged)
+      announceEdit(id, pauseChanged || finished)
+    }
     const seenSaved = puzzleIdentity(current) === puzzleIdentity(next) && current.source === next.source || rememberPuzzle(next)
     const outcome = next.ratingAttempt?.outcome
     const newOutcome = outcome && !ratingEvents.has(outcome.id)
@@ -518,7 +524,7 @@ export const roomStore = {
     const remembered = remember(room.stoppedPlaying ? '' : active)
     publish({ ...room, games, active, playerRating: playerRatingFor(games),
       storageAvailable: room.storageAvailable && saved && remembered && seenSaved && outcomeSaved })
-    announceEdit()
+    if (saved) announceEdit(id, true)
     if (wasActive) playListeners.forEach(listener => listener(null))
   },
 }

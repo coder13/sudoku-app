@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
+import { exportPuzzle, parsePuzzle, puzzlePlayLink, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
 import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import { jigsawLayout, reflectVariant, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantHouseCells, variantHouseMasks, variantHouseName } from '../src/sudoku/variants.ts'
@@ -71,6 +71,16 @@ test('all share formats round-trip to the original givens', () => {
   for (const format of formats) {
     assert.equal(parsePuzzle(exportPuzzle(STARTER, format, 'https://example.org')), STARTER, format)
   }
+})
+
+test('a play link carries the saved attempt ID and only the starting grid', () => {
+  const game = makeGame('my-attempt', 'My puzzle', STARTER, 'imported', 0)
+  const progressed = { ...enter(game, [2], 'value', 4), elapsed: 30 }
+  const link = new URL(puzzlePlayLink(progressed, 'https://example.org'))
+  assert.deepEqual([...link.searchParams], [['puzzle', game.id]])
+  assert.equal(link.hash, `#puzzle=${STARTER}`)
+  assert.equal(parsePuzzle(link.href), STARTER)
+  assert.equal(puzzlePlayLink({ ...progressed, source: 'draft' }), `/#puzzle=${STARTER}`)
 })
 
 test('HoDoKu player entries are excluded when importing givens', () => {

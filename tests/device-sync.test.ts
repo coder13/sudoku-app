@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { makeGame, EMPTY, enter, isSolved, undo, type Game } from '../src/sudoku/game.ts'
 import { GAME_PREFIX } from '../src/sudoku/storage.ts'
+import { recordAction } from '../src/sudoku/action-history.ts'
+import { ratingAttemptFor } from '../src/sudoku/player-rating.ts'
 import { activityPrefix, inProgress } from '../src/sudoku/puzzle-activity.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -57,6 +59,50 @@ test('device credentials, one-use invitations, expiry, recovery, revocation and 
     await phone('devices/' + second.id, 'DELETE')
     await assert.rejects(anon('join', 'POST', { name: 'Revoked link', secret: outstanding.ticket }), { status: 403 })
     await assert.rejects(computer('devices'), { status: 401 })
+  } finally { sqlite.close() }
+})
+
+test('live sync upgrades only authenticated same-origin devices and signals committed changes', async () => {
+  const upgrades: { library: string; request: Request }[] = []
+  const events: { library: string; message: string; device?: string }[] = []
+  const { sqlite, fetcher } = syncDatabase({
+    getByName: library => ({
+      fetch: request => { upgrades.push({ library, request }); return new Response(null, { status: 204 }) },
+      notify: (message, device) => {
+        if (message === 'changes') assert.equal(sqlite.prepare('SELECT count(*) AS n FROM puzzles WHERE library = ?').get(library)?.n, 1)
+        events.push({ library, message, device })
+      },
+    }),
+  })
+  try {
+    const create = syncRequest(undefined, fetcher)
+    const first = await create<Credentials>('libraries', 'POST', {})
+    const other = await create<Credentials>('libraries', 'POST', {})
+    const connect = (token: string, origin = 'https://sudoku.example', feature = '') => fetcher('/api/v1/live', {
+      headers: { Origin: origin, Upgrade: 'websocket', 'Sec-WebSocket-Protocol': ['sudoku-sync', token, feature].filter(Boolean).join(', ') },
+    })
+    assert.equal((await connect(first.token, 'https://unrelated.example')).status, 403)
+    assert.equal((await connect('0'.repeat(64))).status, 401)
+    assert.equal(upgrades.length, 0)
+    assert.equal((await connect(first.token)).status, 204)
+    assert.equal((await connect(other.token, undefined, 'sudoku-sync-presence')).status, 204)
+    assert.notEqual(upgrades[0].library, upgrades[1].library)
+    assert.equal(upgrades[0].request.headers.get('X-Sync-Device'), first.id)
+    assert.equal(upgrades[0].request.headers.has('Sec-WebSocket-Protocol'), false)
+    assert.equal(upgrades[0].request.headers.has('X-Sync-Presence'), false)
+    assert.equal(upgrades[1].request.headers.get('X-Sync-Presence'), '1')
+
+    const auth = syncRequest(first.token, fetcher)
+    const a = client(first, auth)
+    a.write(makeGame('live-sync', 'Live sync', EMPTY, 'custom'))
+    await a.run()
+    const event = { library: upgrades[0].library, message: 'changes', device: first.id }
+    assert.deepEqual(events, [event])
+    await assert.rejects(auth('puzzles/live-sync', 'PUT', {}), { status: 400 })
+    assert.deepEqual(events, [event])
+    await auth('devices/' + first.id, 'DELETE')
+    assert.deepEqual(events.at(-1), { ...event, message: 'revoked' })
+    assert.equal((await connect(first.token)).status, 401)
   } finally { sqlite.close() }
 })
 
@@ -123,6 +169,74 @@ test('two devices resume full independent saves, order by play, and retain both 
   } finally { sqlite.close() }
 })
 
+test('an automatically calculated grade does not conflict with an edit from another device', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const puzzle = makeGame('unrated', 'Unrated puzzle', EMPTY, 'custom')
+    const a = client(creator, phone), b = client(second, computer)
+    a.write(puzzle); await a.run(); await b.run()
+    const grade = { difficulty: 'easy' as const, points: 500, scoringVersion: 1, techniqueOrder: [] }
+    b.write({ ...b.read(puzzle.id)!, difficulty: grade.difficulty, score: grade.points, ratingAttempt: ratingAttemptFor(grade) })
+    a.write(enter(puzzle, [0], 'value', 1)); await a.run()
+    await b.run(); await a.run()
+    assert.equal(b.read(puzzle.id)?.position.entries[0], '1')
+    assert.equal(b.games().length, 1)
+    assert.equal(a.games().length, 1)
+  } finally { sqlite.close() }
+})
+
+test('classifying a downloaded move neither uploads it again nor conflicts with the next move', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const a = client(creator, phone), b = client(second, computer)
+    const puzzle = makeGame('attribution', 'Attribution', EMPTY, 'custom')
+    const first = recordAction(puzzle, enter(puzzle, [0], 'value', 1))
+    a.write(first); await a.run(); await b.run()
+
+    const received = b.read(puzzle.id)!
+    const [{ pending, ...action }] = received.actionHistory!
+    b.write({ ...received, actionHistory: [{ ...action, technique: 'naked-single' }] })
+    await b.run()
+    assert.equal((await phone<{ revision: number }>('puzzles/' + puzzle.id)).revision, 1)
+
+    a.write(recordAction(first, enter(first, [1], 'value', 2)))
+    await a.run(); await b.run(); await a.run()
+    assert.equal(b.read(puzzle.id)?.position.entries.slice(0, 2), '12')
+    assert.equal(b.games().length, 1)
+    assert.equal(a.games().length, 1)
+  } finally { sqlite.close() }
+})
+
+test('checking for changes and syncing a single puzzle leave other local edits pending', async () => {
+  const { sqlite, creator, phone, computer } = await library()
+  try {
+    const storage = new MemoryStorage()
+    const requests: string[] = []
+    const engine = createSyncEngine(storage, creator.id, (path, method, body) => {
+      requests.push((method ?? 'GET') + ' ' + path)
+      return phone(path, method, body)
+    }, () => {})
+    for (const id of ['first', 'second']) {
+      const puzzle = enter(makeGame(id, id, EMPTY, 'custom'), [0], 'value', 3)
+      storage.setItem(GAME_PREFIX + id, JSON.stringify(puzzle))
+    }
+    await engine.run({ uploads: new Set() })
+    assert.ok(!requests.some(request => request.startsWith('PUT')))
+    assert.deepEqual(await engine.pendingIds(), new Set(['first', 'second']))
+
+    requests.length = 0
+    await engine.run({ uploads: new Set(['first']), includeElapsed: true, settings: false })
+    assert.deepEqual(requests, ['GET changes?after=0', 'PUT puzzles/first'])
+    assert.equal((await computer<{ game: Game }>('puzzles/first')).game.position.entries[0], '3')
+    await assert.rejects(computer('puzzles/second'), { status: 404 })
+    assert.deepEqual(await engine.pendingIds(), new Set(['second']))
+
+    requests.length = 0
+    await engine.run({ uploads: new Set(['first']), includeElapsed: true, settings: false })
+    assert.ok(!requests.some(request => request.startsWith('PUT')))
+  } finally { sqlite.close() }
+})
+
 test('a lost upload response and a further offline edit replay without duplicating the puzzle', async () => {
   const { sqlite, creator, phone, second, computer } = await library()
   try {
@@ -139,6 +253,8 @@ test('a lost upload response and a further offline edit replay without duplicati
     assert.equal(b.games().length, 1)
     assert.equal(b.read('one')!.position.entries[1], '2')
     b.write({ ...b.read('one')!, elapsed: 38 }); await b.run(); await a.run()
+    assert.equal(a.read('one')!.elapsed, 0)
+    await b.run({ uploads: new Set(['one']), includeElapsed: true }); await a.run()
     assert.equal(a.read('one')!.elapsed, 38)
   } finally { sqlite.close() }
 })

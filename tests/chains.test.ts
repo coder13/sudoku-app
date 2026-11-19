@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainExtensionStrength, completeChainLoop, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
+import { newChainSketch, pruneChainsAfterMove, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
+import { EMPTY, enter, makeGame, paintCandidate } from '../src/sudoku/game.ts'
+import { readGame } from '../src/sudoku/storage.ts'
 
 const id = (cell: number, digit = 1) => candidateId({ cell, digit })
 const pathEdges = (...nodes: number[]): ChainEdge[] => nodes.slice(1).map((node, i) => [nodes[i], node])
@@ -8,6 +11,26 @@ function graph(cells: Record<number, number[]>) {
   return makeChainGraph(Array.from({ length: 81 }, (_, cell) =>
     (cells[cell] ?? []).reduce((mask, digit) => mask | (1 << (digit - 1)), 0)))
 }
+
+test('saved sketches preserve unfinished endpoints and color, and only affected chains disappear on a move', () => {
+  const first = { ...newChainSketch(1), history: [[], pathEdges(id(0, 1), id(0, 2))], highlightedDigit: 2 }
+  const second = { ...newChainSketch(2), history: [[], pathEdges(id(1, 3), id(1, 4))], highlightedDigit: 4 }
+  const chainSketch: ChainSketchState = { sketches: [first, second], activeId: 2, pending: id(1, 4) }
+  const game = { ...makeGame('sketch-save', 'Sketch save', EMPTY, 'imported'), chainSketch }
+  game.position.center[0] = 1
+  game.position.corner[0] = 3
+  game.position.corner[1] = 12
+  const colored = paintCandidate(game, { cell: 1, digit: 4 }, 8)
+  const saved = readGame(game.id, JSON.stringify(colored))!
+  assert.deepEqual(saved.chainSketch, chainSketch)
+  assert.deepEqual(saved.position.candidateColors, { 1: { 4: 8 } })
+  assert.equal(pruneChainsAfterMove(colored, enter(colored, [2], 'corner', 5)).chainSketch, chainSketch)
+  const oneCopy = pruneChainsAfterMove(colored, enter(colored, [0], 'corner', 1))
+  assert.equal(oneCopy.chainSketch, chainSketch)
+  const removed = pruneChainsAfterMove(oneCopy, enter(oneCopy, [0], 'center', 1))
+  assert.deepEqual(removed.chainSketch, { sketches: [second], activeId: 2, pending: id(1, 4) })
+  assert.deepEqual(removed.position.candidateColors, saved.position.candidateColors)
+})
 
 test('a link requires live candidates that conflict in a cell or house', () => {
   const links = graph({ 0: [1, 2], 1: [1, 3, 4], 2: [1, 2], 3: [2], 30: [1] })
