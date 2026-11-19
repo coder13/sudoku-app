@@ -2,6 +2,8 @@
 
 use super::{cell_bit, cells};
 
+mod interchangeable;
+
 #[derive(Clone, Copy)]
 pub(super) struct Family<'a> {
     pub(super) digit: usize,
@@ -40,7 +42,7 @@ fn support_with_probes(
             // Deferring this digit's full template can find a witness before
             // committing its other eight cells to an unsuitable pattern.
             let mut remaining = choices;
-            let found = probe_anchored(family, &followers, target, &mut witness, &mut remaining)
+            let probed = probe_anchored(family, &followers, target, &mut witness, &mut remaining)
                 .or_else(|| {
                     let mut remaining = checks;
                     probe_followers(
@@ -51,20 +53,25 @@ fn support_with_probes(
                         &mut witness,
                         &mut remaining,
                     )
-                })
-                .unwrap_or_else(|| {
-                    let layout = family.layouts.iter().copied().find(|&layout| {
-                        layout & target != 0
-                            && layout & !family.allowed == 0
-                            && disjoint_layouts(&followers, layout, &mut witness)
-                    });
-                    if let Some(layout) = layout {
-                        witness[family.digit] = layout;
-                        true
-                    } else {
-                        false
-                    }
                 });
+            let found = if let Some(found) = probed {
+                found
+            } else {
+                if let Some(complete) = interchangeable::support(families, support) {
+                    return complete;
+                }
+                let layout = family.layouts.iter().copied().find(|&layout| {
+                    layout & target != 0
+                        && layout & !family.allowed == 0
+                        && disjoint_layouts(&followers, layout, &mut witness)
+                });
+                if let Some(layout) = layout {
+                    witness[family.digit] = layout;
+                    true
+                } else {
+                    false
+                }
+            };
             if found {
                 // Every digit in this complete witness gains support.
                 for (supported, used) in support.iter_mut().zip(witness) {
@@ -325,6 +332,40 @@ mod tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    fn interchangeable_layout_domains_preserve_support_and_check_every_bitset_word() {
+        let sites = [0, 1, 2, 63, 80].map(cell_bit);
+        let shared = sites.iter().fold(0, |mask, site| mask | site);
+        let mut layouts: Vec<_> = (0..66).map(|extra| (extra << 11) | shared).collect();
+        layouts.extend(sites);
+        let mut families: Vec<_> = (0..5)
+            .map(|digit| Family {
+                digit,
+                allowed: u128::MAX,
+                layouts: &layouts,
+            })
+            .collect();
+
+        let exact = direct(&families);
+        assert_eq!(&exact[..5], &[shared; 5]);
+        let mut seeded = [0; 9];
+        seeded[0] = sites[4];
+        assert_eq!(support_with_probes(&families, seeded, 0, 0), exact);
+        assert_eq!(compatible_support(&families, [0; 9]), exact);
+
+        families[4].allowed &= !sites[4];
+        assert!(interchangeable::support(&families, [0; 9]).is_none());
+        assert_eq!(
+            support_with_probes(&families, [0; 9], 0, 0),
+            direct(&families)
+        );
+
+        for family in &mut families {
+            family.allowed &= !sites[4];
+        }
+        assert_eq!(support_with_probes(&families, [0; 9], 0, 0), [0; 9]);
     }
 
     #[cfg(feature = "wasm-api")]
