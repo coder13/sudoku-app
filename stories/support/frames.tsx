@@ -1,5 +1,5 @@
 import { Button } from '../../src/components/Button'
-import { createContext, useContext, useState, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { SudokuShell, Workspace } from '../../src/components/Workspace'
 import { LearnLayout } from '../../src/routes/learn'
@@ -7,6 +7,12 @@ import { LessonPage } from '../../src/routes/learn.$technique'
 import { LessonOverview } from '../../src/routes/learn.index'
 import { Route as ImportRoute } from '../../src/routes/import'
 import { Route as NewPuzzleRoute } from '../../src/routes/puzzles.new'
+import { Route as GameTypesRoute } from '../../src/routes/puzzles.games'
+import { KakuroDifficultyPage, KakuroPlay } from '../../src/components/Kakuro'
+import { CalcudokuDifficultyPage, CalcudokuPlay } from '../../src/components/Calcudoku'
+import { kakuroCatalog } from '../../src/kakuro/catalog'
+import { calcudokuCatalog } from '../../src/calcudoku/catalog'
+import type { NumberGame } from '../../src/components/NumberPuzzle'
 
 export const noop = () => {}
 
@@ -45,6 +51,26 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
     const index = createRoute({ getParentRoute: () => root, path: '/', component: IndexSlot })
     const importPuzzle = createRoute({ getParentRoute: () => root, path: 'import', component: ImportRoute.options.component })
     const puzzles = createRoute({ getParentRoute: () => root, path: 'puzzles' })
+    const standalone = { standalonePuzzlePage: true }
+    const gameTypes = createRoute({
+      getParentRoute: () => puzzles, path: 'games',
+      staticData: standalone, component: GameTypesRoute.options.component,
+    })
+
+    function numberGame<Entry extends { id: string }>(path: NumberGame, Difficulty: ComponentType,
+      Play: ComponentType<{ entry: Entry }>, entries: readonly Entry[]) {
+      const choose = createRoute({ getParentRoute: () => puzzles, path, staticData: standalone, component: () => <Difficulty /> })
+      const play = createRoute({
+        getParentRoute: () => puzzles, path: `${path}/$puzzle`, staticData: standalone,
+        loader: ({ params }) => entries.find(entry => entry.id === params.puzzle) ?? entries[0],
+      })
+      return [choose, play.update({ component: () => <Play entry={play.useLoaderData()} /> })]
+    }
+
+    const numberGames = [
+      ...numberGame('kakuro', KakuroDifficultyPage, KakuroPlay, kakuroCatalog),
+      ...numberGame('calcudoku', CalcudokuDifficultyPage, CalcudokuPlay, calcudokuCatalog),
+    ]
     const newPuzzle = createRoute({
       getParentRoute: () => puzzles, path: 'new',
       validateSearch: NewPuzzleRoute.options.validateSearch,
@@ -64,7 +90,7 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
       notFoundComponent: () => null,
     })
     return createRouter({
-      routeTree: root.addChildren([index, importPuzzle, puzzles.addChildren([newPuzzle.addChildren([difficulty])]), learn.addChildren([overview, lesson])]),
+      routeTree: root.addChildren([index, importPuzzle, puzzles.addChildren([newPuzzle.addChildren([difficulty]), gameTypes, ...numberGames]), learn.addChildren([overview, lesson])]),
       history: createMemoryHistory({ initialEntries: [path] }),
       defaultPreload: false,
     })

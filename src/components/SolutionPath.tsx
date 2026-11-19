@@ -7,15 +7,17 @@ import { techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sud
 import { deductionResults } from '../sudoku/lesson-diagram'
 import { Modal } from './Modal'
 
-type SolutionTrace = LogicalSolution | MiniSolutionTrace
+type SudokuSolutionTrace = LogicalSolution | MiniSolutionTrace
+export type NumberSolutionTrace = { status: 'solved' | 'stalled'; steps: readonly PuzzleHint[] }
+type SolutionTrace = SudokuSolutionTrace | NumberSolutionTrace
 
-export type SolutionPathState =
+export type SolutionPathState<Trace = SudokuSolutionTrace> =
   | { status: 'loading' }
-  | { status: 'ready'; trace: SolutionTrace }
+  | { status: 'ready'; trace: Trace }
   | { status: 'unavailable'; message: string }
 
 type Props = {
-  state: SolutionPathState
+  state: SolutionPathState<SolutionTrace>
   index: number
   onSelect: (index: number) => void
   onRetry: () => void
@@ -38,13 +40,13 @@ export function solutionEndSummary(status: PuzzleRating['status'] | 'solved'): P
 }
 
 /** Keep the read-only preview and walkthrough together on a small screen. */
-export function SolutionDialog({ grid, explanation, ...props }: Props & {
-  grid: ReactNode; explanation: { title: string; text: string } | null
+export function SolutionDialog({ grid, explanation, detail, ...props }: Props & {
+  grid: ReactNode; explanation: { title: string; text: string } | null; detail?: ReactNode
 }) {
   return <Modal title="Solution" className="mobile-solution-dialog" onClose={props.onClose}>
     {grid}
     {explanation && <div className="mobile-solution-explanation">
-      <h3>{explanation.title}</h3><p>{explanation.text}</p>
+      <h3>{explanation.title}</h3>{explanation.text && <p>{explanation.text}</p>}{detail}
     </div>}
     <SolutionPath {...props} embedded />
   </Modal>
@@ -63,7 +65,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   const count = trace?.steps.length ?? 0
   const status = trace && solutionStatus(trace)
   const last = status && solutionEndSummary(status)
-  const moveAvailability = trace?.moveAvailability
+  const moveAvailability = trace && 'moveAvailability' in trace ? trace.moveAvailability : undefined
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
 
   useEffect(() => {
@@ -120,13 +122,16 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
         <ol className="solution-path-steps" ref={list} role="list" aria-label="Solving steps" onKeyDown={navigate}>
           {trace.steps.map((step, stepIndex) => {
             const bottleneck = bottleneckLabel(moveAvailability?.[stepIndex])
+            const title = 'title' in step ? step.title : techniqueLabel(step.technique)
+            const text = 'text' in step ? step.text : deductionResults(step.actions,
+              { cellReferenceStyle, gridSize, difficulty: techniqueDifficulties?.[step.technique] }).join(' ')
             return <li key={stepIndex}>
               <button type="button" className="solution-path-step" aria-current={index === stepIndex ? 'step' : undefined}
                 tabIndex={index === stepIndex ? 0 : -1} onClick={() => onSelect(stepIndex)}>
                 <span className="solution-step-number">{stepIndex + 1}</span>
                 <span>
-                  <strong>{techniqueLabel(step.technique)}</strong>
-                  <small>{deductionResults(step.actions, { cellReferenceStyle, gridSize, difficulty: techniqueDifficulties?.[step.technique] }).join(' ')}</small>
+                  <strong>{title}</strong>
+                  <small>{text}</small>
                   {bottleneck && <small className="solution-step-bottleneck">{bottleneck}</small>}
                 </span>
               </button>

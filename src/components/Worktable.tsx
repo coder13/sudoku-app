@@ -52,7 +52,7 @@ import { ModeBadge } from './ModeBadge'
 import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
 import { MobileInputTabs, type MobileInputTab, type MobileInputTool } from './MobileInputTabs'
-import { MobilePanelLayout } from './MobilePanelLayout'
+import { PlayHint, PlayLayout } from './PlayLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
 import { Modal } from './Modal'
@@ -1837,8 +1837,7 @@ export function Worktable({
   const recoveryExplanation = !solutionHintPanel && recovery && fullHint
     ? explainCandidateRecovery(game, recovery, cellReferenceStyle) : undefined
   const hintPanel = (solutionHintPanel || visibleHint || hintLoading || mobileHintOpen) && (
-    <div className={`hint-dock${mobile ? ' workspace-controls mobile-hint-panel' : ''}`}
-      ref={mobile ? mobileHintPanelRef : undefined} aria-live="polite">
+    <PlayHint mobile={mobile} panelRef={mobile ? mobileHintPanelRef : undefined}>
       <HintCard hint={solutionHintPanel ? solutionHintCopy
         : hintLoading ? { title: 'Finding a hint…', text: '' } : hintCopy}
         lesson={hintLesson && hintTechnique ? { id: hintTechnique, title: hintLesson.title } : undefined}
@@ -1865,7 +1864,7 @@ export function Worktable({
         navigation={!solutionHintPanel && visibleHint && hintCount > 0
           ? { index: visibleHint.index, count: hintCount, onMove: moveHint }
           : undefined} />
-    </div>
+    </PlayHint>
   )
   const cellColorsPanel = (
     <CellColorPalette target={colorTarget} onTarget={changeColorTarget} brush={brush}
@@ -2366,8 +2365,36 @@ export function Worktable({
 
   return (
     <>
-      {advancedWorkspace
-        ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel} chains={chainsPanel} cellColors={cellColorsPanel}
+      <PlayLayout desktop={desktop} puzzle={puzzlePanel} hint={hintPanel}
+        input={desktop ? inputPanel : <MobileInputTabs active={activeMobileInput} open={openMobileTools}
+          panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel }} activeTabRef={activeMobileInputTabRef}
+          toolsDisabled={disabled} colorsOnly={Boolean(grid)} onOpenTools={mobileToolsAvailable ? opener => openMobileInput('colors', opener) : undefined}
+          onSelect={selectMobileInput} onClose={closeMobileInput} />}
+        insights={activeDesktopTab ? {
+          active: activeDesktopTab.id, tabs: openInsightTabs, tabListRef: insightTabsRef, onSelect: openDesktopView,
+          onClose: () => activeDesktopTab.id === 'solution' ? closeSolutionPath() : closeDesktopView(activeDesktopTab.id),
+          content: activeDesktopTab.id === 'colors' ? cellColorsPanel : activeDesktopTab.id === 'techniques'
+            ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
+            : activeDesktopTab.id === 'chains' ? chainsPanel : solutionPathPanel,
+        } : undefined}
+        mobile={{
+          puzzleId: game.id, rearranging, withHint: showMobileHintCard, resizableInput: mobileToolsAvailable,
+          hintSwipe: mobileHintOpen ? { dismiss: closeHint, apply: applyHintAction } : undefined,
+          blocked: Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisDialogOpen ||
+            dialogResult !== null || resetOpen || cancelDraftOpen,
+          onRearrangingChange: active => {
+            setMobileRearranging(active)
+            if (!active) return
+            const pointerId = candidateDrag.current?.pointerId ?? dragSelection.current?.pointerId
+            candidateDrag.current = null
+            dragSelection.current = null
+            pendingDoubleClickSingle.current = null
+            if (pointerId !== undefined && boardRef.current?.hasPointerCapture(pointerId)) boardRef.current.releasePointerCapture(pointerId)
+          },
+          inputTitle: showMobileResults ? 'Next puzzle' : openMobileTools.length ? 'Input' : 'Keypad',
+          hintPlaceholder: <PlayHint mobile><HintCard hint={{ title: 'Puzzle hints', text: 'Hints will appear here.' }} onClose={() => {}} /></PlayHint>,
+        }}
+        advanced={advancedWorkspace ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel} chains={chainsPanel} cellColors={cellColorsPanel}
           hint={advancedHintPanel} solutionPath={solutionPathPanel}
           techniques={!draft
             ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
@@ -2378,77 +2405,7 @@ export function Worktable({
           focusChainsRequest={focusChainsRequest}
           focusColorsRequest={focusColorsRequest} onColorsVisibleChange={setDesktopColorsVisible}
           onChainsVisibleChange={setDesktopChainsVisible}
-          onSolutionVisibleChange={setDesktopSolutionVisible} />
-        : desktop
-          ? <><div className="standard-puzzle-stack">
-              {puzzlePanel}
-              <div className="standard-hint-slot" data-open={Boolean(hintPanel)}>
-                <div><MotionSurface>{hintPanel}</MotionSurface></div>
-              </div>
-            </div><div className="standard-input-stack" id="standard-digit-input">
-              {inputPanel}
-              <MotionSurface>{activeDesktopTab && <section className="desktop-insight-panel" aria-label="Puzzle insights">
-                <div className="desktop-insight-toolbar">
-                  <div ref={insightTabsRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
-                    onKeyDown={(event) => {
-                      if (openInsightTabs.length < 2 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
-                      event.preventDefault()
-                      const index = openInsightTabs.indexOf(activeDesktopTab)
-                      const step = event.key === 'ArrowLeft' ? -1 : 1
-                      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? openInsightTabs.length - 1
-                        : (index + step + openInsightTabs.length) % openInsightTabs.length
-                      const next = openInsightTabs[nextIndex].id
-                      openDesktopView(next)
-                      event.currentTarget.querySelector<HTMLButtonElement>(`[data-insight-tab="${next}"]`)?.focus()
-                    }}>
-                    {openInsightTabs.map(({ id, label }) => <button type="button" key={id} role="tab" data-insight-tab={id}
-                      id={`desktop-insight-tab-${id}`} aria-controls="desktop-insight-content"
-                      aria-selected={activeDesktopTab.id === id} tabIndex={activeDesktopTab.id === id ? 0 : -1}
-                      onClick={() => openDesktopView(id)}>{label}</button>)}
-                  </div>
-                  <IconButton type="button" variant="quiet" className="desktop-insight-close"
-                    aria-label={`Close ${activeDesktopTab.label.toLowerCase()} tab`}
-                    onClick={() => activeDesktopTab.id === 'solution' ? closeSolutionPath() : closeDesktopView(activeDesktopTab.id)}>
-                    <X size={18} aria-hidden="true" />
-                  </IconButton>
-                </div>
-                <div className="desktop-insight-body" id="desktop-insight-content" role="tabpanel"
-                  aria-labelledby={`desktop-insight-tab-${activeDesktopTab.id}`}>
-                  {activeDesktopTab.id === 'colors' ? cellColorsPanel : activeDesktopTab.id === 'techniques'
-                    ? <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
-                    : activeDesktopTab.id === 'chains' ? chainsPanel : solutionPathPanel}
-                </div>
-              </section>}</MotionSurface>
-            </div></>
-          : <MobilePanelLayout puzzleId={game.id} rearranging={rearranging} withHint={showMobileHintCard}
-            resizableInput={mobileToolsAvailable}
-            hintSwipe={mobileHintOpen ? { dismiss: closeHint, apply: applyHintAction } : undefined}
-            blocked={Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || analysisDialogOpen ||
-              dialogResult !== null || resetOpen || cancelDraftOpen}
-            onRearrangingChange={(active) => {
-              setMobileRearranging(active)
-              if (!active) return
-              const pointerId = candidateDrag.current?.pointerId ?? dragSelection.current?.pointerId
-              candidateDrag.current = null
-              dragSelection.current = null
-              pendingDoubleClickSingle.current = null
-              if (pointerId !== undefined && boardRef.current?.hasPointerCapture(pointerId)) boardRef.current.releasePointerCapture(pointerId)
-            }}
-            panels={{
-              puzzle: { title: 'Puzzle', content: puzzlePanel },
-              hint: showMobileHintCard ? { title: 'Hint', content: hintPanel || (
-                <div className="hint-dock workspace-controls mobile-hint-panel">
-                  <HintCard hint={{ title: 'Puzzle hints', text: 'Hints will appear here.' }} onClose={() => {}} />
-                </div>
-              ) } : undefined,
-              input: {
-                title: showMobileResults ? 'Next puzzle' : openMobileTools.length ? 'Input' : 'Keypad',
-                content: <MobileInputTabs active={activeMobileInput} open={openMobileTools}
-                  panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel }} activeTabRef={activeMobileInputTabRef}
-                  toolsDisabled={disabled} colorsOnly={Boolean(grid)} onOpenTools={mobileToolsAvailable ? opener => openMobileInput('colors', opener) : undefined}
-                  onSelect={selectMobileInput} onClose={closeMobileInput} />,
-              },
-            }} />}
+          onSolutionVisibleChange={setDesktopSolutionVisible} /> : undefined} />
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
       {(variant || grid) && <Modal title={`${grid ? sizedName : variantName(variant)} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>

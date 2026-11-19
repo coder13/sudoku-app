@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { calcudokuCatalog } from '../src/calcudoku/catalog.ts'
 import { createCalcudoku, type Cage, type CalcudokuPuzzle } from '../src/calcudoku/engine.ts'
-import { checkLatin, findLatinHint, solveLatin } from '../src/latin/engine.ts'
+import { checkLatin, findLatinHint, findLatinHints, solveLatin } from '../src/latin/engine.ts'
 
 function matchesCage(cage: Cage, values: readonly number[]) {
   const digits = cage.cells.map(cell => values[cell])
@@ -50,6 +50,13 @@ test('all original Calcudoku boards have an independent unique count and complet
     assert.equal(exact.nodes, 1, id)
     assert.ok(exact.solution)
     const values = puzzle.givens.slice()
+    const placements = findLatinHints(puzzle, values)
+    assert.deepEqual(placements[0], findLatinHint(puzzle, values), id)
+    assert.equal(new Set(placements.map(hint => hint.cell)).size, placements.length, id)
+    for (const hint of placements) {
+      assert.equal(values[hint.cell], 0, id)
+      assert.equal(hint.value, exact.solution[hint.cell], id)
+    }
     for (let count = values.filter(value => !value).length; count > 0; count--) {
       const hint = findLatinHint(puzzle, values)
       assert.ok(hint, id)
