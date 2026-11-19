@@ -1525,3 +1525,11 @@ The [Global Entropy audit](../../SUDOKU_GLOBAL_ENTROPY_AUDIT.md) records the sou
 ## Modular Lines native and app integration
 
 `modular-newman.json` records both inspected PDFs for Philip Newman's eighteen-given Birbs of Paradise, its six independent Entropic paths, six independent Modular paths and printed completion. `modular-coach.json` retains eight original sources, their descriptions, solutions, image hashes and the compiler's original nine-cell-wide demonstration. Three complete 9 × 9 sources have independent unique completions; removing either line family from the published puzzle yields multiple completions. Six companion/grid gaps stay explicit. The two zero-given imports preserve every sum and marker, including HCHW's printed XI total. [Source rules, app contracts, package sizes, measurements and limits](../../SUDOKU_MODULAR_AUDIT.md)
+
+## X-Sums app integration
+
+`x-sum-newman.json`, `x-sum-murphy.json` and `x-sum-clover.json` retain complete published 9×9 puzzle/solution PDF pairs, all printed totals and givens, directions, ordered rays, completions and PDF hashes. Direct independent digit/permutation search verifies every unique completion and required-family dependence. The app paths are complete Hard at 3,036/2,710/1,916 points; native technique cost remains 80.
+
+`x-sum-unsupported-AsnF.json` retains the original Coach code, decoded cosmetic totals, author context and completion. Automatic import still rejects that full payload. `x-sum-coach-transcription.json` is a separately labelled manual native transcription of all sixteen totals under the author's explicit rules, with zero givens and a complete 5,514-point Hard path. It is not a typed Coach export. The two `mixed` fixtures are authored regression companions and retain all source constraints; added clues are not attributed to the publishers.
+
+Independent proof replay, all eight transforms, disabled profiles, input/history, storage/sharing, hints/pages/Finder, Learn/practice and calibrated Hard New Puzzle use the real app/worker callers. The bounded subset table used for local input is checked against direct full-row permutations. [Complete source, validation, performance and limits](../../SUDOKU_X_SUM_AUDIT.md). Full authored Coach formats remain in issue 7; diagonal X-Sums remain separate native research in 204.

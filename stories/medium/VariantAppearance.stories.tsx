@@ -1,3 +1,5 @@
+import xSumNewman from '../../tests/fixtures/x-sum-newman.json'
+import xSumMixed from '../../tests/fixtures/x-sum-jigsaw-mixed.json'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
 import betweenNewman from '../../tests/fixtures/between-newman.json'
@@ -131,4 +133,14 @@ export const LittleKillerCompact: Story = { ...LittleKiller, parameters: { ...Li
 export const LittleKillerCorners: Story = {
   args: candidateGrid(littleKillerNewman.puzzle as VariantPuzzle, 'Little Killer Sudoku with corner arrows'),
   parameters: { gridWidth: 290, docs: { description: { story: 'Triforce by Philip Newman preserves both printed directions of its long diagonals. All four corners have their own space outside the cell grid.' } } },
+}
+
+export const XSums: Story = {
+  args: candidateGrid(xSumNewman.puzzle as VariantPuzzle, 'X-Sums Sudoku grid'),
+  parameters: { docs: { description: { story: 'The first digit counts the cells in the outside total and includes itself. This complete Newman control retains every given and clue.' } } },
+}
+export const XSumsCompact: Story = { ...XSums, parameters: { ...XSums.parameters, gridWidth: 290 } }
+export const MixedOutsideClues: Story = {
+  args: candidateGrid(xSumMixed.puzzle as VariantPuzzle, 'Jigsaw with X-Sums, Sandwich and Little Killer clues'),
+  parameters: { gridWidth: 290, docs: { description: { story: 'S/X prefixes and the visible legend distinguish otherwise ambiguous row and column totals. Diagonal arrows retain their separate Little Killer meaning; candidate links stay aligned.' } } },
 }

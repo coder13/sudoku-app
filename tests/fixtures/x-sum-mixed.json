@@ -1,0 +1,211 @@
+{
+  "title": "X-Sums with Sandwich, Little Killer and Renban",
+  "author": "Philip Newman",
+  "published": "2026-05-18",
+  "source": "https://www.gmpuzzles.com/images/puzzles2026/260518-XSumsSudoku-DoubleDigits.pdf",
+  "puzzle": {
+    "version": 1,
+    "givens": "500000000001002000000000000035000400000000000006000570000000000000800900000000005",
+    "rules": [
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          2,
+          11,
+          20,
+          29,
+          38,
+          47,
+          56,
+          65,
+          74
+        ],
+        "sum": 13
+      },
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          5,
+          14,
+          23,
+          32,
+          41,
+          50,
+          59,
+          68,
+          77
+        ],
+        "sum": 14
+      },
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          8,
+          17,
+          26,
+          35,
+          44,
+          53,
+          62,
+          71,
+          80
+        ],
+        "sum": 10
+      },
+      {
+        "type": "x-sum",
+        "direction": "west",
+        "cells": [
+          26,
+          25,
+          24,
+          23,
+          22,
+          21,
+          20,
+          19,
+          18
+        ],
+        "sum": 19
+      },
+      {
+        "type": "x-sum",
+        "direction": "west",
+        "cells": [
+          53,
+          52,
+          51,
+          50,
+          49,
+          48,
+          47,
+          46,
+          45
+        ],
+        "sum": 1
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          72,
+          63,
+          54,
+          45,
+          36,
+          27,
+          18,
+          9,
+          0
+        ],
+        "sum": 17
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          75,
+          66,
+          57,
+          48,
+          39,
+          30,
+          21,
+          12,
+          3
+        ],
+        "sum": 12
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          78,
+          69,
+          60,
+          51,
+          42,
+          33,
+          24,
+          15,
+          6
+        ],
+        "sum": 11
+      },
+      {
+        "type": "x-sum",
+        "direction": "east",
+        "cells": [
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        "sum": 1
+      },
+      {
+        "type": "x-sum",
+        "direction": "east",
+        "cells": [
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62
+        ],
+        "sum": 18
+      },
+      {
+        "type": "sandwich",
+        "cells": [
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62
+        ],
+        "direction": "east",
+        "sum": 0
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-east",
+        "cells": [
+          54,
+          46,
+          38,
+          30,
+          22,
+          14,
+          6
+        ],
+        "sum": 40
+      },
+      {
+        "type": "renban",
+        "cells": [
+          12,
+          13
+        ]
+      }
+    ]
+  },
+  "solution": "584613792971452638623789154135978426742561389896234571369125847257846913418397265",
+  "provenance": "Authored regression companion. Retains every Newman Double Digits given and X-Sum; added matching Sandwich, Little Killer and Renban clues are not attributed to the publisher."
+}

@@ -48,6 +48,10 @@ export const VARIANTS = {
     name: 'Sandwich',
     rule: 'An outside clue gives the sum of the digits strictly between 1 and 9 in its row or column. Do not include 1 or 9 in the total. A zero means 1 and 9 are next to each other. Unmarked rows and columns have no Sandwich total.',
   },
+  'x-sum': {
+    name: 'X-Sums',
+    rule: 'An outside clue gives the sum of the first X digits in its direction. The first digit is X and counts toward the sum. For example, a first digit of 3 means the first three cells add to the clue. Unmarked directions have no X-Sum total.',
+  },
   clone: {
     name: 'Clone',
     rule: 'Cells with the same Clone letter must contain the same digit. Different letters can contain the same digit if the other puzzle rules allow it.',
@@ -393,6 +397,8 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.sum) && validOutsideRay(rule.cells, rule.direction, true) && rule.sum >= rule.cells.length && rule.sum <= rule.cells.length * 9
     case 'sandwich': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
       Number.isInteger(rule.sum) && rule.sum >= 0 && rule.sum <= 35 && validOutsideRay(rule.cells, rule.direction)
+    case 'x-sum': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
+      Number.isInteger(rule.sum) && rule.sum >= 1 && rule.sum <= 45 && validOutsideRay(rule.cells, rule.direction)
     case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
       Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
     case 'inequality': return validCells([rule.less, rule.greater], 2)
@@ -479,6 +485,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   modular: PUZZLE_VARIANTS.modular.name,
   'little-killer': VARIANTS['little-killer'].name,
   sandwich: VARIANTS.sandwich.name,
+  'x-sum': VARIANTS['x-sum'].name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
   renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
@@ -523,6 +530,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         break
       case 'sandwich':
         descriptions.push(VARIANTS.sandwich.rule, outsideClueLabel(rule))
+        break
+      case 'x-sum':
+        descriptions.push(VARIANTS['x-sum'].rule, outsideClueLabel(rule))
         break
       case 'clone':
         descriptions.push(VARIANTS.clone.rule)

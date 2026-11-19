@@ -8166,6 +8166,14 @@
             {
               "label": "Sandwich sums",
               "href": "/learn/sandwich"
+            },
+            {
+              "label": "Philip Newman: Double Digits",
+              "href": "https://www.gmpuzzles.com/images/puzzles2026/260518-XSumsSudoku-DoubleDigits.pdf"
+            },
+            {
+              "label": "clover!: The Scariest Thing",
+              "href": "https://www.gmpuzzles.com/blog/2026/10/x-sums-sudoku-by-clover-3/"
             }
           ],
           "difficulty": "hard"

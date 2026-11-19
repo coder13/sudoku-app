@@ -21,6 +21,11 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
     pairs?.some(([c, d]) => c === a && d === b || c === b && d === a) ?? false
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'x-sum': {
+        const row = rule.cells.map(cell => digits[cell])
+        assert.equal(row.slice(0, row[0]).reduce((sum, digit) => sum + digit, 0), rule.sum)
+        break
+      }
       case 'little-killer':
         assert.equal(rule.cells.reduce((sum, cell) => sum + digits[cell], 0), rule.sum)
         break

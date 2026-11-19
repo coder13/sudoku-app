@@ -1,0 +1,177 @@
+{
+  "title": "All Futures",
+  "author": "Bill Murphy",
+  "published": "2025-10-30",
+  "source": "https://www.gmpuzzles.com/images/puzzles2025/251030-XSumsSudoku-AllFutures.pdf",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2025/251030-XSumsSudoku-AllFutures.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/251030-XSumsSudoku-AllFutures-soln.pdf",
+  "pdfSha256": "9b777c97d37d1d7322158339ff473d7bd7ff67017914d8e1e97e059f51a5654f",
+  "solutionPdfSha256": "b07bb4c1a7dc31a16962d6ae1de7d2de20378c388357b09debc7084534bcf999",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000020406080000000000040608020000000000080204060000000000060802040000000000",
+    "rules": [
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          0,
+          9,
+          18,
+          27,
+          36,
+          45,
+          54,
+          63,
+          72
+        ],
+        "sum": 18
+      },
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          1,
+          10,
+          19,
+          28,
+          37,
+          46,
+          55,
+          64,
+          73
+        ],
+        "sum": 14
+      },
+      {
+        "type": "x-sum",
+        "direction": "south",
+        "cells": [
+          5,
+          14,
+          23,
+          32,
+          41,
+          50,
+          59,
+          68,
+          77
+        ],
+        "sum": 42
+      },
+      {
+        "type": "x-sum",
+        "direction": "west",
+        "cells": [
+          8,
+          7,
+          6,
+          5,
+          4,
+          3,
+          2,
+          1,
+          0
+        ],
+        "sum": 11
+      },
+      {
+        "type": "x-sum",
+        "direction": "west",
+        "cells": [
+          17,
+          16,
+          15,
+          14,
+          13,
+          12,
+          11,
+          10,
+          9
+        ],
+        "sum": 12
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          75,
+          66,
+          57,
+          48,
+          39,
+          30,
+          21,
+          12,
+          3
+        ],
+        "sum": 45
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          79,
+          70,
+          61,
+          52,
+          43,
+          34,
+          25,
+          16,
+          7
+        ],
+        "sum": 14
+      },
+      {
+        "type": "x-sum",
+        "direction": "north",
+        "cells": [
+          80,
+          71,
+          62,
+          53,
+          44,
+          35,
+          26,
+          17,
+          8
+        ],
+        "sum": 43
+      },
+      {
+        "type": "x-sum",
+        "direction": "east",
+        "cells": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "sum": 14
+      },
+      {
+        "type": "x-sum",
+        "direction": "east",
+        "cells": [
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80
+        ],
+        "sum": 9
+      }
+    ]
+  },
+  "solution": "431587692527496183896123457143658729652739814789214365918345276365872941274961538"
+}

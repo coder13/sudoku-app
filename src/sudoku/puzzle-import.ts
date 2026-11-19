@@ -196,7 +196,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
           throw new Error('This Sudoku Coach puzzle has an invalid Sandwich clue.')
         }
         const { side, index, value } = segment.parameters
-        if (!['top', 'right', 'bottom', 'left'].includes(String(side)) || !Number.isInteger(index) || Number(index) < 0 || Number(index) > 8 ||
+        if (typeof side !== 'string' || !['top', 'right', 'bottom', 'left'].includes(side) || !Number.isInteger(index) || Number(index) < 0 || Number(index) > 8 ||
           !Number.isInteger(value) || Number(value) < 0 || Number(value) > 35) throw new Error('This Sudoku Coach puzzle has an invalid Sandwich clue.')
         const direction = side === 'top' ? 'south' : side === 'bottom' ? 'north' : side === 'left' ? 'east' : 'west'
         const cells = Array.from({ length: 9 }, (_, i) => side === 'top' ? i * 9 + Number(index) : side === 'bottom' ? (8 - i) * 9 + Number(index)
