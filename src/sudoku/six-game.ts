@@ -1,6 +1,6 @@
 import { runEngine, type SixGrid, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
-import { isGridText, sixDiagonalCells, sizedClassicPosition } from './grid.ts'
+import { isGridText, gridDiagonalCells, sizedClassicPosition } from './grid.ts'
 import { validation } from './puzzle-validation.ts'
 
 export type SixDefinition = { grid: SixGrid; givens: string; rules: readonly SizedConstraintRule[]; author?: string; authoredSolution?: string }
@@ -60,7 +60,7 @@ export function restoreSixGame({ rules, solution, author }: SixGame, grid: SixGr
     conflictsOf(solution, undefined, grid).size) return
   for (const rule of rules) {
     if (rule.type === 'diagonal') {
-      if (new Set(sixDiagonalCells(rule.diagonal).map(cell => solution[cell])).size !== 6) return
+      if (new Set(gridDiagonalCells(grid.size, rule.diagonal).map(cell => solution[cell])).size !== 6) return
     } else if (rule.type === 'parity') {
       if (rule.cells.some(cell => Number(solution[cell]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
     } else if (rule.type === 'renban') {

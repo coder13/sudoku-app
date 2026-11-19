@@ -25,7 +25,7 @@ export const MiniSudoku: Story = {
 export const SixWithCombinedRules: Story = {
   args: {
     grid: { size: 6, boxRows: 2, boxColumns: 3 }, givens: '0'.repeat(36), values: '0'.repeat(36),
-    sixRules: [
+    sizedRules: [
       { type: 'diagonal', diagonal: 'main' },
       { type: 'parity', parity: 'even', cells: [3, 15] },
       { type: 'parity', parity: 'odd', cells: [25] },
@@ -35,6 +35,14 @@ export const SixWithCombinedRules: Story = {
     selected: [20], candidates: Array.from({ length: 36 }, (_, cell) => cell === 20 ? 0b101000 : 0),
   },
   decorators: [(Story) => <Width width={385}><Story /></Width>],
+}
+export const MiniRenbanLine: Story = {
+  args: {
+    grid: MINI_GRID, givens: '1000000000000000', values: '1000000000000000',
+    sizedRules: [{ type: 'renban', cells: [0, 1, 5], segments: [[0, 1], [1, 5]] }],
+    selected: [5],
+  },
+  decorators: [(Story) => <Width width={290}><Story /></Width>],
 }
 export const AlgebraicCageCaptions: Story = {
   args: {

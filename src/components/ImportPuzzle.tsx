@@ -149,7 +149,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         <span className="import-preview-format">{preview.format}</span>
       </p>
       <Board grid={preview.game.grid} label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
-        variantPuzzle={preview.game.variant?.puzzle} algebraicCages={preview.game.algebraic?.rules} sixRules={preview.game.six?.rules} showGuides={false} />
+        variantPuzzle={preview.game.variant?.puzzle} algebraicCages={preview.game.algebraic?.rules} sizedRules={preview.game.six?.rules} showGuides={false} />
       {preview.game.algebraic ? <>
         {preview.game.algebraic.source?.author && <p>By {preview.game.algebraic.source.author}</p>}
         <ul className="import-preview-rules">

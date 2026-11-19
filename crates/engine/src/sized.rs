@@ -43,6 +43,15 @@ pub struct GridSpec {
     pub box_columns: usize,
 }
 
+impl GridSpec {
+    fn is_valid(self) -> bool {
+        (4..=MAX_SIZE).contains(&self.size)
+            && self.box_rows >= 2
+            && self.box_columns >= 2
+            && self.box_rows.checked_mul(self.box_columns) == Some(self.size)
+    }
+}
+
 /// A logical step supported on a sized Classic grid.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(
@@ -84,10 +93,10 @@ pub struct SizedTracePosition {
     pub deduction: Option<SizedDeduction>,
 }
 
-/// A compiled rectangular box layout. All coordinates and house indices are zero based.
+/// A compiled grid layout. All coordinates and house indices are zero based.
 #[derive(Debug)]
 pub struct SizedGrid {
-    spec: GridSpec,
+    size: usize,
     full_mask: u16,
     memberships: Vec<[usize; 3]>,
     houses: Vec<Vec<usize>>,
@@ -101,31 +110,67 @@ impl SizedGrid {
             box_rows,
             box_columns,
         } = spec;
-        if !(4..=MAX_SIZE).contains(&size)
-            || box_rows < 2
-            || box_columns < 2
-            || box_rows.checked_mul(box_columns) != Some(size)
-        {
+        if !spec.is_valid() {
             return None;
         }
-        let mut houses: Vec<_> = (0..3 * size).map(|_| Vec::with_capacity(size)).collect();
-        let memberships = (0..size * size)
-            .map(|cell| {
-                let (row, column) = (cell / size, cell % size);
-                let region = (row / box_rows) * (size / box_columns) + column / box_columns;
-                let memberships = [row, size + column, 2 * size + region];
-                for house in memberships {
-                    houses[house].push(cell);
+        let regions = (0..size * size).map(|cell| {
+            let (row, column) = (cell / size, cell % size);
+            (row / box_rows) * (size / box_columns) + column / box_columns
+        });
+        Some(Self::from_region_ids(size, regions))
+    }
+
+    /// Build a layout whose connected regions partition the grid.
+    pub fn with_regions(size: usize, regions: &[Vec<usize>]) -> Option<Self> {
+        if !(4..=MAX_SIZE).contains(&size) || regions.len() != size {
+            return None;
+        }
+        let mut region_ids = vec![usize::MAX; size * size];
+        for (index, cells) in regions.iter().enumerate() {
+            if cells.len() != size {
+                return None;
+            }
+            for &cell in cells {
+                let region = region_ids.get_mut(cell)?;
+                if *region != usize::MAX {
+                    return None;
                 }
-                memberships
-            })
-            .collect();
-        Some(Self {
-            spec,
+                *region = index;
+            }
+        }
+        if regions.iter().enumerate().any(|(index, cells)| {
+            !connected_region(size, &region_ids, index, cells[0])
+        }) {
+            return None;
+        }
+        Some(Self::from_region_ids(size, region_ids.into_iter()))
+    }
+
+    fn from_region_ids(size: usize, regions: impl Iterator<Item = usize>) -> Self {
+        let mut houses: Vec<_> = (0..3 * size).map(|_| Vec::with_capacity(size)).collect();
+        let memberships = regions.enumerate().map(|(cell, region)| {
+            let memberships = [cell / size, size + cell % size, 2 * size + region];
+            for house in memberships {
+                houses[house].push(cell);
+            }
+            memberships
+        }).collect();
+        Self {
+            size,
             full_mask: u16::MAX >> (MAX_SIZE - size),
             memberships,
             houses,
-        })
+        }
+    }
+
+    /// Number of rows, columns, regions, and digits in the layout.
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
+    /// Mask containing every legal digit in the layout.
+    pub fn digit_mask(&self) -> u16 {
+        self.full_mask
     }
 
     /// Number of cells in row-major order.
@@ -306,7 +351,7 @@ impl SizedGrid {
     }
 
     fn locked_candidates(&self, masks: &[u16], choices: &mut Vec<SizedDeduction>, limit: usize) {
-        let size = self.spec.size;
+        let size = self.size;
         for (source, cells) in self.houses.iter().enumerate() {
             for digit in 1..=size as u8 {
                 let bit = 1 << (digit - 1);
@@ -359,7 +404,7 @@ impl SizedGrid {
     }
 
     fn house(&self, index: usize) -> House {
-        let size = self.spec.size;
+        let size = self.size;
         match index / size {
             0 => House::Row(index),
             1 => House::Column(index - size),
@@ -376,7 +421,7 @@ impl SizedGrid {
             if digit == 0 {
                 continue;
             }
-            if usize::from(digit) > self.spec.size {
+            if usize::from(digit) > self.size {
                 return None;
             }
             let bit = 1 << (digit - 1);
@@ -445,6 +490,27 @@ impl SizedGrid {
         };
         (outcome, search.first)
     }
+}
+
+fn connected_region(size: usize, regions: &[usize], region: usize, first: usize) -> bool {
+    let mut reached = vec![first];
+    let mut next = 0;
+    while let Some(&cell) = reached.get(next) {
+        next += 1;
+        let (row, column) = (cell / size, cell % size);
+        let neighbors = [
+            (row > 0).then(|| cell - size),
+            (row + 1 < size).then_some(cell + size),
+            (column > 0).then(|| cell - 1),
+            (column + 1 < size).then_some(cell + 1),
+        ];
+        for neighbor in neighbors.into_iter().flatten() {
+            if regions[neighbor] == region && !reached.contains(&neighbor) {
+                reached.push(neighbor);
+            }
+        }
+    }
+    reached.len() == size
 }
 
 struct Search<'a> {

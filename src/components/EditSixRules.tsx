@@ -117,7 +117,7 @@ export function EditSixRules({ game, layout, close }: { game: Game; layout: SixG
         ? 'Select the cells in order, from the bulb to the tip.'
         : kind === 'renban' ? 'Select the cells in the order you want to draw the line.'
           : 'Select the cells that should have a marker.'}</p>}
-      <Board grid={layout} sixRules={preview} givens={game.givens} values={valuesOf(game)} showGuides
+      <Board grid={layout} sizedRules={preview} givens={game.givens} values={valuesOf(game)} showGuides
         label="Rule editor" selected={cells} active={active} onCell={'cells' in rule ? selectCell : undefined}
         onGridKeyDown={'cells' in rule ? moveFocus : undefined}
         descriptionId={'cells' in rule ? `${id}-instructions` : undefined} />

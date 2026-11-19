@@ -48,7 +48,7 @@ export function SharedPuzzlePage({ id, games, linked, syncReady }: {
         <p className="import-preview-meta"><strong>{puzzle.algebraic ? `${ALGEBRAIC_CAGES_NAME} · 4 × 4`
           : puzzle.grid?.size === 6 ? '6 × 6 Sudoku' : puzzle.grid ? 'Mini Sudoku · 4 × 4' : variantName(puzzle.variant)}</strong></p>
         <Board grid={puzzle.grid} label="Puzzle preview" givens={puzzle.givens} values={puzzle.givens}
-          variantPuzzle={puzzle.variant?.puzzle} algebraicCages={puzzle.algebraic?.rules} sixRules={puzzle.six?.rules} showGuides={false} />
+          variantPuzzle={puzzle.variant?.puzzle} algebraicCages={puzzle.algebraic?.rules} sizedRules={puzzle.six?.rules} showGuides={false} />
         {puzzle.algebraic && <>
           {puzzle.algebraic.source?.author && <p>By {puzzle.algebraic.source.author}</p>}
           <ul className="import-preview-rules">

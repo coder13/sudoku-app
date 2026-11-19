@@ -1,5 +1,5 @@
 import { STARTER } from './formats.ts'
-import { CLASSIC_GRID, gridHouseCells, isGridText, sixDiagonalCells, sixDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, isGridText, gridDiagonalCells, sixDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
@@ -574,7 +574,7 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
     if (rule.type === 'extra-house') return [variantHouseCells({ extra: index }, variant)]
     return []
   }) ?? []
-  const diagonals = sixRules?.flatMap(rule => rule.type === 'diagonal' ? [sixDiagonalCells(rule.diagonal)] : []) ?? []
+  const diagonals = sixRules?.flatMap(rule => rule.type === 'diagonal' ? [gridDiagonalCells(grid?.size ?? 6, rule.diagonal)] : []) ?? []
   for (const house of [...houses, ...extra, ...diagonals]) {
     for (let digit = 1; digit <= size; digit++) {
       if (house.some((index) => values[index] === String(digit))) continue

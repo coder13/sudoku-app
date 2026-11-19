@@ -48,8 +48,8 @@ export function sizedClassicPosition(grid: SizedGrid, values: string): SizedClas
   return { version: 2, grid, digits: Array.from(values, Number) }
 }
 
-export function sixDiagonalCells(diagonal: 'main' | 'anti') {
-  return Array.from({ length: 6 }, (_, row) => diagonal === 'main' ? row * 7 : row * 5 + 5)
+export function gridDiagonalCells(size: number, diagonal: 'main' | 'anti') {
+  return Array.from({ length: size }, (_, row) => row * size + (diagonal === 'main' ? row : size - row - 1))
 }
 
 export function sixDigitExclusions(rules: readonly SizedConstraintRule[] | undefined, cell: number, other: number, digit: number) {

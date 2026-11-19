@@ -2146,20 +2146,20 @@ export function Worktable({
   const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
     ? sketch.annotations : undefined
   const solutionGrid = (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={sixRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sixRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : sketch.drawing && chainMasks ? (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={sixRules} givens={givens} values={values} position={game.position} errors={errors}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sixRules} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} showPlayerColors={showPlayerColors} label="Sudoku grid for drawing links"
       highlightedDigit={chainHighlightDigit} highlighting={highlighting} highlightCandidateCount={highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={sixRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sixRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={hintAnnotations && hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations ?? visibleChainAnnotations}
       showAnnotatedCandidates={Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
@@ -2285,7 +2285,7 @@ export function Worktable({
           }}>
           {placeholder ? <div className="puzzle-placeholder-stage">
             <div className="puzzle-grid-reservation" aria-hidden="true" inert>
-              <Board grid={grid} algebraicCages={cages} sixRules={sixRules} givens={givens} values={values} showGuides={appearance.showGuides} />
+              <Board grid={grid} algebraicCages={cages} sizedRules={sixRules} givens={givens} values={values} showGuides={appearance.showGuides} />
             </div>
             <div className="puzzle-placeholder-message">{placeholder}</div>
           </div> : !draft && !completed ? (

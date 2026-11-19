@@ -3,7 +3,7 @@ import type { SizedConstraintRule, SizedVariantPosition, VariantPuzzle, VariantR
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts } from '../sudoku/region-sum'
-import { sixDiagonalCells } from '../sudoku/grid'
+import { gridDiagonalCells } from '../sudoku/grid'
 import { cloneLayout } from '../sudoku/clone'
 
 const x = (cell: number, size = 9) => cell % size
@@ -46,32 +46,35 @@ function RenbanClue({ cells, segments, number, size = 9 }: {
   </g>
 }
 
-export function SixClues({ rules }: { rules: readonly SizedConstraintRule[] }) {
+export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstraintRule[]; size: number }) {
   const renbans = rules.filter(rule => rule.type === 'renban')
-  const lanes = coloredLineOverlapLanes(renbans, 6)
-  return <svg viewBox="0 0 6 6" aria-hidden="true" className="variant-clues" data-six-clues>
-    {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={6} />)}
-    {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={6} />)}
-    {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={6} />)}
-    {renbans.map((rule, index) => <RenbanClue key={index} {...rule} number={index + 1} size={6} />)}
+  const lanes = coloredLineOverlapLanes(renbans, size)
+  return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
+    {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
+    {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
+    {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={size} />)}
+    {renbans.map((rule, index) => <RenbanClue key={index} {...rule} number={index + 1} size={size} />)}
     {[...lanes].map(([index, edges]) => <g key={index} className="variant-renban-overlap" data-renban={index + 1}>
-      {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={6} color={renbanColors[index % renbanColors.length]} />)}
+      {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={size} color={renbanColors[index % renbanColors.length]} />)}
     </g>)}
   </svg>
 }
 
-export function sixClueLabels(rules: readonly SizedConstraintRule[]) {
-  const labels: Set<string>[] = Array.from({ length: 36 }, () => new Set())
+export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size: number) {
+  const labels: Set<string>[] = Array.from({ length: size * size }, () => new Set())
   let renbanNumber = 0
   for (const rule of rules) {
     if (rule.type === 'diagonal') {
-      for (const cell of sixDiagonalCells(rule.diagonal)) labels[cell].add(rule.diagonal === 'main' ? 'top-left diagonal' : 'top-right diagonal')
+      for (const cell of gridDiagonalCells(size, rule.diagonal)) labels[cell].add(rule.diagonal === 'main' ? 'top-left diagonal' : 'top-right diagonal')
     } else if (rule.type === 'parity') {
-      for (const cell of rule.cells) labels[cell].add(rule.parity === 'odd' ? 'odd circle, digit must be 1, 3, or 5' : 'even square, digit must be 2, 4, or 6')
+      const odd = rule.parity === 'odd'
+      const digits = Array.from({ length: Math.floor((size + Number(odd)) / 2) }, (_, index) => String(index * 2 + (odd ? 1 : 2)))
+      const allowed = new Intl.ListFormat('en', { type: 'disjunction' }).format(digits)
+      for (const cell of rule.cells) labels[cell].add(`${odd ? 'odd circle' : 'even square'}, digit must be ${allowed}`)
     } else if (rule.type === 'renban') {
       renbanNumber++
       for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1
-        ? 'one cell, any digit from 1 to 6' : `${rule.cells.length} different consecutive digits in any order`}`)
+        ? `one cell, any digit from 1 to ${size}` : `${rule.cells.length} different consecutive digits in any order`}`)
     } else {
       rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'thermometer bulb' : index === rule.cells.length - 1 ? 'thermometer tip' : 'thermometer'))
     }

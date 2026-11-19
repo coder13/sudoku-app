@@ -1,29 +1,6 @@
-use super::{GridSpec, SizedDeduction, SizedGrid};
+use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction, House};
-
-/// Diagonals use row-major coordinates. Main runs from top left to bottom right.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg_attr(
-    feature = "wasm-api",
-    derive(serde::Deserialize, serde::Serialize),
-    serde(rename_all = "kebab-case")
-)]
-pub enum SizedDiagonal {
-    Main,
-    Anti,
-}
-
-/// A marker restricts its cell to digits of one parity.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg_attr(
-    feature = "wasm-api",
-    derive(serde::Deserialize, serde::Serialize),
-    serde(rename_all = "kebab-case")
-)]
-pub enum SizedParity {
-    Odd,
-    Even,
-}
+pub use crate::variant::{Diagonal as SizedDiagonal, Parity as SizedParity};
 
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -92,7 +69,7 @@ pub struct SizedConstraintTracePosition {
     pub deduction: Option<SizedConstraintStep>,
 }
 
-/// A rectangular-box grid with a jointly enforced list of sized rules.
+/// A compiled grid with a jointly enforced list of sized rules.
 #[derive(Debug)]
 pub struct SizedConstraintGrid {
     layout: SizedGrid,
@@ -105,7 +82,12 @@ pub struct SizedConstraintGrid {
 
 impl SizedConstraintGrid {
     pub fn new(spec: GridSpec, rules: &[SizedConstraint]) -> Option<Self> {
-        let layout = SizedGrid::new(spec)?;
+        Self::with_layout(SizedGrid::new(spec)?, rules)
+    }
+
+    /// Compile the rules against an existing rectangular or irregular layout.
+    pub fn with_layout(layout: SizedGrid, rules: &[SizedConstraint]) -> Option<Self> {
+        let size = layout.size();
         let mut parity = vec![layout.full_mask; layout.cell_count()];
         let mut diagonals = Vec::new();
         let mut thermometers = Vec::new();
@@ -113,7 +95,7 @@ impl SizedConstraintGrid {
         for rule in rules {
             match rule {
                 SizedConstraint::Diagonal(direction) => {
-                    let diagonal = diagonal_cells(spec.size, *direction).collect();
+                    let diagonal = diagonal_cells(size, *direction).collect();
                     if !diagonals.contains(&diagonal) {
                         diagonals.push(diagonal);
                     }
@@ -134,7 +116,7 @@ impl SizedConstraintGrid {
                     }
                 }
                 SizedConstraint::Thermometer { cells } => {
-                    if !(2..=spec.size).contains(&cells.len())
+                    if !(2..=size).contains(&cells.len())
                         || cells.iter().enumerate().any(|(index, &cell)| {
                             cell >= layout.cell_count() || cells[..index].contains(&cell)
                         })
@@ -144,8 +126,7 @@ impl SizedConstraintGrid {
                     thermometers.push(cells.clone());
                 }
                 SizedConstraint::Renban { cells } => {
-                    if spec.size > 9
-                        || !(1..=spec.size).contains(&cells.len())
+                    if !(1..=size).contains(&cells.len())
                         || cells.iter().enumerate().any(|(index, &cell)| {
                             cell >= layout.cell_count() || cells[..index].contains(&cell)
                         })
@@ -256,18 +237,21 @@ impl SizedConstraintGrid {
         changed
     }
 
-    fn renban_masks(&self, cells: &[usize], candidates: &[u16]) -> [u16; 9] {
-        let mut domains = [0; 9];
-        let mut support = [0; 9];
+    fn renban_masks(&self, cells: &[usize], candidates: &[u16]) -> [u16; MAX_SIZE] {
+        let mut domains = [0; MAX_SIZE];
+        let mut support = [0; MAX_SIZE];
         for (slot, &cell) in domains.iter_mut().zip(cells) {
             *slot = candidates[cell];
         }
         let domains = &domains[..cells.len()];
         let masks = &mut support[..cells.len()];
-        if self.layout.spec.size <= 6 {
+        let size = self.layout.size();
+        if size <= 6 {
             crate::variant::renban_support::<6, 64>(domains, masks);
-        } else {
+        } else if size <= 9 || cells.len() <= 3 {
             crate::variant::renban_support::<9, 512>(domains, masks);
+        } else {
+            crate::variant::wide_renban_support(size, domains, masks);
         }
         support
     }
@@ -316,7 +300,7 @@ impl SizedConstraintGrid {
             let mut actions = Vec::new();
             match constraint {
                 SizedConstraint::Diagonal(direction) => {
-                    let cells = diagonal_cells(self.layout.spec.size, *direction);
+                    let cells = diagonal_cells(self.layout.size(), *direction);
                     let used = cells
                         .clone()
                         .filter(|&cell| digits[cell] != 0)
@@ -325,7 +309,7 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, domains[cell] & used, &mut actions);
                     }
                     if actions.is_empty() {
-                        for digit in 1..=self.layout.spec.size as u8 {
+                        for digit in 1..=self.layout.size() as u8 {
                             let bit = 1 << (digit - 1);
                             if used & bit != 0 {
                                 continue;
@@ -442,22 +426,22 @@ impl SizedConstraintGrid {
         eliminations: &[u16],
         candidates: &[u16],
     ) -> Option<SizedConstraintStep> {
-        if self.layout.spec.size != 6 {
-            return None;
-        }
         let mut cells: Vec<_> = (0..candidates.len())
             .filter(|&cell| candidates[cell] != 0)
             .collect();
         cells.sort_unstable_by_key(|&cell| (candidates[cell].count_ones(), cell));
-        let mut budget = 2048;
+        // One assumption may scan every digit in every house. Keep the
+        // same work budget as 2,048 passes over the original 6×6 grid.
+        const MAX_DIGIT_CELL_CHECKS: usize = 2_048 * 6 * 36;
+        let mut budget = MAX_DIGIT_CELL_CHECKS / (self.layout.size() * self.layout.cell_count());
         let mut branch = digits.to_vec();
         let mut removed = eliminations.to_vec();
         let mut placements = Vec::new();
         for cell in cells {
-            for digit in 1..=6 {
-                if candidates[cell] & (1 << (digit - 1)) == 0 {
-                    continue;
-                }
+            let mut options = candidates[cell];
+            while options != 0 {
+                let digit = options.trailing_zeros() as u8 + 1;
+                options &= options - 1;
                 branch.copy_from_slice(digits);
                 branch[cell] = digit;
                 removed.copy_from_slice(eliminations);
@@ -544,7 +528,7 @@ impl SizedConstraintGrid {
                 SizedConstraint::Diagonal(direction) => {
                     let mut used = 0;
                     let mut supported = 0;
-                    for cell in diagonal_cells(self.layout.spec.size, *direction) {
+                    for cell in diagonal_cells(self.layout.size(), *direction) {
                         if digits[cell] != 0 {
                             if used & domains[cell] != 0 {
                                 return Some(SizedConstraintFailure::Rule { rule });
@@ -626,7 +610,7 @@ impl SizedConstraintGrid {
                         }
                         low = digit;
                     }
-                    if low + cells.len() - index - 1 > self.layout.spec.size {
+                    if low + cells.len() - index - 1 > self.layout.size() {
                         return false;
                     }
                     low += 1;
