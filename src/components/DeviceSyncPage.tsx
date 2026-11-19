@@ -130,6 +130,8 @@ export function DeviceSyncPage() {
     else void router.navigate({ to: '/sync', replace: true })
   }
   useEffect(() => {
+    // The previous screen can stay mounted while the router transitions away.
+    if (current.pathname !== '/sync' && !current.pathname.startsWith('/sync/')) return
     if (screen === 'start' && ticket) {
       void router.navigate({ to: '/sync/$step', params: { step: 'confirm' }, hash: 'pair=' + ticket, replace: true, viewTransition: false })
     } else if (status.ready && !working) {
@@ -137,7 +139,7 @@ export function DeviceSyncPage() {
       else if ((screen === 'invite' || screen === 'devices') && !status.linked) void router.navigate({ to: '/sync', replace: true, viewTransition: false })
       else if (screen === 'confirm' && !ticket) void router.navigate({ to: '/sync/$step', params: { step: 'scan' }, replace: true, viewTransition: false })
     }
-  }, [screen, ticket, status.ready, status.linked, working, router])
+  }, [current.pathname, screen, ticket, status.ready, status.linked, working, router])
   const activeInvite = invite && invite.expires > clock && invite.issuer === deviceSync.credentials()?.id
   return <main className="page sync-page device-sync-page">
     <header className="sync-heading">
