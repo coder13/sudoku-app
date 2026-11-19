@@ -11,6 +11,6 @@ export function lastPlayed(game: Game, storage?: Storage) {
 }
 
 export function inProgress(games: readonly Game[], storage?: Storage) {
-  return games.filter(game => !game.archived && !isSolved(game) && (game.started || game.source === 'draft'))
+  return games.filter(game => !game.archived && !game.savedForLater && !isSolved(game))
     .sort((a, b) => lastPlayed(b, storage) - lastPlayed(a, storage) || b.created - a.created || a.id.localeCompare(b.id))
 }
