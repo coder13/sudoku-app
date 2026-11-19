@@ -32,6 +32,17 @@ export const Mobile: Story = {
   },
 }
 
+export const RectangularSix: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=six&boxRows=3" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await expect(await canvas.findByRole('combobox', { name: 'Box layout' })).toHaveValue('3')
+    await userEvent.click(canvas.getByRole('button', { name: 'Create puzzle' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit rules' }))
+    await expect(await canvas.findByRole('grid', { name: '6 × 6 rule editor' })).toBeVisible()
+  },
+}
+
 export const AlgebraicCages: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new?variant=algebraic-cages" />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
@@ -128,6 +139,12 @@ export const KakuroFromGameTypes: Story = {
     await userEvent.keyboard('1')
     await expect(cell).toHaveAccessibleName(/^R2C3, 1/)
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Hint$/ }))
+    await userEvent.click(canvas.getByText('Show hint steps'))
+    await expect(canvas.getByText('The clue rules out 1 in R4C2. R4C2 can only be 3.')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Place 3' }))
+    await expect(canvas.getByRole('button', { name: /^R4C2, 3/ })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
   },
 }
 
@@ -144,4 +161,12 @@ export const CalcudokuFromGameTypes: Story = {
     await expect(cell).toHaveAccessibleName(/^R1C1, 1/)
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
   },
+}
+
+export const RenbanVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=renban" />,
+}
+export const RenbanDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=renban" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 }

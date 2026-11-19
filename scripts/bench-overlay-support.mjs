@@ -55,6 +55,15 @@ for (const technique of methods) {
   cases.push({ name: `variant-${technique}`, request: { type: 'variant', operation: 'hints', position: variantExercise.position, techniqueOrder: [technique], limit: 0xffff_ffff }, positive: true })
   cases.push({ name: `empty-${technique}`, request: { type: 'deductions', values: '0'.repeat(81), techniqueOrder: [technique] }, expectedError: 'multiple' })
 }
+for (const [name, techniqueOrder, expected] of [
+  ['Murphy-full', order, 179],
+  ['Murphy-quintuple', ['quintuple-pattern-overlay'], 5],
+]) {
+  if (!selected.includes(name)) continue
+  const { puzzle } = await load('x-sum-murphy')
+  cases.push({ name, request: { type: 'variant', operation: 'hints', position: { puzzle },
+    techniqueOrder, difficulty: 'hard', limit: 0xffff_ffff }, expected, checkpoints: true })
+}
 for (const name of selected) assert.ok(cases.some(source => source.name === name), `Unknown case ${name}`)
 console.log(JSON.stringify({ host: `${process.platform} ${process.arch}`, node: process.version,
   artifacts: binaries.map(bytes => ({ raw: bytes.length, gzip: gzipSync(bytes).length, sha256: createHash('sha256').update(bytes).digest('hex') })),
@@ -65,7 +74,11 @@ for (const source of cases.filter(source => !selected.length || selected.include
   let expected
   for (let round = 0; round < warmups + samples; round++) {
     for (const index of round % 2 ? [1, 0] : [0, 1]) {
+      if (source.checkpoints) console.error(JSON.stringify({ status: 'started', name: source.name, round, engine: index }))
       const start = performance.now(), actual = await pair[index].request(source.request), elapsed = performance.now() - start
+      if (source.checkpoints) console.error(JSON.stringify({ status: 'complete', name: source.name, round,
+        engine: index, elapsed, warmup: round < warmups, proofCount: actual.length,
+        responseSha256: createHash('sha256').update(JSON.stringify(actual)).digest('hex') }))
       if (expected === undefined) expected = actual
       else assert.deepEqual(actual, expected, `${source.name}: engine ${index}`)
       if (source.positive) assert.ok(actual.length > 0)

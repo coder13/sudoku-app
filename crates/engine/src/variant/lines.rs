@@ -191,25 +191,43 @@ impl LineConstraint {
                 }
             }
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
-            LineKind::Renban => {
-                let len = domains.len();
-                let mut matches = [0; 9];
-                for first in 0..=9 - len {
-                    let interval = ((1 << len) - 1) << first;
-                    super::search::record_support(
-                        interval,
-                        domains,
-                        &mut matches,
-                        &mut [None; 512],
-                    );
-                }
-                support.copy_from_slice(&matches[..len]);
-            }
+            LineKind::Renban => renban_support(domains, support),
             LineKind::ThreeGroups(line) => line.support(domains, support),
             LineKind::Between => between_support(domains, support),
             LineKind::Outside(clue) => {
                 clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());
             }
+        }
+    }
+}
+
+fn renban_support(domains: &[u16], support: &mut [u16]) {
+    match *domains {
+        [single] => support[0] = single,
+        [a, b] => support.copy_from_slice(&[a & (b << 1 | b >> 1), b & (a << 1 | a >> 1)]),
+        [a, b, c] => {
+            // For each ascending order of the cells, align all three masks
+            // with the smallest digit. Shift the matches back to each cell.
+            let abc = a & (b >> 1) & (c >> 2);
+            let acb = a & (c >> 1) & (b >> 2);
+            let bac = b & (a >> 1) & (c >> 2);
+            let bca = b & (c >> 1) & (a >> 2);
+            let cab = c & (a >> 1) & (b >> 2);
+            let cba = c & (b >> 1) & (a >> 2);
+            support.copy_from_slice(&[
+                abc | acb | ((bac | cab) << 1) | ((bca | cba) << 2),
+                bac | bca | ((abc | cba) << 1) | ((acb | cab) << 2),
+                cab | cba | ((acb | bca) << 1) | ((abc | bac) << 2),
+            ]);
+        }
+        _ => {
+            let len = domains.len();
+            let mut matches = [0; 9];
+            for first in 0..=9 - len {
+                let interval = ((1 << len) - 1) << first;
+                super::search::record_support(interval, domains, &mut matches, &mut [None; 512]);
+            }
+            support.copy_from_slice(&matches[..len]);
         }
     }
 }
@@ -417,7 +435,8 @@ mod renban_support_tests {
 
     #[test]
     fn three_cell_domains_and_long_ranges_match_independent_assignments() {
-        for labels in [[1, 2, 3], [2, 4, 7], [7, 8, 9]] {
+        let windows = (1..=7).map(|first| [first, first + 1, first + 2]);
+        for labels in windows.chain([[2, 4, 7], [2, 3, 8]]) {
             let masks: Vec<_> = (0..8)
                 .map(|subset| {
                     labels.iter().enumerate().fold(0, |mask, (i, &digit)| {
@@ -438,6 +457,10 @@ mod renban_support_tests {
             }
         }
         for domains in [
+            vec![511],
+            vec![511; 3],
+            vec![0b000_000_111, 0b001_000_001, 0b000_000_110],
+            vec![0b111_000_111, 0b111_000_101, 0b110_000_111],
             vec![511; 9],
             vec![3, 3, 3, 511],
             vec![15; 4],

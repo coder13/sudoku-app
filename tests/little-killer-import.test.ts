@@ -133,7 +133,7 @@ test('Coach diagonal parameters map every direction and corner and never reinter
     )
     await assert.rejects(
       detectPuzzle(fixture.metadata.sudoku),
-      code === 'GJBz' ? /9 × 9/ : /cosmetic Little Killer|not supported|unsupported/,
+      code === 'GJBz' ? /6 × 6.*unsupported active rule/ : /cosmetic Little Killer|not supported|unsupported/,
     )
   }
 })

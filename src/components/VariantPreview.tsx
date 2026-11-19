@@ -1,8 +1,9 @@
 import type { NewPuzzleId } from '../sudoku/new-puzzle'
-import type { SizedVariantPosition, VariantRule } from '../sudoku/engine'
+import type { SixGrid, SizedVariantPosition, VariantRule } from '../sudoku/engine'
 import { Crown } from 'lucide-react'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
 import { regionMembership, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
+import { sixGridForBoxRows } from '../sudoku/grid'
 import { AlgebraicCages, VariantClues } from './VariantClues'
 import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 
@@ -20,6 +21,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   'global-entropy': [],
   entropic: [{ type: 'entropic', cells: [2, 1, 0, 9, 18, 19] }, { type: 'entropic', cells: [58, 59, 68, 77, 76, 75, 66] }],
   modular: [{ type: 'modular', cells: [2, 1, 0, 9, 18, 19] }, { type: 'modular', cells: [58, 59, 68, 77, 76, 75, 66] }],
+  renban: [{ type: 'renban', cells: [18, 27, 36] }, { type: 'renban', cells: [13, 14, 15] }],
   palindrome: [{ type: 'palindrome', cells: [0, 10, 20, 30, 31, 32] }, { type: 'palindrome', cells: [48, 49, 50, 60, 70, 80] }],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
@@ -49,7 +51,15 @@ const algebraicPreview: SizedVariantPosition['rules'] = [
 ]
 
 /** Show a compact example of a generatable variant's grid markings alongside its name. */
-export function VariantPreview({ variant, ruleset }: { variant: NewPuzzleId; ruleset?: GenerationRulesetId }) {
+export function VariantPreview({ variant, ruleset, boxRows }: { variant: NewPuzzleId; ruleset?: GenerationRulesetId; boxRows?: SixGrid['boxRows'] }) {
+  if (variant === 'six') {
+    const layout = sixGridForBoxRows(boxRows)
+    const horizontal = Array.from({ length: 6 / layout.boxRows - 1 }, (_, index) => `M0,${(index + 1) * layout.boxRows}h6`)
+    const vertical = Array.from({ length: 6 / layout.boxColumns - 1 }, (_, index) => `M${(index + 1) * layout.boxColumns},0v6`)
+    return <span className="variant-preview" data-variant="six" aria-hidden="true">
+      <svg className="variant-clues" viewBox="0 0 6 6"><path className="variant-preview-regions" d={[...horizontal, ...vertical].join(' ')} /></svg>
+    </span>
+  }
   if (variant === 'mini') return <span className="variant-preview" data-variant="mini" aria-hidden="true" />
   if (variant === 'algebraic-cages') return <span className="variant-preview" data-variant={variant} aria-hidden="true">
     <AlgebraicCages rules={algebraicPreview} captions />

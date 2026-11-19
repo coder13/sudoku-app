@@ -158,11 +158,11 @@ test('reports unsupported or damaged codes without treating them as Classic', as
   await assert.rejects(detectPuzzle('SCv6_32_0000'), /unsupported format/)
   await assert.rejects(detectPuzzle('SCv7_32_zzzz'), /invalid character/)
   await assert.rejects(detectPuzzle('SCv7_32_0000'), /could not be opened/)
-  await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/DMnw'), /Copy → Puzzle/)
   mock.method(globalThis, 'fetch', async (path: string) => {
-    assert.equal(path, '/api/v1/import/sudokupad/example-share-id')
+    assert.ok(['/api/v1/import/sudokupad/example-share-id', '/api/v1/import/sudoku-coach/DMnw'].includes(path))
     return Response.json({ error: 'The published puzzle could not be found.' }, { status: 404 })
   })
+  await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/DMnw'), /published puzzle could not be found/)
   await assert.rejects(detectPuzzle('https://sudokupad.app/example-share-id'), /published puzzle could not be found/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalModularity', segments: [] }] })), /not supported yet.*globalModularity/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'cage', segments: [] }] })), /no Killer cages/)

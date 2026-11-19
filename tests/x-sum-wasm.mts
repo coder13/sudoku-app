@@ -85,6 +85,24 @@ for (const [index, source] of sources.entries()) {
   })
 }
 
+test('Murphy exhaustive hints include complete five-digit overlay proofs', async () => {
+  const hints = await runEngine({
+    type: 'variant',
+    operation: 'hints',
+    position: { puzzle: sources[1].puzzle },
+    techniqueOrder: await getVariantPlayOrder(),
+    difficulty: 'hard',
+    limit: 0xffff_ffff,
+  })
+  const overlays = hints.filter(hint => hint.technique === 'quintuple-pattern-overlay')
+  const excluded = [4, 22, 36, 38, 42, 44, 58, 76]
+  assert.deepEqual(
+    overlays.map(hint => hint.actions),
+    [1, 3, 5, 7, 9].map(digit => excluded.map(cell => ({ eliminate: { cell, digit } }))),
+  )
+  assert.ok(hints.some(hint => hint.technique === 'x-sum'))
+})
+
 test('disabled human techniques and explicit removals still enforce all X-Sums and companion rules', async () => {
   for (const source of sources) {
     const position = { puzzle: source.puzzle }

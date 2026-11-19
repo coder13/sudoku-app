@@ -4,7 +4,8 @@ use serde_json::json;
 use super::{ResponseValue, ResultValue, puzzle_error};
 use crate::{
     AlgebraicCage, AlgebraicRating, Analysis, CageTotal, GridSpec, SEARCH_LIMIT,
-    SIZED_GRID_VERSION, SizedAlgebraicCages,
+    SIZED_GRID_VERSION, SizedAlgebraicCages, SizedConstraint, SizedConstraintGrid, SizedDiagonal,
+    SizedParity,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -19,6 +20,16 @@ pub(super) struct Definition {
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 enum Rule {
+    Diagonal {
+        diagonal: SizedDiagonal,
+    },
+    Parity {
+        cells: Vec<usize>,
+        parity: SizedParity,
+    },
+    Thermometer {
+        cells: Vec<usize>,
+    },
     AlgebraicCage {
         cells: Vec<usize>,
         total: Total,
@@ -33,22 +44,45 @@ enum Total {
     Variable { name: String, offset: i32 },
 }
 
-impl From<Rule> for AlgebraicCage {
-    fn from(rule: Rule) -> Self {
+impl TryFrom<Rule> for AlgebraicCage {
+    type Error = (&'static str, &'static str);
+
+    fn try_from(rule: Rule) -> Result<Self, Self::Error> {
         let Rule::AlgebraicCage {
             cells,
             total,
             label,
-        } = rule;
+        } = rule
+        else {
+            return Err(("unsupported-rule", "This grid supports algebraic cages."));
+        };
         let total = match total {
             Total::Fixed { value } => CageTotal::Fixed(value),
             Total::Variable { name, offset } => CageTotal::Variable { name, offset },
         };
-        Self {
+        Ok(Self {
             cells,
             total,
             label,
-        }
+        })
+    }
+}
+
+impl TryFrom<Rule> for SizedConstraint {
+    type Error = (&'static str, &'static str);
+
+    fn try_from(rule: Rule) -> Result<Self, Self::Error> {
+        Ok(match rule {
+            Rule::Diagonal { diagonal } => Self::Diagonal(diagonal),
+            Rule::Parity { cells, parity } => Self::Parity { cells, parity },
+            Rule::Thermometer { cells } => Self::Thermometer { cells },
+            Rule::AlgebraicCage { .. } => {
+                return Err((
+                    "unsupported-rule",
+                    "Algebraic cages are supported on the 4 × 4 grid.",
+                ));
+            }
+        })
     }
 }
 
@@ -102,7 +136,10 @@ pub(super) fn generate(
         let givens = digits
             .try_into()
             .map_err(|_| ("invalid-exclusion", "Exclusions must contain 16 cells."))?;
-        let mut cages: Vec<AlgebraicCage> = rules.into_iter().map(AlgebraicCage::from).collect();
+        let mut cages = rules
+            .into_iter()
+            .map(AlgebraicCage::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
         for cage in &mut cages {
             cage.cells.sort_unstable();
             cage.label = match &cage.total {
@@ -129,6 +166,7 @@ pub(super) fn generate(
 pub(super) enum Operation {
     Analyze,
     Solve,
+    Candidates,
     Rate,
     Bounds,
     Hints {
@@ -137,6 +175,8 @@ pub(super) enum Operation {
     },
     Trace {
         eliminations: Option<Vec<u16>>,
+        #[serde(default, rename = "singlesOnly")]
+        singles_only: bool,
     },
     CageProof {
         rule: usize,
@@ -157,7 +197,9 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             "This sized grid format is unsupported.",
         ));
     }
-    // This version of the sized variant contract exposes 4 × 4 algebraic cages.
+    if grid.size == 6 {
+        return execute_six(grid, &digits, rules, operation);
+    }
     if grid.size != 4 || grid.box_rows != 2 || grid.box_columns != 2 {
         return Err((
             "invalid-layout",
@@ -170,12 +212,14 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             "The cell count and digits must match the grid size.",
         ));
     }
-    let puzzle =
-        SizedAlgebraicCages::new(grid, rules.into_iter().map(AlgebraicCage::from).collect())
-            .ok_or((
-                "invalid-rules",
-                "Check the cells, variables, and labels in the algebraic cages.",
-            ))?;
+    let cages = rules
+        .into_iter()
+        .map(AlgebraicCage::try_from)
+        .collect::<Result<Vec<_>, _>>()?;
+    let puzzle = SizedAlgebraicCages::new(grid, cages).ok_or((
+        "invalid-rules",
+        "Check the cells, variables, and labels in the algebraic cages.",
+    ))?;
     let removals = |value: Option<Vec<u16>>| {
         let eliminations = value.unwrap_or_else(|| vec![0; 16]);
         if eliminations.len() != 16 || eliminations.iter().any(|&mask| mask > 15) {
@@ -194,6 +238,12 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             }))
         }
         Operation::Solve => ResponseValue::Json(json!(puzzle.solve(&digits, SEARCH_LIMIT))),
+        Operation::Candidates => {
+            return Err((
+                "unsupported-operation",
+                "Use the algebraic hint request to read its candidate grid.",
+            ));
+        }
         Operation::Rate => ResponseValue::Json(json!(
             puzzle
                 .trace(digits, vec![0; 16], SEARCH_LIMIT)
@@ -209,7 +259,7 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             SEARCH_LIMIT,
             limit.min(256),
         )),
-        Operation::Trace { eliminations } => ResponseValue::AlgebraicTrace(puzzle.trace(
+        Operation::Trace { eliminations, .. } => ResponseValue::AlgebraicTrace(puzzle.trace(
             digits,
             removals(eliminations)?,
             SEARCH_LIMIT,
@@ -226,4 +276,76 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             )))
         }
     })
+}
+
+fn execute_six(
+    grid: GridSpec,
+    digits: &[u8],
+    rules: Vec<Rule>,
+    operation: Operation,
+) -> ResultValue<ResponseValue> {
+    if (grid.box_rows, grid.box_columns) != (2, 3) && (grid.box_rows, grid.box_columns) != (3, 2) {
+        return Err(("invalid-layout", "Use six 2 × 3 or 3 × 2 boxes."));
+    }
+    if digits.len() != 36 || digits.iter().any(|&digit| digit > 6) {
+        return Err((
+            "invalid-grid",
+            "The cell count and digits must match the grid size.",
+        ));
+    }
+    let constraints = rules
+        .into_iter()
+        .map(SizedConstraint::try_from)
+        .collect::<Result<Vec<_>, _>>()?;
+    let puzzle = SizedConstraintGrid::new(grid, &constraints)
+        .ok_or(("invalid-rules", "Check the cells and paths in the rules."))?;
+    let removals = |value: Option<Vec<u16>>| {
+        let value = value.unwrap_or_else(|| vec![0; digits.len()]);
+        if value.len() != digits.len() || value.iter().any(|mask| mask & !0x3f != 0) {
+            return Err((
+                "invalid-eliminations",
+                "The candidate masks must match the grid.",
+            ));
+        }
+        Ok(value)
+    };
+    let value = match operation {
+        Operation::Analyze => json!(match puzzle.analyze(digits, SEARCH_LIMIT) {
+            Analysis::Unique => "unique",
+            analysis => puzzle_error(analysis).0,
+        }),
+        Operation::Solve => json!(
+            puzzle
+                .solve(digits, SEARCH_LIMIT)
+                .map(|digits| json!({ "digits": digits, "variables": {} }))
+        ),
+        Operation::Candidates => json!(puzzle.candidates(digits)),
+        Operation::Hints {
+            eliminations,
+            limit,
+        } => {
+            return Ok(ResponseValue::SizedConstraintHints(puzzle.hints(
+                digits,
+                &removals(eliminations)?,
+                limit.min(1024),
+            )));
+        }
+        Operation::Trace {
+            eliminations,
+            singles_only,
+        } => {
+            return Ok(ResponseValue::SizedConstraintTrace(puzzle.trace(
+                digits.to_vec(),
+                removals(eliminations)?,
+                singles_only,
+            )));
+        }
+        _ => {
+            return Err((
+                "unsupported-operation",
+                "This 6 × 6 operation is unavailable.",
+            ));
+        }
+    };
+    Ok(ResponseValue::Json(value))
 }

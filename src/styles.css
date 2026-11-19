@@ -1549,6 +1549,7 @@ svg { flex-shrink: 0; }
   color: var(--muted);
 }
 .key:not(:disabled):active { transform: scale(.96); transition-duration: var(--motion-press-duration); }
+.keypad.six-keypad { grid-template: repeat(2, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); }
 .keypad.mini-keypad { grid-template: repeat(2, minmax(0, 1fr)) / repeat(2, minmax(0, 1fr)); }
 .keypad:not(.palette) .key { min-height: 0; }
 .desktop-play-resizable .standard-input-stack .keypad:not(.palette) .key {
@@ -2078,6 +2079,7 @@ svg { flex-shrink: 0; }
 .game-row-options { width: 44px; min-height: 44px; }
 .mini-grid { flex: 0 0 33px; height: 33px; display: grid; grid: repeat(9, 1fr) / repeat(9, 1fr); padding: 3px; gap: 1px; border: 1px solid var(--border); background: var(--surface-raised); border-radius: 5px; }
 .mini-grid[data-size="4"] { grid: repeat(4, 1fr) / repeat(4, 1fr); }
+.mini-grid[data-size="6"] { grid: repeat(6, 1fr) / repeat(6, 1fr); }
 .mini-grid i { background: var(--surface-hover); border-radius: 1px; }
 .mini-grid i[data-filled="true"] { background: var(--purple); }
 .game-row-copy { min-width: 0; flex: 1; display: grid; gap: var(--space-2); }
@@ -2487,6 +2489,7 @@ svg { flex-shrink: 0; }
   max-width: 100%;
 }
 .dialog-form textarea { font-family: ui-monospace, monospace; font-size: 0.8125rem; resize: vertical; }
+.six-rule-editor .board-frame { width: min(100%, 340px); margin-inline: auto; }
 .cage-editor-cells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); min-width: 0; border: 0; padding: 0; margin: 0; }
 .cage-editor-cells legend { padding: 0 0 var(--space-4); font-size: 0.8125rem; font-weight: 760; }
 .cage-editor-cells .button { min-width: 0; padding-inline: var(--space-4); }
@@ -3566,6 +3569,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     var(--board-bg);
 }
 .variant-algebraic-preview-label { fill: var(--board-ink); font-size: .33px; font-weight: 650; }
+.variant-preview[data-variant="six"] {
+  background:
+    repeating-linear-gradient(to right, transparent 0 calc(100% / 6 - 1px), var(--grid-line) calc(100% / 6 - 1px) calc(100% / 6)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(100% / 6 - 1px), var(--grid-line) calc(100% / 6 - 1px) calc(100% / 6)),
+    var(--board-bg);
+}
 .variant-preview[data-variant="jigsaw"] { background: var(--board-bg); }
 .variant-preview-regions { fill: none; stroke: var(--grid-strong); stroke-width: .23; }
 .variant-clues { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
