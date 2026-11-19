@@ -225,7 +225,11 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   }, [workspaceReady])
   useEffect(() => roomStore.onPlay(id => {
     if (!id && !new URLSearchParams(window.location.search).has('puzzle')) return
-    if (id) void navigate({ to: '/', search: { puzzle: id }, viewTransition: false })
+    if (id) {
+      const next = roomStore.getSnapshot().games.find(game => game.id === id)
+      const hash = next && next.source !== 'draft' ? puzzleLinkHash(next) : undefined
+      void navigate({ to: '/', search: { puzzle: id }, hash, viewTransition: false })
+    }
     else void navigate({ to: '/puzzles/browse', viewTransition: false })
   }), [navigate])
   useEffect(() => {
@@ -240,8 +244,11 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, games, active, navigate, puzzleLink])
   useEffect(() => {
     if (!workspaceReady || !requested || !hasRequestedGame) return
+    const location = new URL(window.location.href)
+    // The address can change before the router finishes updating the matched puzzle.
+    if (location.pathname !== '/' || location.searchParams.get('puzzle') !== requested) return
     roomStore.view(requested)
-    if (canonicalPuzzleHash && canonicalPuzzleHash !== locationHash) {
+    if (canonicalPuzzleHash && location.hash !== `#${canonicalPuzzleHash}`) {
       void navigate({ to: '/', search: { puzzle: requested }, hash: canonicalPuzzleHash, replace: true, viewTransition: false })
     }
   }, [workspaceReady, requested, hasRequestedGame, canonicalPuzzleHash, locationHash, navigate])
