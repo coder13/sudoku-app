@@ -37,7 +37,9 @@ The actual app New Puzzle caller verifies twenty distinct independently unique/X
 
 ## Validation
 
-Final local validation passes 619 app tests, strict app/new-contract/benchmark TypeScript and the 123-component catalog. The full Wasm suite passes 404 contracts; the final Sandwich/X-Sums regression rerun after the stricter import guard passes 26, followed by the generated-puzzle multiple-hint check. Production prerenders 171 routes and passes three actual-build offline contracts. All five generated JSON files and the packaged Wasm match pinned preceding main byte for byte. The local production build uses that already verified compiled artifact; no local native rebuild is claimed. Exact-head CI/deployment and release remain pending.
+All exact-head release gates pass in [CI 44487864316](https://github.com/coder13/sudoku-app/actions/runs/44487864316) on `a24241e`: 369 native tests including seven Cargo examples, sixteen capability combinations, four Wasm profiles, strict full/core/variants documentation, 619 app tests, 404 Wasm contracts, types/catalog and deployment. Local new-contract/benchmark TypeScript, the 123-component catalog, all 171 production routes and three actual-build offline checks also pass. All five generated JSON files and the packaged Wasm match pinned preceding main byte for byte. The local production build uses that already verified compiled artifact; no local native rebuild is claimed.
+
+[PR 206](https://github.com/coder13/sudoku-app/pull/206) reached main at `973a4f3`. Fetched main contains the reviewed head and merge with identical shipping sources. The published X-Sums lesson returns two outside totals; its Linux-built Wasm is byte-identical to the preceding deployed release. Cross-host byte equality with the local Darwin build is not claimed. The isolated implementation checkout stays pinned to its reviewed head.
 
 ## Performance
 
@@ -68,6 +70,8 @@ Retained raw-instance Wasm capacities are newman: 1,572,864, murphy: 1,572,864, 
 ### Unfinished broad exhaustive scan
 
 A separate full all-app-order hint request on Murphy did not finish during observation. The benchmark was still in that stage at 103 seconds total process elapsed time and 103.84 seconds CPU. Its verified parent/child were intentionally terminated, their terminal handle and absent processes checked, and the stage log retained as `benchmark-unbounded-aborted.log`. This is not a completed timing sample or successful request. The final benchmark explicitly measures selected X-Sums exhaustive hints instead. [192](https://github.com/coder13/sudoku-app/issues/192) retains the complete source/request for bounded technique profiling, proof completeness and cancellation/responsiveness work. No enabled technique is removed to conceal this case.
+
+A follow-up probes all 116 technique IDs from the actual app order in separate cold processes, with a three-second whole-process budget each. Exactly one request, `quintuple-pattern-overlay`, fails to finish within that budget; its owned process is terminated and waited. The other 115 requests return normally; their largest measured operation time is 35.536 ms, excluding process/Wasm startup. This narrows the likely bottleneck without establishing the unfinished request's result, completeness or true latency. Full records remain in the session's `bounded-probes.json` and issue 192. No production code or default order is changed by this profiling.
 
 ### Existing families and package cost
 
