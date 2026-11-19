@@ -40,6 +40,71 @@ async function input(request, limit = 2048, tooLarge = 'Save is too large.') {
   throw new HttpError(400, 'Invalid request.')
 }
 
+const maximumPuzzleCodeLength = 20_000
+const publicPuzzleSources = {
+  'sudoku-coach': {
+    pattern: /^[A-Za-z0-9]{1,16}$/,
+    url: id => `https://sudoku.coach/en/s/${id}`,
+    maxBytes: 512 * 1024,
+    code(text) {
+      const codes = new Set(text.match(/\bSCv7_32_[0-9a-v]+\b/gi) ?? [])
+      return codes.size === 1 ? codes.values().next().value : undefined
+    },
+  },
+  sudokupad: {
+    pattern: /^[A-Za-z0-9_-]{1,64}$/,
+    url: id => `https://sudokupad.app/api/puzzle/${id}`,
+    maxBytes: 20_024,
+    code(text) {
+      const value = text.trim()
+      return /^(?:scl|ctc|fpuzzles|fpuz|scf)[A-Za-z0-9+/=_-]+$/i.test(value) ? value : undefined
+    },
+  },
+}
+
+async function loadPublicPuzzle(request, path) {
+  const [, provider, id] = path.split('/')
+  const source = Object.hasOwn(publicPuzzleSources, provider) ? publicPuzzleSources[provider] : undefined
+  if (!source || !source.pattern.test(id ?? '') || path !== `import/${provider}/${id}`) {
+    throw new HttpError(404, 'Unknown puzzle link.')
+  }
+  if (request.method !== 'GET') throw new HttpError(405, 'Method not allowed.')
+  let response
+  try {
+    response = await fetch(source.url(id), { redirect: 'manual', signal: AbortSignal.timeout(5_000) })
+  } catch {
+    throw new HttpError(502, 'Could not open the published puzzle.')
+  }
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel()
+    throw new HttpError(502, 'The puzzle source redirected to another location.')
+  }
+  if (response.status === 404) throw new HttpError(404, 'The published puzzle could not be found.')
+  if (!response.ok || !response.body) throw new HttpError(502, 'The puzzle source is unavailable.')
+
+  if (+response.headers.get('Content-Length') > source.maxBytes) {
+    await response.body.cancel()
+    throw new HttpError(413, 'The puzzle source is too large.')
+  }
+  const decoder = new TextDecoder()
+  let content = '', bytes = 0
+  try {
+    for await (const chunk of response.body) {
+      bytes += chunk.byteLength
+      if (bytes > source.maxBytes) throw new HttpError(413, 'The puzzle source is too large.')
+      content += decoder.decode(chunk, { stream: true })
+    }
+  } catch (error) {
+    if (error instanceof HttpError) throw error
+    throw new HttpError(502, 'The puzzle source is unavailable.')
+  }
+  const code = source.code(content + decoder.decode())
+  if (!code || code.length > maximumPuzzleCodeLength) {
+    throw new HttpError(422, 'This link does not contain a supported puzzle export.')
+  }
+  return json({ code })
+}
+
 // The public API accepts a versioned puzzle definition. Check each nested field
 // so private solve data cannot be stored inside the variant or collection object.
 function fields(value, required, optional = {}) {
@@ -54,6 +119,20 @@ const givens = (value, mini) => typeof value === 'string' && (mini ? /^[0-4]{16}
 const boolean = value => typeof value === 'boolean'
 const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
+const algebraicCage = value => {
+  if (!fields(value, { type: oneOf('algebraic-cage'), cells: list(integer(0, 15), 1, 4), label: label => typeof label === 'string',
+    total: total => fields(total, { type: oneOf('fixed'), value: integer(1, 10) }) ||
+      fields(total, { type: oneOf('variable'), name: name => typeof name === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(name),
+        offset: integer(-2147483648, 2147483647) }) })) return false
+  const { total } = value
+  const label = total.type === 'fixed' ? String(total.value)
+    : total.name + (total.offset ? `${total.offset > 0 ? '+' : ''}${total.offset}` : '')
+  return value.label === label
+}
+const algebraic = value => fields(value, { sudokuPad: code => typeof code === 'string' && code.length <= 10_000 && /^(?:scl|ctc)[A-Za-z0-9+/=]+$/i.test(code) }) ||
+  (fields(value, { rules: list(algebraicCage, 1, 16) }) &&
+    value.rules.some(rule => rule.total.type === 'variable') &&
+    new Set(value.rules.flatMap(rule => rule.cells)).size === value.rules.reduce((count, rule) => count + rule.cells.length, 0))
 const cell = integer(0, 80)
 const cells = list(cell, 1, 81)
 const pairs = list(list(cell, 2, 2), 0)
@@ -118,7 +197,8 @@ async function sharePuzzle(request, db, path) {
     if (!fields(data, {
       version: oneOf(1), title: title => typeof title === 'string' && title.trim().length > 0 && title.length <= 72,
       givens: value => givens(value, data.grid !== undefined),
-    }, { grid: miniGrid, variant: value => data.grid === undefined && variant(value, data.givens), collection })) {
+    }, { grid: miniGrid, algebraic: value => data.grid !== undefined && algebraic(value),
+      variant: value => data.grid === undefined && variant(value, data.givens), collection })) {
       throw new HttpError(400, 'Invalid puzzle definition.')
     }
     const id = crypto.randomUUID()
@@ -150,6 +230,7 @@ async function api(request, { DB: db, SYNC_EVENTS: events }, ctx, url) {
   }
   const path = url.pathname.slice(base.length)
   const method = request.method
+  if (path.startsWith('import/')) return loadPublicPuzzle(request, path)
   if (path === 'health') {
     if (method !== 'GET') return json({ error: 'Method not allowed' }, 405)
     return (await db.prepare('SELECT 1 AS ok').first('ok')) === 1 ? json({ ok: true }) : json({ ok: false }, 503)
