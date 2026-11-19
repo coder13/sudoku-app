@@ -73,6 +73,42 @@ A separate full all-app-order hint request on Murphy did not finish during obser
 
 A follow-up probes all 116 technique IDs from the actual app order in separate cold processes, with a three-second whole-process budget each. Exactly one request, `quintuple-pattern-overlay`, fails to finish within that budget; its owned process is terminated and waited. The other 115 requests return normally; their largest measured operation time is 35.536 ms, excluding process/Wasm startup. This narrows the likely bottleneck without establishing the unfinished request's result, completeness or true latency. Full records remain in the session's `bounded-probes.json` and issue 192. No production code or default order is changed by this profiling.
 
+### Completing Murphy’s all-technique scan
+
+Main at `f1b25e6` still hit a 120-second limit on Murphy’s original opening. A second scan gave each of the 116 app-order detectors its own process and three seconds. Quintuple Pattern Overlay was the only detector to reach that limit. A diagnostic scan over the other 115 detectors returned 174 hints. The request uses Hard, a choice limit of 4,294,967,295, and all sixteen givens and ten X-Sums clues in the source. [Issue 88](https://github.com/coder13/sudoku-app/issues/88) · [Issue 192](https://github.com/coder13/sudoku-app/issues/192)
+
+The native diagnostic reached a group with identical domains for 1, 3, 5, 7 and 9. Each digit had 65 allowed cells and the same 1,664 nine-cell layouts. Earlier witnesses covered 57 cells. The old fallback tried to prove each remaining cell impossible for each digit. On this group, the five layouts can be assigned to the digits in any order. A complete packing therefore supports each cell it contains for all five digits. The new fallback tests pairwise disjoint layouts with a bitset table and visits each group of followers in increasing layout order. The table is limited to 512 KiB. The general exact search handles larger domains and groups with different layouts.
+
+The independent integer check built nine-cell layouts from column permutations and partitioned balanced sets of occupied cells into five layouts. It recorded nine complete witnesses covering all 57 supported cells. The other eight cells admit no set with five occupied cells in every row, column and box. Each of the five proof choices rules out one odd digit in R1C5, R3C5, R5C1, R5C3, R5C7, R5C9, R7C5 and R9C5.
+
+Rows 2, 4, 6 and 8 contain exactly five empty cells, so their five odd digits must occupy every empty cell. That accounts for four odd places in column 5. Box 5 also has only five empty cells, including R5C5. This fills column 5’s fifth odd place. Columns 1 and 3 have two odd places left between them after those same four rows. Boxes 1 and 7 each still need three odd digits. Each has only two remaining cells in column 2, so each needs one of the last two odd places in columns 1 and 3. The same count in boxes 3 and 9 fills the two remaining odd places in columns 7 and 9.
+
+The 19 Murphy controls matched in full, including the 90-step Hard trace at 2,710 points, the disabled profile, the progressed position, and an explicit candidate removal. The one-node exact solve and uniqueness requests both reached their budget. A one-point increase in the first printed clue made the position unsolvable on both builds. The retained overlay comparison matched 640 full replies on 30 positive practice positions and 13 corpus positions, including forcing proofs and paged results. Another 160 seeded generation requests matched across eight recipes, with six attempts and 20,000 nodes per request. Scoring version remains 8.
+
+
+The long baseline run and candidate run both returned 179 choices, with identical actions, evidence and order. That includes all 174 choices from the diagnostic scan and all five Quintuple Pattern Overlay choices. The complete response SHA-256 is `e8686ce01a25f5c622e87bf0617caebb171a2e2daf7771e03a7e73279511021b` after the transport ID is removed. Separate complete runs took 887.852 s on the baseline and 0.869 s on the candidate. These samples ran on different cores of the same host while other validation jobs were active. Both runs used 10,158,080 bytes of Wasm linear-memory capacity. Peak process RSS was 135,456 and 135,272 KiB, respectively.
+
+The controlled serial run pinned both builds to logical CPU 6 and alternated order. Its 30-second limit applied after the request process was ready. The baseline reached that limit in all four rounds. The candidate took 631.0 ms cold. After three ordinary ten-hint requests, its median was 593.2 ms and its p95 was 598.7 ms across three samples. Every finished response matched the complete baseline. The observed 887.852-second sample above gives a separate complete baseline measurement.
+
+The retained controls used two warmups and ten samples. The empty HCHW step-22 median/p95 changed from 49.793/54.019 to 51.157/55.244 ms. Positive Classic Quadruple Pattern Overlay changed from 37.911/42.469 to 40.440/49.195 ms. The 19 paired cases preserve their complete results, including empty replies. The 30-second-capped comparison records the slow-case lower bound separately from the retained timing regressions.
+
+The baseline was built from `f1b25e63c7c6b5977278a94e2e83c0fb55fee5c1` and the candidate from `1fc28653c4b650042014257d91e769171d444abf`. Both were stripped release app builds with Rust/Cargo 1.92.0 on Linux x64, Ryzen 7 7840U, kernel 7.1.8-arch1-3 and Node 22.23.1. App Wasm changed from 3,718,817 to 3,689,139 raw bytes and from 985,075 to 980,803 gzip bytes. See [measurement checksums](docs/measurements/murphy-overlay.json).
+
+Run the commands from the candidate checkout with each build in its own Cargo target directory. Use a new record file for each scan.
+
+```sh
+cargo rustc --offline --locked --lib --release -p sudoku-app-engine --no-default-features \
+  --features wasm-api,variants,generation,teaching --target wasm32-unknown-unknown -- -C link-arg=--strip-all
+node --experimental-strip-types scripts/profile-exhaustive-hints.mjs \
+  tests/fixtures/x-sum-murphy.json baseline.wasm baseline-full.jsonl full 1200000
+node --experimental-strip-types scripts/profile-exhaustive-hints.mjs \
+  tests/fixtures/x-sum-murphy.json candidate.wasm candidate-full.jsonl full 10000
+node --experimental-strip-types scripts/profile-exhaustive-hints.mjs \
+  tests/fixtures/x-sum-murphy.json baseline.wasm baseline-each.jsonl each 3000 3
+```
+
+The 115 cold detector requests that finished on both builds match in full. Several forcing-net requests returned an empty list. The app-order rating and walkthrough finished within 30 ms in the diagnostic controls, so they did not justify a second optimization on this fixture. The full-hint and forcing controls preserve the same costs and order. [Draft PR 267](https://github.com/coder13/sudoku-app/pull/267)
+
 ### Existing families and package cost
 
 An alternating paired run compares the preceding Little Killer app with this integration for Between, Region Sum, Clone, Sandwich, Little Killer, Classic, Killer and Diagonal controls. Input positions and complete SSR output match exactly. Each operation has ten warmups/forty samples. Input median differences range from -0.000917 to +0.001458 ms; SSR medians range from -0.013916 to +0.019875 ms. Slower tails remain visible: Between SSR p95 changes 1.104→1.336 ms, Clone 1.260→1.379 and Sandwich 1.158→1.283. This does not establish a general speedup.
