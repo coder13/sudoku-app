@@ -2,10 +2,20 @@
 
 use crate::{Analysis, Candidate, HintAction, House};
 
+#[cfg(feature = "variants")]
+mod algebraic;
+#[cfg(feature = "variants")]
+pub use algebraic::{
+    AlgebraicBounds, AlgebraicCage, AlgebraicCageBound, AlgebraicCageProof, AlgebraicCompletion,
+    AlgebraicDifficulty, AlgebraicHints, AlgebraicRating, AlgebraicStep, AlgebraicTracePosition, CageTotal, SizedAlgebraicCages,
+};
+
 #[cfg(feature = "generation")]
 mod generation;
 #[cfg(feature = "generation")]
 pub use generation::{MiniDifficulty, generate_mini};
+#[cfg(all(feature = "generation", feature = "variants"))]
+pub use generation::{GeneratedAlgebraic, generate_algebraic};
 
 /// Wire version for a sized Classic grid. Version 1 uses the original 9×9 format.
 pub const SIZED_GRID_VERSION: u8 = 2;
@@ -381,6 +391,16 @@ impl SizedGrid {
     }
 
     fn search(&self, digits: &[u8], budget: u32, limit: u8) -> (Analysis, Option<Vec<u8>>) {
+        self.search_with(digits, budget, limit, |_| true)
+    }
+
+    fn search_with(
+        &self,
+        digits: &[u8],
+        budget: u32,
+        limit: u8,
+        mut permits: impl FnMut(&[u8]) -> bool,
+    ) -> (Analysis, Option<Vec<u8>>) {
         let Some(mut used) = self.used_digits(digits) else {
             return (Analysis::Conflict, None);
         };
@@ -391,7 +411,7 @@ impl SizedGrid {
             count: 0,
             first: None,
         };
-        let completed = search.visit(&mut digits.to_vec(), &mut used);
+        let completed = search.visit(&mut digits.to_vec(), &mut used, &mut permits);
         let outcome = match (completed, search.count) {
             (None, _) => Analysis::SearchLimit,
             (_, 0) => Analysis::Unsolvable,
@@ -411,8 +431,16 @@ struct Search<'a> {
 }
 
 impl Search<'_> {
-    fn visit(&mut self, digits: &mut [u8], used: &mut [u16; 3 * MAX_SIZE]) -> Option<()> {
+    fn visit(
+        &mut self,
+        digits: &mut [u8],
+        used: &mut [u16; 3 * MAX_SIZE],
+        permits: &mut impl FnMut(&[u8]) -> bool,
+    ) -> Option<()> {
         self.budget = self.budget.checked_sub(1)?;
+        if !permits(digits) {
+            return Some(());
+        }
         let mut next = None;
         let mut fewest = u32::MAX;
         for (cell, &digit) in digits.iter().enumerate() {
@@ -440,7 +468,7 @@ impl Search<'_> {
             choices ^= bit;
             digits[cell] = offset as u8 + 1;
             self.grid.toggle(cell, bit, used);
-            let result = self.visit(digits, used);
+            let result = self.visit(digits, used, permits);
             self.grid.toggle(cell, bit, used);
             digits[cell] = 0;
             result?;

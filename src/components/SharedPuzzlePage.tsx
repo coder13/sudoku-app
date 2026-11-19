@@ -2,6 +2,8 @@ import { Link } from '@tanstack/react-router'
 import { Play } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { Game } from '../sudoku/game'
+import { ALGEBRAIC_CAGES_NAME } from '../sudoku/new-puzzle'
+import { algebraicRules } from '../sudoku/algebraic-play'
 import { prepareSharedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
 import { findSharedAttempt, isSharedPuzzleId } from '../sudoku/puzzle-sharing'
 import { roomStore } from '../sudoku/storage'
@@ -42,9 +44,16 @@ export function SharedPuzzlePage({ id, games, linked, syncReady }: {
     <h1 tabIndex={-1} ref={heading}>{puzzle?.title ?? (failure ? 'Shared puzzle unavailable' : 'Shared puzzle')}</h1>
     {puzzle ? <>
       <div className="import-preview">
-        <p className="import-preview-meta"><strong>{puzzle.grid ? 'Mini Sudoku · 4 × 4' : variantName(puzzle.variant)}</strong></p>
+        <p className="import-preview-meta"><strong>{puzzle.algebraic ? `${ALGEBRAIC_CAGES_NAME} · 4 × 4`
+          : puzzle.grid ? 'Mini Sudoku · 4 × 4' : variantName(puzzle.variant)}</strong></p>
         <Board grid={puzzle.grid} label="Puzzle preview" givens={puzzle.givens} values={puzzle.givens}
-          variantPuzzle={puzzle.variant?.puzzle} showGuides={false} />
+          variantPuzzle={puzzle.variant?.puzzle} algebraicCages={puzzle.algebraic?.rules} showGuides={false} />
+        {puzzle.algebraic && <>
+          {puzzle.algebraic.source?.author && <p>By {puzzle.algebraic.source.author}</p>}
+          <ul className="import-preview-rules">
+            {algebraicRules(puzzle.algebraic).map(rule => <li key={rule}>{rule}</li>)}
+          </ul>
+        </>}
         {puzzle.variant && <ul className="import-preview-rules">
           {variantRuleDescriptions(puzzle.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
         </ul>}

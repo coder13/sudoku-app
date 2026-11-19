@@ -21,7 +21,7 @@ export async function miniCandidates(values: string, eliminations?: readonly num
   return candidates?.map((mask, cell) => mask & ~(eliminations?.[cell] ?? 0)) ?? null
 }
 
-function hintChoice(step: SizedClassicDeduction): HintChoice {
+export function miniHintChoice(step: SizedClassicDeduction): HintChoice {
   const [source, target] = step.houses
   const cells = step.candidates.map(({ cell }) => cell)
   const pattern = { houses: step.houses, cells, candidates: step.candidates }
@@ -38,7 +38,7 @@ export async function miniHintChoices(values: string, eliminations?: readonly nu
   const hints = await run({
     type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, values), operation: 'hints', eliminations, limit: 256,
   })
-  return hints && { choices: hints.choices.map(hintChoice), candidates: hints.candidates }
+  return hints && { choices: hints.choices.map(miniHintChoice), candidates: hints.candidates }
 }
 
 export async function miniHints(game: Game, limit: 10 | 'all', technique?: string) {
@@ -52,6 +52,10 @@ export async function miniHints(game: Game, limit: 10 | 'all', technique?: strin
     throw new EngineError('A required candidate is missing.', 'invalid-eliminations')
   }
   const result = await miniHintChoices(values, eliminations)
+  return visibleMiniHints(result, limit, technique)
+}
+
+export function visibleMiniHints(result: { choices: HintChoice[]; candidates: number[] } | null, limit: 10 | 'all', technique?: string) {
   if (!result) throw new EngineError('Check the current digits and candidates.', 'conflict')
   const disabled = readDisabledHintTechniques()
   const available = result.choices.filter(step => technique ? step.technique === technique : !disabled.includes(step.technique))
@@ -66,7 +70,7 @@ export async function miniSolutionTrace(givens: string): Promise<MiniSolutionTra
   if (!trace?.length) throw new EngineError('The puzzle contains conflicting givens.', 'conflict')
   const steps: HintChoice[] = []
   const positions = trace.map(({ digits, eliminations, candidates, deduction }) => {
-    const step = deduction && hintChoice(deduction)
+    const step = deduction && miniHintChoice(deduction)
     if (step) steps.push(step)
     return {
       givens, entries: digits.map((digit, cell) => givens[cell] === '0' ? digit : 0).join(''), eliminations,

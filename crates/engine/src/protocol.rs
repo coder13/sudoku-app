@@ -38,6 +38,8 @@ pub(crate) mod batch;
 mod hint_pages;
 mod sized;
 #[cfg(feature = "variants")]
+mod sized_variant;
+#[cfg(feature = "variants")]
 mod variant;
 
 #[derive(Deserialize)]
@@ -55,10 +57,23 @@ enum Request {
         #[serde(default)]
         exclude: Vec<[u8; 16]>,
     },
+    #[cfg(all(feature = "generation", feature = "variants"))]
+    GenerateAlgebraic {
+        seed: u32,
+        difficulty: Option<crate::AlgebraicDifficulty>,
+        #[serde(default)]
+        exclude: Vec<sized_variant::Definition>,
+    },
     SizedClassic {
         position: sized::Definition,
         #[serde(flatten)]
         operation: sized::Operation,
+    },
+    #[cfg(feature = "variants")]
+    SizedVariant {
+        position: sized_variant::Definition,
+        #[serde(flatten)]
+        operation: sized_variant::Operation,
     },
     #[cfg(feature = "generation")]
     CanonicalPuzzles {
@@ -377,6 +392,12 @@ enum ResponseValue {
     SizedTrace(Option<Vec<crate::SizedTracePosition>>),
     SizedHints(Option<crate::SizedHints>),
     SizedDeduction(Option<crate::SizedDeduction>),
+    #[cfg(feature = "variants")]
+    AlgebraicTrace(Option<Vec<crate::AlgebraicTracePosition>>),
+    #[cfg(feature = "variants")]
+    AlgebraicHints(Option<crate::AlgebraicHints>),
+    #[cfg(all(feature = "generation", feature = "variants"))]
+    AlgebraicPuzzle(sized_variant::Definition),
     HintPage(hint_pages::HintPage),
     Hints { choices: Vec<Hint>, available: usize },
     HintsWithPatterns {
@@ -971,7 +992,11 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             crate::generate_mini(seed, difficulty, &exclude).map(|puzzle| json!(puzzle))
                 .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
+        #[cfg(all(feature = "generation", feature = "variants"))]
+        Request::GenerateAlgebraic { seed, difficulty, exclude } => return sized_variant::generate(seed, difficulty, exclude),
         Request::SizedClassic { position, operation } => return sized::execute(position, operation),
+        #[cfg(feature = "variants")]
+        Request::SizedVariant { position, operation } => return sized_variant::execute(position, operation),
         #[cfg(feature = "generation")]
         Request::ImpossibleTemplates => Ok(json!(
             crate::impossible_templates()
@@ -1442,6 +1467,32 @@ mod tests {
         serde_json::from_slice(&process(data.to_string().as_bytes())).unwrap()
     }
 
+    #[cfg(feature = "variants")]
+    #[test]
+    fn sized_variant_protocol_retains_the_shared_assignment_and_source_rule_order() {
+        let position = json!({
+            "version": 2, "grid": { "size": 4, "boxRows": 2, "boxColumns": 2 },
+            "digits": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "rules": [
+                {"type":"algebraic-cage","cells":[5,6,9],"total":{"type":"variable","name":"x","offset":0},"label":"x"},
+                {"type":"algebraic-cage","cells":[11,15],"total":{"type":"variable","name":"x","offset":1},"label":"x+1"},
+                {"type":"algebraic-cage","cells":[0],"total":{"type":"variable","name":"x","offset":-5},"label":"x-5"},
+            ],
+        });
+        let send = |operation: &str| request(json!({
+            "type": "sized-variant", "operation": operation, "position": position, "rule": 2,
+        }));
+        assert_eq!(send("analyze")["value"], "unique");
+        assert_eq!(send("solve")["value"]["variables"]["x"], 6);
+        assert_eq!(send("cage-proof")["value"]["target"], 2);
+        assert_eq!(send("cage-proof")["value"]["actions"].as_array().unwrap().len(), 3);
+        let trace = send("trace");
+        let positions = trace["value"].as_array().unwrap();
+        assert_eq!(positions[0]["step"]["type"], "cage");
+        assert_eq!(positions.last().unwrap()["digits"], send("solve")["value"]["digits"]);
+
+    }
+
     #[test]
     fn sized_classic_protocol_does_not_discard_rules_or_coerce_dimensions() {
         let position = json!({
@@ -1562,6 +1613,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
                 | "impossible-templates"
                 | "generate-targeted"
                 | "generate-mini"
+                | "generate-algebraic"
                 | "generate-constrained"
                 | "generate-from-pool"
                 | "generate-variant"
@@ -1594,7 +1646,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
         return Some("teaching");
     }
     if !cfg!(feature = "variants")
-        && (matches!(kind, "variant" | "generate-variant")
+        && (matches!(kind, "variant" | "sized-variant" | "generate-variant" | "generate-algebraic")
             || (matches!(
                 kind,
                 "techniques" | "practice-examples" | "generate-practice-example"
