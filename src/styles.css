@@ -750,7 +750,7 @@ svg { flex-shrink: 0; }
 .desktop-dock .puzzle[data-input-mode],
 :root[data-theme="andoku"] .puzzle[data-input-mode] { --puzzle-mode-border-inset: 0px; }
 .desktop-dock .puzzle[data-input-mode] { --puzzle-mode-corner-radius: 0px; }
-.puzzle[data-input-mode="pen"] { --puzzle-mode-accent: light-dark(#365e83, #a7cef3); }
+.puzzle:is([data-input-mode="pen"], [data-input-mode="chain"]) { --puzzle-mode-accent: light-dark(#365e83, #a7cef3); }
 .puzzle[data-input-mode="pencil"] {
   --puzzle-mode-accent: light-dark(#684a99, #c8aff8);
   --puzzle-mode-border: dashed;
@@ -3906,34 +3906,22 @@ a.game-row { text-decoration: none; color: inherit; }
 }
 
 .subsets-panel p { color: var(--muted); }
-.subset-clue-header, .subset-clue-actions {
+.subset-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-8);
 }
 
-.subset-kind, .subset-scope, .subset-items, .subset-match-nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.subset-scope .button { gap: var(--space-4); padding-inline: var(--space-8); }
-.puzzle-stage { --subset-scope-fill: color-mix(in srgb, var(--lesson-area-fill), var(--lesson-pattern) 14%); }
-.subset-items .button { min-width: 40px; padding-inline: 6px; }
-.subset-digits { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); }
-.subset-digits .button { min-width: 0; gap: var(--space-4); padding-inline: 2px; }
 .subsets-panel .button { min-height: 40px; }
-.subset-items small { color: var(--muted); font-variant-numeric: tabular-nums; }
-.subsets-panel .button[aria-pressed="true"], .chain-panel-tools .button[aria-pressed="true"] {
+.chain-panel-tools .button[aria-pressed="true"] {
   border-color: var(--selected-border);
   background: var(--selected-bg);
   color: var(--ink);
 }
 
-.subset-clue, .strong-link-tool {
+.strong-link-tool {
   display: grid;
   justify-items: start;
   gap: var(--space-8);
@@ -3941,7 +3929,5 @@ a.game-row { text-decoration: none; color: inherit; }
   border-top: 1px solid var(--border);
 }
 
-.subset-clue-header { justify-content: space-between; width: 100%; }
-.subset-match-nav { color: var(--muted); white-space: nowrap; }
 .puzzle-stage { --strong-link-overlay: #4c6780; }
 :root:is([data-color-mode="dark"], [data-theme="andoku"]) .puzzle-stage { --strong-link-overlay: #9bbad5; }

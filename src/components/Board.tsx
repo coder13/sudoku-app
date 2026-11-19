@@ -52,7 +52,6 @@ type Props = {
   dragSelect?: boolean
   onCellPointerDown?: (index: number, event: PointerEvent) => void
   onCellPointerMove?: (index: number | null, event: PointerEvent) => void
-  onGridPointerEnd?: (event: PointerEvent) => void
   onGridPointerLeave?: () => void
 }
 
@@ -68,7 +67,7 @@ export function Board({
   variantPuzzle, grid: sizedGrid, algebraicCages, sixRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerEnd, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
 }: Props) {
   const grid = sizedGrid ?? CLASSIC_GRID
   const { size: gridSize, boxRows, boxColumns } = grid
@@ -188,11 +187,6 @@ export function Board({
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}
           onKeyDown={candidateAction ? navigateCandidates : onGridKeyDown}
-          onPointerUp={onGridPointerEnd} onPointerCancel={onGridPointerEnd}
-          onLostPointerCapture={onGridPointerEnd && ((event) => {
-            // A touch drag can transfer implicit capture from a cell to the grid.
-            if (event.target === event.currentTarget) onGridPointerEnd(event)
-          })}
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {rows.map((row) => (
