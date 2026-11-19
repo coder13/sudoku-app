@@ -1,0 +1,637 @@
+{
+  "baseline": "290041376b28421f8fee69ccc01bbd8d195698e4",
+  "candidate": "1e4279ee3ff5cba16fe3e6231572efff203d6597",
+  "host": {
+    "node": "v22.23.1",
+    "v8": "12.4.254.21-node.56",
+    "platform": "Linux x86-64",
+    "kernel": "7.1.8-arch1-3",
+    "cpu": "AMD Ryzen 7 7840U",
+    "logicalCpus": [
+      6,
+      7
+    ],
+    "rust": "1.92.0"
+  },
+  "manifest": {
+    "samples": 5,
+    "warmups": 1,
+    "sourceHash": "79d3741686a68fbd2bd9464b8acfd2d2cf5df7ff80754db2625988eac9e2d5c6",
+    "techniqueOrder": [
+      "hidden-single-box",
+      "full-house",
+      "naked-single",
+      "hidden-single",
+      "parity",
+      "anti-king",
+      "anti-knight",
+      "non-consecutive",
+      "inequality",
+      "clone",
+      "kropki",
+      "non-consecutive-locked-candidates-2",
+      "xv",
+      "adjacent-total",
+      "palindrome",
+      "non-consecutive-bivalue",
+      "between",
+      "non-consecutive-locked-candidates-3",
+      "non-consecutive-trivalue",
+      "global-entropy",
+      "thermometer",
+      "cage-combinations",
+      "arrow",
+      "quadruple",
+      "whispers",
+      "entropic",
+      "modular",
+      "whispers-house-support",
+      "renban",
+      "region-sum",
+      "locked-candidates",
+      "little-killer",
+      "cage-house-sum",
+      "locked-pair",
+      "locked-triple",
+      "pointing",
+      "claiming",
+      "naked-pair",
+      "naked-triple",
+      "hidden-pair",
+      "hidden-triple",
+      "x-wing",
+      "swordfish",
+      "skyscraper",
+      "two-string-kite",
+      "empty-rectangle",
+      "skyscrapers",
+      "sandwich",
+      "x-sum",
+      "naked-quadruple",
+      "hidden-quadruple",
+      "jellyfish",
+      "bug-plus-one",
+      "w-wing",
+      "xy-wing",
+      "xyz-wing",
+      "unique-rectangle-1",
+      "unique-rectangle-2",
+      "unique-rectangle-3",
+      "unique-rectangle-4",
+      "unique-rectangle-5",
+      "unique-rectangle-6",
+      "hidden-rectangle",
+      "finned-x-wing",
+      "sashimi-x-wing",
+      "finned-swordfish",
+      "sashimi-swordfish",
+      "finned-jellyfish",
+      "sashimi-jellyfish",
+      "simple-coloring",
+      "3d-medusa",
+      "x-chain",
+      "xy-chain",
+      "wxyz-wing",
+      "unique-loop",
+      "aic",
+      "discontinuous-nice-loop",
+      "continuous-nice-loop",
+      "grouped-aic",
+      "sue-de-coq",
+      "als-xz",
+      "als-xy-wing",
+      "als-chain",
+      "death-blossom",
+      "unique-rectangle-aic",
+      "unique-rectangle-discontinuous-nice-loop",
+      "unique-rectangle-continuous-nice-loop",
+      "fireworks",
+      "firework-w-wing",
+      "firework-l-wing",
+      "firework-als-wing",
+      "firework-aic",
+      "aligned-pair-exclusion",
+      "als-aic",
+      "als-discontinuous-nice-loop",
+      "als-continuous-nice-loop",
+      "exocet",
+      "forcing-chain",
+      "aligned-triplet-exclusion",
+      "tridagon",
+      "tridagon-aic",
+      "tridagon-forcing-net",
+      "dynamic-forcing-net",
+      "advanced-forcing-net",
+      "senior-exocet",
+      "double-exocet",
+      "franken-fish",
+      "mutant-fish",
+      "kraken-fish-1",
+      "kraken-fish-2",
+      "nested-forcing-net",
+      "pattern-overlay",
+      "pairwise-pattern-overlay",
+      "triple-pattern-overlay",
+      "quadruple-pattern-overlay",
+      "quintuple-pattern-overlay"
+    ]
+  },
+  "builds": [
+    {
+      "build": 0,
+      "phase": "instantiate",
+      "durationMs": 19.989188,
+      "fileSha256": "c2bfa946013d0dea3800307d9a1633b2b7c0362d665565003323c11bd68f62b9",
+      "rawBytes": 3989495,
+      "gzipBytes": 1059238
+    },
+    {
+      "build": 1,
+      "phase": "instantiate",
+      "durationMs": 14.833830000000006,
+      "fileSha256": "f17c19c4f7e5912d3557a5f2bd1fd2985b8246c29d707352e88b022f99ba2dca",
+      "rawBytes": 3979662,
+      "gzipBytes": 1058403
+    }
+  ],
+  "operations": [
+    {
+      "source": "8AGt",
+      "operation": "rate",
+      "responseSha256": "526cf450b25fb6196bfa2e207573d3d42de393522e59f4bd5159240f7e069471",
+      "builds": [
+        {
+          "firstMs": 2377.317408,
+          "medianMs": 2175.502687,
+          "p95Ms": 2195.472061,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            2195.472061,
+            2191.532094,
+            2175.502687,
+            2162.658066,
+            2161.169346
+          ]
+        },
+        {
+          "firstMs": 1837.244968,
+          "medianMs": 1660.20434,
+          "p95Ms": 1714.916037,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            1714.916037,
+            1657.852809,
+            1660.20434,
+            1660.398262,
+            1650.101998
+          ]
+        }
+      ]
+    },
+    {
+      "source": "8AGt",
+      "operation": "trace",
+      "responseSha256": "db86fe711f9d4ce5d3d7b85a5ef1bc98cea2703e3c57bb345038fac76fb5ed52",
+      "builds": [
+        {
+          "firstMs": 2155.918034,
+          "medianMs": 2165.536552,
+          "p95Ms": 2182.842401,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            2162.584498,
+            2182.842401,
+            2165.536552,
+            2174.919375,
+            2160.061074
+          ]
+        },
+        {
+          "firstMs": 1649.191283,
+          "medianMs": 1651.701758,
+          "p95Ms": 1659.356148,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            1653.089168,
+            1659.356148,
+            1651.701758,
+            1650.472252,
+            1645.09483
+          ]
+        }
+      ]
+    },
+    {
+      "source": "91BB",
+      "operation": "rate",
+      "responseSha256": "428da828adbb24d86d6cf86b7411811d2237c8d7c195958f4eb622d15cbe1b79",
+      "builds": [
+        {
+          "firstMs": 407.827903,
+          "medianMs": 397.255404,
+          "p95Ms": 400.677142,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            400.677142,
+            397.255404,
+            398.501306,
+            395.909927,
+            395.876013
+          ]
+        },
+        {
+          "firstMs": 404.723506,
+          "medianMs": 394.347377,
+          "p95Ms": 396.067153,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            395.376709,
+            394.347377,
+            396.067153,
+            392.809887,
+            392.474314
+          ]
+        }
+      ]
+    },
+    {
+      "source": "8oer",
+      "operation": "rate",
+      "responseSha256": "855009f27a4e9a0c3979628428b2a9373926160c7e29964e7773aed9f0e8eb21",
+      "builds": [
+        {
+          "firstMs": 164.695909,
+          "medianMs": 161.663487,
+          "p95Ms": 162.776057,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            162.281223,
+            161.663487,
+            160.706282,
+            161.031074,
+            162.776057
+          ]
+        },
+        {
+          "firstMs": 163.739625,
+          "medianMs": 162.359982,
+          "p95Ms": 163.389064,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            163.098084,
+            159.655809,
+            158.86635,
+            163.389064,
+            162.359982
+          ]
+        }
+      ]
+    },
+    {
+      "source": "FaxQ",
+      "operation": "rate",
+      "responseSha256": "6d96f5ac88ff5835c1281782092f25640c3dbc7f0265e36de19304af03c7b81c",
+      "builds": [
+        {
+          "firstMs": 175.147943,
+          "medianMs": 174.850512,
+          "p95Ms": 177.750133,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            174.637128,
+            177.260951,
+            174.850512,
+            177.750133,
+            174.626329
+          ]
+        },
+        {
+          "firstMs": 158.007589,
+          "medianMs": 157.389633,
+          "p95Ms": 160.275178,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            157.321745,
+            158.597673,
+            157.128991,
+            160.275178,
+            157.389633
+          ]
+        }
+      ]
+    },
+    {
+      "source": "8AGt",
+      "operation": "guardian",
+      "responseSha256": "99bcfca61a865fe7ac5bb675250de956e8e0fb175d59adac80bb2fb177154a2c",
+      "proofCount": 0,
+      "builds": [
+        {
+          "firstMs": 37.226456,
+          "medianMs": 36.788059,
+          "p95Ms": 38.132817,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            38.132817,
+            36.788059,
+            37.79038,
+            36.509564,
+            36.352327
+          ]
+        },
+        {
+          "firstMs": 37.05898,
+          "medianMs": 36.606316,
+          "p95Ms": 37.25462,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            37.25462,
+            36.606316,
+            36.43338,
+            36.655729,
+            36.355373
+          ]
+        }
+      ]
+    },
+    {
+      "source": "FaxQ",
+      "operation": "guardian",
+      "responseSha256": "99bcfca61a865fe7ac5bb675250de956e8e0fb175d59adac80bb2fb177154a2c",
+      "proofCount": 0,
+      "builds": [
+        {
+          "firstMs": 1.38851,
+          "medianMs": 1.224421,
+          "p95Ms": 1.568921,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            1.224421,
+            1.190346,
+            1.217778,
+            1.568921,
+            1.23455
+          ]
+        },
+        {
+          "firstMs": 1.336242,
+          "medianMs": 1.217117,
+          "p95Ms": 1.572838,
+          "wasmCapacityBytes": 5570560,
+          "samplesMs": [
+            1.185778,
+            1.217117,
+            1.17652,
+            1.572838,
+            1.226705
+          ]
+        }
+      ]
+    }
+  ],
+  "comparison": [
+    "4197 complete responses match on 24 corpus positions and 363 positive practice positions; 121 detector IDs, retained catalogs/scoring and every hint page.",
+    "148 additional complete Classic responses match on 9 Tridagon practice positions; deductions, counts, traces and all hint pages."
+  ],
+  "profile": {
+    "commit": "b9ffe95015c8a2e9c80157e48ca06640d175ade5",
+    "samples": 8448,
+    "forcingSettleExclusive": 3927,
+    "guardianRefutationsExclusive": 2004
+  },
+  "sha256": {
+    "paired-repeat.jsonl": "113e3fe1c9a33ed9f538944cc6dd3920974ff21a9392588a626adf532413cb23",
+    "comparison.log": "feacda22e0ee3b839f6dcb876b9a4d55410abf5241e34abb21cc6f5e486b5905",
+    "rating-8agt.cpuprofile": "dac7a1fc10a36d7083457a24306636472d6168dbb98830e2017078708ce3d56f",
+    "profile-calls.jsonl": "8480da60ff75208e24a09a9d2408c04b298cfd9f445d0ae94e7043cf2b87c5df",
+    "paired.jsonl": "21e004adfcc9f0a33d2075ff7a81fb5dc65a48bd98d74ee3d2c7b0fb6da16fff",
+    "generation.jsonl": "3a444bf3d16f0f7a462901fbb47661bb38ca1a77281da2d7d97c00eab5191b54",
+    "native-guardians.log": "3d7f31ff375258332a6c01d6c0da59daf6425988b7cf8df894b50723b0c2bf7c"
+  },
+  "generation": [
+    {
+      "generation": "classic",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          1.539,
+          5.313
+        ],
+        [
+          1.295,
+          4.962
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "x-sudoku",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          0.994,
+          2.083
+        ],
+        [
+          0.96,
+          3.929
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "killer",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          4.205,
+          5.839
+        ],
+        [
+          4.004,
+          5.764
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "jigsaw-killer",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          3.649,
+          5.155
+        ],
+        [
+          3.524,
+          4.264
+        ]
+      ],
+      "memoryBytes": [
+        1507328,
+        1507328
+      ]
+    },
+    {
+      "generation": "windoku",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          0.935,
+          2.33
+        ],
+        [
+          0.953,
+          2.33
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "little-killer-newman",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          7.189,
+          8.014
+        ],
+        [
+          5.135,
+          7.853
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "little-killer-murphy",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          2.691,
+          4.127
+        ],
+        [
+          2.749,
+          4.319
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    }
+  ]
+}
