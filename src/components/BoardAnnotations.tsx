@@ -8,6 +8,7 @@ export type BoardLink = {
   from: BoardPoint
   to: BoardPoint
   color: string
+  muted?: boolean
   dashed?: boolean
   arrow?: boolean
 }
@@ -29,7 +30,7 @@ export function BoardLinks({ links, region, candidateInsets }: { links?: readonl
   const counts = new Map<string, number>()
   const items: BoardMark[] = []
   const routes = boardLinkRoutes(links ?? [], candidateInsets)
-  for (const [index, { color, dashed, arrow }] of (links ?? []).entries()) {
+  for (const [index, { color, dashed, arrow, muted }] of (links ?? []).entries()) {
     const points = routes[index]
     if (points.length < 2) continue
     const [start, end] = [points[0], points[points.length - 1]]
@@ -44,7 +45,7 @@ export function BoardLinks({ links, region, candidateInsets }: { links?: readonl
         <path d="M 0 0 L 2.5 1.25 L 0 2.5 Z" fill={color} />
       </marker>}
       <polyline points={points.map(({ x, y }) => `${x},${y}`).join(' ')} fill="none"
-        stroke={color} strokeWidth=".45" strokeLinecap="round" strokeLinejoin="round"
+        stroke={color} strokeWidth={muted ? ".3" : ".45"} strokeLinecap="round" strokeLinejoin="round"
         strokeDasharray={dashed ? '1 .9' : undefined} markerEnd={arrow ? `url(#${marker})` : undefined} />
     </g>)
   }

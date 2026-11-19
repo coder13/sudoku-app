@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainExtensionStrength, completeChainLoop, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
+import { analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainExtensionStrength, completeChainLoop, highlightedStrongLinks, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
 import { newChainSketch, pruneChainsAfterMove, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
 import { EMPTY, enter, makeGame, paintCandidate } from '../src/sudoku/game.ts'
 import { readGame } from '../src/sudoku/storage.ts'
@@ -146,4 +146,13 @@ test('Medusa offers no edits when both colors lead to a conflict', () => {
   const [medusa] = analyzeMedusa(links, pathEdges(id(0, 2), id(0), id(1), id(1, 3)))
   assert.deepEqual(medusa.actions, [])
   assert.match(medusa.explanation ?? '', /Both colors lead to a conflict/)
+})
+
+test('strong link overlay includes every visible strong link once', () => {
+  const example = graph({ 0: [2, 7], 1: [2, 4, 8], 4: [7, 8, 9], 13: [7, 8, 9] })
+  assert.deepEqual(highlightedStrongLinks(example, 0), [])
+  assert.deepEqual(highlightedStrongLinks(example, 1 << 1), [[id(0, 2), id(1, 2)]])
+  assert.deepEqual(highlightedStrongLinks(example, (1 << 1) | (1 << 6)), [
+    [id(0, 2), id(1, 2)], [id(0, 7), id(4, 7)], [id(4, 7), id(13, 7)], [id(0, 2), id(0, 7)],
+  ])
 })

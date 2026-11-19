@@ -2,7 +2,7 @@ import { Button, IconButton } from './Button'
 import { Eraser, Eye, EyeOff, Link2, Plus, RotateCw, Trash2, Undo2 } from 'lucide-react'
 import type { Deduction, DeductionAction } from '../sudoku/engine'
 import { chainCandidate, type LinkStrength } from '../sudoku/chains'
-import { DIGITS } from '../sudoku/game'
+import { DIGITS, hasCandidate } from '../sudoku/game'
 import { cellReference, techniqueLabel, type CellReferenceOptions } from '../sudoku/hints'
 import { cellName, deductionResults } from '../sudoku/lesson-diagram'
 import { shortcutLabel, type ShortcutPreferences } from '../sudoku/shortcuts'
@@ -16,6 +16,7 @@ type Props = {
   shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'newChain'>
   compact?: boolean
   digitHighlight?: { digit: number | null; onChange: (digit: number | null) => void }
+  strongLinks?: { shown: boolean; mask: number; count: number; toggle: () => void; toggleDigit: (digit: number) => void }
   unavailable?: string
   inspection?: ChainInspection
 }
@@ -41,7 +42,7 @@ function LinkLegend({ notation = false }: { notation?: boolean }) {
   </div>
 }
 
-export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighlight, unavailable, inspection }: Props) {
+export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighlight, strongLinks, unavailable, inspection }: Props) {
   if (inspection) {
     const { deduction, links, explanation, cellReferenceStyle, difficulty } = inspection
     const nameCell = cellReferenceStyle === undefined ? cellName : (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
@@ -69,6 +70,19 @@ export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighligh
   const openPath = singlePath && singlePath.nodes[0] !== singlePath.nodes.at(-1) ? singlePath : undefined
   const canFinishOpenPath = openPath ? sketch.canFinishLoop(openPath) : false
   const editor = <>
+    {strongLinks && <div className="strong-link-tool">
+      <Button aria-pressed={strongLinks.shown} onClick={strongLinks.toggle}>Show strong links</Button>
+      {strongLinks.shown && <>
+        <div className="strong-link-digits" role="group" aria-label="Highlight digits for strong links">
+          {DIGITS.map((digit) => <Button key={digit} aria-pressed={hasCandidate(strongLinks.mask, digit)}
+            aria-label={`Highlight digit ${digit}`} onClick={() => strongLinks.toggleDigit(digit)}>{digit}</Button>)}
+        </div>
+        <p role="status">{!strongLinks.mask ? 'Highlight a digit to see its strong links.'
+          : !strongLinks.count ? 'No strong links between the highlighted candidates.'
+          : sketch.drawing ? `${strongLinks.count} strong ${strongLinks.count === 1 ? 'link' : 'links'} between highlighted candidates.`
+          : active.hidden ? 'Show this chain to start a path.' : 'Select either end of a strong link to start a path.'}</p>
+      </>}
+    </div>}
     <div className="chain-settings">
       <label>
         <span>Type</span>

@@ -2451,7 +2451,7 @@ svg { flex-shrink: 0; }
   animation-duration: var(--motion-standard-duration);
   animation-timing-function: var(--motion-move);
 }
-.desktop-insight-body > :is(.puzzle-analysis-content, .chains-panel, .solution-path, .advanced-spoiler-panel),
+.desktop-insight-body > :is(.puzzle-analysis-content, .chains-panel, .subsets-panel, .solution-path, .advanced-spoiler-panel),
 .dock-panel-content > :is(.hint-dock, .solution-path, .advanced-spoiler-panel),
 :is(.advanced-browser-list, .advanced-browser-empty, .import-preview, .hint-card-reason, .hint-card-removals) {
   animation: content-enter var(--motion-standard-duration) var(--motion-enter) both;
@@ -3223,7 +3223,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     scroll-padding-block: var(--space-4);
   }
   .mobile-input-tool:focus-visible { outline-offset: -3px; }
-  .mobile-input-tool :is(.cell-color-palette, .chains-panel) {
+  .mobile-input-tool :is(.cell-color-palette, .chains-panel, .subsets-panel) {
     gap: var(--space-4);
     padding: var(--space-8);
     font-size: 0.75rem;
@@ -3887,3 +3887,56 @@ a.game-row { text-decoration: none; color: inherit; }
 .variant-skyscrapers-preview path { fill: var(--board-ink); stroke: none; }
 .variant-sandwich-preview, .variant-x-sum-preview { display: grid; text-align: center; font-size: 9px; line-height: 1.5; color: var(--board-ink); }
 .variant-sandwich-preview > :first-child, .variant-x-sum-preview > :first-child { font-weight: 750; }
+
+.subsets-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-10);
+  min-width: 0;
+  padding: var(--space-12) var(--space-14);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.subsets-panel p { color: var(--muted); }
+.subset-controls, .subset-clue-header, .subset-clue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.subset-controls { justify-content: space-between; }
+.subset-controls label { display: flex; align-items: center; gap: var(--space-6); }
+.subset-kind, .subset-items, .subset-match-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.subset-items .button { min-width: 40px; padding-inline: 6px; }
+.subset-digits { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); }
+.subset-digits .button { min-width: 0; gap: var(--space-4); padding-inline: 2px; }
+.strong-link-digits { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: var(--space-4); width: 100%; }
+.strong-link-digits .button { min-width: 0; padding-inline: 0; }
+.subsets-panel .button, .strong-link-tool .button, .subset-controls select { min-height: 40px; }
+.subset-items small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.subsets-panel .button[aria-pressed="true"], .strong-link-tool .button[aria-pressed="true"] {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--ink);
+}
+
+.subset-clue, .strong-link-tool {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-8);
+  padding-top: var(--space-10);
+  border-top: 1px solid var(--border);
+}
+
+.subset-clue-header { justify-content: space-between; width: 100%; }
+.subset-match-nav { color: var(--muted); white-space: nowrap; }
+.puzzle-stage { --strong-link-overlay: #4c6780; }
+:root:is([data-color-mode="dark"], [data-theme="andoku"]) .puzzle-stage { --strong-link-overlay: #9bbad5; }
