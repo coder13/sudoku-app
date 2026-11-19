@@ -2,30 +2,47 @@ import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog
 import { generatedNumberToken, type GeneratedNumberGame } from './generated.ts'
 
 export type NumberPosition = { values: number[]; notes: number[] }
+export type NumberProgress = { position: NumberPosition; past: NumberPosition[]; future: NumberPosition[] }
+export const NUMBER_HISTORY_SIZE = 64
 
 export function emptyNumberPosition(cells: number): NumberPosition {
   return { values: Array(cells).fill(0), notes: Array(cells).fill(0) }
 }
 
-export function loadNumberPosition(key: string, editable: readonly boolean[], maxValue: number): NumberPosition | null {
+export function loadNumberProgress(key: string, editable: readonly boolean[], maxValue: number): NumberProgress | null {
+  function readPosition(value: unknown): NumberPosition | null {
+    if (!value || typeof value !== 'object' || !('values' in value) || !('notes' in value)) return null
+    const { values, notes } = value
+    if (!Array.isArray(values) || !Array.isArray(notes) ||
+      values.length !== editable.length || notes.length !== editable.length) return null
+    const valid = (entry: unknown, max: number) => typeof entry === 'number' &&
+      Number.isInteger(entry) && entry >= 0 && entry <= max
+    const maxNotes = 2 ** maxValue - 1
+    return {
+      values: editable.map((write, index) => write && valid(values[index], maxValue) ? values[index] : 0),
+      notes: editable.map((write, index) => write && valid(notes[index], maxNotes) ? notes[index] : 0),
+    }
+  }
+
+  function readHistory(value: unknown): NumberPosition[] {
+    if (!Array.isArray(value)) return []
+    const history = value.slice(-NUMBER_HISTORY_SIZE).map(readPosition)
+    return history.every(position => position !== null) ? history : []
+  }
+
   try {
     const stored = JSON.parse(localStorage.getItem(key) ?? 'null')
-    if (!stored || !Array.isArray(stored.values) || !Array.isArray(stored.notes) ||
-      stored.values.length !== editable.length || stored.notes.length !== editable.length) return null
-    const valid = (value: unknown, max: number) => typeof value === 'number' &&
-      Number.isInteger(value) && value >= 0 && value <= max
-    return {
-      values: editable.map((write, index) => write && valid(stored.values[index], maxValue) ? stored.values[index] : 0),
-      notes: editable.map((write, index) => write && valid(stored.notes[index], 2 ** maxValue - 1) ? stored.notes[index] : 0),
-    }
+    const position = readPosition(stored)
+    if (!position) return null
+    return { position, past: readHistory(stored.past), future: readHistory(stored.future) }
   } catch {
     return null
   }
 }
 
-export function saveNumberPosition(key: string, position: NumberPosition): boolean {
+export function saveNumberProgress(key: string, { position, past, future }: NumberProgress): boolean {
   try {
-    localStorage.setItem(key, JSON.stringify(position))
+    localStorage.setItem(key, JSON.stringify({ ...position, past, future }))
     return true
   } catch {
     return false
