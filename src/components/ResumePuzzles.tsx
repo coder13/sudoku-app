@@ -11,7 +11,9 @@ export function ResumePuzzles({ games }: { games: Game[] }) {
       <li key={game.id}><Link className="game-row" to="/" search={{ puzzle: game.id }}>
         <span className="mini-grid" aria-hidden="true">{[...valuesOf(game)].map((digit, i) => <i key={i} data-filled={digit !== '0'} />)}</span>
         <span className="game-row-copy"><strong>{game.title}</strong>
-          <small>{game.source === 'draft' ? 'Draft · ' : ''}Last played <time dateTime={new Date(lastPlayed(game)).toISOString()}>{new Date(lastPlayed(game)).toLocaleString()}</time></small>
+          <small>{game.source === 'draft' ? 'Draft · ' : ''}{game.started
+            ? <>Last played <time dateTime={new Date(lastPlayed(game)).toISOString()}>{new Date(lastPlayed(game)).toLocaleString()}</time></>
+            : 'Not started'}</small>
         </span><ChevronRight size={17} aria-hidden="true" />
       </Link></li>
     ))}</ul>

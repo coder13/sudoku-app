@@ -47,7 +47,7 @@ Search by component name or browse the sections below.
 
 | Source | When to use it |
 | --- | --- |
-| [ResumePuzzles](../../../../src/components/ResumePuzzles.tsx) | `ResumePuzzles` shows the home list when several attempts are in progress and links to each attempt. |
+| [ResumePuzzles](../../../../src/components/ResumePuzzles.tsx) | `ResumePuzzles` shows the home list when several unfinished, active attempts are available. Include puzzles with no moves yet. |
 | [PuzzlesPage](../../../../src/components/PuzzlesPage.tsx) | `PuzzlesPage` composes the full puzzle hub. Its private `PuzzleLibrary` supports browsing and managing attempts. `MiniGrid` previews an attempt. `NewPuzzleSection` presents creation choices. `Statistics` summarizes solves. `TechniqueStatistics` shows progress by solving technique. |
 | [PuzzleLibrary](../../../../src/components/PuzzleLibrary.tsx) | `PuzzleLibrary` renders a compact list of selectable attempts for callers that supply a selection callback. |
 | [AdvancedPuzzleBrowser](../../../../src/components/AdvancedPuzzleBrowser.tsx) | `AdvancedPuzzleBrowser` provides active, past, and saved views inside the advanced workspace. Its `MiniGrid` supplies a preview for each row. |
