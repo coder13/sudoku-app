@@ -23,6 +23,39 @@ pub fn canonical_variant(puzzle: &VariantPuzzle) -> Result<VariantPuzzle, Varian
 #[cfg(any(feature = "generation", test))]
 pub(super) fn generation_key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     let mut logical = puzzle.clone();
+    // Whispers constrains neighboring pairs, independently of path direction,
+    // segmentation or repeated edges. Keep this normalization private to played
+    // exclusions; public definitions and proof indices retain the original paths.
+    let mut whispers = std::collections::BTreeMap::<[usize; 2], u8>::new();
+    logical.rules.retain(|rule| {
+        if let PuzzleRule::Whispers {
+            cells,
+            min_difference,
+        } = rule
+        {
+            for edge in cells.windows(2) {
+                let mut pair = [edge[0], edge[1]];
+                pair.sort_unstable();
+                whispers
+                    .entry(pair)
+                    .and_modify(|gap| *gap = (*gap).max(*min_difference))
+                    .or_insert(*min_difference);
+            }
+            false
+        } else {
+            true
+        }
+    });
+    logical
+        .rules
+        .extend(
+            whispers
+                .into_iter()
+                .map(|(cells, min_difference)| PuzzleRule::Whispers {
+                    cells: cells.to_vec(),
+                    min_difference,
+                }),
+        );
     for rule in &mut logical.rules {
         match rule {
             PuzzleRule::Palindrome { segments, .. }
@@ -31,10 +64,14 @@ pub(super) fn generation_key(puzzle: &VariantPuzzle) -> VariantPuzzle {
             _ => {}
         }
     }
-    key(&logical)
+    key_impl(&logical, true)
 }
 
 pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
+    key_impl(puzzle, false)
+}
+
+fn key_impl(puzzle: &VariantPuzzle, generation_edges: bool) -> VariantPuzzle {
     let rename_digits = puzzle.rules.iter().all(|rule| {
         matches!(
             rule,
@@ -51,6 +88,13 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
         .map(|transform| {
             let mut copy = puzzle.clone();
             transform.puzzle(&mut copy);
+            if generation_edges {
+                for rule in &mut copy.rules {
+                    if let PuzzleRule::Whispers { cells, .. } = rule {
+                        cells.sort_unstable();
+                    }
+                }
+            }
             if rename_digits {
                 let mut renamed = [0; 10];
                 let mut next = 1;
@@ -71,6 +115,83 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
         })
         .min()
         .expect("there are eight grid symmetries")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn whispers(cells: &[usize], min_difference: u8) -> PuzzleRule {
+        PuzzleRule::Whispers {
+            cells: cells.to_vec(),
+            min_difference,
+        }
+    }
+
+    #[test]
+    fn played_whispers_identity_uses_edges_under_every_grid_symmetry() {
+        let original = VariantPuzzle {
+            rules: vec![whispers(&[0, 10, 20, 10, 0], 5), whispers(&[10, 0], 4)],
+            ..VariantPuzzle::classic([0; CELLS])
+        };
+        let expected = generation_key(&original);
+        for transform in SquareTransform::ALL {
+            let mut equivalent = VariantPuzzle {
+                rules: vec![
+                    whispers(&[20, 10], 5),
+                    whispers(&[10, 0], 5),
+                    whispers(&[0, 10], 5),
+                ],
+                ..original.clone()
+            };
+            transform.puzzle(&mut equivalent);
+            assert_eq!(generation_key(&equivalent), expected);
+        }
+        // Exclusion normalization must never rewrite a source puzzle.
+        let public = canonical_variant(&original).unwrap();
+        assert!(
+            public
+                .rules
+                .iter()
+                .any(|rule| matches!(rule, PuzzleRule::Whispers { cells, .. } if cells.len() == 5))
+        );
+        assert_eq!(original.rules[0], whispers(&[0, 10, 20, 10, 0], 5));
+    }
+
+    #[test]
+    fn played_whispers_identity_keeps_minimums_and_separate_edge_sets() {
+        let definition = |rules| VariantPuzzle {
+            rules,
+            ..VariantPuzzle::classic([0; CELLS])
+        };
+        let original = definition(vec![whispers(&[0, 10, 20], 5)]);
+        assert_ne!(
+            generation_key(&original),
+            generation_key(&definition(vec![whispers(&[0, 10, 20], 4)]))
+        );
+        assert_ne!(
+            generation_key(&original),
+            generation_key(&definition(vec![whispers(&[0, 10], 5)]))
+        );
+        assert_ne!(
+            generation_key(&original),
+            generation_key(&definition(vec![
+                whispers(&[0, 10, 20], 5),
+                whispers(&[0, 20], 5),
+            ]))
+        );
+        // Directed increasing paths keep their existing identity.
+        let thermometer = definition(vec![PuzzleRule::Thermometer {
+            cells: vec![0, 10, 20],
+        }]);
+        let mut changed = thermometer.clone();
+        changed.givens[0] = 1;
+        let mut reversed = changed.clone();
+        reversed.rules = vec![PuzzleRule::Thermometer {
+            cells: vec![20, 10, 0],
+        }];
+        assert_ne!(generation_key(&changed), generation_key(&reversed));
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -222,8 +343,11 @@ impl SquareTransform {
                 *circle = self.cell(*circle);
                 self.path(cells);
             }
-            Palindrome { cells, segments } | Renban { cells, segments }
-            | RegionSum { cells, segments, .. } => {
+            Palindrome { cells, segments }
+            | Renban { cells, segments }
+            | RegionSum {
+                cells, segments, ..
+            } => {
                 self.path(cells);
                 if let Some(segments) = segments {
                     for segment in segments {

@@ -39,6 +39,7 @@ pub struct VariantGenerationOptions {
     /// Rule ID whose removal must leave multiple solutions. Use `jigsaw` to remove region uniqueness.
     pub required_rule: Option<String>,
     /// Previously emitted puzzles to exclude, including equivalent rotations and reflections.
+    /// Whispers path direction, segmentation and duplicate edges do not change identity.
     /// Optional drawing paths do not distinguish otherwise identical logical puzzles.
     pub exclude: Vec<VariantPuzzle>,
 }

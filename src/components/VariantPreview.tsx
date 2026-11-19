@@ -3,6 +3,7 @@ import { Crown } from 'lucide-react'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
 import { regionMembership, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
 import { VariantClues } from './VariantClues'
+import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 
 const previews: Record<VariantId, readonly VariantRule[]> = {
   classic: [],
@@ -14,6 +15,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   'anti-king': [],
   'non-consecutive': [],
   parity: [{ type: 'parity', cells: [20, 48], parity: 'odd' }, { type: 'parity', cells: [24, 60], parity: 'even' }],
+  whispers: [],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
   'little-killer': [],
@@ -37,9 +39,12 @@ const previewRegionEdges = previewRegions.flatMap((region, cell) => {
 }).join(' ')
 
 /** Show a compact example of a generatable variant's grid markings alongside its name. */
-export function VariantPreview({ variant }: { variant: VariantId }) {
+export function VariantPreview({ variant, ruleset }: { variant: VariantId; ruleset?: GenerationRulesetId }) {
+  const rules: readonly VariantRule[] = variant === 'whispers'
+    ? [{ type: 'whispers', cells: [11, 21, 31, 39, 47, 57], minDifference: generationRuleset(variant, ruleset)!.minDifference }]
+    : previews[variant]
   return <span className="variant-preview" data-variant={variant} aria-hidden="true">
-    {previews[variant].length > 0 && <VariantClues rules={previews[variant]} />}
+    {rules.length > 0 && <VariantClues rules={rules} />}
     {variant === 'jigsaw' && <svg className="variant-clues" viewBox="0 0 9 9" focusable="false">
       <path className="variant-preview-regions" d={previewRegionEdges} />
     </svg>}

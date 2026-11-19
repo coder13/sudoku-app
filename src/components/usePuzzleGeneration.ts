@@ -8,6 +8,7 @@ import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
 import { VARIANTS, variantDifficulty, type VariantId } from '../sudoku/variants'
+import { generationRuleset, type VariantGenerationOptions } from '../sudoku/variant-rulesets'
 
 export function usePlayerRating() {
   return useSyncExternalStore(roomStore.subscribe,
@@ -25,7 +26,7 @@ export function usePuzzleGeneration() {
     return () => { mounted.current = false }
   }, [])
 
-  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: VariantId = 'classic') {
+  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: VariantId = 'classic', options?: VariantGenerationOptions) {
     if (pending.current) return
     pending.current = true
     setBusy(true)
@@ -35,9 +36,9 @@ export function usePuzzleGeneration() {
       const difficulty = variantDifficulty(variant, auto ? roomStore.getSnapshot().playerRating.recommended : preference)
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
       if (variant !== 'classic') {
-        const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games)
+        const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games, options)
         if (!mounted.current) return
-        const title = nextPuzzleTitle(`${VARIANTS[variant].name} `)
+        const title = nextPuzzleTitle(`${generationRuleset(variant, options?.ruleset)?.name ?? VARIANTS[variant].name} `)
         const game = makeGame(createGameId(), title, result.puzzle.givens, 'generated')
         game.variant = { id: variant, puzzle: result.puzzle, solution: result.solution }
         game.difficulty = difficulty

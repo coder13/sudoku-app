@@ -6,6 +6,7 @@ import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale.t
 import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints.ts'
 import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes.ts'
 import { isVariantId, variantDifficulty, type VariantId } from './variants.ts'
+import { generationRuleset, type GenerationRulesetId } from './variant-rulesets.ts'
 
 export {
   gridTextScalePercentage, MAX_GRID_TEXT_SCALE, MIN_GRID_TEXT_SCALE, stepGridTextScale,
@@ -166,13 +167,15 @@ export function saveDifficulty(value: DifficultyPreference) {
   catch { /* The setting remains active for this session. */ }
 }
 
-export type NewPuzzlePreference = { variant: VariantId; difficulty: DifficultyPreference }
+export type NewPuzzlePreference = { variant: VariantId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId }
 
 export function readNewPuzzlePreference(storage?: Pick<Storage, 'getItem'>): NewPuzzlePreference | null {
   try {
     const value = JSON.parse((storage ?? localStorage).getItem(NEW_PUZZLE_KEY) ?? 'null') as Partial<NewPuzzlePreference> | null
     if (isVariantId(value?.variant) && isDifficultyPreference(value.difficulty)) {
-      return { variant: value.variant, difficulty: variantDifficulty(value.variant, value.difficulty) }
+      const ruleset = generationRuleset(value.variant, value.ruleset)
+      return { variant: value.variant, difficulty: variantDifficulty(value.variant, value.difficulty),
+        ...(ruleset ? { ruleset: ruleset.id } : {}) }
     }
   } catch { /* Use the variant picker when the preference is unavailable. */ }
   return null
