@@ -88,7 +88,7 @@ function createDomains(puzzle: KakuroPuzzle, values: readonly number[]): number[
 // A digit set can support a cell only if every digit in the set can be
 // assigned to a different cell. Memoize by the remaining digits, which
 // also gives the next position in the sorted cell order.
-function runSupport(run: KakuroRun, domains: readonly number[]): number[] | null {
+function runSupport(run: KakuroRun, domains: readonly number[], memo: Int8Array): number[] | null {
   const allowed = run.cells.map(cell => domains[cell])
   if (allowed.includes(0)) return null
   const length = allowed.length
@@ -103,8 +103,8 @@ function runSupport(run: KakuroRun, domains: readonly number[]): number[] | null
 
   const order = allowed.map((_, i) => i).sort((a, b) => digitCounts[allowed[a]] - digitCounts[allowed[b]])
   const support = allowed.map(() => 0)
-  const memo = new Int8Array(allDigits + 1)
-  const walked = new Uint8Array(allDigits + 1)
+  // A memo entry of 2 also marks that its cell support has been collected.
+  memo.fill(0)
   function canAssign(remaining: number): boolean {
     if (!remaining) return true
     if (memo[remaining]) return memo[remaining] > 0
@@ -120,8 +120,8 @@ function runSupport(run: KakuroRun, domains: readonly number[]): number[] | null
   }
 
   function collect(remaining: number): void {
-    if (!remaining || walked[remaining]) return
-    walked[remaining] = 1
+    if (!remaining || memo[remaining] === 2) return
+    memo[remaining] = 2
     const index = order[order.length - digitCounts[remaining]]
     for (let choices = remaining & allowed[index]; choices; choices &= choices - 1) {
       const digit = choices & -choices
@@ -180,13 +180,14 @@ function propagate(
   domains: number[],
   recordStep?: (run: KakuroRun, domains: readonly number[], support: readonly number[], depth: number) => void,
 ): boolean {
+  const memo = new Int8Array(allDigits + 1)
   let changed = true
   let depth = 0
   while (changed) {
     changed = false
     depth++
     for (const run of puzzle.runs) {
-      const support = runSupport(run, domains)
+      const support = runSupport(run, domains, memo)
       if (!support) return false
       const firstChange = run.cells.findIndex((cell, i) => support[i] !== domains[cell])
       if (firstChange === -1) continue
