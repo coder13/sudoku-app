@@ -1,0 +1,145 @@
+{
+  "title": "Pick Up",
+  "author": "Bill Murphy",
+  "published": "2025-12-02",
+  "source": "https://www.gmpuzzles.com/images/puzzles2025/251202-SkyscraperSudoku-PickUp.pdf",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2025/251202-SkyscraperSudoku-PickUp.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/251202-SkyscraperSudoku-PickUp-soln.pdf",
+  "pdfSha256": "b47bc6aeb25952eb28b28ee970aa82a5df4f170b3e154bb1d1b531c22ff1b413",
+  "solutionPdfSha256": "9b4f5956b59ff27d5585d8791e82145e4726e0e73bea741d841feb84dd7bdd96",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000050709030003000900090603010000000000030507090009000700060904020000000000",
+    "rules": [
+      {
+        "type": "skyscrapers",
+        "direction": "east",
+        "cells": [
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "count": 6
+      },
+      {
+        "type": "skyscrapers",
+        "direction": "east",
+        "cells": [
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        "count": 2
+      },
+      {
+        "type": "skyscrapers",
+        "direction": "east",
+        "cells": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "count": 7
+      },
+      {
+        "type": "skyscrapers",
+        "direction": "east",
+        "cells": [
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71
+        ],
+        "count": 3
+      },
+      {
+        "type": "skyscrapers",
+        "direction": "west",
+        "cells": [
+          17,
+          16,
+          15,
+          14,
+          13,
+          12,
+          11,
+          10,
+          9
+        ],
+        "count": 4
+      },
+      {
+        "type": "skyscrapers",
+        "direction": "west",
+        "cells": [
+          35,
+          34,
+          33,
+          32,
+          31,
+          30,
+          29,
+          28,
+          27
+        ],
+        "count": 5
+      },
+      {
+        "type": "skyscrapers",
+        "direction": "west",
+        "cells": [
+          53,
+          52,
+          51,
+          50,
+          49,
+          48,
+          47,
+          46,
+          45
+        ],
+        "count": 2
+      },
+      {
+        "type": "skyscrapers",
+        "direction": "west",
+        "cells": [
+          71,
+          70,
+          69,
+          68,
+          67,
+          66,
+          65,
+          64,
+          63
+        ],
+        "count": 6
+      }
+    ]
+  },
+  "solution": "982345167156789432473261985897623514615498273234517896529136748768954321341872659"
+}

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
-import { conflictsOf, enter, fillEntries, makeGame, undo, redo } from '../src/sudoku/game.ts'
+import { conflictsOf, enter, fillEntries, makeGame, undo, redo, type Game } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import {
@@ -104,7 +104,7 @@ test('both Pencil modes, bulk input, histories and walkthrough peer masks use th
     rules: [{ type: 'entropic', cells: [0, 13, 26, 32] }],
   }
   const solution = load('clover').solution
-  let game = {
+  let game: Game = {
     ...makeGame('entropic-input', 'Entropic Lines', empty, 'imported'),
     variant: { id: 'entropic' as const, puzzle, solution },
   }
@@ -128,7 +128,7 @@ test('both Pencil modes, bulk input, histories and walkthrough peer masks use th
   // Full group removal remains an explained step in walkthrough displays.
   assert.ok(masks[13] & 2)
   assert.ok(masks[32] & 8)
-  assert.equal(generationVariant({ id: 'entropic' }), undefined)
+  assert.equal(generationVariant({ id: 'entropic' }), 'entropic')
 })
 
 test('all grid transforms preserve every repeated reference and complete mixed source', () => {
@@ -144,7 +144,7 @@ test('all grid transforms preserve every repeated reference and complete mixed s
     const changed = reflectVariant(source.puzzle, symmetry)
     const original = source.puzzle.rules.find((r: { type: string }) => r.type === 'entropic')
     assert.deepEqual(
-      changed.rules.find((r) => r.type === 'entropic'),
+      changed.rules!.find((r) => r.type === 'entropic'),
       { type: 'entropic', cells: original.cells.map(cell) }
     )
     assert.equal(isPlayablePuzzle(variantIdForPuzzle(changed), changed), true)

@@ -21,6 +21,20 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
     pairs?.some(([c, d]) => c === a && d === b || c === b && d === a) ?? false
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'skyscrapers': {
+        let maximum = 0, visible = 0
+        for (const cell of rule.cells) if (digits[cell] > maximum) { maximum = digits[cell]; visible++ }
+        assert.equal(visible, rule.count)
+        break
+      }
+      case 'x-sum': {
+        const row = rule.cells.map(cell => digits[cell])
+        assert.equal(row.slice(0, row[0]).reduce((sum, digit) => sum + digit, 0), rule.sum)
+        break
+      }
+      case 'little-killer':
+        assert.equal(rule.cells.reduce((sum, cell) => sum + digits[cell], 0), rule.sum)
+        break
       case 'sandwich': {
         const row = rule.cells.map(cell => digits[cell]), one = row.indexOf(1), nine = row.indexOf(9)
         assert.ok(one >= 0 && nine >= 0)
@@ -131,7 +145,10 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           }
         }
         break
-      default: throw new Error(`Independent completion check does not support ${rule.type}`)
+      default: {
+        const unsupported: never = rule
+        throw new Error(`Independent completion check does not support ${JSON.stringify(unsupported)}`)
+      }
     }
   }
 }

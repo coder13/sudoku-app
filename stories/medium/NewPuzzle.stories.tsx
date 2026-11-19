@@ -31,3 +31,67 @@ export const Mobile: Story = {
     await expect(await canvas.findByRole('heading', { name: 'Killer' })).toBeVisible()
   },
 }
+
+export const XSumsDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=x-sum" />,
+}
+
+export const SkyscrapersDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=skyscrapers" />,
+}
+
+export const AntiKingDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=anti-king" />,
+}
+
+export const AntiKingVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=anti-king" />,
+}
+
+export const NonConsecutiveVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=non-consecutive" />,
+}
+
+export const NonConsecutiveDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=non-consecutive" />,
+}
+
+export const OddEvenVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=parity" />,
+}
+
+export const OddEvenDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=parity" />,
+}
+
+export const GermanWhispers: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=whispers&ruleset=german" />,
+}
+export const DutchWhispers: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=whispers&ruleset=dutch" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
+
+export const PalindromeVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=palindrome" />,
+}
+export const PalindromeDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=palindrome" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
+
+export const GlobalEntropyVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=global-entropy" />,
+}
+export const GlobalEntropyDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=global-entropy" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
+
+export const EntropicVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=entropic" />,
+}
+export const EntropicDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=entropic" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}

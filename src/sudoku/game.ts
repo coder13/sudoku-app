@@ -2,12 +2,16 @@ import { STARTER } from './formats.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
+import { littleKillerState } from './little-killer.ts'
 import { sandwichState } from './sandwich.ts'
+import { xSumState } from './x-sum.ts'
+import { skyscrapersState } from './skyscrapers.ts'
 import { regionSumState } from './region-sum.ts'
 import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
 import type { CollectionReference } from './collection-reference.ts'
+import type { ChainSketchState } from './chain-sketch.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -41,6 +45,7 @@ export type Game = {
   past: Position[]
   future: Position[]
   actionHistory?: ActionHistoryEntry[]
+  chainSketch?: ChainSketchState
   elapsed: number
   timeUntracked?: true
   started: boolean
@@ -168,7 +173,7 @@ export function valuesOf(game: Game): string {
 }
 
 function placedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
-  const states = [globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values), sandwichState(puzzle, values)]
+  const states = [globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values), sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values)]
     .filter(state => state !== undefined)
   const result = states[0]
   if (!result) return

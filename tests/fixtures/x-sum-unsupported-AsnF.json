@@ -1,0 +1,228 @@
+{
+  "source": "https://sudoku.coach/en/s/AsnF",
+  "metadata": {
+    "sudoku_id": "AsnF",
+    "sudoku": "SCv7_32_f2e9b4thdr1i0420vvimc4k1cdddmqskn51j6dfig1m8l43cm205cr9dvtti2kelh0h50do4ttone75ng8o74v4mbsebk5k1i3nlo7dlmb731acsgnnb50gsk4hhh0frbgu0b0tm6drn4e7j1s3ggb0n6fvk21pu9lgnbgd8rr9rshtg631jpjkdrtfc21d70fc3ct07tvo9s8kqs6licp8svphr81c17ij45o4ce6489injnem404q6jc8tl2570mv2d4agit9alokkt918gfo25q2i0e2h8nb7gi5k5pdk958gj9e4ksc4kp83b29r855cu53n4ai48ci2v2n7q616sui15lsj62c2ummf9tnhs8786qk8kbb7fna4cnflasr5ivjve8d0bvut1trtuhkrc3mevntu060fag11",
+    "solution": "216953874859471362374682951498726135125839746763514298681395427537248619942167583",
+    "name": "X sums #3",
+    "author": null,
+    "description": "Special request by carobaro :D\n\nVariant Rules (X sums):\n- Clues outside the grid indicate the sum of the first x digits in the corresponding direction.\n- X is the first digit in the corresponding direction.\n\nSE 2.3",
+    "difficulty": 5,
+    "comment_count": 6,
+    "solve_count": 85,
+    "likes": 13,
+    "user_like": 0,
+    "host_id": 7235,
+    "host_name": "GenevieveArchbaker",
+    "custom_constraints": true,
+    "published": true,
+    "published_date_utc": "2025-11-27 10:55:37",
+    "open_graph_image": 1,
+    "blocked": false,
+    "sudokuHash": "AsnF"
+  },
+  "decoded": {
+    "gridSize": 9,
+    "givenConstraints": [
+      {
+        "id": 10,
+        "type": "cosmeticText",
+        "segments": [
+          {
+            "cells": [
+              [
+                0,
+                4.5
+              ]
+            ],
+            "parameters": {
+              "text": ""
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                5.5
+              ]
+            ],
+            "parameters": {
+              "text": "28"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                3.5
+              ]
+            ],
+            "parameters": {
+              "text": "28"
+            }
+          },
+          {
+            "cells": [
+              [
+                9.5,
+                3.5
+              ]
+            ],
+            "parameters": {
+              "text": "17"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                0.5
+              ]
+            ],
+            "parameters": {
+              "text": "3"
+            }
+          },
+          {
+            "cells": [
+              [
+                2.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "35"
+            }
+          },
+          {
+            "cells": [
+              [
+                2.5,
+                9.5
+              ]
+            ],
+            "parameters": {
+              "text": "9"
+            }
+          },
+          {
+            "cells": [
+              [
+                5.5,
+                9.5
+              ]
+            ],
+            "parameters": {
+              "text": "41"
+            }
+          },
+          {
+            "cells": [
+              [
+                4.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "25"
+            }
+          },
+          {
+            "cells": [
+              [
+                4.5,
+                9.5
+              ]
+            ],
+            "parameters": {
+              "text": "25"
+            }
+          },
+          {
+            "cells": [
+              [
+                0.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "10"
+            }
+          },
+          {
+            "cells": [
+              [
+                5.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "6"
+            }
+          },
+          {
+            "cells": [
+              [
+                9.5,
+                0.5
+              ]
+            ],
+            "parameters": {
+              "text": "22"
+            }
+          },
+          {
+            "cells": [
+              [
+                9.5,
+                8.5
+              ]
+            ],
+            "parameters": {
+              "text": "16"
+            }
+          },
+          {
+            "cells": [
+              [
+                8.5,
+                9.5
+              ]
+            ],
+            "parameters": {
+              "text": "19"
+            }
+          },
+          {
+            "cells": [
+              [
+                1.5,
+                9.5
+              ]
+            ],
+            "parameters": {
+              "text": "21"
+            }
+          },
+          {
+            "cells": [
+              [
+                9.5,
+                1.5
+              ]
+            ],
+            "parameters": {
+              "text": "8"
+            }
+          }
+        ],
+        "settings": {
+          "gridZoomOut": 1,
+          "gridSnapToCorners": false,
+          "gridSnapToEdges": false,
+          "textSize": 100
+        }
+      }
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from 'react'
 import type { Candidate, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
-import { activeHighlightDigit } from '../sudoku/highlighting'
+import { activeHighlightDigit, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
@@ -23,11 +23,14 @@ type Props = {
   candidatePreview?: Candidate & { mode: 'candidate' | 'center' | 'corner' }
   annotations?: BoardAnnotations
   showAnnotatedCandidates?: boolean
+  showPlayerColors?: boolean
   region?: BoardRegion
   label?: string
   showGuides: boolean
   overlay?: { content: ReactNode; visible: boolean }
   highlightedDigit?: number | null
+  highlightedDigitMask?: number
+  highlightedDigitMatch?: DigitHighlightMatch
   highlightCandidateCount?: number | null
   highlighting?: HighlightPreferences
   selected?: readonly number[]
@@ -57,9 +60,9 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 
 export function Board({
   variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
-  highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
+  highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
 }: Props) {
   const variantRules = variantPuzzle?.rules
   const outside = useMemo(() => outsideClueLayout(variantRules), [variantRules])
@@ -84,7 +87,10 @@ export function Board({
     ? [<div className="board-variant-clues" key={JSON.stringify(variantRules)}><VariantClues rules={variantRules} /></div>]
     : NO_MARKS, [variantRules])
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
-  const focusDigit = activeHighlightDigit(values, selected, active, highlightedDigit)
+  const highlightedDigits = marksOf(highlightedDigitMask)
+  const matchAnyDigit = highlightedDigitMatch === 'any' && highlightedDigitMask !== 0
+  const filterCandidates = matchAnyDigit || highlightedDigits.length > 1
+  const focusDigit = filterCandidates ? null : activeHighlightDigit(values, selected, active, highlightedDigits[0] ?? highlightedDigit)
   const candidateAction = onPaintCandidate ?? onCandidate
   const Cell = onCell && !candidateAction ? 'button' : 'div'
   const layout = candidates ? 'grid' : candidateLayout
@@ -149,7 +155,8 @@ export function Board({
 
   return (
     <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}`} data-overlay={overlay?.visible} style={size}>
-      {hasOutside && (['top', 'right', 'bottom', 'left'] as const).map(side => <OutsideClues key={side} side={side} layout={outside} hidden={overlay?.visible} />)}
+      {outside.depths.top > 0 && <div className="outside-clues-top" aria-hidden="true" />}
+      {outside.depths.bottom > 0 && <div className="outside-clues-bottom" aria-hidden="true" />}
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
@@ -187,15 +194,19 @@ export function Board({
                   ? marksOf((previewSlotted ? displayedGridMarks : centerMarks) | (1 << (preview.digit - 1))) : undefined
                 const visibleGridCandidates = (previewSlotted && withPreview) || gridCandidates
                 const visibleCenterCandidates = (!previewSlotted && withPreview) || centerCandidates
-                const candidateColors = candidates ? undefined : position?.candidateColors?.[index]
-                const color = position?.colors?.[index]
+                const candidateColors = showPlayerColors && (!candidates || onCandidate) ? position?.candidateColors?.[index] : undefined
+                const color = showPlayerColors ? position?.colors?.[index] : undefined
                 const inSelection = selected.includes(index)
                 const error = errors?.has(index)
                 const cellAnnotation = annotations?.cells?.get(index)
                 const candidateAnnotations = annotations?.candidates?.get(index)
                 const candidateMatches = !value && focusDigit != null && hasCandidate(candidateMask, focusDigit)
-                const candidateHighlightStyle = candidateMatches && highlighting.matchingCandidates ? highlighting.candidateStyle : undefined
-                const candidateCountMatches = !value && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
+                const matchingMask = filterCandidates && !value ? candidateMask & highlightedDigitMask : 0
+                const matchesFilter = matchingMask !== 0 && (matchAnyDigit || matchingMask === highlightedDigitMask)
+                const matchesWithExtras = matchesFilter && matchAnyDigit && matchingMask !== candidateMask
+                const candidateHighlightStyle = matchesFilter ? 'cell'
+                  : candidateMatches && highlighting.matchingCandidates ? highlighting.candidateStyle : undefined
+                const candidateCountMatches = !value && !filterCandidates && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
                 const cellStyle = cellAnnotation && {
                   '--cell-fill': error ? undefined : cellAnnotation.fill,
                   color: error ? undefined : cellAnnotation.ink,
@@ -217,17 +228,20 @@ export function Board({
                   cellAnnotation?.label,
                   cellClues?.[index]?.join(', '),
                   !value && candidateLabel,
-                  candidateHighlightStyle === 'cell' ? `cell highlighted for candidate ${focusDigit}` :
-                    candidateHighlightStyle ? `candidate ${focusDigit} highlighted` : '',
+                  matchesFilter ? matchAnyDigit
+                    ? matchesWithExtras ? 'cell has selected candidates and other candidates' : 'cell has only selected candidates'
+                    : `cell highlighted for candidates ${highlightedDigits.join(', ')}`
+                    : candidateHighlightStyle === 'cell' ? `cell highlighted for candidate ${focusDigit}`
+                      : candidateHighlightStyle ? `candidate ${focusDigit} highlighted` : '',
                   candidateCountMatches ? `${highlightCandidateCount}-candidate cell highlighted` : '',
                   error ? 'incorrect' : '',
                 ].filter(Boolean).join(', ')
                 const classes = [
                   'cell',
                   fixed ? 'given' : 'entry',
-                  highlighting.relatedCells && selected.some((cell) => peer(index, cell, variantPuzzle)) ? 'peer' : '',
+                  !filterCandidates && highlighting.relatedCells && selected.some((cell) => peer(index, cell, variantPuzzle)) ? 'peer' : '',
                   highlighting.matchingDigits && value === focusDigit ? 'matching' : '',
-                  candidateHighlightStyle === 'cell' ? 'candidate-highlight-cell' : '',
+                  candidateHighlightStyle === 'cell' ? matchesWithExtras ? 'candidate-highlight-light' : 'candidate-highlight-cell' : '',
                   candidateHighlightStyle === 'outline' ? 'candidate-highlight-outline' : '',
                   candidateCountMatches ? 'candidate-count-match' : '',
                   color ? `colored color-${color}` : '',
@@ -310,10 +324,12 @@ export function Board({
           ))}
         </div>
         <BoardMarks items={variantClues} />
+        {hasOutside && <OutsideClues layout={outside} hidden={overlay?.visible} />}
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}
       </div>
+      {outside.legend.length > 0 && <div className="outside-clue-legend" aria-hidden={overlay?.visible || undefined}>{outside.legend.join(' · ')}</div>}
     </div>
   )
 }

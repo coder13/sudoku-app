@@ -1525,3 +1525,38 @@ The [Global Entropy audit](../../SUDOKU_GLOBAL_ENTROPY_AUDIT.md) records the sou
 ## Modular Lines native and app integration
 
 `modular-newman.json` records both inspected PDFs for Philip Newman's eighteen-given Birbs of Paradise, its six independent Entropic paths, six independent Modular paths and printed completion. `modular-coach.json` retains eight original sources, their descriptions, solutions, image hashes and the compiler's original nine-cell-wide demonstration. Three complete 9 × 9 sources have independent unique completions; removing either line family from the published puzzle yields multiple completions. Six companion/grid gaps stay explicit. The two zero-given imports preserve every sum and marker, including HCHW's printed XI total. [Source rules, app contracts, package sizes, measurements and limits](../../SUDOKU_MODULAR_AUDIT.md)
+
+## X-Sums app integration
+
+`x-sum-newman.json`, `x-sum-murphy.json` and `x-sum-clover.json` retain complete published 9×9 puzzle/solution PDF pairs, all printed totals and givens, directions, ordered rays, completions and PDF hashes. Direct independent digit/permutation search verifies every unique completion and required-family dependence. The app paths are complete Hard at 3,036/2,710/1,916 points; native technique cost remains 80.
+
+`x-sum-unsupported-AsnF.json` retains the original Coach code, decoded cosmetic totals, author context and completion. Automatic import still rejects that full payload. `x-sum-coach-transcription.json` is a separately labelled manual native transcription of all sixteen totals under the author's explicit rules, with zero givens and a complete 5,514-point Hard path. It is not a typed Coach export. The two `mixed` fixtures are authored regression companions and retain all source constraints; added clues are not attributed to the publishers.
+
+Independent proof replay, all eight transforms, disabled profiles, input/history, storage/sharing, hints/pages/Finder, Learn/practice and calibrated Hard New Puzzle use the real app/worker callers. The bounded subset table used for local input is checked against direct full-row permutations. [Complete source, validation, performance and limits](../../SUDOKU_X_SUM_AUDIT.md). Full authored Coach formats remain in issue 7; diagonal X-Sums remain separate native research in 204.
+
+## Skyscrapers app integration
+
+`skyscrapers-murphy.json`, `skyscrapers-clover.json` and `skyscrapers-bulten.json` preserve all twenty/twenty/four givens and eight/twenty/fifteen visibility clues from complete published puzzle/solution PDF pairs, including original URLs, hashes and completions. Independent digit/permutation search verifies their unique printed completions in one/one/eleven nodes. Complete app-order paths score 1,744/2,104/3,798, Hard; the native technique remains 70 points. Source grids, every outside count and printed solutions were checked; Clover's puzzle/solution grid offset is explicit in the transcription.
+
+The two mixed fixtures are authored regression companions and retain every source given and constraint. Added matching clues are not attributed to the publishers. All four outside families appear with original Jigsaw/cage data in the combined control. `skyscrapers-unsupported-9W3o.json` retains the complete original seven-by-seven Coach code, decoded fields, author description and 49-digit completion; automatic import still rejects it. It is not a typed nine-by-nine export.
+
+Direct full-row permutations check bounded local input support, and independent cited-domain replay checks native hint actions. Full app callers cover storage/history/sharing, multiple hints/pages/Finder, exact and complete human solutions, all eight transforms, disabled profiles, Learn/practice and independently checked Hard New Puzzle generation. Clues of one/nine also have valid explanations without uniqueness. [Full source, validation, performance and limits](../../SUDOKU_SKYSCRAPERS_AUDIT.md). Remaining source formats and grids stay in issue 7.
+
+## Non-Consecutive New Puzzle
+
+`nonconsecutive-generation.json` records three complete generation witnesses: the printed solution of the unchanged twenty-one-given Newman `Literally No One` control, plus two labelled authored completions from blank-template native generation at seeds 6 and 16. It records the source host, app head and Wasm hash. The authored witnesses are not published clue sets. Independent completion checks verify all three; ordinary square transforms do not make them equal.
+
+The recipe bank uses thirty checked seeds per difficulty across these layouts. Easy targets at most thirty givens; Medium targets 14–20, preserving the existing 8-point Easy rule and scoring version 8. Actual app contracts verify all sixty recipes and sixty successive distinct puzzles, independent uniqueness/family dependence, several sound hints, complete human replay, binary and specialized exclusion proofs, fallbacks, given bounds, geometric exclusions and storage/sharing. Existing complete Coach exception/companion controls remain unchanged. [Generation and performance audit](../../SUDOKU_NON_CONSECUTIVE_GENERATION_AUDIT.md).
+
+## Odd/Even New Puzzle
+
+`parity-generation.json` records an authored balanced 27-cell marker pattern and all 23 marker positions from the unchanged complete Big Eight source. Generated parity values and givens come from each fresh sampled completion; reusing source geometry does not make a generated puzzle the original publication. The fixture records the source app head, host and Wasm hash.
+
+Thirty checked recipes per difficulty target at most thirty givens for Easy and 20–30 for Medium. Independent counters and numeric marker checks verify every recipe and sixty successive actual app results, with several sound hints and complete proof-checked human replay. Direct marker proofs also cover original practice examples. Determinism, fallbacks, geometric and reordered-clue exclusions, persistence/history and sharing retain full definitions. The base technique stays 6 points, Easy, scoring version 8. [Generation and performance audit](../../SUDOKU_PARITY_GENERATION_AUDIT.md).
+
+
+## Whispers New Puzzle
+
+`whispers-generation.json` retains all four ordered path geometries from the unchanged three-given Brain Zaps control, with the source app head, host, Wasm hash and original publication. Blank templates sample new completions/givens. The separately labelled Dutch preset sets minimum 4 on that geometry; it is not the original minimum-5 published puzzle.
+
+Thirty independently checked Medium recipes per style target at most twenty givens. Sixty successive actual app results verify uniqueness, Whispers dependence, several hints, full app-order replay, direct line-domain proofs and line/house support proofs. A shared ruleset selector retains German/Dutch through routes, preferences, titles and next-puzzle actions without changing stored family IDs. Exclusions recognize every square transform, reversed/reordered/split paths and redundant weaker edges through mixed aliases. Native near misses retain different minima/edges and directed Thermometer meaning. Original source paths, proof indices, costs 27/39 and scoring version 8 stay intact. [Generation, correctness and performance audit](../../SUDOKU_WHISPERS_GENERATION_AUDIT.md).

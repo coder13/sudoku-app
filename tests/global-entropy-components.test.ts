@@ -11,7 +11,7 @@ import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { variantIdForPuzzle, variantRuleDescriptions } from '../src/sudoku/variants.ts'
+import { generationVariant, isVariantId, variantDifficulties, variantIdForPuzzle, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { assertGlobalEntropyProof } from './helpers/global-entropy-truth.ts'
 
 const published = JSON.parse(readFileSync(new URL('./fixtures/global-entropy-newman.json', import.meta.url), 'utf8'))
@@ -19,7 +19,8 @@ const sources = JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach
   .filter((source: { puzzle?: VariantPuzzle }) => source.puzzle)
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
-let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, HintCard: Component, SolutionPath: Component
+let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, HintCard: Component, SolutionPath: Component, VariantPreview: Component, CompletedPuzzle: Component
+let renderNewPuzzle: (path: string, preference?: { variant: string; difficulty: string }) => Promise<string>
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom',
     server: { middlewareMode: true, hmr: false, ws: false, watch: null }, optimizeDeps: { noDiscovery: true, include: [] } })
@@ -28,6 +29,9 @@ before(async () => {
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
 })
 after(async () => { await server?.close() })
 const board = (puzzle: VariantPuzzle) => createElement(Board, { variantPuzzle: puzzle, givens: puzzle.givens, values: puzzle.givens })
@@ -60,7 +64,8 @@ test('sharing a progressed mixed Global Entropy puzzle preserves its complete or
   const prior = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { hostname: 'example.test', origin: 'https://example.test' } } })
   try {
-    const variant = { id: variantIdForPuzzle(source.puzzle), puzzle: source.puzzle, solution: source.solution }
+    const id = variantIdForPuzzle(source.puzzle); assert.ok(id !== 'classic')
+    const variant = { id, puzzle: source.puzzle, solution: source.solution }
     const game = { ...makeGame('global-entropy-share', 'Global Entropy', source.puzzle.givens, 'imported'), variant }
     const html = renderToStaticMarkup(createElement(SharePuzzle, { game: enter(game, [0], 'value', Number(source.solution[0])), close() {} }))
     const code = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
@@ -96,4 +101,43 @@ test('the lesson, diagram and solution step explain the actual four-cell group p
   const wrong = structuredClone(source.deduction)
   wrong.actions = [{ eliminate: { cell: 16, digit: 3 } }]
   assert.throws(() => assertGlobalEntropyProof(source.position.puzzle, wrong))
+})
+
+test('New Puzzle exposes both checked levels, a correct four-cell preview and complete navigation', async () => {
+  assert.ok(isVariantId('global-entropy'))
+  assert.deepEqual(variantDifficulties('global-entropy'), ['easy', 'medium'])
+  const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'global-entropy' }))
+  assert.match(preview, /variant-entropy-preview/)
+  const digits = [...preview.matchAll(/<text[^>]*>([1-9])<\/text>/g)].map(match => Number(match[1]))
+  assert.deepEqual(digits, [2, 5, 8, 1])
+  assert.deepEqual([...new Set(digits.map(digit => Math.floor((digit - 1) / 3)))].sort(), [0, 1, 2])
+  const choice = await renderNewPuzzle('/puzzles/new?variant=global-entropy&ruleset=dutch')
+  assert.match(choice, /Choose a variant/); assert.match(choice, /\/puzzles\/new\/difficulty\?variant=global-entropy/)
+  assert.doesNotMatch(choice, /ruleset=dutch/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=global-entropy')
+  assert.match(difficulty, /Choose difficulty/); assert.match(difficulty, /\/puzzles\/new\?variant=global-entropy/)
+  assert.match(difficulty, /value="easy"/); assert.match(difficulty, /value="medium"/); assert.doesNotMatch(difficulty, /value="hard"/)
+  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'global-entropy', difficulty: 'easy' }), /Start easy puzzle/)
+})
+
+test('completed pure Global Entropy offers another puzzle while original mixed sources retain their companions', () => {
+  const mixed = sources.find((source: { url: string }) => source.url.endsWith('CJhv'))
+  for (const source of [published, mixed]) {
+    const id = variantIdForPuzzle(source.puzzle); assert.ok(id !== 'classic')
+    const game = { ...makeGame('entropy-complete', 'Global Entropy', source.puzzle.givens, 'imported'),
+      variant: { id, puzzle: source.puzzle, solution: source.solution } }
+    game.position.entries = [...source.solution as string].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
+    const definition = structuredClone(game.variant)
+    const html = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
+      ratingPending: false, shortcutEnabled: false, showGuides: true, onResumePuzzle() {}, onChooseDifficulty() {}, onChooseVariant() {} }))
+    if (source === published) {
+      assert.equal(generationVariant(game.variant), 'global-entropy')
+      assert.match(html, /Next medium puzzle/); assert.match(html, /Choose difficulty/); assert.match(html, /Choose variant/)
+    } else {
+      assert.equal(generationVariant(game.variant), undefined)
+      assert.match(html, /Choose another puzzle/); assert.doesNotMatch(html, /Next medium puzzle/)
+      assert.equal(game.variant.puzzle.rules.length, 15)
+    }
+    assert.deepEqual(game.variant, definition)
+  }
 })

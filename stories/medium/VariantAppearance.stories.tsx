@@ -1,7 +1,13 @@
+import skyscrapersMurphy from '../../tests/fixtures/skyscrapers-murphy.json'
+import skyscrapersMixed from '../../tests/fixtures/skyscrapers-jigsaw-mixed.json'
+import xSumNewman from '../../tests/fixtures/x-sum-newman.json'
+import xSumMixed from '../../tests/fixtures/x-sum-jigsaw-mixed.json'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
 import betweenNewman from '../../tests/fixtures/between-newman.json'
 import regionSumNewman from '../../tests/fixtures/region-sum-newman.json'
+import littleKillerMurphy from '../../tests/fixtures/little-killer-murphy.json'
+import littleKillerNewman from '../../tests/fixtures/little-killer-newman.json'
 import sandwichMurphy from '../../tests/fixtures/sandwich-murphy.json'
 import cloneMurphy from '../../tests/fixtures/clone-murphy.json'
 import { Board } from '../../src/components/Board'
@@ -119,4 +125,34 @@ export const SandwichAllEdges: Story = {
     { type: 'sandwich', direction: 'east', cells: [0,1,2,3,4,5,6,7,8], sum: 0 },
   ] }, 'Outside clues on all four edges with repeated zero totals'),
   parameters: { gridWidth: 290 },
+}
+
+export const LittleKiller: Story = {
+  args: candidateGrid(littleKillerMurphy.puzzle as VariantPuzzle, 'Little Killer Sudoku grid'),
+  parameters: { docs: { description: { story: 'New Body Rhumba by Bill Murphy. Each arrow identifies the full diagonal whose digits sum to its outside total. Repeats are allowed when the Sudoku houses permit them.' } } },
+}
+export const LittleKillerCompact: Story = { ...LittleKiller, parameters: { ...LittleKiller.parameters, gridWidth: 290 } }
+export const LittleKillerCorners: Story = {
+  args: candidateGrid(littleKillerNewman.puzzle as VariantPuzzle, 'Little Killer Sudoku with corner arrows'),
+  parameters: { gridWidth: 290, docs: { description: { story: 'Triforce by Philip Newman preserves both printed directions of its long diagonals. All four corners have their own space outside the cell grid.' } } },
+}
+
+export const XSums: Story = {
+  args: candidateGrid(xSumNewman.puzzle as VariantPuzzle, 'X-Sums Sudoku grid'),
+  parameters: { docs: { description: { story: 'The first digit counts the cells in the outside total and includes itself. This complete Newman control retains every given and clue.' } } },
+}
+export const XSumsCompact: Story = { ...XSums, parameters: { ...XSums.parameters, gridWidth: 290 } }
+export const MixedOutsideClues: Story = {
+  args: candidateGrid(xSumMixed.puzzle as VariantPuzzle, 'Jigsaw with X-Sums, Sandwich and Little Killer clues'),
+  parameters: { gridWidth: 290, docs: { description: { story: 'S/X prefixes and the visible legend distinguish otherwise ambiguous row and column totals. Diagonal arrows retain their separate Little Killer meaning; candidate links stay aligned.' } } },
+}
+
+export const Skyscrapers: Story = {
+  args: candidateGrid(skyscrapersMurphy.puzzle as VariantPuzzle, 'Skyscrapers visibility clues'),
+  parameters: { docs: { description: { story: 'Each outside number counts the visible buildings from that edge. This is the visibility variant, distinct from the Classic single-digit Skyscraper technique.' } } },
+}
+export const SkyscrapersCompact: Story = { ...Skyscrapers, parameters: { ...Skyscrapers.parameters, gridWidth: 290 } }
+export const AllOutsideFamilies: Story = {
+  args: candidateGrid(skyscrapersMixed.puzzle as VariantPuzzle, 'Jigsaw with all four outside clue families'),
+  parameters: { gridWidth: 290, docs: { description: { story: 'S/X/Sk prefixes and the visible legend preserve every outside total and visibility count. Little Killer arrows retain their separate diagonal meaning.' } } },
 }

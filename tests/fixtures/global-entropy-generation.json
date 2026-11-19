@@ -1,0 +1,16 @@
+{
+  "sourceAppHead": "146f570902bcb6ed1ab7a85703c4295e58e44977",
+  "sourceEngineSha256": "724b2b20a96b6fcdea4fac80f89e2ee484ff2e219c4340f33fee6d432a0394e7",
+  "source": {
+    "url": "https://www.gmpuzzles.com/blog/2026/04/entropy-sudoku-by-philip-newman/",
+    "title": "Ordered Entropy",
+    "author": "Philip Newman",
+    "published": "2026-04-30",
+    "puzzlePdf": "https://www.gmpuzzles.com/images/puzzles2026/260430-EntropySudoku-OrderedEntropy.pdf",
+    "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2026/260430-EntropySudoku-OrderedEntropy-soln.pdf",
+    "puzzleSha256": "bbeff1858adfd777df4b7ce982610787db889b7d7624659197139c590b2871b3",
+    "solutionSha256": "0ad07e5f1c0ff954c9bd51bc05db8d180a3124a9015351504f11d7c65072d693"
+  },
+  "provenance": "Fresh generation samples blank global-only grids or removes givens from the unchanged published completion. Generated grids are separate puzzles, not transcriptions of the source.",
+  "completionTemplate": "364519728791824365258637491823746159576291834419358672185963247642175983937482516"
+}

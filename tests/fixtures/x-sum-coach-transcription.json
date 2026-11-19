@@ -1,0 +1,269 @@
+{
+  "title": "X sums #3",
+  "author": "GenevieveArchbaker",
+  "source": "https://sudoku.coach/en/s/AsnF",
+  "provenance": "Manually verified native transcription of all sixteen printed outside totals under the author\u2019s explicit X-Sums rules. Original Coach data contains cosmetic text, not typed X-Sums constraints, and remains rejected by automatic import.",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "rules": [
+      {
+        "type": "x-sum",
+        "cells": [
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53
+        ],
+        "direction": "east",
+        "sum": 28
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        "direction": "east",
+        "sum": 28
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          35,
+          34,
+          33,
+          32,
+          31,
+          30,
+          29,
+          28,
+          27
+        ],
+        "direction": "west",
+        "sum": 17
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "direction": "east",
+        "sum": 3
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          2,
+          11,
+          20,
+          29,
+          38,
+          47,
+          56,
+          65,
+          74
+        ],
+        "direction": "south",
+        "sum": 35
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          74,
+          65,
+          56,
+          47,
+          38,
+          29,
+          20,
+          11,
+          2
+        ],
+        "direction": "north",
+        "sum": 9
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          77,
+          68,
+          59,
+          50,
+          41,
+          32,
+          23,
+          14,
+          5
+        ],
+        "direction": "north",
+        "sum": 41
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          4,
+          13,
+          22,
+          31,
+          40,
+          49,
+          58,
+          67,
+          76
+        ],
+        "direction": "south",
+        "sum": 25
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          76,
+          67,
+          58,
+          49,
+          40,
+          31,
+          22,
+          13,
+          4
+        ],
+        "direction": "north",
+        "sum": 25
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          0,
+          9,
+          18,
+          27,
+          36,
+          45,
+          54,
+          63,
+          72
+        ],
+        "direction": "south",
+        "sum": 10
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          5,
+          14,
+          23,
+          32,
+          41,
+          50,
+          59,
+          68,
+          77
+        ],
+        "direction": "south",
+        "sum": 6
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          8,
+          7,
+          6,
+          5,
+          4,
+          3,
+          2,
+          1,
+          0
+        ],
+        "direction": "west",
+        "sum": 22
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          80,
+          79,
+          78,
+          77,
+          76,
+          75,
+          74,
+          73,
+          72
+        ],
+        "direction": "west",
+        "sum": 16
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          80,
+          71,
+          62,
+          53,
+          44,
+          35,
+          26,
+          17,
+          8
+        ],
+        "direction": "north",
+        "sum": 19
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          73,
+          64,
+          55,
+          46,
+          37,
+          28,
+          19,
+          10,
+          1
+        ],
+        "direction": "north",
+        "sum": 21
+      },
+      {
+        "type": "x-sum",
+        "cells": [
+          17,
+          16,
+          15,
+          14,
+          13,
+          12,
+          11,
+          10,
+          9
+        ],
+        "direction": "west",
+        "sum": 8
+      }
+    ]
+  },
+  "solution": "216953874859471362374682951498726135125839746763514298681395427537248619942167583"
+}

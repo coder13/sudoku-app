@@ -6,24 +6,37 @@ The sync entry page is `/sync`. Scanning, recovery, confirmation, invitations, a
 
 Open the same Sudoku site address on both devices when pairing. Both live addresses, `sudoku.klyn.gay` and `klyn-sudoku.pages.dev`, use the same pairing service. For a local UI that pairs with the live app, use the production sync mode below.
 
-Linking combines completed puzzles and puzzles in progress from both devices. Each independent attempt keeps its own URL, even when two attempts use the same grid. If both devices changed the same attempt, sync keeps a conflict copy. Home shows in-progress puzzles by most recent play. Puzzle sharing gives the recipient their own attempt. A device already linked to a separate library cannot join a second library directly.
+Linking combines completed puzzles and puzzles in progress from both devices. Each independent attempt keeps its own URL, even when two attempts use the same grid. If both devices changed the same attempt, sync keeps a conflict copy. Opening the app resumes the current puzzle. **Active Puzzles** shows in-progress puzzles by most recent play. A puzzle link opens the same attempt on devices with access to it. Other recipients get the same givens and rules in a fresh solve. A device already linked to a separate library cannot join a second library directly.
 
 Settings sync includes appearance, highlighting, controls, error checking, timing, puzzle defaults, hints, solver order, and keyboard shortcuts. On first sync, a device contributes its custom choices wherever the library has no saved choice. Existing library choices win a disagreement. After linking, edits merge by setting. When both devices change the same setting offline, the last edit received by the server wins. Panel arrangement, active input tools, and downloaded collections stay on each device.
 
-Changes are saved locally first. Linked devices check for changes on focus, on reconnect, and every five seconds while visible. In **Linked devices**, tap **⋯** on mobile to rename or unlink a device. Clearing a name restores its generated label.
+Changes are saved locally first. Edits share an upload about two seconds after the most recent edit. If edits continue without a break, the app uploads about a minute after the first unsynced edit. Pausing, resuming, or solving a puzzle sends changes right away. Switching puzzles or backgrounding the app can also send pending changes sooner. Elapsed time is included with puzzle saves and does not trigger periodic uploads on its own. Use **Puzzle options → Sync now** to send the current puzzle immediately and check its cloud save. The menu shows saves in progress and sync warnings. If pending changes are offline or fail to sync, the puzzle card shows their status. Failed uploads retry with backoff while the app is open.
+
+A green dot beside the Sudoku wordmark confirms the live connection. The puzzle card shows a device icon when another linked device has the same puzzle open. When another device starts or opens a different active puzzle, choose **Catch up** to open that puzzle here. If live sync is reconnecting, puzzle saves can still sync through periodic cloud checks.
+
+A WebSocket notifies linked devices when puzzles, settings, or the device list change. The same connection shares which puzzle is visible. That information expires when a device leaves or disconnects. Devices still check for missed changes on focus, reconnect, and about every five minutes while visible. When the WebSocket is unavailable, visible devices check about every 30 seconds. In **Linked devices**, tap **⋯** on mobile to rename or unlink a device. Clearing a name restores its generated label.
 
 ## Run locally
 
-From the repository root, build the client with the Rust WebAssembly target installed. Wrangler serves both the client and the sync Worker.
+From the repository root, build the client with the Rust WebAssembly target installed. Wrangler serves the client and sync API through Pages. A second Worker hosts the Durable Object that forwards WebSocket notifications.
 
 ```sh
 npm ci
 npm run build:cloudflare
 npx wrangler d1 migrations apply DB --local
+```
+
+Run the notification Worker in one terminal and Pages in another.
+
+```sh
+npx wrangler dev --config cloudflare/wrangler.sync-events.jsonc --port 8790
+```
+
+```sh
 npx wrangler pages dev
 ```
 
-For UI iteration, leave Pages dev on port 8788 and run `npm run dev` in a second terminal. Open `http://127.0.0.1:8766/sync`. Vite hot-reloads the interface and forwards sync requests to the local Worker. Use the HTTPS branch preview to pair a physical phone with a computer.
+For UI iteration, leave Pages dev on port 8788 and run `npm run dev` in another terminal. Open `http://127.0.0.1:8766/sync`. Vite hot-reloads the interface and forwards sync requests to the local Worker. Use the HTTPS branch preview to pair a physical phone with a computer.
 
 ## Test the local UI with production sync
 
@@ -37,9 +50,9 @@ Vite serves the UI locally and forwards sync requests to the deployed Pages Work
 
 ## Preview a pull request
 
-The [Cloudflare Pages workflow](../.github/workflows/cloudflare-pages.yml) builds the static app and its sync Worker together on pull requests from branches in this repository. Open the run summary for the `pr-<number>.klyn-sudoku.pages.dev` link. Use that same address to pair two fresh browser profiles and confirm that a move appears on the second device. The preview URL stays the same across pushes so each browser retains its device credentials.
+The [Cloudflare Pages workflow](../.github/workflows/cloudflare-pages.yml) builds the static app and its sync Worker together on pull requests from branches in this repository. Open the run summary for the `pr-<number>.klyn-sudoku.pages.dev` link. Use that same address to pair two fresh browser profiles and confirm that a move appears on the second device without refreshing the page. The preview URL stays the same across pushes so each browser retains its device credentials.
 
-Previews share the `sudoku-sync-preview` D1 database through the `DB` binding in `env.preview`. Apply pending migrations before testing a branch that needs them.
+Previews share the `sudoku-sync-preview` D1 database through the `DB` binding in `env.preview`. The preview and production Pages deployments bind to the existing `klyn-sudoku-sync-events` Worker. It scopes notifications by library ID. Apply pending preview migrations before testing a branch that needs them.
 
 ```sh
 npx wrangler d1 migrations apply sudoku-sync-preview --env preview --remote
@@ -54,6 +67,8 @@ For a release that changes the database schema, apply the migration before mergi
 ```sh
 npx wrangler d1 migrations apply sudoku-sync-prod --remote
 ```
+
+When the notification Worker changes, deploy it separately with `npx wrangler deploy --config cloudflare/wrangler.sync-events.jsonc`.
 
 To retry a release, run **Cloudflare Pages** from the Actions tab and select `main`.
 

@@ -1,35 +1,130 @@
 import type { VariantRule } from './engine.ts'
 
-export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'x-sum' }>
+export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-killer' | 'x-sum' | 'skyscrapers' }>
+const ORTHOGONAL_CLUES = {
+  sandwich: { prefix: 'S', name: 'Sandwich' },
+  'x-sum': { prefix: 'X', name: 'X-Sums' },
+  skyscrapers: { prefix: 'Sk', name: 'Skyscrapers' },
+} as const
 export type OutsideSide = 'top' | 'right' | 'bottom' | 'left'
-const SIDES = { south: 'top', west: 'right', north: 'bottom', east: 'left' } as const
+type Direction = Extract<VariantRule, { direction: string }>['direction']
+const DELTAS: Record<Direction, readonly [number, number]> = {
+  north: [-1, 0],
+  east: [0, 1],
+  south: [1, 0],
+  west: [0, -1],
+  'north-east': [-1, 1],
+  'south-east': [1, 1],
+  'south-west': [1, -1],
+  'north-west': [-1, -1],
+}
 
-/** A full row or column, in the order seen from its printed outside clue. */
-export function validOutsideRay(cells: readonly number[], direction: string) {
-  if (!Array.isArray(cells) || cells.length !== 9) return false
+export function clueDelta(direction: Direction) {
+  return DELTAS[direction]
+}
+
+/** A complete ray from its first edge cell to the opposite edge, in clue order. */
+export function validOutsideRay(cells: readonly number[], direction: string, diagonal = false) {
+  if (typeof direction !== 'string' || !Array.isArray(cells) || !cells.length || !Object.hasOwn(DELTAS, direction)) return false
+  const [dr, dc] = DELTAS[direction as Direction]
+  if (Boolean(dr && dc) !== diagonal) return false
   const first = cells[0]
   if (!Number.isInteger(first) || first < 0 || first >= 81) return false
-  const step = direction === 'south' && first < 9 ? 9 : direction === 'north' && first >= 72 ? -9
-    : direction === 'east' && first % 9 === 0 ? 1 : direction === 'west' && first % 9 === 8 ? -1 : 0
-  return step !== 0 && cells.every((cell, index) => cell === first + index * step)
-}
-
-export function outsideClueLabel(rule: OutsideRule) {
-  const side = SIDES[rule.direction], first = rule.cells[0]
-  return `Sandwich ${rule.sum}, ${side} of ${side === 'top' || side === 'bottom' ? 'column ' + (first % 9 + 1) : 'row ' + (Math.floor(first / 9) + 1)}: digits strictly between 1 and 9 sum to ${rule.sum}; 1 and 9 are excluded.`
-}
-
-/** Keep repeated edge clues in separate lanes without moving grid coordinates. */
-export function outsideClueLayout(rules?: readonly VariantRule[]) {
-  const sides = { top: [], right: [], bottom: [], left: [] } as Record<OutsideSide, { rule: OutsideRule; index: number; lane: number }[]>
-  const depths = { top: 0, right: 0, bottom: 0, left: 0 }
-  for (const rule of rules ?? []) {
-    if (rule.type !== 'sandwich') continue
-    const side = SIDES[rule.direction]
-    const index = side === 'top' || side === 'bottom' ? rule.cells[0] % 9 : Math.floor(rule.cells[0] / 9)
-    const lane = sides[side].filter(clue => clue.index === index).length
-    sides[side].push({ rule, index, lane })
-    depths[side] = Math.max(depths[side], (lane + 1) * .7)
+  let row = Math.floor(first / 9),
+    column = first % 9
+  const inside = (r: number, c: number) => r >= 0 && r < 9 && c >= 0 && c < 9
+  if (inside(row - dr, column - dc)) return false
+  for (const cell of cells) {
+    if (!inside(row, column) || cell !== row * 9 + column) return false
+    row += dr
+    column += dc
   }
-  return { sides, depths }
+  return !inside(row, column)
+}
+
+const cellName = (cell: number) => `R${Math.floor(cell / 9) + 1}C${(cell % 9) + 1}`
+export function outsideClueLabel(rule: OutsideRule) {
+  if (rule.type === 'little-killer')
+    return `Little Killer ${rule.sum}, ${rule.direction.replace('-', ' ')} from ${cellName(rule.cells[0])} to ${cellName(rule.cells[rule.cells.length - 1])}: all indicated digits sum to ${rule.sum}. Digits may repeat if the other puzzle rules allow it.`
+  const side =
+    rule.direction === 'south'
+      ? 'top'
+      : rule.direction === 'north'
+        ? 'bottom'
+        : rule.direction === 'east'
+          ? 'left'
+          : 'right'
+  const location = `${side} of ${side === 'top' || side === 'bottom' ? 'column ' + ((rule.cells[0] % 9) + 1) : 'row ' + (Math.floor(rule.cells[0] / 9) + 1)}`
+  if (rule.type === 'skyscrapers')
+    return `Skyscrapers ${rule.count}, ${location}: looking from ${cellName(rule.cells[0])}, count the first building and each new tallest building. Exactly ${rule.count} ${rule.count === 1 ? 'building is' : 'buildings are'} visible.`
+  return rule.type === 'x-sum'
+    ? `X-Sum ${rule.sum}, ${location}: the first digit counts how many cells to add, including itself, starting at ${cellName(rule.cells[0])}.`
+    : `Sandwich ${rule.sum}, ${location}: digits strictly between 1 and 9 sum to ${rule.sum}; 1 and 9 are excluded.`
+}
+
+/** Prefix otherwise ambiguous outside numbers when orthogonal rule families are combined. */
+export function outsideClueLegend(rules?: readonly VariantRule[]) {
+  const active = (Object.keys(ORTHOGONAL_CLUES) as (keyof typeof ORTHOGONAL_CLUES)[])
+    .filter(type => rules?.some(rule => rule.type === type))
+  return active.length > 1 ? active.map(type => `${ORTHOGONAL_CLUES[type].prefix} = ${ORTHOGONAL_CLUES[type].name}`) : []
+}
+
+/** Lay out all edge and corner labels in cell coordinates. Repeated anchors move outward along their ray. */
+export function outsideClueLayout(rules?: readonly VariantRule[]) {
+  const clues: {
+    rule: OutsideRule
+    lane: number
+    x: number
+    y: number
+    dr: number
+    dc: number
+    label: string
+    arrow?: { x1: number; y1: number; x2: number; y2: number }
+  }[] = []
+  const depths = { top: 0, right: 0, bottom: 0, left: 0 }
+  const legend = outsideClueLegend(rules)
+  const anchors = new Map<string, { lane: number; extent: number }>()
+  for (const rule of rules ?? []) {
+    if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'x-sum' && rule.type !== 'skyscrapers') continue
+    const [dr, dc] = clueDelta(rule.direction),
+      first = rule.cells[0]
+    const ox = (first % 9) + 0.5 - dc,
+      oy = Math.floor(first / 9) + 0.5 - dr
+    const key = `${ox},${oy}`,
+      prior = anchors.get(key) ?? { lane: 0, extent: 0 }
+    if (rule.type !== 'little-killer') {
+      const x = (first % 9) + 0.5 - dc * (0.85 + prior.extent),
+        y = Math.floor(first / 9) + 0.5 - dr * (0.85 + prior.extent)
+      const label = (legend.length ? ORTHOGONAL_CLUES[rule.type].prefix : '') + (rule.type === 'skyscrapers' ? rule.count : rule.sum)
+      clues.push({ rule, lane: prior.lane, x, y, dr, dc, label })
+      const extent = prior.extent + (legend.length ? 0.9 : 0.7)
+      if (dr === 1) depths.top = Math.max(depths.top, extent)
+      if (dr === -1) depths.bottom = Math.max(depths.bottom, extent)
+      if (dc === 1) depths.left = Math.max(depths.left, extent)
+      if (dc === -1) depths.right = Math.max(depths.right, extent)
+      anchors.set(key, { lane: prior.lane + 1, extent })
+    } else {
+      const x = ox - dc * prior.extent,
+        y = oy - dr * prior.extent
+      const label = { x: x - dc * 0.18, y: y - dr * 0.18 }
+      clues.push({
+        rule,
+        lane: prior.lane,
+        ...label,
+        dr,
+        dc,
+        label: String(rule.sum),
+        arrow: { x1: x + dc * 0.2, y1: y + dr * 0.2, x2: x + dc * 0.45, y2: y + dr * 0.45 },
+      })
+      // Include the complete glyph and arrow in the gutters, including corner clues.
+      depths.left = Math.max(depths.left, -label.x + 0.45)
+      depths.right = Math.max(depths.right, label.x + 0.45 - 9)
+      depths.top = Math.max(depths.top, -label.y + 0.3)
+      depths.bottom = Math.max(depths.bottom, label.y + 0.3 - 9)
+      anchors.set(key, { lane: prior.lane + 1, extent: prior.extent + 1.2 })
+    }
+  }
+  for (const side of Object.keys(depths) as OutsideSide[])
+    depths[side] = Math.max(0, Math.ceil((depths[side] - 1e-10) * 10) / 10)
+  return { clues, depths, legend }
 }

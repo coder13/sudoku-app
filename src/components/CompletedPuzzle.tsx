@@ -15,6 +15,7 @@ import { collectionProgress, findCollectionGame, getGameCollection, nextCollecti
 import { openNextCollectionPuzzle } from '../sudoku/collection-play'
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { useOnlineStatus } from './useOnlineStatus'
+import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 
 function activePuzzleSummary(game: Game) {
   const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
@@ -24,9 +25,10 @@ function activePuzzleSummary(game: Game) {
 }
 
 /** Show solve results and continue with the next active puzzle, a collection puzzle, or a new puzzle. */
-export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, actionsTarget, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
+export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, actionsTarget, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
   game: Game
   games: Game[]
+  catchUpPuzzle?: Game
   preferredDifficulty: DifficultyPreference
   ratingPending: boolean
   shortcutEnabled: boolean
@@ -56,9 +58,10 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
   const progress = collectionEntry && collectionDifficulty
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = generationVariant(game.variant)
+  const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
   const needsChoice = !inCollection && Boolean(game.variant && !recipe)
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
-  const nextActive = inProgress(games).find(puzzle =>
+  const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
     puzzle.id !== game.id && puzzle.id !== nextCollectionAttempt?.id && puzzle.source !== 'draft')
   const resumeFirst = Boolean(nextActive && (!inCollection || !collectionNext))
   const nextDifficulty = variantDifficulty(recipe, preferredDifficulty)
@@ -92,8 +95,8 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(preferredDifficulty, undefined, recipe)
-  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, generate, onChooseVariant, online, preferredDifficulty])
+    } else void generate(preferredDifficulty, undefined, recipe, { ruleset })
+  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, generate, onChooseVariant, online, preferredDifficulty])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext
@@ -102,7 +105,7 @@ export function CompletedPuzzle({ game, games, preferredDifficulty, ratingPendin
     <Button variant={resumeFirst ? 'primary' : 'secondary'} className="completion-resume"
       aria-keyshortcuts={resumeFirst ? shortcutLabel(shortcuts.nextPuzzle) : undefined}
       disabled={!canResume} onClick={resume}>
-      <span><strong>Play next active puzzle</strong><small>{activePuzzleSummary(nextActive)}</small></span>
+      <span><strong>{catchUpPuzzle ? 'Catch up' : 'Play next active puzzle'}</strong><small>{activePuzzleSummary(nextActive)}</small></span>
       <ArrowRight size={18} aria-hidden="true" />
     </Button>
   )

@@ -1,0 +1,342 @@
+{
+  "source": "https://sudoku.coach/en/s/DLeM",
+  "metadata": {
+    "sudoku_id": "DLeM",
+    "sudoku": "SCv7_32_f2eab521ae1j0445vv5ptdot2bc88s7lt18mu78er132ccshep1dkk9rvnnoceimhkq8pp86shuvmnm8gchr9jjc3r6bn1ia46qed85rndmteuunj37fek5dhpg3ck5h1j0rvrc21amf3nnafdhqqtk0q3lvchbv97btlmn1dain1gfa39gtfe768lturgmj4fmbdffho412lrvm3bgt1m3tn34ks9vso751ib4rc2fhnmqvgkbn7qapm2u7bjs1amrr4akd4opv6edmvgvmgfekphtt7dc3u0uekn2aeokuaumrgt0mdvd8bvuvakhe14btj4nubbtg3as0ie2ah2qj109mb15g552cg60psh9sjh0ood9ciq6k8oj10aml32h14i1es9bsd9s890vpo2ifdluk97sqpsg2tj3psnphuhvkrkf7sqcfqfel7kqtte6u0a0piockl1dihhmnv1eb165g4aafh9i3g141a8j4a1a7c941j4i2j8o6b637j2lr8223lqi84iuc0kb278nouelku7rao03ni",
+    "solution": "678243195953718624142965738487531962365492871291876453826157349534689217719324586",
+    "name": "Symmetrical Inside",
+    "author": null,
+    "description": "Digits outside the grid must appear within the first three cells of the indicated section.\n\n-Little killer is not part of the rules and was only used for the cosmetic arrow.",
+    "difficulty": 5,
+    "comment_count": 1,
+    "solve_count": 27,
+    "likes": 3,
+    "user_like": 0,
+    "host_id": 20087,
+    "host_name": "Chefofdeath",
+    "custom_constraints": true,
+    "published": true,
+    "published_date_utc": "2026-02-27 03:43:23",
+    "open_graph_image": 1,
+    "blocked": false,
+    "sudokuHash": "DLeM"
+  },
+  "decoded": {
+    "gridSize": 9,
+    "givenConstraints": [
+      {
+        "id": 10,
+        "type": "littleKiller",
+        "segments": [
+          {
+            "cells": [
+              [
+                9,
+                -1
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                7,
+                -1
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                1,
+                -1
+              ]
+            ],
+            "parameters": {
+              "positive": false,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                -1,
+                -1
+              ]
+            ],
+            "parameters": {
+              "positive": false,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                -1,
+                1
+              ]
+            ],
+            "parameters": {
+              "positive": false,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                -1,
+                7
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                -1,
+                9
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                9,
+                9
+              ]
+            ],
+            "parameters": {
+              "positive": false,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                2,
+                9
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 0
+            }
+          },
+          {
+            "cells": [
+              [
+                9,
+                2
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 0
+            }
+          }
+        ],
+        "settings": {}
+      },
+      {
+        "id": 11,
+        "type": "cosmeticText",
+        "segments": [
+          {
+            "cells": [
+              [
+                9.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "257"
+            }
+          },
+          {
+            "cells": [
+              [
+                7.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "168"
+            }
+          },
+          {
+            "cells": [
+              [
+                1.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "678"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "256"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                1.5
+              ]
+            ],
+            "parameters": {
+              "text": "158"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                7.5
+              ]
+            ],
+            "parameters": {
+              "text": "589"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                9.5
+              ]
+            ],
+            "parameters": {
+              "text": "367"
+            }
+          },
+          {
+            "cells": [
+              [
+                2.5,
+                9.5
+              ]
+            ],
+            "parameters": {
+              "text": "3"
+            }
+          },
+          {
+            "cells": [
+              [
+                9.5,
+                2.5
+              ]
+            ],
+            "parameters": {
+              "text": "2"
+            }
+          },
+          {
+            "cells": [
+              [
+                9.5,
+                9.5
+              ]
+            ],
+            "parameters": {
+              "text": "1"
+            }
+          }
+        ],
+        "settings": {
+          "textSize": 55
+        }
+      },
+      {
+        "id": 12,
+        "type": "renban",
+        "segments": [
+          {
+            "cells": [
+              62,
+              71,
+              80,
+              79,
+              78
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              35,
+              44,
+              53
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              75,
+              76,
+              77
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              42,
+              51,
+              50,
+              59,
+              58
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              31,
+              30,
+              39
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              3,
+              4,
+              5
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              27,
+              36,
+              45
+            ],
+            "parameters": {}
+          }
+        ],
+        "settings": {}
+      }
+    ]
+  }
+}

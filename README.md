@@ -67,7 +67,7 @@ The share menu copies a link to this app, an 81-character string, a nine-line gr
 
 Variant puzzles use an app link that carries the givens and rules. Classic share formats carry the givens. Import also accepts Sudoku Coach `SCv7_32` codes and direct links, short Sudoku Exchange grids, f-puzzles exports, and SudokuPad links that contain an SCF or f-puzzles code.
 
-Imported puzzles can combine Jigsaw regions, Killer cages, either diagonal, extra regions, Anti-Knight, Anti-King, Non-Consecutive, thermometers, arrows, Kropki dots, Quadruple circles and Odd/Even markers. White and black dots keep separate negative-rule settings. Coach Non-Consecutive puzzles preserve their white-dot exceptions. Quadruple, Odd/Even, Anti-King and Non-Consecutive are available through import while their New puzzle recipes are being calibrated.
+Native and shared puzzles can combine all 27 supported rule types with Jigsaw regions, including line, Clone and outside-clue families. Supported Coach and f-puzzles imports preserve their encoded rules; unsupported encoded rules reject explicitly. White and black dots keep separate negative-rule settings, and Coach Non-Consecutive puzzles preserve their white-dot exceptions. New Puzzle offers only calibrated levels for each released family. See the [family inventory and generation status](SUDOKU_ENGINE_UI_PARITY.md) for current choices and remaining recipes.
 
 Preview and Play explain every active rule. Mixed puzzles retain their full definitions when saved or shared; after completion, choose another puzzle from the puzzle chooser. The app reports rules it cannot play. When you import a Sudoku Coach Current State code or a HoDoKu library line, you get the starting puzzle. Your progress stays in your browser.
 

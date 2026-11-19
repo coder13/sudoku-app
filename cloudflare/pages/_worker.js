@@ -38,7 +38,14 @@ async function input(request, limit = 2048) {
   throw new HttpError(400, 'Invalid request.')
 }
 
-async function api(request, db, url) {
+async function api(request, { DB: db, SYNC_EVENTS: events }, ctx, url) {
+  function notify(library, message, device) {
+    if (!events) return
+    ctx.waitUntil(Promise.resolve().then(async () => {
+      const id = typeof library === 'function' ? await library() : library
+      if (id) await events.getByName(id).notify(message, device)
+    }).catch(() => console.warn('Could not deliver a sync notification.')))
+  }
   const path = url.pathname.slice(base.length)
   const method = request.method
   if (path === 'health') {
@@ -76,10 +83,25 @@ async function api(request, db, url) {
         .bind(id, tokenHash, name, now, key).run()
     }
     if (!result.meta.changes) throw new HttpError(403, 'The link or recovery key is invalid or expired.')
+    notify(() => db.prepare('SELECT library FROM devices WHERE id = ?').bind(id).first('library'), 'devices')
     return json({ id, token }, 201)
   }
-  if (!/^(invitations|devices(?:\/[\w-]+)?|settings|changes|puzzles\/[\w-]+)$/.test(path)) throw new HttpError(404, 'Not found.')
-  const raw = request.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1]
+  const upgrade = path === 'live'
+  if (!upgrade && !/^(invitations|devices(?:\/[\w-]+)?|settings|changes|puzzles\/[\w-]+)$/.test(path)) throw new HttpError(404, 'Not found.')
+  let raw = request.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1]
+  let wantsPresence = false
+  if (upgrade) {
+    if (!events) throw new HttpError(503, 'Live sync is unavailable.')
+    if (method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
+      throw new HttpError(426, 'Expected a WebSocket upgrade.')
+    }
+    if (request.headers.get('Origin') !== url.origin) throw new HttpError(403, 'Unexpected request origin.')
+    // Browsers cannot set Authorization on a WebSocket. Use the unselected
+    // subprotocol for the token so it stays out of request URLs and responses.
+    const [protocol, token, feature] = (request.headers.get('Sec-WebSocket-Protocol') ?? '').split(',').map(value => value.trim())
+    raw = protocol === 'sudoku-sync' && secretPattern.test(token ?? '') ? token : undefined
+    wantsPresence = feature === 'sudoku-sync-presence'
+  }
   const includeSettings = path === 'changes' && url.searchParams.has('settings')
   const authQuery = includeSettings
     ? 'SELECT devices.id, library, settings FROM devices JOIN libraries ON libraries.id = devices.library WHERE token_hash = ?'
@@ -87,6 +109,13 @@ async function api(request, db, url) {
   const device = raw && await db.prepare(authQuery).bind(await digest(raw)).first()
   if (!device) throw new HttpError(401, 'This device is no longer linked.')
   const { library } = device
+  if (upgrade) {
+    const headers = new Headers({ Upgrade: 'websocket', 'X-Sync-Device': device.id })
+    if (wantsPresence) headers.set('X-Sync-Presence', '1')
+    return events.getByName(library).fetch(new Request(request.url, {
+      headers,
+    }))
+  }
   if (path === 'invitations' && method === 'POST') {
     const ticket = secret(), now = Date.now(), expires = now + 10 * 60_000
     await db.batch([
@@ -105,10 +134,13 @@ async function api(request, db, url) {
     const name = deviceName(id, data.name)
     const result = await db.prepare('UPDATE devices SET name = ? WHERE library = ? AND id = ?').bind(name, library, id).run()
     if (!result.meta.changes) throw new HttpError(404, 'Device not found.')
+    notify(library, 'devices')
     return json({ name })
   }
   if (path.startsWith('devices/') && method === 'DELETE') {
-    await db.prepare('DELETE FROM devices WHERE library = ? AND id = ?').bind(library, path.slice(8)).run()
+    const id = path.slice(8)
+    const result = await db.prepare('DELETE FROM devices WHERE library = ? AND id = ?').bind(library, id).run()
+    if (result.meta.changes) notify(library, 'revoked', id)
     return json({ ok: true })
   }
   if (path === 'settings' && method === 'PATCH') {
@@ -126,6 +158,7 @@ async function api(request, db, url) {
       ' WHERE id = ? AND length(CAST(' + update + ' AS BLOB)) <= 65536 RETURNING settings')
       .bind(JSON.stringify(seeds), JSON.stringify(edits), library, JSON.stringify(seeds), JSON.stringify(edits)).first('settings')
     if (result == null) throw new HttpError(413, 'Settings are too large to sync.')
+    notify(library, 'changes', device.id)
     return json(JSON.parse(result))
   }
   if (path === 'changes' && method === 'GET') {
@@ -162,6 +195,7 @@ async function api(request, db, url) {
         : await db.prepare('UPDATE puzzles SET revision = revision + 1, sequence = ' + sequence + ', hash = ?, played = ?, elapsed = ?, body = ? WHERE library = ? AND id = ? AND revision = ? AND body IS NOT NULL')
           .bind(library, hash, played, game?.elapsed ?? 0, body, library, id, revision).run()
       if (!result.meta.changes) throw new HttpError(409, 'Puzzle changed on another device.')
+      notify(library, 'changes', device.id)
       return json({ revision: revision + 1 })
     }
   }
@@ -169,11 +203,11 @@ async function api(request, db, url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url)
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request)
     if (!url.pathname.startsWith(base)) return json({ error: 'Not found.' }, 404)
-    try { return await api(request, env.DB, url) }
+    try { return await api(request, env, ctx, url) }
     catch (error) {
       return error instanceof HttpError ? json({ error: error.message }, error.status)
         : json(url.pathname === base + 'health' ? { ok: false } : { error: 'Sync service unavailable.' }, 503)

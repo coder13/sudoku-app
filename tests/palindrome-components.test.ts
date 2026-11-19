@@ -12,12 +12,14 @@ import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { assertPalindromeProof } from './helpers/palindrome-truth.ts'
+import { generationVariant, isVariantId, variantDifficulties } from '../src/sudoku/variants.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/palindrome-clover.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 const corpus = JSON.parse(readFileSync(new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8')) as Record<string, EngineLessonExample>
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
-let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, HintCard: Component, SolutionPath: Component
+let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, HintCard: Component, SolutionPath: Component, VariantPreview: Component, CompletedPuzzle: Component
+let renderNewPuzzle: (path: string, preference?: { variant: string; difficulty: string }) => Promise<string>
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false, watch: null }, optimizeDeps: { noDiscovery: true, include: [] } })
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
@@ -25,8 +27,51 @@ before(async () => {
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
 })
 after(async () => { await server?.close() })
+
+test('New Puzzle exposes both checked Palindrome levels and draws complete mirrored paths', async () => {
+  assert.ok(isVariantId('palindrome'))
+  assert.deepEqual(variantDifficulties('palindrome'), ['easy', 'medium'])
+  const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'palindrome' }))
+  assert.equal([...preview.matchAll(/class="variant-palindrome"/g)].length, 2)
+  for (const points of ['0.5,0.5 1.5,1.5 2.5,2.5 3.5,3.5 4.5,3.5 5.5,3.5', '3.5,5.5 4.5,5.5 5.5,5.5 6.5,6.5 7.5,7.5 8.5,8.5'])
+    assert.ok(preview.includes(`points="${points}"`))
+  const chooser = await renderNewPuzzle('/puzzles/new?variant=palindrome&ruleset=dutch')
+  assert.match(chooser, /Choose a variant/)
+  assert.match(chooser, /\/puzzles\/new\/difficulty\?variant=palindrome/)
+  assert.doesNotMatch(chooser, /ruleset=dutch/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=palindrome')
+  assert.match(difficulty, /Choose difficulty/); assert.match(difficulty, /\/puzzles\/new\?variant=palindrome/)
+  assert.match(difficulty, /value="easy"/); assert.match(difficulty, /value="medium"/)
+  assert.doesNotMatch(difficulty, /value="hard"/)
+  const saved = await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'palindrome', difficulty: 'easy' })
+  assert.match(saved, /Start easy puzzle/)
+})
+
+test('completion offers another pure Palindrome while retaining the original mixed Newman rules', () => {
+  for (const name of ['clover', 'newman']) {
+    const { puzzle, solution } = JSON.parse(readFileSync(new URL(`./fixtures/palindrome-${name}.json`, import.meta.url), 'utf8')) as typeof fixture
+    const game = { ...makeGame('palindrome-complete-' + name, 'Palindrome', puzzle.givens, 'imported'),
+      variant: { id: name === 'clover' ? 'palindrome' as const : 'mixed' as const, puzzle, solution } }
+    game.position.entries = [...solution].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
+    const original = structuredClone(game.variant)
+    const html = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
+      ratingPending: false, shortcutEnabled: false, showGuides: true, onResumePuzzle() {}, onChooseDifficulty() {}, onChooseVariant() {} }))
+    if (name === 'clover') {
+      assert.equal(generationVariant(game.variant), 'palindrome')
+      assert.match(html, /Next medium puzzle/); assert.match(html, /Choose difficulty/); assert.match(html, /Choose variant/)
+    } else {
+      assert.equal(generationVariant(game.variant), undefined)
+      assert.match(html, /Choose another puzzle/); assert.doesNotMatch(html, /Next medium puzzle/)
+      assert.ok(game.variant.puzzle.rules!.some(rule => rule.type === 'anti-knight'))
+    }
+    assert.deepEqual(game.variant, original)
+  }
+})
 
 test('desktop and mobile grids draw every published line and name exact mirrored partners', () => {
   for (const name of ['clover', 'newman']) {

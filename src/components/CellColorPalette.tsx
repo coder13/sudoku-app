@@ -15,7 +15,7 @@ type Props = {
   onStop: () => void
   onClear: () => void
   canContinueGroup: boolean
-  groupMessage: string
+  groupMessage?: string
   onContinueGroup: () => void
 }
 
@@ -70,7 +70,6 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
       <p aria-live="polite">{instructions}</p>
       <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} onSwitchShade={onSwitchShade} />
-      <p className="color-pair-help">Use light and dark shades of one color to mark the two sides of a strong link.</p>
       <div className="cell-color-actions">
         <Button type="button" aria-pressed={brush === 0} aria-label={`Erase ${target} color`}
           disabled={disabled} onClick={() => onColor(0)}><Eraser size={15} aria-hidden="true" /> Erase</Button>
@@ -80,10 +79,10 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
           aria-label="Stop coloring" aria-keyshortcuts="Escape" onClick={onStop}>Done</Button>}
       </div>
       <div className="color-link-tools">
-        <p className="color-link-message" id={groupMessageId} aria-live="polite">{groupMessage}</p>
+        <p className={groupMessage ? 'color-link-message' : 'sr-only'} id={groupMessageId} aria-live="polite">{groupMessage}</p>
         <Button type="button" className="color-strong-links" disabled={disabled || !canContinueGroup}
           title="Follow strong links from your starting mark, keeping its color pair and existing shades."
-          aria-describedby={groupMessageId} onClick={onContinueGroup}><Link2 size={16} aria-hidden="true" /> Continue this group</Button>
+          aria-describedby={groupMessage ? groupMessageId : undefined} onClick={onContinueGroup}><Link2 size={16} aria-hidden="true" /> Continue this group</Button>
       </div>
     </section>
   )

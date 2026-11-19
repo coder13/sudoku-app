@@ -14,6 +14,7 @@ type Props = {
   sketch: ReturnType<typeof useChainSketch>
   onApply: (actions: readonly DeductionAction[]) => void
   shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'newChain'>
+  compact?: boolean
   digitHighlight?: { digit: number | null; onChange: (digit: number | null) => void }
   unavailable?: string
   inspection?: ChainInspection
@@ -40,13 +41,13 @@ function LinkLegend({ notation = false }: { notation?: boolean }) {
   </div>
 }
 
-export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavailable, inspection }: Props) {
+export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighlight, unavailable, inspection }: Props) {
   if (inspection) {
     const { deduction, links, explanation, cellReferenceStyle, difficulty } = inspection
     const nameCell = cellReferenceStyle === undefined ? cellName : (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
     return <section className="chains-panel" aria-label="Chains">
       <h2>{techniqueLabel(deduction.technique)}</h2>
-      {links.length > 0 && <LinkLegend />}
+      {!compact && links.length > 0 && <LinkLegend />}
       {explanation && <p>{explanation}</p>}
       <ul className="chain-results">{deductionResults(deduction.actions, inspection).map((result) => <li key={result}>{result}</li>)}</ul>
       {links.length > 0 && <details className="chain-links">
@@ -71,16 +72,18 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
     <div className="chain-settings">
       <label>
         <span>Type</span>
-        <select value={active.type} disabled={sketch.hasLinks} onChange={(event) => {
-          sketch.setType(event.target.value === 'medusa' ? 'medusa' : 'alternating')
-        }}>
-          <option value="alternating">Alternating (XY, AIC)</option>
-          <option value="medusa">3D Medusa</option>
-        </select>
+        <span className="chain-select-input">
+          <select value={active.type} disabled={sketch.hasLinks} onChange={(event) => {
+            sketch.setType(event.target.value === 'medusa' ? 'medusa' : 'alternating')
+          }}>
+            <option value="alternating">Alternating (XY, AIC)</option>
+            <option value="medusa">3D Medusa</option>
+          </select>
+        </span>
       </label>
       <label>
         <span>{medusa ? 'Color A' : 'Color'}</span>
-        <span className="chain-color-input">
+        <span className="chain-select-input chain-color-input">
           <i style={{ backgroundColor: chainColor(active.color) }} aria-hidden="true" />
           <select value={active.color} onChange={(event) => sketch.setColor(CHAIN_COLORS[event.target.selectedIndex])}>
             {CHAIN_COLORS.map((color) => <option key={color}>{color}</option>)}
@@ -89,7 +92,7 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
       </label>
       {medusa && <label>
         <span>Color B</span>
-        <span className="chain-color-input">
+        <span className="chain-select-input chain-color-input">
           <i style={{ backgroundColor: chainColor(active.secondColor) }} aria-hidden="true" />
           <select value={active.secondColor} onChange={(event) => sketch.setColor(CHAIN_COLORS[event.target.selectedIndex], true)}>
             {CHAIN_COLORS.map((color) => <option key={color}>{color}</option>)}
@@ -98,13 +101,15 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
       </label>}
     </div>
     <div className="chain-toolbar chain-draw-tools">
-      <Button type="button" variant={sketch.drawing ? 'secondary' : 'primary'}
-        title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={sketch.toggle}>
-        <Link2 size={15} aria-hidden="true" /> {drawLabel}
-      </Button>
-      <div className="chain-edit-actions">
+      <div className="chain-path-actions">
+        <Button type="button" variant={sketch.drawing ? 'secondary' : 'primary'}
+          title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={sketch.toggle}>
+          <Link2 size={15} aria-hidden="true" /> {drawLabel}
+        </Button>
         <Button type="button" disabled={!sketch.drawing || sketch.pending === null}
           title="End path (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</Button>
+      </div>
+      <div className="chain-edit-actions">
         <IconButton type="button" variant="quiet" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
           aria-keyshortcuts="Control+Z Meta+Z"
           disabled={!sketch.canUndo} onClick={sketch.undo}>
@@ -194,7 +199,7 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
                 <VisibilityIcon size={16} aria-hidden="true" />
               </IconButton>
               <IconButton type="button" variant="quiet" aria-label={deleteLabel} title={deleteLabel}
-                disabled={sketch.sketches.length === 1 && edges.length === 0} onClick={() => sketch.deleteSketch(id)}>
+                disabled={sketch.sketches.length === 1 && edges.length === 0 && sketch.pending === null} onClick={() => sketch.deleteSketch(id)}>
                 <Trash2 size={16} aria-hidden="true" />
               </IconButton>
             </div>
@@ -208,7 +213,7 @@ export function ChainsPanel({ sketch, onApply, shortcuts, digitHighlight, unavai
           </li>
         })}
       </ul>
-      {sketch.sketches.some(({ paths }) => paths.length > 0) && <LinkLegend notation />}
+      {!compact && sketch.sketches.some(({ paths }) => paths.length > 0) && <LinkLegend notation />}
     </>}
   </section>
 }

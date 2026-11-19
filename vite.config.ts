@@ -1,4 +1,5 @@
 import { readFileSync, realpathSync } from 'node:fs'
+import type { ClientRequest, IncomingMessage } from 'node:http'
 import { defineConfig, type ProxyOptions } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
@@ -14,6 +15,7 @@ const productionDevAuthorities = new Set([productionDevHost, 'localhost'].map(ho
 const productionSyncProxy: ProxyOptions = {
   target: PRODUCTION_SYNC_ORIGIN,
   changeOrigin: true,
+  ws: true,
   bypass(request) {
     // Preserve the upstream origin check for browser writes from the local UI.
     const { host, origin } = request.headers
@@ -21,10 +23,12 @@ const productionSyncProxy: ProxyOptions = {
     if (!host || !productionDevAuthorities.has(host) || (origin ? origin !== 'http://' + host : !read)) return false
   },
   configure(proxy) {
-    proxy.on('proxyReq', (outgoing, request) => {
+    function prepare(outgoing: ClientRequest, request: IncomingMessage) {
       if (request.headers.origin) outgoing.setHeader('Origin', PRODUCTION_SYNC_ORIGIN)
       outgoing.removeHeader('cookie')
-    })
+    }
+    proxy.on('proxyReq', prepare)
+    proxy.on('proxyReqWs', prepare)
     proxy.on('proxyRes', (incoming) => { delete incoming.headers['set-cookie'] })
   },
 }
@@ -97,7 +101,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
         // Preserve the browser's Host so the local Worker can verify the request origin.
         [productionSync ? '/api/v1/' : '/api/v1']: productionSync
           ? productionSyncProxy
-          : { target: 'http://127.0.0.1:8788', changeOrigin: false },
+          : { target: 'http://127.0.0.1:8788', changeOrigin: false, ws: true },
       },
       strictPort: true,
       fs: { allow: [process.cwd(), realpathSync('node_modules')] },

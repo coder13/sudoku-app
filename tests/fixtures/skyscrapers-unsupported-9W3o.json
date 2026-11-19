@@ -1,0 +1,172 @@
+{
+  "source": "https://sudoku.coach/en/s/9W3o",
+  "metadata": {
+    "sudoku_id": "9W3o",
+    "sudoku": "SCv7_32_f2e9r4m11a140446rtirkrl1soj7jr817baajs1078m0nqman92ibfjr6d1104maopf7ctvuducfjubra1b9e9vt8941608mikr4q1v96k9q1t0tjc1jr7edenhvhdo7bl11k1g2ripia10aqfaugt3hoq3g608tl8d3vkg2le56vlvd8q57bc4h34qmqssr2e0pcaht73355m626242ug1e078g8i08h1jv9sa4pv6kad03p04h1vpja7kb2sli6382vveecc0rcd7he0kf1l4fhp58v0a6c0kh86a7p8stra5ho9crq62j3tni8205kmnj4dqbraatpsr1c9s06i07skpg",
+    "solution": "4573261764213512367545124376631754234516272765413",
+    "name": "Standard Skyscraper 2",
+    "author": null,
+    "description": "Skyscrapers: Digits displayed on the grid also represent heights of \"skyscrapers\". Larger values being taller skyscrapers than smaller ones. Clues outside the grid indicate the number of \"skyscrapers\" visible from that direction.",
+    "difficulty": 5,
+    "comment_count": 3,
+    "solve_count": 50,
+    "likes": 14,
+    "user_like": 0,
+    "host_id": 22794,
+    "host_name": "Pruz",
+    "custom_constraints": true,
+    "published": true,
+    "published_date_utc": "2025-09-18 15:07:45",
+    "open_graph_image": 1,
+    "blocked": false,
+    "sudokuHash": "9W3o"
+  },
+  "decoded": {
+    "gridSize": 7,
+    "regions": [],
+    "givenConstraints": [
+      {
+        "id": 10,
+        "type": "cosmeticText",
+        "segments": [
+          {
+            "cells": [
+              [
+                3.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "3"
+            }
+          },
+          {
+            "cells": [
+              [
+                5.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "2"
+            }
+          },
+          {
+            "cells": [
+              [
+                7.5,
+                4.5
+              ]
+            ],
+            "parameters": {
+              "text": "4"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                2.5
+              ]
+            ],
+            "parameters": {
+              "text": "5"
+            }
+          },
+          {
+            "cells": [
+              [
+                4.5,
+                -0.5
+              ]
+            ],
+            "parameters": {
+              "text": "2"
+            }
+          },
+          {
+            "cells": [
+              [
+                7.5,
+                1.5
+              ]
+            ],
+            "parameters": {
+              "text": "3"
+            }
+          },
+          {
+            "cells": [
+              [
+                7.5,
+                2.5
+              ]
+            ],
+            "parameters": {
+              "text": "3"
+            }
+          },
+          {
+            "cells": [
+              [
+                7.5,
+                6.5
+              ]
+            ],
+            "parameters": {
+              "text": "5"
+            }
+          },
+          {
+            "cells": [
+              [
+                5.5,
+                7.5
+              ]
+            ],
+            "parameters": {
+              "text": "4"
+            }
+          },
+          {
+            "cells": [
+              [
+                0.5,
+                7.5
+              ]
+            ],
+            "parameters": {
+              "text": "4"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                5.5
+              ]
+            ],
+            "parameters": {
+              "text": "5"
+            }
+          },
+          {
+            "cells": [
+              [
+                -0.5,
+                0.5
+              ]
+            ],
+            "parameters": {
+              "text": "3"
+            }
+          }
+        ],
+        "settings": {
+          "gridZoomOut": 1,
+          "colour": "#595959"
+        }
+      }
+    ]
+  }
+}

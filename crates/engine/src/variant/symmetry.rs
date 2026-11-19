@@ -18,39 +18,52 @@ pub fn canonical_variant(puzzle: &VariantPuzzle) -> Result<VariantPuzzle, Varian
     Ok(key(puzzle))
 }
 
-// Drawing paths do not change a puzzle's logical identity. Keep them in the
-// public canonical definition, but ignore them when excluding played puzzles.
+// Played-puzzle keys may normalize equivalent rule descriptions. Public
+// canonical definitions keep their authored paths and group structure.
+#[cfg(any(feature = "generation", test))]
+mod played;
+
 #[cfg(any(feature = "generation", test))]
 pub(super) fn generation_key(puzzle: &VariantPuzzle) -> VariantPuzzle {
-    let mut logical = puzzle.clone();
-    for rule in &mut logical.rules {
-        match rule {
-            PuzzleRule::Palindrome { segments, .. }
-            | PuzzleRule::Renban { segments, .. }
-            | PuzzleRule::RegionSum { segments, .. } => *segments = None,
-            _ => {}
-        }
-    }
-    key(&logical)
+    played::key(puzzle)
 }
 
 pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
-    let rename_digits = puzzle.rules.iter().all(|rule| {
-        matches!(
-            rule,
-            PuzzleRule::Diagonal { .. }
-                | PuzzleRule::ExtraHouse { .. }
-                | PuzzleRule::AntiKnight {}
-                | PuzzleRule::AntiKing {}
-                | PuzzleRule::Palindrome { .. }
-                | PuzzleRule::Clone { .. }
-        )
-    });
+    key_impl(puzzle, false, |_| {})
+}
+
+fn digit_invariant(rule: &PuzzleRule) -> bool {
+    matches!(
+        rule,
+        PuzzleRule::Diagonal { .. }
+            | PuzzleRule::ExtraHouse { .. }
+            | PuzzleRule::AntiKnight {}
+            | PuzzleRule::AntiKing {}
+            | PuzzleRule::Palindrome { .. }
+            | PuzzleRule::Clone { .. }
+    )
+}
+
+fn key_impl(
+    puzzle: &VariantPuzzle,
+    generation_edges: bool,
+    normalize: impl Fn(&mut VariantPuzzle),
+) -> VariantPuzzle {
+    let rename_digits = puzzle.rules.iter().all(digit_invariant);
     SquareTransform::ALL
         .into_iter()
         .map(|transform| {
             let mut copy = puzzle.clone();
             transform.puzzle(&mut copy);
+            if generation_edges {
+                for rule in &mut copy.rules {
+                    if let PuzzleRule::Whispers { cells, .. } | PuzzleRule::Entropic { cells } =
+                        rule
+                    {
+                        cells.sort_unstable();
+                    }
+                }
+            }
             if rename_digits {
                 let mut renamed = [0; 10];
                 let mut next = 1;
@@ -66,6 +79,7 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
                     *given = *entry;
                 }
             }
+            normalize(&mut copy);
             copy.rules.sort_unstable();
             copy
         })
@@ -222,8 +236,11 @@ impl SquareTransform {
                 *circle = self.cell(*circle);
                 self.path(cells);
             }
-            Palindrome { cells, segments } | Renban { cells, segments }
-            | RegionSum { cells, segments, .. } => {
+            Palindrome { cells, segments }
+            | Renban { cells, segments }
+            | RegionSum {
+                cells, segments, ..
+            } => {
                 self.path(cells);
                 if let Some(segments) = segments {
                     for segment in segments {

@@ -32,6 +32,34 @@ export const VARIANTS = {
     name: 'Anti-Knight',
     rule: 'Cells a chess knight’s move apart cannot share a digit. A knight moves two cells in one direction and one cell across.',
   },
+  'anti-king': {
+    name: 'Anti-King',
+    rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
+  },
+  'non-consecutive': {
+    name: 'Non-Consecutive',
+    rule: 'Cells sharing an edge cannot contain consecutive digits. Diagonal neighbors are unrestricted by this rule, and 1 and 9 are not consecutive.',
+  },
+  whispers: {
+    name: 'Whispers',
+    rule: 'Digits in neighboring cells along a line must differ by at least the line’s minimum. German Whispers uses a minimum of 5; Dutch Whispers uses 4.',
+  },
+  'global-entropy': {
+    name: 'Global Entropy',
+    rule: 'Every 2 × 2 area contains a low digit (1–3), a medium digit (4–6) and a high digit (7–9). This includes areas across box or region borders. One group appears twice. Equal digits can repeat diagonally if all other puzzle rules allow it.',
+  },
+  entropic: {
+    name: 'Entropic Lines',
+    rule: 'Each three successive positions on an Entropic line contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',
+  },
+  palindrome: {
+    name: 'Palindrome',
+    rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
+  },
+  parity: {
+    name: 'Odd/Even',
+    rule: 'Cells with a circle contain an odd digit (1, 3, 5, 7, or 9). Cells with a square contain an even digit (2, 4, 6, or 8). Unmarked cells allow either.',
+  },
   between: {
     name: 'Between Lines',
     rule: 'The digits inside each Between line must lie strictly between the digits in its two circles. The smaller endpoint can be at either end. Interior digits can repeat if the other puzzle rules allow it. Touching lines stay independent.',
@@ -40,9 +68,21 @@ export const VARIANTS = {
     name: 'Region Sum Lines',
     rule: 'Each blue line has parts with the same total. Region borders divide the line unless its listed groups say otherwise. Different lines can have different totals.',
   },
+  'little-killer': {
+    name: 'Little Killer',
+    rule: 'Digits along each indicated diagonal must add to its outside total. Follow the arrow through the whole diagonal. Digits may repeat along a diagonal if the other puzzle rules allow it.',
+  },
   sandwich: {
     name: 'Sandwich',
     rule: 'An outside clue gives the sum of the digits strictly between 1 and 9 in its row or column. Do not include 1 or 9 in the total. A zero means 1 and 9 are next to each other. Unmarked rows and columns have no Sandwich total.',
+  },
+  'x-sum': {
+    name: 'X-Sums',
+    rule: 'An outside clue gives the sum of the first X digits in its direction. The first digit is X and counts toward the sum. For example, a first digit of 3 means the first three cells add to the clue. Unmarked directions have no X-Sum total.',
+  },
+  skyscrapers: {
+    name: 'Skyscrapers',
+    rule: 'Each digit is the height of a building. An outside clue counts the buildings visible from that direction. Count the first building and each new tallest building; taller buildings hide shorter ones behind them. Unmarked directions have no visibility clue.',
   },
   clone: {
     name: 'Clone',
@@ -65,34 +105,6 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
-  'anti-king': {
-    name: 'Anti-King',
-    rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
-  },
-  'non-consecutive': {
-    name: 'Non-Consecutive',
-    rule: 'Cells sharing an edge cannot contain consecutive digits. Diagonal neighbors are unrestricted by this rule, and 1 and 9 are not consecutive.',
-  },
-  parity: {
-    name: 'Odd/Even',
-    rule: 'Cells with a circle contain an odd digit (1, 3, 5, 7, or 9). Cells with a square contain an even digit (2, 4, 6, or 8). Unmarked cells allow either.',
-  },
-  whispers: {
-    name: 'Whispers',
-    rule: 'Digits in neighboring cells along a line must differ by at least the line’s minimum. German Whispers uses a minimum of 5; Dutch Whispers uses 4.',
-  },
-  palindrome: {
-    name: 'Palindrome',
-    rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
-  },
-  'global-entropy': {
-    name: 'Global Entropy',
-    rule: 'Every 2 × 2 area contains a low digit (1–3), a medium digit (4–6) and a high digit (7–9). This includes areas across box or region borders. One group appears twice. Equal digits can repeat diagonally if all other puzzle rules allow it.',
-  },
-  entropic: {
-    name: 'Entropic Lines',
-    rule: 'Each three successive positions on an Entropic line contain one low digit (1–3), one medium digit (4–6) and one high digit (7–9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',
-  },
   modular: {
     name: 'Modular Lines',
     rule: 'Each three successive positions on a Modular line contain one digit from {1, 4, 7}, one from {2, 5, 8} and one from {3, 6, 9}. These groups have different remainders when divided by 3. The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent. Digits may repeat if all other puzzle rules allow it.',
@@ -385,8 +397,14 @@ function validJigsawRegions(regions: unknown): boolean {
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
   switch (rule.type) {
+    case 'little-killer': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
+      Number.isInteger(rule.sum) && validOutsideRay(rule.cells, rule.direction, true) && rule.sum >= rule.cells.length && rule.sum <= rule.cells.length * 9
     case 'sandwich': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
       Number.isInteger(rule.sum) && rule.sum >= 0 && rule.sum <= 35 && validOutsideRay(rule.cells, rule.direction)
+    case 'x-sum': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
+      Number.isInteger(rule.sum) && rule.sum >= 1 && rule.sum <= 45 && validOutsideRay(rule.cells, rule.direction)
+    case 'skyscrapers': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'count'].includes(key)) &&
+      Number.isInteger(rule.count) && rule.count >= 1 && rule.count <= 9 && validOutsideRay(rule.cells, rule.direction)
     case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
       Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
     case 'inequality': return validCells([rule.less, rule.greater], 2)
@@ -466,12 +484,15 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
   return kind !== 'classic' && (id === 'mixed' || kind === id)
 }
 
-const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+const RULE_NAMES: Record<VariantRule['type'], string> = {
   clone: VARIANTS.clone.name,
   'region-sum': VARIANTS['region-sum'].name,
   entropic: PUZZLE_VARIANTS.entropic.name,
   modular: PUZZLE_VARIANTS.modular.name,
+  'little-killer': VARIANTS['little-killer'].name,
   sandwich: VARIANTS.sandwich.name,
+  'x-sum': VARIANTS['x-sum'].name,
+  skyscrapers: VARIANTS.skyscrapers.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
   renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
@@ -511,8 +532,17 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
   const disjoint = disjointGroupRuleIndices(puzzle.rules ?? [])
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     switch (rule.type) {
+      case 'little-killer':
+        descriptions.push(VARIANTS['little-killer'].rule, outsideClueLabel(rule))
+        break
       case 'sandwich':
         descriptions.push(VARIANTS.sandwich.rule, outsideClueLabel(rule))
+        break
+      case 'x-sum':
+        descriptions.push(VARIANTS['x-sum'].rule, outsideClueLabel(rule))
+        break
+      case 'skyscrapers':
+        descriptions.push(VARIANTS.skyscrapers.rule, outsideClueLabel(rule))
         break
       case 'clone':
         descriptions.push(VARIANTS.clone.rule)
