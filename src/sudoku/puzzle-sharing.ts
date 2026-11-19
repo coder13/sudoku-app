@@ -1,7 +1,7 @@
 import { isCollectionReference, type CollectionReference } from './collection-reference.ts'
 import type { Game } from './game.ts'
 import { CLASSIC_GRID, isGridText, isSizedGrid, type SizedGrid } from './grid.ts'
-import { isSixRuleList, type SixGame } from './six-game.ts'
+import { isSixAuthor, isSixRuleList, type SixGame } from './six-game.ts'
 import { isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { isSizedSudokuPadCode } from './sized-sudoku-pad.ts'
 import { isPlayablePuzzle, isPuzzleVariantId, type VariantGame } from './variants.ts'
@@ -12,6 +12,7 @@ export type SharedPuzzleDefinition = {
   givens: string
   grid?: SizedGrid
   sixRules?: SixGame['rules']
+  sixAuthor?: string
   algebraic?: { rules: readonly AlgebraicCage[] } | { sudokuPad: string }
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
   collection?: CollectionReference
@@ -41,7 +42,7 @@ export function puzzleDefinitionForSharing(game: Game): SharedPuzzleDefinition {
     variant: variant && { id: variant.id, puzzle: { version: variant.puzzle.version, givens: game.givens, rules, regions } },
     collection,
     ...(algebraic && { algebraic }),
-    ...(game.six && { sixRules: game.six.rules }),
+    ...(game.six && { sixRules: game.six.rules, ...(game.six.author && { sixAuthor: game.six.author }) }),
   }
 }
 
@@ -75,17 +76,18 @@ export async function publishSharedPuzzle(game: Game, signal?: AbortSignal): Pro
 export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Promise<SharedPuzzleDefinition> {
   if (!isSharedPuzzleId(id)) throw new Error('This puzzle link is invalid.')
   const data = await sharingRequest(`/${id.toLowerCase()}`, undefined, signal) as Partial<SharedPuzzleDefinition>
-  const { version, title, givens, variant, collection, grid, algebraic, sixRules } = data
+  const { version, title, givens, variant, collection, grid, algebraic, sixRules, sixAuthor } = data
   if (version !== 1 || typeof title !== 'string' || !title.trim() || title.length > 72 ||
     (grid !== undefined && (!isSizedGrid(grid) || variant !== undefined)) || !isGridText(givens, grid ?? CLASSIC_GRID) ||
     (algebraic !== undefined && (grid?.size !== 4 || !validSharedAlgebraic(algebraic))) ||
     (grid?.size === 6 ? !isSixRuleList(sixRules) : sixRules !== undefined) ||
+    (sixAuthor !== undefined && (grid?.size !== 6 || !isSixAuthor(sixAuthor))) ||
     (variant !== undefined && (!variant || !isPuzzleVariantId(variant.id) ||
       !isPlayablePuzzle(variant.id, variant.puzzle) || variant.puzzle.givens !== givens)) ||
     (collection !== undefined && !isCollectionReference(collection))) {
     throw new Error('This link uses an unsupported puzzle definition.')
   }
-  return { version, title, givens, variant, collection, grid, sixRules, ...(algebraic && { algebraic }) }
+  return { version, title, givens, variant, collection, grid, sixRules, sixAuthor, ...(algebraic && { algebraic }) }
 }
 
 function validSharedAlgebraic(value: unknown): value is NonNullable<SharedPuzzleDefinition['algebraic']> {

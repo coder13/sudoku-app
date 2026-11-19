@@ -21,6 +21,16 @@ export function isSizedGrid(value: unknown): value is SizedGrid {
     ((grid.boxRows === 2 && grid.boxColumns === 3) || (grid.boxRows === 3 && grid.boxColumns === 2))
 }
 
+export function sixGridFromRegions(regions: readonly number[]): SixGrid | undefined {
+  if (regions.length !== 36 || new Set(regions).size !== 6) return
+  const layouts = [{ size: 6, boxRows: 2, boxColumns: 3 }, { size: 6, boxRows: 3, boxColumns: 2 }] as const
+  return layouts.find(({ boxRows, boxColumns }) => regions.every((label, cell) => {
+    const firstRow = Math.floor(cell / 6 / boxRows) * boxRows
+    const firstColumn = Math.floor(cell % 6 / boxColumns) * boxColumns
+    return label === regions[firstRow * 6 + firstColumn]
+  }))
+}
+
 export function isGridText(text: unknown, grid: PlayGrid): text is string {
   return typeof text === 'string' && text.length === grid.size ** 2 &&
     (grid.size === 4 ? /^[0-4]+$/ : grid.size === 6 ? /^[0-6]+$/ : /^[0-9]+$/).test(text)

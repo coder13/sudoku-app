@@ -156,6 +156,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
           {algebraicRules(preview.game.algebraic).map(rule => <li key={rule}>{rule}</li>)}
         </ul>
       </> : preview.game.grid?.size === 4 && <p>{MINI_RULE}</p>}
+      {preview.game.six?.author && <p>By {preview.game.six.author}</p>}
       {preview.game.six && preview.game.grid?.size === 6 && <ul className="import-preview-rules">
         {sixRuleDescriptions(preview.game.grid, preview.game.six.rules).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}

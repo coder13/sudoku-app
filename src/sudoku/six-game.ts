@@ -3,8 +3,12 @@ import { conflictsOf } from './game.ts'
 import { isGridText, sixDiagonalCells, sizedClassicPosition } from './grid.ts'
 import { validation } from './puzzle-validation.ts'
 
-export type SixDefinition = { grid: SixGrid; givens: string; rules: readonly SizedConstraintRule[] }
-export type SixGame = Pick<SixDefinition, 'rules'> & { solution: string }
+export type SixDefinition = { grid: SixGrid; givens: string; rules: readonly SizedConstraintRule[]; author?: string; authoredSolution?: string }
+export type SixGame = Pick<SixDefinition, 'rules' | 'author'> & { solution: string }
+
+export function isSixAuthor(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= 72
+}
 
 export function isSixRuleList(value: unknown): value is SixDefinition['rules'] {
   if (!Array.isArray(value) || value.length > 128) return false
@@ -28,7 +32,7 @@ export function sixPosition(grid: SixGrid, { rules }: Pick<SixGame, 'rules'>, va
   return { ...sizedClassicPosition(grid, values), grid, rules }
 }
 
-export async function verifySixPuzzle({ grid, givens, rules }: SixDefinition): Promise<SixGame> {
+export async function verifySixPuzzle({ grid, givens, rules, author, authoredSolution }: SixDefinition): Promise<SixGame> {
   if (!isSixRuleList(rules)) throw new Error('This 6 × 6 grid has invalid or unsupported rules.')
   const position = sixPosition(grid, { rules }, givens)
   const status = await runEngine({ type: 'sized-variant', operation: 'analyze', position })
@@ -36,10 +40,14 @@ export async function verifySixPuzzle({ grid, givens, rules }: SixDefinition): P
   if (status !== 'unique') throw new Error(validation[status].text)
   const answer = await runEngine({ type: 'sized-variant', operation: 'solve', position })
   if (!answer) throw new Error('The engine could not verify this puzzle’s solution.')
-  return { rules, solution: answer.digits.join('') }
+  const solution = answer.digits.join('')
+  if (authoredSolution !== undefined && solution !== authoredSolution) {
+    throw new Error('The authored solution conflicts with the puzzle’s rules.')
+  }
+  return { rules, solution, ...(isSixAuthor(author) && { author }) }
 }
 
-export function restoreSixGame({ rules, solution }: SixGame, grid: SixGrid, givens: string): SixGame | undefined {
+export function restoreSixGame({ rules, solution, author }: SixGame, grid: SixGrid, givens: string): SixGame | undefined {
   if (!isSixRuleList(rules) || !isGridText(solution, grid) || solution.includes('0') ||
     Array.from(givens).some((digit, cell) => digit !== '0' && digit !== solution[cell]) ||
     conflictsOf(solution, undefined, grid).size) return
@@ -50,7 +58,7 @@ export function restoreSixGame({ rules, solution }: SixGame, grid: SixGrid, give
       if (rule.cells.some(cell => Number(solution[cell]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
     } else if (rule.cells.some((cell, index) => index > 0 && solution[cell] <= solution[rule.cells[index - 1]])) return
   }
-  return { rules, solution }
+  return { rules, solution, ...(isSixAuthor(author) && { author }) }
 }
 
 export function sixRuleDescriptions(grid: SixGrid, rules: SixGame['rules']) {

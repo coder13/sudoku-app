@@ -1,14 +1,15 @@
 import lzString from 'lz-string'
 import type { CollectionReference } from './collection-reference.ts'
-import type { SixGrid, SizedConstraintRule, VariantPuzzle, VariantRule } from './engine.ts'
+import type { SizedConstraintRule, VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle, textGridCells } from './formats.ts'
-import { isGridText, isMiniGrid, MINI_GRID, type SizedGrid } from './grid.ts'
+import { isGridText, isMiniGrid, MINI_GRID, sixGridFromRegions, type SizedGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
-import { decodeSizedSudokuPad } from './sized-sudoku-pad.ts'
+import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
+import { readSixSudokuPad } from './six-sudoku-pad.ts'
 import { isSixRuleList, type SixGame } from './six-game.ts'
 import type { AlgebraicDefinition } from './algebraic-game.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
@@ -34,6 +35,8 @@ export type ImportedPuzzle = {
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
   grid?: SizedGrid
   sixRules?: SixGame['rules']
+  sixAuthor?: string
+  authoredSolution?: string
   algebraic?: AlgebraicDefinition
   title?: string
   sharedPuzzleId?: string
@@ -41,11 +44,11 @@ export type ImportedPuzzle = {
 }
 
 export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
-  const { givens, variant, collection, title, grid, algebraic, sixRules } = await downloadSharedPuzzle(id, signal)
+  const { givens, variant, collection, title, grid, algebraic, sixRules, sixAuthor } = await downloadSharedPuzzle(id, signal)
   const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
   if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the shared givens.')
   const cages = sizing ? { rules: sizing.rules, source: sizing.source } : algebraic && 'rules' in algebraic ? algebraic : undefined
-  return { givens, variant, collection, title, grid, sixRules, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
+  return { givens, variant, collection, title, grid, sixRules, sixAuthor, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -470,16 +473,11 @@ function readCoachSix(data: Record<string, unknown>) {
   if (['quickDrawLineSegments', 'quickDrawSymbols', 'givenColours', 'colours'].some(key => hasData(data[key]))) {
     throw new Error('This 6 × 6 puzzle has unsupported authored markings.')
   }
-  const layouts: SixGrid[] = [{ size: 6, boxRows: 2, boxColumns: 3 }, { size: 6, boxRows: 3, boxColumns: 2 }]
   const regions = data.regions
-  if (!Array.isArray(regions) || regions.length !== 36 || regions.some(label => !Number.isInteger(label) || label < 0) || new Set(regions).size !== 6) {
+  if (!Array.isArray(regions) || regions.some(label => !Number.isInteger(label) || label < 0)) {
     throw new Error('Import requires a 6 × 6 Sudoku Coach grid with six rectangular boxes.')
   }
-  const grid = layouts.find(({ boxRows, boxColumns }) => regions.every((label, cell) => {
-    const firstRow = Math.floor(cell / 6 / boxRows) * boxRows
-    const firstColumn = Math.floor(cell % 6 / boxColumns) * boxColumns
-    return label === regions[firstRow * 6 + firstColumn]
-  }))
+  const grid = sixGridFromRegions(regions)
   if (!grid) throw new Error('Import requires six rectangular boxes of 2 × 3 or 3 × 2 cells.')
 
   const constraints = data.givenConstraints ?? []
@@ -597,7 +595,9 @@ function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): Import
   if (/^scf/i.test(code)) return digitRuns(code.slice(3), 'SudokuPad')
   if (FP_CODE.test(code)) return fromFPuzzles(code.replace(FP_CODE, ''), 'SudokuPad')
   if (/^(scl|ctc)/i.test(code)) {
-    const { givens, grid, rules, source } = decodeSizedSudokuPad(code)
+    const data = decodeSudokuPadEnvelope(code)
+    if (record(data) && Array.isArray(data.cells) && data.cells.length === 6) return { ...readSixSudokuPad(data), format }
+    const { givens, grid, rules, source } = decodeSizedSudokuPad(code, data)
     return { givens, grid, algebraic: { rules, source }, format }
   }
   throw new Error('This SudokuPad link does not contain the puzzle data. For Classic puzzles, copy the 81 givens.')

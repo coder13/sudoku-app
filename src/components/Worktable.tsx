@@ -2451,6 +2451,7 @@ export function Worktable({
       {(variant || grid) && <Modal title={`${grid ? sizedName : variantName(variant)} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>
         <div className="variant-rules-copy">
           {algebraic?.source?.author && <p>By {algebraic.source.author}</p>}
+          {six?.author && <p>By {six.author}</p>}
           {(algebraic ? algebraicRules(algebraic) : six && grid?.size === 6 ? sixRuleDescriptions(grid, six.rules) : variant ? variantRuleDescriptions(variant.puzzle) : [MINI_RULE]).map(rule => <p key={rule}>{rule}</p>)}
         </div>
       </Modal>}

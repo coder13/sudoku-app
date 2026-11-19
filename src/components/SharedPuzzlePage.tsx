@@ -55,6 +55,7 @@ export function SharedPuzzlePage({ id, games, linked, syncReady }: {
             {algebraicRules(puzzle.algebraic).map(rule => <li key={rule}>{rule}</li>)}
           </ul>
         </>}
+        {puzzle.six?.author && <p>By {puzzle.six.author}</p>}
         {puzzle.six && puzzle.grid?.size === 6 && <ul className="import-preview-rules">
           {sixRuleDescriptions(puzzle.grid, puzzle.six.rules).map(rule => <li key={rule}>{rule}</li>)}
         </ul>}

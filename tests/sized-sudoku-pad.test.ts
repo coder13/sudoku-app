@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import lzString from 'lz-string'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { decodeSizedSudokuPad } from '../src/sudoku/sized-sudoku-pad.ts'
 
 const metadata = {
@@ -45,4 +46,50 @@ test('sized SudokuPad rejects unrepresented rules and geometry', () => {
   assert.throws(() => decodeSizedSudokuPad(encode({
     ...input, cages: [{ cells: [[0,0],[0,0]], value: 'n' }],
   })), /same cell twice/)
+})
+
+function thermoExport(boxRows: 2 | 3) {
+  const boxColumns = 6 / boxRows
+  return {
+    id: 'thermometer-fixture',
+    metadata: {
+      title: 'Straight stretches', author: 'Test author',
+      rules: `Normal 6x6 sudoku rules apply. Place the digits 1 to 6 in every row, column and ${boxRows}x${boxColumns} box.\n\n` +
+        'Digits along a thermometer strictly increase from bulb to tip.',
+    },
+    cells: Array.from({ length: 6 }, (_, row) => Array.from({ length: 6 }, (_, column) =>
+      row === 0 && column === 0 ? { value: 1 } : {})),
+    regions: Array.from({ length: 6 }, (_, box) => Array.from({ length: 6 }, (_, cell) => [
+      Math.floor(box / boxRows) * boxRows + Math.floor(cell / boxColumns),
+      box % boxRows * boxColumns + cell % boxColumns,
+    ])),
+    lines: [{ wayPoints: [[0.5, 3.5], [0.5, 0.5]], color: '#ccc', thickness: 19.2 }],
+    underlays: [{ center: [0.5, 0.5], rounded: true, width: 0.8, height: 0.8, backgroundColor: '#ccc' }],
+  }
+}
+
+test('6 × 6 SudokuPad thermometers follow the bulb and fill skipped collinear cells', async () => {
+  for (const boxRows of [2, 3] as const) {
+    const imported = await detectPuzzle(encode(thermoExport(boxRows)))
+    assert.equal(imported.givens, '1' + '0'.repeat(35))
+    assert.deepEqual(imported.grid, { size: 6, boxRows, boxColumns: 6 / boxRows })
+    assert.deepEqual(imported.sixRules, [{ type: 'thermometer', cells: [0, 1, 2, 3] }])
+    assert.equal(imported.sixAuthor, 'Test author')
+  }
+})
+
+test('6 × 6 SudokuPad rejects ambiguous bulbs, unknown companion rules, and altered region geometry', async () => {
+  const source = thermoExport(2)
+  await assert.rejects(detectPuzzle(encode({ ...source,
+    underlays: [{ ...source.underlays[0], center: [0.5, 1.5] }],
+  })), /exactly one end/)
+  await assert.rejects(detectPuzzle(encode({ ...source,
+    lines: [{ ...source.lines[0], wayPoints: [[0.5, 0.5], [1.5, 3.5]] }],
+  })), /ambiguous thermometer segment/)
+  await assert.rejects(detectPuzzle(encode({ ...source,
+    metadata: { ...source.metadata, rules: source.metadata.rules + '\n\nKnight moves have different digits.' },
+  })), /authored rules/)
+  await assert.rejects(detectPuzzle(encode({ ...source, overlays: [{}] })), /unsupported rules or markings/)
+  source.regions[0][0] = source.regions[1][0]
+  await assert.rejects(detectPuzzle(encode(source)), /share a cell/)
 })

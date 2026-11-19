@@ -93,13 +93,14 @@ test('the sharing API requires full rule data for either rectangular 6 × 6 layo
       { type: 'thermometer', cells: [1, 2, 8, 14] },
     ] as const
     for (const grid of [{ size: 6, boxRows: 2, boxColumns: 3 }, { size: 6, boxRows: 3, boxColumns: 2 }] as const) {
-      const definition = { version: 1, title: '6 × 6 rule contract', grid, givens, sixRules }
+      const definition = { version: 1, title: '6 × 6 rule contract', grid, givens, sixRules, sixAuthor: 'Test author' }
       const { id } = await api<{ id: string }>('shares', 'POST', definition)
       assert.deepEqual(await api(`shares/${id}`), definition)
       for (const invalid of [
         { ...definition, sixRules: undefined },
         { ...definition, grid: { ...grid, boxRows: 6 }},
         { ...definition, givens: '7'.repeat(36) },
+        { ...definition, sixAuthor: ' '.repeat(5) },
         { ...definition, sixRules: [{ type: 'thermometer', cells: [1, 35, 1] }] },
         { ...definition, sixRules: [{ type: 'parity', parity: 'odd', cells: [36] }] },
         { ...definition, sixRules: [{ type: 'diagonal', diagonal: 'main', solution: givens }] },

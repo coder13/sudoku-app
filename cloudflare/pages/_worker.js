@@ -205,6 +205,7 @@ async function sharePuzzle(request, db, path) {
       givens: value => givens(value, data.grid?.size),
     }, { grid: value => miniGrid(value) || sixGrid(value), algebraic: value => data.grid?.size === 4 && algebraic(value),
       sixRules: value => data.grid?.size === 6 && sixRules(value),
+      sixAuthor: value => data.grid?.size === 6 && typeof value === 'string' && value.trim().length > 0 && value.length <= 72,
       variant: value => data.grid === undefined && variant(value, data.givens), collection }) ||
       (data.grid?.size === 6 && !Object.hasOwn(data, 'sixRules'))) {
       throw new HttpError(400, 'Invalid puzzle definition.')
