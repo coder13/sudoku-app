@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { after, before, test } from 'node:test'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { VariantPuzzle, VariantRule } from '../src/sudoku/engine.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { enter, makeGame } from '../src/sudoku/game.ts'
 import { isVariantId, VARIANTS, variantDifficulties } from '../src/sudoku/variants.ts'
 
@@ -46,8 +46,10 @@ test('the real sharing and completion screens retain the imported puzzle and off
       variant: { id: 'parity' as const, puzzle: fixture.puzzle, solution: fixture.solution } }
     const progressed = enter(game, [0], 'value', Number(fixture.solution[0]))
     const html = renderToStaticMarkup(createElement(SharePuzzle, { game: progressed, close() {} }))
-    const shared = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-    assert.deepEqual((await detectPuzzle(shared)).variant, { id: 'parity', puzzle: fixture.puzzle })
+    assert.match(html, /Create link/)
+    assert.doesNotMatch(html, /id="share-output"/)
+    assert.deepEqual((await publishFixture(progressed)).variant,
+      { id: 'parity', puzzle: fixture.puzzle })
     game.position.entries = [...fixture.solution].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
     const completed = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
       ratingPending: false, shortcutEnabled: false, showGuides: true, onChooseDifficulty() {}, onChooseVariant() {} }))

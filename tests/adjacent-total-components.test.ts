@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { after, before, test } from 'node:test'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -74,9 +75,10 @@ test('sharing a progressed puzzle retains every original rule and starting given
   try {
     const variant = (await detectPuzzle(source.source.code)).variant!
     const game = { ...makeGame('total-share', 'Two-cell sums', variant.puzzle.givens, 'imported'), variant: { ...variant, solution: source.solution } }
-    const html = renderToStaticMarkup(createElement(SharePuzzle, { game: enter(game, [0], 'value', Number(source.solution[0])), close() {} }))
-    const payload = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-    assert.deepEqual((await detectPuzzle(payload)).variant, variant)
+    const progressed = enter(game, [0], 'value', Number(source.solution[0]))
+    const html = renderToStaticMarkup(createElement(SharePuzzle, { game: progressed, close() {} }))
+    assert.match(html, /Create link/)
+    assert.deepEqual((await publishFixture(progressed)).variant, variant)
   } finally { if (prior) Object.defineProperty(globalThis, 'window', prior); else Reflect.deleteProperty(globalThis, 'window') }
 })
 

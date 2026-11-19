@@ -26,3 +26,13 @@
   bottom: 11%;
   left: 9%;
 }
+
+.kakuro-hint-steps {
+  display: grid;
+  gap: .6rem;
+  padding-inline-start: 1.5rem;
+}
+
+.kakuro-hint-steps ul {
+  padding-inline-start: 1rem;
+}

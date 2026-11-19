@@ -2,28 +2,32 @@ import { Button, IconButton, buttonClassName } from './Button'
 import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
+import { deviceSync } from '../sudoku/device-sync'
 import type { Game } from '../sudoku/game'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
 import { findImportedPuzzle, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
 import { applyPuzzleGrade } from '../sudoku/puzzle-rating'
+import { findSharedAttempt } from '../sudoku/puzzle-sharing'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
+import { MINI_RULE } from '../sudoku/new-puzzle'
 import { Board } from './Board'
 import { Modal } from './Modal'
 import { PhotoPuzzleReview } from './PhotoPuzzleReview'
 import { PuzzleCamera } from './PuzzleCamera'
 export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
-function existingPuzzle(game: Pick<Game, 'givens' | 'variant'>) {
-  return findImportedPuzzle(roomStore.getSnapshot().games, game)
+function existingPuzzle(game: Pick<Game, 'givens' | 'variant' | 'sharedPuzzleId'>) {
+  const { games } = roomStore.getSnapshot()
+  return game.sharedPuzzleId ? findSharedAttempt(games, game.sharedPuzzleId) : findImportedPuzzle(games, game)
 }
 
 function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
 
-function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
+export function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
   const existing = existingPuzzle(game)
   if (existing) {
     if (grade !== undefined && (existing.difficulty === undefined || existing.score === undefined)) {
@@ -32,7 +36,8 @@ function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
     if (play) roomStore.select(existing.id)
     return false
   }
-  roomStore.add(play ? game : { ...game, savedForLater: true })
+  const copy = game.sharedPuzzleId && deviceSync.credentials() ? { ...game, saved: true } : game
+  roomStore.add(play ? copy : { ...copy, savedForLater: true })
   return true
 }
 
@@ -132,7 +137,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const puzzlePreview = preview && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
-        <strong>{variantName(preview.game.variant)}</strong>
+        <strong>{preview.game.grid ? 'Mini Sudoku · 4 × 4' : variantName(preview.game.variant)}</strong>
         <span className="import-preview-rating">
           {preview.game.difficulty
             ? <span><span>Difficulty</span> <strong>{DIFFICULTY_LABELS[preview.game.difficulty]}</strong></span>
@@ -141,8 +146,9 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         </span>
         <span className="import-preview-format">{preview.format}</span>
       </p>
-      <Board label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
+      <Board grid={preview.game.grid} label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
         variantPuzzle={preview.game.variant?.puzzle} showGuides={false} />
+      {preview.game.grid && <p>{MINI_RULE}</p>}
       {preview.game.variant && <ul className="import-preview-rules">
         {variantRuleDescriptions(preview.game.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
