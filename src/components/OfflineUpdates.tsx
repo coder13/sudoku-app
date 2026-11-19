@@ -2,7 +2,6 @@ import { Button } from './Button'
 import { Download } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { MotionSurface } from './Presence'
-import { markUpdateReload } from '../sudoku/update-reload'
 
 export function OfflineUpdates() {
   const [updateWorker, setUpdateWorker] = useState<ServiceWorker | null>(null)
@@ -40,7 +39,6 @@ export function OfflineUpdates() {
         }
         if (reloading) return
         reloading = true
-        markUpdateReload(window.location.href)
         window.location.reload()
       }
       navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange)

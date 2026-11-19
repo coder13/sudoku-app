@@ -6,8 +6,6 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { consumeUpdateReload, markUpdateReload } from '../src/sudoku/update-reload.ts'
-import { MemoryStorage } from './helpers/memory-storage.ts'
 
 const origin = 'https://sudoku.example'
 const shellAssets = ['/index.html', '/learn/full-house/index.html', '/assets/app.js', '/assets/engine.wasm']
@@ -189,16 +187,4 @@ test('local development removes stale offline control and reloads once', async (
   assert.match(source, /navigator\.serviceWorker\.controller/)
   assert.match(source, /registration\.unregister\(\)/)
   assert.match(source, /if \(controlled\) window\.location\.reload\(\)/)
-})
-
-test('an update reload skips pause on open once for the current location', () => {
-  const storage = new MemoryStorage()
-  const puzzle = 'https://sudoku.example/?puzzle=playing'
-  markUpdateReload(puzzle, storage)
-  assert.equal(consumeUpdateReload(puzzle, storage), true)
-  assert.equal(consumeUpdateReload(puzzle, storage), false)
-
-  markUpdateReload(puzzle, storage)
-  assert.equal(consumeUpdateReload('https://sudoku.example/?puzzle=other', storage), false)
-  assert.equal(consumeUpdateReload(puzzle, storage), false)
 })

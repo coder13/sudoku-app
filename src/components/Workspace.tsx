@@ -23,7 +23,7 @@ import {
 } from '../sudoku/preferences'
 import { deviceSync } from '../sudoku/device-sync'
 import { roomStore } from '../sudoku/storage'
-import { consumeUpdateReload } from '../sudoku/update-reload'
+import { playSession } from '../sudoku/play-session'
 import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
@@ -112,7 +112,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [panelHeight, setPanelHeight] = useState(280)
   const [workspaceReady, setWorkspaceReady] = useState(false)
   const [openingOnLaunch, setOpeningOnLaunch] = useState(true)
-  const [launchPausedId, setLaunchPausedId] = useState<string | null>(null)
   // Static hosting serves the same home HTML for every puzzle query.
   const requested = workspaceReady ? puzzleParam : undefined
   const shared = workspaceReady ? shareParam : undefined
@@ -126,7 +125,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const resizeStartHeight = useRef(panelHeight)
   const resizeStartInputSize = useRef(inputSize)
   const hasLocalPuzzleAtLaunch = useRef(false)
-  const updateReload = useRef<boolean | undefined>(undefined)
+  const reloading = useRef(false)
+  const session = useSyncExternalStore(playSession.subscribe, playSession.getSnapshot, playSession.getServerSnapshot)
   const sync = useSyncExternalStore(deviceSync.subscribe, deviceSync.getSnapshot, deviceSync.getServerSnapshot)
   const syncConnection = useSyncExternalStore(deviceSync.subscribeConnection, deviceSync.getConnection, deviceSync.getServerConnection)
   const peerPuzzles = useSyncExternalStore(deviceSync.subscribePresence, deviceSync.getPeerPuzzles, deviceSync.getServerPeerPuzzles)
@@ -142,7 +142,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const playRoute = homeRoute && Boolean(requested || launchPuzzle)
   const playing = playRoute || settingsRoute
   const missingPuzzle = playRoute && !game ? requested : undefined
-  const shouldPauseOnLaunch = openingOnLaunch && playRoute && !updateReload.current && puzzleTiming.getSnapshot().pauseOnOpen
+  const savedLaunchPause = session.puzzleId === game?.id && session.launchPaused
+  const pausedOnLaunch = openingOnLaunch && playRoute && !reloading.current
+    ? puzzleTiming.getSnapshot().pauseOnOpen
+    : savedLaunchPause
   const hasRequestedGame = Boolean(requested && game)
   const openingPuzzleLink = shared === undefined && puzzleLink && !hasRequestedGame && !linkError
   const viewedPuzzle = playRoute && game && game.source !== 'draft' ? game.id : null
@@ -190,7 +193,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   }, [navigate, shortcuts])
 
   useEffect(() => {
-    updateReload.current ??= consumeUpdateReload(window.location.href)
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    reloading.current = navigation?.type === 'reload'
     const disconnect = roomStore.connect()
     hasLocalPuzzleAtLaunch.current = inProgress(roomStore.getSnapshot().games).length > 0
     const disconnectSync = deviceSync.connect()
@@ -249,7 +253,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const legacyLink = PUZZLE_LINK.test(location.hash.slice(1))
     if (!legacyLink) {
       setOpeningOnLaunch(false)
-      setLaunchPausedId(null)
+      if (id) playSession.set(id, 'launchPaused', false)
+      else playSession.activate(null)
     }
     if (!id && !location.searchParams.has('puzzle')) return
     setLinkError('')
@@ -266,10 +271,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     }
     if (requested) {
       if (openingOnLaunch && game) {
-        if (shouldPauseOnLaunch) setLaunchPausedId(game.id)
+        playSession.set(game.id, 'launchPaused', pausedOnLaunch)
         setOpeningOnLaunch(false)
-      } else if (launchPausedId && launchPausedId !== requested) {
-        setLaunchPausedId(null)
       }
       return
     }
@@ -281,13 +284,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (!sync.ready) return
     if (!sync.linked) roomStore.startFirstPuzzle()
     if (openingOnLaunch) setOpeningOnLaunch(false)
-  }, [workspaceReady, homeRoute, requested, shared, stoppedPlaying, linkError, sync.ready, sync.linked, game, launchPuzzle, navigate, puzzleLink, openingOnLaunch, shouldPauseOnLaunch, launchPausedId])
+  }, [workspaceReady, homeRoute, requested, shared, stoppedPlaying, linkError, sync.ready, sync.linked, game, launchPuzzle, navigate, puzzleLink, openingOnLaunch, pausedOnLaunch])
   useEffect(() => {
     if (!workspaceReady || !requested || !hasRequestedGame) return
     const location = new URL(window.location.href)
     // The address can change before the router finishes updating the matched puzzle.
     if (location.pathname !== '/' || location.searchParams.get('puzzle') !== requested) return
     roomStore.view(requested)
+    playSession.activate(requested)
     if (PUZZLE_LINK.test(location.hash.slice(1))) {
       void navigate({ to: '/', search: { puzzle: requested }, replace: true, viewTransition: false })
     }
@@ -601,9 +605,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 errorMode={errorMode} cellReferenceStyle={cellReferenceStyle} multi={multi} actionsRef={worktableActions}
                 inputSize={inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight} beginResize={beginResize}
                 toggleMulti={toggleMulti}
-                pausedOnLaunch={shouldPauseOnLaunch || launchPausedId === game?.id}
+                pausedOnLaunch={pausedOnLaunch}
                 onResumeLaunch={() => {
-                  setLaunchPausedId(null)
+                  if (game) playSession.set(game.id, 'launchPaused', false)
                   setOpeningOnLaunch(false)
                 }}
                 loadingPuzzle={sync.loadingPuzzles}

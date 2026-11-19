@@ -34,6 +34,7 @@ import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
+import { defaultMobileInput, playSession, type MobileInputTab, type MobileInputTool } from '../sudoku/play-session'
 import { continueStrongLinkColors } from '../sudoku/strong-link-colors'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
@@ -51,7 +52,7 @@ import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
 import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
-import { MobileInputTabs, type MobileInputTab, type MobileInputTool } from './MobileInputTabs'
+import { MobileInputTabs } from './MobileInputTabs'
 import { PlayHint, PlayLayout } from './PlayLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
@@ -74,7 +75,6 @@ const desktopInsightTabs = [
   { id: 'chains', label: 'Chains' },
 ] as const
 
-const defaultMobileInput: { open: MobileInputTool[]; active: MobileInputTab } = { open: [], active: 'digits' }
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -308,7 +308,9 @@ export function Worktable({
   const mobile = useMobileLayout()
   const desktop = !mobile
   const colorMode = desktop && savedColorMode && !automaticHighlightMode
-  const [mobileInput, setMobileInput] = useState(defaultMobileInput)
+  const playState = useSyncExternalStore(playSession.subscribe, playSession.getSnapshot, playSession.getServerSnapshot)
+  const savedPlayState = playState.puzzleId === game.id ? playState : null
+  const mobileInput = savedPlayState?.mobileInput ?? defaultMobileInput
   const [mobileRearranging, setMobileRearranging] = useState(false)
   const rearranging = mobile && mobileRearranging
   const [solutionPath, setSolutionPath] = useState<SolutionPathState | null>(null)
@@ -473,6 +475,8 @@ export function Worktable({
   const startHighlightDigit = playerHighlightMask ? onlyCandidate(playerHighlightMask) : coloringDigit
   const sketch = useChainSketch(game, chainGraph, {
     canDraw: chainsVisible && !completed, graphCurrent: Boolean(masks), canAnalyze: canAnalyzeChains, startHighlightDigit,
+    drawingIntent: savedPlayState?.drawingIntent ?? null,
+    setDrawingIntent: intent => playSession.set(id, 'drawingIntent', intent),
   })
   const chainHighlightDigit = sketch.active.highlightedDigit
   const canPaint = !cellColorsDisabled
@@ -644,7 +648,6 @@ export function Worktable({
     setDialogResult(null)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    setMobileInput(defaultMobileInput)
     setResetOpen(false)
     setVariantRulesOpen(false)
     setAnalysisOpen(false)
@@ -1943,7 +1946,7 @@ export function Worktable({
   </button>
   function selectMobileInput(tab: MobileInputTab, openBothTools = false) {
     if (tab !== 'digits') changeHintVisuals('player')
-    setMobileInput((current) => ({
+    playSession.set(id, 'mobileInput', (current) => ({
       open: openBothTools ? grid ? ['colors'] : ['colors', 'chains'] : current.open,
       active: tab,
     }))
@@ -1951,7 +1954,7 @@ export function Worktable({
 
   function closeMobileInput(tool: MobileInputTool) {
     focusMobileInput.current = openMobileTools.length === 1
-    setMobileInput((current) => ({ open: current.open.filter((tab) => tab !== tool), active: 'digits' }))
+    playSession.set(id, 'mobileInput', (current) => ({ open: current.open.filter((tab) => tab !== tool), active: 'digits' }))
   }
 
   function openMobileInput(tool: MobileInputTool, opener = puzzleMenuButtonRef.current) {
@@ -2046,8 +2049,9 @@ export function Worktable({
   const chainsAction = !grid && desktop && puzzleToolsAvailable && (
     <button onClick={showChains}><Link2 size={17} /> Chains</button>
   )
+  const colorToolsLabel = grid ? 'Colors' : 'Colors & Chains'
   const mobileToolsAction = mobileToolsAvailable && (
-    <button onClick={() => showColors()} disabled={disabled}><Palette size={17} /> {grid ? 'Colors' : 'Colors & Chains'}</button>
+    <button onClick={() => showColors()} disabled={disabled}><Palette size={17} /> {colorToolsLabel}</button>
   )
   const hintMenuAction = !draft && !solved && <button onClick={() => { void showHint() }} disabled={busy}>
     <Lightbulb size={17} /> View hint
@@ -2276,6 +2280,11 @@ export function Worktable({
                   <Pause className="pause-toggle-pause" size={18} />
                   <Play className="pause-toggle-play" size={18} />
                 </span>
+              </IconButton>}
+              {puzzleToolsAvailable && <IconButton className="puzzle-tools-trigger" type="button"
+                aria-label={`Open ${colorToolsLabel} from puzzle card`} title={colorToolsLabel} disabled={disabled}
+                onClick={event => mobile ? openMobileInput('colors', event.currentTarget) : showColors(true)}>
+                <Palette size={18} aria-hidden="true" />
               </IconButton>}
               <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
                 <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"

@@ -810,6 +810,11 @@ svg { flex-shrink: 0; }
 }
 .puzzle:has(.draft-tip) { grid-template: ". actions" auto "grid grid" auto "draft draft" auto / minmax(0, 1fr) auto; }
 .puzzle-actions { grid-area: actions; justify-content: flex-end; margin: 0; }
+.puzzle-actions .puzzle-tools-trigger {
+  flex: none;
+  border-radius: 50%;
+  box-shadow: var(--surface-shadow);
+}
 .puzzle-stage { grid-area: grid; }
 .draft-tip { grid-area: draft; }
 .puzzle-menu-wrap { position: relative; }
@@ -3105,7 +3110,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     --mode-tab-depth: var(--space-16);
   }
   .standard-workspace-page .puzzle-mode-tab[data-edge="bottom"] svg { width: 13px; height: 13px; }
-  .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger, .puzzle-zoom-reset) { width: 44px; min-height: 44px; }
+  .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger, .puzzle-zoom-reset, .puzzle-tools-trigger) { width: 44px; min-height: 44px; }
   .mobile-puzzle-menu { max-width: calc(100vw - 16px); overscroll-behavior: contain; }
   .mobile-puzzle-menu button { min-height: 44px; }
   .mobile-puzzle-menu button:focus-visible { outline-offset: -2px; }
