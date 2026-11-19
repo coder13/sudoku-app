@@ -2,6 +2,7 @@ import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptio
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
 import { lineGroupMask } from './line-groups.ts'
 import { lineSkipsCells } from './line-geometry.ts'
+import { regionSumParts } from './region-sum.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -32,6 +33,10 @@ export const VARIANTS = {
   between: {
     name: 'Between Lines',
     rule: 'The digits inside each Between line must lie strictly between the digits in its two circles. The smaller endpoint can be at either end. Interior digits can repeat if the other puzzle rules allow it. Touching lines stay independent.',
+  },
+  'region-sum': {
+    name: 'Region Sum Lines',
+    rule: 'Each blue line has parts with the same total. Region borders divide the line unless its listed groups say otherwise. Different lines can have different totals.',
   },
   thermometer: {
     name: 'Thermometer',
@@ -384,6 +389,11 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
     case 'between': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 3)
+    case 'region-sum': return Object.keys(rule).every(key => ['type', 'cells', 'groupByRegion', 'segments'].includes(key)) &&
+      validCells(rule.cells, 2) && (rule.groupByRegion === undefined || typeof rule.groupByRegion === 'boolean') &&
+      (rule.segments === undefined || Array.isArray(rule.segments) && rule.segments.length > 0 &&
+        rule.segments.every(path => Array.isArray(path) && path.length > 0 && path.every(cell => Number.isInteger(cell) && rule.cells.includes(cell))) &&
+        new Set(rule.segments.flat()).size === rule.cells.length)
     case 'palindrome': case 'renban': return validCells(rule.cells, rule.type === 'renban' ? 1 : 2) &&
       (rule.type !== 'renban' || rule.cells.length <= 9) && (rule.segments === undefined ||
       Array.isArray(rule.segments) && rule.segments.length > 0 &&
@@ -434,10 +444,12 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
   // The interchange decoders bound the encoded and decoded input sizes.
   if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule))) return false
   const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
+  if (rules?.some(rule => rule.type === 'region-sum' && regionSumParts(rule, regions).length < 2)) return false
   return kind !== 'classic' && (id === 'mixed' || kind === id)
 }
 
 const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+  'region-sum': VARIANTS['region-sum'].name,
   entropic: PUZZLE_VARIANTS.entropic.name,
   modular: PUZZLE_VARIANTS.modular.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
@@ -494,6 +506,20 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
           descriptions.push('A dashed Between connector skips cells. Only the endpoint circles and cells with a small dot belong to that line.')
         }
         break
+      case 'region-sum': {
+        descriptions.push(VARIANTS['region-sum'].rule)
+        const number = puzzle.rules!.slice(0, index + 1).filter(rule => rule.type === 'region-sum').length
+        if (rule.segments) {
+          const at = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
+          descriptions.push(`Region Sum line ${number}: ${regionSumParts(rule, puzzle.regions)
+            .map(part => part.map(at).join(' + ')).join(' = ')}. Each listed group has the same total.`)
+        } else descriptions.push(`Region Sum line ${number}: ${rule.groupByRegion
+          ? 'combine all visits to the same region into one total; each visited region has the same total.'
+          : 'each separate visit to a region has the same total.'}`)
+        if ((rule.segments ?? [rule.cells]).some(lineSkipsCells)) descriptions.push(
+          'A dashed Region Sum connector skips cells. Only cells with a small dot belong to that line.')
+        break
+      }
       case 'renban':
         descriptions.push(PUZZLE_VARIANTS.renban.rule)
         break

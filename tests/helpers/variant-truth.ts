@@ -79,6 +79,21 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           first < digits[cell] && digits[cell] < last || last < digits[cell] && digits[cell] < first)
         break
       }
+      case 'region-sum': {
+        const regions = houses.slice(18, 27)
+        const totals = new Map<number, number>()
+        let previous = -1, visit = -1
+        for (const cell of rule.cells) {
+          const region = regions.findIndex(cells => cells.includes(cell))
+          if (region !== previous) visit++
+          previous = region
+          const part = rule.groupByRegion ? region : visit
+          totals.set(part, (totals.get(part) ?? 0) + digits[cell])
+        }
+        assert.ok(totals.size >= 2)
+        assert.equal(new Set(totals.values()).size, 1)
+        break
+      }
       case 'thermometer':
         rule.cells.slice(1).forEach((cell, i) => assert.ok(digits[rule.cells[i]] < digits[cell]))
         break

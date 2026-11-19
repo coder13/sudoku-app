@@ -3,6 +3,7 @@ import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle } from './formats.ts'
 import { EMPTY } from './game.ts'
 import { coachConnectedLines } from './coach-lines.ts'
+import { regionIndex } from './region-sum.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000
@@ -142,11 +143,12 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
   const constraints = data.givenConstraints ?? []
   if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const rules: VariantRule[] = []
+  const regions = readRegions(data.regions)
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'betweenLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -243,8 +245,8 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
         }
         rules.push({ type: 'extra-house', cells: segment.cells })
       }
-    } else if (constraint.type === 'palindromeLine' || constraint.type === 'renban') {
-      const name = constraint.type === 'renban' ? 'Renban' : 'Palindrome'
+    } else if (constraint.type === 'palindromeLine' || constraint.type === 'renban' || constraint.type === 'regionSumLine') {
+      const name = constraint.type === 'renban' ? 'Renban' : constraint.type === 'regionSumLine' ? 'Region Sum' : 'Palindrome'
       const settings = constraint.settings
       if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key)))) {
         throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
@@ -257,7 +259,24 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
         }
         return segment.cells as number[]
       })
-      for (const line of coachConnectedLines(paths)) rules.push({ type: constraint.type === 'renban' ? 'renban' : 'palindrome', ...line })
+      for (const line of coachConnectedLines(paths)) {
+        if (constraint.type !== 'regionSumLine') {
+          rules.push({ type: constraint.type === 'renban' ? 'renban' : 'palindrome', ...line })
+          continue
+        }
+        const cells = [...line.cells], drawing = line.segments ?? [line.cells]
+        const first = cells[0], last = cells.at(-1)!
+        const closed = cells.length > 2 && drawing.some(path => path.some((cell, i) => i > 0 &&
+          (cell === first && path[i - 1] === last || cell === last && path[i - 1] === first)))
+        // Coach rotates a closed component so its first/last cells lie in
+        // different regions. Otherwise one visit would be split at the cut.
+        if (closed) for (let i = 0; i <= cells.length; i++) {
+          if (regionIndex(cells[0], regions) !== regionIndex(cells.at(-1)!, regions)) break
+          cells.push(cells.shift()!)
+        }
+        rules.push({ type: 'region-sum', cells, groupByRegion: false,
+          ...(line.segments || cells[0] !== first ? { segments: drawing } : {}) })
+      }
     } else if (constraint.type === 'entropicLine' || constraint.type === 'modularLine') {
       const name = constraint.type === 'entropicLine' ? 'Entropic' : 'Modular'
       if (hasData(constraint.settings) && (!record(constraint.settings) || Object.keys(constraint.settings).some(key => !LINE_STYLING.has(key)))) {
@@ -302,6 +321,10 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
         rules.push({ type: 'whispers', cells: segment.cells, minDifference: Number(difference) })
       }
     } else if (constraint.type === 'thermometer' || constraint.type === 'arrow') {
+      if (constraint.type === 'thermometer' && hasData(constraint.settings) && (!record(constraint.settings) ||
+        Object.keys(constraint.settings).some(key => !LINE_STYLING.has(key)))) {
+        throw new Error('This Sudoku Coach thermometer uses unsupported settings.')
+      }
       if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no cells for ${constraint.type}.`)
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
@@ -327,7 +350,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
   if (exceptions.length) for (const [index, rule] of rules.entries()) {
     if (rule.type === 'non-consecutive') rules[index] = { ...rule, except: exceptions }
   }
-  return makeImportedPuzzle('Sudoku Coach', givens, rules, readRegions(data.regions))
+  return makeImportedPuzzle('Sudoku Coach', givens, rules, regions)
 }
 
 function digitRuns(code: string, format: ImportFormat): ImportedPuzzle {

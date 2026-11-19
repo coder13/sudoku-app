@@ -655,6 +655,7 @@ fn region_sum_uses_replacement_borders_and_explicit_reentry_policy() {
     puzzle.rules.push(PuzzleRule::RegionSum {
         cells: cells.clone(),
         group_by_region: true,
+        segments: None,
     });
     let mut entries = EMPTY;
     entries[18] = 2;
@@ -676,11 +677,81 @@ fn region_sum_uses_replacement_borders_and_explicit_reentry_policy() {
     puzzle.rules[0] = PuzzleRule::RegionSum {
         cells,
         group_by_region: false,
+        segments: None,
     };
     assert_eq!(
         puzzle.compile().unwrap().analyze(&entries, &NO_REMOVALS, 1),
         Ok(Analysis::Conflict)
     );
+}
+
+#[test]
+fn region_sum_drawing_paths_preserve_closures_without_changing_numeric_support() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules.push(PuzzleRule::RegionSum {
+        cells: vec![0, 1, 3],
+        group_by_region: false,
+        segments: None,
+    });
+    let expected = puzzle
+        .compile()
+        .unwrap()
+        .candidates(&EMPTY, &NO_REMOVALS)
+        .unwrap();
+    puzzle.rules[0] = PuzzleRule::RegionSum {
+        cells: vec![0, 1, 3],
+        group_by_region: false,
+        segments: Some(vec![vec![0, 1], vec![1, 3, 0]]),
+    };
+    assert_eq!(
+        puzzle
+            .compile()
+            .unwrap()
+            .candidates(&EMPTY, &NO_REMOVALS)
+            .unwrap(),
+        expected
+    );
+    for segments in [
+        vec![],
+        vec![vec![]],
+        vec![vec![0, 1]],
+        vec![vec![0, 1, 4]],
+        vec![vec![0, 1, 3, 81]],
+    ] {
+        puzzle.rules[0] = PuzzleRule::RegionSum {
+            cells: vec![0, 1, 3],
+            group_by_region: false,
+            segments: Some(segments),
+        };
+        assert!(puzzle.compile().is_err());
+    }
+}
+
+#[test]
+fn region_sum_closed_geometry_has_one_canonical_key_in_every_grid_orientation() {
+    // Literal coordinates for the same four-cell loop in all eight orientations.
+    let orientations = [
+        [34, 33, 24, 25], [66, 57, 56, 65],
+        [52, 51, 60, 61], [12, 21, 20, 11],
+        [28, 29, 20, 19], [68, 59, 60, 69],
+        [46, 47, 56, 55], [14, 23, 24, 15],
+    ];
+    let mut expected = None;
+    for cells in orientations {
+        let mut puzzle = VariantPuzzle::classic(EMPTY);
+        puzzle.rules.push(PuzzleRule::RegionSum {
+            cells: cells.to_vec(),
+            group_by_region: true,
+            segments: Some(vec![vec![cells[3], cells[0], cells[1], cells[2], cells[3]]]),
+        });
+        let canonical = sudoku_app_engine::canonical_variant(&puzzle).unwrap();
+        canonical.compile().unwrap();
+        if let Some(expected) = &expected {
+            assert_eq!(&canonical, expected);
+        } else {
+            expected = Some(canonical);
+        }
+    }
 }
 
 #[test]
@@ -835,6 +906,7 @@ fn line_and_outside_clue_definitions_require_valid_geometry_and_values() {
         PuzzleRule::RegionSum {
             cells: vec![0, 1, 2],
             group_by_region: false,
+            segments: None,
         },
         PuzzleRule::LittleKiller {
             cells: vec![0, 10, 20],

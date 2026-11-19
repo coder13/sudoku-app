@@ -85,7 +85,11 @@ impl LineConstraint {
             PuzzleRule::RegionSum {
                 cells,
                 group_by_region,
+                segments,
             } => {
+                if !super::drawing_paths_cover(cells, segments) {
+                    return Err(invalid);
+                }
                 cell_mask(cells).ok_or(invalid)?;
                 let region = |cell: usize| puzzle.memberships[cell][2];
                 let mut cells = cells.clone();

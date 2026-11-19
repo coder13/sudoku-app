@@ -18,6 +18,22 @@ pub fn canonical_variant(puzzle: &VariantPuzzle) -> Result<VariantPuzzle, Varian
     Ok(key(puzzle))
 }
 
+// Drawing paths do not change a puzzle's logical identity. Keep them in the
+// public canonical definition, but ignore them when excluding played puzzles.
+#[cfg(any(feature = "generation", test))]
+pub(super) fn generation_key(puzzle: &VariantPuzzle) -> VariantPuzzle {
+    let mut logical = puzzle.clone();
+    for rule in &mut logical.rules {
+        match rule {
+            PuzzleRule::Palindrome { segments, .. }
+            | PuzzleRule::Renban { segments, .. }
+            | PuzzleRule::RegionSum { segments, .. } => *segments = None,
+            _ => {}
+        }
+    }
+    key(&logical)
+}
+
 pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     let rename_digits = puzzle.rules.iter().all(|rule| {
         matches!(
@@ -206,7 +222,8 @@ impl SquareTransform {
                 *circle = self.cell(*circle);
                 self.path(cells);
             }
-            Palindrome { cells, segments } | Renban { cells, segments } => {
+            Palindrome { cells, segments } | Renban { cells, segments }
+            | RegionSum { cells, segments, .. } => {
                 self.path(cells);
                 if let Some(segments) = segments {
                     for segment in segments {
@@ -218,8 +235,7 @@ impl SquareTransform {
             | Entropic { cells }
             | Modular { cells }
             | Whispers { cells, .. }
-            | Between { cells }
-            | RegionSum { cells, .. } => self.path(cells),
+            | Between { cells } => self.path(cells),
             Sandwich {
                 cells, direction, ..
             }

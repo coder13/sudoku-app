@@ -413,6 +413,41 @@ fn exclusions_transform_rules_and_givens_together() {
 }
 
 #[test]
+fn drawing_metadata_cannot_bypass_logical_puzzle_exclusions() {
+    let solution = parse_givens(SOLUTION).unwrap();
+    for rule in [
+        PuzzleRule::Palindrome { cells: vec![0, 14], segments: None },
+        PuzzleRule::Renban { cells: vec![0, 3], segments: None },
+        PuzzleRule::RegionSum { cells: vec![0, 1, 5], group_by_region: false, segments: None },
+    ] {
+        let mut template = VariantPuzzle::classic(solution);
+        template.rules.push(rule);
+        let mut options = VariantGenerationOptions::new(67, template, 80..=80);
+        options.max_attempts = 1;
+        let (_, generated) = generate(options.clone());
+        let mut equivalent = generated.puzzle;
+        match &mut equivalent.rules[0] {
+            PuzzleRule::Palindrome { cells, segments }
+            | PuzzleRule::Renban { cells, segments }
+            | PuzzleRule::RegionSum { cells, segments, .. } => *segments = Some(vec![cells.clone()]),
+            _ => unreachable!(),
+        }
+        options.exclude = vec![equivalent.clone()];
+        assert_eq!(start_variant_generation(options.clone()).unwrap().advance(),
+            Some(GenerationStep::Exhausted { attempts: 1 }));
+        // Invalid drawing metadata must still be rejected before normalization.
+        match &mut equivalent.rules[0] {
+            PuzzleRule::Palindrome { segments, .. }
+            | PuzzleRule::Renban { segments, .. }
+            | PuzzleRule::RegionSum { segments, .. } => *segments = Some(vec![vec![81]]),
+            _ => unreachable!(),
+        }
+        options.exclude = vec![equivalent];
+        assert!(matches!(start_variant_generation(options), Err(VariantGenerationError::InvalidExclusion(0))));
+    }
+}
+
+#[test]
 fn invalid_exhausted_and_cancelled_searches_are_distinct() {
     let mut options = VariantGenerationOptions::new(15, VariantPuzzle::x_sudoku(EMPTY), 80..=80);
     options.max_attempts = 3;

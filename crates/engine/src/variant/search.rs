@@ -440,6 +440,7 @@ mod exact_house_tests {
         definition.rules.push(PuzzleRule::RegionSum {
             cells: vec![0, 1, 35],
             group_by_region: false,
+            segments: None,
         });
         let reduced = definition.compile_with_regions(false).unwrap();
         assert_eq!(reduced.houses.len(), 27);

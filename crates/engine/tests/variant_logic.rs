@@ -325,6 +325,7 @@ fn each_local_rule_explains_a_candidate_that_its_relationship_excludes() {
             PuzzleRule::RegionSum {
                 cells: vec![0, 1, 3],
                 group_by_region: false,
+                segments: None,
             },
             &[(0, 2), (3, 6)],
             [1, 5],
