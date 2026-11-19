@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { test } from 'node:test'
 import { exportPuzzle, parsePuzzle, puzzlePlayLink, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
 import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
@@ -216,6 +217,17 @@ test('turning automatic cleanup off preserves peer candidates when a digit is pl
     assert.equal(placed.position.corner[18], bit)
     assert.deepEqual(undo(placed).position, marked.position)
   }
+})
+
+test('Mini Sudoku cleans up candidates using its grid size when enabled', () => {
+  const bit = 1 << (4 - 1)
+  const mini = makeGame('mini-cleanup', 'Mini Sudoku', '0'.repeat(16), 'imported', 0, MINI_GRID)
+  const marked = enter(mini, [0, 1, 4, 10], 'candidate', 4)
+  const digits = '4' + '0'.repeat(15)
+  const cleaned = fillEntries(marked, digits)
+  const kept = fillEntries(marked, digits, false)
+  assert.deepEqual([0, 1, 4, 10].map(cell => cleaned.position.corner[cell]), [0, 0, 0, bit])
+  assert.deepEqual([0, 1, 4, 10].map(cell => kept.position.corner[cell]), [0, bit, bit, bit])
 })
 
 test('candidate input consolidates legacy center notes into the 3x3 note grid', () => {

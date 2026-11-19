@@ -1,5 +1,6 @@
 import { EngineError, runEngine, type HintChoices, type TechniqueCatalog } from './engine.ts'
 import { completeCandidateMasks, hintEliminations, valuesOf, type Game } from './game.ts'
+import { miniHints, miniSolutionTrace } from './mini-play.ts'
 import { techniqueHintsFromMatches } from './puzzle-analysis.ts'
 import { variantHintChoice, variantSolutionPath } from './variant-hints.ts'
 import { getVariantPlayOrder, variantHintOrder, variantPosition } from './variant-play.ts'
@@ -36,6 +37,7 @@ export function puzzleTechniqueCatalog(variant: boolean) {
 
 /** Use the player's current digits and removals, retaining the full rule set. */
 export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?: string, collection?: number): Promise<HintChoices & { offset?: number }> {
+  if (game.grid) return miniHints(game, limit, technique)
   const values = valuesOf(game)
   const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations)
   const problem = variantHintProblem(game, values, eliminations)
@@ -77,6 +79,7 @@ export async function puzzleHintPage(variant: Game['variant'], collection: numbe
 
 /** Solution walkthroughs start at the givens, without changing the saved game. */
 export async function puzzleSolution(game: Game) {
+  if (game.grid) return miniSolutionTrace(game.givens)
   return game.variant ? variantSolutionPath(await runEngine({
     type: 'variant', operation: 'trace', position: variantPosition(game.variant), techniqueOrder: await getVariantPlayOrder(),
   })) : runEngine({ type: 'logical-solve', values: game.givens, includeStepDetails: true, includeMoveAvailability: true })

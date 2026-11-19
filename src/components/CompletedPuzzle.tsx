@@ -8,7 +8,8 @@ import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { generationVariant, variantDifficulties, variantDifficulty, variantDifficultyLabel, variantName } from '../sudoku/variants'
+import { gameGenerationVariant, gameVariantId, miniDifficulties, miniDifficulty, MINI_NAME } from '../sudoku/new-puzzle'
+import { variantDifficulties, variantDifficulty, variantDifficultyLabel, variantName } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
 import { collectionProgress, findCollectionGame, getGameCollection, nextCollectionPuzzle } from '../sudoku/collections'
@@ -19,7 +20,7 @@ import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 
 function activePuzzleSummary(game: Game) {
   const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
-  const name = game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
+  const name = game.grid ? MINI_NAME : game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
   const progress = !game.started ? 'Not started' : game.timeUntracked ? 'In progress' : `${formatTime(game.elapsed)} played`
   return [name, rating, progress].filter(Boolean).join(' · ')
 }
@@ -57,23 +58,23 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
       online ? undefined : new Set(Object.keys(collectionDownloads.grids(collectionEntry.collection, games)))) : undefined
   const progress = collectionEntry && collectionDifficulty
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
-  const recipe = generationVariant(game.variant)
+  const recipe = gameGenerationVariant(game)
   const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
   const needsChoice = !inCollection && Boolean(game.variant && !recipe)
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
     puzzle.id !== game.id && puzzle.id !== nextCollectionAttempt?.id && puzzle.source !== 'draft')
   const resumeFirst = Boolean(nextActive && (!inCollection || !collectionNext))
-  const nextDifficulty = variantDifficulty(recipe, preferredDifficulty)
+  const nextDifficulty = recipe === 'mini' ? miniDifficulty(game.difficulty ?? preferredDifficulty) : variantDifficulty(recipe, preferredDifficulty)
   const nextLabel = needsChoice ? 'Choose another puzzle' : nextDifficulty === 'auto'
-    ? `Next ${variantDifficultyLabel(recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
+    ? `Next ${variantDifficultyLabel(recipe === 'mini' ? undefined : recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
   const result = results.get(game.id)
   const ratingChange = result && Math.round(result.after) - Math.round(result.before)
   const difficultyLabel = game.difficulty ? DIFFICULTY_LABELS[game.difficulty] : 'Unrated'
   const ratingLabel = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : difficultyLabel
   const solved = games.filter(isSolved)
   const bestTime = solved.reduce((best, puzzle) =>
-    !puzzle.timeUntracked && puzzle.difficulty === game.difficulty && puzzle.variant?.id === game.variant?.id
+    !puzzle.timeUntracked && puzzle.difficulty === game.difficulty && gameVariantId(puzzle) === gameVariantId(game)
       ? Math.min(best, puzzle.elapsed) : best, Infinity)
   const canGenerate = !busy && !ratingPending
   const canPlayNext = collectionEntry ? Boolean(collectionNext) && !ratingPending && !loadingNext : canGenerate
@@ -95,8 +96,8 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(preferredDifficulty, undefined, recipe, { ruleset })
-  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, generate, onChooseVariant, online, preferredDifficulty])
+    } else void generate(nextDifficulty, undefined, recipe, { ruleset })
+  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, generate, onChooseVariant, online, nextDifficulty])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext
@@ -187,7 +188,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
             {!game.timeUntracked && game.difficulty && Number.isFinite(bestTime) &&
               <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
           </dl>
-          <ActionHistoryPanel entries={game.actionHistory} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
+          <ActionHistoryPanel entries={game.actionHistory} gridSize={game.grid?.size} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
           {actionsTarget && collectionStatus}
         </div>
         {actionsTarget ? createPortal(footer, actionsTarget) : footer}

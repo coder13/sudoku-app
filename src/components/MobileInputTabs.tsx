@@ -6,8 +6,9 @@ const labels = { digits: 'Digits', colors: 'Colors', chains: 'Chains' }
 export type MobileInputTab = keyof typeof labels
 export type MobileInputTool = Exclude<MobileInputTab, 'digits'>
 
-function InputToolsMenu({ disabled, candidatesDisabled, onGenerateCandidates, onOpen }: {
+function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCandidates, onOpen }: {
   disabled: boolean
+  colorsOnly?: boolean
   candidatesDisabled?: boolean
   onGenerateCandidates?: () => void
   onOpen: (opener: HTMLButtonElement | null) => void
@@ -62,20 +63,21 @@ function InputToolsMenu({ disabled, candidatesDisabled, onGenerateCandidates, on
         <PencilLine size={17} aria-hidden="true" /> Generate all candidates
       </button>}
       <button type="button" onClick={() => { close(); onOpen(trigger.current) }}>
-        <Palette size={17} aria-hidden="true" /> Colors &amp; Chains
+        <Palette size={17} aria-hidden="true" /> {colorsOnly ? 'Colors' : 'Colors & Chains'}
       </button>
     </div>
   </div>
 }
 
 /** Show Digits and any open solving tools in the mobile input card. Worktable owns the saved tab selection. */
-export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, onOpenTools,
+export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, colorsOnly, onOpenTools,
   candidatesDisabled, onGenerateCandidates, onSelect, onClose }: {
   active: MobileInputTab
   open: MobileInputTool[]
   panels: Record<MobileInputTab, ReactNode>
   activeTabRef: Ref<HTMLButtonElement>
   toolsDisabled: boolean
+  colorsOnly?: boolean
   onOpenTools?: (opener: HTMLButtonElement | null) => void
   candidatesDisabled?: boolean
   onGenerateCandidates?: () => void
@@ -115,7 +117,7 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
           role={open.length ? 'tabpanel' : undefined} aria-labelledby={open.length ? `${id}-tab-${tab}` : undefined}
           className={digits ? 'mobile-input-digits' : 'mobile-input-tool'} hidden={!digits && !selected} inert={!selected}
           tabIndex={!digits && selected ? 0 : undefined} data-no-panel-hold={!digits || undefined}>
-          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} onOpen={onOpenTools}
+          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} colorsOnly={colorsOnly} onOpen={onOpenTools}
             candidatesDisabled={candidatesDisabled} onGenerateCandidates={onGenerateCandidates} />}
           {panels[tab]}
         </div>

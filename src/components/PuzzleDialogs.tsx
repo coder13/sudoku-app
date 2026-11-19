@@ -1,6 +1,7 @@
 import { Button, ChoiceButton } from './Button'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Trash2 } from 'lucide-react'
+import { analyzeMini } from '../sudoku/mini-play'
 import { runEngine } from '../sudoku/engine'
 import { exportPuzzle, puzzlePlayLink, type ShareFormat } from '../sudoku/formats'
 import { isSolved, makeGame, valuesOf, type Game } from '../sudoku/game'
@@ -66,14 +67,19 @@ const formats: [ShareFormat, string][] = [
   ['coach', 'sudoku.coach link'],
 ]
 
+const miniFormats: [ShareFormat, string][] = [
+  ['link', 'Puzzle link'], ['givens', '16-character givens'], ['grid', '4-line text grid'],
+]
+
 export function SharePuzzle({ game, close }: { game: Game; close: () => void }) {
   const { hostname, origin } = window.location
   const loopback = hostname === 'localhost' || hostname.endsWith('.localhost') ||
     hostname === '[::1]' || /^127(?:\.\d+){3}$/.test(hostname)
-  const [format, setFormat] = useState<ShareFormat>(loopback && !game.variant ? 'exchange' : 'link')
+  const [format, setFormat] = useState<ShareFormat>(loopback && !game.variant && !game.grid ? 'exchange' : 'link')
   const [status, setStatus] = useState('')
   const text = useRef<HTMLTextAreaElement>(null)
-  const value = game.variant || format === 'link' ? puzzlePlayLink(game, origin) : exportPuzzle(game.givens, format, origin)
+  const size = game.grid?.size ?? 9
+  const value = game.variant || format === 'link' ? puzzlePlayLink(game, origin) : exportPuzzle(game.givens, format, origin, size)
 
   async function copy() {
     try {
@@ -92,12 +98,12 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
         {!game.variant && <>
           <label htmlFor="share-format">Format</label>
           <SelectControl id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
-            {formats.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            {(game.grid ? miniFormats : formats).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
           </SelectControl>
         </>}
         {loopback && format === 'link' && <p>This link opens only on this device.</p>}
         <label htmlFor="share-output">Puzzle to share</label>
-        <textarea id="share-output" ref={text} value={value} readOnly rows={format === 'grid' ? 9 : 3} spellCheck={false} />
+        <textarea id="share-output" ref={text} value={value} readOnly rows={format === 'grid' ? size : 3} spellCheck={false} />
         <div className="dialog-actions spread">
           <span className="dialog-status" role="status">{status}</span>
           <Button variant="primary" onClick={copy}><Clipboard size={16} /> Copy</Button>
@@ -120,7 +126,7 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
     setBusy(true)
     const givens = valuesOf(game)
     try {
-      const status = await runEngine({ type: 'analyze', values: givens })
+      const status = game.grid ? await analyzeMini(givens) : await runEngine({ type: 'analyze', values: givens })
       if (status !== 'unique') throw new Error(validation[status].text)
       if (!mounted.current) return
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
@@ -130,11 +136,11 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
       if (game.editingId) {
         const original = roomStore.getSnapshot().games.find((item) => item.id === game.editingId)
         if (!original) throw new Error('The saved puzzle is no longer available.')
-        roomStore.update(original.id, () => ({ ...makeGame(original.id, title.trim(), givens, 'custom', original.created), saved: true }))
+        roomStore.update(original.id, () => ({ ...makeGame(original.id, title.trim(), givens, 'custom', original.created, game.grid), saved: true }))
         roomStore.remove(game.id)
         roomStore.select(original.id)
       } else {
-        roomStore.update(game.id, () => ({ ...makeGame(game.id, title.trim(), givens, 'custom', game.created), saved: true }))
+        roomStore.update(game.id, () => ({ ...makeGame(game.id, title.trim(), givens, 'custom', game.created, game.grid), saved: true }))
       }
       close()
     } catch (reason) {

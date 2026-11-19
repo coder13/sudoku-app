@@ -5,7 +5,8 @@ import type { CandidateLayout, ErrorMode } from './game.ts'
 import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale.ts'
 import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints.ts'
 import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes.ts'
-import { isVariantId, variantDifficulty, type VariantId } from './variants.ts'
+import { isNewPuzzleId, miniDifficulty, type NewPuzzleId } from './new-puzzle.ts'
+import { variantDifficulty } from './variants.ts'
 import { generationRuleset, type GenerationRulesetId } from './variant-rulesets.ts'
 
 export {
@@ -181,12 +182,13 @@ export function saveDifficulty(value: DifficultyPreference) {
   catch { /* The setting remains active for this session. */ }
 }
 
-export type NewPuzzlePreference = { variant: VariantId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId }
+export type NewPuzzlePreference = { variant: NewPuzzleId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId }
 
 export function readNewPuzzlePreference(storage?: Pick<Storage, 'getItem'>): NewPuzzlePreference | null {
   try {
     const value = JSON.parse((storage ?? localStorage).getItem(NEW_PUZZLE_KEY) ?? 'null') as Partial<NewPuzzlePreference> | null
-    if (isVariantId(value?.variant) && isDifficultyPreference(value.difficulty)) {
+    if (isNewPuzzleId(value?.variant) && isDifficultyPreference(value.difficulty)) {
+      if (value.variant === 'mini') return { variant: 'mini', difficulty: miniDifficulty(value.difficulty) }
       const ruleset = generationRuleset(value.variant, value.ruleset)
       return { variant: value.variant, difficulty: variantDifficulty(value.variant, value.difficulty),
         ...(ruleset ? { ruleset: ruleset.id } : {}) }

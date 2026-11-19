@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import lzString from 'lz-string'
-import { exportPuzzle, STARTER } from '../src/sudoku/formats.ts'
+import { exportPuzzle, puzzleLinkHash, STARTER } from '../src/sudoku/formats.ts'
 import { WINDOKU_REGIONS, isPlayablePuzzle, variantName, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { countMixedSolutions } from './helpers/mixed-oracle.ts'
 import { mixedFixtures } from './helpers/mixed-fixtures.ts'
 import { coachCode as coach } from './helpers/coach-code.ts'
+import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { EMPTY } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
@@ -28,6 +29,30 @@ test('detects existing formats and compact Classic links', async () => {
     [`https://sudokupad.app/scf${shortGrid}`, 'SudokuPad'],
   ]
   for (const [input, format] of inputs) assert.deepEqual(await detectPuzzle(input), { givens: STARTER, format }, input)
+})
+
+test('Mini Sudoku imports text and versioned links and rejects unsupported authored rules', async () => {
+  const givens = '0000300201400000'
+  const grid = MINI_GRID
+  for (const input of [exportPuzzle(givens, 'givens'), exportPuzzle(givens, 'grid', '', 4), '..|..\n3.|.2\n--+--\n.1|4.\n..|..']) {
+    assert.deepEqual(await detectPuzzle(input), { givens, grid, format: 'Text grid' })
+  }
+  assert.deepEqual(await detectPuzzle('#' + puzzleLinkHash({ givens, grid })), { givens, grid, format: 'Puzzle link' })
+  const data = { gridSize: 4, givenDigits: givens, regions: [0,0,1,1,0,0,1,1,2,2,3,3,2,2,3,3] }
+  assert.deepEqual(await detectPuzzle(coach(data)), { givens, grid, format: 'Sudoku Coach' })
+  await assert.rejects(detectPuzzle(coach({ ...data, givenConstraints: [{ type: 'diagonalNegative', segments: [] }] })), /rules that Mini Sudoku cannot import/)
+  await assert.rejects(detectPuzzle(coach({ ...data, regions: [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3] })), /four 2 × 2 boxes/)
+  const puzzle = { size: 4, ruleset: 'Normal 4×4 Sudoku rules apply.', grid: [
+    [{}, {}, {}, {}], [{ given: true, value: 3 }, {}, {}, { given: true, value: 2 }],
+    [{}, { given: true, value: 1 }, { given: true, value: 4 }, {}], [{}, {}, {}, {}],
+  ] }
+  const code = lzString.compressToBase64(JSON.stringify(puzzle))
+  assert.deepEqual(await detectPuzzle(`https://sudokupad.app/fpuz${encodeURIComponent(code)}`), { givens, grid, format: 'SudokuPad' })
+  assert.deepEqual(await detectPuzzle(JSON.stringify(puzzle)), { givens, grid, format: 'f-puzzles' })
+  await assert.rejects(detectPuzzle(JSON.stringify({ ...puzzle, 'diagonal+': true })), /rules that Mini Sudoku cannot import/)
+  const rules = [{ type: 'diagonal', diagonal: 'main' }]
+  const invalidShare = '#sized=' + encodeURIComponent(JSON.stringify({ version: 2, grid, givens, rules }))
+  await assert.rejects(detectPuzzle(invalidShare), /missing a supported sized Sudoku puzzle/)
 })
 
 test('imports the supplied Killer grid from a Sudoku Coach code or link', async () => {
@@ -309,7 +334,7 @@ test('malformed formats reject invalid dimensions, regions, rules, givens, and U
     JSON.stringify({ size: 9, grid, killercage: [{ cells: ['R0C1'], value: 3 }] }),
     JSON.stringify({ size: 9, grid, killercage: [{ cells: ['R1C1'], value: 0 }] }),
     JSON.stringify({ size: 9, grid, ruleset: 'Digits on a red line add to 10.' }),
-    coach({ gridSize: 4 }), coach({ givenDigits: '0'.repeat(80) }), coach({ regions: Array(81).fill(0) }),
+    coach({ gridSize: 6 }), coach({ givenDigits: '0'.repeat(80) }), coach({ regions: Array(81).fill(0) }),
     coach({ givenConstraints: [{ type: 'thermometer', settings: { unknownRule: true }, segments: [{ cells: [0, 1], parameters: {} }] }] }),
     coach({ givenConstraints: [{ type: 'thermometer', segments: [{ cells: [0, 0], parameters: {} }] }] }),
     coach({ givenConstraints: [{ type: 'arrow', segments: [{ cells: [0], parameters: {} }] }] }),

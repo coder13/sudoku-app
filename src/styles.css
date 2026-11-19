@@ -1188,7 +1188,7 @@ svg { flex-shrink: 0; }
   position: absolute;
   inset: 7%;
   display: grid;
-  grid: repeat(3, 1fr) / repeat(3, 1fr);
+  grid: repeat(var(--candidate-rows, 3), 1fr) / repeat(var(--candidate-columns, 3), 1fr);
   place-items: center;
   font-size: calc(clamp(7px, 2.18cqw, 12px) * var(--board-font-scale, 1) * var(--app-text-scale) * var(--candidate-font-scale, 1));
   font-weight: 780;
@@ -1549,6 +1549,7 @@ svg { flex-shrink: 0; }
   color: var(--muted);
 }
 .key:not(:disabled):active { transform: scale(.96); transition-duration: var(--motion-press-duration); }
+.keypad.mini-keypad { grid-template: repeat(2, minmax(0, 1fr)) / repeat(2, minmax(0, 1fr)); }
 .keypad:not(.palette) .key { min-height: 0; }
 .desktop-play-resizable .standard-input-stack .keypad:not(.palette) .key {
   font-size: calc(max(18px, calc(var(--digit-pad-width) * var(--digit-font-ratio, .114))) * var(--app-text-scale));
@@ -2074,6 +2075,7 @@ svg { flex-shrink: 0; }
 .game-row-with-options .game-row { border: 0; background: transparent; min-height: 59px; }
 .game-row-options { width: 44px; min-height: 44px; }
 .mini-grid { flex: 0 0 33px; height: 33px; display: grid; grid: repeat(9, 1fr) / repeat(9, 1fr); padding: 3px; gap: 1px; border: 1px solid var(--border); background: var(--surface-raised); border-radius: 5px; }
+.mini-grid[data-size="4"] { grid: repeat(4, 1fr) / repeat(4, 1fr); }
 .mini-grid i { background: var(--surface-hover); border-radius: 1px; }
 .mini-grid i[data-filled="true"] { background: var(--purple); }
 .game-row-copy { min-width: 0; flex: 1; display: grid; gap: var(--space-2); }
@@ -3550,6 +3552,14 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-entropy-preview rect { fill: var(--board-bg); stroke: var(--board-ink); stroke-width: .14; }
 .variant-entropy-preview path { fill: none; stroke: var(--board-ink); stroke-width: .08; }
 .variant-entropy-preview text { fill: var(--board-ink); font-size: 1.9px; font-weight: 600; text-anchor: middle; }
+.variant-preview[data-variant="mini"] {
+  background:
+    linear-gradient(to right, transparent calc(50% - .5px), var(--grid-strong) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
+    linear-gradient(to bottom, transparent calc(50% - .5px), var(--grid-strong) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
+    repeating-linear-gradient(to right, transparent 0 calc(25% - 1px), var(--grid-line) calc(25% - 1px) 25%),
+    repeating-linear-gradient(to bottom, transparent 0 calc(25% - 1px), var(--grid-line) calc(25% - 1px) 25%),
+    var(--board-bg);
+}
 .variant-preview[data-variant="jigsaw"] { background: var(--board-bg); }
 .variant-preview-regions { fill: none; stroke: var(--grid-strong); stroke-width: .23; }
 .variant-clues { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }

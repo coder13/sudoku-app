@@ -30,11 +30,7 @@ export function parsePuzzle(input: string): string {
     // HoDoKu prefixes player-entered values with a plus sign.
     cells = givens.replace(/\+[1-9]/g, '.')
   } else {
-    cells = text.split(/\r?\n/)
-      .map((line) => line.replace(/#.*$/, ''))
-      .filter((line) => !/^[\s+|:.'\-┌┬┐├┼┤└┴┘─│┏┳┓┣╋┫┗┻┛━┃]*[-─━][\s+|:.'\-┌┬┐├┼┤└┴┘─│┏┳┓┣╋┫┗┻┛━┃]*$/.test(line))
-      .join('')
-      .replace(/[\s|│┃]/g, '')
+    cells = textGridCells(text)
   }
 
   if (!GRID.test(cells)) {
@@ -43,9 +39,18 @@ export function parsePuzzle(input: string): string {
   return cells.replace(/\./g, '0')
 }
 
+export function textGridCells(text: string): string {
+  return text.split(/\r?\n/)
+    .map((line) => line.replace(/#.*$/, ''))
+    .filter((line) => !/^[\s+|:.'\-┌┬┐├┼┤└┴┘─│┏┳┓┣╋┫┗┻┛━┃]*[-─━][\s+|:.'\-┌┬┐├┼┤└┴┘─│┏┳┓┣╋┫┗┻┛━┃]*$/.test(line))
+    .join('')
+    .replace(/[\s|│┃]/g, '')
+}
+
 export type ShareFormat = 'link' | 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
 
-export function puzzleLinkHash({ givens, variant }: Pick<Game, 'givens' | 'variant'>): string {
+export function puzzleLinkHash({ givens, variant, grid }: Pick<Game, 'givens' | 'variant' | 'grid'>): string {
+  if (grid) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, grid, givens }))}`
   if (!variant) return `puzzle=${givens}`
   const { version, rules, regions } = variant.puzzle
   return `variant=${encodeURIComponent(JSON.stringify({ id: variant.id, puzzle: { version, givens, rules, regions } }))}`
@@ -56,12 +61,12 @@ export function puzzlePlayLink(game: Game, origin = ''): string {
   return `${origin}/${search}#${puzzleLinkHash(game)}`
 }
 
-export function exportPuzzle(givens: string, format: ShareFormat, origin = ''): string {
+export function exportPuzzle(givens: string, format: ShareFormat, origin = '', size = 9): string {
   const dots = givens.replace(/0/g, '.')
   switch (format) {
     case 'link': return `${origin}/#${puzzleLinkHash({ givens })}`
     case 'givens': return dots
-    case 'grid': return dots.match(/.{9}/g)?.join('\n') ?? ''
+    case 'grid': return dots.match(new RegExp(`.{${size}}`, 'g'))?.join('\n') ?? ''
     case 'hodoku': return `:0000:x:${dots}:::`
     case 'exchange': return `https://sudokuexchange.com/play/?s=${givens}`
     case 'coach': return `https://sudoku.coach/en/play/${givens}`
