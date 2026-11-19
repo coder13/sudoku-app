@@ -1,0 +1,563 @@
+{
+  "compiler": "https://sudoku.coach/js/jCfXtZs-1776367508519.js",
+  "compilerSha256": "567c7f9023cfff3a7f8feb4f8393d3b10a1f85f9539ef48f31c577b105ad521f",
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/91BB",
+      "title": "Thermos and Region Sums",
+      "code": "SCv7_32_f2e8b4ubdb1j0425vt2uneugt1knnmrdevkqsp312bgohhlim7ak46nitueg9uk0kp9j1gi2et336steppl5hsjuiffp7qiql0grv9fi62arabjt5pqlbnfjb7irrqi88fat7j1ammi22jr5uct3tpki2ja9l1hhfll7fqbonjv9208hl22mio13bi0ffs5s8o25s6toeo5jbtqb7uj9k5ge75fitu4e6sbe8g81or1jke0bcv28060g4dh87k12d1s15lcmldle3d18ebo0hsl52r8i2uip8g40dnmavl3510ome92ldgog1j7tdvemdmnigqmdcmsetl9kuutlojta6eddi7cpqn9i3rqu99dfjm7abff1mmfq49dguq8pktdslfto0q5s0stpefuoucltcqu70ck20re745153be2pq4vj6obnm1368kaeo89ar7c9pk9398jd9nle0u01mccdhffsp0d7s6c7jq35q4tv03h61rro8ugsr1sm1onggseq",
+      "solution": "367581942192764358458329617826945731719638425543172869934217586285496173671853294",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {
+            "type": "region-sum",
+            "cells": [
+              12,
+              11,
+              19,
+              28,
+              37,
+              46,
+              55,
+              56,
+              57,
+              66,
+              58,
+              49
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              23,
+              15,
+              16,
+              25,
+              34,
+              43,
+              42
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              76,
+              77,
+              78,
+              69,
+              60,
+              51
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              38,
+              39,
+              40
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              4,
+              5,
+              6
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              73,
+              74,
+              75
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              71,
+              62,
+              53
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              27,
+              18,
+              9,
+              0
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              30,
+              21,
+              22,
+              14
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              63,
+              64,
+              54
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              50,
+              49,
+              41
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              8,
+              7,
+              17
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              0,
+              1,
+              2,
+              10
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              37,
+              45,
+              36
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              40,
+              31,
+              30
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              78,
+              70,
+              79
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              35,
+              44,
+              52
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              3,
+              13,
+              12
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              28,
+              29,
+              20
+            ]
+          },
+          {
+            "type": "thermometer",
+            "cells": [
+              15,
+              24,
+              23
+            ]
+          }
+        ]
+      },
+      "author": "CaroBaro",
+      "published": "2025-08-25 00:50:48",
+      "description": "",
+      "imageUrl": "https://sudoku.coach/open_graph_images/91BB.png"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/8AGt",
+      "title": "Non Con and Anti Royal Region Sums",
+      "code": "SCv7_32_f2e8r46ddb1j0444rt2ueef8bubavrddnnilgshghp81eoh5r15a2dbuuv528ta99be2o0ndkbsmctplmbcd6ri3bu0ta7hcq93khjok547qopns9qsemkmtqfuoce2vtj9e3qcggre3f5766pni78otlc2gfisvosp0eis7qgb4aq2fn6k0md44r22r6u1rassl72l53ajgi5qq5hq96clt4i5evu9ha9f97pft6572qn0v48et5pmknl9bk6bnchmthrv79gkmg0al1q3v940lgi3ivpm7kpnrl423nvcfu86mo1c1g1vbc0l6g3udqu0glhm311k0b9911mi5q1b4j52q1b122m282mrnaso0dmi27747v90shr1kl65imm334vulmvfrl7du05g47gvq",
+      "solution": "726159483483726159159483726372615948948372615615948372837261594594837261261594837",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000700000000000000300000000000000000000000000000000001000000",
+        "rules": [
+          {
+            "type": "non-consecutive"
+          },
+          {
+            "type": "anti-knight"
+          },
+          {
+            "type": "anti-king"
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              33,
+              41,
+              31,
+              30,
+              29,
+              28,
+              19,
+              9
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              65,
+              56,
+              57,
+              67,
+              58,
+              49,
+              40
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              68,
+              59,
+              51,
+              43,
+              34,
+              25,
+              26
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              20,
+              21,
+              13,
+              23,
+              15,
+              7
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              63,
+              55,
+              46,
+              37,
+              27
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              60,
+              70,
+              62,
+              53,
+              44,
+              35
+            ],
+            "groupByRegion": false
+          }
+        ]
+      },
+      "author": "CaroBaro",
+      "published": "2025-06-28 20:08:05",
+      "description": "",
+      "imageUrl": "https://sudoku.coach/open_graph_images/8AGt.png"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/8oer",
+      "title": "Region Lines and Dots",
+      "code": "SCv7_32_f2e9b55rdr1j0325vt2v67ac7lmqvreo5lhp28a82h1k18g4mpdq0dfstuio4djdud82108344e54d1ft54n8veo5j1ae5rd0f8oatovjt1hfhi1mihbkufctnlvn1uejrs7tof9223r2ns5j2f7j7a4r249cak8u7hsgtc8rpru240ndvtpe41tos6btmvr3treqttrshkp115c41lig1rdc462o6pr6km5m1a3q094kg9idib11hqlnvdfnkfnjhg9kpvscq9gql058l89ol41eib3c5mq87at0r2d2oigmqd16iq8d4dg2anck1h81poa01i4i1ct4qhomru8ee87av1tqa3ij4d3n3h1erjq14oeejb624tmbffvne5u5e14ljdv9jujfbl5fvappeimobdr5v394ik80jvjaf176sv89aa0pjtjks57ine2pcqdm9fljcp9tdu9br6lf1jnd40kmu0bauh2vstmd0f1lvhvijon9dcu1vtfuk5fpd2lnjivv4orj8o",
+      "solution": "351924768486713592279865413968341257523679184714258639847136925635492871192587346",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000060000000000000000000000000000000000000000000000001000000000",
+        "rules": [
+          {
+            "type": "region-sum",
+            "cells": [
+              4,
+              12,
+              20,
+              28,
+              37,
+              46,
+              55,
+              65,
+              66,
+              58,
+              68,
+              60,
+              51,
+              42,
+              33,
+              24,
+              15
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              29,
+              30,
+              31,
+              32,
+              23,
+              14
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              56,
+              47,
+              38,
+              48,
+              49
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              16,
+              26,
+              34,
+              44,
+              52,
+              62,
+              70
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              36,
+              27,
+              19,
+              11,
+              2
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              64,
+              74,
+              75
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              77,
+              78,
+              79
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "kropki",
+            "consecutive": {
+              "pairs": [
+                [
+                  38,
+                  37
+                ],
+                [
+                  47,
+                  38
+                ],
+                [
+                  46,
+                  37
+                ],
+                [
+                  12,
+                  21
+                ],
+                [
+                  20,
+                  21
+                ],
+                [
+                  11,
+                  12
+                ],
+                [
+                  33,
+                  32
+                ],
+                [
+                  33,
+                  42
+                ],
+                [
+                  23,
+                  24
+                ],
+                [
+                  15,
+                  24
+                ],
+                [
+                  66,
+                  65
+                ],
+                [
+                  75,
+                  66
+                ],
+                [
+                  76,
+                  77
+                ],
+                [
+                  76,
+                  67
+                ],
+                [
+                  19,
+                  28
+                ],
+                [
+                  19,
+                  10
+                ],
+                [
+                  23,
+                  22
+                ]
+              ],
+              "negative": false
+            }
+          }
+        ]
+      },
+      "author": "CaroBaro",
+      "published": "2025-08-14 14:04:34",
+      "description": "",
+      "imageUrl": "https://sudoku.coach/open_graph_images/8oer.png"
+    },
+    {
+      "url": "https://sudoku.coach/en/s/FaxQ",
+      "title": "Region Sum, Easy",
+      "code": "SCv7_32_f2e7qjtrdb1k047siumqfm3rt0f6l4pijn5u0gm4ouom17cdeg4i8gnvjp9p1op2oj1s4fkoj7elqa2fe8tcglt27q1b4v54u8m5jqic7nogdgpr5jfh2ri5vgeijjfvkdpjv2fm1l7pecmnd68b5bbpbl44tl1b0rasuqtrgej99pai1rnu72skqgq77ij3n9otvknpnhajdgg6b07u789tah049sqgq0o501mqo1k5gt84bm3mi62j9l9t6bfbhatoipgogpin8367u26c03o57r04fe48lp2ngi3l39fc2abk1ar5qonuma7tmrtl9b4nnfru0fibgs5a",
+      "solution": "841793562356824971279156438568347219934218756127965843612479385493581627785632194",
+      "puzzle": {
+        "version": 1,
+        "givens": "000003000000004000000000008000000009000000000120000000000000000000000000005600000",
+        "rules": [
+          {
+            "type": "region-sum",
+            "cells": [
+              49,
+              48,
+              47,
+              37,
+              27,
+              18,
+              9,
+              10,
+              1,
+              2,
+              3,
+              13,
+              23,
+              32,
+              41
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              20,
+              30,
+              40,
+              50,
+              60,
+              70,
+              80
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              78,
+              79,
+              69,
+              59,
+              58
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              62,
+              71,
+              61,
+              51,
+              42,
+              43
+            ],
+            "groupByRegion": false
+          }
+        ]
+      },
+      "author": "funnyamliy",
+      "published": "2026-05-26 22:25:07",
+      "description": "",
+      "imageUrl": "https://sudoku.coach/open_graph_images/FaxQ.png"
+    }
+  ]
+}

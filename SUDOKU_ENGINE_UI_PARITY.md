@@ -5,7 +5,7 @@ The current priority is to expose the rule families already implemented in the e
 | Rule family | Engine | App integration | Issue |
 | --- | --- | --- | --- |
 | Between Lines | In main | Released, including Easy/Medium New Puzzle | [PR 190](https://github.com/coder13/sudoku-app/pull/190) |
-| Region Sum Lines | In main | Pending | [67](https://github.com/coder13/sudoku-app/issues/67) |
+| Region Sum Lines | In main | Implemented in `codex/sudoku-ui-parity-region-sum`, awaiting release gates | [67](https://github.com/coder13/sudoku-app/issues/67) |
 | Clone | In main | Pending | [42](https://github.com/coder13/sudoku-app/issues/42) |
 | Sandwich | In main | Pending | [68](https://github.com/coder13/sudoku-app/issues/68) |
 | Little Killer | In main | Pending | [69](https://github.com/coder13/sudoku-app/issues/69) |
@@ -25,6 +25,8 @@ The existing engine compiles ordered paths of at least three distinct cells. Eve
 The first source controls are Philip Newman's [Between, the Lines](https://www.gmpuzzles.com/blog/2026/08/between-lines-sudoku-by-philip-newman/), with its published grid and solution PDFs, and Raumplaner's complete [Between the Dots](https://sudoku.coach/en/s/9KxH), which combines twelve Between paths and eleven black dots with zero givens. Keep every companion clue. The source fixtures retain original links, givens, ordered paths, printed completions and the original Coach code. Independent numeric search verifies one solution for both complete sources, matching the printed completions. The Newman control closes in one independent search node; the mixed Coach control uses 201. Static clue renders, actual app contracts and all exact-head release gates pass. The integration is on main at `30bbd85`.
 
 ## New Puzzle generation parity
+
+Region Sum Lines now has complete source/import/render/play/help integration and a checked Medium New Puzzle recipe in its isolated worktree. Five complete sources retain their unique printed solutions and all companion clues. Closed drawing paths and both grouping modes survive storage, sharing and native transforms. [Source, generation, compatibility and performance audit](SUDOKU_REGION_SUM_AUDIT.md). Three Coach human paths remain partial, and FaxQ currently has one available hint; the remaining coverage and latency work is tracked in [192](https://github.com/coder13/sudoku-app/issues/192).
 
 The user explicitly confirmed generation parity. In addition to the seven missing rule families above, add verified New Puzzle recipes for the current import-only families: Anti-King, Non-Consecutive, Odd/Even, Whispers, Palindrome, Global Entropy, Entropic Lines, Modular Lines, Renban, Inequality, XV, Two-cell sums and Quadruple. Existing generation/worker APIs already support these rules. Keep generation and all play/help flows in each family’s integration and verify every advertised difficulty.
 

@@ -38,7 +38,8 @@ pub struct VariantGenerationOptions {
     pub technique_order: Vec<VariantTechnique>,
     /// Rule ID whose removal must leave multiple solutions. Use `jigsaw` to remove region uniqueness.
     pub required_rule: Option<String>,
-    /// Previously emitted puzzles to exclude, including their equivalent rotations and reflections.
+    /// Previously emitted puzzles to exclude, including equivalent rotations and reflections.
+    /// Optional drawing paths do not distinguish otherwise identical logical puzzles.
     pub exclude: Vec<VariantPuzzle>,
 }
 
@@ -197,9 +198,10 @@ pub fn start_variant_generation(
         .iter()
         .enumerate()
         .map(|(index, puzzle)| {
-            super::canonical_variant(puzzle).map_err(|_| InvalidExclusion(index))
+            puzzle.compile().map_err(|_| InvalidExclusion(index))?;
+            Ok(symmetry::generation_key(puzzle))
         })
-        .collect::<Result<HashSet<_>, _>>()?;
+        .collect::<Result<HashSet<_>, VariantGenerationError>>()?;
     Ok(GenerationSearch::new(
         Random::from_seed(options.seed),
         options.max_attempts,
@@ -258,7 +260,7 @@ fn attempt(
     for next in order.into_iter().map(Some).chain(std::iter::once(None)) {
         if options.givens.contains(&remaining) && last_checked != Some(remaining) {
             last_checked = Some(remaining);
-            if (excluded.is_empty() || !excluded.contains(&symmetry::key(&puzzle)))
+            if (excluded.is_empty() || !excluded.contains(&symmetry::generation_key(&puzzle)))
                 && let Some(rating) = accept(&compiled, &puzzle, without.as_mut(), options)
             {
                 return Some(GeneratedVariant {

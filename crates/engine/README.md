@@ -501,7 +501,7 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 | `arrow`, `renban`, `between` | Supply `cells` in line order. For Arrow, supply its `circle` separately. For Between, include both endpoints in `cells`. |
 | `entropic` | Keep the ordered walk, including closures and revisits. Every three positions use the low, medium and high groups. |
 | `global-entropy` | Every 2 × 2 area contains a low, medium and high digit, including areas across region boundaries. |
-| `region-sum` | Supply `cells` in line order. The active regions divide the line into segments. Set `groupByRegion` to true to combine separate visits to the same region. |
+| `region-sum` | Supply distinct `cells` in logical order. The active regions divide the line into parts. Set `groupByRegion` to true to combine separate visits to the same region. Optional `segments` preserve visible paths, including closing edges; their union must equal `cells` and they do not change the sums. Rust callers use `segments: None` for an ordinary line. |
 | `sandwich`, `x-sum`, `skyscrapers`, `little-killer` | Supply `cells` from the clue toward the far edge in the declared `direction`. Use `count` for Skyscrapers and `sum` for the other clues. |
 
 Palindrome pairs the distinct `cells` from opposite ends. The middle cell of an odd-length list has no extra restriction. Optional `segments` preserve the drawing paths of a clue with several branches or revisits. Their union must equal the logical cells. Drawing order does not change the mirrored pairs. Old JSON omits `segments` and retains its original behavior. Rust callers set `segments: None` for an ordinary line.
@@ -591,7 +591,7 @@ Use `score` or `difficulty` to require a complete rated solution. Pass `techniqu
 
 The attempt limit counts sampled grids. The node limit applies to each exact search. Rust callers can advance or cancel the search at attempt boundaries. In the browser, use `runGeneration` with an abort signal to cancel between attempts and receive progress.
 
-Pass previous puzzles in `exclude` to skip their equivalents. [`canonical_variant`] transforms the givens, region layout, and rules together. It accounts for rotations and reflections, including changes to outside-clue directions. It also normalizes digit names when all rules allow arbitrary renaming.
+Pass previous puzzles in `exclude` to skip their logical equivalents. Optional drawing paths do not distinguish played puzzles; exclusions are validated before ignoring that drawing metadata. The public [`canonical_variant`] retains the drawing geometry while transforming givens, region layout and rules together. It accounts for rotations and reflections, including outside-clue directions. It also normalizes digit names when all rules allow arbitrary renaming.
 
 ## Implementation and verification
 

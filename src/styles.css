@@ -3316,6 +3316,16 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-between .variant-between-jump { stroke-dasharray: .1 .08; }
 .variant-between-node { fill: var(--board-ink); opacity: .65; }
+.variant-region-sum polyline, .variant-region-sum line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: .085;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .65;
+}
+.variant-region-sum .variant-region-sum-jump { stroke-dasharray: .1 .08; }
+.variant-region-sum-node { fill: currentColor; opacity: .8; }
 .variant-between-endpoints circle {
   fill: var(--board-bg);
   stroke: var(--board-ink);

@@ -794,6 +794,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 [PuzzleRule::RegionSum {
                     cells: vec![60, 69, 59],
                     group_by_region: false,
+                    segments: None,
                 }],
             ),
             seed(
@@ -803,6 +804,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 [PuzzleRule::RegionSum {
                     cells: vec![35, 26, 16, 8],
                     group_by_region: false,
+                    segments: None,
                 }],
             ),
             seed(
@@ -812,6 +814,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 [PuzzleRule::RegionSum {
                     cells: vec![54, 64, 56, 57, 66],
                     group_by_region: false,
+                    segments: None,
                 }],
             ),
         ],

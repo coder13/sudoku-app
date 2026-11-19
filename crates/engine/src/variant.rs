@@ -344,6 +344,10 @@ rules! {
         /// Combine separate visits to the same region into one sum.
         #[cfg_attr(feature = "wasm-api", serde(default))]
         group_by_region: bool,
+        /// Optional visible paths whose union equals the logical cells.
+        /// Drawing paths may close or revisit cells without changing the sums.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        segments: Option<Vec<Vec<usize>>>,
     }
     /// Require a sum between the 1 and the 9 in a row or column.
     Sandwich => "sandwich" {

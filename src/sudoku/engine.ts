@@ -60,7 +60,7 @@ export type VariantRule =
   | { type: 'global-entropy' }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }
-  | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean }
+  | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean; segments?: readonly (readonly number[])[] }
   | { type: 'sandwich' | 'x-sum'; direction: ClueDirection; cells: readonly number[]; sum: number }
   | { type: 'little-killer'; direction: DiagonalDirection; cells: readonly number[]; sum: number }
   | { type: 'skyscrapers'; direction: ClueDirection; cells: readonly number[]; count: number }
