@@ -1,19 +1,8 @@
 import { createKakuro, type KakuroPuzzle } from './engine.ts'
 
-export const kakuroDifficulties = ['easy', 'medium', 'hard'] as const
-export type KakuroDifficulty = typeof kakuroDifficulties[number]
-export const kakuroDifficultyLabels: Record<KakuroDifficulty, string> = {
-  easy: 'Easy',
-  medium: 'Medium',
-  hard: 'Hard',
-}
+import { numberPuzzleDifficulties, type NumberPuzzleEntry } from '../number-puzzles/catalog.ts'
 
-export type KakuroEntry = {
-  id: string
-  difficulty: KakuroDifficulty
-  number: number
-  puzzle: KakuroPuzzle
-}
+export type KakuroEntry = NumberPuzzleEntry & { puzzle: KakuroPuzzle }
 
 const recipes = {
   easy: [
@@ -32,7 +21,7 @@ const recipes = {
   ],
 } as const
 
-export const kakuroCatalog: readonly KakuroEntry[] = kakuroDifficulties.flatMap(difficulty =>
+export const kakuroCatalog: readonly KakuroEntry[] = numberPuzzleDifficulties.flatMap(difficulty =>
   recipes[difficulty].map(([width, grid], index) => ({
     id: `${difficulty}-${index + 1}`,
     difficulty,
