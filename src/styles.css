@@ -3616,7 +3616,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-thermometer polyline { fill: none; stroke: currentColor; stroke-width: .22; stroke-linecap: round; stroke-linejoin: round; }
 .variant-thermometer circle { fill: currentColor; }
 [data-six-clues]:has(> .variant-renban) .variant-thermometer polyline { stroke-width: .38; }
-.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head {
+.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head, .variant-arrow-pill {
   fill: none;
   stroke: var(--board-ink);
   stroke-width: .047;
@@ -3625,6 +3625,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   opacity: .64;
 }
 .variant-arrow-head { stroke-width: .11; }
+.variant-arrow-pill { fill: var(--board-bg); opacity: .86; }
+.variant-arrow-tens { fill: var(--board-ink); font-size: .17px; text-anchor: middle; }
 .variant-dot { stroke-width: .033; }
 .variant-dot-white { fill: #fff; stroke: #222; }
 .variant-dot-black { fill: #161616; stroke: #eee; }

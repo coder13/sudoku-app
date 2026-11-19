@@ -44,6 +44,24 @@ test('sharing an in-progress variant publishes an immutable definition under a U
   } finally { sqlite.close() }
 })
 
+test('Pill Arrows shares preserve the rule definition', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const givens = '0'.repeat(81)
+    const rule = { type: 'pill-arrow', pill: [7, 8], cells: [16, 17], fromTens: true }
+    const definition = { version: 1, title: 'Pill Arrows', givens, variant: {
+      id: rule.type, puzzle: { version: 1, givens, rules: [rule] },
+    } }
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), definition)
+    const invalid = { ...definition, variant: { ...definition.variant, puzzle: {
+      ...definition.variant.puzzle, rules: [{ ...rule, solution: givens }],
+    } } }
+    await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
+  } finally { sqlite.close() }
+})
+
 test('Mini Sudoku shares keep the four-by-four grid specification', async () => {
   const { sqlite, fetcher } = syncDatabase()
   try {

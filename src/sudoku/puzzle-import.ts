@@ -63,6 +63,7 @@ function hasData(value: unknown) {
 
 const CLUE_STYLING = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
 const LINE_STYLING = new Set(['colour', 'colourSync', 'lineThickness', 'lineEndOffset', 'borderColour', 'borderThickness', 'opacity'])
+const PILL_ARROW_STYLING = new Set([...LINE_STYLING, 'bulbSize', 'bulbFillColour', 'bulbBorderThickness', 'bulbBorderColour', 'arrowHeadLength'])
 function unsupportedClueStyling(settings: unknown) {
   return hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !CLUE_STYLING.has(key)))
 }
@@ -213,7 +214,7 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'pillArrow'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -427,6 +428,20 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
           throw new Error('This Sudoku Coach puzzle has an unsupported Whispers line.')
         }
         rules.push({ type: 'whispers', cells: segment.cells, minDifference: Number(difference) })
+      }
+    } else if (constraint.type === 'pillArrow') {
+      const settings = constraint.settings
+      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !PILL_ARROW_STYLING.has(key)))) {
+        throw new Error('This Sudoku Coach Pill Arrow uses unsupported settings.')
+      }
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Pill Arrow.')
+        }
+        const [first, start, ...cells] = segment.cells
+        // Coach reads its two pill digits in row-major order even when drawn in reverse.
+        const fromTens = start < first
+        rules.push({ type: 'pill-arrow', pill: fromTens ? [start, first] : [first, start], cells, ...(fromTens && { fromTens }) })
       }
     } else if (constraint.type === 'thermometer' || constraint.type === 'arrow') {
       if (constraint.type === 'thermometer' && hasData(constraint.settings) && (!record(constraint.settings) ||

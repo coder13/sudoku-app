@@ -156,6 +156,7 @@ const regions = value => fields(value, { type: oneOf('boxes') }) ||
 const segments = list(list(cell, 1), 1)
 const diagonalDirection = oneOf('north-east', 'south-east', 'south-west', 'north-west')
 const ruleFields = {
+  'pill-arrow': [{ pill: list(cell, 2, 2), cells: list(cell, 1, 79) }, { fromTens: boolean }],
   'adjacent-total': [{ cells: list(cell, 2, 2), sum: integer(3, 17) }],
   between: [{ cells: list(cell, 3, 81) }],
   clone: [{ groups: list(list(cell, 2, 81), 1) }],

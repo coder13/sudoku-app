@@ -238,6 +238,10 @@ impl SquareTransform {
                 *circle = self.cell(*circle);
                 self.path(cells);
             }
+            PillArrow { pill, cells, .. } => {
+                self.path(pill);
+                self.path(cells);
+            }
             Palindrome { cells, segments }
             | Renban { cells, segments }
             | RegionSum {

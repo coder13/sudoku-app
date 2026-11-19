@@ -169,14 +169,26 @@ function CloneClue({ groups, color }: { groups: readonly (readonly number[])[]; 
   </g>
 }
 
-function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly number[]; marker: string }) {
+function ArrowClue({ circle, cells, marker, pill }: { circle: number; cells: readonly number[]; marker: string; pill?: readonly [number, number] }) {
   const [cx, cy] = center(circle)
   const [nx, ny] = center(cells[0])
   const length = Math.hypot(nx - cx, ny - cy)
   const start = [cx + (nx - cx) * .33 / length, cy + (ny - cy) * .33 / length]
   return <>
     <polyline className="variant-arrow-line" points={`${start.join(',')} ${points(cells)}`} markerEnd={`url(#${marker})`} />
-    <circle className="variant-arrow-circle" cx={cx} cy={cy} r=".33" />
+    {pill ? <PillClue cells={pill} /> : <circle className="variant-arrow-circle" cx={cx} cy={cy} r=".33" />}
+  </>
+}
+
+function PillClue({ cells: [tens, ones] }: { cells: readonly [number, number] }) {
+  const [tx, ty] = center(tens)
+  const [ox, oy] = center(ones)
+  const angle = Math.atan2(oy - ty, ox - tx) * 180 / Math.PI
+  return <>
+    <rect className="variant-arrow-pill" x={tx - .33} y={ty - .33}
+      width={Math.hypot(ox - tx, oy - ty) + .66} height=".66" rx=".33"
+      transform={`rotate(${angle} ${tx} ${ty})`} />
+    {tens > ones && <text x={tx} y={ty - .35} className="variant-arrow-tens">10s</text>}
   </>
 }
 
@@ -326,7 +338,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const drawnSums = new Set<number>()
   const markedEdges = new Set([...dots.keys(), ...sums.keys(), ...rules.flatMap(rule => rule.type === 'inequality' ? [pairKey(rule.less, rule.greater)] : [])])
   return <svg className="variant-clues" viewBox="0 0 9 9" aria-hidden="true" focusable="false">
-    {rules.some((rule) => rule.type === 'arrow') && <defs>
+    {rules.some((rule) => rule.type === 'arrow' || rule.type === 'pill-arrow') && <defs>
       <marker id={marker} viewBox="0 0 1 1" refX=".9" refY=".5" markerWidth=".29" markerHeight=".29"
         markerUnits="userSpaceOnUse" orient="auto">
         <path className="variant-arrow-head" d="M.08 .08L.9 .5L.08 .92" />
@@ -405,6 +417,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           return <ThermometerClue key={index} cells={rule.cells} />
         case 'arrow':
           return <ArrowClue key={index} {...rule} marker={marker} />
+        case 'pill-arrow':
+          return <ArrowClue key={index} circle={rule.pill[rule.fromTens ? 0 : 1]} cells={rule.cells} pill={rule.pill} marker={marker} />
         case 'kropki':
           return <g key={index}>{[rule.consecutive, rule.ratioTwo].flatMap((marks, kind) =>
             (marks?.pairs ?? []).map(([a, b]) => {
@@ -537,6 +551,13 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
         labels[rule.circle].push(`arrow circle, path through ${rule.cells.map(reference).join('; ')}`)
         for (const cell of rule.cells) labels[cell].push(`arrow path from the circle at ${reference(rule.circle)}`)
         break
+      case 'pill-arrow': {
+        const [tens, ones] = rule.pill
+        labels[tens].push(`Pill Arrow tens digit, ones digit at ${reference(ones)}`)
+        labels[ones].push(`Pill Arrow ones digit, tens digit at ${reference(tens)}`)
+        for (const cell of rule.cells) labels[cell].push(`Pill Arrow path, sum equals the two-digit number in ${reference(tens)} and ${reference(ones)}`)
+        break
+      }
       case 'kropki':
         for (const [marks, color] of [[rule.consecutive, 'white'], [rule.ratioTwo, 'black']] as const) {
           for (const [a, b] of marks?.pairs ?? []) {
