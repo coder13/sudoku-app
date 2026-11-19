@@ -188,7 +188,11 @@ export function Board({
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}
           onKeyDown={candidateAction ? navigateCandidates : onGridKeyDown}
-          onPointerUp={onGridPointerEnd} onPointerCancel={onGridPointerEnd} onLostPointerCapture={onGridPointerEnd}
+          onPointerUp={onGridPointerEnd} onPointerCancel={onGridPointerEnd}
+          onLostPointerCapture={onGridPointerEnd && ((event) => {
+            // A touch drag can transfer implicit capture from a cell to the grid.
+            if (event.target === event.currentTarget) onGridPointerEnd(event)
+          })}
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {rows.map((row) => (
