@@ -8,6 +8,6 @@
   gap: var(--space-14);
   margin-inline: auto;
 }
-.puzzle-game-page > .puzzles-layout.kakuro-layout { width: min(100%, 54rem); }
+.puzzle-game-page > .puzzles-layout.number-puzzle-layout { width: min(100%, 54rem); }
 .puzzle-game-page > .puzzles-layout > .puzzles-page-heading { grid-area: auto; }
 .puzzle-game-page .game-row small { white-space: normal; }

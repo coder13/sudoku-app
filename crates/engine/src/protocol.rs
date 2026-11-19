@@ -36,6 +36,7 @@ use crate::{check_practice_move, permutation::puzzle_permutation};
 #[cfg(feature = "cli")]
 pub(crate) mod batch;
 mod hint_pages;
+mod sized;
 #[cfg(feature = "variants")]
 mod variant;
 
@@ -47,6 +48,18 @@ mod variant;
 )]
 enum Request {
     Capabilities,
+    #[cfg(feature = "generation")]
+    GenerateMini {
+        seed: u32,
+        difficulty: crate::MiniDifficulty,
+        #[serde(default)]
+        exclude: Vec<[u8; 16]>,
+    },
+    SizedClassic {
+        position: sized::Definition,
+        #[serde(flatten)]
+        operation: sized::Operation,
+    },
     #[cfg(feature = "generation")]
     CanonicalPuzzles {
         values: Vec<String>,
@@ -361,6 +374,9 @@ type ResultValue<T = Value> = Result<T, (&'static str, &'static str)>;
 #[serde(untagged)]
 enum ResponseValue {
     Json(Value),
+    SizedTrace(Option<Vec<crate::SizedTracePosition>>),
+    SizedHints(Option<crate::SizedHints>),
+    SizedDeduction(Option<crate::SizedDeduction>),
     HintPage(hint_pages::HintPage),
     Hints { choices: Vec<Hint>, available: usize },
     HintsWithPatterns {
@@ -951,6 +967,12 @@ fn trace_value(trace: &super::LogicalSolve) -> Value {
 fn execute(request: Request) -> ResultValue<ResponseValue> {
     let result = match request {
         #[cfg(feature = "generation")]
+        Request::GenerateMini { seed, difficulty, exclude } => {
+            crate::generate_mini(seed, difficulty, &exclude).map(|puzzle| json!(puzzle))
+                .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
+        }
+        Request::SizedClassic { position, operation } => return sized::execute(position, operation),
+        #[cfg(feature = "generation")]
         Request::ImpossibleTemplates => Ok(json!(
             crate::impossible_templates()
                 .iter()
@@ -1421,6 +1443,35 @@ mod tests {
     }
 
     #[test]
+    fn sized_classic_protocol_does_not_discard_rules_or_coerce_dimensions() {
+        let position = json!({
+            "version": 2,
+            "grid": { "size": 4, "boxRows": 2, "boxColumns": 2 },
+            "digits": [0,2,3,4,3,4,1,2,2,1,4,3,4,3,2,1],
+        });
+        let run = |operation: &str, position: Value| request(json!({
+            "type": "sized-classic", "operation": operation, "position": position,
+        }));
+        assert_eq!(run("analyze", position.clone())["value"], "unique");
+        assert_eq!(run("candidates", position.clone())["value"][0], 1);
+        assert_eq!(run("solve", position.clone())["value"][0], 1);
+        assert_eq!(run("next-deduction", position.clone())["value"], json!({
+            "technique": "naked-single", "houses": [],
+            "candidates": [{"cell": 0, "digit": 1}],
+            "actions": [{"place": {"cell": 0, "digit": 1}}],
+        }));
+        let mut unsupported = position.clone();
+        unsupported["rules"] = json!([{ "type": "diagonal" }]);
+        assert!(run("analyze", unsupported).get("error").is_some());
+        let mut old_version = position.clone();
+        old_version["version"] = json!(1);
+        assert_eq!(run("analyze", old_version)["code"], "unsupported-format");
+        let mut invalid_grid = position;
+        invalid_grid["digits"][0] = json!(9);
+        assert_eq!(run("analyze", invalid_grid)["code"], "invalid-grid");
+    }
+
+    #[test]
     fn capabilities_match_build_features_and_omitted_operations_preserve_the_solver() {
         assert_eq!(
             request(json!({"type":"capabilities"}))["value"],
@@ -1510,6 +1561,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
             "canonical-puzzles"
                 | "impossible-templates"
                 | "generate-targeted"
+                | "generate-mini"
                 | "generate-constrained"
                 | "generate-from-pool"
                 | "generate-variant"
