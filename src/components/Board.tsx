@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react'
+import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from 'react'
 import type { Candidate, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
 import { activeHighlightDigit } from '../sudoku/highlighting'
@@ -23,6 +23,7 @@ type Props = {
   region?: BoardRegion
   label?: string
   showGuides: boolean
+  overlay?: { content: ReactNode; visible: boolean }
   highlightedDigit?: number | null
   highlightCandidateCount?: number | null
   highlighting?: HighlightPreferences
@@ -52,7 +53,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides,
+  variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates,
@@ -130,12 +131,13 @@ export function Board({
   }
 
   return (
-    <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}`} style={size}>
+    <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}`} data-overlay={overlay?.visible} style={size}>
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
+          aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}
           onKeyDown={candidateAction && navigateCandidates}
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
@@ -291,6 +293,8 @@ export function Board({
         </div>
         <BoardMarks items={variantClues} />
         <BoardLinks links={annotations?.links} region={region} />
+        {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
+          data-no-panel-hold>{overlay.content}</div>}
       </div>
     </div>
   )

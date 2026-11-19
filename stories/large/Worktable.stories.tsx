@@ -190,6 +190,41 @@ export const Paused: Story = {
 export const LargeGridText: Story = { args: { appearance: { ...DEFAULT_APPEARANCE, gridTextScale: MAX_GRID_TEXT_SCALE } } }
 export const Draft: Story = { args: { game: namedDraft, games: [namedDraft] } }
 export const Solved: Story = { args: { game: solved, games: [solved] } }
+
+export const SolvedMobile: Story = {
+  args: { ...Solved.args, appearance: { ...DEFAULT_APPEARANCE, showGuides: false } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (!canvasElement.querySelector('.mobile-panel-layout')) return
+    const toggle = canvas.getByRole('button', { name: 'View grid' })
+    const stage = canvasElement.ownerDocument.getElementById(toggle.getAttribute('aria-controls')!)!
+    const controls = canvasElement.querySelector('.workspace-controls')!
+    const actions = canvas.getByRole('region', { name: 'Next puzzle options' })
+    const results = canvas.getByRole('region', { name: 'Solve details' })
+    const bounds = (element: Element) => element.getBoundingClientRect().toJSON()
+    const layout = () => [toggle, stage, controls].map(bounds)
+    const before = layout()
+    await expect(bounds(actions)).toEqual(bounds(controls))
+    await expect(within(actions).getByRole('button', { name: 'Next easy puzzle' })).toBeVisible()
+    await userEvent.click(within(results).getByText('Action history'))
+    await expect(layout()).toEqual(before)
+
+    toggle.focus({ preventScroll: true })
+    await userEvent.keyboard('{Enter}')
+    await expect(toggle).toHaveAccessibleName('View results')
+    await expect(toggle).toHaveFocus()
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toBeVisible()
+    await expect(actions).not.toBeVisible()
+    await expect(layout()).toEqual(before)
+
+    await userEvent.keyboard('{Enter}')
+    await expect(toggle).toHaveAccessibleName('View grid')
+    await expect(toggle).toHaveFocus()
+    await expect(results).toBeVisible()
+    await expect(layout()).toEqual(before)
+  },
+}
+
 export const CandidateShortcut: Story = {
   play: async ({ canvas, userEvent }) => {
     const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })
