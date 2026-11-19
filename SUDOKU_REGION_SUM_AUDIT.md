@@ -1,6 +1,6 @@
 # Region Sum Lines app integration
 
-Baseline: main `a761a71970f58aa240fbfeeab7e37f3a68b4e34c`. The native equal-sum rule, proof formatter, 48-point Medium technique and three practice positions already exist. This integration adds complete app support and Medium New Puzzle recipes. Scoring version 8, technique costs and enabled-technique semantics stay unchanged.
+Implementation and controlled timing baseline: main `a761a71970f58aa240fbfeeab7e37f3a68b4e34c`. Before release, merge main `acf77b1f63ca6b3b1ca740bde580be27efc54ce3`, including the independent solved-view and mobile-header changes. The native equal-sum rule, proof formatter, 48-point Medium technique and three practice positions already exist. This integration adds complete app support and Medium New Puzzle recipes. Scoring version 8, technique costs and enabled-technique semantics stay unchanged.
 
 ## Source and mathematical controls
 
@@ -44,11 +44,11 @@ Generation carves fresh givens from the attributed Symmetease layout and compati
 
 `compare-geometry-engines.mjs` compares the released Between artifact with the new app artifact using exact full responses, including failures, ordering, scores, scoring version, evidence and scopes. All **7,103 responses** match: 363 positive practice positions, 121 detectors and complete traces/ratings/every hint page across 45 stored corpus positions, followed by 200 generation requests across ten families. Those generation pairs retain 194 accepted results and six exhausted searches (one Windoku, one Diagonal, four Jigsaw). Twenty new Region Sum requests all succeed. No scoring metadata is stripped from the comparisons.
 
-Local verification passes 369 native tests including seven Cargo doc examples, 562 app tests, 345 Wasm contracts, TypeScript, strict typing of all new contracts and the 121-component catalog. Strict full/core/variants Cargo docs pass. The production/offline build passes with 171 prerendered routes. Final feature-matrix, four-profile, deployment and exact-head merge gates remain pending.
+Local verification passes 369 native tests including seven Cargo doc examples, 562 app tests, 345 Wasm contracts, TypeScript, strict typing of all new contracts and the 121-component catalog. Strict full/core/variants Cargo docs pass. After integrating main `acf77b1`, the full 562-app/345-Wasm suites, TypeScript, catalog and production/offline build pass again, with 171 prerendered routes. The integration leaves the tested native sources and app Wasm hash unchanged. Final feature-matrix, four-profile, deployment and exact-head merge gates remain pending.
 
 ## Performance
 
-Darwin arm64, Node 26.13.0, app Wasm `291a61e8b43a92921902173415725a098219e69a8582c8fa4cfc44ef926dc8f7`. Reproduce app-path measurements with `SUDOKU_BENCH_FAMILY=region-sum node --experimental-strip-types --test scripts/bench-entropic-app.mts`. No other owned build, test suite or benchmark ran during controlled measurements. Fast paths use five warmups/twenty samples; slow app paths use two/five. Assertions and independent checks are outside timing. The in-process test worker excludes startup, transfer, layout and paint. Raw hint requests use Medium; actual app hints retain their game grade and explicit candidate masks. The p95 of five samples is the maximum.
+Controlled measurements precede the independent solved-view/mobile-header integration; native and Sudoku caller sources are unchanged by that merge. Board SSR measurements refer to the earlier board wrapper. Darwin arm64, Node 26.13.0, app Wasm `291a61e8b43a92921902173415725a098219e69a8582c8fa4cfc44ef926dc8f7`. Reproduce app-path measurements with `SUDOKU_BENCH_FAMILY=region-sum node --experimental-strip-types --test scripts/bench-entropic-app.mts`. No other owned build, test suite or benchmark ran during controlled measurements. Fast paths use five warmups/twenty samples; slow app paths use two/five. Assertions and independent checks are outside timing. The in-process test worker excludes startup, transfer, layout and paint. Raw hint requests use Medium; actual app hints retain their game grade and explicit candidate masks. The p95 of five samples is the maximum.
 
 Milliseconds, median / p95:
 
@@ -86,12 +86,12 @@ No broad speedup is claimed. The table retains increases and decreases, includin
 
 ## Package cost
 
-The baseline is the released Between build at `f459103`, whose shipping sources match main `a761a71`. Both builds use the same dependencies and compiler. Per-asset gzip totals use Node `gzipSync`:
+The package baseline is a separate production build of main `acf77b1`, compared with integrated Region Sum head `a722847`. Both builds use the same dependencies and compiler, including the independent solved-view/mobile-header changes. The baseline app Wasm is released Between artifact `d5bf3ebcd76528c51901498889bcd6d35ef1d9487051a147b6463b794abfd045`. Per-asset gzip totals use Node `gzipSync`:
 
 | Asset group | Baseline raw / gzip | Region Sum raw / gzip | Change raw / gzip |
 | --- | --- | --- | --- |
-| JavaScript, 21 files | 6,245,568 / 2,064,706 | 6,250,690 / 2,066,065 | +5,122 / +1,359 |
-| CSS, 1 file | 296,282 / 40,748 | 296,564 / 40,782 | +282 / +34 |
+| JavaScript, 21 files | 6,246,484 / 2,064,963 | 6,251,601 / 2,066,310 | +5,117 / +1,347 |
+| CSS, 1 file | 299,388 / 41,259 | 299,670 / 41,301 | +282 / +42 |
 | App Wasm | 3,430,109 / 898,293 | 3,416,046 / 893,636 | -14,063 / -4,657 |
 
 The Wasm size change accompanies the optional rule field and the generation identity fix; it is not a separate algorithm optimization or a promised future size saving. Reduced-profile costs and feature gates are checked in release CI. The remaining five native UI families, thirteen older generation integrations, authored-source semantics, other formats and the broader R&D goal remain open.
