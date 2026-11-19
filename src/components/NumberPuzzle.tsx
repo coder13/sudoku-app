@@ -2,8 +2,9 @@ import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-rout
 import { Check, ChevronLeft, ChevronRight, Delete, Lightbulb, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleEntry } from '../number-puzzles/catalog'
-import { emptyNumberPosition, loadNumberPosition, saveNumberPosition, type NumberPosition } from '../number-puzzles/progress'
+import { emptyNumberPosition, generatedNumberTokens, loadNumberPosition, saveNumberPosition, type NumberPosition } from '../number-puzzles/progress'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
+import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
 import './number-puzzle.css'
 
@@ -33,12 +34,25 @@ export type NumberGameConfig<Entry extends NumberPuzzleEntry> = {
   name: string
   rules: string
   entries: readonly Entry[]
+  generatedEntry?: (id: string, number: number) => Entry | null
   board: (entry: Entry) => NumberBoard
   hasClueCells?: boolean
 }
 
+function positionKey(game: NumberGame, id: string) {
+  return `${game}.position.v1.${id}`
+}
+
+function puzzleDestination(game: NumberGame, entry: NumberPuzzleEntry) {
+  return {
+    to: `/puzzles/${game}/$puzzle` as const,
+    params: { puzzle: entry.generated ? 'generated' : entry.id },
+    search: entry.generated ? { board: entry.id } : undefined,
+  }
+}
+
 function boardPosition(game: NumberGame, id: string, board: NumberBoard) {
-  const key = `${game}.position.v1.${id}`
+  const key = positionKey(game, id)
   const editable = board.cells.map(cell => !cell.block && !cell.given)
   return { editable, key, load: () => loadNumberPosition(key, editable, board.maxValue) }
 }
@@ -72,23 +86,35 @@ function NumberGameHeading({ game, title, inPlay, children }: {
 
 /** Use for the difficulty and resume page of a standalone number puzzle. */
 export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }: { config: NumberGameConfig<Entry> }) {
-  const { entries, game, name, rules } = config
+  const { entries, game, name, rules, generatedEntry } = config
+  const generation = useNumberPuzzleGeneration(generatedEntry ? game : null)
+  const [generated, setGenerated] = useState<readonly Entry[]>([])
   const [started, setStarted] = useState<ReadonlySet<string>>(new Set())
   const [solved, setSolved] = useState<ReadonlySet<string>>(new Set())
 
   useEffect(() => {
     const active = new Set<string>()
     const complete = new Set<string>()
-    for (const entry of entries) {
+    const generatedEntries = generatedEntry ? generatedNumberTokens(game).flatMap((id, index) => {
+      try {
+        if (!localStorage.getItem(positionKey(game, id))) return []
+        const entry = generatedEntry(id, index + 1)
+        return entry ? [entry] : []
+      } catch {
+        return []
+      }
+    }) : []
+    for (const entry of [...entries, ...generatedEntries]) {
       const board = config.board(entry)
       const position = boardPosition(game, entry.id, board).load()
       if (!position || !position.values.some(Boolean) && !position.notes.some(Boolean)) continue
       if (board.check(position.values).complete) complete.add(entry.id)
       else active.add(entry.id)
     }
+    setGenerated(generatedEntries)
     setStarted(active)
     setSolved(complete)
-  }, [config, entries, game])
+  }, [config, entries, game, generatedEntry])
 
   return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
     <div className="puzzles-layout">
@@ -100,21 +126,28 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
           if (!group.length) return null
           const next = group.find(entry => !started.has(entry.id) && !solved.has(entry.id))
             ?? group.find(entry => started.has(entry.id)) ?? group[0]
-          return <li key={difficulty}><Link className="game-row" to={`/puzzles/${game}/$puzzle`}
-            params={{ puzzle: next.id }} state={{ fromNumberDifficulty: game }}>
-            <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[difficulty]}</strong>
-              <small>{group.filter(entry => solved.has(entry.id)).length} of {group.length} solved</small></span>
-            <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
-          </Link></li>
+          return <li key={difficulty} className={generatedEntry ? 'number-puzzle-difficulty-row' : undefined}>
+            <Link className="game-row" {...puzzleDestination(game, next)} state={{ fromNumberDifficulty: game }}>
+              <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[difficulty]}</strong>
+                <small>{group.filter(entry => solved.has(entry.id)).length} of {group.length} solved</small></span>
+              <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
+            </Link>
+            {generatedEntry && <Button onClick={() => generation.generate(difficulty)} disabled={generation.pending !== null}
+              aria-label={`Generate ${numberPuzzleDifficultyLabels[difficulty]} ${name} puzzle`}>
+              {generation.pending === difficulty ? 'Generating…' : 'Generate'}
+            </Button>}
+          </li>
         })}
       </ul>
+      {generation.pending && <p role="status">Generating a {name} puzzle.</p>}
+      {generation.error && <p role="alert">{generation.error}</p>}
       {started.size > 0 && <section className="number-puzzle-resume" aria-labelledby="number-puzzle-resume-title">
         <h2 id="number-puzzle-resume-title">In progress</h2>
         <ul className="game-list main-puzzle-list">
-          {entries.filter(entry => started.has(entry.id)).map(entry =>
-            <li key={entry.id}><Link className="game-row" to={`/puzzles/${game}/$puzzle`}
-              params={{ puzzle: entry.id }} state={{ fromNumberDifficulty: game }}>
-              <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</strong></span>
+          {[...entries, ...generated].filter(entry => started.has(entry.id)).map(entry =>
+            <li key={entry.id}><Link className="game-row" {...puzzleDestination(game, entry)} state={{ fromNumberDifficulty: game }}>
+              <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</strong>
+                {entry.generated && <small>Generated puzzle</small>}</span>
               <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
             </Link></li>)}
         </ul>
@@ -130,7 +163,7 @@ export function NumberGamePlay<Entry extends NumberPuzzleEntry>({ config, entry 
   return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
     <div className="puzzles-layout number-puzzle-layout">
       <NumberGameHeading game={config.game} title={config.name} inPlay>
-        <small>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</small>
+        <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</small>
       </NumberGameHeading>
       <NumberPuzzleBoard config={config} entry={entry} key={entry.id} />
     </div>
@@ -139,6 +172,7 @@ export function NumberGamePlay<Entry extends NumberPuzzleEntry>({ config, entry 
 
 function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: { config: NumberGameConfig<Entry>; entry: Entry }) {
   const { game, name, rules, hasClueCells } = config
+  const generation = useNumberPuzzleGeneration(config.generatedEntry ? game : null, true)
   const board = useMemo(() => config.board(entry), [config, entry])
   const { editable, key, load } = useMemo(() => boardPosition(game, entry.id, board), [game, entry.id, board])
   const { width, height, maxValue } = board
@@ -253,7 +287,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     })
   }
 
-  const next = ready && result.complete ? nextPuzzle() : undefined
+  const next = ready && result.complete && !entry.generated ? nextPuzzle() : undefined
   return <div className="number-puzzle-play motion-screen">
     <div className="number-puzzle-grid" role="group" aria-label={`${name} board`}
       style={{ '--number-puzzle-columns': width } as CSSProperties} onKeyDown={onGridKey}>
@@ -316,9 +350,14 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
         <Button onClick={() => enter(hint.value, hint.cell, false)}>Place {hint.value}</Button>
       </div>}
       {result.complete && (next
-        ? <Link className={buttonClassName('primary')} to={`/puzzles/${game}/$puzzle`}
-          params={{ puzzle: next.id }} state={{ fromNumberDifficulty: game }} replace>Next puzzle</Link>
-        : <Link className={buttonClassName('primary')} to={`/puzzles/${game}`}>Choose difficulty</Link>)}
+        ? <Link className={buttonClassName('primary')} {...puzzleDestination(game, next)}
+          state={{ fromNumberDifficulty: game }} replace>Next puzzle</Link>
+        : config.generatedEntry
+          ? <Button variant="primary" disabled={generation.pending !== null} onClick={() => generation.generate(entry.difficulty)}>
+            {generation.pending ? 'Generating…' : 'Generate next puzzle'}
+          </Button>
+          : <Link className={buttonClassName('primary')} to={`/puzzles/${game}`}>Choose difficulty</Link>)}
+      {generation.error && <p role="alert">{generation.error}</p>}
       {storageError && <p className="form-error" role="alert">This browser cannot save your progress.</p>}
       <details className="number-puzzle-help"><summary>How to play</summary><p>{rules}</p></details>
     </section>
