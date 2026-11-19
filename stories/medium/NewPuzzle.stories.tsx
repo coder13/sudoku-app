@@ -71,3 +71,11 @@ export const DutchWhispers: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=whispers&ruleset=dutch" />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 }
+
+export const PalindromeVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=palindrome" />,
+}
+export const PalindromeDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=palindrome" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { conflictsOf, enter, fillEntries, makeGame, redo, undo } from '../src/sudoku/game.ts'
+import { conflictsOf, enter, fillEntries, makeGame, redo, undo, type Game } from '../src/sudoku/game.ts'
 import type { VariantPuzzle, VariantRule } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
@@ -29,7 +29,7 @@ test('published Palindrome fixtures match independent completions and depend on 
 test('mirrored equality differs from peers and leaves the odd center unrestricted', () => {
   const puzzle: VariantPuzzle = { version: 1, givens: empty, rules: [rule] }
   assert.equal(isPlayablePuzzle('palindrome', puzzle), true)
-  assert.equal(generationVariant({ id: 'palindrome' }), undefined)
+  assert.equal(generationVariant({ id: 'palindrome' }), 'palindrome')
   for (let digit = 1; digit <= 9; digit++) {
     assert.equal(variantDigitExclusions(puzzle, 0, 80, digit), 511 & ~(1 << (digit - 1)))
     assert.equal(variantDigitExclusions(puzzle, 10, 50, digit), 511 & ~(1 << (digit - 1)))
@@ -42,7 +42,7 @@ test('mirrored equality differs from peers and leaves the odd center unrestricte
   values[80] = '4'; assert.equal(conflictsOf(values.join(''), puzzle).size, 0)
   values[40] = '4'; assert.equal(conflictsOf(values.join(''), puzzle).size, 0)
 
-  let game = { ...makeGame('palindrome-notes', 'Palindrome', empty, 'imported'), variant: { id: 'palindrome' as const, puzzle, solution: clover.solution } }
+  let game: Game = { ...makeGame('palindrome-notes', 'Palindrome', empty, 'imported'), variant: { id: 'palindrome' as const, puzzle, solution: clover.solution } }
   for (const digit of [4, 5]) { game = enter(game, [80], 'center', digit); game = enter(game, [80], 'corner', digit) }
   const next = enter(game, [0], 'value', 4)
   assert.equal(next.position.center[80], 1 << 3); assert.equal(next.position.corner[80], 1 << 3)
