@@ -1784,12 +1784,12 @@ export function Worktable({
     syncStatus === 'offline' ? 'Offline. Changes saved on this device.' :
     syncStatus === 'failed' ? 'Couldn’t sync. Changes saved on this device.' : ''
   )
-  const syncMenuStatus = {
+  const syncMenuStatus = !storageAvailable ? 'Local storage is unavailable.' : {
     none: '',
     checking: 'Checking cloud save…',
     pending: 'Cloud save pending.',
     saving: 'Saving to the cloud…',
-    saved: 'Saved in the cloud.',
+    saved: '',
     offline: 'Offline. Changes saved on this device.',
     'offline-clean': 'Offline. Connect to sync this puzzle.',
     failed: 'Couldn’t sync. Changes saved on this device.',
@@ -1818,9 +1818,7 @@ export function Worktable({
         onClick={() => { void deviceSync.syncPuzzle(game.id) }}>
         <CloudUpload size={17} aria-hidden="true" /> Sync now
       </button>
-      <p className="puzzle-sync-menu-status" role="status">
-        {storageAvailable ? syncMenuStatus : 'Local storage is unavailable.'}
-      </p>
+      {syncMenuStatus && <p className="puzzle-sync-menu-status" role="status">{syncMenuStatus}</p>}
     </>}
     <button onClick={() => { setPuzzleMenuOpen(false); setResetOpen(true) }}>
       <RotateCcw size={17} /> Reset puzzle

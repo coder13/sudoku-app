@@ -1957,15 +1957,48 @@ svg { flex-shrink: 0; }
 .puzzle-library-section + .puzzle-library-section { padding-top: var(--space-16); border-top: 1px solid var(--border); }
 .puzzle-library-section > h2 { margin: 0; font-size: 1rem; letter-spacing: -.015em; }
 .solved-puzzles { gap: var(--space-12); }
-.solved-puzzle-group { display: grid; gap: var(--space-6); }
-.solved-puzzle-group h2 {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.6875rem;
-  font-weight: 760;
-  letter-spacing: .045em;
-  text-transform: uppercase;
+.solved-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr) 44px;
+  gap: var(--space-6);
+  max-width: 390px;
 }
+.solved-date-toggle { width: 44px; min-height: 44px; }
+.solved-date-toggle[aria-expanded="true"] { background: var(--surface-hover); }
+.solved-date-toggle[data-active] { border-color: var(--selected-border); background: var(--selected-bg); color: var(--dark-purple); }
+.solved-date-fields {
+  margin: 0;
+  min-inline-size: 0;
+  max-width: 390px;
+  padding: var(--space-10);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-raised);
+}
+.solved-date-fields:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-10);
+}
+.solved-date-fields label { display: grid; gap: var(--space-4); min-width: 0; font-size: .8125rem; font-weight: 650; }
+.solved-filter-bar select, .solved-date-fields input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-8);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: .8125rem;
+  font-weight: 650;
+}
+.solved-filter-bar .select-control { --select-x-padding: var(--space-8); }
+.solved-filter-bar select { text-overflow: ellipsis; }
+.solved-date-fields input[aria-invalid="true"] { border-color: var(--danger-ink); }
+.solved-date-clear { grid-column: 1 / -1; justify-self: end; }
+.solved-puzzles .game-row small { white-space: normal; }
+.solved-puzzles .row-arrow { flex: none; }
+@media (max-width: 320px) { .solved-date-fields:not([hidden]) { grid-template-columns: 1fr; } }
 .game-row {
   display: flex;
   align-items: center;
