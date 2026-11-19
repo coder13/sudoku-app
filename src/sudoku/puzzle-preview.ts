@@ -1,4 +1,4 @@
-import { runEngine } from './engine.ts'
+import { runEngine, type Analysis } from './engine.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
 import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
 import { verifySixPuzzle } from './six-game.ts'
@@ -29,6 +29,10 @@ export async function prepareSharedPuzzle(id: string, games: readonly Game[], si
   return preparePuzzlePreview(imported, games)
 }
 
+function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
+  return new Error(status === 'conflict' ? 'This puzzle has conflicting givens or rules.' : validation[status].text)
+}
+
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sixRules, sixAuthor, authoredSolution } = imported
   const existing = findImportedPuzzle(games, imported)
@@ -46,19 +50,21 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
     const rating = await rateAlgebraicPuzzle(givens, game.algebraic.rules)
     return { game: { ...game, difficulty: rating?.difficulty ?? null, score: rating?.points ?? null }, format }
   }
-  if (!existing) {
-    const status = grid ? await analyzeMini(givens) : variant
-      ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle } })
-      : await runEngine({ type: 'analyze', values: givens })
-    if (status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
-    if (status !== 'unique') throw new Error(validation[status].text)
+  if (variant && !grid) {
+    const position = { puzzle: variant.puzzle }
+    if (existing) {
+      const solution = existing.variant?.solution ?? await runEngine({ type: 'variant', operation: 'solve', position })
+      game.variant = { ...variant, solution }
+    } else {
+      const result = await runEngine({ type: 'variant', operation: 'solve-unique', position })
+      if (result.status !== 'unique') throw importValidationError(result.status)
+      game.variant = { ...variant, solution: result.solution }
+    }
+  } else if (!existing) {
+    const status = grid ? await analyzeMini(givens) : await runEngine({ type: 'analyze', values: givens })
+    if (status !== 'unique') throw importValidationError(status)
   }
   if (grid) return { game: applyPuzzleGrade(game, null), format, grade: null }
-  if (variant) {
-    const solution = existing?.variant?.solution ??
-      await runEngine({ type: 'variant', operation: 'solve', position: { puzzle: variant.puzzle } })
-    game.variant = { ...variant, solution }
-  }
   game.difficulty = existing?.difficulty
   game.score = existing?.score
   if (game.difficulty === undefined || game.score === undefined) {
