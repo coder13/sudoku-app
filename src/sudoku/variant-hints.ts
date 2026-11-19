@@ -58,6 +58,12 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
       return { description: `${at(rule.less)} must be smaller than ${at(rule.greater)}.`,
         reason: `The smallest possible digit in ${at(rule.less)} is ${smaller[0]}. The largest in ${at(rule.greater)} is ${larger.at(-1)}. Each candidate needs a partner on the correct side of the sign.` }
     }
+    case 'min-max': {
+      const marked = rule.cells.includes(a) ? a : b
+      const neighbor = marked === a ? b : a
+      return { description: `${at(marked)} is a marked ${rule.maximum ? 'maximum' : 'minimum'}. Its digit must be ${rule.maximum ? 'larger' : 'smaller'} than the digit in ${at(neighbor)}.`,
+        reason: 'A crossed-out digit has no possible partner that satisfies this comparison.' }
+    }
     case 'clone':
       return { description: `Clone ${cloneLayout(puzzle.rules).at[a]!.label} links ${new Intl.ListFormat('en', { type: 'conjunction' }).format(cells.map(at))}. These cells must contain the same digit.`,
         reason: 'A digit missing from one cell cannot go in any of its copies.' }

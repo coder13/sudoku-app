@@ -37,6 +37,18 @@ const killer = benchmarks.find(({ name }) => name === 'killer')!.position as Var
 
 export const Diagonal: Story = { args: candidateGrid(diagonal, 'Diagonal Sudoku grid') }
 
+export const MinMax: Story = {
+  args: candidateGrid({
+    version: 1,
+    givens: '0'.repeat(81),
+    rules: [
+      { type: 'min-max', cells: [0, 1, 48], maximum: false },
+      { type: 'min-max', cells: [23, 49], maximum: true },
+    ],
+  }, 'Sudoku grid with Minimum and Maximum clues'),
+  parameters: { gridWidth: 290 },
+}
+
 export const Killer: Story = {
   args: candidateGrid(killer, 'Killer Sudoku grid'),
   parameters: { docs: { description: { story:

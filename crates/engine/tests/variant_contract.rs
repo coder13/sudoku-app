@@ -13,6 +13,36 @@ const X_SOLUTION: &str =
 const EMPTY: [u8; 81] = [0; 81];
 const NO_REMOVALS: [u16; 81] = [0; 81];
 
+#[test]
+fn min_max_compares_only_edge_neighbors_outside_its_layer() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules = vec![
+        PuzzleRule::MinMax { cells: vec![7, 8], maximum: false },
+        PuzzleRule::MinMax { cells: vec![17], maximum: true },
+    ];
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[7] = 3;
+    entries[8] = 2;
+    entries[17] = 8;
+    let masks = compiled.candidates(&entries, &NO_REMOVALS).unwrap();
+    // Cell 7's minimum does not wrap rows or constrain a diagonal neighbor.
+    assert!(masks[9] & 1 != 0);
+    assert!(masks[15] & 1 != 0);
+    assert_eq!(masks[6] & 7, 0);
+    assert_eq!(masks[16] & (1 << 8), 0);
+    entries[6] = 1;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    entries[6] = 0;
+    puzzle.rules.push(PuzzleRule::MinMax { cells: vec![7], maximum: false });
+    assert!(puzzle.compile().unwrap().candidates(&entries, &NO_REMOVALS).is_err());
+    for cells in [vec![], vec![4, 4], vec![81]] {
+        puzzle.rules = vec![PuzzleRule::MinMax { cells, maximum: false }];
+        assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::InvalidRule(0))));
+    }
+}
+
 fn irregular_regions() -> Vec<Vec<usize>> {
     let mut regions: Vec<Vec<usize>> = (0..9)
         .map(|region| {

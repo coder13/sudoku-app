@@ -90,6 +90,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'x-chain': 'X-chain',
   'xv': 'XV pairs',
   'adjacent-total': 'Two-cell sums',
+  'min-max': 'Minimum and Maximum',
   'x-wing': 'X-wing',
   'xy-chain': 'XY-chain',
   'xy-wing': 'XY-wing',

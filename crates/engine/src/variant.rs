@@ -254,6 +254,13 @@ rules! {
         /// Cell with the larger digit.
         greater: usize,
     }
+    /// Compare marked cells with their edge neighbors outside this clue layer.
+    MinMax => "min-max" {
+        /// The marked cells in one layer. They do not compare with one another.
+        cells: Vec<usize>,
+        /// True for a maximum layer and false for a minimum layer.
+        maximum: bool,
+    }
     /// Constrain adjacent digits using Kropki dots.
     Kropki => "kropki" {
         /// White dots for consecutive digits.

@@ -7510,6 +7510,48 @@
           "difficulty": "easy"
         },
         {
+          "id": "min-max",
+          "title": "Minimum and Maximum",
+          "summary": "A minimum cell holds a smaller digit than its edge neighbors. A maximum cell holds a larger digit. Cells in one clue group skip comparisons with each other.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Compare one edge at a time"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a marked cell next to a placed digit. Inward arrows mark a minimum. Outward arrows mark a maximum.",
+                "Each candidate needs a partner on the correct side of the comparison. At a minimum, look for a larger partner. At a maximum, look for a smaller partner."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "min-max",
+              "copy": {
+                "description": "R1C2 is a minimum. It shares an edge with the 5 in R1C1, so 6 cannot go in R1C2."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "min-max",
+                  "title": "Minimum and Maximum"
+                }
+              ],
+              "guide": {
+                "start": "Find a marked cell. Follow one of its arrows to the cell across the edge.",
+                "check": "Look for a partner digit that fits the comparison.",
+                "reason": "Remove a candidate if every possible partner fails the comparison."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
           "id": "adjacent-total",
           "title": "Two-cell sums",
           "summary": "A Roman numeral gives the total of two neighboring cells. XV means 15. Subtract one candidate from the total to find its required partner.",

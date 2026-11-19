@@ -1,6 +1,6 @@
 import { useId, useMemo } from 'react'
 import type { SizedConstraintRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
-import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
+import { disjointGroupRuleIndices, extraRegionName, minMaxNeighbors, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts } from '../sudoku/region-sum'
 import { sixDiagonalCells } from '../sudoku/grid'
@@ -17,6 +17,28 @@ function ParityClue({ parity, cells, size = 9 }: Extract<SizedConstraintRule, { 
     {[...new Set(cells)].map(cell => parity === 'odd'
       ? <circle key={cell} cx={center(cell, size)[0]} cy={center(cell, size)[1]} r=".36" />
       : <rect key={cell} x={x(cell, size) + .14} y={y(cell, size) + .14} width=".72" height=".72" />)}
+  </g>
+}
+
+function MinMaxClue({ cells, maximum }: Extract<VariantRule, { type: 'min-max' }>) {
+  return <g className={`variant-min-max ${maximum ? 'variant-maximum' : 'variant-minimum'}`}>
+    {cells.map(cell => {
+      const [cx, cy] = center(cell)
+      return <g key={cell} data-cell={cell}>
+        <rect x={cx - .44} y={cy - .44} width=".88" height=".88" rx=".1" />
+        {minMaxNeighbors(cells, cell).map(neighbor => {
+          const dx = x(neighbor) - x(cell), dy = y(neighbor) - y(cell)
+          const tip = maximum ? .44 : .33, tail = maximum ? .33 : .44
+          const across = .105
+          const points = [
+            [cx + tail * dx + across * dy, cy + tail * dy - across * dx],
+            [cx + tip * dx, cy + tip * dy],
+            [cx + tail * dx - across * dy, cy + tail * dy + across * dx],
+          ]
+          return <polyline key={neighbor} points={points.map(point => point.join(',')).join(' ')} />
+        })}
+      </g>
+    })}
   </g>
 }
 
@@ -292,7 +314,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0'][regionSumIndices.get(index)! % 4]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
+  const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'min-max' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
@@ -363,6 +385,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         }
         case 'parity':
           return <ParityClue key={index} {...rule} />
+        case 'min-max':
+          return <MinMaxClue key={index} {...rule} />
         case 'quadruple': {
           const cx = x(rule.topLeft) + 1
           const cy = y(rule.topLeft) + 1
@@ -465,6 +489,13 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
         for (const cell of rule.cells) labels[cell].push(rule.parity === 'odd'
           ? 'odd circle, digit must be 1, 3, 5, 7, or 9'
           : 'even square, digit must be 2, 4, 6, or 8')
+        break
+      case 'min-max':
+        for (const cell of rule.cells) {
+          const neighbors = minMaxNeighbors(rule.cells, cell)
+          const label = rule.maximum ? 'maximum, larger' : 'minimum, smaller'
+          labels[cell].push(neighbors.length ? `${label} than ${neighbors.map(reference).join('; ')}` : rule.maximum ? 'maximum' : 'minimum')
+        }
         break
       case 'quadruple':
         for (const cell of quadrupleCells(rule.topLeft)) labels[cell].push(
