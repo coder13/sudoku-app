@@ -16,7 +16,7 @@ const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
   'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'acid', 'givenColours',
 ])
-const FPUZZLES_FIELDS = new Set(['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage', 'killercage', 'diagonal+', 'diagonal-'])
+const FPUZZLES_FIELDS = new Set(['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage', 'killercage', 'clone', 'diagonal+', 'diagonal-'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
 
 export type ImportFormat = 'Sudoku Coach' | 'Sudoku Exchange' | 'SudokuPad' | 'f-puzzles' | 'Puzzle link' | 'HoDoKu' | 'Text grid'
@@ -406,6 +406,19 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
   }
   if (data['diagonal+'] === true) rules.push({ type: 'diagonal', diagonal: 'anti' })
   if (data['diagonal-'] === true) rules.push({ type: 'diagonal', diagonal: 'main' })
+  if (data.clone !== undefined) {
+    if (!Array.isArray(data.clone)) throw new Error('This f-puzzles export has invalid Clone clues.')
+    for (const clue of data.clone) {
+      if (!record(clue) || Object.keys(clue).some(key => key !== 'cells' && key !== 'cloneCells') ||
+        !Array.isArray(clue.cells) || !clue.cells.length || !Array.isArray(clue.cloneCells) || clue.cells.length !== clue.cloneCells.length) {
+        throw new Error('This f-puzzles export has invalid Clone clues.')
+      }
+      const copies = clue.cloneCells.map(fpCellIndex)
+      const original = clue.cells.map(fpCellIndex)
+      if (new Set(original).size !== original.length || new Set(copies).size !== copies.length) throw new Error('This f-puzzles export has invalid Clone clues.')
+      rules.push({ type: 'clone', groups: original.map((cell, i) => [cell, copies[i]]) })
+    }
+  }
   if (hasData(data.killercage)) {
     if (!Array.isArray(data.killercage)) throw new Error('This f-puzzles export has invalid Killer cages.')
     rules.push({ type: 'killer-cages', cages: data.killercage.map((cage: unknown) => {

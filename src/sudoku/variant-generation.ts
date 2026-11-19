@@ -10,6 +10,7 @@ export type VariantSeed = {
   dotCount?: number
   layout?: string
   lines?: number[][]
+  cloneGroups?: number[][][]
   regions?: string
 }
 
@@ -55,6 +56,9 @@ export function variantGenerationRequest(
     case 'thermometer': case 'between': case 'region-sum':
       for (const cells of recipe.lines!) rules.push({ type: id, cells })
       break
+    case 'clone':
+      for (const groups of recipe.cloneGroups!) rules.push({ type: 'clone', groups })
+      break
     case 'arrow':
       for (const [circle, ...cells] of recipe.lines!) rules.push({ type: 'arrow', circle, cells })
       break
@@ -93,6 +97,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'parity': case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
         case 'quadruple': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
+        case 'clone': return { ...rule, groups: rule.groups.map(group => group.map(cell)) }
         case 'inequality': return { ...rule, less: cell(rule.less), greater: cell(rule.greater) }
         case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }
         case 'entropic': case 'modular': case 'whispers': return { ...rule, cells: rule.cells.map(cell) }

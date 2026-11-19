@@ -21,6 +21,9 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
     pairs?.some(([c, d]) => c === a && d === b || c === b && d === a) ?? false
   for (const rule of puzzle.rules ?? []) {
     switch (rule.type) {
+      case 'clone':
+        for (const group of rule.groups) for (const cell of group) assert.equal(digits[cell], digits[group[0]])
+        break
       case 'non-consecutive':
         for (const [a, b] of adjacent) if (!marked(rule.except, a, b)) assert.notEqual(Math.abs(digits[a] - digits[b]), 1)
         break

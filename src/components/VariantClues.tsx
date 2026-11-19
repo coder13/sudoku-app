@@ -3,6 +3,7 @@ import type { VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts } from '../sudoku/region-sum'
+import { cloneLayout } from '../sudoku/clone'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
@@ -55,7 +56,7 @@ function Cage({ cells, sum, captionInset }: { cells: readonly number[]; sum: num
   </>
 }
 
-function ExtraRegion({ cells }: { cells: readonly number[] }) {
+function cellBoundary(cells: readonly number[]) {
   const members = new Set(cells)
   const edge = cells.flatMap((cell) => {
     const column = x(cell)
@@ -67,9 +68,21 @@ function ExtraRegion({ cells }: { cells: readonly number[] }) {
       (column === 0 || !members.has(cell - 1)) && `M${column},${row}v1`,
     ].filter(Boolean)
   }).join(' ')
+  return edge
+}
+
+function ExtraRegion({ cells }: { cells: readonly number[] }) {
   return <g className="variant-extra-region">
     {cells.map((cell) => <rect key={cell} x={x(cell)} y={y(cell)} width="1" height="1" />)}
-    <path d={edge} />
+    <path d={cellBoundary(cells)} />
+  </g>
+}
+
+function CloneClue({ groups, color }: { groups: readonly (readonly number[])[]; color: string }) {
+  const cells = [...new Set(groups.flat())]
+  return <g className="variant-clone" style={{ color }}>
+    {cells.map(cell => <rect key={cell} data-clone-cell={cell} x={x(cell)} y={y(cell)} width="1" height="1" />)}
+    <path d={cellBoundary(cells)} />
   </g>
 }
 
@@ -182,6 +195,9 @@ function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [n
 }
 
 export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
+  const clones = cloneLayout(rules)
+  const cloneIndices = new Map<number, number>()
+  rules.forEach((rule, index) => { if (rule.type === 'clone') cloneIndices.set(index, cloneIndices.size) })
   const disjoint = useMemo(() => disjointGroupRuleIndices(rules), [rules])
   const marker = useId()
   const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
@@ -193,7 +209,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0'][regionSumIndices.get(index)! % 4]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
+  const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
@@ -248,6 +264,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         {shared.get(index)!.map((edge, i) => <polyline key={i} points={points(edge)} />)}
       </g>
       switch (rule.type) {
+        case 'clone': return <CloneClue key={index} groups={rule.groups} color={['#b6753d', '#488caa', '#9165ad', '#56876a'][cloneIndices.get(index)! % 4]} />
         case 'inequality':
           return <InequalityClue key={index} {...rule} compact={dots.get(pairKey(rule.less, rule.greater)) === 3 && sums.has(pairKey(rule.less, rule.greater))}
             offset={dots.get(pairKey(rule.less, rule.greater)) === 3 ? sums.has(pairKey(rule.less, rule.greater)) ? .347 : .4
@@ -332,6 +349,12 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         default: return null
       }
     })}
+    {clones.sets.map(set => <g key={set.label} className="variant-clone-label" data-clone={set.label}>
+      {set.cells.map(cell => <g key={cell}>
+        <text className="variant-clone-label-halo" x={x(cell) + .08} y={y(cell) + .94}>{set.label}</text>
+        <text className="variant-clone-label-mark" data-clone-label-cell={cell} x={x(cell) + .08} y={y(cell) + .94}>{set.label}</text>
+      </g>)}
+    </g>)}
   </svg>
 }
 
@@ -339,6 +362,8 @@ const reference = (cell: number) => `row ${y(cell) + 1}, column ${x(cell) + 1}`
 
 export function variantCellLabels(rules: readonly VariantRule[], regions?: VariantPuzzle['regions']) {
   const labels: string[][] = Array.from({ length: 81 }, () => [])
+  for (const set of cloneLayout(rules).sets) for (const cell of set.cells) labels[cell].push(
+    `Clone ${set.label}, same digit as ${set.cells.filter(other => other !== cell).map(reference).join('; ')}`)
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
       case 'inequality':

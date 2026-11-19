@@ -6,7 +6,7 @@ The current priority is to expose the rule families already implemented in the e
 | --- | --- | --- | --- |
 | Between Lines | In main | Released, including Easy/Medium New Puzzle | [PR 190](https://github.com/coder13/sudoku-app/pull/190) |
 | Region Sum Lines | In main | Released, including Medium New Puzzle | [PR 193](https://github.com/coder13/sudoku-app/pull/193) |
-| Clone | In main | Pending | [42](https://github.com/coder13/sudoku-app/issues/42) |
+| Clone | In main | Implemented with Easy New Puzzle in its isolated worktree; release pending | [42](https://github.com/coder13/sudoku-app/issues/42) |
 | Sandwich | In main | Pending | [68](https://github.com/coder13/sudoku-app/issues/68) |
 | Little Killer | In main | Pending | [69](https://github.com/coder13/sudoku-app/issues/69) |
 | X-Sums | In main | Pending | [70](https://github.com/coder13/sudoku-app/issues/70) |
@@ -32,4 +32,4 @@ The user explicitly confirmed generation parity. Alongside the five pending nati
 
 Between calibration checks twenty of twenty Easy seeds and nineteen of forty one-attempt Medium seeds. Every accepted puzzle is independently unique and needs the Between rule. Three known Medium seeds provide the bounded fallback. App generation now passes full played-puzzle exclusions to the engine, including square symmetries; a reproduced rotated-duplicate fallback is covered by a regression.
 
-Clone is the next integration. Two complete published controls, Bill Murphy’s *Legs in a Snare* and Philip Newman’s *Hello There*, have independently verified printed completions and complete Easy human paths. Twenty generated candidates per source are distinct, independently unique and require Clone. These are source and calibration preparations; Clone UI and actual New Puzzle integration remain pending in issue 42.
+Clone is implemented in `codex/sudoku-ui-parity-clone`, with release gates pending. Two complete published controls, Bill Murphy’s *Legs in a Snare* and Philip Newman’s *Hello There*, have independently verified printed completions and complete Easy human paths. Twenty generated candidates per source are distinct, independently unique and require Clone. The actual Easy New Puzzle path, import/play/help, selected hints and Finder, exact/human solutions, persistence, sharing and practice pass local validation. Typed f-puzzles Clone imports are supported. Original authored color/prose exports, including unsummed cages, remain explicit format work in issue 7. [Source, validation, generation and performance audit](SUDOKU_CLONE_AUDIT.md). Issue 42 remains open until exact-head release gates pass.
