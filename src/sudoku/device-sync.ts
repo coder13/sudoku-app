@@ -193,6 +193,12 @@ function reportError(target: ActiveDevice, error: unknown) {
   puzzlesChanged()
 }
 
+function recordCloudCheck(ready: boolean) {
+  publishConnection({ lastCheck: Date.now(), checkFailed: false })
+  publish({ linked: true, ready, message: failures.size
+    ? 'Some puzzle changes are saved on this device and could not sync.' : '' })
+}
+
 async function flush() {
   const target = active
   if (!target || running || !navigator.onLine || Date.now() < retryAt) { arm(); return }
@@ -228,9 +234,7 @@ async function flush() {
       checkFailures.clear()
       await applyResult(target, result, edits)
       if (!stillLinked(target)) return
-      publishConnection({ lastCheck: Date.now(), checkFailed: false })
-      publish({ linked: true, ready: true, message: failures.size
-        ? 'Some puzzle changes are saved on this device and could not sync.' : '' })
+      recordCloudCheck(true)
     } catch (error) {
       if (stillLinked(target)) {
         backOff()
@@ -280,7 +284,7 @@ async function syncPuzzle(id: string) {
         if (!stillLinked(target)) return
         await applyResult(target, result, edits)
         if (!stillLinked(target)) return
-        publishConnection({ lastCheck: Date.now(), checkFailed: false })
+        recordCloudCheck(state.ready)
         if (!result.failures.has(id) && !result.copies.has(id) && await target.engine.pending(id)) {
           if (!pending.has(id)) queueEdit(id, Date.now() + batchDelay)
         }
