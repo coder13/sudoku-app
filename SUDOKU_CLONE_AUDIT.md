@@ -44,7 +44,7 @@ The real New Puzzle caller independently verifies twenty distinct Easy outputs a
 
 ## Validation
 
-Local checks pass 576 app tests, 359 Wasm contracts, TypeScript, strict typing of the new contracts, the 122-component catalog and the 171-route production/offline build. The additional numeric proof checks pass in the focused Clone suite. Rust sources and dependencies match main; the rebuilt app Wasm and all five generated JSON files are byte-for-byte identical to the released artifacts. Native response/scoring behavior therefore uses the same artifact. Exact-head native/feature, four-profile, documentation and deployment release gates remain pending.
+Local checks pass 576 app tests, 359 Wasm contracts, TypeScript, strict typing of the new contracts, the 122-component catalog and the 171-route production/offline build. The additional numeric proof checks pass in the focused Clone suite. Rust sources and dependencies match main; the rebuilt app Wasm and all five generated JSON files are byte-for-byte identical to the released artifacts. Native response/scoring behavior therefore uses the same artifact. All exact-head native/feature, four-profile, documentation, app/Wasm and deployment gates pass; the release is recorded below.
 
 ## Performance
 
@@ -100,3 +100,11 @@ The baseline is the integrated Region Sum production build whose shipping source
 | App Wasm | 3,416,046 / 893,636 | 3,416,046 / 893,636 | +0 / +0 |
 
 The four pending native UI families, thirteen older New Puzzle integrations, authored-source semantics, remaining formats and full R&D goal remain open.
+
+## Release
+
+[PR 195](https://github.com/coder13/sudoku-app/pull/195) merged at `193b336c2c06328671673e6a461e22979245bc64` after every check passed on reviewed head `3022cf5775e3925411fd6264792944624f4b7a77` in [CI 44467126537](https://github.com/coder13/sudoku-app/actions/runs/44467126537). Completed logs confirm 369 native tests including seven Cargo examples, sixteen capability combinations, four Wasm profiles, strict full/core/variants Cargo docs, 576 app tests, 359 Wasm contracts, TypeScript and the 122-component catalog. Deployment and header checks pass. The local production/offline build covers 171 routes.
+
+Fetched main contains the reviewed head and merge with identical Rust, scripts, app, test, story, dependency and catalog sources. The isolated source worktree remains pinned. Read-only HTTP confirms the published shell, Clone lesson with both clue diagrams, service worker and its actual Wasm asset. The deployed artifact is byte-for-byte identical to the preceding validated deployment: 3,416,046 bytes, SHA-256 `f4f2a123db3a51b2d7873dc8354098204637dd402efa60ebad58b0e9accdc149`. These HTTP and static-render checks do not constitute live browser interaction review.
+
+Issue 42 is closed. The original color/prose/unsummed-cage exports remain in issue 7. Four existing native UI families, thirteen older New Puzzle integrations, authored-source semantics, remaining formats and broader R&D remain open.
