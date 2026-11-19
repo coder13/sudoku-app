@@ -1,3 +1,4 @@
+import { Button } from '../../src/components/Button'
 import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { fn } from 'storybook/test'
@@ -23,5 +24,5 @@ function UpdateExample({ updating, onDismiss, onUpdate }: UpdatePromptProps) {
   return visible
     ? <UpdatePrompt updating={busy} onDismiss={() => { onDismiss(); setVisible(false) }}
       onUpdate={() => { onUpdate(); setBusy(true) }} />
-    : <button className="button secondary" onClick={() => setVisible(true)}>Show update prompt</button>
+    : <Button onClick={() => setVisible(true)}>Show update prompt</Button>
 }

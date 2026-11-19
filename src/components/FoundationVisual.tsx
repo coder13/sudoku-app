@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useId, useState, type CSSProperties } from 'react'
 import { foundationBoard, foundationVisuals, visualColors, type FoundationVisualId, type VisualBranch, type VisualKey } from '../sudoku/foundation-visuals'
@@ -41,11 +42,11 @@ function VisualWalkthrough({ visual: id }: { visual: FoundationVisualId }) {
   return <figure className="lesson-diagram foundation-visual" aria-labelledby={heading} data-visual={id}>
     <header className="foundation-visual-heading"><h3 id={heading}>{visual.title}</h3>
       {visual.steps.length > 1 && <div className="foundation-step-controls" role="group" aria-label={`${visual.title} steps`}>
-        <button className="button secondary" type="button" aria-label="Previous diagram step" disabled={index === 0}
-          onClick={() => setIndex(index - 1)}><ArrowLeft size={16} aria-hidden="true" /></button>
+        <Button type="button" aria-label="Previous diagram step" disabled={index === 0}
+          onClick={() => setIndex(index - 1)}><ArrowLeft size={16} aria-hidden="true" /></Button>
         <span>{index + 1} / {visual.steps.length}</span>
-        <button className="button secondary" type="button" aria-label="Next diagram step" disabled={index === visual.steps.length - 1}
-          onClick={() => setIndex(index + 1)}><ArrowRight size={16} aria-hidden="true" /></button>
+        <Button type="button" aria-label="Next diagram step" disabled={index === visual.steps.length - 1}
+          onClick={() => setIndex(index + 1)}><ArrowRight size={16} aria-hidden="true" /></Button>
       </div>}
     </header>
     <p className="foundation-visual-note" id={note}>{visual.note}</p>

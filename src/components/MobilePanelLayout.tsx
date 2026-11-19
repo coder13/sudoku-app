@@ -1,3 +1,4 @@
+import { IconButton } from './Button'
 import { Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { GripVertical, X } from 'lucide-react'
 import { MotionSurface, usePresentContent } from './Presence'
@@ -251,9 +252,9 @@ export function MobilePanelLayout(props: Props) {
       <div><strong>Rearrange cards</strong><small id="mobile-panel-instructions">
         {saveFailed ? 'Order saved for this session only.' : 'Drag cards to move them. Changes save automatically.'}
       </small></div>
-      <button ref={closeButton} type="button" className="icon-button borderless" aria-label="Finish rearranging cards" onClick={exit}>
+      <IconButton ref={closeButton} type="button" variant="quiet" aria-label="Finish rearranging cards" onClick={exit}>
         <X size={22} aria-hidden="true" />
-      </button>
+      </IconButton>
     </div>}</MotionSurface>
     <div className="mobile-panel-space" aria-hidden="true" />
     {visible.map((id, index) => {

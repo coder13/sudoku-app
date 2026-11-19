@@ -1,3 +1,4 @@
+import { notifySettingsEdit } from './settings-events.ts'
 export type EditableShortcutId =
   | 'digitMode'
   | 'pencilMode'
@@ -124,18 +125,26 @@ export function parseShortcutPreferences(value: unknown): ShortcutPreferences {
   return ids.every((id) => next[id] === DEFAULT_SHORTCUTS[id]) ? DEFAULT_SHORTCUTS : next
 }
 
-function readShortcuts() {
-  if (typeof window === 'undefined') return DEFAULT_SHORTCUTS
-  try { return parseShortcutPreferences(JSON.parse(window.localStorage.getItem(SHORTCUTS_KEY) ?? 'null')) }
+export function readShortcuts(storage?: Pick<Storage, 'getItem'>) {
+  if (!storage && typeof window === 'undefined') return DEFAULT_SHORTCUTS
+  try { return parseShortcutPreferences(JSON.parse((storage ?? localStorage).getItem(SHORTCUTS_KEY) ?? 'null')) }
   catch { return DEFAULT_SHORTCUTS }
 }
 
 let current = readShortcuts()
 
+if (typeof window !== 'undefined') {
+  window.addEventListener?.('storage', event => {
+    if (event.storageArea !== localStorage || (event.key !== SHORTCUTS_KEY && event.key !== null)) return
+    current = readShortcuts()
+    listeners.forEach(listener => listener())
+  })
+}
+
 function publish(next: ShortcutPreferences) {
   current = next
   listeners.forEach((listener) => listener())
-  try { window.localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(next)) }
+  try { window.localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(next)); notifySettingsEdit() }
   catch { /* The shortcuts remain active for this session. */ }
 }
 

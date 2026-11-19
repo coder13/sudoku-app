@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, realpathSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { ocrAssetFileNames } from './scripts/ocr-assets.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
+import { syncPageTitles } from './src/sudoku/sync-pages.ts'
 import { lessonCatalog, type LearnContent } from './src/sudoku/lesson-content.ts'
 
 function prerenderPages() {
@@ -30,6 +31,8 @@ function prerenderPages() {
     '/',
     '/puzzles',
     '/import',
+    '/sync',
+    ...Object.keys(syncPageTitles).map(step => '/sync/' + step),
     '/shortcuts',
     '/puzzles/browse',
     '/puzzles/new',
@@ -62,7 +65,10 @@ export default defineConfig(({ command }) => ({
   server: {
     host: '0.0.0.0',
     port: 8766,
+    // Preserve the browser's Host so the local Worker can verify the request origin.
+    proxy: { '/api/v1': { target: 'http://127.0.0.1:8788', changeOrigin: false } },
     strictPort: true,
+    fs: { allow: [process.cwd(), realpathSync('node_modules')] },
     allowedHosts: ['twilight'],
   },
   build: { assetsInlineLimit: 0, rolldownOptions: { output: { assetFileNames: ocrAssetFileNames } } },

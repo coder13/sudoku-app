@@ -1,3 +1,4 @@
+import { Button, buttonClassName } from './Button'
 import '../collections.css'
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
@@ -68,12 +69,12 @@ function DownloadPuzzles({ collection, missing, difficulty, games }: {
   }
 
   return <div className="collection-download-action">
-    {missing.length > 0 && <button type="button" className="button secondary" aria-haspopup="dialog" disabled={!!progress} onClick={() => {
+    {missing.length > 0 && <Button type="button" aria-haspopup="dialog" disabled={!!progress} onClick={() => {
       setWholeCollection(false)
       setQuantity(String(Math.min(10, showScope ? atDifficulty.length : missing.length)))
       setError('')
       setOpen(true)
-    }}>Download</button>}
+    }}>Download</Button>}
     <span className="sr-only" role="status">{message}</span>
     {open && createPortal(<Modal title="Download puzzles" onClose={close}>
       <form className="dialog-form" onSubmit={event => { event.preventDefault(); void download() }}>
@@ -93,17 +94,17 @@ function DownloadPuzzles({ collection, missing, difficulty, games }: {
         <div className="collection-download-quantity">
           <input id={`${id}-count`} type="number" inputMode="numeric" min={1} max={puzzles.length} step={1}
             value={quantity} disabled={!!progress} autoFocus onChange={event => setQuantity(event.target.value)} />
-          {puzzles.length > 1 && <button type="button" className="button secondary" disabled={!!progress}
-            onClick={() => setQuantity(String(puzzles.length))}>All {puzzles.length}</button>}
+          {puzzles.length > 1 && <Button type="button" disabled={!!progress}
+            onClick={() => setQuantity(String(puzzles.length))}>All {puzzles.length}</Button>}
         </div>
         <p aria-live="polite">{progress ? `Downloading ${progress.done} of ${progress.total}…`
           : valid ? `${dataSize(selected)} of puzzle data for offline play` : `Choose a whole number from 1 to ${puzzles.length}.`}</p>
         {error && <p role="alert" className="form-error">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={close}>Cancel</button>
-          <button type="submit" className="button primary" disabled={!valid || !!progress}>
+          <Button type="button" onClick={close}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={!valid || !!progress}>
             <Download size={17} aria-hidden="true" /> Download
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>, document.body)}
@@ -137,7 +138,7 @@ export function PuzzleCollectionCredit({ game }: { game: Game }) {
   </div>
 }
 
-export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: () => void }) {
+export function PuzzleCollections({ games }: { games: Game[] }) {
   const search = route.useSearch()
   const navigate = useNavigate()
   const id = useId()
@@ -178,9 +179,8 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
     setMessage('')
     try {
       const { added } = await openCollectionPuzzle(collection.id, puzzleId, { online, play, preview: previewGrid, signal: request.signal })
-      if (request.signal.aborted) return
-      if (play) onPlay()
-      else setMessage(!roomStore.getSnapshot().storageAvailable
+      if (request.signal.aborted || play) return
+      setMessage(!roomStore.getSnapshot().storageAvailable
         ? 'Puzzle available for this session. Local storage is unavailable.'
         : added ? 'Puzzle saved for later.' : 'This puzzle is already in Your puzzles.')
     } catch (reason) {
@@ -193,7 +193,7 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
 
   if (search.collection && !collection || search.puzzle && !puzzle) return <section className="main-menu-section">
     <p>This collection or puzzle could not be found.</p>
-    <Link to="/puzzles/collections" search={{}} className="button secondary">Browse collections</Link>
+    <Link to="/puzzles/collections" search={{}} className={buttonClassName()}>Browse collections</Link>
   </section>
 
   if (!collection) {
@@ -221,12 +221,12 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
           </Link>
         ))}
       </div> : <p className="collection-note">No collection puzzles available offline.</p>}
-      <Link to="/puzzles/new" search={{}} className="button secondary collection-action">Generate a new puzzle <ChevronRight size={16} aria-hidden="true" /></Link>
+      <Link to="/puzzles/new" search={{}} className={buttonClassName('secondary', 'collection-action')}>Generate a new puzzle <ChevronRight size={16} aria-hidden="true" /></Link>
     </section>
   }
 
   if (!difficulty) return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
-    <Link className="button secondary collection-action collection-browse" to="/puzzles/collections" search={{}}>
+    <Link className={buttonClassName('secondary', 'collection-action collection-browse')} to="/puzzles/collections" search={{}}>
       <ChevronLeft size={16} aria-hidden="true" /> Browse all collections
     </Link>
     <header className="collection-list-header">
@@ -261,18 +261,18 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
       {givens ? <div className="collection-puzzle-preview">
         <Board label="Collection puzzle preview" givens={givens} values={givens} showGuides={false} />
         <div className="collection-preview-actions">
-          <button type="button" className="button primary" disabled={opening} onClick={() => void open(puzzle.id, true)}>
+          <Button type="button" variant="primary" disabled={opening} onClick={() => void open(puzzle.id, true)}>
             <Play size={17} aria-hidden="true" /> {solved ? 'Review puzzle' : existing?.started ? 'Resume puzzle' : 'Start puzzle'}
-          </button>
-          {!existing && <button type="button" className="button secondary" disabled={opening} onClick={() => void open(puzzle.id, false)}>
+          </Button>
+          {!existing && <Button type="button" disabled={opening} onClick={() => void open(puzzle.id, false)}>
             <Bookmark size={17} aria-hidden="true" /> Save for later
-          </button>}
+          </Button>}
           {solved && <p className="collection-note">You solved this puzzle.</p>}
         </div>
       </div> : !online ? <p className="collection-note">This puzzle is not available offline.</p>
         : previewError ? <div>
           <p role="alert" className="form-error">{previewError}</p>
-          <button type="button" className="button secondary" onClick={() => setPreviewAttempt(attempt => attempt + 1)}>Try again</button>
+          <Button type="button" onClick={() => setPreviewAttempt(attempt => attempt + 1)}>Try again</Button>
         </div> : <p role="status" className="collection-note">Loading puzzle…</p>}
       {message && <p role="status" className="dialog-status">{message}</p>}
       <CollectionCredits collection={collection} />
@@ -293,10 +293,10 @@ export function PuzzleCollections({ games, onPlay }: { games: Game[]; onPlay: ()
     {all.length > 0 && <div className="collection-summary">
       <div><strong>{progress.solved} of {all.length} solved</strong>
         <progress value={progress.solved} max={all.length} aria-label={`${DIFFICULTY_LABELS[difficulty]} puzzles completed`} /></div>
-      {next ? <button type="button" disabled={opening} onClick={() => void open(next.id, true)} className="button primary">
+      {next ? <Button type="button" disabled={opening} onClick={() => void open(next.id, true)} variant="primary">
         <Play size={16} aria-hidden="true" /> {opening ? 'Loading puzzle…'
           : collectionPuzzleStatus(next, games) === 'in-progress' ? 'Continue collection' : 'Play next puzzle'}
-      </button> : <span className="collection-complete"><Check size={18} aria-hidden="true" /> {online ? 'Difficulty complete' : 'Offline puzzles complete'}</span>}
+      </Button> : <span className="collection-complete"><Check size={18} aria-hidden="true" /> {online ? 'Difficulty complete' : 'Offline puzzles complete'}</span>}
     </div>}
     {message && <p role="status" className="dialog-status">{message}</p>}
     {all.length > 0 && <div className="collection-filters">

@@ -70,7 +70,7 @@ async function workerHarness({ failInstall = false } = {}) {
 test('offline worker installs a complete revision and activates only after an explicit update message', async () => {
   const worker = await workerHarness()
   await worker.lifecycle('install')
-  assert.deepEqual(worker.installed.map(request => new URL(request.url).pathname), shellAssets)
+  assert.deepEqual(worker.installed.map(request => new URL(request.url).pathname), ['/', '/learn/full-house/', '/assets/app.js', '/assets/engine.wasm'])
   assert.ok(worker.installed.every(request => request.cache === 'reload'))
   assert.deepEqual(worker.counts(), { skipped: 0, claimed: 0 })
   for (const data of [undefined, {}, { type: 'UPDATE' }]) worker.message(data)
@@ -85,10 +85,10 @@ test('offline navigation uses cached root/deep-route shells even when search par
   const worker = await workerHarness()
   await worker.lifecycle('install')
   for (const [path, expected] of [
-    ['/', '/index.html'],
-    ['/?from=home', '/index.html'],
-    ['/learn/full-house', '/learn/full-house/index.html'],
-    ['/learn/full-house/?step=2', '/learn/full-house/index.html'],
+    ['/', '/'],
+    ['/?puzzle=phone-save', '/'],
+    ['/learn/full-house', '/learn/full-house/'],
+    ['/learn/full-house/?step=2', '/learn/full-house/'],
     ['/assets/app.js?v=2', '/assets/app.js'],
     ['/assets/engine.wasm', '/assets/engine.wasm'],
   ]) {
@@ -105,6 +105,7 @@ test('offline worker leaves collection downloads, external resources, writes, an
     ['/collections/nikoli/puzzle.txt', 'cors', 'GET'],
     ['https://external.example/assets/app.js', 'cors', 'GET'],
     ['/assets/app.js', 'cors', 'POST'],
+    ['/api/v1/changes?after=0', 'cors', 'GET'],
     ['/learn/not-a-route', 'navigate', 'GET'],
   ]) {
     assert.equal((await worker.request(path, mode, method)).response, undefined, path)

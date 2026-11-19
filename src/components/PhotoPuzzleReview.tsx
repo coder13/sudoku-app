@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { conflictsOf } from '../sudoku/game'
 import type { PhotoCrop } from '../sudoku/photo-crop'
@@ -147,10 +148,10 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
       </div>
       {checkError && <p className="form-error" role="alert">{checkError}</p>}
       <div className="dialog-actions photo-actions">
-        <button type="button" className="button secondary" disabled={checking}
-          onClick={() => { setAdjusting(true); onEdit() }}>Adjust crop</button>
-        <button type="button" className="button primary" disabled={checking || !reviewing.givens.some(digit => digit !== '0')}
-          onClick={() => onCheck(reviewing.givens.join(''))}>{checking ? 'Checking puzzle…' : 'Preview puzzle'}</button>
+        <Button type="button" disabled={checking}
+          onClick={() => { setAdjusting(true); onEdit() }}>Adjust crop</Button>
+        <Button type="button" variant="primary" disabled={checking || !reviewing.givens.some(digit => digit !== '0')}
+          onClick={() => onCheck(reviewing.givens.join(''))}>{checking ? 'Checking puzzle…' : 'Preview puzzle'}</Button>
       </div>
     </> : <>
       {editingCrop && photo && <>
@@ -164,9 +165,9 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
       {reading && <p role="status">Reading digits…</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="dialog-actions photo-actions">
-        <button type="button" className="button secondary" onClick={back}>{result ? 'Back to review' : 'Choose another source'}</button>
-        {editingCrop && photo && <button type="button" className="button primary"
-          onClick={() => void scan(photo, editingCrop)}>Read digits</button>}
+        <Button type="button" onClick={back}>{result ? 'Back to review' : 'Choose another source'}</Button>
+        {editingCrop && photo && <Button type="button" variant="primary"
+          onClick={() => void scan(photo, editingCrop)}>Read digits</Button>}
       </div>
     </>}
   </section>

@@ -11,3 +11,4 @@ storybook-static/
 stories/generated/
 .codex-attachments/
 debug-storybook.log
+.wrangler/

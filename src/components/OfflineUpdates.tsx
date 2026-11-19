@@ -1,3 +1,4 @@
+import { Button } from './Button'
 import { Download } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { MotionSurface } from './Presence'
@@ -98,8 +99,8 @@ export function UpdatePrompt({ open = true, updating, onDismiss, onUpdate }: {
         <small id="update-description">A newer offline version is ready to use.</small>
       </span>
       <span className="update-prompt-actions">
-        <button className="button secondary" disabled={updating} onClick={onDismiss}>Later</button>
-        <button className="button primary" disabled={updating} onClick={onUpdate}>{updating ? 'Updating…' : 'Update app'}</button>
+        <Button disabled={updating} onClick={onDismiss}>Later</Button>
+        <Button variant="primary" disabled={updating} onClick={onUpdate}>{updating ? 'Updating…' : 'Update app'}</Button>
       </span>
     </aside>}</MotionSurface>
   )

@@ -1,6 +1,7 @@
+import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultySelector } from './DifficultySelector'
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentType } from 'react'
-import { getRouteApi, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
+import { getRouteApi, Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
 import {
   DIFFICULTY_LABELS, formatPuzzleRating, statisticsDifficulties, type DifficultyPreference,
@@ -8,7 +9,6 @@ import {
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
-import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
 import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId, type PuzzleVariantId } from '../sudoku/variants'
@@ -55,8 +55,8 @@ function puzzleStatus(game: Game) {
   return `${rating} · Not started`
 }
 
-function PuzzleLibrary({ games, active, select, manage }: {
-  games: Game[]; active: string | null; select: (id: string) => void; manage: (id: string) => void
+function PuzzleLibrary({ games, active, manage }: {
+  games: Game[]; active: string | null; manage: (id: string) => void
 }) {
   const title = useId()
   const activePuzzles = games.filter((game) => !isSolved(game) && !game.savedForLater)
@@ -86,13 +86,13 @@ function PuzzleLibrary({ games, active, select, manage }: {
       {items.map((game) => {
         const manageable = game.source !== 'draft' && !isSolved(game)
         return <li key={game.id} className={manageable ? 'game-row-with-options' : undefined}>
-          <button className="game-row" aria-current={game.id === active ? 'true' : undefined} onClick={() => select(game.id)}>
+          <Link className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
             <MiniGrid values={valuesOf(game)} />
             <span className="game-row-copy"><strong>{game.title}</strong><small>{puzzleStatus(game)}</small></span>
             {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
-          </button>
-          {manageable && <button type="button" className="icon-button borderless game-row-options" aria-haspopup="dialog"
-            aria-label={`Options for ${game.title}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></button>}
+          </Link>
+          {manageable && <IconButton type="button" variant="quiet" className="game-row-options" aria-haspopup="dialog"
+            aria-label={`Options for ${game.title}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></IconButton>}
         </li>
       })}
     </ul>
@@ -119,10 +119,9 @@ function PuzzleLibrary({ games, active, select, manage }: {
   </section>
 }
 
-function NewPuzzleSection({ preference, save, done }: {
+function NewPuzzleSection({ preference, save }: {
   preference: NewPuzzlePreference
   save: (preference: NewPuzzlePreference) => void
-  done: () => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
@@ -135,7 +134,6 @@ function NewPuzzleSection({ preference, save, done }: {
   function start() {
     const onGenerated = () => {
       save({ variant, difficulty: selected })
-      done()
     }
     void generate(selected, onGenerated, variant)
   }
@@ -143,15 +141,15 @@ function NewPuzzleSection({ preference, save, done }: {
   return <section className="main-menu-section" aria-labelledby={`${group}-title`}>
     <header className="new-puzzle-heading">
       <h2 id={`${group}-title`}>New puzzle</h2>
-      <Link className="button secondary" to="/import" disabled={busy}><FileUp size={18} aria-hidden="true" /> Import a puzzle</Link>
+      <Link className={buttonClassName()} to="/import" disabled={busy}><FileUp size={18} aria-hidden="true" /> Import a puzzle</Link>
     </header>
     <VariantSelector value={variant} onChange={setVariant} busy={busy} />
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
-    <button className="button primary main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
+    <Button variant="primary" className="main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
         ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
-    </button>
+    </Button>
   </section>
 }
 
@@ -167,7 +165,7 @@ function Statistics({ games }: { games: Game[] }) {
     return { difficulty, label: DIFFICULTY_LABELS[difficulty], solved: matching.length, best }
   })
   return <section className="main-menu-section" aria-labelledby="statistics-title">
-    <header><h2 id="statistics-title">Statistics</h2><p>Your solving history on this device.</p></header>
+    <header><h2 id="statistics-title">Statistics</h2></header>
     <dl className="main-stat-cards">
       <div><Trophy size={18} aria-hidden="true" /><dt>{count ? 'Player rating' : 'Starting rating'}</dt><dd>{Math.round(rating)}</dd></div>
       <div><Dices size={18} aria-hidden="true" /><dt>Auto difficulty</dt><dd>{DIFFICULTY_LABELS[recommended]}</dd></div>
@@ -213,7 +211,6 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   preferencesReady: boolean
   onCreatePuzzle: () => void
 }) {
-  const navigate = useNavigate()
   const mobile = useMobileLayout()
   const heading = useRef<HTMLHeadingElement>(null)
   const [managingId, setManagingId] = useState<string | null>(null)
@@ -238,24 +235,16 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     if (screen) heading.current?.focus({ preventScroll: true })
   }, [screen, variant])
 
-  function play() {
-    void navigate({ to: '/' })
-  }
-
-  function selectPuzzle(id: string) {
-    roomStore.select(id)
-    play()
-  }
-
   function savePuzzlePreference(preference: NewPuzzlePreference) {
     rememberNewPuzzle(preference)
     setDifficulty(preference.difficulty)
   }
 
   function content(current: Section) {
-    if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} select={selectPuzzle} manage={setManagingId} />
-    if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`} games={games} onPlay={play} />
-    if (current === 'new') return preferencesReady && <NewPuzzleSection preference={newPuzzlePreference} save={savePuzzlePreference} done={play} />
+    if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} manage={setManagingId} />
+    if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`}
+      games={games} />
+    if (current === 'new') return preferencesReady && <NewPuzzleSection preference={newPuzzlePreference} save={savePuzzlePreference} />
     return <Statistics games={games} />
   }
 
@@ -273,11 +262,11 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
       {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"
         search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
           : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
-        className="icon-button puzzles-back" aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
+        className={iconButtonClassName('secondary', 'puzzles-back')} aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
           : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
         : backToStart ? <Link to="/puzzles/new" search={{}} replace
-          className="icon-button puzzles-back" aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
-          : section && <Link to="/puzzles" className="icon-button puzzles-back" aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}
+          className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
+          : section && <Link to="/puzzles" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}
       <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{screen ? newPuzzleTitle[screen]
         : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? sectionItem?.label ?? 'Puzzles'}</h1>
     </header>
@@ -289,7 +278,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     </div>}
     {(section !== 'new' || mobileNewPuzzle) && <div className="main-menu-mobile motion-screen" key={`mobile-${screen ?? section ?? 'overview'}`}>
       {mobileNewPuzzle ? screen && <MobileNewPuzzle screen={screen} variant={variant} preference={newPuzzlePreference}
-        remember={rememberNewPuzzle} done={(preference) => { savePuzzlePreference(preference); play() }} onCreate={onCreatePuzzle} />
+        remember={rememberNewPuzzle} done={savePuzzlePreference} onCreate={onCreatePuzzle} />
         : section ? (mobile || section !== 'collections') && content(section) : navigation}
     </div>}
     <Outlet />

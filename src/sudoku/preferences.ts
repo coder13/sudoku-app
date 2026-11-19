@@ -1,14 +1,15 @@
-import { clampAppTextZoom, DEFAULT_APP_TEXT_ZOOM } from './app-text-zoom'
-import { DEFAULT_DIFFICULTY, currentDifficulty, isDifficultyPreference, type DifficultyPreference } from './difficulty'
-import type { CandidateLayout, ErrorMode } from './game'
-import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale'
-import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints'
-import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes'
-import { isVariantId, variantDifficulty, type VariantId } from './variants'
+import { notifySettingsEdit } from './settings-events.ts'
+import { clampAppTextZoom, DEFAULT_APP_TEXT_ZOOM } from './app-text-zoom.ts'
+import { DEFAULT_DIFFICULTY, currentDifficulty, isDifficultyPreference, type DifficultyPreference } from './difficulty.ts'
+import type { CandidateLayout, ErrorMode } from './game.ts'
+import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale.ts'
+import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints.ts'
+import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes.ts'
+import { isVariantId, variantDifficulty, type VariantId } from './variants.ts'
 
 export {
   gridTextScalePercentage, MAX_GRID_TEXT_SCALE, MIN_GRID_TEXT_SCALE, stepGridTextScale,
-} from './grid-text-scale'
+} from './grid-text-scale.ts'
 
 export type AdvancedModes = {
   candidateLayout: CandidateLayout
@@ -21,7 +22,7 @@ export type AdvancedModes = {
 export type WorkspaceMode = 'standard' | 'advanced'
 
 export type ColorMode = 'system' | 'light' | 'dark'
-export type { ThemeId } from './themes'
+export type { ThemeId } from './themes.ts'
 export type AppearancePreferences = {
   colorMode: ColorMode
   lightTheme: ThemeId
@@ -74,15 +75,15 @@ export const PANEL_HEIGHT_KEY = 'sudoku-app:v1:input-panel-height'
 export const APPEARANCE_KEY = 'sudoku-app:v1:appearance'
 export const HIGHLIGHT_KEY = 'sudoku-app:v1:highlighting'
 export const WORKSPACE_MODE_KEY = 'sudoku-app:v1:workspace-mode'
-const DIFFICULTY_KEY = 'sudoku-app:v1:difficulty'
-const NEW_PUZZLE_KEY = 'sudoku-app:v1:new-puzzle'
-const CELL_REFERENCE_STYLE_KEY = 'sudoku-app:v1:hint-cell-reference-style'
+export const DIFFICULTY_KEY = 'sudoku-app:v1:difficulty'
+export const NEW_PUZZLE_KEY = 'sudoku-app:v1:new-puzzle'
+export const CELL_REFERENCE_STYLE_KEY = 'sudoku-app:v1:hint-cell-reference-style'
 
 const ERROR_MODES = new Set<ErrorMode>(['all', 'incorrect', 'none'])
 const COLOR_MODES = new Set<ColorMode>(['system', 'light', 'dark'])
 const CANDIDATE_HIGHLIGHT_STYLES = new Set<CandidateHighlightStyle>(['text', 'spotlight', 'cell', 'outline'])
 
-export function readPreferences() {
+export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
   let advancedModes = DEFAULT_ADVANCED_MODES
   let errorMode = DEFAULT_ERROR_MODE
   let inputSize = DEFAULT_INPUT_SIZE
@@ -92,15 +93,16 @@ export function readPreferences() {
   let cellReferenceStyle = DEFAULT_CELL_REFERENCE_STYLE
   let workspaceMode = DEFAULT_WORKSPACE_MODE
   try {
-    const savedWorkspaceMode = localStorage.getItem(WORKSPACE_MODE_KEY)
+    const target = storage ?? localStorage
+    const savedWorkspaceMode = target.getItem(WORKSPACE_MODE_KEY)
     if (savedWorkspaceMode === 'standard' || savedWorkspaceMode === 'advanced') workspaceMode = savedWorkspaceMode
-    const savedDifficulty = localStorage.getItem(DIFFICULTY_KEY)
+    const savedDifficulty = target.getItem(DIFFICULTY_KEY)
     if (isDifficultyPreference(savedDifficulty)) difficulty = savedDifficulty === 'auto' ? 'auto' : currentDifficulty(savedDifficulty)
-    const savedCellReferenceStyle = localStorage.getItem(CELL_REFERENCE_STYLE_KEY)
+    const savedCellReferenceStyle = target.getItem(CELL_REFERENCE_STYLE_KEY)
     if (isCellReferenceStyle(savedCellReferenceStyle)) cellReferenceStyle = savedCellReferenceStyle
-    const savedErrorMode = localStorage.getItem(ERROR_MODE_KEY) as ErrorMode | null
+    const savedErrorMode = target.getItem(ERROR_MODE_KEY) as ErrorMode | null
     if (savedErrorMode && ERROR_MODES.has(savedErrorMode)) errorMode = savedErrorMode
-    const savedModes = JSON.parse(localStorage.getItem(ADVANCED_MODE_KEY) ?? 'null') as Partial<AdvancedModes> | null
+    const savedModes = JSON.parse(target.getItem(ADVANCED_MODE_KEY) ?? 'null') as Partial<AdvancedModes> | null
     if (savedModes && (savedModes.candidateLayout === 'grid' || savedModes.candidateLayout === 'center-corner')) {
       advancedModes = {
         candidateLayout: savedModes.candidateLayout,
@@ -110,12 +112,12 @@ export function readPreferences() {
         doubleClickSingles: savedModes.doubleClickSingles !== false,
       }
     }
-    const savedInputSizeText = localStorage.getItem(INPUT_SIZE_KEY)
+    const savedInputSizeText = target.getItem(INPUT_SIZE_KEY)
     const savedInputSize = Number(savedInputSizeText)
     if (savedInputSizeText !== null && Number.isFinite(savedInputSize)) {
       inputSize = Math.min(MAX_INPUT_SIZE, Math.max(MIN_INPUT_SIZE, savedInputSize))
     }
-    const savedAppearance = JSON.parse(localStorage.getItem(APPEARANCE_KEY) ?? 'null') as
+    const savedAppearance = JSON.parse(target.getItem(APPEARANCE_KEY) ?? 'null') as
       (Partial<AppearancePreferences> & { themeDefaultsVersion?: number }) | null
     if (savedAppearance) {
       const darkTheme = savedAppearance.themeDefaultsVersion !== 2 && savedAppearance.darkTheme === 'violet'
@@ -132,7 +134,7 @@ export function readPreferences() {
           ? clampAppTextZoom(Math.round(savedAppearance.appTextZoom)) : DEFAULT_APP_TEXT_ZOOM,
       }
     }
-    const savedHighlighting = JSON.parse(localStorage.getItem(HIGHLIGHT_KEY) ?? 'null') as
+    const savedHighlighting = JSON.parse(target.getItem(HIGHLIGHT_KEY) ?? 'null') as
       (Partial<HighlightPreferences> & { defaultsVersion?: number }) | null
     if (savedHighlighting) {
       const candidateStyle = savedHighlighting.defaultsVersion !== 2 && savedHighlighting.candidateStyle === 'text'
@@ -150,25 +152,25 @@ export function readPreferences() {
 }
 
 export function saveWorkspaceMode(value: WorkspaceMode) {
-  try { localStorage.setItem(WORKSPACE_MODE_KEY, value) }
+  try { localStorage.setItem(WORKSPACE_MODE_KEY, value); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 
 export function saveCellReferenceStyle(value: CellReferenceStyle) {
-  try { localStorage.setItem(CELL_REFERENCE_STYLE_KEY, value) }
+  try { localStorage.setItem(CELL_REFERENCE_STYLE_KEY, value); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 
 export function saveDifficulty(value: DifficultyPreference) {
-  try { localStorage.setItem(DIFFICULTY_KEY, value) }
+  try { localStorage.setItem(DIFFICULTY_KEY, value); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 
 export type NewPuzzlePreference = { variant: VariantId; difficulty: DifficultyPreference }
 
-export function readNewPuzzlePreference(): NewPuzzlePreference | null {
+export function readNewPuzzlePreference(storage?: Pick<Storage, 'getItem'>): NewPuzzlePreference | null {
   try {
-    const value = JSON.parse(localStorage.getItem(NEW_PUZZLE_KEY) ?? 'null') as Partial<NewPuzzlePreference> | null
+    const value = JSON.parse((storage ?? localStorage).getItem(NEW_PUZZLE_KEY) ?? 'null') as Partial<NewPuzzlePreference> | null
     if (isVariantId(value?.variant) && isDifficultyPreference(value.difficulty)) {
       return { variant: value.variant, difficulty: variantDifficulty(value.variant, value.difficulty) }
     }
@@ -177,32 +179,32 @@ export function readNewPuzzlePreference(): NewPuzzlePreference | null {
 }
 
 export function saveNewPuzzlePreference(value: NewPuzzlePreference) {
-  try { localStorage.setItem(NEW_PUZZLE_KEY, JSON.stringify(value)) }
+  try { localStorage.setItem(NEW_PUZZLE_KEY, JSON.stringify(value)); notifySettingsEdit() }
   catch { /* The choice remains active for this session. */ }
 }
 
 export function saveAdvancedModes(value: AdvancedModes) {
-  try { localStorage.setItem(ADVANCED_MODE_KEY, JSON.stringify(value)) }
+  try { localStorage.setItem(ADVANCED_MODE_KEY, JSON.stringify(value)); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 
 export function saveErrorMode(value: ErrorMode) {
-  try { localStorage.setItem(ERROR_MODE_KEY, value) }
+  try { localStorage.setItem(ERROR_MODE_KEY, value); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 
 export function saveInputSize(value: number) {
-  try { localStorage.setItem(INPUT_SIZE_KEY, String(value)) }
+  try { localStorage.setItem(INPUT_SIZE_KEY, String(value)); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 
 export function saveAppearance(value: AppearancePreferences) {
-  try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ ...value, themeDefaultsVersion: 2 })) }
+  try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ ...value, themeDefaultsVersion: 2 })); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 
 export function saveHighlightPreferences(value: HighlightPreferences) {
-  try { localStorage.setItem(HIGHLIGHT_KEY, JSON.stringify({ ...value, defaultsVersion: 2 })) }
+  try { localStorage.setItem(HIGHLIGHT_KEY, JSON.stringify({ ...value, defaultsVersion: 2 })); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 

@@ -1,3 +1,4 @@
+import { Button, IconButton, iconButtonClassName } from './Button'
 import { useId, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
@@ -145,53 +146,53 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
       <div className="setting-row-heading text-size-setting">
         <span><strong>App text size</strong><small>Scale all text, including grid and keypad digits.</small></span>
         <div className="size-stepper" role="group" aria-label="App text size">
-          <button className="icon-button" aria-label="Decrease app text size"
+          <IconButton aria-label="Decrease app text size"
             disabled={appearance.appTextZoom <= MIN_APP_TEXT_ZOOM}
             onClick={() => setAppearance({
               ...appearance,
               appTextZoom: stepAppTextZoom(appearance.appTextZoom, -1),
-            })}><Minus size={18} /></button>
+            })}><Minus size={18} /></IconButton>
           <output aria-label="App text size percentage">{appearance.appTextZoom}%</output>
-          <button className="icon-button" aria-label="Increase app text size"
+          <IconButton aria-label="Increase app text size"
             disabled={appearance.appTextZoom >= MAX_APP_TEXT_ZOOM}
             onClick={() => setAppearance({
               ...appearance,
               appTextZoom: stepAppTextZoom(appearance.appTextZoom, 1),
-            })}><Plus size={18} /></button>
+            })}><Plus size={18} /></IconButton>
         </div>
       </div>
       <GuideSetting appearance={appearance} setAppearance={setAppearance} heading={false} />
       <div className="setting-row-heading text-size-setting">
         <span><strong>Puzzle text size</strong><small>Adjust digits and candidates in the Sudoku grid.</small></span>
         <div className="size-stepper" role="group" aria-label="Puzzle text size">
-          <button className="icon-button" aria-label="Decrease puzzle text size"
+          <IconButton aria-label="Decrease puzzle text size"
             disabled={appearance.gridTextScale <= MIN_GRID_TEXT_SCALE}
             onClick={() => setAppearance({
               ...appearance,
               gridTextScale: stepGridTextScale(appearance.gridTextScale, -1),
-            })}><Minus size={18} /></button>
+            })}><Minus size={18} /></IconButton>
           <output aria-label="Puzzle text size percentage">{gridTextScalePercentage(appearance.gridTextScale)}%</output>
-          <button className="icon-button" aria-label="Increase puzzle text size"
+          <IconButton aria-label="Increase puzzle text size"
             disabled={appearance.gridTextScale >= MAX_GRID_TEXT_SCALE}
             onClick={() => setAppearance({
               ...appearance,
               gridTextScale: stepGridTextScale(appearance.gridTextScale, 1),
-            })}><Plus size={18} /></button>
+            })}><Plus size={18} /></IconButton>
         </div>
       </div>
       <div className="input-size-setting setting-row-heading">
         <span><strong>Digit size</strong><small>Adjust the digit buttons.</small></span>
         <div className="size-stepper" role="group" aria-label="Digit size">
-          <button className="icon-button" aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
-            onClick={() => setInputSize(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></button>
-          <button className="icon-button" aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
-            onClick={() => setInputSize(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></button>
+          <IconButton aria-label="Decrease digit size" disabled={inputSize <= MIN_INPUT_SIZE}
+            onClick={() => setInputSize(Math.max(MIN_INPUT_SIZE, inputSize - INPUT_SIZE_STEP))}><Minus size={18} /></IconButton>
+          <IconButton aria-label="Increase digit size" disabled={inputSize >= MAX_INPUT_SIZE}
+            onClick={() => setInputSize(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></IconButton>
         </div>
       </div>
       {workspaceMode === 'advanced' && <div className="desktop-layout-setting">
         <span className="settings-menu-icon"><PanelsTopLeft size={20} /></span>
         <span><strong>Advanced panel layout</strong><small>Restore the default positions and sizes for every named panel.</small></span>
-        <button className="button secondary" onClick={resetDesktopPanelLayout}>Reset</button>
+        <Button onClick={resetDesktopPanelLayout}>Reset</Button>
       </div>}
     </div>
   )
@@ -431,7 +432,7 @@ export function Settings({
     <Modal title={section ? screenLabels[section] : 'Settings'} onClose={() => exitSettings()}
       className={`settings-dialog ${section ? 'settings-subscreen' : ''}`}
       leading={section ? (
-        <Link to="/settings" className="icon-button settings-header-back" aria-label="Back to Settings">
+        <Link to="/settings" className={iconButtonClassName('secondary', 'settings-header-back')} aria-label="Back to Settings">
           <ChevronLeft size={21} />
         </Link>
       ) : undefined}>

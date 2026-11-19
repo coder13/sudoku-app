@@ -1,17 +1,18 @@
+import { notifySettingsEdit } from './settings-events.ts'
 type PuzzleTiming = {
   showTimer: boolean
   showPause: boolean
   trackTime: boolean
 }
 
-const TIMING_KEY = 'sudoku-app:v1:puzzle-timing'
+export const TIMING_KEY = 'sudoku-app:v1:puzzle-timing'
 const defaults: PuzzleTiming = { showTimer: true, showPause: true, trackTime: true }
 const listeners = new Set<() => void>()
 
-function readTiming(): PuzzleTiming {
-  if (typeof window === 'undefined') return defaults
+export function readTiming(storage?: Pick<Storage, 'getItem'>): PuzzleTiming {
+  if (!storage && typeof window === 'undefined') return defaults
   try {
-    const saved = JSON.parse(localStorage.getItem(TIMING_KEY) ?? 'null') as Partial<PuzzleTiming> | null
+    const saved = JSON.parse((storage ?? localStorage).getItem(TIMING_KEY) ?? 'null') as Partial<PuzzleTiming> | null
     return {
       showTimer: saved?.showTimer !== false,
       showPause: saved?.showPause !== false,
@@ -43,7 +44,7 @@ export const puzzleTiming = {
   set(key: keyof PuzzleTiming, enabled: boolean) {
     if (current[key] === enabled) return
     const next = { ...current, [key]: enabled }
-    try { localStorage.setItem(TIMING_KEY, JSON.stringify(next)) }
+    try { localStorage.setItem(TIMING_KEY, JSON.stringify(next)); notifySettingsEdit() }
     catch { /* Keep the preference for this session. */ }
     publish(next)
   },

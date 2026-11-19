@@ -1,0 +1,25 @@
+{
+  "name": "klyn-sudoku",
+  "pages_build_output_dir": "./dist/client",
+  "compatibility_date": "2026-06-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sudoku-sync-prod",
+      "database_id": "5be9c1d1-e766-48aa-bd1f-12e3899515ca",
+      "migrations_dir": "cloudflare/migrations"
+    }
+  ],
+  "env": {
+    "preview": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sudoku-sync-preview",
+          "database_id": "65210c14-e3ce-4b22-ab7e-c8262ce457d2",
+          "migrations_dir": "cloudflare/migrations"
+        }
+      ]
+    }
+  }
+}

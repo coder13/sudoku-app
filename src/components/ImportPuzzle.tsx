@@ -1,3 +1,4 @@
+import { Button, IconButton, buttonClassName } from './Button'
 import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
@@ -42,7 +43,7 @@ export async function openPuzzle(input: string, cancelled: () => boolean) {
 
 export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = preparePuzzle }: {
   close: () => void
-  onPlay: () => void
+  onPlay?: () => void
   fullPage?: boolean
   onPreview?: (input: string) => Promise<PuzzlePreview>
 }) {
@@ -144,15 +145,15 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         {variantRuleDescriptions(preview.game.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
       <div className="dialog-actions import-preview-actions">
-        <button type="button" className="button secondary import-edit" onClick={() => setPreview(undefined)}>
+        <Button type="button" className="import-edit" onClick={() => setPreview(undefined)}>
           {photo ? 'Edit givens' : 'Edit input'}
-        </button>
-        <button type="button" className="button secondary" onClick={() => saveAndContinue(preview)}>
+        </Button>
+        <Button type="button" onClick={() => saveAndContinue(preview)}>
           <Bookmark size={17} aria-hidden="true" /> Save and import another
-        </button>
-        <button type="button" className="button primary" onClick={() => { finishImport(preview, true); onPlay() }}>
+        </Button>
+        <Button type="button" variant="primary" onClick={() => { finishImport(preview, true); onPlay?.() }}>
           <Play size={17} aria-hidden="true" /> Start playing
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -168,31 +169,31 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       {error && <p className="form-error" role="alert">{error}</p>}
       {status && <p className="dialog-status" role="status">{status}</p>}
       <div className="dialog-actions spread">
-        <label className="button secondary file-picker"><FileUp size={17} aria-hidden="true" /> Open text file
+        <label className={buttonClassName('secondary', 'file-picker')}><FileUp size={17} aria-hidden="true" /> Open text file
           <input type="file" accept=".txt,.sdk,.sdm,.hkl,.json,text/plain,application/json" disabled={busy} onChange={(event) => {
             const file = event.target.files?.[0]
             event.target.value = ''
             if (file) void check(file)
           }} />
         </label>
-        <button type="submit" className="button primary" disabled={busy || !input.trim()}>{busy ? 'Checking puzzle…' : 'Preview puzzle'}</button>
+        <Button type="submit" variant="primary" disabled={busy || !input.trim()}>{busy ? 'Checking puzzle…' : 'Preview puzzle'}</Button>
       </div>
       <section className="import-photo-source" aria-label="Import from an image">
         <p>Paste a screenshot here, choose an image, or take a photo of a Classic Sudoku puzzle.</p>
         <div className="import-photo-buttons">
-          <label className="button secondary file-picker"><ImageUp size={17} aria-hidden="true" /> Choose image
+          <label className={buttonClassName('secondary', 'file-picker')}><ImageUp size={17} aria-hidden="true" /> Choose image
             <input type="file" accept={PHOTO_TYPES} disabled={busy} onChange={event => {
               const file = event.target.files?.[0]
               event.target.value = ''
               if (file) usePhoto(file)
             }} />
           </label>
-          <button type="button" className="button secondary" disabled={busy} onClick={() => {
+          <Button type="button" disabled={busy} onClick={() => {
             if (typeof navigator.mediaDevices?.getUserMedia === 'function') setCameraOpen(true)
             else nativeCamera.current?.click()
           }}>
             <Camera size={17} aria-hidden="true" /> Take photo
-          </button>
+          </Button>
           <input ref={nativeCamera} type="file" accept={PHOTO_TYPES} capture="environment" hidden
             onChange={event => {
               const file = event.target.files?.[0]
@@ -215,9 +216,9 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   if (fullPage) return (
     <main className={`puzzles-page puzzles-subscreen import-page${photo && !preview ? ' import-image-view' : ''}`} aria-labelledby={`${id}-heading`} onPaste={pasteImage}>
       <header className="puzzles-page-heading">
-        <button type="button" className="icon-button puzzles-back"
+        <IconButton type="button" className="puzzles-back"
           aria-label={preview && photo ? 'Back to detected givens' : preview || photo || cameraOpen ? 'Back to puzzle input' : 'Leave puzzle import'}
-          onClick={preview ? () => setPreview(undefined) : photo || cameraOpen ? backToInput : close}><ArrowLeft size={21} /></button>
+          onClick={preview ? () => setPreview(undefined) : photo || cameraOpen ? backToInput : close}><ArrowLeft size={21} /></IconButton>
         <h1 id={`${id}-heading`} ref={heading} tabIndex={-1}>{title}</h1>
       </header>
       {content}

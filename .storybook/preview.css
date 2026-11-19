@@ -23,3 +23,7 @@ body.sb-show-main:not(:has(.story-app)) { overflow: auto; }
 .mobile-action-worktable { width: min(100%, 390px); min-height: 100dvh; margin-inline: auto; background: var(--page-bg); color: var(--ink); }
 .mobile-action-worktable .page { height: 100dvh; }
 .worktable-story > .page { height: 100dvh; }
+.story-button-guide { display: grid; gap: var(--space-16); max-width: 46rem; }
+.story-button-guide > div { display: grid; grid-template-columns: minmax(9rem, 1fr) 2fr; gap: var(--space-16); align-items: center; }
+.story-button-guide .button, .story-button-guide .icon-button { justify-self: start; }
+@media (max-width: 480px) { .story-button-guide > div { grid-template-columns: 1fr; gap: var(--space-4); } }

@@ -1,6 +1,7 @@
+import { notifySettingsEdit } from './settings-events.ts'
 import type { EngineRequest } from './engine.ts'
 
-const KEY = 'sudoku-app:v1:solver-profile'
+export const SOLVER_PROFILE_KEY = 'sudoku-app:v1:solver-profile'
 
 function isTechniqueOrder(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(id => typeof id === 'string' && id.length > 0)
@@ -9,7 +10,7 @@ function isTechniqueOrder(value: unknown): value is string[] {
 
 export function readSolverProfile(storage?: Pick<Storage, 'getItem'>): string[] | undefined {
   try {
-    const order: unknown = JSON.parse((storage ?? localStorage).getItem(KEY) ?? 'null')
+    const order: unknown = JSON.parse((storage ?? localStorage).getItem(SOLVER_PROFILE_KEY) ?? 'null')
     return isTechniqueOrder(order) ? order : undefined
   } catch {
     return undefined
@@ -20,7 +21,8 @@ export function saveSolverProfile(order: readonly string[], storage?: Pick<Stora
   if (!isTechniqueOrder(order)) return false
   try {
     const target = storage ?? localStorage
-    target.setItem(KEY, JSON.stringify(order))
+    target.setItem(SOLVER_PROFILE_KEY, JSON.stringify(order))
+    if (!storage) notifySettingsEdit()
     return true
   } catch {
     return false

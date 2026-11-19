@@ -306,6 +306,16 @@ test('rating survives reset, interrupted saves, and deleting or replaying a puzz
     assert.equal(result?.event.applied, 1)
     local.removeItem(`sudoku-app:v1:rating-result:${result!.event.id}`)
 
+    // A device receiving an already-rated solve must show its recorded result immediately.
+    const savedGame = local.getItem(`sudoku-app:v1:game:${puzzle.id}`)!
+    local.removeItem(`sudoku-app:v1:game:${puzzle.id}`)
+    const receiver = (await import('../src/sudoku/storage.ts?rating-sync')).roomStore
+    local.setItem(`sudoku-app:v1:game:${puzzle.id}`, savedGame)
+    receiver.refreshPuzzle(puzzle.id)
+    assert.deepEqual(receiver.getSnapshot().playerRating.results.get(puzzle.id), result)
+    assert.ok(local.getItem(`sudoku-app:v1:rating-result:${result!.event.id}`))
+    local.removeItem(`sudoku-app:v1:rating-result:${result!.event.id}`)
+
     const fresh = (await import('../src/sudoku/storage.ts?rating-reload')).roomStore
     assert.deepEqual(fresh.getSnapshot().playerRating.results.get(puzzle.id), result)
     assert.equal(fresh.getSnapshot().games[0].generatedWithAuto, true)
@@ -410,7 +420,7 @@ test('saving an imported puzzle for later preserves the selected puzzle', async 
   }
 })
 
-test('switching and stopping save progress for later, including undo and redo after reload', async () => {
+test('switching keeps both puzzles active and explicitly filing preserves undo and redo after reload', async () => {
   const local = new MemoryStorage()
   Object.defineProperties(globalThis, {
     window: { value: {}, configurable: true },
@@ -430,10 +440,13 @@ test('switching and stopping save progress for later, including undo and redo af
     const second = enter(makeGame('second', 'Second puzzle', STARTER_GAME.givens, 'generated'), [2], 'corner', 4)
     roomStore.add(second)
     assert.equal(roomStore.getSnapshot().active, second.id)
-    assert.deepEqual(stored(first.id), { ...expected, savedForLater: true })
-    roomStore.select(first.id)
     assert.deepEqual(stored(first.id), expected)
-    assert.equal(stored(second.id).savedForLater, true)
+    roomStore.select(first.id)
+    // A timer update must use the newer board written before the storage event.
+    roomStore.update(first.id, current => ({ ...current, elapsed: current.elapsed + 1 }))
+    expected.elapsed++
+    assert.deepEqual(stored(first.id), expected)
+    assert.equal(stored(second.id).savedForLater, undefined)
 
     roomStore.saveForLater(first.id)
     const { roomStore: reloaded } = await import('../src/sudoku/storage.ts?save-on-stop-reload')
@@ -444,7 +457,7 @@ test('switching and stopping save progress for later, including undo and redo af
     const resumed = reloaded.getSnapshot().games.find(game => game.id === first.id)!
     assert.equal(reloaded.getSnapshot().active, first.id)
     assert.equal(resumed.savedForLater, undefined)
-    assert.equal(resumed.elapsed, 48)
+    assert.equal(resumed.elapsed, 49)
     assert.deepEqual(undo(resumed).position, undo(played).position)
     assert.deepEqual(redo(resumed).position, redo(played).position)
     assert.deepEqual(stored(first.id), expected)

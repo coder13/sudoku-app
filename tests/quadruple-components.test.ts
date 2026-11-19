@@ -9,6 +9,7 @@ import type { VariantPuzzle, VariantRule } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/quadruple-clover.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
+let Button: (props: Record<string, unknown>) => ReactNode
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
 let Board: Component, MobilePanelLayout: Component, VariantClues: Component, SharePuzzle: Component, CompletedPuzzle: Component
@@ -17,6 +18,7 @@ before(async () => {
   server = await createServer({ configFile: false, appType: 'custom',
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] } })
+  ;({ Button } = await server.ssrLoadModule('/src/components/Button.tsx'))
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
   ;({ VariantClues } = await server.ssrLoadModule('/src/components/VariantClues.tsx'))
   ;({ MobilePanelLayout } = await server.ssrLoadModule('/src/components/MobilePanelLayout.tsx'))
@@ -28,6 +30,7 @@ after(async () => { await server?.close() })
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
   if (Array.isArray(node)) return node.flatMap(elements)
   if (!isValidElement<Record<string, unknown>>(node)) return []
+  if (node.type === Button) return elements(Button(node.props))
   return [node, ...Object.values(node.props).flatMap(elements)]
 }
 
