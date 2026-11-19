@@ -57,7 +57,7 @@ function AnalysisTable({
                     : result && 'error' in result
                       ? <span className="analysis-failed" title={result.error} aria-label={`${label(technique)} scan failed`}>Unavailable</span>
                       : <span className="analysis-pending" aria-label={`Scanning ${label(technique)}`}>
-                          <LoaderCircle size="1em" className="analysis-spinner" aria-hidden="true" />
+                          <LoaderCircle size="1em" className="loading-spinner" aria-hidden="true" />
                         </span>}
                 </td>
               </tr>

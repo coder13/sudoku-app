@@ -13,7 +13,7 @@ Search by component name or browse the sections below.
 | [Modal](../../../../src/components/Modal.tsx) | `Modal` for a blocking task that needs focus management, Escape dismissal, and a return to its opener. |
 | [Presence](../../../../src/components/Presence.tsx) | `Presence` keeps a subtree mounted through its exit. `MotionSurface` provides that lifecycle for conditional surfaces such as dialogs. |
 | [ModeBadge](../../../../src/components/ModeBadge.tsx) | `ModeBadge` identifies the active input tool on the grid. |
-| [OfflineUpdates](../../../../src/components/OfflineUpdates.tsx) | `OfflineUpdates` connects to the service worker at the app root. `UpdatePrompt` presents an available or pending app update. |
+| [OfflineUpdates](../../../../src/components/OfflineUpdates.tsx) | `OfflineUpdates` connects to the service worker at the app root. `UpdatePrompt` presents an available or pending app update. The update reload keeps the saved play state. |
 
 ## Puzzle input and tools
 
@@ -75,8 +75,8 @@ Search by component name or browse the sections below.
 | --- | --- |
 | [Settings](../../../../src/components/Settings.tsx) | `Settings` composes the settings modal and applies Paper style across solving and highlighting preferences. `GeneralSettings` renders input, solving aids, error feedback, and hint settings. `AppearanceSettings` groups appearance and workspace choices. `ThemePreview` shows a palette sample. `ThemeSettings` selects palettes. `SizeSettings` adjusts text, candidate, and input sizes. `GuideSetting` controls grid guides. `HighlightSettings` configures related cells, digits, and candidates. `PuzzleTimingSettings` controls the timer display, pause button, pause on open, and time tracking. |
 | [KeyboardShortcutsPage](../../../../src/components/KeyboardShortcutsPage.tsx) | `KeyboardShortcutsPage` reviews, edits, and restores keyboard bindings. |
-| [DeviceSyncPage](../../../../src/components/DeviceSyncPage.tsx) | `DeviceSyncPage` renders the current sync route for enrollment, scanning, confirmation, recovery, invitations, or device management. Its header follows browser history. |
-| [SyncConnectionStatus](../../../../src/components/SyncConnectionStatus.tsx) | Use `SyncConnectionStatus` for the connection dot beside the app wordmark. Show the status label on the Device sync page. |
+| [DeviceSyncPage](../../../../src/components/DeviceSyncPage.tsx) | `DeviceSyncPage` renders the current sync route for enrollment, scanning, confirmation, recovery, invitations, or device management. Its header follows browser history. Show saved linked devices while the list refreshes. |
+| [SyncConnectionStatus](../../../../src/components/SyncConnectionStatus.tsx) | Use `SyncConnectionStatus` for the connection beside the app wordmark. Show a spinner during account sync and include the status label on the Device sync page. |
 | [PairingInvitation](../../../../src/components/PairingInvitation.tsx) | Use `PairingInvitation` on the inviting device to show the single-use code, expiry, and copy action. It uses the shared Sudoku QR generator. The close control belongs in its top-right corner. |
 | [PairingScanner](../../../../src/components/PairingScanner.tsx) | Use `PairingScanner` with the site address that issues codes for the current sync service. It opens confirmation after the same code stays in the live camera view for half a second, reads a selected photo immediately, and explains site mismatches. |
 | [LinkedDeviceRow](../../../../src/components/LinkedDeviceRow.tsx) | `LinkedDeviceRow` displays each device name in medium-weight body text beneath the section heading. The current device gets a smaller, muted label. Its `DeviceActionMenu` groups rename and unlink on narrow screens and manages menu keyboard focus. |

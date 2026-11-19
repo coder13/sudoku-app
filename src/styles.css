@@ -816,6 +816,7 @@ svg { flex-shrink: 0; }
 .puzzle-menu { width: 235px; }
 .puzzle-menu button { min-height: 38px; font-size: 0.8125rem; }
 .puzzle-sync-menu-status { margin: 0 var(--space-10) var(--space-6) 36px; color: var(--muted); font-size: 0.75rem; }
+.puzzle-sync-loading { display: inline-flex; color: var(--muted); }
 .puzzle-sync-warning { color: var(--danger-ink); font-size: 0.75rem; }
 .sync-connection-label {
   display: inline-flex;
@@ -827,6 +828,7 @@ svg { flex-shrink: 0; }
   font-weight: 650;
 }
 .sync-connection-dot { width: 0.55em; height: 0.55em; flex: none; border-radius: 50%; background: currentColor; }
+.topbar-brand .sync-connection-label { inline-size: 14px; justify-content: center; }
 .topbar-brand .sync-connection-dot { width: 8px; height: 8px; }
 .sync-connection-label[data-connection="live"] .sync-connection-dot { background: #2a9355; }
 .sync-connection-label[data-connection="failure"] { color: var(--danger-ink); }
@@ -2399,11 +2401,11 @@ svg { flex-shrink: 0; }
 .analysis-table .analysis-data-row .analysis-zero { color: var(--muted); font-weight: 450; }
 
 .analysis-pending { display: flex; justify-content: flex-end; align-items: center; height: 1lh; color: var(--muted); }
-.analysis-spinner { animation: analysis-spin 950ms linear infinite; }
+.loading-spinner { flex: none; animation: loading-spin 950ms linear infinite; }
 .analysis-failed { color: var(--muted); font-size: 0.6875rem; font-weight: 500; }
-@keyframes analysis-spin { to { transform: rotate(360deg); } }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .analysis-spinner { animation: none; }
+  .loading-spinner { animation: none; }
 }
 
 .analysis-table tbody:last-child .analysis-data-row:last-child > * { border-bottom: 0; }

@@ -5,12 +5,33 @@ import { roomStore } from './storage.ts'
 
 const credentialsKey = 'sudoku-app:sync:device'
 export const recoveryStorage = 'sudoku-app:sync:unsaved-recovery:'
+const devicesStorage = 'sudoku-app:sync:devices:'
+type LinkedDevice = { id: string; name: string; created: number }
+function cachedDevices(id: string): LinkedDevice[] | undefined {
+  try {
+    const items = JSON.parse(localStorage.getItem(devicesStorage + id) ?? 'null')
+    if (Array.isArray(items) && items.every(item => item && typeof item.id === 'string' &&
+      typeof item.name === 'string' && typeof item.created === 'number')) return items
+  } catch { /* Continue when the device list is unavailable. */ }
+}
+function rememberDevices(id: string, devices: LinkedDevice[]) {
+  if (credentials()?.id !== id) return
+  try { localStorage.setItem(devicesStorage + id, JSON.stringify(devices)) }
+  catch { /* The linked device list remains available in this session. */ }
+}
 function forgetDevice(id: string) {
+  try { localStorage.removeItem(devicesStorage + id) } catch { /* Clear the credentials even if the cache is unavailable. */ }
   localStorage.removeItem(recoveryStorage + id)
   localStorage.removeItem(credentialsKey)
 }
-type State = { linked: boolean; ready: boolean; message: string }
-const initial: State = { linked: false, ready: false, message: '' }
+type State = {
+  linked: boolean
+  ready: boolean
+  loadingAccount: boolean
+  loadingPuzzles: boolean
+  message: string
+}
+const initial: State = { linked: false, ready: false, loadingAccount: false, loadingPuzzles: false, message: '' }
 let state = initial
 
 export type SyncConnection = {
@@ -23,6 +44,7 @@ const connectionListeners = new Set<() => void>()
 const noPeers: readonly string[] = []
 let peerPuzzles = noPeers
 let viewedPuzzle: string | null = null
+let missingPuzzle: string | undefined
 const presenceListeners = new Set<() => void>()
 
 function publishPresence(puzzles: readonly string[]) {
@@ -41,8 +63,10 @@ function publishConnection(update: Partial<SyncConnection>) {
 const listeners = new Set<() => void>()
 const deviceListeners = new Set<() => void>()
 const devicesChanged = () => deviceListeners.forEach(listener => listener())
-function publish(next: State) {
-  if (state.linked === next.linked && state.ready === next.ready && state.message === next.message) return
+function publish(update: Partial<State>) {
+  const next = { ...state, ...update }
+  if (state.linked === next.linked && state.ready === next.ready && state.message === next.message &&
+      state.loadingAccount === next.loadingAccount && state.loadingPuzzles === next.loadingPuzzles) return
   state = next
   listeners.forEach(fn => fn())
   puzzlesChanged()
@@ -104,7 +128,7 @@ function currentDevice() {
     active = { device, engine }
     publishConnection({ ...initialConnection, mode: navigator.onLine ? 'connecting' : 'offline' })
     recoverPending = true
-    publish({ linked: true, ready: false, message: 'Loading your puzzles…' })
+    publish({ ...initial, linked: true })
   } else {
     recoverPending = false
     publishConnection(initialConnection)
@@ -207,7 +231,7 @@ function reportError(target: ActiveDevice, error: unknown) {
   publishConnection({ checkFailed: true })
   const message = error instanceof SyncError || error instanceof Error && error.name === 'Error'
     ? error.message : 'Sync is unavailable. Your changes are saved here and will retry.'
-  publish({ linked: true, ready: true, message })
+  publish({ ready: true, loadingAccount: false, loadingPuzzles: false, message })
   puzzlesChanged()
 }
 
@@ -245,7 +269,14 @@ async function flush() {
       if (!checkDue && !edits.size) { puzzlesChanged(); return }
       uploading = edits
       lastPull = Date.now()
-      const result = await target.engine.run({ uploads: new Set(edits.keys()) })
+      const priority = !state.ready && missingPuzzle && /^[a-zA-Z0-9_-]{1,128}$/.test(missingPuzzle) ? missingPuzzle : undefined
+      publish({ loadingAccount: true, loadingPuzzles: true })
+      const result = await target.engine.run({
+        uploads: new Set(edits.keys()), priority,
+        onPuzzlesLoaded: () => {
+          if (stillLinked(target)) publish({ ready: true, loadingPuzzles: false })
+        },
+      })
       if (!stillLinked(target)) return
       recoverPending = false
       retryAt = retryDelay = 0
@@ -266,6 +297,7 @@ async function flush() {
       reportError(target, error)
     } finally {
       uploading = new Map()
+      if (stillLinked(target)) publish({ loadingAccount: false, loadingPuzzles: false })
     }
   })
 }
@@ -366,8 +398,9 @@ export const deviceSync = {
   },
   getPeerPuzzles: () => peerPuzzles,
   getServerPeerPuzzles: () => noPeers,
-  showPuzzle(id: string | null) {
+  showPuzzle(id: string | null, missing?: string) {
     viewedPuzzle = id
+    missingPuzzle = missing
     live?.showPuzzle(id)
   },
   connect() {
@@ -413,7 +446,7 @@ export const deviceSync = {
       if (target && !document.hidden && navigator.onLine) socket.check(Date.now())
       if (target && !navigator.onLine) {
         publishConnection({ mode: 'offline' })
-        publish({ linked: true, ready: true, message: 'Offline. Changes are saved on this device.' })
+        publish({ ready: true, loadingAccount: false, loadingPuzzles: false, message: 'Offline. Changes are saved on this device.' })
         if (recoverPending) {
           void target.engine.pendingIds().then(ids => {
             if (!stillLinked(target) || !recoverPending || navigator.onLine) return
@@ -502,8 +535,10 @@ export const deviceSync = {
   async invite() {
     return syncRequest(credentials()?.token)<{ ticket: string; expires: number }>('invitations', 'POST')
   },
+  cachedDevices,
+  rememberDevices,
   async devices() {
-    return syncRequest(credentials()?.token)<{ id: string; name: string; created: number }[]>('devices')
+    return syncRequest(credentials()?.token)<LinkedDevice[]>('devices')
   },
   async rename(id: string, name: string) {
     return syncRequest(credentials()?.token)<{ name: string }>('devices/' + encodeURIComponent(id), 'PATCH', { name })

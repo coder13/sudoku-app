@@ -2,7 +2,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, Share2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, Share2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
@@ -200,7 +200,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
   beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSixRules, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
-  cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
+  pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
   games: Game[]
@@ -225,6 +225,9 @@ export function Worktable({
   onPublish: () => void
   onCancelDraft: () => void
   onStopPlaying: () => void
+  pausedOnLaunch?: boolean
+  onResumeLaunch?: () => void
+  loadingPuzzle?: boolean
   sharedOnOtherDevice?: boolean
   catchUpPuzzle?: Game
   onNewPuzzle: (step?: 'difficulty') => void
@@ -246,7 +249,10 @@ export function Worktable({
   const completed = isSolved(savedGame)
   const playground = completed && solvedGrid?.game.id === savedGame.id ? solvedGrid : null
   const session = playground?.session
-  const game = playground?.game ?? savedGame
+  // Opening a puzzle can pause this tab without changing its cloud save.
+  const launchPaused = pausedOnLaunch && !completed && savedGame.source !== 'draft'
+  const game = useMemo(() => playground?.game ?? (launchPaused && !savedGame.paused ? { ...savedGame, paused: true } : savedGame),
+    [playground, launchPaused, savedGame])
   const grid = game.grid
   const gridSize = (grid ?? CLASSIC_GRID).size
   useActionHistory(savedGame)
@@ -595,10 +601,16 @@ export function Worktable({
     }
   }, [completed, id, session])
 
+  function resumePuzzle() {
+    if (pausedOnLaunch) onResumeLaunch?.()
+    updateWorkingGame((current) => setGamePaused(current, false))
+  }
+
   function togglePause() {
     setActionsOpen(false)
     setPuzzleMenuOpen(false)
-    updateWorkingGame((current) => setGamePaused(current, !current.paused))
+    if (game.paused) resumePuzzle()
+    else updateWorkingGame((current) => setGamePaused(current, true))
   }
 
   useEffect(() => {
@@ -2189,9 +2201,7 @@ export function Worktable({
         <span className="puzzle-paused-icon" aria-hidden="true"><Pause size={25} /></span>
         <h2>Puzzle paused</h2>
         {showElapsedTime && <p>Your elapsed time is stopped.</p>}
-        <Button type="button" variant="primary" onClick={() => {
-          updateWorkingGame((current) => setGamePaused(current, false))
-        }}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
+        <Button type="button" variant="primary" onClick={resumePuzzle}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
       </div>
     </div>
   )
@@ -2220,6 +2230,12 @@ export function Worktable({
             aria-label="Open on another linked device" title="Open on another linked device">
             <MonitorSmartphone size={16} aria-hidden="true" />
           </span>}
+          {showPuzzleSync && (loadingPuzzle || syncStatus === 'saving') && (
+            <span className="puzzle-sync-loading" role="status" title="Syncing puzzle progress…">
+              <LoaderCircle size={15} className="loading-spinner" aria-hidden="true" />
+              <span className="sr-only">Syncing puzzle progress…</span>
+            </span>
+          )}
           {syncWarning && <span className="puzzle-sync-warning" role="status">{syncWarning}</span>}
           {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
             {formatTime(game.elapsed)}
