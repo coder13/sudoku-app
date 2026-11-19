@@ -34,6 +34,21 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Starter: Story = {}
+export const MobileInputTools: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (!canvasElement.querySelector('.mobile-panel-layout')) return
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Colors & Chains' }))
+    const tabs = canvas.getByRole('tablist', { name: 'Sudoku input' })
+    await expect(within(tabs).getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
+    await expect(within(tabs).getByRole('tab', { name: 'Chains' })).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Close colors panel' }))
+    await expect(within(tabs).getByRole('tab', { name: 'Digits' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.keyboard('{Enter}')
+    await expect(tabs).not.toBeInTheDocument()
+  },
+}
 export const TemporaryPencil: Story = {
   play: async ({ canvas, userEvent }) => {
     const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })

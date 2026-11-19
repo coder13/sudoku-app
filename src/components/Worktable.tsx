@@ -2,7 +2,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, Share2, X } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, Share2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
@@ -44,6 +44,7 @@ import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
 import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
+import { MobileInputTabs, type MobileInputTab, type MobileInputTool } from './MobileInputTabs'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
@@ -56,6 +57,7 @@ import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
+import { usePuzzleZoom } from './usePuzzleZoom'
 import { useTouchHold } from './useTouchHold'
 
 const desktopInsightTabs = [
@@ -64,6 +66,8 @@ const desktopInsightTabs = [
   { id: 'chains', label: 'Chains' },
   { id: 'colors', label: 'Colors' },
 ] as const
+
+const defaultMobileInput: { open: MobileInputTool[]; active: MobileInputTab } = { open: [], active: 'digits' }
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -258,7 +262,7 @@ export function Worktable({
   const [pencilModifier, setPencilModifier] = useState(false)
   const [candidatePreviewCell, setCandidatePreviewCell] = useState<number | null>(null)
   const [candidateKind, setCandidateKind] = usePlayPreference('candidateKind')
-  const [colorMode, setColorMode] = usePlayPreference('colorMode')
+  const [savedColorMode, setColorMode] = usePlayPreference('colorMode')
   const [eraseMode, setEraseMode] = usePlayPreference('eraseMode')
   const [solution, setSolution] = useState<string | null>(null)
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
@@ -280,6 +284,8 @@ export function Worktable({
   const [hintRevealed, setHintRevealed] = useState(false)
   const mobile = useMobileLayout()
   const desktop = !mobile
+  const colorMode = desktop && savedColorMode
+  const [mobileInput, setMobileInput] = useState(defaultMobileInput)
   const [mobileRearranging, setMobileRearranging] = useState(false)
   const rearranging = mobile && mobileRearranging
   const [solutionPath, setSolutionPath] = useState<SolutionPathState | null>(null)
@@ -292,12 +298,15 @@ export function Worktable({
   const [ratingFailed, setRatingFailed] = useState(false)
   const [singlesCheck, setSinglesCheck] = useState<{ givens: string; variant: Game['variant']; needsMore: boolean }>()
   const boardRef = useRef<HTMLDivElement>(null)
+  const puzzleStageRef = useRef<HTMLDivElement>(null)
   const restoreCellFocus = useRef<number | null>(null)
   const puzzleCardRef = useRef<HTMLElement>(null)
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
   const puzzleMenuPopupRef = useRef<HTMLDivElement>(null)
   const insightTabsRef = useRef<HTMLDivElement>(null)
+  const activeMobileInputTabRef = useRef<HTMLButtonElement>(null)
+  const focusMobileInput = useRef(false)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
@@ -400,7 +409,11 @@ export function Worktable({
   const showMobileResults = mobile && showResults && !previewing
   const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
-  const chainsVisible = advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains'
+  const puzzleToolsAvailable = !placeholder && !draft && !solved
+  const mobileToolsAvailable = mobile && puzzleToolsAvailable
+  const { active: activeMobileInput, open: openMobileTools } = mobileToolsAvailable ? mobileInput : defaultMobileInput
+  const chainsVisible = mobile ? activeMobileInput === 'chains'
+    : advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains'
   const variantEliminations = variant && eliminations
   const currentNotes = notes?.values === values && notes.variant === variant && notes.eliminations === variantEliminations ? notes : undefined
   const masks = currentNotes?.masks
@@ -412,15 +425,17 @@ export function Worktable({
   const offerSingles = !draft && !solved && (generatedWithAuto || (
     !ratingPending && needsSinglesCheck && singlesCheck?.givens === givens && singlesCheck.variant === variant && singlesCheck.needsMore
   ))
-  const chainMasks = useMemo(() => (chainsVisible || playerVisualsSelected) && !disabled && !draft && !solved && masks
+  const showChainSketches = chainsVisible || openMobileTools.includes('chains') || playerVisualsSelected
+  const chainMasks = useMemo(() => showChainSketches && !disabled && !draft && !solved && masks
     ? masks.map((mask, index) => mask & (displayedCandidates?.[index] ?? 0x1ff) & ~(eliminations?.[index] ?? 0))
-    : null, [chainsVisible, playerVisualsSelected, disabled, draft, solved, masks, displayedCandidates, eliminations])
+    : null, [showChainSketches, disabled, draft, solved, masks, displayedCandidates, eliminations])
   const missingChainCandidates = chainMasks?.some((mask, cell) => !mask && values[cell] === '0')
   const chainGraph = useMemo(() => chainMasks && !missingChainCandidates ? makeChainGraph(chainMasks, variant?.puzzle) : null,
     [chainMasks, missingChainCandidates, variant])
   const sketch = useChainSketch(chainGraph, `${id}:${values}:${eliminations?.join(',') ?? ''}:${displayedCandidates?.join(',') ?? ''}`, chainsVisible)
-  const canPaint = !cellColorsDisabled && desktop
-  const colorsVisible = advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
+  const canPaint = !cellColorsDisabled
+  const colorsVisible = mobile ? activeMobileInput === 'colors'
+    : advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
   const brush = canPaint && colorsVisible && !hintAnnotations ? colorBrush : null
   const mobileHintPreview = mobileHintOpen && !playerVisualsSelected
   const candidateBrush = colorTarget === 'candidate' && !cellColorsDisabled && !sketch.drawing && !hintAnnotations && !mobileHintPreview
@@ -448,8 +463,7 @@ export function Worktable({
   const colorSubject = colorTarget === 'cell' ? 'cell' : 'candidate'
   const canContinueColorGroup = colorContinuation?.status === 'ready'
   const colorGroupMessage = selected.length > 1 ? 'Select one starting cell to continue its group.'
-    : !colorStart ? colorTarget === 'candidate' ? 'Color a starting candidate, then continue its group.'
-      : 'Select a number in the digit input, then color a starting cell.'
+    : !colorStart ? colorTarget === 'candidate' ? 'Color a starting candidate, then continue its group.' : undefined
     : !displayedCandidates ? 'Generate candidates in every empty cell first.'
     : masks === undefined ? 'Loading candidates…'
     : !colorLinkMasks ? 'Check the grid and candidates before coloring links.'
@@ -479,6 +493,13 @@ export function Worktable({
   const cellHold = useTouchHold(mobile && canHighlightCellCandidates)
   const cancelCellHold = cellHold.cancel
   useLayoutEffect(() => cancelCellHold, [cancelCellHold, hintPosition])
+  const puzzleZoom = usePuzzleZoom(mobile && !draft && !disabled && !solved, id, () => {
+    cancelCellHold()
+    candidatePress.current = null
+    dragSelection.current = null
+    pendingDoubleClickSingle.current = null
+    setCandidatePreviewCell(null)
+  })
   const trace = solutionPath?.status === 'ready' ? solutionPath.trace : undefined
   const previewPosition = trace?.positions?.[solutionStep]
   const replayedSolutionStep = useMemo(() => trace && replayStep(trace, solutionStep), [trace, solutionStep])
@@ -575,6 +596,7 @@ export function Worktable({
     setDialogResult(null)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
+    setMobileInput(defaultMobileInput)
     setResetOpen(false)
     setVariantRulesOpen(false)
     setAnalysisOpen(false)
@@ -599,7 +621,7 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .chains-panel')
+    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .chains-panel')
       || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
@@ -773,8 +795,29 @@ export function Worktable({
   }, [advancedWorkspace, focusChainsRequest, activeDesktopTab?.id])
 
   useLayoutEffect(() => {
+    if (!focusMobileInput.current) return
+    focusMobileInput.current = false
+    const target = activeMobileInputTabRef.current ?? puzzleMenuButtonRef.current
+    target?.focus({ preventScroll: true })
+  }, [mobileInput])
+
+  useLayoutEffect(() => {
+    if (!mobile) return
+    const stage = puzzleStageRef.current
+    const markPointer = () => stage?.setAttribute('data-pointer-input', '')
+    const markKeyboard = () => stage?.removeAttribute('data-pointer-input')
+    document.addEventListener('pointerdown', markPointer, true)
+    document.addEventListener('keydown', markKeyboard, true)
+    return () => {
+      document.removeEventListener('pointerdown', markPointer, true)
+      document.removeEventListener('keydown', markKeyboard, true)
+      markKeyboard()
+    }
+  }, [mobile])
+
+  useLayoutEffect(() => {
     if (paintingCandidates) {
-      if (!document.activeElement?.closest('.hint-card-visuals')) {
+      if (!puzzleStageRef.current?.hasAttribute('data-pointer-input') && !document.activeElement?.closest('.hint-card-visuals')) {
         boardRef.current?.querySelector<HTMLElement>('.paint-candidate[tabindex="0"]')?.focus({ preventScroll: true })
       }
     } else if (restoreCellFocus.current !== null) {
@@ -892,12 +935,6 @@ export function Worktable({
     if (press) press.cancelled = true
     setCandidatePreviewCell(null)
   }, [canPreviewCandidates, candidateMode, selectedDigit, temporaryPencil])
-
-  useEffect(() => {
-    if (advancedModes.colorsEnabled || desktop) return
-    setColorMode(false)
-    setSelectedColor(null)
-  }, [advancedModes.colorsEnabled, desktop])
 
   useEffect(() => {
     let current = true
@@ -1299,7 +1336,7 @@ export function Worktable({
         return
       }
       if (game.paused || (solved && !showSolvedGrid)) return
-      if (desktop && !draft && !solved && !placeholder && shortcutMatches(event, shortcuts, 'chainDrawing')) {
+      if ((desktop || mobileToolsAvailable && !disabled) && !draft && !solved && !placeholder && shortcutMatches(event, shortcuts, 'chainDrawing')) {
         event.preventDefault()
         if (event.repeat) return
         if (sketch.drawing) stopDrawingAndFocusGrid()
@@ -1434,14 +1471,9 @@ export function Worktable({
       } else if (!draft && shortcutMatches(event, shortcuts, 'highlightMode')) {
         event.preventDefault()
         toggleHighlightMode()
-      } else if (!draft && shortcutMatches(event, shortcuts, 'colorMode') && (desktop || advancedModes.colorsEnabled)) {
+      } else if (!draft && shortcutMatches(event, shortcuts, 'colorMode') && (desktop || mobileToolsAvailable)) {
         event.preventDefault()
-        if (desktop) { showColors(); return }
-        setColorBrush(null)
-        setEraseMode(false)
-        setPencil(false)
-        setHighlightMode(false)
-        setColorMode((current) => !current)
+        showColors()
       } else if (!draft && shortcutMatches(event, shortcuts, 'eraseMode')) {
         event.preventDefault()
         setColorBrush(null)
@@ -1805,7 +1837,7 @@ export function Worktable({
     : currentNotes?.failed ? 'The candidates did not load.'
     : currentNotes?.masks === null ? 'Resolve the grid conflicts to draw links.'
     : 'Loading candidates…'
-  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection}
+  const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection} compact={mobile}
     digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: setChainHighlightDigit } : undefined} />
   const completionPanel = showResults || (mobile && showSolvedGrid) ? (
     <CompletedPuzzle game={savedGame} games={games} catchUpPuzzle={catchUpPuzzle} preferredDifficulty={preferredDifficulty}
@@ -1818,7 +1850,32 @@ export function Worktable({
     aria-keyshortcuts={shortcutLabel(shortcuts.solveSingles)}>
     <CheckCheck size={17} /> Solve all singles <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.solveSingles)}</kbd>
   </button>
+  function selectMobileInput(tab: MobileInputTab, openBothTools = false) {
+    if (tab !== 'chains' && sketch.drawing) sketch.stop()
+    if (tab !== 'digits') changeHintVisuals('player')
+    setMobileInput((current) => ({
+      open: openBothTools ? ['colors', 'chains'] : current.open,
+      active: tab,
+    }))
+  }
+
+  function closeMobileInput(tool: MobileInputTool) {
+    if (tool === 'colors') setColorBrush(null)
+    if (tool === 'chains' && sketch.drawing) sketch.stop()
+    focusMobileInput.current = openMobileTools.length === 1
+    setMobileInput((current) => ({ open: current.open.filter((tab) => tab !== tool), active: 'digits' }))
+  }
+
+  function openMobileInput(tool: MobileInputTool) {
+    if (!mobileToolsAvailable || disabled) return
+    setPuzzleMenuOpen(false)
+    setActionsOpen(false)
+    focusMobileInput.current = true
+    selectMobileInput(tool, true)
+  }
+
   function showColors() {
+    if (mobile) { openMobileInput('colors'); return }
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     changeHintVisuals('player')
@@ -1831,11 +1888,12 @@ export function Worktable({
     } else openDesktopView('colors')
   }
 
-  const colorsAction = desktop && !draft && !solved && !placeholder && (
+  const colorsAction = desktop && puzzleToolsAvailable && (
     <button onClick={showColors}><Palette size={17} /> Colors</button>
   )
 
   function showChains() {
+    if (mobile) { openMobileInput('chains'); return }
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     changeHintVisuals('player')
@@ -1893,8 +1951,11 @@ export function Worktable({
       <ListFilter size={17} /> {TECHNIQUE_FINDER_TITLE}
     </button>
   )
-  const chainsAction = desktop && !draft && !solved && !placeholder && (
+  const chainsAction = desktop && puzzleToolsAvailable && (
     <button onClick={showChains}><Link2 size={17} /> Chains</button>
+  )
+  const mobileToolsAction = mobileToolsAvailable && (
+    <button onClick={showColors} disabled={disabled}><Palette size={17} /> Colors &amp; Chains</button>
   )
   const hintMenuAction = !draft && !solved && <button onClick={() => { void showHint() }} disabled={busy}>
     <Lightbulb size={17} /> View hint
@@ -1940,12 +2001,13 @@ export function Worktable({
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
-    {(solutionAction || analysisAction || chainsAction || colorsAction) && <>
+    {(solutionAction || analysisAction || chainsAction || colorsAction || mobileToolsAction) && <>
       <div className="app-menu-separator" role="separator" />
       {solutionAction}
       {analysisAction}
       {chainsAction}
       {colorsAction}
+      {mobileToolsAction}
       <div className="app-menu-separator" role="separator" />
     </>}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
@@ -1998,6 +2060,7 @@ export function Worktable({
     ? undefined
     : eraseMode ? 'erase' : colorMode || brush !== null ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging ? undefined : gridInputMode
+  const reserveBadgeSpace = badgeMode || (completed && !previewing) || openMobileTools.length > 0
   const visibleChainAnnotations = !hintAnnotations && !paintingCandidates && sketch.annotations.links?.length ? sketch.annotations : undefined
   const solutionGrid = (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
@@ -2050,8 +2113,18 @@ export function Worktable({
       </div>
     </div>
   )
+  const puzzlePlayLayers = (
+    <div className="puzzle-play-layers" data-paused={game.paused || undefined}>
+      <div className="puzzle-play-layer puzzle-live-layer" aria-hidden={game.paused || undefined} inert={game.paused}>
+        {livePuzzleStage}
+      </div>
+      <div className="puzzle-play-layer puzzle-pause-layer" aria-hidden={!game.paused || undefined} inert={!game.paused}>
+        {pausedPuzzleStage}
+      </div>
+    </div>
+  )
   const puzzlePanel = (
-      <div className="puzzle-column" data-solved-edge={completed && !previewing ? modeBadgePosition.edge : undefined}>
+      <div className="puzzle-column" data-reserved-badge-edge={reserveBadgeSpace ? modeBadgePosition.edge : undefined}>
         <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
           data-input-mode={gridInputMode}
           data-desktop-solved={desktop && completed && !previewing || undefined}
@@ -2083,6 +2156,10 @@ export function Worktable({
             </>
           ) : (
             <>
+              {puzzleZoom.zoomed && <IconButton variant="quiet" className="puzzle-zoom-reset"
+                aria-label="Reset grid zoom" title="Reset grid zoom" onClick={puzzleZoom.reset}>
+                <ZoomOut size={18} aria-hidden="true" />
+              </IconButton>}
               {variant && <Button type="button" variant="quiet" className="variant-rules-button" onClick={() => setVariantRulesOpen(true)}
                 aria-label={`${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
                 <Info size={16} aria-hidden="true" />{variant.id === 'mixed' ? 'Mixed rules' : variantName(variant)}
@@ -2115,7 +2192,7 @@ export function Worktable({
             </>
           )}
         </div>
-        <div id={puzzleStageId} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
+        <div id={puzzleStageId} ref={puzzleStageRef} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
           onContextMenu={(event) => { if (!cellHold.suppressContextMenu(event)) preventControlClickMenu(event) }} onPointerUp={finishControlClick}
           onBlur={(event) => {
             const cell = event.target.dataset.cell
@@ -2127,14 +2204,9 @@ export function Worktable({
             </div>
             <div className="puzzle-placeholder-message">{placeholder}</div>
           </div> : !draft && !completed ? (
-            <div className="puzzle-play-layers" data-paused={game.paused || undefined}>
-              <div className="puzzle-play-layer puzzle-live-layer" aria-hidden={game.paused || undefined} inert={game.paused}>
-                {livePuzzleStage}
-              </div>
-              <div className="puzzle-play-layer puzzle-pause-layer" aria-hidden={!game.paused || undefined} inert={!game.paused}>
-                {pausedPuzzleStage}
-              </div>
-            </div>
+            mobile ? <div className="puzzle-zoom" data-zoomed={puzzleZoom.zoomed || undefined} {...puzzleZoom.viewportProps}>
+              <div ref={puzzleZoom.content} className="puzzle-zoom-content">{puzzlePlayLayers}</div>
+            </div> : puzzlePlayLayers
           ) : livePuzzleStage}
         </div>
         <PuzzleCollectionCredit game={game} />
@@ -2160,7 +2232,7 @@ export function Worktable({
           colorMode={colorMode} colorTarget={colorTarget} setColorTarget={changeColorTarget} toggleColorMode={() => {
             setColorBrush(null); setEraseMode(false); setPencil(false); setHighlightMode(false); setColorMode((current) => !current)
           }}
-          onOpenColors={desktop ? showColors : undefined} colorsActive={brush !== null} onSwitchShade={switchColorShade}
+          onOpenColors={desktop || advancedModes.colorsEnabled ? showColors : undefined} colorsActive={brush !== null} onSwitchShade={switchColorShade}
           highlightMode={highlightMode} toggleHighlightMode={toggleHighlightMode}
           eraseMode={eraseMode} toggleEraseMode={() => {
             setColorBrush(null); setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
@@ -2314,7 +2386,12 @@ export function Worktable({
                   <HintCard hint={{ title: 'Puzzle hints', text: 'Hints will appear here.' }} onClose={() => {}} />
                 </div>
               ) } : undefined,
-              input: { title: showMobileResults ? 'Next puzzle' : 'Keypad', content: inputPanel },
+              input: {
+                title: showMobileResults ? 'Next puzzle' : openMobileTools.length ? 'Input' : 'Keypad',
+                content: <MobileInputTabs active={activeMobileInput} open={openMobileTools}
+                  panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel }} activeTabRef={activeMobileInputTabRef}
+                  onSelect={selectMobileInput} onClose={closeMobileInput} />,
+              },
             }} />}
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
