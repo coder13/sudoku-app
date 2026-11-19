@@ -160,7 +160,11 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
 
     setGeneratedProgress(null)
     let cursor = 0
-    let timer: number | undefined
+    const queue = new MessageChannel()
+    const closeQueue = () => {
+      queue.port1.close()
+      queue.port2.close()
+    }
     const readBatch = () => {
       const deadline = performance.now() + 6
       do {
@@ -175,14 +179,18 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
         if (status === 'started') generated.active.push({ id, difficulty, number, generated: true })
       } while (cursor < history.length && performance.now() < deadline)
 
-      if (cursor < history.length) timer = window.setTimeout(readBatch, 0)
-      else setGeneratedProgress(generated)
+      if (cursor < history.length) queue.port2.postMessage(null)
+      else {
+        closeQueue()
+        setGeneratedProgress(generated)
+      }
     }
     // Allow the picker to paint before checking generated boards.
-    const frame = window.requestAnimationFrame(() => { timer = window.setTimeout(readBatch, 0) })
+    queue.port1.onmessage = readBatch
+    const frame = window.requestAnimationFrame(() => queue.port2.postMessage(null))
     return () => {
       window.cancelAnimationFrame(frame)
-      window.clearTimeout(timer)
+      closeQueue()
     }
   }, [config, entries, game, generatedEntry])
 
