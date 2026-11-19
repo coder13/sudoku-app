@@ -259,9 +259,13 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (!localLaunch && !sync.ready) return
     const resumable = inProgress(games)
     const puzzle = (localLaunch ? resumable.find(item => item.id === active) : undefined) ?? resumable[0]
-    if (puzzle) void navigate({ to: '/', search: { puzzle: puzzle.id }, replace: true, viewTransition: false })
-    else if (openingOnLaunch && sync.ready) setOpeningOnLaunch(false)
-  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, games, game, active, navigate, puzzleLink, openingOnLaunch, openingPuzzleLink])
+    if (puzzle) {
+      void navigate({ to: '/', search: { puzzle: puzzle.id }, replace: true, viewTransition: false })
+      return
+    }
+    if (!sync.linked) roomStore.startFirstPuzzle()
+    if (openingOnLaunch && sync.ready) setOpeningOnLaunch(false)
+  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, sync.linked, games, game, active, navigate, puzzleLink, openingOnLaunch, openingPuzzleLink])
   useEffect(() => {
     if (!workspaceReady || !requested || !hasRequestedGame) return
     const location = new URL(window.location.href)
