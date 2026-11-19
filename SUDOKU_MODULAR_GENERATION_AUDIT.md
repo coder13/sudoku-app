@@ -1,6 +1,6 @@
 # Modular Lines New Puzzle integration
 
-Base: main `b34fb8d`, including the walkthrough fix from PR 198 and the requested 4×4/algebraic roadmap additions from PR 226. This isolated change adds Medium Modular Lines New Puzzle and repairs equivalent played-history exclusions. Exact-head CI, deployment and release remain pending.
+Base: main `8b4ed99`, including the walkthrough fix from PR 198, mobile/sync integration from PR 228 and roadmap additions from PR 226. This isolated change adds Medium Modular Lines New Puzzle and repairs equivalent played-history exclusions. Exact-head CI, deployment and release remain pending.
 
 ## Rules, constructions and original sources
 
@@ -38,7 +38,7 @@ Independent test helpers share literal sliding-triple extraction while enumerati
 
 ## Local validation
 
-The minimal variants all-target check and all 381 native cases, including seven Cargo examples, pass. Fresh Wasm, strict app/new-contract/benchmark types and the 124-component catalog pass. All 497 Wasm contracts pass. After integrating main's walkthrough change, the repeated app suite passes all 660 tests. The engine, protocol and measured app services are unchanged by that main merge. Final production covers 171 routes and passes three actual-build offline contracts.
+The minimal variants all-target check and all 381 native cases, including seven Cargo examples, pass. Fresh Wasm, strict app/new-contract/benchmark types and the 131-component catalog pass. All 497 Wasm contracts pass. After integrating main's mobile/sync changes, repeated suites pass all 669 app tests and 497 Wasm contracts. The engine and protocol remain unchanged across that merge. App callers and package comparisons are repeated against the updated baseline. Final production covers 171 routes and passes three actual-build offline contracts.
 
 All thirty recipes retain full geometry and distinct independent identities. Sixty successive actual puzzles have multiple sound hints and complete proof-checked replay. Every action agrees with the independent unique completion. Generation and walkthrough ratings agree. All 108 app history representations and eighteen archived native failures pass. Actual persistence/reload, progress, undo/redo, exact solutions and shared definitions retain every rule.
 
@@ -50,15 +50,15 @@ Darwin arm64, Node v26.13.0 and installed stable rustc 1.100.0. Both measured en
 
 | Actual caller | Median ms | p95 ms |
 | --- | ---: | ---: |
-| published preview | 0.327 | 0.546 |
-| published candidates | 0.024 | 0.029 |
-| published ordinary hints | 0.218 | 0.367 |
-| published app rate | 0.151 | 0.204 |
-| published exact solve | 0.056 | 0.061 |
-| published walkthrough | 1.470 | 2.910 |
-| actual Medium New Puzzle | 1.455 | 1.860 |
-| Medium fresh miss and checked fallback | 3.284 | 3.514 |
-| Medium with thirty played puzzles | 3.535 | 3.772 |
+| published preview | 0.338 | 0.666 |
+| published candidates | 0.024 | 0.028 |
+| published ordinary hints | 0.190 | 0.393 |
+| published app rate | 0.153 | 0.213 |
+| published exact solve | 0.056 | 0.060 |
+| published walkthrough | 1.367 | 2.856 |
+| actual Medium New Puzzle | 1.465 | 1.857 |
+| Medium fresh miss and checked fallback | 3.411 | 3.692 |
+| Medium with thirty played puzzles | 3.742 | 3.983 |
 
 The published caller is the complete mixed Newman puzzle, including its Entropic companions. Forty-five empty-history generation calls produce forty-five identities in this sample. Successive-history checks remain separate from these timing inputs. No universal yield, latency or speedup claim follows.
 
@@ -78,14 +78,14 @@ All 675 preceding recipe requests match. All 320 complete paired legacy generati
 
 Fixed native requests use five warmups and forty alternating measured pairs. Correct Modular history identity adds about 1.661 ms at thirty prior definitions. Other medians and tails vary. Both instances retain 6,946,816 bytes of linear memory after the expanded twenty-four-control corpus. This includes the complex Modular sources. Capacity is not live allocation, process RSS or a long-run leak test.
 
-Complete input positions and Board SSR strings agree across twenty-three controls. Ten warmups and forty alternating samples put input medians at 0.013–0.405 ms before and 0.013–0.404 after. SSR medians are 0.741–1.269 ms before and 0.741–1.261 after. These comparisons do not establish browser interaction or faster rendering.
+Complete input positions and Board SSR strings agree across twenty-three controls against a clean main `8b4ed99` baseline. Ten warmups and forty alternating samples put input medians at 0.015–0.389 ms before and 0.013–0.391 after. SSR medians are 0.771–1.303 ms before and 0.777–1.320 after. These comparisons do not establish browser interaction or faster rendering.
 
 ## Build and package
 
 Fresh Darwin Wasm is 3,417,504 raw / 895,333 default-Node-gzip bytes, SHA-256 `c0197bc5572a71059465d27cda4647ae131dd3c30a8204bbcda40706aa7e6927`. The preceding Entropic artifact is 3,440,578 / 897,292 bytes, SHA-256 `68c06e8ac772a5c834752cad4f45a0e5d808adc8085bafdff25729225118df40`. The observed delta is −23,074 raw / −1,959 gzip bytes. Build paths and optimizer/code-generation effects can affect these totals. No general size optimization is claimed.
 
-Final client asset sums are JavaScript 6,342,947 raw / 2,078,724 gzip and CSS 303,648 / 42,045. Relative deltas are +10,715 / +403 JavaScript and +238 / +30 CSS bytes. Client deltas also include main's PR 198 walkthrough UI changes. Totals sum default Node gzip per asset and exclude HTML, service workers and manifests. All five generated metadata JSON files and both lockfiles are byte-identical.
+Final client asset sums are JavaScript 6,387,777 raw / 2,092,783 gzip and CSS 316,396 / 44,538. A fresh main `8b4ed99` UI baseline gives deltas of +10,671 / +424 JavaScript and +238 / +26 CSS bytes. Both distributions include the same main walkthrough, mobile and sync changes. The baseline uses the verified unchanged pre-Modular engine artifact. Totals sum default Node gzip per asset and exclude HTML, service workers and manifests. All five generated metadata JSON files and both lockfiles are byte-identical.
 
-Exact-head CI must still verify sixteen capability combinations, four profiles, strict full/core/variants Cargo docs and the full app/Wasm suites. Ready deployment, downloaded-engine checks, reviewed-head merge and fetched-main source equality remain release gates. Retain the original dirty R&D checkout. Continue source-format, grid/symbol/Fog, mixed human-solving and broader performance work in their existing issues.
+The first head `20c6227` passes CI 44573337200 with 381 native, 660 app and 497 Wasm tests, capability/profile/docs gates and ready deployment. Main then merged PR 228. The combined head must pass fresh exact-head CI for sixteen capability combinations, four profiles, strict full/core/variants docs and the full app/Wasm suites. Ready deployment, downloaded-engine checks, reviewed-head merge and fetched-main source equality remain release gates. Retain the original dirty R&D checkout. Continue source-format, grid/symbol/Fog, mixed human-solving and broader performance work in their existing issues.
 
 Raw calibration, independent construction/partition checks, exclusions, history probes, complete response comparisons and measurements remain under `/tmp/sudoku-modular-generation-research`. The isolated source worktree is `/private/tmp/sudoku-modular-new-puzzle`.
