@@ -66,8 +66,8 @@ import { useTouchHold } from './useTouchHold'
 const desktopInsightTabs = [
   { id: 'solution', label: 'Solution' },
   { id: 'techniques', label: TECHNIQUE_FINDER_TITLE },
-  { id: 'chains', label: 'Chains' },
   { id: 'colors', label: 'Colors' },
+  { id: 'chains', label: 'Chains' },
 ] as const
 
 const defaultMobileInput: { open: MobileInputTool[]; active: MobileInputTab } = { open: [], active: 'digits' }
@@ -1501,7 +1501,7 @@ export function Worktable({
         toggleHighlightMode()
       } else if (!draft && shortcutMatches(event, shortcuts, 'colorMode') && (desktop || mobileToolsAvailable)) {
         event.preventDefault()
-        showColors()
+        showColors(true)
       } else if (!draft && shortcutMatches(event, shortcuts, 'eraseMode')) {
         event.preventDefault()
         if (colorsVisible) setColorBrush(null)
@@ -1901,7 +1901,7 @@ export function Worktable({
     selectMobileInput(tool, true)
   }
 
-  function showColors() {
+  function showColors(openChains = false) {
     if (mobile) { openMobileInput('colors'); return }
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -1912,11 +1912,11 @@ export function Worktable({
       if (previewing) closeSolutionPath()
       onOpenRightPanel()
       setFocusColorsRequest((request) => request + 1)
-    } else openDesktopView('colors')
+    } else openDesktopView('colors', openChains && !grid ? 'chains' : undefined)
   }
 
   const colorsAction = desktop && puzzleToolsAvailable && (
-    <button onClick={showColors}><Palette size={17} /> Colors</button>
+    <button onClick={() => showColors()}><Palette size={17} /> Colors</button>
   )
 
   function showChains() {
@@ -1933,10 +1933,13 @@ export function Worktable({
     setFocusChainsRequest((request) => request + 1)
   }
 
-  function openDesktopView(view: DesktopPuzzleView) {
-    setDesktopViews((current) => current.active === view ? current : {
-      open: current.open.includes(view) ? current.open : [...current.open, view],
-      active: view,
+  function openDesktopView(view: DesktopPuzzleView, alsoOpen?: DesktopPuzzleView) {
+    setDesktopViews((current) => {
+      const requested = alsoOpen ? [view, alsoOpen] : [view]
+      const missing = requested.filter((id) => !current.open.includes(id))
+      return current.active === view && !missing.length ? current : {
+        open: [...current.open, ...missing], active: view,
+      }
     })
   }
 
@@ -1982,7 +1985,7 @@ export function Worktable({
     <button onClick={showChains}><Link2 size={17} /> Chains</button>
   )
   const mobileToolsAction = mobileToolsAvailable && (
-    <button onClick={showColors} disabled={disabled}><Palette size={17} /> {grid ? 'Colors' : 'Colors & Chains'}</button>
+    <button onClick={() => showColors()} disabled={disabled}><Palette size={17} /> {grid ? 'Colors' : 'Colors & Chains'}</button>
   )
   const hintMenuAction = !draft && !solved && <button onClick={() => { void showHint() }} disabled={busy}>
     <Lightbulb size={17} /> View hint
@@ -2263,7 +2266,7 @@ export function Worktable({
             if (colorsVisible) setColorBrush(null)
             setEraseMode(false); setPencil(false); setHighlightMode(false); setColorMode((current) => !current)
           }}
-          onOpenColors={desktop ? showColors : undefined} colorsActive={brush !== null} onSwitchShade={switchColorShade}
+          onOpenColorTools={desktop ? () => showColors(true) : undefined} colorsActive={brush !== null} onSwitchShade={switchColorShade}
           highlightMode={highlightMode} toggleHighlightMode={toggleHighlightMode}
           eraseMode={eraseMode} toggleEraseMode={() => {
             if (colorsVisible) setColorBrush(null)
