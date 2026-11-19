@@ -121,7 +121,13 @@ const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
 const sixGrid = value => fields(value, { size: oneOf(6), boxRows: oneOf(2), boxColumns: oneOf(3) }) ||
   fields(value, { size: oneOf(6), boxRows: oneOf(3), boxColumns: oneOf(2) })
-const sixRule = value => fields(value, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
+const sixCell = integer(0, 35)
+const sixRenban = value =>
+  fields(value, { type: oneOf('renban'), cells: list(sixCell, 1, 6) }, { segments: list(list(sixCell, 1, 128), 1, 128) }) &&
+  new Set(value.cells).size === value.cells.length &&
+  (value.segments === undefined || new Set(value.segments.flat()).size === value.cells.length &&
+    value.segments.every(part => part.every(cell => value.cells.includes(cell))))
+const sixRule = value => sixRenban(value) || fields(value, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
   fields(value, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(integer(0, 35), 1, 36) }) ||
   (fields(value, { type: oneOf('thermometer'), cells: list(integer(0, 35), 2, 6) }) && new Set(value.cells).size === value.cells.length)
 const sixRules = list(sixRule, 0, 128)

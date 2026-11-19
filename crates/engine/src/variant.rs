@@ -23,6 +23,7 @@ pub use generation::{
     VariantGenerationOptions, start_variant_generation,
 };
 use lines::LineConstraint;
+pub(crate) use lines::renban_support;
 pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantLineHouseProof,
     VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
