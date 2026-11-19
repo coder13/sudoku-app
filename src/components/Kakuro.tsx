@@ -1,5 +1,5 @@
 import { kakuroCatalog, type KakuroEntry } from '../kakuro/catalog'
-import { checkKakuro, findKakuroHint } from '../kakuro/engine'
+import { checkKakuro, findKakuroHint, solveKakuro } from '../kakuro/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 import './kakuro.css'
 
@@ -33,6 +33,10 @@ const kakuro: NumberGameConfig<KakuroEntry> = {
     check: values => {
       const { complete, conflicts } = checkKakuro(puzzle, values)
       return { complete, marked: conflicts.flatMap(run => [run.clue, ...run.cells.filter(index => values[index])]) }
+    },
+    solve: () => {
+      const result = solveKakuro(puzzle)
+      return result.status === 'unique' ? result.solution : null
     },
     hint: values => {
       const hint = findKakuroHint(puzzle, values)

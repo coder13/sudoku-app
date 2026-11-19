@@ -10,6 +10,7 @@ import type { DigitHighlightMatch } from '../sudoku/highlighting'
 import type { AdvancedModes } from '../sudoku/preferences'
 import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 import { ColorTargetPicker } from './CellColorPalette'
+import { PuzzleKeypad } from './PuzzleKeypad'
 import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
 import { useTouchHold } from './useTouchHold'
 
@@ -199,7 +200,8 @@ export function Controls(props: Props) {
               </div>
             )}
             {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
-            <div className={`keypad ${colors ? 'palette' : gridSize === 4 ? 'mini-keypad' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
+            <PuzzleKeypad variant={colors ? 'palette' : gridSize === 4 ? 'mini' : undefined}
+              label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
                 const singleHighlight = props.highlightedDigitMask === (1 << (digit - 1))
                 const armed = props.selectedDigit === digit || (canHighlightDigits && singleHighlight)
@@ -219,7 +221,7 @@ export function Controls(props: Props) {
                   </button>
                 )
               })}
-            </div>
+            </PuzzleKeypad>
             {colors && <Button type="button" className="color-shade-switch"
               title={`Switch color shade (${shortcutLabel(shortcuts.switchColorShade)})`}
               aria-keyshortcuts={shortcutLabel(shortcuts.switchColorShade)}
