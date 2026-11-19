@@ -1,28 +1,29 @@
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultySelector } from './DifficultySelector'
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { getRouteApi, Link, useCanGoBack, useLocation, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { ArrowRight, BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, PencilLine, Trophy } from 'lucide-react'
+import { ArrowRight, BarChart3, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, PencilLine, Trophy } from 'lucide-react'
 import {
-  DIFFICULTY_LABELS, formatPuzzleRating, statisticsDifficulties, type DifficultyPreference,
+  DIFFICULTY_LABELS, formatPuzzleRating, isDifficulty, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
-import { inProgress } from '../sudoku/puzzle-activity'
+import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import { techniqueLabel } from '../sudoku/hints'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId, type PuzzleVariantId } from '../sudoku/variants'
+import { VARIANTS, PUZZLE_VARIANTS, isPuzzleVariantId, variantDifficulty, variantDifficultyLabel, type VariantId } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
 import { VariantPreview } from './VariantPreview'
 import { VariantRulesetSelector } from './VariantRulesetSelector'
 import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { PuzzleCollections } from './PuzzleCollections'
+import { SelectControl } from './SelectControl'
 import { collectionDifficulties, getCollectionPuzzle, getCollection } from '../sudoku/collections'
 
 const sections = {
-  puzzles: { to: '/', label: 'Active Puzzles', icon: Grid3X3 },
+  puzzles: { to: '/puzzles/browse', label: 'Active Puzzles', icon: Grid3X3 },
   new: { to: '/puzzles/new', label: 'New puzzle', icon: Dices },
   solved: { to: '/puzzles/solved', label: 'Solved puzzles', icon: Trophy },
   collections: { to: '/puzzles/collections', label: 'Collections', icon: BookOpen },
@@ -31,6 +32,7 @@ const sections = {
 type Section = keyof typeof sections
 const newPuzzleRoute = getRouteApi('/puzzles/new')
 const collectionRoute = getRouteApi('/puzzles/collections')
+const solvedRoute = getRouteApi('/puzzles/solved')
 const newPuzzleVariants = Object.keys(VARIANTS) as VariantId[]
 
 declare module '@tanstack/history' {
@@ -52,82 +54,109 @@ function puzzleStatus(game: Game) {
   return 'Not started'
 }
 
-function groupSolvedPuzzles(games: Game[]) {
-  const variantOrder: PuzzleVariantId[] = [...Object.keys(PUZZLE_VARIANTS) as Exclude<PuzzleVariantId, 'mixed'>[], 'mixed']
-  const difficultyOrder = [...Object.keys(DIFFICULTY_LABELS), 'unrated']
-  const solved = games.filter(isSolved).sort((left, right) => {
-    const leftVariant = left.variant?.id ?? 'classic'
-    const rightVariant = right.variant?.id ?? 'classic'
-    return variantOrder.indexOf(leftVariant) - variantOrder.indexOf(rightVariant) ||
-      difficultyOrder.indexOf(left.difficulty ?? 'unrated') - difficultyOrder.indexOf(right.difficulty ?? 'unrated') ||
-      right.created - left.created || left.title.localeCompare(right.title)
-  })
-  return solved.reduce<Array<{
-    key: string; variant: PuzzleVariantId; difficulty: Game['difficulty']; games: Game[]
-  }>>((groups, game) => {
-    const variant = game.variant?.id ?? 'classic'
-    const key = `${variant}:${game.difficulty ?? 'unrated'}`
-    const current = groups.at(-1)
-    if (current?.key === key) current.games.push(game)
-    else groups.push({ key, variant, difficulty: game.difficulty, games: [game] })
-    return groups
-  }, [])
-}
-
-function PuzzleLibrary({ games, active, manage, loading, section }: {
-  games: Game[]; active: string | null; manage: (id: string) => void; loading: boolean; section: 'puzzles' | 'solved'
+function PuzzleRows({ puzzles, active, manage }: {
+  puzzles: readonly Game[]; active: string | null; manage?: (id: string) => void
 }) {
-  const title = useId()
-
-  function list(items: Game[]) {
-    return <ul className="game-list main-puzzle-list">
-      {items.map((game) => {
-        const manageable = game.source !== 'draft' && !isSolved(game)
+  const List = manage ? 'ul' : 'ol'
+  return <List className="game-list main-puzzle-list" role="list">
+      {puzzles.map(game => {
+        const manageable = manage && game.source !== 'draft'
         const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
         const useRatingTitle = manageable && game.source === 'generated' && /\bPuzzle \d+$/.test(game.title)
         const name = useRatingTitle ? rating || 'Unrated' : game.title
-        const variantId = game.variant?.id
-        const variantName = variantId === 'mixed' ? 'Mixed rules' : variantId && PUZZLE_VARIANTS[variantId].name
-        const detail = [useRatingTitle && variantName,
-          !useRatingTitle && rating, puzzleStatus(game)].filter(Boolean).join(' · ')
+        const variant = game.variant?.id
+        const variantLabel = variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[variant ?? 'classic'].name
+        const detail = (manage
+          ? [useRatingTitle && variant && variantLabel, !useRatingTitle && rating, puzzleStatus(game)]
+          : [variantLabel, rating || 'Unrated', !game.timeUntracked && formatTime(game.elapsed)]).filter(Boolean).join(' · ')
         return <li key={game.id} className={manageable ? 'game-row-with-options' : undefined}>
           <Link className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
             <MiniGrid values={valuesOf(game)} />
             <span className="game-row-copy"><strong>{name}</strong><small>{detail}</small></span>
             {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
           </Link>
-          {manageable && <IconButton type="button" variant="quiet" className="game-row-options" aria-haspopup="dialog"
+          {manageable && manage && <IconButton type="button" variant="quiet" className="game-row-options" aria-haspopup="dialog"
             aria-label={`Options for ${name}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></IconButton>}
         </li>
       })}
-    </ul>
+  </List>
+}
+
+function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active: string | null; loading: boolean }) {
+  const id = useId()
+  const dateToggle = useRef<HTMLButtonElement>(null)
+  const [datesOpen, setDatesOpen] = useState(false)
+  const filters = solvedRoute.useSearch()
+  const navigate = solvedRoute.useNavigate()
+  const history = useMemo(() => solvedHistory(games), [games])
+  const filtered = history.filter(puzzle => matchesSolvedFilters(puzzle, filters))
+  const dateActive = Boolean(filters.from || filters.to)
+  const dateLabel = dateActive ? 'Date range (active)' : 'Date range'
+  const invalidRange = Boolean(filters.from && filters.to && filters.to < filters.from)
+
+  function setFilters(search: SolvedPuzzleFilters) {
+    void navigate({ search, replace: true, resetScroll: false, viewTransition: false })
   }
 
-  if (section === 'solved') {
-    const groups = groupSolvedPuzzles(games)
-    return <div className="main-menu-section puzzle-library solved-puzzles">
-      {groups.length > 0 ? groups.map((group) => <section className="solved-puzzle-group" key={group.key}
-        aria-labelledby={`${title}-${group.key}`}>
-        <h2 id={`${title}-${group.key}`}>{group.variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[group.variant].name} · {group.difficulty ? DIFFICULTY_LABELS[group.difficulty] : 'Unrated'}</h2>
-        {list(group.games)}
-      </section>) : loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
-        : <p className="main-menu-empty">No solved puzzles yet.</p>}
+  return <div className="main-menu-section puzzle-library solved-puzzles">
+    <div className="solved-filter-bar" role="group" aria-label="Solved puzzle filters">
+      <SelectControl aria-label="Variant" value={filters.variant ?? ''} onChange={({ currentTarget: { value } }) => {
+        setFilters({ ...filters, variant: isPuzzleVariantId(value) ? value : undefined })
+      }}>
+        <option value="">{filters.variant ? 'All variants' : 'Variant'}</option>
+        {Object.entries(PUZZLE_VARIANTS).map(([id, variant]) => <option key={id} value={id}>{variant.name}</option>)}
+        <option value="mixed">Mixed rules</option>
+      </SelectControl>
+      <SelectControl aria-label="Difficulty" value={filters.difficulty ?? ''} onChange={({ currentTarget: { value } }) => {
+        setFilters({ ...filters, difficulty: isDifficulty(value) || value === 'unrated' ? value : undefined })
+      }}>
+        <option value="">{filters.difficulty ? 'All difficulties' : 'Difficulty'}</option>
+        {Object.entries(DIFFICULTY_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+        <option value="unrated">Unrated</option>
+      </SelectControl>
+      <IconButton ref={dateToggle} className="solved-date-toggle" aria-label={dateLabel} title={dateLabel}
+        aria-controls={id} aria-expanded={datesOpen} data-active={dateActive || undefined} onClick={() => setDatesOpen(open => !open)}>
+        <CalendarRange size={19} aria-hidden="true" />
+      </IconButton>
     </div>
-  }
+    <fieldset id={id} className="solved-date-fields" hidden={!datesOpen}>
+      <legend className="sr-only">Date range</legend>
+      <label>From<input type="date" value={filters.from ?? ''} max={filters.to}
+        onChange={({ currentTarget: { value } }) => setFilters({ ...filters, from: value || undefined })} /></label>
+      <label>To<input type="date" value={filters.to ?? ''} min={filters.from} aria-invalid={invalidRange || undefined}
+        aria-describedby={invalidRange ? `${id}-dates` : undefined}
+        onChange={({ currentTarget: { value } }) => setFilters({ ...filters, to: value || undefined })} /></label>
+      {dateActive && <Button variant="quiet" className="solved-date-clear" onClick={() => {
+        setFilters({ ...filters, from: undefined, to: undefined })
+        setDatesOpen(false)
+        dateToggle.current?.focus()
+      }}>Clear dates</Button>}
+    </fieldset>
+    {invalidRange ? <p className="main-menu-empty" role="status" id={`${id}-dates`}>Choose an end date on or after the start date.</p>
+      : filtered.length > 0 ? <PuzzleRows puzzles={filtered.map(({ game }) => game)} active={active} />
+        : loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
+          : <p className="main-menu-empty" role="status">{history.length ? 'No solved puzzles match these filters.' : 'No solved puzzles yet.'}</p>}
+  </div>
+}
+
+function PuzzleLibrary({ games, active, manage, loading }: {
+  games: Game[]; active: string | null; manage: (id: string) => void; loading: boolean
+}) {
+  const title = useId()
 
   const activePuzzles = inProgress(games)
   const saved = games.filter((game) => !isSolved(game) && (game.savedForLater || game.archived))
   return <div className="main-menu-section puzzle-library">
     {activePuzzles.length > 0 ? <section className="puzzle-library-section" aria-labelledby={`${title}-active`}>
       <h2 id={`${title}-active`}>Active Puzzles</h2>
-      {list(activePuzzles)}
+      <PuzzleRows puzzles={activePuzzles} active={active} manage={manage} />
     </section> : loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
       : <Link className={buttonClassName('primary', 'puzzle-empty-action')} to="/puzzles/new">
         <Dices size={18} aria-hidden="true" />Start a new puzzle
       </Link>}
     {saved.length > 0 && <section className="puzzle-library-section saved-for-later" aria-labelledby={`${title}-saved`}>
       <h2 id={`${title}-saved`}>Saved for later</h2>
-      {list(saved)}
+      <PuzzleRows puzzles={saved} active={active} manage={manage} />
     </section>}
   </div>
 }
@@ -308,9 +337,8 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   }
 
   function content(current: Section) {
-    if (current === 'puzzles' || current === 'solved') {
-      return <PuzzleLibrary section={current} games={games} active={active} manage={setManagingId} loading={loadingPuzzles} />
-    }
+    if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} manage={setManagingId} loading={loadingPuzzles} />
+    if (current === 'solved') return <SolvedPuzzleLibrary games={games} active={active} loading={loadingPuzzles} />
     if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`}
       games={games} />
     if (current === 'new') {
@@ -334,7 +362,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
             ? <IconButton className="puzzles-back" aria-label="Back to variant" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
             : <Link to="/puzzles/new" search={{ variant, ruleset }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
               aria-label="Back to variant"><ChevronLeft size={21} /></Link>)
-            : section !== 'puzzles' && <Link to="/" search={{}} className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
+            : section !== 'puzzles' && <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
         <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{pageTitle}</h1>
       </header>
       <nav className="main-menu-tabs" aria-label="Puzzles sections">

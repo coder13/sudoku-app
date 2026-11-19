@@ -1,0 +1,16 @@
+{
+  "name": "klyn-sudoku-sync-events",
+  "main": "./sync-events.js",
+  "compatibility_date": "2026-11-18",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 0.01 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "SYNC_EVENTS", "class_name": "SyncEvents" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyncEvents"] }]
+}

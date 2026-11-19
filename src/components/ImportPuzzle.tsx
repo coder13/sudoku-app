@@ -36,9 +36,11 @@ function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
   return true
 }
 
-export async function openPuzzle(input: string, cancelled: () => boolean) {
+export async function openPuzzle(input: string, cancelled: () => boolean, { freshCopy = false }: { freshCopy?: boolean } = {}) {
   const preview = await preparePuzzle(input)
-  if (!cancelled()) finishImport(preview, true)
+  if (cancelled()) return
+  if (freshCopy) roomStore.add(preview.game)
+  else finishImport(preview, true)
 }
 
 export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = preparePuzzle }: {

@@ -36,7 +36,7 @@ export const roomStore: typeof appStore = {
     return () => { listeners.delete(listener) }
   },
   onPlay(listener) { selections.add(listener); return () => { selections.delete(listener) } },
-  onEdit(listener) { return roomStore.subscribe(listener) },
+  onEdit() { return () => {} },
   view(id) { if (room.active !== id) publish({ ...room, active: id }) },
   refreshPuzzle() {},
   getSnapshot: () => room,

@@ -4,10 +4,15 @@ type MotionSpeed = 'standard' | 'overlay'
 type PresenceState = 'open' | 'exit'
 const EXIT_PAINT_BUFFER_MS = 34
 
-export function exitDelay(speed: MotionSpeed) {
+export function motionDuration(speed: MotionSpeed) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0
   const value = getComputedStyle(document.documentElement).getPropertyValue(`--motion-${speed}-duration`).trim()
   const duration = Number.parseFloat(value) * (value.endsWith('ms') ? 1 : 1000)
+  return duration > 0 ? duration : 0
+}
+
+export function exitDelay(speed: MotionSpeed) {
+  const duration = motionDuration(speed)
   return duration > 0 ? duration + EXIT_PAINT_BUFFER_MS : 0
 }
 

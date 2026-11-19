@@ -34,6 +34,31 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Starter: Story = {}
+export const MobileInputTools: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (!canvasElement.querySelector('.mobile-panel-layout')) return
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Colors & Chains' }))
+    const tabs = canvas.getByRole('tablist', { name: 'Sudoku input' })
+    await expect(within(tabs).getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
+    await expect(within(tabs).getByRole('tab', { name: 'Chains' })).toBeInTheDocument()
+    const colors = within(tabs).getByRole('tab', { name: 'Colors' })
+    const digits = within(tabs).getByRole('tab', { name: 'Digits' })
+    const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
+    await userEvent.click(canvas.getByRole('button', { name: 'Light mint' }))
+    await userEvent.click(cell)
+    await expect(cell).toHaveClass('color-4')
+    await userEvent.click(digits)
+    await expect(cell).toHaveClass('color-4')
+    await userEvent.click(colors)
+    await userEvent.click(canvas.getByRole('button', { name: 'Close colors panel' }))
+    await expect(digits).toHaveAttribute('aria-selected', 'true')
+    await expect(cell).not.toHaveClass('color-4')
+    await userEvent.keyboard('{Enter}')
+    await expect(tabs).not.toBeInTheDocument()
+  },
+}
 export const TemporaryPencil: Story = {
   play: async ({ canvas, userEvent }) => {
     const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
@@ -148,6 +173,13 @@ export const ClickAwayClearsCell: Story = {
   },
 }
 export const InProgress: Story = { args: { game: inProgress, games: [inProgress] } }
+export const OpenOnAnotherDevice: Story = { args: { game: inProgress, games: [inProgress], sharedOnOtherDevice: true } }
+export const CatchUpOnAnotherDevice: Story = {
+  args: { game: solved, games: [solved, inProgress], catchUpPuzzle: inProgress },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('button', { name: /^Catch up/ })).toBeVisible()
+  },
+}
 export const GridModeCue: Story = {
   args: { game: inProgress, games: [inProgress] },
   play: async ({ canvas, userEvent }) => {
@@ -183,13 +215,39 @@ export const Paused: Story = {
     expect(puzzleAfter.width).toBeCloseTo(puzzleBefore.width, 2)
     expect(puzzleAfter.height).toBeCloseTo(puzzleBefore.height, 2)
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Pause puzzle' }))
+    const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
+    grid.querySelector<HTMLElement>('[tabindex="0"]')?.focus()
+    await userEvent.keyboard(' ')
     await canvas.findByRole('status', { name: 'Puzzle paused' })
+    await userEvent.keyboard(' ')
+    await canvas.findByRole('grid', { name: 'Sudoku grid' })
   },
 }
 export const LargeGridText: Story = { args: { appearance: { ...DEFAULT_APPEARANCE, gridTextScale: MAX_GRID_TEXT_SCALE } } }
 export const Draft: Story = { args: { game: namedDraft, games: [namedDraft] } }
-export const Solved: Story = { args: { game: solved, games: [solved] } }
+export const Solved: Story = {
+  args: { game: solved, games: [solved] },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (canvasElement.querySelector('.mobile-panel-layout')) return
+    const toggle = canvas.getByRole('button', { name: 'View grid' })
+    const card = toggle.closest('.puzzle')!
+    const stage = card.querySelector('.puzzle-stage')!
+    const timer = canvas.getByRole('timer')
+    const layout = () => [card, stage, toggle, timer].map(element => element.getBoundingClientRect().toJSON())
+    await canvasElement.ownerDocument.fonts.ready
+    const before = layout()
+
+    await userEvent.click(toggle)
+    await expect(toggle).toHaveAccessibleName('View results')
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toBeVisible()
+    await expect(layout()).toEqual(before)
+
+    await userEvent.keyboard(' ')
+    await expect(toggle).toHaveAccessibleName('View grid')
+    await expect(canvas.getByRole('heading', { name: 'Puzzle solved' })).toBeVisible()
+    await expect(layout()).toEqual(before)
+  },
+}
 
 export const SolvedMobile: Story = {
   args: { ...Solved.args, appearance: { ...DEFAULT_APPEARANCE, showGuides: false } },
@@ -222,6 +280,16 @@ export const SolvedMobile: Story = {
     await expect(toggle).toHaveFocus()
     await expect(results).toBeVisible()
     await expect(layout()).toEqual(before)
+
+    await userEvent.click(toggle)
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await expect(canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })).toBeVisible()
+    await expect(toggle).toHaveAccessibleName('View results')
+    const original = roomStore.getSnapshot().games.find(game => game.id === solved.id)
+    expect(original?.position).toEqual(solved.position)
+    expect(original?.elapsed).toBe(solved.elapsed)
+    await userEvent.click(toggle)
+    await expect(within(results).getByText('06:27')).toBeVisible()
   },
 }
 
@@ -242,6 +310,8 @@ export const CandidateShortcut: Story = {
 export const HintWithGrid: Story = {
   args: { game: paintCells(starter, [{ cell: 2, color: 1 }]) },
   play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Colors', exact: true }))
     await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
     const viewHint = await canvas.findByRole('button', { name: 'View hint' })
     await waitFor(() => {

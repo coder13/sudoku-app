@@ -2,7 +2,7 @@ import { Button, ChoiceButton } from './Button'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Trash2 } from 'lucide-react'
 import { runEngine } from '../sudoku/engine'
-import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
+import { exportPuzzle, puzzlePlayLink, type ShareFormat } from '../sudoku/formats'
 import { isSolved, makeGame, valuesOf, type Game } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
@@ -73,9 +73,7 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
   const [format, setFormat] = useState<ShareFormat>(loopback && !game.variant ? 'exchange' : 'link')
   const [status, setStatus] = useState('')
   const text = useRef<HTMLTextAreaElement>(null)
-  const value = game.variant
-    ? `${origin}/#variant=${encodeURIComponent(JSON.stringify({ id: game.variant.id, puzzle: game.variant.puzzle }))}`
-    : exportPuzzle(game.givens, format, origin)
+  const value = game.variant || format === 'link' ? puzzlePlayLink(game, origin) : exportPuzzle(game.givens, format, origin)
 
   async function copy() {
     try {
@@ -90,7 +88,7 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
   return (
     <Modal title="Share puzzle" onClose={close}>
       <div className="dialog-form">
-        <p>Share the starting grid for {game.title}.</p>
+        <p>Share the starting grid for {game.title}. Anyone who opens the link without access to your solve starts their own.</p>
         {!game.variant && <>
           <label htmlFor="share-format">Format</label>
           <SelectControl id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
