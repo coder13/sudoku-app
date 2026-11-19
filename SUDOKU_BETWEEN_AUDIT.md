@@ -80,4 +80,10 @@ Both pinned-baseline and final production builds use the same dependencies and n
 | CSS, 1 file | 295,908 / 40,681 | 296,282 / 40,748 | +374 / +67 |
 | App Wasm | 3,430,109 / 898,293 | 3,430,109 / 898,293 | 0 / 0 |
 
-Wasm SHA-256 remains `d5bf3ebcd76528c51901498889bcd6d35ef1d9487051a147b6463b794abfd045`. Rust sources are unchanged. The production/offline build passes with 171 prerendered routes. TypeScript, the 120-component catalog, all 547 app tests and all 330 Wasm contracts pass on the final implementation. Final exact-head CI, deployment and merge evidence will be recorded at release.
+Wasm SHA-256 remains `d5bf3ebcd76528c51901498889bcd6d35ef1d9487051a147b6463b794abfd045`. Rust sources are unchanged. The production/offline build passes with 171 prerendered routes. TypeScript, the 120-component catalog, all 547 app tests and all 330 Wasm contracts pass on the final implementation.
+
+## Release
+
+[PR 190](https://github.com/coder13/sudoku-app/pull/190) merged at `30bbd857c3fb86a36055498d276cc5ce58e137a6`, closing issue 63. Reviewed head `f459103cb39c4e79fa59da8e69279c08104f4b28` passed both jobs in [CI run 44447946113](https://github.com/coder13/sudoku-app/actions/runs/44447946113), with 366 native tests including seven Cargo doc examples, sixteen capability combinations, four Wasm profiles, strict full/reduced Cargo documentation, 547 app tests and 330 Wasm contracts. Header and deployment checks also passed. Completed job logs confirm the counts. Read-only HTTP confirms the deployed Learn page renders the new endpoint clues; this does not replace live interaction review.
+
+Fetched main contains both the reviewed head and merge commit. Its Rust, app sources, scripts, tests, public assets and dependency files match the tested head exactly. The original dirty R&D checkout remains at `63116cc` with its 39 working-tree entries preserved. Remaining six native UI integrations, required generation for thirteen older import-only families, authored-source semantics, other formats, live viewport review and the broader performance audit remain open.
