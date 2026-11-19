@@ -69,7 +69,7 @@ export type VariantRule =
 export type VariantPuzzle = {
   version: 1
   givens: string
-  regions?: { type: 'boxes' } | { type: 'jigsaw'; regions: readonly (readonly number[])[] }
+  regions?: { type: 'boxes' } | { type: 'latin-square' } | { type: 'jigsaw'; regions: readonly (readonly number[])[] }
   rules?: readonly VariantRule[]
 }
 

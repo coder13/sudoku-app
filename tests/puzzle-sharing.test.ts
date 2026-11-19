@@ -44,6 +44,19 @@ test('sharing an in-progress variant publishes an immutable definition under a U
   } finally { sqlite.close() }
 })
 
+test('Latin Square shares preserve the boxless layout', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const givens = '0'.repeat(81)
+    const definition = { version: 1, title: 'Latin Square', givens, variant: {
+      id: 'latin-square', puzzle: { version: 1, givens, regions: { type: 'latin-square' } },
+    } }
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), definition)
+  } finally { sqlite.close() }
+})
+
 test('Mini Sudoku shares keep the four-by-four grid specification', async () => {
   const { sqlite, fetcher } = syncDatabase()
   try {

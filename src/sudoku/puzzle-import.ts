@@ -73,6 +73,7 @@ function standardRegion(cell: number) {
 
 function readRegions(labels: unknown): VariantPuzzle['regions'] {
   if (labels === undefined) return
+  if (Array.isArray(labels) && labels.length === 0) return { type: 'latin-square' }
   if (!Array.isArray(labels) || labels.length !== 81 ||
     labels.some((label) => !Number.isInteger(label) || label < 0 || label > 9)) {
     throw new Error('This puzzle has an invalid region map.')

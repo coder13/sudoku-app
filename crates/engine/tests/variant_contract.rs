@@ -2,7 +2,7 @@
 
 use sudoku_app_engine::{
     Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
-    Parity, PuzzleRule, VariantDefinitionError, VariantHouseKind, VariantPositionError,
+    Parity, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind, VariantPositionError,
     VariantPuzzle, analyze, candidates, parse_givens,
 };
 
@@ -12,6 +12,28 @@ const X_SOLUTION: &str =
     "658492731974316582132875694461523978387149256295768143849251367726934815513687429";
 const EMPTY: [u8; 81] = [0; 81];
 const NO_REMOVALS: [u16; 81] = [0; 81];
+
+#[test]
+fn latin_square_checks_rows_columns_and_explicit_extra_regions() {
+    let solution = std::array::from_fn(|cell| ((cell / 9 + cell % 9) % 9 + 1) as u8);
+    let mut givens = solution;
+    givens[40] = 0;
+    assert_eq!(analyze(&givens), Analysis::Conflict);
+    let mut puzzle = VariantPuzzle::classic(givens);
+    puzzle.regions = RegionLayout::LatinSquare;
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.houses().len(), 18);
+    assert!(!compiled.peers(0).unwrap().any(|peer| peer == 10));
+    assert_eq!(compiled.solve(&EMPTY, &NO_REMOVALS, 100), Ok(solution));
+
+    puzzle.rules = vec![PuzzleRule::ExtraHouse { cells: (0..9).map(|i| i * 10).collect() }];
+    let mixed = puzzle.compile().unwrap();
+    assert_eq!(mixed.houses_at(0).unwrap(), [0, 9, 18]);
+    assert!(mixed.peers(0).unwrap().any(|peer| peer == 10));
+    assert_eq!(mixed.solve(&EMPTY, &NO_REMOVALS, 100), Ok(solution));
+    puzzle.rules.push(PuzzleRule::Quadruple { top_left: 0, digits: vec![2, 2] });
+    assert_eq!(puzzle.compile().unwrap().solve(&EMPTY, &NO_REMOVALS, 100), Ok(solution));
+}
 
 fn irregular_regions() -> Vec<Vec<usize>> {
     let mut regions: Vec<Vec<usize>> = (0..9)

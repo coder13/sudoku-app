@@ -3,6 +3,7 @@ import type { VariantPuzzle, VariantRule } from './engine.ts'
 type RegionSum = Extract<VariantRule, { type: 'region-sum' }>
 
 export function regionIndex(cell: number, regions?: VariantPuzzle['regions']) {
+  if (regions?.type === 'latin-square') return -1
   return regions?.type === 'jigsaw' ? regions.regions.findIndex(cells => cells.includes(cell))
     : Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)
 }

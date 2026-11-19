@@ -82,6 +82,8 @@ pub enum RegionLayout {
     /// Standard 3 × 3 boxes in row-major order.
     #[default]
     Boxes,
+    /// Rows and columns without default boxes.
+    LatinSquare,
     /// Nine orthogonally connected regions that partition the grid.
     Jigsaw {
         /// Regions in caller-supplied order, each with nine cell indices.
@@ -563,6 +565,8 @@ impl VariantPuzzle {
             )?;
         }
         compiled.add_regions(&self.regions)?;
+        let base_house_count = compiled.houses.len();
+        let enforce_regions = enforce_regions && base_house_count > 18;
         if !enforce_regions {
             // Keep the region geometry for Region Sum lines and remove only
             // the all-different rule, for uniqueness comparisons in generation.
@@ -610,6 +614,9 @@ impl VariantPuzzle {
                         Quadruple::compile(&compiled, index, *top_left, digits, enforce_regions)?;
                     compiled.quadruples.push(clue);
                 }
+                PuzzleRule::RegionSum { .. } if base_house_count == 18 => {
+                    return Err(VariantDefinitionError::InvalidRule(index));
+                }
                 PuzzleRule::Arrow { .. }
                 | PuzzleRule::Renban { .. }
                 | PuzzleRule::Entropic { .. }
@@ -638,7 +645,7 @@ impl VariantPuzzle {
                 }).then_some(index)
             })
             .collect();
-        compiled.extra_rule_cells = compiled.house_masks[27..]
+        compiled.extra_rule_cells = compiled.house_masks[base_house_count..]
             .iter()
             .copied()
             .chain(
@@ -837,6 +844,7 @@ impl CompiledVariant {
 
     fn add_regions(&mut self, regions: &RegionLayout) -> Result<(), VariantDefinitionError> {
         match regions {
+            RegionLayout::LatinSquare => {}
             RegionLayout::Boxes => {
                 for i in 0..9 {
                     self.add_house(
