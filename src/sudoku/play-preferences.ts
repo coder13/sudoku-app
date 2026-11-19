@@ -10,7 +10,7 @@ export const MIN_DESKTOP_PUZZLE_WIDTH = 260
 
 type DesktopPanelWidths = { input: number; puzzle: number | null }
 const DEFAULT_DESKTOP_PANEL_WIDTHS: DesktopPanelWidths = { input: DEFAULT_DESKTOP_INPUT_WIDTH, puzzle: null }
-const DESKTOP_VIEW_IDS = ['solution', 'techniques', 'chains', 'colors'] as const
+const DESKTOP_VIEW_IDS = ['solution', 'techniques', 'colors', 'chains'] as const
 export type DesktopPuzzleView = typeof DESKTOP_VIEW_IDS[number]
 type DesktopViewPreferences = { open: DesktopPuzzleView[]; active: DesktopPuzzleView | null }
 

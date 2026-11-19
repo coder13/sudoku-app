@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub issue labels"
+  short_description: "Classify Sudoku app issues with consistent labels"
+  default_prompt: "Use $github-issue-labels to review and label the repository issues in scope."

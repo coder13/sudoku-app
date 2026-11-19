@@ -61,6 +61,41 @@ function boardTree(props: Record<string, unknown>) {
   return elements(tree!)
 }
 
+test('the shared grid uses 4×4 coordinates, box edges and candidate slots for Mini Sudoku', () => {
+  const tree = boardTree({
+    grid: { size: 4, boxRows: 2, boxColumns: 2 },
+    givens: '0000000000000000', values: '0000000000000000',
+    candidates: [9, ...Array(15).fill(0)], selected: [0], onCandidate() {},
+  })
+  const rows = tree.filter(({ props }) => props.role === 'row')
+  const cells = tree.filter(({ props }) => props.role === 'gridcell')
+  assert.equal(rows.length, 4)
+  assert.equal(cells.length, 16)
+  assert.equal(rows[1].props['data-box-edge'], true)
+  assert.equal(cells[1].props['data-box-edge'], true)
+  assert.match(String(cells[15].props['aria-label']), /Row 4, column 4/)
+  assert.match(String(cells[5].props.className), /\bpeer\b/)
+  assert.doesNotMatch(String(cells[6].props.className), /\bpeer\b/)
+  const buttons = tree.filter(({ props }) => String(props.className).includes('candidate-button'))
+  assert.deepEqual(buttons.map(({ props }) => (props.style as { gridArea: string }).gridArea), ['1 / 1', '2 / 2'])
+})
+
+test('algebraic cages retain labels and cell descriptions on the 4×4 grid', () => {
+  const tree = boardTree({
+    grid: { size: 4, boxRows: 2, boxColumns: 2 }, givens: '0'.repeat(16), values: '0'.repeat(16),
+    algebraicCages: [
+      { type: 'algebraic-cage', cells: [4, 5], label: 'n+2', total: { type: 'variable', name: 'n', offset: 2 } },
+      { type: 'algebraic-cage', cells: [8], label: 'n-1', total: { type: 'variable', name: 'n', offset: -1 } },
+    ],
+  })
+  const cells = tree.filter(({ props }) => props.role === 'gridcell')
+  assert.match(String(cells[4].props['aria-label']), /algebraic cage total n\+2/)
+  assert.match(String(cells[5].props['aria-label']), /algebraic cage total n\+2/)
+  assert.match(String(cells[8].props['aria-label']), /algebraic cage total n-1/)
+  const labels = tree.filter(({ props }) => props.className === 'variant-cage-total')
+  assert.deepEqual(labels.map(({ props }) => props.children), ['n+2', 'n-1'])
+})
+
 test('chain drawing exposes a keyboard tab stop and accepts keyboard candidate activation', () => {
   const selected: unknown[] = []
   const tree = boardTree({ onCandidate: (candidate: unknown) => selected.push(candidate) })

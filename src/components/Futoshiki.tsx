@@ -1,5 +1,5 @@
 import { futoshikiCatalog, type FutoshikiEntry } from '../futoshiki/catalog'
-import { cellLabel, checkLatin, findLatinHint } from '../latin/engine'
+import { cellLabel, checkLatin, findLatinHint, solveLatin } from '../latin/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 import './futoshiki.css'
 
@@ -33,6 +33,10 @@ const futoshiki: NumberGameConfig<FutoshikiEntry> = {
       check: values => {
         const { complete, conflicts } = checkLatin(puzzle, values)
         return { complete, marked: conflicts.flatMap(rule => rule.cells) }
+      },
+      solve: () => {
+        const result = solveLatin(puzzle)
+        return result.status === 'unique' ? result.solution : null
       },
       hint: values => {
         const hint = findLatinHint(puzzle, values)

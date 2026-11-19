@@ -60,6 +60,15 @@ test('each Calcudoku puzzle has a precached board', async () => {
   }
 })
 
+test('generated Kakuro and Calcudoku links have precached shells and a generation worker', async () => {
+  for (const game of ['kakuro', 'calcudoku']) {
+    const path = `/puzzles/${game}/generated/index.html`
+    assert.ok((await stat(new URL('.' + path, client))).isFile(), path)
+    assert.ok(cached.has(path), path)
+  }
+  assert.ok(assets.some(path => /generation\.worker-[^/]+\.js$/.test(path)))
+})
+
 test('each Futoshiki puzzle precaches every inequality sign', async () => {
   for (const { id, puzzle } of futoshikiCatalog) {
     const path = `/puzzles/futoshiki/${id}/index.html`

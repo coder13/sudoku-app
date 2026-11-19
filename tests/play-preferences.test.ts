@@ -115,6 +115,13 @@ test('the earlier Colors panel preference joins saved views without reopening a 
   assert.equal(reloaded.colorBrush, 12)
 })
 
+test('saved desktop tools put Colors before Chains and keep the selected tab', () => {
+  const storage = memoryStorage(JSON.stringify({ desktopViews: { open: ['chains', 'colors'], active: 'chains' } }))
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, {
+    open: ['colors', 'chains'], active: 'chains',
+  })
+})
+
 test('the mode badge position survives reloads and other play setting changes', () => {
   const storage = memoryStorage(JSON.stringify({ pencil: true }))
   const store = createPlayPreferenceStore(storage)

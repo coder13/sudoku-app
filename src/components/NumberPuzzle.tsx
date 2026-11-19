@@ -2,8 +2,12 @@ import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-rout
 import { Check, ChevronLeft, ChevronRight, Delete, Lightbulb, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleEntry } from '../number-puzzles/catalog'
-import { emptyNumberPosition, loadNumberPosition, saveNumberPosition, type NumberPosition } from '../number-puzzles/progress'
+import type { GeneratedNumberGame } from '../number-puzzles/generated'
+import { emptyNumberPosition, generatedNumberTokens, loadNumberPosition, saveNumberPosition, type NumberPosition } from '../number-puzzles/progress'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
+import { HintCard } from './HintCard'
+import { PuzzleKeypad } from './PuzzleKeypad'
+import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
 import './number-puzzle.css'
 
@@ -17,7 +21,10 @@ type BoardCell = {
   block?: boolean
 }
 
-type Hint = { cell: number; value: number; marked: number[]; reasons: string[] }
+type Hint = { cell: number; value: number; marked: number[] } & (
+  | { reasons: string[]; renderExplanation?: never }
+  | { renderExplanation: (cellName: (index: number) => string) => ReactNode; reasons?: never }
+)
 
 export type NumberBoard = {
   width: number
@@ -26,19 +33,34 @@ export type NumberBoard = {
   cells: readonly BoardCell[]
   check: (values: readonly number[]) => { complete: boolean; marked: number[] }
   hint: (values: readonly number[]) => Hint | null
+  solve: () => readonly number[] | null
 }
 
 export type NumberGameConfig<Entry extends NumberPuzzleEntry> = {
-  game: NumberGame
   name: string
   rules: string
   entries: readonly Entry[]
   board: (entry: Entry) => NumberBoard
   hasClueCells?: boolean
+} & (
+  | { game: GeneratedNumberGame; generatedEntry?: (id: string, number: number) => Entry | null }
+  | { game: Exclude<NumberGame, GeneratedNumberGame>; generatedEntry?: never }
+)
+
+function positionKey(game: NumberGame, id: string) {
+  return `${game}.position.v1.${id}`
+}
+
+function puzzleDestination(game: NumberGame, entry: NumberPuzzleEntry) {
+  return {
+    to: `/puzzles/${game}/$puzzle` as const,
+    params: { puzzle: entry.generated ? 'generated' : entry.id },
+    search: entry.generated ? { board: entry.id } : undefined,
+  }
 }
 
 function boardPosition(game: NumberGame, id: string, board: NumberBoard) {
-  const key = `${game}.position.v1.${id}`
+  const key = positionKey(game, id)
   const editable = board.cells.map(cell => !cell.block && !cell.given)
   return { editable, key, load: () => loadNumberPosition(key, editable, board.maxValue) }
 }
@@ -72,23 +94,35 @@ function NumberGameHeading({ game, title, inPlay, children }: {
 
 /** Use for the difficulty and resume page of a standalone number puzzle. */
 export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }: { config: NumberGameConfig<Entry> }) {
-  const { entries, game, name, rules } = config
+  const { entries, game, name, rules, generatedEntry } = config
+  const generation = useNumberPuzzleGeneration(generatedEntry ? game : null)
+  const [generated, setGenerated] = useState<readonly Entry[]>([])
   const [started, setStarted] = useState<ReadonlySet<string>>(new Set())
   const [solved, setSolved] = useState<ReadonlySet<string>>(new Set())
 
   useEffect(() => {
     const active = new Set<string>()
     const complete = new Set<string>()
-    for (const entry of entries) {
+    const generatedEntries = generatedEntry ? generatedNumberTokens(game).flatMap((id, index) => {
+      try {
+        if (!localStorage.getItem(positionKey(game, id))) return []
+        const entry = generatedEntry(id, index + 1)
+        return entry ? [entry] : []
+      } catch {
+        return []
+      }
+    }) : []
+    for (const entry of [...entries, ...generatedEntries]) {
       const board = config.board(entry)
       const position = boardPosition(game, entry.id, board).load()
       if (!position || !position.values.some(Boolean) && !position.notes.some(Boolean)) continue
       if (board.check(position.values).complete) complete.add(entry.id)
       else active.add(entry.id)
     }
+    setGenerated(generatedEntries)
     setStarted(active)
     setSolved(complete)
-  }, [config, entries, game])
+  }, [config, entries, game, generatedEntry])
 
   return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
     <div className="puzzles-layout">
@@ -100,21 +134,28 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
           if (!group.length) return null
           const next = group.find(entry => !started.has(entry.id) && !solved.has(entry.id))
             ?? group.find(entry => started.has(entry.id)) ?? group[0]
-          return <li key={difficulty}><Link className="game-row" to={`/puzzles/${game}/$puzzle`}
-            params={{ puzzle: next.id }} state={{ fromNumberDifficulty: game }}>
-            <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[difficulty]}</strong>
-              <small>{group.filter(entry => solved.has(entry.id)).length} of {group.length} solved</small></span>
-            <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
-          </Link></li>
+          return <li key={difficulty} className={generatedEntry ? 'number-puzzle-difficulty-row' : undefined}>
+            <Link className="game-row" {...puzzleDestination(game, next)} state={{ fromNumberDifficulty: game }}>
+              <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[difficulty]}</strong>
+                <small>{group.filter(entry => solved.has(entry.id)).length} of {group.length} solved</small></span>
+              <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
+            </Link>
+            {generatedEntry && <Button onClick={() => generation.generate(difficulty)} disabled={generation.pending !== null}
+              aria-label={`Generate ${numberPuzzleDifficultyLabels[difficulty]} ${name} puzzle`}>
+              {generation.pending === difficulty ? 'Generating…' : 'Generate'}
+            </Button>}
+          </li>
         })}
       </ul>
+      {generation.pending && <p role="status">Generating a {name} puzzle.</p>}
+      {generation.error && <p role="alert">{generation.error}</p>}
       {started.size > 0 && <section className="number-puzzle-resume" aria-labelledby="number-puzzle-resume-title">
         <h2 id="number-puzzle-resume-title">In progress</h2>
         <ul className="game-list main-puzzle-list">
-          {entries.filter(entry => started.has(entry.id)).map(entry =>
-            <li key={entry.id}><Link className="game-row" to={`/puzzles/${game}/$puzzle`}
-              params={{ puzzle: entry.id }} state={{ fromNumberDifficulty: game }}>
-              <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</strong></span>
+          {[...entries, ...generated].filter(entry => started.has(entry.id)).map(entry =>
+            <li key={entry.id}><Link className="game-row" {...puzzleDestination(game, entry)} state={{ fromNumberDifficulty: game }}>
+              <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</strong>
+                {entry.generated && <small>Generated puzzle</small>}</span>
               <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
             </Link></li>)}
         </ul>
@@ -129,16 +170,14 @@ export function NumberGamePlay<Entry extends NumberPuzzleEntry>({ config, entry 
 }) {
   return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
     <div className="puzzles-layout number-puzzle-layout">
-      <NumberGameHeading game={config.game} title={config.name} inPlay>
-        <small>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</small>
-      </NumberGameHeading>
       <NumberPuzzleBoard config={config} entry={entry} key={entry.id} />
     </div>
   </main>
 }
 
 function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: { config: NumberGameConfig<Entry>; entry: Entry }) {
-  const { game, name, rules, hasClueCells } = config
+  const { game, name, rules, hasClueCells, generatedEntry } = config
+  const generation = useNumberPuzzleGeneration(generatedEntry ? game : null, true)
   const board = useMemo(() => config.board(entry), [config, entry])
   const { editable, key, load } = useMemo(() => boardPosition(game, entry.id, board), [game, entry.id, board])
   const { width, height, maxValue } = board
@@ -151,19 +190,27 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const [future, setFuture] = useState<NumberPosition[]>([])
   const [showCheck, setShowCheck] = useState(false)
   const [hint, setHint] = useState<Hint | null>(null)
+  const [solution, setSolution] = useState<readonly number[] | null>(null)
   const [status, setStatus] = useState('')
   const [storageError, setStorageError] = useState(false)
   const cellButtons = useRef(new Map<number, HTMLButtonElement>())
+  const hintButton = useRef<HTMLButtonElement>(null)
+  const solutionButton = useRef<HTMLButtonElement>(null)
+  const solutionHeading = useRef<HTMLHeadingElement>(null)
   const result = useMemo(() => board.check(position.values), [board, position.values])
   const conflictCells = new Set(showCheck ? result.marked : [])
   const hintCells = new Set(hint?.marked)
-  const locked = !ready || result.complete
+  const locked = !ready || result.complete || Boolean(solution)
 
   useEffect(() => {
     const stored = load()
     if (stored) setPosition(stored)
     setReady(true)
   }, [load])
+
+  useEffect(() => {
+    if (solution) solutionHeading.current?.focus()
+  }, [solution])
 
   function update(next: NumberPosition) {
     setPosition(next)
@@ -241,6 +288,20 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       : 'No logical placement found for these entries.')
   }
 
+  function showSolution() {
+    if (solution) return
+    const solved = board.solve()
+    setShowCheck(false)
+    setHint(null)
+    setStatus(solved ? '' : 'A unique solution is unavailable.')
+    setSolution(solved)
+  }
+
+  function closeSolution() {
+    setSolution(null)
+    solutionButton.current?.focus()
+  }
+
   function cellName(index: number) {
     return `R${Math.floor(index / width) + 1}C${index % width + 1}`
   }
@@ -253,74 +314,103 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     })
   }
 
-  const next = ready && result.complete ? nextPuzzle() : undefined
+  const next = ready && result.complete && !entry.generated ? nextPuzzle() : undefined
   return <div className="number-puzzle-play motion-screen">
-    <div className="number-puzzle-grid" role="group" aria-label={`${name} board`}
-      style={{ '--number-puzzle-columns': width } as CSSProperties} onKeyDown={onGridKey}>
-      {board.cells.map(({ label, block, decoration, edges, given }, index) => {
-        if (block) {
-          return <div key={index} className="number-puzzle-block" data-clue={Boolean(label)}
-            data-conflict={conflictCells.has(index)} data-hint={hintCells.has(index)} role={label ? 'img' : undefined}
-            aria-label={label ? `${cellName(index)}: ${label}` : undefined} aria-hidden={label ? undefined : true}>
-            {decoration}
-          </div>
-        }
-
-        const value = given || position.values[index]
-        const marks = digits.filter(digit => position.notes[index] & (1 << (digit - 1)))
-        const description = given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
-        return <button key={index} type="button" className="number-puzzle-cell"
-          ref={button => { if (button) cellButtons.current.set(index, button); else cellButtons.current.delete(index) }}
-          tabIndex={selection === index ? 0 : -1} aria-pressed={selection === index}
-          data-conflict={conflictCells.has(index)} data-hint={hint?.cell === index} data-context={hintCells.has(index)}
-          data-edges={edges} data-given={Boolean(given)} data-decorated={Boolean(decoration)}
-          aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
-          onFocus={() => setSelection(index)} onClick={() => setSelection(index)}>
-          {decoration}
-          {value || <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
-            <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
-        </button>
-      })}
-    </div>
-    <section className="surface number-puzzle-controls" aria-label={`${name} controls`}>
-      <div className="number-puzzle-keypad" role="group" aria-label="Digits">
-        {digits.map(digit => <Button key={digit} disabled={locked || !editable[selection]} onClick={() => enter(digit)}>{digit}</Button>)}
-      </div>
-      <div className="number-puzzle-actions">
-        <Button aria-pressed={notes} disabled={locked} onClick={() => setNotes(current => !current)}>
-          <Pencil size={16} aria-hidden="true" />Notes
-        </Button>
-        <IconButton aria-label="Erase cell" disabled={locked || !editable[selection]} onClick={() => enter(0)}><Delete size={17} aria-hidden="true" /></IconButton>
-        <IconButton aria-label="Undo" disabled={!history.length} onClick={undo}><Undo2 size={17} aria-hidden="true" /></IconButton>
-        <IconButton aria-label="Redo" disabled={!future.length} onClick={redo}><Redo2 size={17} aria-hidden="true" /></IconButton>
-      </div>
-      <div className="number-puzzle-actions">
-        <Button disabled={locked} onClick={() => {
-          setHint(null)
-          setShowCheck(true)
-          setStatus(hasClueCells
-            ? result.marked.length ? 'The highlighted clues cannot fit these entries.' : 'Each clue fits the current entries.'
-            : result.marked.length ? 'The highlighted entries conflict with the rules.' : 'The entries fit the rules checked so far.')
-        }}><Check size={17} aria-hidden="true" />Check</Button>
-        <Button disabled={locked} onClick={requestHint}><Lightbulb size={17} aria-hidden="true" />Hint</Button>
-      </div>
-      <div className="number-puzzle-status" role="status" aria-live="polite">
-        {result.complete ? 'Puzzle solved.' : hint
-          ? `The ${hasClueCells ? 'highlighted clues' : 'listed rules'} leave only ${hint.value} for ${cellName(hint.cell)}.` : status}
-      </div>
-      {hint && <div className="number-puzzle-hint">
-        <details className="number-puzzle-help">
-          <summary>{hasClueCells ? 'Clues used' : 'Rules used'}</summary>
-          <ul>{hint.reasons.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
-        </details>
-        <Button onClick={() => enter(hint.value, hint.cell, false)}>Place {hint.value}</Button>
+    <section className="surface number-puzzle-board-card">
+      <NumberGameHeading game={game} title={name} inPlay>
+        <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</small>
+      </NumberGameHeading>
+      {solution && <div className="number-puzzle-solution-heading">
+        <h2 ref={solutionHeading} tabIndex={-1}>Solution preview</h2>
+        <Button onClick={closeSolution}>Back to puzzle</Button>
       </div>}
-      {result.complete && (next
-        ? <Link className={buttonClassName('primary')} to={`/puzzles/${game}/$puzzle`}
-          params={{ puzzle: next.id }} state={{ fromNumberDifficulty: game }} replace>Next puzzle</Link>
-        : <Link className={buttonClassName('primary')} to={`/puzzles/${game}`}>Choose difficulty</Link>)}
-      {storageError && <p className="form-error" role="alert">This browser cannot save your progress.</p>}
-      <details className="number-puzzle-help"><summary>How to play</summary><p>{rules}</p></details>
+      <div className="number-puzzle-grid" role="group" aria-label={`${name} ${solution ? 'solution' : 'board'}`}
+        style={{ '--number-puzzle-columns': width } as CSSProperties} onKeyDown={onGridKey}>
+        {board.cells.map(({ label, block, decoration, edges, given }, index) => {
+          if (block) {
+            return <div key={index} className="number-puzzle-block" data-clue={Boolean(label)}
+              data-conflict={conflictCells.has(index)} data-hint={hintCells.has(index)} role={label ? 'img' : undefined}
+              aria-label={label ? `${cellName(index)}: ${label}` : undefined} aria-hidden={label ? undefined : true}>
+              {decoration}
+            </div>
+          }
+
+          const value = given || (solution ?? position.values)[index]
+          const marks = digits.filter(digit => position.notes[index] & (1 << (digit - 1)))
+          const description = given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
+          return <button key={index} type="button" className="number-puzzle-cell"
+            ref={button => { if (button) cellButtons.current.set(index, button); else cellButtons.current.delete(index) }}
+            tabIndex={selection === index ? 0 : -1} aria-pressed={solution ? undefined : selection === index}
+            disabled={Boolean(solution)} data-entry={Boolean(value && !given)}
+            data-conflict={conflictCells.has(index)} data-hint={hint?.cell === index} data-context={hintCells.has(index)}
+            data-edges={edges} data-given={Boolean(given)} data-decorated={Boolean(decoration)}
+            aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
+            onFocus={() => setSelection(index)} onClick={() => setSelection(index)}>
+            {decoration}
+            {value || <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
+              <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
+          </button>
+        })}
+      </div>
     </section>
+    <div className="number-puzzle-sidebar">
+      <section className="surface controls number-puzzle-controls" aria-label={`${name} controls`}>
+        <div className="controls-content">
+          <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
+            <IconButton aria-label="Undo" title="Undo" disabled={Boolean(solution) || !history.length} onClick={undo}><Undo2 size={18} /></IconButton>
+            <IconButton aria-label="Redo" title="Redo" disabled={Boolean(solution) || !future.length} onClick={redo}><Redo2 size={18} /></IconButton>
+            <IconButton aria-label="Check puzzle" title="Check puzzle" disabled={locked} onClick={() => {
+              setHint(null)
+              setShowCheck(true)
+              setStatus(hasClueCells
+                ? result.marked.length ? 'The highlighted clues cannot fit these entries.' : 'Each clue fits the current entries.'
+                : result.marked.length ? 'The highlighted entries conflict with the rules.' : 'The entries fit the rules checked so far.')
+            }}><Check size={20} /></IconButton>
+            <IconButton ref={hintButton} aria-label="Hint" title="Hint" aria-pressed={Boolean(hint)} disabled={locked}
+              onClick={requestHint}><Lightbulb size={18} /></IconButton>
+          </div>
+          <div className="keypad-stack">
+            <PuzzleKeypad label="Digit pad" variant={maxValue === 4 ? 'mini' : undefined}>
+              {digits.map(digit => <button key={digit} type="button" className="key"
+                aria-label={`Enter ${digit}`} disabled={locked || !editable[selection]}
+                onClick={() => enter(digit)}>{digit}</button>)}
+            </PuzzleKeypad>
+          </div>
+          <div className="side-actions right-actions" role="group" aria-label="Input modes">
+            <IconButton aria-label="Pencil mode" title="Pencil mode" aria-pressed={notes} disabled={locked}
+              onClick={() => setNotes(current => !current)}><Pencil size={18} /></IconButton>
+            <IconButton aria-label="Erase cell" title="Erase cell" disabled={locked || !editable[selection]}
+              onClick={() => enter(0)}><Delete size={18} /></IconButton>
+          </div>
+        </div>
+        <div className="number-puzzle-options">
+          <details className="number-puzzle-help"><summary>How to play</summary><p>{rules}</p></details>
+          <Button ref={solutionButton} variant="quiet" onClick={showSolution} aria-disabled={Boolean(solution)}
+            disabled={!ready || result.complete}>Show solution</Button>
+        </div>
+      </section>
+      <div className="number-puzzle-status" role="status" aria-live="polite">
+        {result.complete ? 'Puzzle solved.' : status}
+      </div>
+      {hint && <HintCard hint={{ title: `Place ${hint.value} in ${cellName(hint.cell)}`,
+        text: `The ${hasClueCells ? 'highlighted clues' : 'listed rules'} leave only ${hint.value} for ${cellName(hint.cell)}.` }}
+        onClose={() => { setHint(null); hintButton.current?.focus() }}
+        explanationSteps={hint.reasons} collapseExplanation
+        detail={hint.renderExplanation?.(cellName)}
+        action={{ label: `Place ${hint.value}`, onClick: () => {
+          enter(hint.value, hint.cell, false)
+          cellButtons.current.get(hint.cell)?.focus()
+        } }} />}
+      {result.complete && (next
+        ? <Link className={buttonClassName('primary')} {...puzzleDestination(game, next)}
+          state={{ fromNumberDifficulty: game }} replace>Next puzzle</Link>
+        : config.generatedEntry
+          ? <Button variant="primary" disabled={generation.pending !== null} onClick={() => generation.generate(entry.difficulty)}>
+            {generation.pending ? 'Generating…' : 'Generate next puzzle'}
+          </Button>
+          : <Link className={buttonClassName('primary')} to={`/puzzles/${game}`}>Choose difficulty</Link>)}
+      {generation.error && <p role="alert">{generation.error}</p>}
+      {storageError && <p className="form-error" role="alert">This browser cannot save your progress.</p>}
+    </div>
   </div>
 }
