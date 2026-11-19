@@ -104,8 +104,8 @@ Search by component name or browse the sections below.
 | Module | Components and use |
 | --- | --- |
 | [Game types](../../../../src/routes/puzzles.games.tsx) | `GameTypePicker` lists the games available from the Sudoku variant picker. |
-| [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` owns the play page. |
+| [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` supplies the board and ordered hint steps for each clue. |
 | [Kakuro play route](../../../../src/routes/puzzles.kakuro_.$puzzle.tsx) | `KakuroPlayRoute` opens a catalog puzzle from its URL. |
-| [Number puzzle](../../../../src/components/NumberPuzzle.tsx) | `NumberGameDifficulty` lists difficulty and local progress. `NumberGamePlay` uses a game-specific board, rules, and hint function. `NumberGameHeading` and `NumberPuzzleBoard` handle internal navigation and play. |
+| [Number puzzle](../../../../src/components/NumberPuzzle.tsx) | `NumberGameDifficulty` lists difficulty and local progress. `NumberGamePlay` uses a game-specific board, rules, and hint function. A hint can supply a list of reasons or render its own explanation. `NumberGameHeading` and `NumberPuzzleBoard` handle internal navigation and play. |
 | [Calcudoku](../../../../src/components/Calcudoku.tsx) | `CalcudokuDifficultyPage` selects difficulty. `CalcudokuPlay` supplies arithmetic cage borders, clue labels, and rules. |
 | [Calcudoku play route](../../../../src/routes/puzzles.calcudoku_.$puzzle.tsx) | `CalcudokuPlayRoute` opens a catalog puzzle from its URL. |

@@ -61,7 +61,7 @@
 .number-puzzle-cell[aria-pressed="true"],
 .number-puzzle-actions [aria-pressed="true"] {
   background: var(--surface-active);
-  box-shadow: inset 0 0 0 2px var(--selection-border);
+  box-shadow: inset 0 0 0 2px var(--selected-border);
 }
 
 .number-puzzle-cell:focus-visible {
@@ -69,7 +69,7 @@
 }
 
 .number-puzzle-grid [data-hint="true"] {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--secondary-accent), inset 0 0 0 3px var(--board-bg);
 }
 
 .number-puzzle-cell[data-conflict="true"] {
