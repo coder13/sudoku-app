@@ -95,7 +95,7 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
     <Modal title="Share puzzle" onClose={close}>
       <div className="dialog-form">
         <p>Share the starting grid for {game.title}. Anyone who opens the link without access to your solve starts their own.</p>
-        {!game.variant && <>
+        {!game.variant && !game.algebraic && <>
           <label htmlFor="share-format">Format</label>
           <SelectControl id="share-format" value={format} onChange={(event) => { setFormat(event.target.value as ShareFormat); setStatus('') }}>
             {(game.grid ? miniFormats : formats).map(([id, label]) => <option key={id} value={id}>{label}</option>)}

@@ -58,6 +58,10 @@ pub(super) enum Operation {
     Analyze,
     Solve,
     Bounds,
+    Hints {
+        eliminations: Option<Vec<u16>>,
+        limit: usize,
+    },
     Trace {
         eliminations: Option<Vec<u16>>,
     },
@@ -116,6 +120,17 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
         }),
         Operation::Solve => json!(puzzle.solve(&digits, SEARCH_LIMIT)),
         Operation::Bounds => json!(puzzle.bounds(&digits)),
+        Operation::Hints {
+            eliminations,
+            limit,
+        } => {
+            json!(puzzle.hints(
+                &digits,
+                &removals(eliminations)?,
+                SEARCH_LIMIT,
+                limit.min(256)
+            ))
+        }
         Operation::Trace { eliminations } => {
             json!(puzzle.trace(digits, removals(eliminations)?, SEARCH_LIMIT))
         }

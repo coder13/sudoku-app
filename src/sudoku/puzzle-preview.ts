@@ -1,4 +1,5 @@
 import { runEngine } from './engine.ts'
+import { verifyAlgebraicImport } from './algebraic-game.ts'
 import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
 import { detectPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
 import { analyzeMini } from './mini-play.ts'
@@ -8,19 +9,24 @@ import { variantName } from './variants.ts'
 
 export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] | 'Photo or screenshot'; grade?: PuzzleGrade | null }
 
-export function findImportedPuzzle(games: readonly Game[], { givens, variant }: Pick<ImportedPuzzle, 'givens' | 'variant'>) {
-  const identity = puzzleIdentity({ givens, variant })
+export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic'>) {
+  const identity = puzzleIdentity(imported)
   return games.find(game => game.source !== 'draft' && puzzleIdentity(game) === identity)
 }
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
 export async function prepareImportedPuzzle(input: string, games: readonly Game[] = []): Promise<PuzzlePreview> {
   const imported = await detectPuzzle(input)
-  const { givens, variant, format, grid } = imported
+  const { givens, variant, format, grid, algebraic } = imported
   const existing = findImportedPuzzle(games, imported)
-  const name = variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
+  const name = algebraic ? (algebraic.source.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
+    : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
     : variant ? `Imported ${variantName(variant)} puzzle` : grid ? 'Imported Mini Sudoku' : 'Imported puzzle'
   const game = makeGame(createGameId(), name, givens, 'imported', undefined, grid)
+  if (algebraic && grid) {
+    game.algebraic = await verifyAlgebraicImport({ givens, grid, ...algebraic })
+    return { game: applyPuzzleGrade(game, null), format, grade: null }
+  }
   if (!existing) {
     const status = grid ? await analyzeMini(givens) : variant
       ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle } })

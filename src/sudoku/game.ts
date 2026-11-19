@@ -13,6 +13,7 @@ import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
 import type { CollectionReference } from './collection-reference.ts'
 import type { ChainSketchState } from './chain-sketch.ts'
+import type { AlgebraicGame } from './algebraic-game.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -39,6 +40,7 @@ export type Game = {
   score?: number | null
   variant?: VariantGame
   grid?: MiniGrid
+  algebraic?: AlgebraicGame
   generatedWithAuto?: true
   ratingAttempt?: RatingAttempt
   analysisUsed?: true
@@ -104,6 +106,7 @@ export function restartGame(game: Game): Game {
     collection: game.collection,
     score: game.score,
     variant: game.variant,
+    algebraic: game.algebraic,
     generatedWithAuto: game.generatedWithAuto,
     analysisUsed: game.analysisUsed,
     ratingAttempt: game.ratingAttempt && {
@@ -122,7 +125,15 @@ export function isPuzzleSaved(game: Game): boolean {
   return game.savedForLater || (game.saved ?? game.source === 'custom')
 }
 
-export function puzzleIdentity(game: Pick<Game, 'givens'> & { variant?: Pick<VariantGame, 'id' | 'puzzle'> }): string {
+export function puzzleIdentity(game: Pick<Game, 'givens'> & {
+  variant?: Pick<VariantGame, 'id' | 'puzzle'>
+  algebraic?: Pick<AlgebraicGame, 'rules'>
+}): string {
+  if (game.algebraic) {
+    const cages = game.algebraic.rules.map(({ cells, total }) =>
+      JSON.stringify(orderedPuzzleFields({ cells: [...cells].sort((a, b) => a - b), total }))).sort()
+    return `algebraic:${game.givens}:${cages.join(',')}`
+  }
   return game.variant ? `${game.variant.id}:${JSON.stringify(orderedPuzzleFields(game.variant.puzzle))}` : game.givens
 }
 
@@ -215,7 +226,8 @@ export function candidateCount(mask: number): number {
 
 export function isSolved(game: Game): boolean {
   const values = valuesOf(game)
-  return game.source !== 'draft' && (game.variant ? values === game.variant.solution : !values.includes('0') && !conflictsOf(values, undefined, game.grid).size)
+  const solution = game.algebraic?.solution ?? game.variant?.solution
+  return game.source !== 'draft' && (solution ? values === solution : !values.includes('0') && !conflictsOf(values, undefined, game.grid).size)
 }
 
 export function setGamePaused(game: Game, paused: boolean): Game {

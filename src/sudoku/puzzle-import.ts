@@ -5,6 +5,7 @@ import { isGridText, isMiniGrid, MINI_GRID, type MiniGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
+import { decodeSizedSudokuPad, type SizedSudokuPadImport } from './sized-sudoku-pad.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000
@@ -27,6 +28,7 @@ export type ImportedPuzzle = {
   format: ImportFormat
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
   grid?: MiniGrid
+  algebraic?: Pick<SizedSudokuPadImport, 'rules' | 'source'>
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -513,11 +515,25 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
   return makeImportedPuzzle(format, digits.join(''), rules, readRegions(labels))
 }
 
-function fromSudokuPad(code: string): ImportedPuzzle {
+function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): ImportedPuzzle {
   if (/^scf/i.test(code)) return digitRuns(code.slice(3), 'SudokuPad')
   if (FP_CODE.test(code)) return fromFPuzzles(code.replace(FP_CODE, ''), 'SudokuPad')
-  if (/^(scl|ctc)/i.test(code)) throw new Error('This SudokuPad link uses a format the app cannot import yet. For Classic puzzles, copy the 81 givens.')
+  if (/^(scl|ctc)/i.test(code)) {
+    const { givens, grid, rules, source } = decodeSizedSudokuPad(code)
+    return { givens, grid, algebraic: { rules, source }, format }
+  }
   throw new Error('This SudokuPad link does not contain the puzzle data. For Classic puzzles, copy the 81 givens.')
+}
+
+async function fromSudokuPadLink(id: string): Promise<ImportedPuzzle> {
+  const response = await fetch(`/api/v1/import/sudokupad/${id}`)
+  if (!response.ok) {
+    const { error } = await response.json().catch(() => ({}))
+    throw new Error(typeof error === 'string' ? error : 'Could not open the published SudokuPad puzzle.')
+  }
+  const { code } = await response.json()
+  if (typeof code !== 'string' || code.length > MAX_IMPORT_LENGTH) throw new Error('This link does not contain a supported puzzle export.')
+  return fromSudokuPad(code)
 }
 
 export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
@@ -530,6 +546,10 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   if (url) {
     if (url.hash.startsWith('#sized=')) {
       const shared = parseJSON(new URLSearchParams(url.hash.slice(1)).get('sized') ?? '', 'Puzzle link')
+      if (record(shared) && shared.version === 2 && typeof shared.sudokuPad === 'string' &&
+        Object.keys(shared).every(key => key === 'version' || key === 'sudokuPad') && /^(scl|ctc)/i.test(shared.sudokuPad)) {
+        return fromSudokuPad(shared.sudokuPad, 'Puzzle link')
+      }
       if (!record(shared) || shared.version !== 2 || !isMiniGrid(shared.grid) || !isGridText(shared.givens, MINI_GRID) ||
         Object.keys(shared).some(key => !['version', 'grid', 'givens'].includes(key))) {
         throw new Error('This link is missing a supported sized Sudoku puzzle.')
@@ -557,7 +577,10 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
     if (host === 'sudokuexchange.com' && /^\/play\/?$/.test(url.pathname)) return digitRuns(url.searchParams.get('s') ?? '', 'Sudoku Exchange')
     if (host === 'f-puzzles.com') return fromFPuzzles(url.searchParams.get('load') ?? '', 'f-puzzles')
     if (['sudokupad.app', 'beta.sudokupad.app', 'sudokupad.svencodes.com', 'app.crackingthecryptic.com'].includes(host)) {
-      return fromSudokuPad(decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, ''))
+      const code = decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, '')
+      if ((host === 'sudokupad.app' || host === 'beta.sudokupad.app') && /^[A-Za-z0-9_-]{1,64}$/.test(code) &&
+        !/^(?:scl|ctc|scf|fpuz)/i.test(code)) return fromSudokuPadLink(code)
+      return fromSudokuPad(code)
     }
     throw new Error('This link format is not supported. Try pasting the puzzle code or its 81 givens.')
   }

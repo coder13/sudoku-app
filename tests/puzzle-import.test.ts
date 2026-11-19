@@ -154,12 +154,16 @@ test('opens f-puzzles links, raw exports, and SudokuPad f-puzzles links', async 
   await assert.rejects(detectPuzzle(JSON.stringify({ size: 9, grid, fogofwar: ['R1C1'] })), /not supported yet.*fogofwar/)
 })
 
-test('reports unsupported or damaged codes without treating them as Classic', async () => {
+test('reports unsupported or damaged codes without treating them as Classic', async ({ mock }) => {
   await assert.rejects(detectPuzzle('SCv6_32_0000'), /unsupported format/)
   await assert.rejects(detectPuzzle('SCv7_32_zzzz'), /invalid character/)
   await assert.rejects(detectPuzzle('SCv7_32_0000'), /could not be opened/)
   await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/DMnw'), /Copy → Puzzle/)
-  await assert.rejects(detectPuzzle('https://sudokupad.app/example-share-id'), /does not contain the puzzle data/)
+  mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, '/api/v1/import/sudokupad/example-share-id')
+    return Response.json({ error: 'The published puzzle could not be found.' }, { status: 404 })
+  })
+  await assert.rejects(detectPuzzle('https://sudokupad.app/example-share-id'), /published puzzle could not be found/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalModularity', segments: [] }] })), /not supported yet.*globalModularity/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'cage', segments: [] }] })), /no Killer cages/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [

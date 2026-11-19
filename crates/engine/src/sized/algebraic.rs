@@ -102,6 +102,13 @@ pub struct AlgebraicTracePosition {
     pub step: Option<AlgebraicStep>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct AlgebraicHints {
+    pub candidates: Vec<u16>,
+    pub choices: Vec<AlgebraicStep>,
+}
+
 #[derive(Debug)]
 pub struct SizedAlgebraicCages {
     size: usize,
@@ -261,7 +268,46 @@ impl SizedAlgebraicCages {
         eliminations: &[u16],
         proof_budget: u32,
     ) -> Option<AlgebraicStep> {
-        self.logical_position(digits, eliminations, proof_budget)?.1
+        self.hints(digits, eliminations, proof_budget, 1)?
+            .choices
+            .pop()
+    }
+
+    /// List supported steps in priority order for the hint picker and technique finder.
+    pub fn hints(
+        &self,
+        digits: &[u8],
+        eliminations: &[u16],
+        proof_budget: u32,
+        limit: usize,
+    ) -> Option<AlgebraicHints> {
+        let mut domains = self.empty_domains();
+        self.layout.used_digits(digits)?;
+        self.intersect(digits, &mut domains)?;
+        let classic = self.layout.hints(digits, eliminations, limit)?;
+        let mut choices: Vec<_> = classic
+            .choices
+            .into_iter()
+            .map(AlgebraicStep::House)
+            .collect();
+        if choices.len() < limit {
+            let mut order: Vec<_> = (0..self.cages.len()).collect();
+            order.sort_by_key(|&index| self.cages[index].cells.len());
+            let remaining = limit - choices.len();
+            choices.extend(
+                order
+                    .into_iter()
+                    .filter_map(|index| {
+                        self.proof_at(digits, eliminations, index, proof_budget)
+                            .map(AlgebraicStep::Cage)
+                    })
+                    .take(remaining),
+            );
+        }
+        Some(AlgebraicHints {
+            candidates: classic.candidates,
+            choices,
+        })
     }
 
     /// Replay supported logical steps without using the exact answer.
@@ -273,12 +319,12 @@ impl SizedAlgebraicCages {
     ) -> Option<Vec<AlgebraicTracePosition>> {
         let mut positions = Vec::new();
         loop {
-            let (candidates, step) = self.logical_position(&digits, &eliminations, proof_budget)?;
+            let mut hints = self.hints(&digits, &eliminations, proof_budget, 1)?;
             positions.push(AlgebraicTracePosition {
                 digits: digits.clone(),
                 eliminations: eliminations.clone(),
-                candidates,
-                step,
+                candidates: hints.candidates,
+                step: hints.choices.pop(),
             });
             let Some(step) = &positions.last()?.step else {
                 return Some(positions);
@@ -292,29 +338,6 @@ impl SizedAlgebraicCages {
                 }
             }
         }
-    }
-
-    fn logical_position(
-        &self,
-        digits: &[u8],
-        eliminations: &[u16],
-        proof_budget: u32,
-    ) -> Option<(Vec<u16>, Option<AlgebraicStep>)> {
-        let mut domains = self.empty_domains();
-        self.layout.used_digits(digits)?;
-        self.intersect(digits, &mut domains)?;
-        let mut classic = self.layout.hints(digits, eliminations, 1)?;
-        let step = if let Some(house) = classic.choices.pop() {
-            Some(AlgebraicStep::House(house))
-        } else {
-            let mut order: Vec<_> = (0..self.cages.len()).collect();
-            order.sort_by_key(|&index| self.cages[index].cells.len());
-            order.into_iter().find_map(|index| {
-                self.proof_at(digits, eliminations, index, proof_budget)
-                    .map(AlgebraicStep::Cage)
-            })
-        };
-        Some((classic.candidates, step))
     }
 
     /// Count completions under both the houses and the shared integer rules.

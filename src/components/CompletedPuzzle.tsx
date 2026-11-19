@@ -20,7 +20,8 @@ import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 
 function activePuzzleSummary(game: Game) {
   const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
-  const name = game.grid ? MINI_NAME : game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
+  const name = game.grid && !game.algebraic ? MINI_NAME
+    : game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
   const progress = !game.started ? 'Not started' : game.timeUntracked ? 'In progress' : `${formatTime(game.elapsed)} played`
   return [name, rating, progress].filter(Boolean).join(' · ')
 }
@@ -60,7 +61,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = gameGenerationVariant(game)
   const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
-  const needsChoice = !inCollection && Boolean(game.variant && !recipe)
+  const needsChoice = !inCollection && !recipe
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
     puzzle.id !== game.id && puzzle.id !== nextCollectionAttempt?.id && puzzle.source !== 'draft')

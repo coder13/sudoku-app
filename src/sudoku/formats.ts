@@ -49,7 +49,8 @@ export function textGridCells(text: string): string {
 
 export type ShareFormat = 'link' | 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
 
-export function puzzleLinkHash({ givens, variant, grid }: Pick<Game, 'givens' | 'variant' | 'grid'>): string {
+export function puzzleLinkHash({ givens, variant, grid, algebraic }: Pick<Game, 'givens' | 'variant' | 'grid' | 'algebraic'>): string {
+  if (algebraic) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, sudokuPad: algebraic.source.code }))}`
   if (grid) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, grid, givens }))}`
   if (!variant) return `puzzle=${givens}`
   const { version, rules, regions } = variant.puzzle

@@ -183,17 +183,20 @@ export type AlgebraicCageProof = {
   actions: DeductionAction[]
 }
 
+export type AlgebraicStep = { type: 'house'; proof: SizedClassicDeduction } | { type: 'cage'; proof: AlgebraicCageProof }
+
 export type AlgebraicTracePosition = {
   digits: number[]
   eliminations: number[]
   candidates: number[]
-  step: { type: 'house'; proof: SizedClassicDeduction } | { type: 'cage'; proof: AlgebraicCageProof } | null
+  step: AlgebraicStep | null
 }
 
 type SizedVariantRequest = { type: 'sized-variant'; position: SizedVariantPosition } & (
   | { operation: 'analyze' }
   | { operation: 'solve' }
   | { operation: 'bounds' }
+  | { operation: 'hints'; eliminations?: readonly number[]; limit: number }
   | { operation: 'trace'; eliminations?: readonly number[] }
   | { operation: 'cage-proof'; rule: number; eliminations?: readonly number[] }
 )
@@ -576,6 +579,7 @@ export type EngineResult<T extends EngineRequest> =
     T['operation'] extends 'analyze' ? Analysis :
     T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
     T['operation'] extends 'bounds' ? AlgebraicBounds | null :
+    T['operation'] extends 'hints' ? { candidates: number[]; choices: AlgebraicStep[] } | null :
     T['operation'] extends 'trace' ? AlgebraicTracePosition[] | null :
     AlgebraicCageProof | null
   ) :

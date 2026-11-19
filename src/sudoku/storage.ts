@@ -6,6 +6,7 @@ import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
+import { restoreAlgebraicGame } from './algebraic-game.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
@@ -83,6 +84,12 @@ export function readGame(id: string, data: string | null): Game | undefined {
       (value.editingId === undefined || (typeof value.editingId === 'string' && value.editingId.length <= 100)) &&
       (value.returnId === undefined || (typeof value.returnId === 'string' && value.returnId.length <= 100))
     ) {
+      if (value.algebraic !== undefined) {
+        if (!value.grid || value.source === 'draft' || !value.algebraic) return
+        const algebraic = restoreAlgebraicGame(value.algebraic, value.givens)
+        if (!algebraic) return
+        value.algebraic = algebraic
+      }
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
@@ -432,7 +439,7 @@ export const roomStore = {
     onStorage({ storageArea: localStorage, key: GAME_PREFIX + id } as StorageEvent)
   },
   playedMiniGivens() {
-    const result = new Set(room.games.filter(game => game.grid && game.source !== 'draft').map(game => game.givens))
+    const result = new Set(room.games.filter(game => game.grid && !game.algebraic && game.source !== 'draft').map(game => game.givens))
     try {
       for (const key of Object.keys(localStorage)) {
         if (!key.startsWith(SEEN_PREFIX)) continue
