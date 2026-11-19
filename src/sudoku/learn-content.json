@@ -7018,14 +7018,7 @@
           ],
           "references": [],
           "difficulty": "easy"
-        }
-      ]
-    },
-    {
-      "title": "Pill Arrows",
-      "overview": "A two-digit pill gives the total of an arrow.",
-      "variant": true,
-      "lessons": [
+        },
         {
           "id": "pill-arrow",
           "title": "Pill arrows",
