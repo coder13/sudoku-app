@@ -7,7 +7,7 @@ import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { generatePlayableVariant, playCandidates, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
 import { runEngine, EngineError, type GeneratedVariant, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
-import { variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { variantIdForPuzzle, type PlayableVariant } from '../src/sudoku/variants.ts'
 import { makeGame, type Game } from '../src/sudoku/game.ts'
 import { countLineSolutions } from '../tests/helpers/line-oracle.ts'
 import { renbanKey } from '../tests/helpers/renban-key.ts'
@@ -66,6 +66,25 @@ test('measure published Renban callers and actual Medium New Puzzle generation',
       variant: { id: 'renban', puzzle: value.puzzle, solution: value.solution } })
   }
   await sample('Medium with thirty played puzzles', () => generatePlayableVariant('renban', 'medium', 99, previous), value => {
+    checkGenerated(value); assert.ok(!played.has(renbanKey(value.puzzle)))
+  })
+  const mixed = [...previous]
+  const groups: [PlayableVariant, 'easy' | 'medium', number?][] = [
+    ['modular', 'medium'], ['entropic', 'medium'], ['global-entropy', 'easy'], ['global-entropy', 'medium'],
+    ['palindrome', 'easy'], ['palindrome', 'medium'], ['whispers', 'medium', 5], ['whispers', 'medium', 4], ['parity', 'medium'],
+  ]
+  for (const [family, difficulty, gap] of groups) {
+    const recipes = variantSeeds[family][difficulty]!.filter(recipe => gap === undefined || recipe.minDifference === gap).slice(0, 30)
+    assert.equal(recipes.length, 30)
+    for (const recipe of recipes) {
+      const value = await runEngine(variantGenerationRequest(family, difficulty, recipe, techniqueOrder))
+      const id = variantIdForPuzzle(value.puzzle); assert.ok(id !== 'classic')
+      mixed.push({ ...makeGame('mixed-history-' + mixed.length, 'Saved puzzle', value.puzzle.givens, 'generated'),
+        variant: { id, puzzle: value.puzzle, solution: value.solution } })
+    }
+  }
+  assert.equal(mixed.length, 300)
+  await sample('Medium with three hundred mixed played puzzles', () => generatePlayableVariant('renban', 'medium', 99, mixed), value => {
     checkGenerated(value); assert.ok(!played.has(renbanKey(value.puzzle)))
   })
 })
