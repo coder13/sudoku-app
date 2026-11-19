@@ -290,9 +290,15 @@ fn played_entropy_keys_keep_cross_group_changes_and_numeric_companions_distinct(
 fn played_group_names_ignore_empty_cells_and_unused_members() {
     let mut givens = [0; CELLS];
     givens[..5].copy_from_slice(&[8, 0, 9, 4, 8]);
-    rename_groups(&mut givens, &[0, 0, 0, 0, 1, 1, 1, 2, 2, 2]);
+    rename_groups(&mut givens, &ENTROPY_GROUPS);
     assert_eq!(&givens[..5], &[1, 0, 2, 4, 1]);
     assert!(givens[5..].iter().all(|&digit| digit == 0));
+}
+
+fn modular(cells: &[usize]) -> PuzzleRule {
+    PuzzleRule::Modular {
+        cells: cells.to_vec(),
+    }
 }
 
 fn entropic(cells: &[usize]) -> PuzzleRule {
@@ -302,69 +308,71 @@ fn entropic(cells: &[usize]) -> PuzzleRule {
 }
 
 #[test]
-fn played_entropic_walks_use_original_window_pairs_under_every_grid_symmetry() {
-    let original = VariantPuzzle {
-        rules: vec![entropic(&[0, 12, 24, 40, 52]), entropic(&[52, 64, 80])],
-        ..VariantPuzzle::classic([0; CELLS])
-    };
-    let mut given = original.clone();
-    for (cell, digit) in [
-        (0, 1),
-        (12, 4),
-        (24, 7),
-        (40, 2),
-        (52, 5),
-        (64, 8),
-        (80, 3),
-        (28, 9),
-    ] {
-        given.givens[cell] = digit;
-    }
-    let expected = generation_key(&given);
-    let pairs = [
-        [0, 12],
-        [0, 24],
-        [12, 24],
-        [12, 40],
-        [24, 40],
-        [24, 52],
-        [40, 52],
-        [52, 64],
-        [52, 80],
-        [64, 80],
-    ];
-    let decomposed: Vec<_> = pairs.iter().map(|cells| entropic(cells)).collect();
-    let mut duplicate = decomposed.clone();
-    duplicate.extend(decomposed.clone());
-    let alternatives = [
-        vec![entropic(&[80, 64, 52]), entropic(&[52, 40, 24, 12, 0])],
-        vec![
-            entropic(&[0, 12, 24]),
-            entropic(&[12, 24, 40]),
-            entropic(&[24, 40, 52]),
-            entropic(&[52, 64, 80]),
-        ],
-        decomposed,
-        duplicate,
-    ];
-    for rules in alternatives {
-        for transform in SquareTransform::ALL {
-            let mut equivalent = VariantPuzzle {
-                rules: rules.clone(),
-                ..given.clone()
-            };
-            transform.puzzle(&mut equivalent);
-            assert_eq!(generation_key(&equivalent), expected);
+fn played_group_lines_use_original_window_pairs_under_every_grid_symmetry() {
+    for line in [entropic as fn(&[usize]) -> PuzzleRule, modular] {
+        let original = VariantPuzzle {
+            rules: vec![line(&[0, 12, 24, 40, 52]), line(&[52, 64, 80])],
+            ..VariantPuzzle::classic([0; CELLS])
+        };
+        let mut given = original.clone();
+        for (cell, digit) in [
+            (0, 1),
+            (12, 4),
+            (24, 7),
+            (40, 2),
+            (52, 5),
+            (64, 8),
+            (80, 3),
+            (28, 9),
+        ] {
+            given.givens[cell] = digit;
         }
-    }
-    assert_eq!(given.rules, original.rules);
-    let public = canonical_variant(&original).unwrap();
-    assert!(
+        let expected = generation_key(&given);
+        let pairs = [
+            [0, 12],
+            [0, 24],
+            [12, 24],
+            [12, 40],
+            [24, 40],
+            [24, 52],
+            [40, 52],
+            [52, 64],
+            [52, 80],
+            [64, 80],
+        ];
+        let decomposed: Vec<_> = pairs.iter().map(|cells| line(cells)).collect();
+        let mut duplicate = decomposed.clone();
+        duplicate.extend(decomposed.clone());
+        let alternatives = [
+            vec![line(&[80, 64, 52]), line(&[52, 40, 24, 12, 0])],
+            vec![
+                line(&[0, 12, 24]),
+                line(&[12, 24, 40]),
+                line(&[24, 40, 52]),
+                line(&[52, 64, 80]),
+            ],
+            decomposed,
+            duplicate,
+        ];
+        for rules in alternatives {
+            for transform in SquareTransform::ALL {
+                let mut equivalent = VariantPuzzle {
+                    rules: rules.clone(),
+                    ..given.clone()
+                };
+                transform.puzzle(&mut equivalent);
+                assert_eq!(generation_key(&equivalent), expected);
+            }
+        }
+        assert_eq!(given.rules, original.rules);
+        let public = canonical_variant(&original).unwrap();
+        assert!(
         public
             .rules
             .iter()
-            .any(|rule| matches!(rule, PuzzleRule::Entropic { cells } if cells.len() == 5))
+            .any(|rule| matches!(rule, PuzzleRule::Entropic { cells } | PuzzleRule::Modular { cells } if cells.len() == 5))
     );
+    }
 }
 
 #[test]
@@ -413,66 +421,158 @@ fn played_pure_entropic_keys_cover_every_group_bijection_and_grid_symmetry() {
 }
 
 #[test]
-fn played_entropic_keys_preserve_independent_paths_conflicting_revisits_and_numeric_rules() {
-    let definition = |rules| VariantPuzzle {
-        rules,
-        ..VariantPuzzle::classic([0; CELLS])
-    };
-    let separate = definition(vec![entropic(&[0, 12, 24]), entropic(&[24, 40, 52])]);
-    let joined = definition(vec![entropic(&[0, 12, 24, 40, 52])]);
-    assert_ne!(generation_key(&separate), generation_key(&joined));
-    let triangle = definition(vec![entropic(&[0, 12, 24])]);
-    assert_eq!(
-        generation_key(&triangle),
-        generation_key(&definition(vec![entropic(&[0, 12, 24, 0])]))
-    );
-    assert_ne!(
-        generation_key(&triangle),
-        generation_key(&definition(vec![entropic(&[0, 12, 0])]))
-    );
-    assert_ne!(
-        generation_key(&definition(vec![])),
-        generation_key(&definition(vec![entropic(&[0, 12, 0])]))
-    );
-    let singleton = definition(vec![entropic(&[40])]);
-    assert_eq!(
-        generation_key(&singleton),
-        generation_key(&definition(vec![]))
-    );
-    assert_eq!(canonical_variant(&singleton).unwrap().rules.len(), 1);
-    let mut original = triangle;
-    original.givens[..9].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    original.givens[40] = 7;
-    original.givens[70] = 3;
-    let mut crossed = original.clone();
-    for digit in &mut crossed.givens {
-        *digit = match *digit {
-            3 => 4,
-            4 => 3,
-            digit => digit,
+fn played_group_lines_preserve_independent_paths_conflicting_revisits_and_numeric_rules() {
+    for line in [entropic as fn(&[usize]) -> PuzzleRule, modular] {
+        let definition = |rules| VariantPuzzle {
+            rules,
+            ..VariantPuzzle::classic([0; CELLS])
         };
-    }
-    assert_ne!(generation_key(&original), generation_key(&crossed));
-    for companion in [
-        PuzzleRule::Parity {
-            cells: vec![80],
-            parity: crate::variant::Parity::Odd,
-        },
-        PuzzleRule::Inequality {
-            less: 0,
-            greater: 40,
-        },
-    ] {
-        let mut mixed = original.clone();
-        mixed.rules.push(companion);
-        let mut renamed = mixed.clone();
-        for digit in &mut renamed.givens {
+        let separate = definition(vec![line(&[0, 12, 24]), line(&[24, 40, 52])]);
+        let joined = definition(vec![line(&[0, 12, 24, 40, 52])]);
+        assert_ne!(generation_key(&separate), generation_key(&joined));
+        let triangle = definition(vec![line(&[0, 12, 24])]);
+        assert_eq!(
+            generation_key(&triangle),
+            generation_key(&definition(vec![line(&[0, 12, 24, 0])]))
+        );
+        assert_ne!(
+            generation_key(&triangle),
+            generation_key(&definition(vec![line(&[0, 12, 0])]))
+        );
+        assert_ne!(
+            generation_key(&definition(vec![])),
+            generation_key(&definition(vec![line(&[0, 12, 0])]))
+        );
+        let singleton = definition(vec![line(&[40])]);
+        assert_eq!(
+            generation_key(&singleton),
+            generation_key(&definition(vec![]))
+        );
+        assert_eq!(canonical_variant(&singleton).unwrap().rules.len(), 1);
+        let mut original = triangle;
+        original.givens[..9].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        original.givens[40] = 7;
+        original.givens[70] = 3;
+        let mut crossed = original.clone();
+        for digit in &mut crossed.givens {
             *digit = match *digit {
-                1 => 2,
-                2 => 1,
+                3 => 4,
+                4 => 3,
                 digit => digit,
             };
         }
-        assert_ne!(generation_key(&mixed), generation_key(&renamed));
+        assert_ne!(generation_key(&original), generation_key(&crossed));
+        for companion in [
+            PuzzleRule::Parity {
+                cells: vec![80],
+                parity: crate::variant::Parity::Odd,
+            },
+            PuzzleRule::Inequality {
+                less: 0,
+                greater: 40,
+            },
+        ] {
+            let mut mixed = original.clone();
+            mixed.rules.push(companion);
+            let mut renamed = mixed.clone();
+            let (a, b) = if matches!(original.rules[0], PuzzleRule::Modular { .. }) {
+                (1, 4)
+            } else {
+                (1, 2)
+            };
+            for digit in &mut renamed.givens {
+                *digit = if *digit == a {
+                    b
+                } else if *digit == b {
+                    a
+                } else {
+                    *digit
+                };
+            }
+            assert_ne!(generation_key(&mixed), generation_key(&renamed));
+        }
+    }
+}
+
+#[test]
+fn played_pure_modular_keys_cover_every_remainder_bijection_and_grid_symmetry() {
+    const PERMUTATIONS: [[u8; 3]; 6] = [
+        [0, 1, 2],
+        [0, 2, 1],
+        [1, 0, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+        [2, 1, 0],
+    ];
+    let mut original = VariantPuzzle {
+        rules: vec![modular(&[0, 10, 20])],
+        ..VariantPuzzle::classic([0; CELLS])
+    };
+    original.givens[..9].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    original.givens[40] = 7;
+    original.givens[70] = 3;
+    let expected = generation_key(&original);
+    let mut checked = 0;
+    for groups in PERMUTATIONS {
+        for one in PERMUTATIONS {
+            for two in PERMUTATIONS {
+                for zero in PERMUTATIONS {
+                    let members = [one, two, zero];
+                    for transform in SquareTransform::ALL {
+                        let mut renamed = original.clone();
+                        for digit in &mut renamed.givens {
+                            if *digit != 0 {
+                                let group = usize::from((*digit - 1) % 3);
+                                *digit = groups[group]
+                                    + 1
+                                    + 3 * members[group][usize::from((*digit - 1) / 3)];
+                            }
+                        }
+                        transform.puzzle(&mut renamed);
+                        assert_eq!(generation_key(&renamed), expected);
+                        checked += 1;
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(checked, 1296 * 8);
+}
+
+#[test]
+fn played_modular_names_preserve_remainder_relations_and_mixed_partitions_keep_digits() {
+    let mut givens = [0; CELLS];
+    givens[..9].copy_from_slice(&[4, 7, 1, 5, 8, 2, 6, 9, 3]);
+    let original = givens;
+    rename_groups(&mut givens, &MODULAR_GROUPS);
+    assert_eq!(&givens[..9], &[1, 4, 7, 2, 5, 8, 3, 6, 9]);
+    for a in 0..9 {
+        for b in 0..9 {
+            assert_eq!(
+                original[a] % 3 == original[b] % 3,
+                givens[a] % 3 == givens[b] % 3
+            );
+        }
+    }
+    for companion in [entropic(&[0, 12, 24]), PuzzleRule::GlobalEntropy {}] {
+        let mut source = VariantPuzzle {
+            rules: vec![modular(&[0, 12, 24]), companion],
+            ..VariantPuzzle::classic([0; CELLS])
+        };
+        source.givens[..9].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        source.givens[40] = 7;
+        for (a, b) in [(1, 4), (1, 2)] {
+            let mut renamed = source.clone();
+            for digit in &mut renamed.givens {
+                *digit = if *digit == a {
+                    b
+                } else if *digit == b {
+                    a
+                } else {
+                    *digit
+                };
+            }
+            assert_ne!(generation_key(&source), generation_key(&renamed));
+        }
     }
 }

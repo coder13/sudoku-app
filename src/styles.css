@@ -3737,6 +3737,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-entropic circle { fill: #bc6c27; stroke: none; }
 .variant-entropic-overlap line { stroke-linecap: round; }
 .variant-modular polyline { fill: none; stroke: #288e93; stroke-width: .105; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+.variant-preview .variant-modular polyline { stroke-width: .17; opacity: 1; }
+.variant-modular-preview circle { fill: var(--board-bg); }
+.variant-modular-preview text { fill: var(--board-ink); font-size: .72px; text-anchor: middle; dominant-baseline: central; }
 .variant-modular circle { fill: #288e93; stroke: none; }
 .variant-modular-overlap line { stroke-linecap: round; }
 

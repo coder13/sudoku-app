@@ -8,7 +8,7 @@ use crate::CELLS;
 pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     let mut logical = puzzle.clone();
     normalize_equalities(&mut logical);
-    normalize_entropic(&mut logical);
+    normalize_group_lines(&mut logical);
     // Whispers constrains neighboring pairs, independently of path direction,
     // segmentation or repeated edges. Keep this normalization private to played
     // exclusions; public definitions and proof indices retain the original paths.
@@ -54,21 +54,10 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     // public canonical definitions keep their original structure.
     logical.rules.sort_unstable();
     logical.rules.dedup();
-    let entropy = logical.rules.iter().any(|rule| {
-        matches!(
-            rule,
-            PuzzleRule::GlobalEntropy {} | PuzzleRule::Entropic { .. }
-        )
-    }) && logical.rules.iter().all(|rule| {
-        digit_invariant(rule)
-            || matches!(
-                rule,
-                PuzzleRule::GlobalEntropy {} | PuzzleRule::Entropic { .. }
-            )
-    });
+    let partition = group_partition(&logical.rules);
     key_impl(&logical, true, |copy| {
-        if entropy {
-            rename_groups(&mut copy.givens, &[0, 0, 0, 0, 1, 1, 1, 2, 2, 2]);
+        if let Some(partition) = partition {
+            rename_groups(&mut copy.givens, partition);
         }
     })
 }
@@ -76,32 +65,67 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
 // Sliding triples require three different groups. Their pairwise restrictions
 // preserve reversed/split walks without joining independent touching paths.
 // A one-cell walk adds no restriction; a conflicting revisit retains its loop.
-fn normalize_entropic(puzzle: &mut VariantPuzzle) {
+fn normalize_group_lines(puzzle: &mut VariantPuzzle) {
     let mut edges = std::collections::BTreeSet::new();
     puzzle.rules.retain(|rule| {
-        let PuzzleRule::Entropic { cells } = rule else {
-            return true;
+        let (cells, is_modular) = match rule {
+            PuzzleRule::Entropic { cells } => (cells, false),
+            PuzzleRule::Modular { cells } => (cells, true),
+            _ => return true,
         };
         for (index, &cell) in cells.iter().enumerate() {
             for &other in cells.iter().skip(index + 1).take(2) {
                 let mut pair = [cell, other];
                 pair.sort_unstable();
-                edges.insert(pair);
+                edges.insert((is_modular, pair));
             }
         }
         false
     });
     puzzle
         .rules
-        .extend(edges.into_iter().map(|cells| PuzzleRule::Entropic {
-            cells: cells.to_vec(),
+        .extend(edges.into_iter().map(|(is_modular, cells)| {
+            let cells = cells.to_vec();
+            if is_modular {
+                PuzzleRule::Modular { cells }
+            } else {
+                PuzzleRule::Entropic { cells }
+            }
         }));
+}
+
+const ENTROPY_GROUPS: [[u8; 3]; 3] = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+const MODULAR_GROUPS: [[u8; 3]; 3] = [[1, 4, 7], [2, 5, 8], [3, 6, 9]];
+
+// Numeric companions must preserve the same partition. In particular, the
+// Entropic and Modular partitions cannot be renamed independently when mixed.
+fn group_partition(rules: &[PuzzleRule]) -> Option<&'static [[u8; 3]; 3]> {
+    let mut partitions = 0;
+    for rule in rules {
+        match rule {
+            PuzzleRule::GlobalEntropy {} | PuzzleRule::Entropic { .. } => partitions |= 1,
+            PuzzleRule::Modular { .. } => partitions |= 2,
+            _ if digit_invariant(rule) => {}
+            _ => return None,
+        }
+    }
+    match partitions {
+        1 => Some(&ENTROPY_GROUPS),
+        2 => Some(&MODULAR_GROUPS),
+        _ => None,
+    }
 }
 
 // First appearances name the three equal-sized digit groups and their members.
 // This models group permutations and permutations within a group, not arbitrary
 // digit relabeling. Numeric companion rules conservatively disable it above.
-fn rename_groups(givens: &mut [u8; CELLS], partition: &[usize; 10]) {
+fn rename_groups(givens: &mut [u8; CELLS], partition: &[[u8; 3]; 3]) {
+    let mut group_of = [0; 10];
+    for (group, digits) in partition.iter().enumerate() {
+        for &digit in digits {
+            group_of[usize::from(digit)] = group;
+        }
+    }
     let mut group_names = [usize::MAX; 3];
     let mut members = [0; 3];
     let mut digits = [0; 10];
@@ -111,13 +135,13 @@ fn rename_groups(givens: &mut [u8; CELLS], partition: &[usize; 10]) {
             continue;
         }
         let digit = usize::from(*given);
-        let group = partition[digit];
+        let group = group_of[digit];
         if group_names[group] == usize::MAX {
             group_names[group] = next_group;
             next_group += 1;
         }
         if digits[digit] == 0 {
-            digits[digit] = (group_names[group] * 3 + members[group] + 1) as u8;
+            digits[digit] = partition[group_names[group]][members[group]];
             members[group] += 1;
         }
         *given = digits[digit];
