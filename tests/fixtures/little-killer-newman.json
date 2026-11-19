@@ -1,0 +1,167 @@
+{
+  "title": "Triforce",
+  "author": "Philip Newman",
+  "published": "2025-07-24",
+  "source": "https://www.gmpuzzles.com/blog/2025/07/little-killer-sudoku-by-philip-newman/",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2025/250724-LittleKillerSudoku-Triforce.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2025/250724-LittleKillerSudoku-Triforce-soln.pdf",
+  "pdfSha256": "ff6514b13cfe8bc91e00fcef988b5ea93c4caf790beff4bcf87e009210aac4dd",
+  "solutionPdfSha256": "57803abc4b0037685571aacca86960094a510bc63f1b9cc77e4d0bb8e5a80cd7",
+  "puzzle": {
+    "version": 1,
+    "givens": "000002000000400000000000000700000080000010000090000006000000000000005000000300000",
+    "rules": [
+      {
+        "type": "little-killer",
+        "direction": "south-east",
+        "cells": [
+          0,
+          10,
+          20,
+          30,
+          40,
+          50,
+          60,
+          70,
+          80
+        ],
+        "sum": 30
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-west",
+        "cells": [
+          80,
+          70,
+          60,
+          50,
+          40,
+          30,
+          20,
+          10,
+          0
+        ],
+        "sum": 30
+      },
+      {
+        "type": "little-killer",
+        "direction": "south-west",
+        "cells": [
+          2,
+          10,
+          18
+        ],
+        "sum": 6
+      },
+      {
+        "type": "little-killer",
+        "direction": "south-west",
+        "cells": [
+          5,
+          13,
+          21,
+          29,
+          37,
+          45
+        ],
+        "sum": 12
+      },
+      {
+        "type": "little-killer",
+        "direction": "south-west",
+        "cells": [
+          8,
+          16,
+          24,
+          32,
+          40,
+          48,
+          56,
+          64,
+          72
+        ],
+        "sum": 18
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-east",
+        "cells": [
+          72,
+          64,
+          56,
+          48,
+          40,
+          32,
+          24,
+          16,
+          8
+        ],
+        "sum": 18
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-east",
+        "cells": [
+          75,
+          67,
+          59,
+          51,
+          43,
+          35
+        ],
+        "sum": 12
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-east",
+        "cells": [
+          78,
+          70,
+          62
+        ],
+        "sum": 6
+      },
+      {
+        "type": "little-killer",
+        "direction": "south-east",
+        "cells": [
+          45,
+          55,
+          65,
+          75
+        ],
+        "sum": 21
+      },
+      {
+        "type": "little-killer",
+        "direction": "south-east",
+        "cells": [
+          63,
+          73
+        ],
+        "sum": 9
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-west",
+        "cells": [
+          17,
+          7
+        ],
+        "sum": 9
+      },
+      {
+        "type": "little-killer",
+        "direction": "north-west",
+        "cells": [
+          35,
+          25,
+          15,
+          5
+        ],
+        "sum": 18
+      }
+    ]
+  },
+  "solution": "583692741916437825274158369741563982625819437398274156862941573439725618157386294"
+}

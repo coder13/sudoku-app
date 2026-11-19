@@ -1,0 +1,136 @@
+{
+  "source": "https://sudoku.coach/en/s/GJBz",
+  "metadata": {
+    "sudoku_id": "GJBz",
+    "sudoku": "SCv7_32_f2e8qk6bd81j237s2uelbc7ir2bbrtmorht0ouuo6r10g737u4l2jif2funmoq6p1kmo9eccglj4doo9fi9c7eus33d0c8dhit9hp8et2cbaoan6fher3acoudmkakphsceo55obotbn7lek9fa64fk13ig2b1t0qv0p48c8dbg3e2c12cg8pr4fvipvli912ir6v41qucdvll0vb4stis42s4q8kmg2midct33gt71ti7hf77hk5ejub156tabt4be3obl6jitl4g2lk8npnldcqqitvegvlhfsos97i7vmneri91di9qvc5jv2svbhk2pnuvi6v9hujvkg5pvg64qijfm0",
+    "solution": "164523532641216435345216623154451362",
+    "name": "Little killer and between lines part 3",
+    "author": null,
+    "description": "These are getting pretty hard now.",
+    "difficulty": 9,
+    "comment_count": 0,
+    "solve_count": 3,
+    "likes": 0,
+    "user_like": 0,
+    "host_id": 62083,
+    "host_name": "TaterBoy37",
+    "custom_constraints": false,
+    "published": true,
+    "published_date_utc": "2026-06-11 23:19:39",
+    "open_graph_image": 1,
+    "blocked": false,
+    "sudokuHash": "GJBz"
+  },
+  "decoded": {
+    "gridSize": 6,
+    "regions": [
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      5,
+      5,
+      5,
+      6,
+      6,
+      6,
+      5,
+      5,
+      5,
+      6,
+      6,
+      6
+    ],
+    "givenConstraints": [
+      {
+        "id": 10,
+        "type": "littleKiller",
+        "segments": [
+          {
+            "cells": [
+              [
+                6,
+                1
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 8
+            }
+          },
+          {
+            "cells": [
+              [
+                6,
+                3
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 10
+            }
+          },
+          {
+            "cells": [
+              [
+                -1,
+                4
+              ]
+            ],
+            "parameters": {
+              "positive": true,
+              "value": 11
+            }
+          }
+        ],
+        "settings": {}
+      },
+      {
+        "id": 11,
+        "type": "betweenLine",
+        "segments": [
+          {
+            "cells": [
+              20,
+              15,
+              16,
+              10,
+              4
+            ],
+            "parameters": {}
+          },
+          {
+            "cells": [
+              0,
+              6,
+              7,
+              14
+            ],
+            "parameters": {}
+          }
+        ],
+        "settings": {}
+      }
+    ]
+  }
+}

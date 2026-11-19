@@ -1,6 +1,7 @@
 import { difficultyIndex } from './difficulty.ts'
 import type { Difficulty, VariantClueLayout, VariantGenerationRequest, VariantPuzzle, VariantRule } from './engine.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
+import { clueDelta } from './outside-clues.ts'
 import { quadrupleCells, WINDOKU_REGIONS, type PlayableVariant } from './variants.ts'
 
 export type VariantSeed = {
@@ -57,6 +58,13 @@ export function variantGenerationRequest(
     case 'thermometer': case 'between': case 'region-sum':
       for (const cells of recipe.lines!) rules.push({ type: id, cells })
       break
+    case 'little-killer':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (direction !== 'north-east' && direction !== 'south-east' && direction !== 'south-west' && direction !== 'north-west') throw new Error('Invalid diagonal recipe direction.')
+        rules.push({ type: 'little-killer', ...clue, direction })
+      }
+      break
     case 'sandwich':
       for (const clue of recipe.outside!) {
         const direction = clue.direction
@@ -105,6 +113,15 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'parity': case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
         case 'quadruple': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
+        case 'little-killer': {
+          const [dr, dc] = clueDelta(rule.direction)
+          let row = dr, column = dc
+          if (symmetry & 1) [row, column] = [column, row]
+          if (symmetry & 2) row = -row
+          if (symmetry & 4) column = -column
+          const direction = row < 0 ? column < 0 ? 'north-west' : 'north-east' : column < 0 ? 'south-west' : 'south-east'
+          return { ...rule, cells: rule.cells.map(cell), direction }
+        }
         case 'sandwich': {
           const cells = rule.cells.map(cell), step = cells[1] - cells[0]
           return { ...rule, cells, direction: step === 1 ? 'east' : step === -1 ? 'west' : step === 9 ? 'south' : 'north' }

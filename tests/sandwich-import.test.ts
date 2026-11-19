@@ -36,7 +36,7 @@ test('complete published Sandwich controls are independently unique and preserve
 test('Sandwich validation accepts every edge and integer zero and rejects incomplete rays or altered semantics', () => {
   for (const sum of [0, 1, 35]) assert.ok(isPlayablePuzzle('sandwich', { version: 1, givens: empty, rules: [clue(sum)] }))
   const base = clue(0)
-  for (const extra of [{ sum: -1 }, { sum: 36 }, { sum: .5 }, { sum: '0' }, { sum: null }, { direction: 'south' },
+  for (const extra of [{ sum: -1 }, { sum: 36 }, { sum: .5 }, { sum: '0' }, { sum: null }, { direction: ['east'] }, { direction: null }, { direction: 'south' },
     { cells: row.slice(1) }, { cells: [...row].reverse() }, { cells: [...row.slice(0,8), 9] }, { cells: null }, { bread: [2,8] }, { max: true }]) {
     assert.equal(isPlayablePuzzle('sandwich', { version: 1, givens: empty, rules: [{ ...base, ...extra }] }), false, JSON.stringify(extra))
   }
@@ -119,7 +119,7 @@ test('outside geometry retains edge, direction, repeated clues and all eight ind
     assert.deepEqual('direction' in rule && [rule.direction,rule.cells], expected[symmetry])
     const layout = outsideClueLayout(transformed.rules)
     assert.equal(Object.values(layout.depths).filter(Boolean)[0], 1.4)
-    assert.equal(Object.values(layout.sides).flat()[1].lane, 1)
+    assert.equal(layout.clues[1].lane, 1)
     assert.match(outsideClueLabel(rule as Parameters<typeof outsideClueLabel>[0]), /Sandwich 0/)
     for (const source of sources) assertVariantCompletion(reflectVariant(source.puzzle,symmetry), transformedBoard(source.solution,symmetry))
   }
