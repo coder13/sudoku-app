@@ -2162,6 +2162,10 @@ test('variant requests round-trip the rules and solve under those rules', async 
   const givens = [...solution].map((digit, cell) => [1, 6, 10, 15].includes(cell) ? '.' : digit).join('')
   const request = { type: 'variant', position: { puzzle: { version: 1, givens } } } as const
   assert.equal(await run({ ...request, operation: 'analyze' }), 'multiple')
+  assert.deepEqual(await run({ ...request, operation: 'solve-unique' }), { status: 'multiple' })
+  // Five nodes find the first completion. The second branch still needs work.
+  assert.ok(await run({ ...request, operation: 'solve', maxNodes: 5 }))
+  assert.deepEqual(await run({ ...request, operation: 'solve-unique', maxNodes: 5 }), { status: 'search-limit' })
 
   const entries = '0'.repeat(81)
   const eliminations = Array<number>(81).fill(0)
@@ -2187,6 +2191,27 @@ test('variant requests round-trip the rules and solve under those rules', async 
   assert.equal(await run({ ...variant, operation: 'analyze' }), 'unique')
   assert.equal(await run({ ...variant, operation: 'analyze', maxNodes: 0 }), 'search-limit')
   assert.equal(await run({ ...variant, operation: 'solve' }), solution)
+  assert.deepEqual(await run({ ...variant, operation: 'solve-unique' }), { status: 'unique', solution })
+
+  const progressed = [...entries]
+  progressed[1] = solution[1]
+  assert.deepEqual(await run({ ...variant, operation: 'solve-unique',
+    position: { ...position, entries: progressed.join('') } }), { status: 'unique', solution })
+  progressed[1] = solution[0]
+  assert.deepEqual(await run({ ...variant, operation: 'solve-unique',
+    position: { ...position, entries: progressed.join('') } }), { status: 'conflict' })
+
+  const blocked = eliminations.slice()
+  blocked[10] = 511
+  assert.deepEqual(await run({ ...variant, operation: 'solve-unique',
+    position: { ...position, eliminations: blocked } }), { status: 'unsolvable' })
+
+  const invalidMasks = eliminations.slice()
+  invalidMasks[10] = 512
+  const invalid = await raw({ ...variant, operation: 'solve-unique',
+    position: { ...position, eliminations: invalidMasks } })
+  assert.ok('error' in invalid)
+  assert.equal(invalid.code, 'invalid-eliminations')
 
   for (const [puzzle, code] of [
     [{ version: 2, givens }, 'unsupported-variant-version'],

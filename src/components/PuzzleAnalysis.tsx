@@ -23,12 +23,15 @@ type ScanResults = Readonly<Record<string, AnalysisCount>>
 type ScanProgress = { key: string; results: ScanResults }
 
 function AnalysisTable({
-  groups, results, solved, onSelectTechnique,
-}: { groups: readonly AnalysisGroup[]; results: ScanResults; solved: boolean; onSelectTechnique?: (technique: string) => void }) {
+  groups, results, solved, onSelectTechnique, unit = 'Candidates', label = techniqueLabel,
+}: {
+  groups: readonly AnalysisGroup[]; results: ScanResults; solved: boolean
+  onSelectTechnique?: (technique: string) => void; unit?: string; label?: (technique: string) => string
+}) {
   return (
-    <table className="analysis-table" aria-label="Available candidates by technique">
+    <table className="analysis-table" aria-label={`Available ${unit.toLowerCase()} by technique`}>
       <thead>
-        <tr><th scope="col">Technique</th><th scope="col">Candidates</th></tr>
+        <tr><th scope="col">Technique</th><th scope="col">{unit}</th></tr>
       </thead>
       {groups.map((group) => (
         <tbody key={group.title}>
@@ -45,16 +48,16 @@ function AnalysisTable({
                     ? <button type="button" className="analysis-technique-link"
                         onClick={() => onSelectTechnique(technique)}
                         disabled={count === 0 || Boolean(result && 'error' in result)}>
-                        {techniqueLabel(technique)}
+                        {label(technique)}
                       </button>
-                    : techniqueLabel(technique)}
+                    : label(technique)}
                 </th>
                 <td className={count === 0 ? 'analysis-zero' : undefined}>
                   {count !== null ? count
                     : result && 'error' in result
-                      ? <span className="analysis-failed" title={result.error} aria-label={`${techniqueLabel(technique)} scan failed`}>Unavailable</span>
-                      : <span className="analysis-pending" aria-label={`Scanning ${techniqueLabel(technique)}`}>
-                          <LoaderCircle size="1em" className="analysis-spinner" aria-hidden="true" />
+                      ? <span className="analysis-failed" title={result.error} aria-label={`${label(technique)} scan failed`}>Unavailable</span>
+                      : <span className="analysis-pending" aria-label={`Scanning ${label(technique)}`}>
+                          <LoaderCircle size="1em" className="loading-spinner" aria-hidden="true" />
                         </span>}
                 </td>
               </tr>
@@ -270,12 +273,37 @@ export function PuzzleAnalysisCard({ game, close, onSelectTechnique }: {
   )
 }
 
-export function PuzzleAnalysis({ game, close, onSelectTechnique }: {
-  game: Game; close: () => void; onSelectTechnique?: (technique: string) => void
-}) {
+type PlacementAnalysisProps = {
+  title: string
+  techniques: readonly string[]
+  counts: ReadonlyMap<string, number>
+  solved: boolean
+  unit?: string
+  problem?: string
+  onSelectTechnique: (technique: string) => void
+}
+
+export function PlacementAnalysis({ title, techniques, counts, solved, unit = 'Placements', problem, onSelectTechnique }: PlacementAnalysisProps) {
+  const [hideZero, setHideZero] = useState(true)
+  const results = Object.fromEntries(techniques.map(technique => [technique, { count: counts.get(technique) ?? 0 }]))
+  const groups = filterAnalysisGroups([{ title, techniques: [...techniques] }], results, hideZero, solved)
+  return <div className="puzzle-analysis-content">
+    {problem ? <p className="analysis-error" role="alert">{problem}</p> : <>
+      <label className="analysis-zero-filter">
+        <input type="checkbox" checked={hideZero} onChange={event => setHideZero(event.target.checked)} />
+        Hide techniques with 0 {unit.toLowerCase()}
+      </label>
+      {groups.length ? <AnalysisTable groups={groups} results={results} solved={solved} unit={unit}
+        label={technique => technique} onSelectTechnique={onSelectTechnique} />
+        : <p className="analysis-empty" role="status">No techniques with {unit.toLowerCase()}.</p>}
+    </>}
+  </div>
+}
+
+export function PuzzleAnalysis(props: (ContentsProps | PlacementAnalysisProps) & { close: () => void }) {
   return (
-    <Modal title={TECHNIQUE_FINDER_TITLE} onClose={close} className="puzzle-analysis-dialog">
-      <PuzzleAnalysisContents game={game} onSelectTechnique={onSelectTechnique} />
+    <Modal title={TECHNIQUE_FINDER_TITLE} onClose={props.close} className="puzzle-analysis-dialog">
+      {'game' in props ? <PuzzleAnalysisContents {...props} /> : <PlacementAnalysis {...props} />}
     </Modal>
   )
 }

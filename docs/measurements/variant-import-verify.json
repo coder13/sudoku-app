@@ -1,0 +1,691 @@
+{
+  "baselineCommit": "6d9ce3397174060333c8b48d9f576eaae7119b88",
+  "candidateCommit": "be6b938bc95921ef8665617dba0f2f9ad4197753",
+  "rawResultsSha256": "8e67e43087bccd2e3a1d7f960b962a2b910bcf093f0aab5e3d1a6bb8d22ac819",
+  "manifest": {
+    "status": "manifest",
+    "node": "v22.23.1",
+    "v8": "12.4.254.21-node.56",
+    "kernel": "7.1.8-arch1-3",
+    "cpu": "AMD Ryzen 7 7840U w/ Radeon  780M Graphics",
+    "samples": 5,
+    "warmups": 1,
+    "fixtures": [
+      {
+        "name": "little-killer-menace",
+        "sha256": "82cce79aa71fa38a3af6c06da94fa16d145f69abb6416b1d93c357660b2bbbd2"
+      },
+      {
+        "name": "little-killer-newman",
+        "sha256": "8ab9729e1e1dcacbf7ec9b9c5650d606ffaea6a3cf3aba477bd1478b14750890"
+      },
+      {
+        "name": "little-killer-murphy",
+        "sha256": "b516294816ced4bc1d2301dac5db1caa788be894771c3134d4e6e2e3b6d01e0f"
+      },
+      {
+        "name": "little-killer-jigsaw-mixed",
+        "sha256": "8570aa5c119a4cc0e867d7ce6f4f6bc0f4a3223564a3ae2d733b060b781a8e16"
+      },
+      {
+        "name": "renban-killer-clover",
+        "sha256": "12e02b5bbba96b953744beb2fd252b64ce9857ffe0939773f3e05bfa9b89a085"
+      },
+      {
+        "name": "sandwich-coach-9VLq",
+        "sha256": "5e8f506997e4690f555614be8149377dbc5f8e31b3e72d863f72c1a65f922644"
+      },
+      {
+        "name": "x-sum-murphy",
+        "sha256": "eed43fbd5b9e186a64369119085c35f7855f9d8bc08720d76e24bfa5811124f0"
+      },
+      {
+        "name": "region-sum-newman",
+        "sha256": "e8a01d6c0feadd24a2ab18399164741c7f562de086ba4dc718d26031d9ae7167"
+      }
+    ],
+    "builds": [
+      {
+        "name": "baseline",
+        "file": "baseline-current.wasm",
+        "sha256": "42f17dd263bd04e0adaf2d4eae61f598551f1baa78f9ac2202afa50832afcc21",
+        "bytes": 3987676,
+        "gzipBytes": 1058588
+      },
+      {
+        "name": "candidate",
+        "file": "candidate-current.wasm",
+        "sha256": "c2bfa946013d0dea3800307d9a1633b2b7c0362d665565003323c11bd68f62b9",
+        "bytes": 3989495,
+        "gzipBytes": 1059238
+      }
+    ]
+  },
+  "coldInstantiate": [
+    {
+      "status": "instantiate",
+      "build": "baseline",
+      "elapsedMs": 15.570112999999992,
+      "wasmCapacityBytes": 1376256
+    },
+    {
+      "status": "instantiate",
+      "build": "candidate",
+      "elapsedMs": 13.945873999999094,
+      "wasmCapacityBytes": 1376256
+    }
+  ],
+  "results": {
+    "little-killer-menace": {
+      "baseline": {
+        "samplesMs": [
+          10926.021212,
+          10550.863343,
+          10504.121322,
+          10497.552524,
+          10514.584757
+        ],
+        "exactOperationsMs": {
+          "analyze": [
+            5689.148034,
+            5636.741602,
+            5593.607135,
+            5561.705855,
+            5585.908065
+          ],
+          "solve": [
+            5207.583389,
+            4881.461355,
+            4884.50713,
+            4908.561789,
+            4902.633468
+          ],
+          "rate": [
+            28.695837,
+            32.230564,
+            25.391754,
+            26.664368,
+            25.514385
+          ]
+        },
+        "wasmCapacityBytes": 1572864,
+        "coldMs": 10556.730483,
+        "savedMs": 0.616104,
+        "medianMs": 10514.584757,
+        "p95Ms": 10926.021212
+      },
+      "candidate": {
+        "samplesMs": [
+          5585.759746,
+          5610.897988,
+          5585.417246,
+          5604.932511,
+          5620.414997
+        ],
+        "exactOperationsMs": {
+          "solve-unique": [
+            5556.59307,
+            5580.17889,
+            5558.412976,
+            5578.237155,
+            5593.292354
+          ],
+          "rate": [
+            28.581932,
+            30.056176,
+            26.342721,
+            26.333964,
+            26.635013
+          ]
+        },
+        "wasmCapacityBytes": 1572864,
+        "coldMs": 5601.097224,
+        "savedMs": 0.419102,
+        "medianMs": 5604.932511,
+        "p95Ms": 5620.414997
+      }
+    },
+    "little-killer-newman": {
+      "baseline": {
+        "samplesMs": [
+          422.36825,
+          414.714983,
+          420.32502,
+          411.466246,
+          408.957657
+        ],
+        "exactOperationsMs": {
+          "analyze": [
+            0.826051,
+            0.827263,
+            1.151855,
+            1.206098,
+            0.826271
+          ],
+          "solve": [
+            0.76191,
+            0.760526,
+            1.110678,
+            0.835939,
+            0.763011
+          ],
+          "rate": [
+            420.405201,
+            412.778225,
+            417.5566,
+            408.141164,
+            407.108413
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.310376,
+        "medianMs": 414.714983,
+        "p95Ms": 422.36825
+      },
+      "candidate": {
+        "samplesMs": [
+          420.885088,
+          411.021947,
+          413.173061,
+          413.514535,
+          404.776859
+        ],
+        "exactOperationsMs": {
+          "solve-unique": [
+            0.896193,
+            0.832302,
+            0.840738,
+            1.109065,
+            0.84183
+          ],
+          "rate": [
+            419.631921,
+            409.843932,
+            412.003912,
+            411.209441,
+            403.667764
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.23326,
+        "medianMs": 413.173061,
+        "p95Ms": 420.885088
+      }
+    },
+    "little-killer-murphy": {
+      "candidate": {
+        "samplesMs": [
+          177.474839,
+          172.80053,
+          176.144606,
+          175.342231,
+          172.765693
+        ],
+        "exactOperationsMs": {
+          "solve-unique": [
+            0.681587,
+            0.667831,
+            0.652001,
+            0.67215,
+            0.650459
+          ],
+          "rate": [
+            176.540274,
+            171.861036,
+            175.239757,
+            174.286707,
+            171.873529
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.307701,
+        "medianMs": 175.342231,
+        "p95Ms": 177.474839
+      },
+      "baseline": {
+        "samplesMs": [
+          176.330268,
+          173.228258,
+          177.129116,
+          174.546688,
+          173.168805
+        ],
+        "exactOperationsMs": {
+          "analyze": [
+            0.665587,
+            0.680696,
+            0.668663,
+            0.682289,
+            0.681136
+          ],
+          "solve": [
+            0.459699,
+            0.446684,
+            0.454759,
+            0.457604,
+            0.455801
+          ],
+          "rate": [
+            174.651216,
+            171.85311,
+            175.708233,
+            173.019683,
+            171.496918
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.342466,
+        "medianMs": 174.546688,
+        "p95Ms": 177.129116
+      }
+    },
+    "little-killer-jigsaw-mixed": {
+      "baseline": {
+        "samplesMs": [
+          4.349475,
+          5.143205,
+          4.632771,
+          5.792372,
+          4.5528
+        ],
+        "exactOperationsMs": {
+          "analyze": [
+            1.263496,
+            1.303031,
+            1.579243,
+            1.998104,
+            1.644056
+          ],
+          "solve": [
+            1.232909,
+            1.250673,
+            1.255532,
+            1.522966,
+            1.230564
+          ],
+          "rate": [
+            1.372012,
+            1.885722,
+            1.37102,
+            1.599652,
+            1.228961
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.500585,
+        "medianMs": 4.632771,
+        "p95Ms": 5.792372
+      },
+      "candidate": {
+        "samplesMs": [
+          4.418737,
+          3.635137,
+          4.604357,
+          4.928229,
+          3.592737
+        ],
+        "exactOperationsMs": {
+          "solve-unique": [
+            1.674283,
+            1.253287,
+            1.973487,
+            1.988286,
+            1.629628
+          ],
+          "rate": [
+            2.094255,
+            1.785162,
+            1.967296,
+            1.975641,
+            1.314473
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.397621,
+        "medianMs": 4.418737,
+        "p95Ms": 4.928229
+      }
+    },
+    "renban-killer-clover": {
+      "candidate": {
+        "samplesMs": [
+          1.124174,
+          0.841639,
+          1.049172,
+          2.468252,
+          1.204234
+        ],
+        "exactOperationsMs": {
+          "solve-unique": [
+            0.261384,
+            0.189267,
+            0.257537,
+            0.331987,
+            0.266664
+          ],
+          "rate": [
+            0.625632,
+            0.427688,
+            0.618038,
+            0.69351,
+            0.621334
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.229083,
+        "medianMs": 1.124174,
+        "p95Ms": 2.468252
+      },
+      "baseline": {
+        "samplesMs": [
+          1.135244,
+          0.883629,
+          0.904198,
+          1.284496,
+          1.430102
+        ],
+        "exactOperationsMs": {
+          "analyze": [
+            0.27001,
+            0.170312,
+            0.188816,
+            0.252687,
+            0.290719
+          ],
+          "solve": [
+            0.199226,
+            0.150745,
+            0.153009,
+            0.234874,
+            0.274088
+          ],
+          "rate": [
+            0.42364,
+            0.396449,
+            0.393132,
+            0.603119,
+            0.607227
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.250163,
+        "medianMs": 1.135244,
+        "p95Ms": 1.430102
+      }
+    },
+    "sandwich-coach-9VLq": {
+      "baseline": {
+        "samplesMs": [
+          804.48918,
+          799.358757,
+          798.364258,
+          801.907399,
+          798.178875
+        ],
+        "exactOperationsMs": {
+          "analyze": [
+            39.658973,
+            39.625891,
+            39.67335,
+            39.940856,
+            39.773219
+          ],
+          "solve": [
+            38.526584,
+            38.335654,
+            38.367805,
+            38.965053,
+            38.361132
+          ],
+          "rate": [
+            725.759815,
+            721.05192,
+            720.032724,
+            722.687156,
+            719.737183
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.346565,
+        "medianMs": 799.358757,
+        "p95Ms": 804.48918
+      },
+      "candidate": {
+        "samplesMs": [
+          762.528287,
+          760.209797,
+          760.807895,
+          792.956702,
+          763.332943
+        ],
+        "exactOperationsMs": {
+          "solve-unique": [
+            40.150101,
+            39.740217,
+            39.85296,
+            39.801312,
+            40.059239
+          ],
+          "rate": [
+            722.066999,
+            720.17833,
+            720.657544,
+            752.549395,
+            722.833813
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.398684,
+        "medianMs": 762.528287,
+        "p95Ms": 792.956702
+      }
+    },
+    "x-sum-murphy": {
+      "candidate": {
+        "samplesMs": [
+          6.987118,
+          7.072329,
+          6.890526,
+          5.707751,
+          5.107417
+        ],
+        "exactOperationsMs": {
+          "solve-unique": [
+            2.364246,
+            2.374575,
+            2.367292,
+            2.41396,
+            1.542344
+          ],
+          "rate": [
+            4.289502,
+            4.36247,
+            4.262381,
+            3.006149,
+            3.387288
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.120107,
+        "medianMs": 6.890526,
+        "p95Ms": 7.072329
+      },
+      "baseline": {
+        "samplesMs": [
+          10.757069,
+          9.079009,
+          9.47101,
+          9.389326,
+          6.68115
+        ],
+        "exactOperationsMs": {
+          "analyze": [
+            2.494432,
+            2.312648,
+            2.477981,
+            2.374956,
+            1.57784
+          ],
+          "solve": [
+            2.376158,
+            2.290496,
+            2.410784,
+            2.37183,
+            1.551741
+          ],
+          "rate": [
+            5.497565,
+            4.127557,
+            4.297458,
+            4.370306,
+            3.384643
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.152919,
+        "medianMs": 9.389326,
+        "p95Ms": 10.757069
+      }
+    },
+    "region-sum-newman": {
+      "baseline": {
+        "samplesMs": [
+          1.009657,
+          1.50862,
+          1.251214,
+          0.884591,
+          0.821121
+        ],
+        "exactOperationsMs": {
+          "analyze": [
+            0.202642,
+            0.316298,
+            0.302491,
+            0.225326,
+            0.209516
+          ],
+          "solve": [
+            0.18482,
+            0.283065,
+            0.287894,
+            0.188887,
+            0.187895
+          ],
+          "rate": [
+            0.487591,
+            0.483864,
+            0.481419,
+            0.322038,
+            0.305136
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.124866,
+        "medianMs": 1.009657,
+        "p95Ms": 1.50862
+      },
+      "candidate": {
+        "samplesMs": [
+          0.996894,
+          0.970463,
+          0.97947,
+          0.959042,
+          0.690294
+        ],
+        "exactOperationsMs": {
+          "solve-unique": [
+            0.305587,
+            0.308743,
+            0.309144,
+            0.308963,
+            0.214435
+          ],
+          "rate": [
+            0.515644,
+            0.498943,
+            0.490106,
+            0.485677,
+            0.348939
+          ]
+        },
+        "wasmCapacityBytes": 3604480,
+        "savedMs": 0.113234,
+        "medianMs": 0.970463,
+        "p95Ms": 0.996894
+      }
+    }
+  },
+  "checks": {
+    "status": "complete",
+    "pairedPreviews": 49,
+    "savedPreviews": 8,
+    "exactControls": 13
+  },
+  "exactControls": [
+    {
+      "name": "classic",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "x-sudoku",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "killer",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "jigsaw-killer",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "windoku",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "little-killer-newman-progressed",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "little-killer-murphy-progressed",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "little-killer-jigsaw-mixed-progressed",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "renban-killer-clover-progressed",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "sandwich-coach-9VLq-progressed",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "x-sum-murphy-progressed",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "region-sum-newman-progressed",
+      "maxNodes": 1000000,
+      "status": "unique"
+    },
+    {
+      "name": "Renban ModE with a tight budget",
+      "maxNodes": 20000,
+      "status": "search-limit"
+    }
+  ]
+}

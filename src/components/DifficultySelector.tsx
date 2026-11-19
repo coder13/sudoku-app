@@ -1,8 +1,8 @@
-import { IconButton } from './Button'
-import { useId, useMemo, useSyncExternalStore } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button, IconButton } from './Button'
+import { useId, useMemo, useSyncExternalStore, type ReactNode } from 'react'
+import { ChevronLeft, ChevronRight, Dices } from 'lucide-react'
 import { DIFFICULTY_LABELS, type DifficultyPreference } from '../sudoku/difficulty'
-import { difficultyStatistics } from '../sudoku/difficulty-statistics'
+import { difficultyStatistics, type DifficultyStatistics } from '../sudoku/difficulty-statistics'
 import type { Difficulty } from '../sudoku/engine'
 import { formatTime } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
@@ -16,16 +16,30 @@ export function DifficultySelector({ value, recommended, variant, disabled = fal
   disabled?: boolean
   onChange: (value: DifficultyPreference) => void
 }) {
-  const id = useId()
   const { games } = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot, roomStore.getServerSnapshot)
   const statistics = useMemo(() => difficultyStatistics(games, variant), [games, variant])
   const sized = isSizedPuzzleId(variant)
   const levels: readonly Difficulty[] = sized ? miniDifficulties : variantDifficulties(variant).filter((level): level is Difficulty => level !== 'auto')
   const selected = sized ? miniDifficulty(value) : variantDifficulty(variant, value === 'auto' ? recommended : value)
+  return <DifficultyOptions levels={levels} selected={selected} statistics={statistics}
+    disabled={disabled} onChange={onChange}
+    auto={sized ? undefined : { active: value === 'auto', onChange: active => onChange(active ? 'auto' : selected) }} />
+}
+
+/** Use for the shared difficulty list on desktop and stepper on small screens. */
+export function DifficultyOptions<Level extends Difficulty>({ levels, selected, statistics, disabled = false, auto, onChange }: {
+  levels: readonly Level[]
+  selected: Level
+  statistics: ReadonlyMap<Level, DifficultyStatistics>
+  disabled?: boolean
+  auto?: { active: boolean; onChange: (active: boolean) => void }
+  onChange: (level: Level) => void
+}) {
+  const id = useId()
   const index = levels.indexOf(selected)
   const selectedStats = statistics.get(selected)
 
-  function averageTime(level: Difficulty) {
+  function averageTime(level: Level) {
     const seconds = statistics.get(level)?.averageSeconds
     return seconds == null ? '–' : formatTime(seconds)
   }
@@ -38,7 +52,7 @@ export function DifficultySelector({ value, recommended, variant, disabled = fal
     <legend>Difficulty</legend>
     <div className="difficulty-list">
       {levels.map((level) => <label key={level}>
-        <input type="radio" name={id} value={level} checked={value !== 'auto' && selected === level}
+        <input type="radio" name={id} value={level} checked={!auto?.active && selected === level}
           aria-labelledby={`${id}-${level}-label`} aria-describedby={`${id}-${level}-stats`}
           onChange={() => onChange(level)} />
         <span id={`${id}-${level}-label`}>{DIFFICULTY_LABELS[level]}</span>
@@ -77,9 +91,32 @@ export function DifficultySelector({ value, recommended, variant, disabled = fal
         <div><dt>Average time</dt><dd aria-label={averageTime(selected) === '–' ? 'No average time yet' : undefined}>{averageTime(selected)}</dd></div>
       </dl>
     </div>
-    {!sized && <label className="difficulty-selector-auto">
-      <input type="checkbox" checked={value === 'auto'} onChange={(event) => onChange(event.target.checked ? 'auto' : selected)} />
+    {auto && <label className="difficulty-selector-auto">
+      <input type="checkbox" checked={auto.active} onChange={(event) => auto.onChange(event.target.checked)} />
       Adjust difficulty automatically
     </label>}
   </fieldset>
+}
+
+/** Use to present the selected puzzle, difficulty controls, and start action. */
+export function PuzzleDifficultyStep({ name, preview, children, busy = false, disabled, error, startLabel, onStart, actions }: {
+  name: string
+  preview: ReactNode
+  children: ReactNode
+  busy?: boolean
+  disabled?: boolean
+  error?: string | null
+  startLabel: string
+  onStart: () => void
+  actions?: ReactNode
+}) {
+  return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
+    <p className="new-puzzle-variant-summary">{preview}<span>{name}</span></p>
+    {children}
+    {error && <p className="form-error" role="alert">{error}</p>}
+    <Button variant="primary" className="puzzle-start-button" disabled={busy || disabled} onClick={onStart}>
+      <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : startLabel}
+    </Button>
+    {actions}
+  </section>
 }

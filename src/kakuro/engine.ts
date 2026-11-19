@@ -103,38 +103,25 @@ function runSupport(run: KakuroRun, domains: readonly number[], memo: Int8Array)
 
   const order = allowed.map((_, i) => i).sort((a, b) => digitCounts[allowed[a]] - digitCounts[allowed[b]])
   const support = allowed.map(() => 0)
-  // A memo entry of 2 also marks that its cell support has been collected.
   memo.fill(0)
-  function canAssign(remaining: number): boolean {
+  function collectSupport(remaining: number): boolean {
     if (!remaining) return true
     if (memo[remaining]) return memo[remaining] > 0
-    const index = order[order.length - digitCounts[remaining]]
-    for (let choices = remaining & allowed[index]; choices; choices &= choices - 1) {
-      if (canAssign(remaining ^ (choices & -choices))) {
-        memo[remaining] = 1
-        return true
-      }
-    }
-    memo[remaining] = -1
-    return false
-  }
-
-  function collect(remaining: number): void {
-    if (!remaining || memo[remaining] === 2) return
-    memo[remaining] = 2
-    const index = order[order.length - digitCounts[remaining]]
+    const index = order[length - digitCounts[remaining]]
+    let supported = 0
     for (let choices = remaining & allowed[index]; choices; choices &= choices - 1) {
       const digit = choices & -choices
-      const next = remaining ^ digit
-      if (canAssign(next)) {
-        support[index] |= digit
-        collect(next)
-      }
+      if (collectSupport(remaining ^ digit)) supported |= digit
     }
+    // Each prefix uses digits from a valid sum combination. A matching
+    // suffix completes that run, so it can contribute support here.
+    support[index] |= supported
+    memo[remaining] = supported ? 1 : -1
+    return supported !== 0
   }
 
   for (const combination of combinations) {
-    if ((combination & union) === combination && canAssign(combination)) collect(combination)
+    if ((combination & union) === combination) collectSupport(combination)
     if (support.every((mask, i) => mask === allowed[i])) break
   }
   return support[0] ? support : null
@@ -181,51 +168,71 @@ function propagate(
   recordStep?: (run: KakuroRun, domains: readonly number[], support: readonly number[], depth: number) => void,
 ): boolean {
   const memo = new Int8Array(allDigits + 1)
+  const narrowedAt = new Uint32Array(domains.length)
+  const checkedAt = new Uint32Array(puzzle.runs.length)
+  let revision = 0
   let changed = true
   let depth = 0
   while (changed) {
     changed = false
     depth++
-    for (const run of puzzle.runs) {
+    for (const [index, run] of puzzle.runs.entries()) {
+      // Each value that survives a run check still belongs to a full
+      // assignment for that run. Check again only after another run
+      // narrows one of its cells.
+      if (depth > 1 && !run.cells.some(cell => narrowedAt[cell] > checkedAt[index])) continue
       const support = runSupport(run, domains, memo)
       if (!support) return false
       const firstChange = run.cells.findIndex((cell, i) => support[i] !== domains[cell])
-      if (firstChange === -1) continue
-      recordStep?.(run, domains, support, depth)
-      for (let i = firstChange; i < run.cells.length; i++) domains[run.cells[i]] = support[i]
-      changed = true
+      if (firstChange !== -1) {
+        recordStep?.(run, domains, support, depth)
+        revision++
+        for (let i = firstChange; i < run.cells.length; i++) {
+          const cell = run.cells[i]
+          if (domains[cell] === support[i]) continue
+          domains[cell] = support[i]
+          narrowedAt[cell] = revision
+        }
+        changed = true
+      }
+      checkedAt[index] = revision
     }
   }
   return true
 }
 
 export function findKakuroHint(puzzle: KakuroPuzzle, values: readonly number[]): KakuroHint | null {
+  return findKakuroHints(puzzle, values, 1)[0] ?? null
+}
+
+export function findKakuroHints(puzzle: KakuroPuzzle, values: readonly number[], limit = Infinity): KakuroHint[] {
   const trace: KakuroHintStep[] = []
-  let placement: Pick<KakuroHint, 'cell' | 'digit' | 'depth'> | undefined
+  const placements: (Pick<KakuroHint, 'cell' | 'digit' | 'depth'> & { through: number })[] = []
   const consistent = propagate(puzzle, createDomains(puzzle, values), (run, domains, support, depth) => {
-    if (placement) return
+    if (placements.length >= limit) return
     const changes: KakuroCandidateChange[] = []
     for (const [i, cell] of run.cells.entries()) {
       const remainingMask = support[i]
       const removedMask = domains[cell] & ~remainingMask
       if (!removedMask) continue
       changes.push({ cell, removedMask, remainingMask })
-      if (!placement && digitCounts[remainingMask] === 1) {
-        placement = { cell, digit: digitFromMask(remainingMask), depth }
+      if (placements.length < limit && digitCounts[remainingMask] === 1) {
+        placements.push({ cell, digit: digitFromMask(remainingMask), depth, through: trace.length + 1 })
       }
     }
     trace.push({ run, changes })
   })
-  if (!consistent || !placement) return null
-
-  // Keep each step that narrowed a cell used by a later step in this proof.
-  const needed = new Set([placement.cell])
-  const steps = trace.reverse().filter(({ run, changes }) => {
-    if (!changes.some(({ cell }) => needed.has(cell))) return false
-    for (const cell of run.cells) needed.add(cell)
-    return true
-  }).reverse()
-  return { ...placement, runs: [...new Set(steps.map(step => step.run))], steps }
+  if (!consistent) return []
+  return placements.map(({ through, ...placement }) => {
+    // Keep each step that narrowed a cell used by a later step in this proof.
+    const needed = new Set([placement.cell])
+    const steps = trace.slice(0, through).reverse().filter(({ run, changes }) => {
+      if (!changes.some(({ cell }) => needed.has(cell))) return false
+      for (const cell of run.cells) needed.add(cell)
+      return true
+    }).reverse()
+    return { ...placement, runs: [...new Set(steps.map(step => step.run))], steps }
+  })
 }
 
 export type KakuroSolution = {

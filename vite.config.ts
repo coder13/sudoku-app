@@ -5,7 +5,10 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { ocrAssetFileNames } from './scripts/ocr-assets.ts'
 import { calcudokuCatalog } from './src/calcudoku/catalog.ts'
+import { futoshikiCatalog } from './src/futoshiki/catalog.ts'
+import { hidatoCatalog } from './src/hidato/catalog.ts'
 import { kakuroCatalog } from './src/kakuro/catalog.ts'
+import { rulloCatalog } from './src/rullo/catalog.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
 import { syncPageTitles } from './src/sudoku/sync-pages.ts'
 import { PRODUCTION_SYNC_ORIGIN } from './src/sudoku/pairing-link.ts'
@@ -67,9 +70,17 @@ function prerenderPages() {
     '/puzzles/new/difficulty',
     '/puzzles/games',
     '/puzzles/calcudoku',
+    '/puzzles/calcudoku/generated',
     ...calcudokuCatalog.map(({ id }) => `/puzzles/calcudoku/${id}`),
+    '/puzzles/futoshiki',
+    ...futoshikiCatalog.map(({ id }) => `/puzzles/futoshiki/${id}`),
+    '/puzzles/hidato',
+    ...hidatoCatalog.map(({ id }) => `/puzzles/hidato/${id}`),
     '/puzzles/kakuro',
+    '/puzzles/kakuro/generated',
     ...kakuroCatalog.map(({ id }) => `/puzzles/kakuro/${id}`),
+    '/puzzles/rullo',
+    ...rulloCatalog.map(({ id }) => `/puzzles/rullo/${id}`),
     '/puzzles/solved',
     '/puzzles/collections',
     '/puzzles/statistics',

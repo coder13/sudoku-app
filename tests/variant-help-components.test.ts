@@ -15,6 +15,7 @@ import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 
 let Button: (props: Record<string, unknown>) => ReactNode
 let server: ViteDevServer
+let PlayLayout: (props: Record<string, unknown>) => ReactNode
 let Worktable: (props: Record<string, unknown>) => ReactNode
 let SolutionDialog: (props: Record<string, unknown>) => ReactNode
 let SolutionPath: (props: Record<string, unknown>) => ReactNode
@@ -31,6 +32,7 @@ before(async () => {
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] } })
   ;({ Button } = await server.ssrLoadModule('/src/components/Button.tsx'))
+  ;({ PlayLayout } = await server.ssrLoadModule('/src/components/PlayLayout.tsx'))
   ;({ Worktable } = await server.ssrLoadModule('/src/components/Worktable.tsx'))
   ;({ SolutionDialog, SolutionPath, solutionEndSummary } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
@@ -210,6 +212,17 @@ function worktableTree(id: Exclude<PuzzleVariantId, 'mixed'>, workspaceMode: 'st
   return elements(tree)
 }
 
+function desktopPlayMarkup(tree: ReturnType<typeof worktableTree>) {
+  const layout = tree.find(({ type }) => type === PlayLayout)
+  assert.ok(layout)
+  const insights = layout.props.insights as { content: ReactElement }
+  assert.equal(insights.content.type, PuzzleAnalysisContents)
+  // Render the layout and tabs with inert slots. The workspace uses live engine and router state.
+  return renderToStaticMarkup(createElement(PlayLayout, {
+    ...layout.props, puzzle: null, input: null, hint: null, insights: { ...insights, content: null },
+  }))
+}
+
 for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixed'>)[]) {
   test(`${id} exposes hint actions, solution, and technique finder in both desktop workspaces`, () => {
     const previous = playPreferences.DEFAULT_PLAY_PREFERENCES.desktopViews
@@ -218,11 +231,11 @@ for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixe
       const standard = worktableTree(id, 'standard')
       if (id !== 'classic') assert.ok(standard.some(({ type, props }) => type === 'button' &&
         props['aria-label'] === `${PUZZLE_VARIANTS[id].name} Sudoku rules`), 'Global and local rules must remain discoverable')
-      assert.ok(standard.some(({ props }) => props['data-insight-tab'] === 'solution'))
-      assert.ok(standard.some(({ props }) => props['data-insight-tab'] === 'techniques'))
-      assert.ok(standard.some(({ type }) => typeof type === 'function' && type.name === 'PuzzleAnalysisContents'))
+      const html = desktopPlayMarkup(standard)
+      assert.match(html, /data-insight-tab="solution"/)
+      assert.match(html, /data-insight-tab="techniques"/)
       const completed = worktableTree(id, 'standard', true)
-      assert.ok(completed.some(({ props }) => props['data-insight-tab'] === 'techniques'), 'An open finder stays visible after completion')
+      assert.match(desktopPlayMarkup(completed), /data-insight-tab="techniques"/, 'An open finder stays visible after completion')
       for (const mode of ['standard', 'advanced'] as const) {
         const tree = worktableTree(id, mode)
         assert.ok(tree.some(({ type, props }) => type === 'button' && renderToStaticMarkup(createElement('span', null, props.children as ReactNode)).includes('View hint')))

@@ -1,13 +1,15 @@
-import { calcudokuCatalog, type CalcudokuEntry } from '../calcudoku/catalog'
+import { calcudokuCatalog, generatedCalcudokuEntry, type CalcudokuEntry } from '../calcudoku/catalog'
 import { operatorSymbol } from '../calcudoku/engine'
-import { cellLabel, checkLatin, findLatinHint } from '../latin/engine'
+import { cellLabel, checkLatin, findLatinHints, solveLatin } from '../latin/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 
 const calcudoku: NumberGameConfig<CalcudokuEntry> = {
   game: 'calcudoku',
   name: 'Calcudoku',
   rules: 'Use every number from 1 to the grid size once in each row and column. Each cage’s numbers must match its target and operation.',
+  techniques: ['Row and column', 'Cage arithmetic'],
   entries: calcudokuCatalog,
+  generatedEntry: generatedCalcudokuEntry,
   board: ({ puzzle }) => {
     const { size, cages, givens } = puzzle
     const cageAt = new Map(cages.flatMap(cage => cage.cells.map(cell => [cell, cage] as const)))
@@ -40,11 +42,17 @@ const calcudoku: NumberGameConfig<CalcudokuEntry> = {
         const { complete, conflicts } = checkLatin(puzzle, values)
         return { complete, marked: conflicts.flatMap(rule => rule.cells.filter(cell => values[cell] || givens[cell])) }
       },
-      hint: values => {
-        const hint = findLatinHint(puzzle, values)
-        return hint && { cell: hint.cell, value: hint.value, marked: hint.rules.flatMap(rule => rule.cells),
-          reasons: hint.rules.map(rule => rule.label) }
+      solve: () => {
+        const result = solveLatin(puzzle)
+        return result.status === 'unique' ? result.solution : null
       },
+      hints: (values, limit) => findLatinHints(puzzle, values, limit).map(hint => ({
+        cell: hint.cell,
+        value: hint.value,
+        technique: hint.rules[0].kind === 'line' ? 'Row and column' : 'Cage arithmetic',
+        marked: hint.rules.flatMap(rule => rule.cells),
+        reasons: hint.rules.map(rule => rule.label),
+      })),
     }
   },
 }

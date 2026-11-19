@@ -41,10 +41,10 @@ function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[], chains: rea
   })
 }
 
-export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit }: {
+export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit, drawingIntent, setDrawingIntent }: {
   canDraw: boolean; graphCurrent: boolean; canAnalyze: boolean; startHighlightDigit: number | null
+  drawingIntent: boolean | null; setDrawingIntent: (intent: boolean) => void
 }) {
-  const [drawingIntent, setDrawingIntent] = useState<boolean | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
   const [status, setStatus] = useState('')
   const { sketches, activeId, pending } = game.chainSketch ?? initialChainSketch
@@ -90,7 +90,6 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   }, [graph, drawing, pending, edges, active.type, active.hidden])
 
   useEffect(() => {
-    setDrawingIntent(null)
     setHovered(null)
     setStatus('')
   }, [game.id])

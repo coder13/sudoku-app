@@ -364,6 +364,11 @@ pub(super) struct GuardianSearch<'a> {
     reached: Vec<[u64; WORDS]>,
 }
 
+pub(super) struct GuardianRefutations {
+    pub maximum_guardians: usize,
+    removals: Vec<[u64; WORDS]>,
+}
+
 impl<'a> GuardianSearch<'a> {
     const CONTRADICTION: usize = UNSEEN - 1;
 
@@ -424,14 +429,22 @@ impl<'a> GuardianSearch<'a> {
     pub(super) fn visit_refutations(
         &mut self,
         guardians: &[Candidate],
+        refutations: &GuardianRefutations,
         useful: &mut impl FnMut(HintAction) -> bool,
         visit: &mut impl FnMut(HintAction, Vec<ForcingBranch>) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         let indices: Vec<_> = guardians.iter().copied().map(index).collect();
         let words = guardian_words(&indices);
-        for i in 0..self.branch.graph.available.len() {
-            let id = self.branch.graph.available[i];
-            for assumption in [id * 2 + 1, id * 2] {
+        // If an assumption leaves at most one guardian possible, it rules
+        // out at least one of the first two. The index uses the conclusion
+        // so that iteration tries each candidate's positive assumption first.
+        let first = &refutations.removals[indices[0]];
+        let second = &refutations.removals[indices[1]];
+        for (word, (&first, &second)) in first.iter().zip(second).enumerate() {
+            let mut candidates = first | second;
+            while candidates != 0 {
+                let assumption = (word * 64 + candidates.trailing_zeros() as usize) ^ 1;
+                candidates &= candidates - 1;
                 let Some(reached) = self.reached(assumption) else {
                     continue;
                 };
@@ -452,22 +465,33 @@ impl<'a> GuardianSearch<'a> {
     }
 
     /// A first guardian inference needs all but one of its candidates removed by ordinary propagation.
-    pub(super) fn maximum_guardians_to_try(&mut self) -> usize {
+    pub(super) fn refutation_candidates(&mut self) -> GuardianRefutations {
         const FALSE_STATES: u64 = 0x5555_5555_5555_5555;
-        let mut maximum = 0;
+        let mut refutations = GuardianRefutations {
+            maximum_guardians: 0,
+            removals: vec![[0; WORDS]; CANDIDATE_COUNT],
+        };
         for i in 0..self.branch.graph.available.len() {
             let id = self.branch.graph.available[i];
             for assumption in [id * 2 + 1, id * 2] {
                 if let Some(reached) = self.reached(assumption) {
-                    let removals = reached
-                        .iter()
-                        .map(|&word| (word & FALSE_STATES).count_ones())
-                        .sum::<u32>();
-                    maximum = maximum.max(removals as usize + 1);
+                    let conclusion = assumption ^ 1;
+                    let mut count = 0;
+                    for (word, &known) in reached.iter().enumerate() {
+                        let mut removed = known & FALSE_STATES;
+                        count += removed.count_ones() as usize;
+                        while removed != 0 {
+                            let candidate = word * 32 + removed.trailing_zeros() as usize / 2;
+                            removed &= removed - 1;
+                            refutations.removals[candidate][conclusion / 64] |=
+                                1 << (conclusion % 64);
+                        }
+                    }
+                    refutations.maximum_guardians = refutations.maximum_guardians.max(count + 1);
                 }
             }
         }
-        maximum
+        refutations
     }
 
     fn reached(&mut self, assumption: usize) -> Option<&[u64; WORDS]> {
@@ -1148,6 +1172,39 @@ mod guardian_tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn guardian_refutation_index_matches_settled_branch_removals() {
+        let board = crate::parse_givens(
+            "100007090030020008009600500005300900010080002600004000300000010041000007007000300",
+        )
+        .unwrap();
+        let masks = crate::candidates(&board).unwrap();
+        let positions = super::super::candidate_positions(&masks);
+        let graph = ForcingGraph::new(&masks, &positions);
+        let refutations = GuardianSearch::new(&graph).refutation_candidates();
+        let mut branch = BranchSearch::new(&graph, Mode::Dynamic);
+        let mut maximum = 0;
+        for &id in &graph.available {
+            for assumption in [id * 2 + 1, id * 2] {
+                let settles = branch.run(assumption).is_none();
+                let conclusion = assumption ^ 1;
+                let mut count = 0;
+                for (guardian, indexed) in refutations.removals.iter().enumerate() {
+                    let removed = settles && branch.seen[guardian * 2] != UNSEEN;
+                    count += usize::from(removed);
+                    assert_eq!(
+                        indexed[conclusion / 64] & (1 << (conclusion % 64)) != 0,
+                        removed
+                    );
+                }
+                if settles {
+                    maximum = maximum.max(count + 1);
+                }
+            }
+        }
+        assert_eq!(refutations.maximum_guardians, maximum);
     }
 
     #[test]

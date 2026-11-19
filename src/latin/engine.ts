@@ -1,5 +1,6 @@
 export type LatinRule = {
   label: string
+  kind?: 'line'
   cells: readonly number[]
   support: (domains: readonly number[]) => readonly number[] | null
 }
@@ -70,7 +71,7 @@ export function createLatinPuzzle(size: number, givens: readonly number[], extra
   ] as const) {
     for (const line of indices) {
       const cells = indices.map(offset => at(line, offset))
-      rules.push({ label: `${axis} ${line + 1}`, cells, support: domains => lineSupport(cells, domains, all) })
+      rules.push({ kind: 'line', label: `${axis} ${line + 1}`, cells, support: domains => lineSupport(cells, domains, all) })
     }
   }
   return { size, givens, rules }
@@ -116,21 +117,25 @@ function propagate(puzzle: LatinPuzzle, domains: number[], onChange?: RuleChange
 export type LatinHint = { cell: number; value: number; rules: LatinRule[]; depth: number }
 
 export function findLatinHint(puzzle: LatinPuzzle, values: readonly number[]): LatinHint | null {
+  return findLatinHints(puzzle, values, 1)[0] ?? null
+}
+
+export function findLatinHints(puzzle: LatinPuzzle, values: readonly number[], limit = Infinity): LatinHint[] {
   const domains = initialDomains(puzzle, values)
   const dependencies: Array<Set<LatinRule> | undefined> = []
-  let hint: LatinHint | null = null
+  const hints: LatinHint[] = []
   const valid = propagate(puzzle, domains, (cell, rule, depth) => {
-    if (hint) return
+    if (hints.length >= limit) return
     const reasons = new Set([rule])
     for (const peer of rule.cells) {
       for (const reason of dependencies[peer] ?? []) reasons.add(reason)
     }
     dependencies[cell] = reasons
     if (!puzzle.givens[cell] && !values[cell] && counts[domains[cell]] === 1) {
-      hint = { cell, value: valueOf(domains[cell]), rules: [...reasons], depth }
+      hints.push({ cell, value: valueOf(domains[cell]), rules: [...reasons], depth })
     }
   })
-  return valid ? hint : null
+  return valid ? hints : []
 }
 
 // Search starts from a fixed point at every child. Recheck only rules that

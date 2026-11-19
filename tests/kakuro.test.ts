@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { kakuroRecipeSignature } from '../scripts/generate-kakuro-catalog.mts'
 import { kakuroCatalog } from '../src/kakuro/catalog.ts'
-import { checkKakuro, createKakuro, findKakuroHint, solveKakuro, type KakuroPuzzle, type KakuroRun } from '../src/kakuro/engine.ts'
+import { checkKakuro, createKakuro, findKakuroHint, findKakuroHints, solveKakuro, type KakuroPuzzle, type KakuroRun } from '../src/kakuro/engine.ts'
 
 function enumerateTuples(run: KakuroRun): number[][] {
   const result: number[][] = []
@@ -62,6 +62,13 @@ test('every Kakuro recipe has one independently counted solution and a complete 
     assert.equal(exact.nodes, 1, id)
     assert.ok(exact.solution, id)
     const path = puzzle.cells.map(() => 0)
+    const placements = findKakuroHints(puzzle, path)
+    assert.deepEqual(placements[0], findKakuroHint(puzzle, path), id)
+    assert.equal(new Set(placements.map(hint => hint.cell)).size, placements.length, id)
+    for (const hint of placements) {
+      assert.equal(path[hint.cell], 0, id)
+      assert.equal(hint.digit, exact.solution[hint.cell], id)
+    }
     let depth = 0
     while (!checkKakuro(puzzle, path).complete) {
       const hint = findKakuroHint(puzzle, path)
@@ -89,6 +96,21 @@ test('each difficulty adds eight distinct puzzles in four layouts after the star
       `${puzzle.width}:${puzzle.cells.map(cell => cell === null ? '.' : '/').join('')}`))
     assert.equal(layouts.size, 4)
   }
+})
+
+test('Kakuro signatures identify rotated, reflected, and complemented clues on rectangular boards', () => {
+  function rectangle(down: number[], across: number[]) {
+    return createKakuro(down.length + 1, [
+      {}, ...down.map(total => ({ down: total })),
+      ...across.flatMap(total => [{ across: total }, ...down.map(() => null)]),
+    ])
+  }
+
+  const original = kakuroRecipeSignature(rectangle([6, 8, 10], [9, 15]))
+  assert.equal(kakuroRecipeSignature(rectangle([10, 8, 6], [9, 15])), original)
+  assert.equal(kakuroRecipeSignature(rectangle([15, 9], [6, 8, 10])), original)
+  assert.equal(kakuroRecipeSignature(rectangle([14, 12, 10], [21, 15])), original)
+  assert.notEqual(kakuroRecipeSignature(rectangle([6, 8, 10], [10, 14])), original)
 })
 
 test('each clue step can be replayed from placed digits and earlier steps', () => {

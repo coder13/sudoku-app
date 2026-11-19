@@ -133,18 +133,29 @@ export const KakuroFromGameTypes: Story = {
     await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
     await expect(await canvas.findByRole('heading', { name: 'Choose a game type' })).toHaveFocus()
     await userEvent.click(canvas.getByRole('link', { name: /Kakuro/ }))
-    await userEvent.click(await canvas.findByRole('link', { name: /Easy/ }))
+    await expect(await canvas.findByRole('button', { name: 'Decrease difficulty' })).toBeDisabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Increase difficulty' }))
+    await expect(canvas.getByRole('button', { name: 'Start medium puzzle' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Decrease difficulty' }))
+    await userEvent.click(await canvas.findByRole('link', { name: 'Play a catalog puzzle' }))
     const cell = await canvas.findByRole('button', { name: /^R2C3, empty/ })
     await userEvent.click(cell)
     await userEvent.keyboard('1')
     await expect(cell).toHaveAccessibleName(/^R2C3, 1/)
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
-    await userEvent.click(canvas.getByRole('button', { name: /^Hint$/ }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
+    for (const name of ['Show digits', 'Show location', 'Show explanation']) {
+      await userEvent.click(await canvas.findByRole('button', { name }))
+    }
     await userEvent.click(canvas.getByText('Show hint steps'))
     await expect(canvas.getByText('The clue rules out 1 in R4C2. R4C2 can only be 3.')).toBeVisible()
-    await userEvent.click(canvas.getByRole('button', { name: 'Place 3' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Apply hint' }))
     await expect(canvas.getByRole('button', { name: /^R4C2, 3/ })).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Kakuro difficulty' }))
+    await expect(await canvas.findByRole('heading', { name: 'Choose difficulty' })).toHaveFocus()
+    await expect(await canvas.findByRole('button', { name: 'Start easy puzzle' })).toBeEnabled()
   },
 }
 
@@ -154,11 +165,46 @@ export const CalcudokuFromGameTypes: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
     await userEvent.click(await canvas.findByRole('link', { name: /Calcudoku/ }))
-    await userEvent.click(await canvas.findByRole('link', { name: /Easy/ }))
+    await userEvent.click(await canvas.findByRole('link', { name: 'Play a catalog puzzle' }))
     const cell = await canvas.findByRole('button', { name: /^R1C1, empty/ })
     await userEvent.click(cell)
     await userEvent.keyboard('1')
     await expect(cell).toHaveAccessibleName(/^R1C1, 1/)
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+  },
+}
+
+export const FutoshikiFromGameTypes: Story = {
+  ...ChooseVariant,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Futoshiki/ }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Start easy puzzle' }))
+    const cell = await canvas.findByRole('button', { name: /^R2C3, empty/ })
+    await expect(cell).toHaveAccessibleName(/R2C3 is less than R2C2/)
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect(canvas.getByRole('button', { name: /^R2C2, empty/ })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Futoshiki difficulty' }))
+    const increase = await canvas.findByRole('button', { name: 'Increase difficulty' })
+    await userEvent.click(increase)
+    await userEvent.click(increase)
+    await userEvent.click(canvas.getByRole('button', { name: 'Start hard puzzle' }))
+    await expect(await canvas.findByRole('group', { name: 'Digit pad' })).toHaveClass('six-keypad')
+  },
+}
+
+export const HidatoTwoDigitEntry: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/hidato/hard-1" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const cell = await canvas.findByRole('button', { name: /^R1C2, empty/ })
+    await userEvent.click(cell)
+    const input = canvas.getByRole('textbox', { name: 'Number from 1 to 23' })
+    await userEvent.type(input, '12')
+    await userEvent.click(canvas.getByRole('button', { name: /^Place$/ }))
+    await expect(cell).toHaveAccessibleName(/^R1C2, 12/)
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
   },
 }

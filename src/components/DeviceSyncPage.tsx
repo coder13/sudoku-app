@@ -1,6 +1,6 @@
 import { Button, ChoiceButton, IconButton, buttonClassName } from './Button'
 import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
-import { ArrowLeft, KeyRound, Link2, QrCode } from 'lucide-react'
+import { ArrowLeft, KeyRound, Link2, LoaderCircle, QrCode } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { PairingInvitation } from './PairingInvitation'
 import { PairingScanner } from './PairingScanner'
@@ -46,22 +46,35 @@ export function DeviceSyncPage() {
     return null
   })
   const [clock, setClock] = useState(Date.now)
-  const [devices, setDevices] = useState<LinkedDevice[]>([])
+  const deviceId = status.linked ? deviceSync.credentials()?.id : undefined
+  const [deviceList, setDeviceList] = useState<{ owner: string; items: LinkedDevice[] }>()
+  const devices = deviceId === undefined ? [] : deviceList?.owner === deviceId ? deviceList.items : deviceSync.cachedDevices(deviceId) ?? []
+  const [loadingDevices, setLoadingDevices] = useState(false)
   const [listError, setListError] = useState('')
   const [working, setWorking] = useState(false)
   const [error, setError] = useState('')
   const listVersion = useRef(0)
   const inviteButton = useRef<HTMLButtonElement>(null)
   useEffect(() => {
-    if (!status.linked || screen !== 'devices') { setDevices([]); setListError(''); return }
+    setListError('')
+    setLoadingDevices(false)
+    if (!deviceId || screen !== 'devices') return
+    const owner = deviceId
     async function refresh() {
-      if (document.hidden) return
+      if (document.hidden || !navigator.onLine) return
       const version = ++listVersion.current
+      setLoadingDevices(true)
       try {
         const items = await deviceSync.devices()
-        if (version === listVersion.current) { setDevices(items); setListError('') }
+        if (version === listVersion.current) {
+          deviceSync.rememberDevices(owner, items)
+          setDeviceList({ owner, items })
+          setListError('')
+        }
       } catch (e) {
-        if (version === listVersion.current) setListError(e instanceof Error ? e.message : 'Couldn’t load devices.')
+        if (version === listVersion.current) setListError(e instanceof Error ? e.message : 'Could not load linked devices.')
+      } finally {
+        if (version === listVersion.current) setLoadingDevices(false)
       }
     }
     void refresh()
@@ -70,7 +83,16 @@ export function DeviceSyncPage() {
       listVersion.current++
       unsubscribe()
     }
-  }, [status.linked, screen])
+  }, [deviceId, screen])
+
+  function updateDeviceList(update: (items: LinkedDevice[]) => LinkedDevice[]) {
+    if (!deviceId || deviceSync.credentials()?.id !== deviceId) return
+    listVersion.current++
+    setLoadingDevices(false)
+    const items = update(deviceSync.cachedDevices(deviceId) ?? devices)
+    deviceSync.rememberDevices(deviceId, items)
+    setDeviceList({ owner: deviceId, items })
+  }
   useEffect(() => {
     if (screen !== 'invite' || !invite) return
     setClock(Date.now())
@@ -136,9 +158,10 @@ export function DeviceSyncPage() {
     if (current.pathname !== '/sync' && !current.pathname.startsWith('/sync/')) return
     if (screen === 'start' && ticket) {
       void router.navigate({ to: '/sync/$step', params: { step: 'confirm' }, hash: 'pair=' + ticket, replace: true, viewTransition: false })
+    } else if (!working && screen === 'start' && status.linked) {
+      void router.navigate({ to: '/sync/$step', params: { step: 'devices' }, replace: true, viewTransition: false })
     } else if (status.ready && !working) {
-      if (screen === 'start' && status.linked) void router.navigate({ to: '/sync/$step', params: { step: 'devices' }, replace: true, viewTransition: false })
-      else if ((screen === 'invite' || screen === 'devices') && !status.linked) void router.navigate({ to: '/sync', replace: true, viewTransition: false })
+      if ((screen === 'invite' || screen === 'devices') && !status.linked) void router.navigate({ to: '/sync', replace: true, viewTransition: false })
       else if (screen === 'confirm' && !ticket) void router.navigate({ to: '/sync/$step', params: { step: 'scan' }, replace: true, viewTransition: false })
     }
   }, [current.pathname, screen, ticket, status.ready, status.linked, working, router])
@@ -150,7 +173,7 @@ export function DeviceSyncPage() {
       <h1 ref={heading} tabIndex={-1}>{screen === 'start' ? 'Device sync' : syncPageTitles[screen]}</h1>
     </header>
     {productionSync && <p><strong>Production sync.</strong> Changes here sync to the live app.</p>}
-    {status.linked && screen === 'devices' && <SyncConnectionStatus connection={connection} showLabel />}
+    {status.linked && screen === 'devices' && <SyncConnectionStatus connection={connection} loadingAccount={status.loadingAccount} showLabel />}
     {status.message && <p role="status">{status.message}</p>}
     {(error || listError) && <p className="workspace-error" role="alert">{error || listError}</p>}
     {!status.linked && status.ready && screen === 'confirm' && ticket && <>
@@ -192,17 +215,19 @@ export function DeviceSyncPage() {
         }}>I saved my key</Button>
       </details>}
     {status.linked && screen === 'devices' &&
-      <section><h2>Linked devices</h2><ul className="sync-devices">{devices.map(device =>
+      <section><h2>Linked devices</h2>
+        {loadingDevices && connection.mode !== 'offline' && <p className="sync-connection-label" role="status">
+          <LoaderCircle size={14} className="loading-spinner" aria-hidden="true" /> Loading linked devices…
+        </p>}
+        <ul className="sync-devices">{devices.map(device =>
         <LinkedDeviceRow key={device.id} device={device} mobile={mobile} current={device.id === deviceSync.credentials()?.id} working={working}
           rename={name => action(async () => {
             const result = await deviceSync.rename(device.id, name)
-            listVersion.current++
-            setDevices(items => items.map(item => item.id === device.id ? { ...item, name: result.name } : item))
+            updateDeviceList(items => items.map(item => item.id === device.id ? { ...item, name: result.name } : item))
           })}
           unlink={() => void action(async () => {
             await deviceSync.revoke(device.id)
-            listVersion.current++
-            setDevices(items => items.filter(item => item.id !== device.id))
+            updateDeviceList(items => items.filter(item => item.id !== device.id))
           })} />)}</ul></section>
     }
   </main>
