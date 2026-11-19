@@ -23,6 +23,9 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 - [x] Complete the 33-puzzle paired request, 13-source app caller and 180-outcome generation audit. Pass every CI/deployment gate on reviewed head `97d5751`, including all sixteen capability combinations and strict documentation. Merge [PR 180](https://github.com/coder13/sudoku-app/pull/180) at `c90d16e`, verify remote main ancestry and identical shipping sources, and record the exact-search regression control plus measured package/memory costs. [CI run](https://github.com/coder13/sudoku-app/actions/runs/44416406932) · [Final audit](SUDOKU_RECTANGLE_GRAPH_AUDIT.md)
 
 - [ ] Speed up dense empty Quintuple Pattern Overlay scans without truncating complete results. Preserve HCHW app step 22 and the positive multi-digit proof controls. [Separate performance issue](https://github.com/coder13/sudoku-app/issues/179)
+- [x] Isolate the dense scan's nine slow witness queries for digits 4–6 in R7C1. Preserve its full source position, domains and extra equal-digit exclusions. Validate the supplied five-digit witnesses independently.
+- [x] Separate template packing into a private module. Add a bounded alternate witness order with the original exhaustive fallback; verify full support against direct assignments under edited domains, partial seeds, both family orders and exhausted probes. The first candidate passes all 366 native cases and the focused actual-Wasm Finder/page regression. A fast-control regression led to an original-order probe before the bounded alternate order; repeat final-head gates below.
+- [ ] Complete the retained-response, positive-proof, exact/rating/generation, profile, documentation and app audits. Measure the complete dense scans and fast controls on frozen artifacts, then pass exact-head CI/deployment gates and merge the measured improvement.
 
 ## App integration
 
