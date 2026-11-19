@@ -22,3 +22,7 @@ When asked to ship work in this repository, carry it through the start of the pr
 3. Confirm that the **Cloudflare Pages** deployment for the merge commit has started.
 
 Report the merged pull request and note that the deployment started.
+
+# GitHub issue labels
+
+When creating, triaging or auditing repository issues, use the [GitHub issue labels skill](.agents/skills/github-issue-labels/SKILL.md). Keep new puzzle families separate from Sudoku variants and from puzzle generation. Preserve useful existing labels and the current agent's pickup comments.
