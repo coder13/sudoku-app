@@ -1,6 +1,7 @@
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
+import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
@@ -81,6 +82,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
       if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
       if (value.analysisUsed !== true) delete value.analysisUsed
+      if (value.chainSketch !== undefined && !validChainSketchState(value.chainSketch)) delete value.chainSketch
       if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory)) delete value.actionHistory
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
@@ -468,7 +470,7 @@ export const roomStore = {
     } else {
       merged = mergeStoredMetadata(current)
     }
-    let next = update(merged)
+    let next = pruneChainsAfterMove(merged, update(merged))
     if (merged === next) {
       if (merged !== current) roomStore.refreshPuzzle(id)
       return

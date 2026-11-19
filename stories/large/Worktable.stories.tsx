@@ -43,8 +43,18 @@ export const MobileInputTools: Story = {
     const tabs = canvas.getByRole('tablist', { name: 'Sudoku input' })
     await expect(within(tabs).getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
     await expect(within(tabs).getByRole('tab', { name: 'Chains' })).toBeInTheDocument()
+    const colors = within(tabs).getByRole('tab', { name: 'Colors' })
+    const digits = within(tabs).getByRole('tab', { name: 'Digits' })
+    const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
+    await userEvent.click(canvas.getByRole('button', { name: 'Light mint' }))
+    await userEvent.click(cell)
+    await expect(cell).toHaveClass('color-4')
+    await userEvent.click(digits)
+    await expect(cell).toHaveClass('color-4')
+    await userEvent.click(colors)
     await userEvent.click(canvas.getByRole('button', { name: 'Close colors panel' }))
-    await expect(within(tabs).getByRole('tab', { name: 'Digits' })).toHaveAttribute('aria-selected', 'true')
+    await expect(digits).toHaveAttribute('aria-selected', 'true')
+    await expect(cell).not.toHaveClass('color-4')
     await userEvent.keyboard('{Enter}')
     await expect(tabs).not.toBeInTheDocument()
   },
@@ -300,6 +310,8 @@ export const CandidateShortcut: Story = {
 export const HintWithGrid: Story = {
   args: { game: paintCells(starter, [{ cell: 2, color: 1 }]) },
   play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Colors', exact: true }))
     await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
     const viewHint = await canvas.findByRole('button', { name: 'View hint' })
     await waitFor(() => {

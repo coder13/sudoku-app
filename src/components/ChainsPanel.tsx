@@ -199,7 +199,7 @@ export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighligh
                 <VisibilityIcon size={16} aria-hidden="true" />
               </IconButton>
               <IconButton type="button" variant="quiet" aria-label={deleteLabel} title={deleteLabel}
-                disabled={sketch.sketches.length === 1 && edges.length === 0} onClick={() => sketch.deleteSketch(id)}>
+                disabled={sketch.sketches.length === 1 && edges.length === 0 && sketch.pending === null} onClick={() => sketch.deleteSketch(id)}>
                 <Trash2 size={16} aria-hidden="true" />
               </IconButton>
             </div>

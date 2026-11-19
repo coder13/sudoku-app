@@ -21,6 +21,7 @@ type Props = {
   candidatePreview?: Candidate & { mode: 'candidate' | 'center' | 'corner' }
   annotations?: BoardAnnotations
   showAnnotatedCandidates?: boolean
+  showPlayerColors?: boolean
   region?: BoardRegion
   label?: string
   showGuides: boolean
@@ -59,7 +60,7 @@ export function Board({
   variantPuzzle, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
 }: Props) {
   const variantRules = variantPuzzle?.rules
   const clones = cloneLayout(variantRules)
@@ -182,8 +183,8 @@ export function Board({
                   ? marksOf((previewSlotted ? displayedGridMarks : centerMarks) | (1 << (preview.digit - 1))) : undefined
                 const visibleGridCandidates = (previewSlotted && withPreview) || gridCandidates
                 const visibleCenterCandidates = (!previewSlotted && withPreview) || centerCandidates
-                const candidateColors = candidates ? undefined : position?.candidateColors?.[index]
-                const color = position?.colors?.[index]
+                const candidateColors = showPlayerColors && (!candidates || onCandidate) ? position?.candidateColors?.[index] : undefined
+                const color = showPlayerColors ? position?.colors?.[index] : undefined
                 const inSelection = selected.includes(index)
                 const error = errors?.has(index)
                 const cellAnnotation = annotations?.cells?.get(index)

@@ -243,7 +243,6 @@ export function Worktable({
   const [selectedDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
   const [digitHighlight, setDigitHighlight] = useState(defaultDigitHighlight)
   const highlightedDigitMask = digitHighlight.mask
-  const [chainHighlightDigit, setChainHighlightDigit] = useState<number | null>(null)
   const [selectedColor, setSelectedColor] = usePlayPreference('selectedColor')
   const [colorTarget, setColorTarget] = usePlayPreference('colorTarget')
   const [colorBrush, setColorBrush] = usePlayPreference('colorBrush')
@@ -279,7 +278,7 @@ export function Worktable({
   const [busy, setBusy] = useState(false)
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [notes, setNotes] = useState<{
-    values: string; eliminations?: number[]; variant?: Game['variant']; masks: number[] | null; failed?: boolean
+    gameId: string; values: string; eliminations?: number[]; variant?: Game['variant']; masks: number[] | null; failed?: boolean
   }>()
   const [hintState, setHint] = useState<HintState | null>(null)
   const [hintRevealed, setHintRevealed] = useState(false)
@@ -415,8 +414,13 @@ export function Worktable({
   const { active: activeMobileInput, open: openMobileTools } = mobileToolsAvailable ? mobileInput : defaultMobileInput
   const chainsVisible = mobile ? activeMobileInput === 'chains'
     : advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains'
+  const colorsPanelOpen = mobile ? openMobileTools.includes('colors')
+    : advancedWorkspace ? showRightPanel : openInsightTabs.some(({ id }) => id === 'colors')
+  const chainsPanelOpen = mobile ? openMobileTools.includes('chains')
+    : advancedWorkspace ? showRightPanel : openInsightTabs.some(({ id }) => id === 'chains')
   const variantEliminations = variant && eliminations
-  const currentNotes = notes?.values === values && notes.variant === variant && notes.eliminations === variantEliminations ? notes : undefined
+  const puzzleNotes = notes?.gameId === id && notes.variant === variant ? notes : undefined
+  const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
   const masks = currentNotes?.masks
   const autoGenerateCandidates = advancedModes.autoGenerateCandidates && !draft && !solved && needsInitialCandidates(game)
   const hasSingles = useMemo(() => !draft && !solved && Boolean(masks &&
@@ -426,14 +430,21 @@ export function Worktable({
   const offerSingles = !draft && !solved && (generatedWithAuto || (
     !ratingPending && needsSinglesCheck && singlesCheck?.givens === givens && singlesCheck.variant === variant && singlesCheck.needsMore
   ))
-  const showChainSketches = chainsVisible || openMobileTools.includes('chains') || playerVisualsSelected
-  const chainMasks = useMemo(() => showChainSketches && !disabled && !draft && !solved && masks
-    ? masks.map((mask, index) => mask & (displayedCandidates?.[index] ?? 0x1ff) & ~(eliminations?.[index] ?? 0))
-    : null, [showChainSketches, disabled, draft, solved, masks, displayedCandidates, eliminations])
+  const showChainSketches = chainsVisible || Boolean(game.chainSketch)
+  const chainNotes = currentNotes ? currentNotes.masks : puzzleNotes?.masks
+  const chainMasks = useMemo(() => showChainSketches && !draft && !solved && chainNotes
+    ? chainNotes.map((mask, index) => values[index] === '0'
+      ? mask & (displayedCandidates?.[index] ?? 0x1ff) & ~(eliminations?.[index] ?? 0) : 0)
+    : null, [showChainSketches, draft, solved, chainNotes, values, displayedCandidates, eliminations])
   const missingChainCandidates = chainMasks?.some((mask, cell) => !mask && values[cell] === '0')
-  const chainGraph = useMemo(() => chainMasks && !missingChainCandidates ? makeChainGraph(chainMasks, variant?.puzzle) : null,
-    [chainMasks, missingChainCandidates, variant])
-  const sketch = useChainSketch(chainGraph, `${id}:${values}:${eliminations?.join(',') ?? ''}:${displayedCandidates?.join(',') ?? ''}`, chainsVisible)
+  const chainGraph = useMemo(() => chainMasks ? makeChainGraph(chainMasks, variant?.puzzle) : null, [chainMasks, variant])
+  const canAnalyzeChains = Boolean(masks && !missingChainCandidates && !disabled)
+  const playerHighlightMask = colorMode || eraseMode ? 0 : highlightedDigitMask
+  const startHighlightDigit = playerHighlightMask ? onlyCandidate(playerHighlightMask) : coloringDigit
+  const sketch = useChainSketch(game, chainGraph, {
+    canDraw: chainsVisible && !completed, graphCurrent: Boolean(masks), canAnalyze: canAnalyzeChains, startHighlightDigit,
+  })
+  const chainHighlightDigit = sketch.active.highlightedDigit
   const canPaint = !cellColorsDisabled
   const colorsVisible = mobile ? activeMobileInput === 'colors'
     : advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
@@ -764,13 +775,13 @@ export function Worktable({
     if (draft || solved) return
 
     void playCandidates(game).then((masks) => {
-      if (current) setNotes({ values, eliminations: variantEliminations, variant, masks })
+      if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, masks })
     }).catch(() => {
-      if (current) setNotes({ values, eliminations: variantEliminations, variant, masks: null, failed: true })
+      if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, masks: null, failed: true })
     })
 
     return () => { current = false }
-  }, [draft, solved, values, variant, variantEliminations])
+  }, [id, draft, solved, values, variant, variantEliminations])
 
   useLayoutEffect(() => {
     if (!startDrawingOnOpen || !chainsVisible || !currentNotes) return
@@ -785,8 +796,6 @@ export function Worktable({
   useLayoutEffect(() => {
     if (!sketch.drawing) return
     changeHintVisuals('player')
-    setColorBrush(null)
-    setChainHighlightDigit(selectedDigit)
   }, [sketch.drawing])
 
   useLayoutEffect(() => {
@@ -979,7 +988,7 @@ export function Worktable({
   }
 
   function toggleChainHighlight(digit: number) {
-    setChainHighlightDigit((current) => digit === 0 || current === digit ? null : digit)
+    sketch.setHighlightedDigit(digit === 0 || chainHighlightDigit === digit ? null : digit)
   }
 
   function stopDrawingAndFocusGrid() {
@@ -993,7 +1002,7 @@ export function Worktable({
       highlightColorDigit(digit === 0 || digit === coloringDigit ? null : digit)
       return
     }
-    setColorBrush(null)
+    if (colorsVisible) setColorBrush(null)
     if (inputMode === 'color') {
       if (digit > COLORS.length) return
       changeHintVisuals('player')
@@ -1041,7 +1050,7 @@ export function Worktable({
     })
     setSelectedDigit(null)
     setHighlightCandidatePairs(false)
-    setColorBrush(null)
+    if (colorsVisible) setColorBrush(null)
     setEraseMode(false)
   }
 
@@ -1076,7 +1085,7 @@ export function Worktable({
 
   function chooseColor(color: number) {
     if (!canPaint) return
-    if (sketch.drawing) sketch.stop()
+    if (sketch.drawing) sketch.suspend()
     if (colorTarget === 'cell' && selected.length) {
       edit((current) => enter(current, selected, 'color', color))
       setSelected([])
@@ -1116,7 +1125,7 @@ export function Worktable({
       setHighlightMode(!highlightMode)
       return
     }
-    setColorBrush(null)
+    if (colorsVisible) setColorBrush(null)
     setEraseMode(false)
     setPencil(false)
     setColorMode(false)
@@ -1385,10 +1394,10 @@ export function Worktable({
           if (sketch.canUndo) sketch.undo()
         } else if (shortcutMatches(event, shortcuts, 'highlightMode')) {
           event.preventDefault()
-          setChainHighlightDigit(null)
+          sketch.setHighlightedDigit(null)
         } else if (!shortcut && highlightedDigit) {
           event.preventDefault()
-          setChainHighlightDigit(highlightedDigit)
+          sketch.setHighlightedDigit(highlightedDigit)
         } else if (!shortcut && (/^[0-9]$/.test(key) || key === 'delete' || key === 'backspace')) {
           event.preventDefault()
           if (!event.repeat) toggleChainHighlight(Number(key) || 0)
@@ -1463,14 +1472,14 @@ export function Worktable({
         void solveAllSingles()
       } else if (!draft && shortcutMatches(event, shortcuts, 'digitMode')) {
         event.preventDefault()
-        setColorBrush(null)
+        if (colorsVisible) setColorBrush(null)
         setEraseMode(false)
         setPencil(false)
         setColorMode(false)
         setHighlightMode(false)
       } else if (!draft && shortcutMatches(event, shortcuts, 'pencilMode')) {
         event.preventDefault()
-        setColorBrush(null)
+        if (colorsVisible) setColorBrush(null)
         setEraseMode(false)
         setColorMode(false)
         setHighlightMode(false)
@@ -1483,7 +1492,7 @@ export function Worktable({
         showColors()
       } else if (!draft && shortcutMatches(event, shortcuts, 'eraseMode')) {
         event.preventDefault()
-        setColorBrush(null)
+        if (colorsVisible) setColorBrush(null)
         setColorMode(false)
         setPencil(false)
         setHighlightMode(false)
@@ -1582,7 +1591,7 @@ export function Worktable({
 
   async function showHint(limit: 10 | 'all' = 10) {
     if (busy || solved) return
-    if (sketch.drawing) sketch.stop()
+    if (sketch.drawing) sketch.suspend()
     if (mobile) hintReturnFocus.current = true
     if (advancedWorkspace) {
       if (!showBottomPanel) onOpenHintPanel()
@@ -1629,7 +1638,7 @@ export function Worktable({
     setAnalysisOpen(false)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    if (sketch.drawing) sketch.stop()
+    if (sketch.drawing) sketch.suspend()
     if (mobile) hintReturnFocus.current = true
     if (advancedWorkspace) {
       if (!showBottomPanel) onOpenHintPanel()
@@ -1684,7 +1693,7 @@ export function Worktable({
   }
 
   function changeHintVisuals(visuals: 'hint' | 'player') {
-    if (visuals === 'hint' && sketch.drawing) sketch.stop()
+    if (visuals === 'hint' && sketch.drawing) sketch.suspend()
     setHint(current => current && current.visuals !== visuals ? { ...current, visuals } : current)
   }
 
@@ -1720,7 +1729,7 @@ export function Worktable({
   }
 
   function applyChainEdits(actions: readonly DeductionAction[]) {
-    if (chainMasks && applyToCurrentPosition(actions, chainMasks)) sketch.stop()
+    if (canAnalyzeChains && chainMasks && applyToCurrentPosition(actions, chainMasks)) sketch.suspend()
   }
 
   function applyHint() {
@@ -1836,7 +1845,7 @@ export function Worktable({
       disabled={cellColorsDisabled} onColor={chooseColor} onSwitchShade={switchColorShade}
       onStop={() => setColorBrush(null)} onClear={clearColors} />
   )
-  const chainUnavailable = chainGraph ? undefined
+  const chainUnavailable = chainGraph && canAnalyzeChains ? undefined
     : previewing ? 'Select a chain step in Solution.'
     : draft || solved ? 'Chains are available while solving.'
     : game.paused ? 'Resume the puzzle to mark chains.'
@@ -1845,7 +1854,7 @@ export function Worktable({
     : currentNotes?.masks === null ? 'Resolve the grid conflicts to draw links.'
     : 'Loading candidates…'
   const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection} compact={mobile}
-    digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: setChainHighlightDigit } : undefined} />
+    digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: sketch.setHighlightedDigit } : undefined} />
   const completionPanel = showResults || (mobile && showSolvedGrid) ? (
     <CompletedPuzzle game={savedGame} games={games} catchUpPuzzle={catchUpPuzzle} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={showResults && !rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
@@ -1858,7 +1867,6 @@ export function Worktable({
     <CheckCheck size={17} /> Solve all singles <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.solveSingles)}</kbd>
   </button>
   function selectMobileInput(tab: MobileInputTab, openBothTools = false) {
-    if (tab !== 'chains' && sketch.drawing) sketch.stop()
     if (tab !== 'digits') changeHintVisuals('player')
     setMobileInput((current) => ({
       open: openBothTools ? ['colors', 'chains'] : current.open,
@@ -1867,8 +1875,6 @@ export function Worktable({
   }
 
   function closeMobileInput(tool: MobileInputTool) {
-    if (tool === 'colors') setColorBrush(null)
-    if (tool === 'chains' && sketch.drawing) sketch.stop()
     focusMobileInput.current = openMobileTools.length === 1
     setMobileInput((current) => ({ open: current.open.filter((tab) => tab !== tool), active: 'digits' }))
   }
@@ -1887,7 +1893,7 @@ export function Worktable({
     setActionsOpen(false)
     changeHintVisuals('player')
     setColorMode(false)
-    if (sketch.drawing) sketch.stop()
+    if (sketch.drawing) sketch.suspend()
     if (advancedWorkspace) {
       if (previewing) closeSolutionPath()
       onOpenRightPanel()
@@ -1920,7 +1926,6 @@ export function Worktable({
   }
 
   function closeDesktopView(view: DesktopPuzzleView) {
-    if (view === 'colors') setColorBrush(null)
     const remaining = openInsightTabs.filter(({ id }) => id !== view)
     const next = remaining.find(({ id }) => id === 'techniques') ?? remaining[0]
     setDesktopViews((current) => {
@@ -1974,7 +1979,7 @@ export function Worktable({
       <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.generateCandidates)}</kbd>
     </button>
     <button aria-pressed={highlightCandidatePairs} disabled={solved} onClick={() => {
-      if (sketch.drawing) setChainHighlightDigit(null)
+      if (sketch.drawing) sketch.setHighlightedDigit(null)
       else setSelectedDigit(null)
       clearHighlightedDigits()
       setHighlightCandidatePairs((current) => !current)
@@ -2068,7 +2073,9 @@ export function Worktable({
     : eraseMode ? 'erase' : colorMode || brush !== null ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging ? undefined : gridInputMode
   const reserveBadgeSpace = badgeMode || (completed && !previewing) || openMobileTools.length > 0
-  const visibleChainAnnotations = !hintAnnotations && !paintingCandidates && sketch.annotations.links?.length ? sketch.annotations : undefined
+  const showPlayerColors = colorsPanelOpen || colorMode
+  const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
+    ? sketch.annotations : undefined
   const solutionGrid = (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
@@ -2077,7 +2084,7 @@ export function Worktable({
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : sketch.drawing && chainMasks ? (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={values} position={game.position} errors={errors}
-      candidates={chainMasks} annotations={sketch.annotations} label="Sudoku grid for drawing links"
+      candidates={chainMasks} annotations={sketch.annotations} showPlayerColors={showPlayerColors} label="Sudoku grid for drawing links"
       highlightedDigit={chainHighlightDigit} highlighting={highlighting} highlightCandidateCount={highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
       isLinkTarget={sketch.isLinkTarget}
@@ -2085,7 +2092,7 @@ export function Worktable({
   ) : (
     <Board variantPuzzle={variant?.puzzle} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={hintAnnotations && hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations ?? visibleChainAnnotations}
-      showAnnotatedCandidates={Boolean(visibleChainAnnotations)}
+      showAnnotatedCandidates={Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
@@ -2093,7 +2100,7 @@ export function Worktable({
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
       overlay={mobile && completionPanel ? { content: completionPanel, visible: showMobileResults } : undefined}
-      highlightedDigit={selectedDigit} highlightedDigitMask={hintAnnotations || colorMode || eraseMode ? 0 : highlightedDigitMask}
+      highlightedDigit={selectedDigit ?? (visibleChainAnnotations ? chainHighlightDigit : null)} highlightedDigitMask={hintAnnotations ? 0 : playerHighlightMask}
       highlightedDigitMatch={digitHighlight.match}
       selected={selected} active={active}
       pointerFocusedCell={pointerFocusedCell}
@@ -2219,7 +2226,7 @@ export function Worktable({
         <PuzzleCollectionCredit game={game} />
         {badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleCardRef}
           position={modeBadgePosition} onPosition={setModeBadgePosition} onCycleMode={() => {
-            setColorBrush(null)
+            if (colorsVisible) setColorBrush(null)
             setEraseMode(false)
             setColorMode(false)
             setPencilModifier(false)
@@ -2233,16 +2240,19 @@ export function Worktable({
   const inputPanel = (
       <div className="workspace-controls" data-show-completion={showMobileResults || undefined}>
         <Controls mode={mode} pencil={pencilActive} togglePencil={() => {
-          setColorBrush(null); setEraseMode(false); setColorMode(false); setHighlightMode(false); setPencil(!pencil)
+          if (colorsVisible) setColorBrush(null)
+          setEraseMode(false); setColorMode(false); setHighlightMode(false); setPencil(!pencil)
         }}
           candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
           colorMode={colorMode} colorTarget={colorTarget} setColorTarget={changeColorTarget} toggleColorMode={() => {
-            setColorBrush(null); setEraseMode(false); setPencil(false); setHighlightMode(false); setColorMode((current) => !current)
+            if (colorsVisible) setColorBrush(null)
+            setEraseMode(false); setPencil(false); setHighlightMode(false); setColorMode((current) => !current)
           }}
           onOpenColors={desktop || advancedModes.colorsEnabled ? showColors : undefined} colorsActive={brush !== null} onSwitchShade={switchColorShade}
           highlightMode={highlightMode} toggleHighlightMode={toggleHighlightMode}
           eraseMode={eraseMode} toggleEraseMode={() => {
-            setColorBrush(null); setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
+            if (colorsVisible) setColorBrush(null)
+            setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
           }}
           selectedDigit={sketch.drawing ? chainHighlightDigit : colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0}
           highlightedDigitMask={eraseMode ? 0 : highlightedDigitMask} onToggleDigitHighlight={!draft && !solved && !previewing ? toggleDigitHighlight : undefined}

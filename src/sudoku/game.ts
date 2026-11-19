@@ -7,6 +7,7 @@ import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPe
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
 import type { CollectionReference } from './collection-reference.ts'
+import type { ChainSketchState } from './chain-sketch.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -40,6 +41,7 @@ export type Game = {
   past: Position[]
   future: Position[]
   actionHistory?: ActionHistoryEntry[]
+  chainSketch?: ChainSketchState
   elapsed: number
   timeUntracked?: true
   started: boolean
