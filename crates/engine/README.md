@@ -374,6 +374,8 @@ A [`VariantPuzzle`] describes a single 9 × 9 grid in a versioned format. Rows a
 
 Use [`VariantPuzzle::compile`] to validate a definition and prepare its constraints. Candidate calculation applies restrictions from placed digits, then narrows the remaining candidates until they stop changing. Each cage checks which digits can go in each cell to form the required sum without repeats. The exact solver uses the same candidate calculation and counts up to two completions within the node limit. Clear the placed digits and removal masks to analyze the original givens.
 
+Use [`CompiledVariant::solve_unique`] when a caller needs the verified completion. The equivalent Wasm request uses `type: 'variant'`, `operation: 'solve-unique'`, a `position`, and an optional `maxNodes`. The reply has `status` and includes a `solution` only for `unique`. A search that runs out of nodes returns `search-limit`, even if it has found a completion.
+
 The native `windoku` and `disjoint_groups` constructors add extra houses through the standard rule format. The `miracle` constructor combines Anti-Knight, Anti-King, and orthogonal Non-Consecutive rules. All constructors return editable puzzle definitions. [Miracle Sudoku rules and solution](https://www.mathekalender.de/wp/wp-content/uploads/2021/07/MK-2020-Solutions-en.pdf)
 
 ```rust

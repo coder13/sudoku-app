@@ -117,7 +117,7 @@ The generation controls returned 140 identical results from seven recipes and se
 
 ### Reproduction and validation
 
-Build the app Wasm at each pinned commit with `npm run build:wasm`. Use a separate Cargo target directory for each build. Run these commands from the candidate worktree.
+Build the app Wasm at each pinned commit with `npm run build:wasm`. Use a separate Cargo target directory for each build. Run these historical commands from PR 261's checked head `08ad5da`, which still uses the original separate import requests.
 
 ```sh
 node --experimental-strip-types scripts/bench-renban-exact.mjs before.wasm after.wasm
@@ -129,3 +129,71 @@ node --experimental-strip-types --test tests/little-killer-wasm.mts tests/renban
 The integrated comparison matched 5,178 full responses on 31 corpus positions and 363 practice positions. It covered all 121 detector IDs, every hint page, explicit removals, disabled techniques, and a sum off by one. The app request used the 116-ID order in the measurement data.
 
 The initial candidate passed 381 native tests and doctests, 678 app tests, and 497 Wasm contracts. The native capability matrix, four Wasm profiles, and strict Rust docs also passed. The integrated candidate passed types and 28 of 29 focused Wasm tests. The failing Little Killer storage test also fails on the integrated baseline. Its Node window fixture lacks the location used by UUID sharing. [Reproduction on PR #254](https://github.com/coder13/sudoku-app/pull/254#issuecomment-7019829091)
+
+## Reuse the uniqueness result during import
+
+New 9 × 9 variant imports used to count solutions, find one solution again, then rate the puzzle. The count already records a completion. The import preview now requests the count and its verified solution together. The node budget and traversal match the existing uniqueness check. A count of zero, a conflict, multiple solutions, or an exhausted count returns its status alone. A separate Wasm test finds a first completion within five nodes and checks that the uniqueness request still returns a search limit at that budget.
+
+The baseline `6d9ce33` and candidate `be6b938` used release app Wasm and Node 22.23.1 on an AMD Ryzen 7 7840U. Build order alternated on logical CPUs 6 and 7. Five samples followed one warmup per fixture. The p95 is the largest sample. Timings include the real preview caller and request serialization. The Wasm handler ran in process, so browser transfer, layout, and paint were outside the measured path.
+
+| Preview | Baseline median / p95 | Candidate median / p95 |
+| --- | ---: | ---: |
+| Renban ModE | 10,514.6 / 10,926.0 ms | 5,604.9 / 5,620.4 ms |
+| Coach Thermo Sandwich | 799.36 / 804.49 ms | 762.53 / 792.96 ms |
+| X-Sums Murphy | 9.39 / 10.76 ms | 6.89 / 7.07 ms |
+| Little Killer Murphy | 174.55 / 177.13 ms | 175.34 / 177.47 ms |
+| Clover Renban/Killer | 1.14 / 1.43 ms | 1.12 / 2.47 ms |
+
+The first Renban ModE previews took 10,556.7 and 5,601.1 ms in separately instantiated Wasm modules. The full preview comparison matched all 49 pairs across eight source fixtures. All eight saved-puzzle previews matched and made zero exact requests. Thirteen structured exact comparisons covered Classic, X-Sudoku, Killer, Jigsaw, mixed rules, entries, removals, and the 20,000-node Renban ModE limit. The published Renban ModE completion and its zero-step human path matched.
+
+App Wasm grew by 1,819 raw bytes and 650 gzip bytes. Both Renban ModE instances reached a linear-memory capacity of 1,572,864 bytes. The shared Node process peak is recorded in the raw results. It includes both instances and cannot show each build's memory separately. [Measurement data and hashes](docs/measurements/variant-import-verify.json)
+
+Build the app Wasm at both named commits in separate worktrees with independent Cargo targets. Install the pinned Node dependencies in each. Run from the candidate worktree and pass the original baseline worktree so each Wasm uses its own app preview caller.
+
+```sh
+taskset -c 6,7 timeout -s INT -k 5s 300s node --experimental-strip-types \
+  scripts/bench-variant-import.mjs /path/to/baseline-worktree before.wasm after.wasm \
+  > variant-import.jsonl
+```
+
+## Backward checks for supported sums
+
+The engine first records the sums that each prefix of a line can reach. It then works backward from the allowed totals. For each candidate, it subtracts that digit from the totals and checks for a reachable prefix sum. A match shows that a prefix and suffix can support that candidate. This change replaces the loop over pairs of prefix and suffix sums.
+
+The same sum check serves Little Killer, Region Sum, arrows, and Killer cage outies. The check still permits repeated digits where the puzzle's other rules allow them.
+
+The baseline profile of three default-budget uniqueness requests recorded 17,545 CPU samples. The sum check accounted for 4,500 exclusive samples and 2,231 direct calls to the wide-shift helper. The independent Rust test enumerates digit tuples and uses integer addition. It covers missing candidates, repeated digits, several allowed totals, and sums above 63.
+
+### Paired release measurements
+
+The baseline is `b9ffe95015c8a2e9c80157e48ca06640d175ade5`. The measured candidate is `c079efe6d01e4cbe599dbaee5df48794e7aabf41`. Both builds use the stripped app Wasm profile, Rust 1.92.0, and separate Cargo caches and target directories. Node 22.23.1 ran on logical CPUs 6 and 7 of an AMD Ryzen 7 7840U under Arch Linux 7.1.8.
+
+Each Renban ModE case uses one warmup and five samples per build. The build order alternates. For five samples, p95 is the largest sample. The preview uses the same caller on both builds and includes request serialization. Both preview builds use the earlier caller that sends separate uniqueness and solve requests. Browser worker transfer, layout, and rendering are outside this measurement.
+
+| Renban ModE operation | Baseline median / p95 (ms) | Candidate median / p95 (ms) |
+| --- | ---: | ---: |
+| Uniqueness, 1,000,000 nodes | 5,501.59 / 5,556.02 | 4,335.19 / 4,352.86 |
+| Solve, 1,000,000 nodes | 4,818.17 / 4,844.18 | 3,794.10 / 3,810.63 |
+| Import preview with two exact requests | 10,345.96 / 10,520.22 | 8,162.72 / 8,216.71 |
+| Uniqueness, 20,000 nodes | 149.17 / 150.03 | 115.95 / 123.01 |
+| Solve, 20,000 nodes | 146.28 / 146.79 | 114.78 / 115.81 |
+
+Both builds verify the printed unique solution at the default budget. Both exhaust the 20,000-node searches. The preview keeps the zero-step, zero-point stalled rating.
+
+In three fresh Node processes per build, median first uniqueness time falls from 5,543.89 to 4,215.83 ms. Median instantiation rises from 14.51 to 14.77 ms. Median process peak RSS rises from 108,112 to 109,264 KiB. Wasm linear-memory capacity is 1,441,792 bytes after the first uniqueness request in all six processes. App Wasm grows by 1,227 raw bytes and 476 gzip bytes.
+
+FaxQ uniqueness at 1,000,000 nodes falls from 193.45 to 146.19 ms median. Both builds exhaust 20,000 nodes. Newman's Little Killer uniqueness median falls from 0.767 to 0.486 ms. The mixed Arrow fixture stays near 0.085 ms. The 8AGt app-order rating rises from 2,157.74 to 2,162.94 ms. The FzzD uniqueness p95 rises from 487.37 to 491.17 ms. The [measurement data](docs/measurements/variant-sum-support.json) records all controls and samples for the main fixture.
+
+All 140 generation pairs match for seeds 1–20 across seven recipes. Each request allows six attempts and 20,000 nodes per exact check. Both builds produce twenty distinct puzzles per recipe. The Jigsaw Killer generation median rises from 3.529 to 3.612 ms. The Newman Little Killer recipe drops from 7.473 to 4.404 ms.
+
+### Reproduction and validation
+
+Build the app Wasm at the two measured commits. Use a separate Cargo target directory for each build. Run these commands from the measured candidate `c079efe` to replay the same preview caller.
+
+```sh
+node --experimental-strip-types scripts/bench-renban-exact.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm --renban --little-killer --region-sum
+cargo test --locked --release -p sudoku-app-engine --all-features candidate_support_matches_direct_sum_enumeration
+```
+
+The comparison matches 5,864 complete responses across 36 corpus positions and 363 practice positions. It checks all 121 detectors, every hint page, the mixed Arrow opening and all five Region Sum sources. It also checks explicit removals, disabled techniques, and a sum off by one. Full ratings, traces, and proof fields match.

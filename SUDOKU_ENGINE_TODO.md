@@ -235,6 +235,9 @@ This pass reached main at `a1aeb27` through [PR 143](https://github.com/coder13/
 - [x] Compare short Renban digit masks with independent tuple enumeration and 5,178 full engine responses. Measure native exact search and the app import preview. [Audit and raw samples](SUDOKU_LITTLE_KILLER_AUDIT.md#short-renban-support-and-exact-import)
 - [x] Pass the engine and preview deployment checks on reviewed head `08ad5da`. Merge [PR 261](https://github.com/coder13/sudoku-app/pull/261) at `e065e5b`. Verify fetched-main ancestry and source equality. [Engine checks](https://github.com/coder13/sudoku-app/actions/runs/44607037823) · [Production deploy](https://github.com/coder13/sudoku-app/actions/runs/44608491638)
 
+- [x] Reuse the verified completion from the uniqueness search for new 9 × 9 variant imports. Renban ModE preview median falls from 10.51 s to 5.60 s. Complete previews, saved-puzzle behavior, and bounded outcomes match. [Audit and measurements](SUDOKU_LITTLE_KILLER_AUDIT.md#reuse-the-uniqueness-result-during-import)
+- [x] Check allowed line and cage outie sums backward from the target. Renban ModE uniqueness falls from 5.50 s to 4.34 s. All 5,864 complete engine responses and 140 generation pairs match. [Audit and measurements](SUDOKU_LITTLE_KILLER_AUDIT.md#backward-checks-for-supported-sums)
+
 ### Non-Consecutive integration merged
 
 This stage reached main at `8439f6d` through [PR 112](https://github.com/coder13/sudoku-app/pull/112). The reviewed worktree remains available on `codex/sudoku-nonconsecutive-integration`. [Non-Consecutive issue](https://github.com/coder13/sudoku-app/issues/44)
