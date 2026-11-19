@@ -2,7 +2,8 @@ import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog
 import { generatedNumberToken, type GeneratedNumberGame } from './generated.ts'
 
 export type NumberPosition = { values: number[]; notes: number[] }
-export type NumberProgress = { position: NumberPosition; past: NumberPosition[]; future: NumberPosition[] }
+export type NumberMove = readonly [cell: number, value: number, notes: number]
+export type NumberProgress = { position: NumberPosition; past: NumberMove[]; future: NumberMove[] }
 export const NUMBER_HISTORY_SIZE = 64
 
 export function emptyNumberPosition(cells: number): NumberPosition {
@@ -10,24 +11,31 @@ export function emptyNumberPosition(cells: number): NumberPosition {
 }
 
 export function loadNumberProgress(key: string, editable: readonly boolean[], maxValue: number): NumberProgress | null {
+  const maxNotes = 2 ** maxValue - 1
+  const valid = (entry: unknown, max: number) => typeof entry === 'number' &&
+    Number.isInteger(entry) && entry >= 0 && entry <= max
+
   function readPosition(value: unknown): NumberPosition | null {
     if (!value || typeof value !== 'object' || !('values' in value) || !('notes' in value)) return null
     const { values, notes } = value
     if (!Array.isArray(values) || !Array.isArray(notes) ||
       values.length !== editable.length || notes.length !== editable.length) return null
-    const valid = (entry: unknown, max: number) => typeof entry === 'number' &&
-      Number.isInteger(entry) && entry >= 0 && entry <= max
-    const maxNotes = 2 ** maxValue - 1
     return {
       values: editable.map((write, index) => write && valid(values[index], maxValue) ? values[index] : 0),
       notes: editable.map((write, index) => write && valid(notes[index], maxNotes) ? notes[index] : 0),
     }
   }
 
-  function readHistory(value: unknown): NumberPosition[] {
+  function readHistory(value: unknown): NumberMove[] {
     if (!Array.isArray(value)) return []
-    const history = value.slice(-NUMBER_HISTORY_SIZE).map(readPosition)
-    return history.every(position => position !== null) ? history : []
+    const history: NumberMove[] = []
+    for (const move of value.slice(-NUMBER_HISTORY_SIZE)) {
+      if (!Array.isArray(move) || move.length !== 3) return []
+      const [cell, digit, notes] = move
+      if (!valid(cell, editable.length - 1) || !editable[cell] || !valid(digit, maxValue) || !valid(notes, maxNotes)) return []
+      history.push([cell, digit, notes])
+    }
+    return history
   }
 
   try {

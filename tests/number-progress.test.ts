@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { loadNumberProgress, NUMBER_HISTORY_SIZE, saveNumberProgress } from '../src/number-puzzles/progress.ts'
+import { loadNumberProgress, NUMBER_HISTORY_SIZE, saveNumberProgress, type NumberProgress } from '../src/number-puzzles/progress.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
 const key = 'calcudoku.position.v1.easy-1'
 const editable = [true, false, true]
-const empty = { values: [0, 0, 0], notes: [0, 0, 0] }
 const noted = { values: [0, 0, 0], notes: [0, 0, 4] }
-const filled = { values: [0, 0, 3], notes: [0, 0, 0] }
 
 test('number game progress reads old saves and saves both history stacks with the current board', () => {
   const storage = new MemoryStorage()
@@ -17,13 +15,13 @@ test('number game progress reads old saves and saves both history stacks with th
     storage.setItem(key, JSON.stringify(noted))
     assert.deepEqual(loadNumberProgress(key, editable, 4), { position: noted, past: [], future: [] })
 
-    const progress = { position: noted, past: [empty], future: [filled] }
+    const progress: NumberProgress = { position: noted, past: [[2, 0, 0]], future: [[2, 3, 0]] }
     assert.equal(saveNumberProgress(key, progress), true)
     assert.deepEqual(loadNumberProgress(key, editable, 4), progress)
 
-    const past = [filled, ...Array.from({ length: NUMBER_HISTORY_SIZE }, () => empty)]
+    const past = [[2, 3, 0], ...Array.from({ length: NUMBER_HISTORY_SIZE }, () => [2, 0, 0])]
     storage.setItem(key, JSON.stringify({
-      ...noted, past, future: [filled, { values: [0], notes: [0] }],
+      ...noted, past, future: [[2, 0, 0], [1, 2, 0]],
     }))
     assert.deepEqual(loadNumberProgress(key, editable, 4), {
       position: noted, past: past.slice(1), future: [],

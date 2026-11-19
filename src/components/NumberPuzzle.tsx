@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSPropertie
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
-import { emptyNumberPosition, generatedNumberTokens, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE, rememberNumberDifficulty, saveNumberProgress, type NumberProgress } from '../number-puzzles/progress'
+import { emptyNumberPosition, generatedNumberTokens, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE, rememberNumberDifficulty, saveNumberProgress, type NumberMove, type NumberProgress } from '../number-puzzles/progress'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultyOptions, PuzzleDifficultyStep } from './DifficultySelector'
 import { PuzzlesSectionNav } from './PuzzlesSectionNav'
@@ -283,30 +283,37 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     setStatus('')
   }
 
+  function readCell(cell: number): NumberMove {
+    return [cell, position.values[cell], position.notes[cell]]
+  }
+
+  function applyMove([cell, value, marks]: NumberMove, past: NumberMove[], future: NumberMove[]) {
+    const next = { values: [...position.values], notes: [...position.notes] }
+    next.values[cell] = value
+    next.notes[cell] = marks
+    update({ position: next, past, future })
+  }
+
   function enter(value: number, cell = selection, pencil = notes) {
     if (locked || !editable[cell] || !Number.isInteger(value) || value < 0 || value > maxValue) return
-    const next = { values: [...position.values], notes: [...position.notes] }
-    if (value && pencil) {
-      if (next.values[cell]) return
-      next.notes[cell] ^= 1 << (value - 1)
-    } else {
-      if (next.values[cell] === value && !next.notes[cell]) return
-      next.values[cell] = value
-      next.notes[cell] = 0
-    }
-    update({ position: next, past: [...past.slice(1 - NUMBER_HISTORY_SIZE), position], future: [] })
+    const previous = readCell(cell)
+    const [, digit, marks] = previous
+    const addNote = value > 0 && pencil
+    if (addNote ? digit !== 0 : value === digit && !marks) return
+    const next: NumberMove = addNote ? [cell, 0, marks ^ (1 << (value - 1))] : [cell, value, 0]
+    applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), previous], [])
   }
 
   function undo() {
     const previous = past.at(-1)
     if (locked || !previous) return
-    update({ position: previous, past: past.slice(0, -1), future: [...future.slice(1 - NUMBER_HISTORY_SIZE), position] })
+    applyMove(previous, past.slice(0, -1), [...future.slice(1 - NUMBER_HISTORY_SIZE), readCell(previous[0])])
   }
 
   function redo() {
     const next = future.at(-1)
     if (locked || !next) return
-    update({ position: next, past: [...past.slice(1 - NUMBER_HISTORY_SIZE), position], future: future.slice(0, -1) })
+    applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), readCell(next[0])], future.slice(0, -1))
   }
 
   const onHistoryKey = useEffectEvent((event: KeyboardEvent) => {
