@@ -1,6 +1,6 @@
 import lzString from 'lz-string'
 import type { VariantPuzzle, VariantRule } from './engine.ts'
-import { parsePuzzle } from './formats.ts'
+import { parsePuzzle, textGridCells } from './formats.ts'
 import { isGridText, isMiniGrid, MINI_GRID, type MiniGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
 import { coachConnectedLines } from './coach-lines.ts'
@@ -565,7 +565,7 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   if (/^(scf|scl|ctc)/i.test(text)) return fromSudokuPad(text)
   if (FP_CODE.test(text)) return fromFPuzzles(text.replace(FP_CODE, ''), 'f-puzzles')
   if (text.startsWith('{') || /^N4[A-Za-z0-9+/=]+$/.test(text)) return fromFPuzzles(text, 'f-puzzles')
-  const mini = text.split(/\r?\n/).map(line => line.replace(/#.*$/, '')).join('').replace(/[\s|│┃]/g, '').replaceAll('.', '0')
+  const mini = textGridCells(text).replaceAll('.', '0')
   if (isGridText(mini, MINI_GRID)) return { givens: mini, format: 'Text grid', grid: MINI_GRID }
   return { givens: parsePuzzle(text), format: text.startsWith(':') ? 'HoDoKu' : 'Text grid' }
 }

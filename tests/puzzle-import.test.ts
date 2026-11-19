@@ -34,7 +34,9 @@ test('detects existing formats and compact Classic links', async () => {
 test('Mini Sudoku imports text and versioned links and rejects unsupported authored rules', async () => {
   const givens = '0000300201400000'
   const grid = MINI_GRID
-  assert.deepEqual(await detectPuzzle('....\n3..2\n.14.\n....'), { givens, grid, format: 'Text grid' })
+  for (const input of [exportPuzzle(givens, 'givens'), exportPuzzle(givens, 'grid', '', 4), '..|..\n3.|.2\n--+--\n.1|4.\n..|..']) {
+    assert.deepEqual(await detectPuzzle(input), { givens, grid, format: 'Text grid' })
+  }
   assert.deepEqual(await detectPuzzle('#' + puzzleLinkHash({ givens, grid })), { givens, grid, format: 'Puzzle link' })
   const data = { gridSize: 4, givenDigits: givens, regions: [0,0,1,1,0,0,1,1,2,2,3,3,2,2,3,3] }
   assert.deepEqual(await detectPuzzle(coach(data)), { givens, grid, format: 'Sudoku Coach' })

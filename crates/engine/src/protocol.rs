@@ -374,6 +374,9 @@ type ResultValue<T = Value> = Result<T, (&'static str, &'static str)>;
 #[serde(untagged)]
 enum ResponseValue {
     Json(Value),
+    SizedTrace(Option<Vec<crate::SizedTracePosition>>),
+    SizedHints(Option<crate::SizedHints>),
+    SizedDeduction(Option<crate::SizedDeduction>),
     HintPage(hint_pages::HintPage),
     Hints { choices: Vec<Hint>, available: usize },
     HintsWithPatterns {
@@ -968,7 +971,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             crate::generate_mini(seed, difficulty, &exclude).map(|puzzle| json!(puzzle))
                 .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
-        Request::SizedClassic { position, operation } => sized::execute(position, operation),
+        Request::SizedClassic { position, operation } => return sized::execute(position, operation),
         #[cfg(feature = "generation")]
         Request::ImpossibleTemplates => Ok(json!(
             crate::impossible_templates()

@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde_json::json;
 
-use super::{ResultValue, puzzle_error};
+use super::{ResponseValue, ResultValue, puzzle_error};
 use crate::{Analysis, GridSpec, SEARCH_LIMIT, SIZED_GRID_VERSION, SizedGrid};
 
 #[derive(Deserialize)]
@@ -32,7 +32,7 @@ pub(super) enum Operation {
     },
 }
 
-pub(super) fn execute(definition: Definition, operation: Operation) -> ResultValue {
+pub(super) fn execute(definition: Definition, operation: Operation) -> ResultValue<ResponseValue> {
     let Definition {
         version,
         grid,
@@ -68,31 +68,31 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
         Ok(eliminations)
     };
     Ok(match operation {
-        Operation::Analyze => json!(match layout.analyze(&digits, SEARCH_LIMIT) {
-            Analysis::Unique => "unique",
-            analysis => puzzle_error(analysis).0,
-        }),
-        Operation::Candidates => json!(layout.candidates(&digits)),
-        Operation::Solve => json!(layout.solve(&digits, SEARCH_LIMIT)),
+        Operation::Analyze => {
+            ResponseValue::Json(json!(match layout.analyze(&digits, SEARCH_LIMIT) {
+                Analysis::Unique => "unique",
+                analysis => puzzle_error(analysis).0,
+            }))
+        }
+        Operation::Candidates => ResponseValue::Json(json!(layout.candidates(&digits))),
+        Operation::Solve => ResponseValue::Json(json!(layout.solve(&digits, SEARCH_LIMIT))),
         Operation::NextDeduction { eliminations } => {
-            json!(layout.next_deduction(&digits, &removals(eliminations)?))
+            ResponseValue::SizedDeduction(layout.next_deduction(&digits, &removals(eliminations)?))
         }
         Operation::Hints {
             eliminations,
             limit,
-        } => {
-            json!(layout.hints(
-                &digits,
-                &removals(eliminations)?,
-                limit.unwrap_or(10).min(1024)
-            ))
-        }
+        } => ResponseValue::SizedHints(layout.hints(
+            &digits,
+            &removals(eliminations)?,
+            limit.unwrap_or(10).min(1024),
+        )),
         Operation::Trace {
             eliminations,
             singles_only,
         } => {
             let eliminations = removals(eliminations)?;
-            json!(layout.trace(digits, eliminations, singles_only))
+            ResponseValue::SizedTrace(layout.trace(digits, eliminations, singles_only))
         }
     })
 }
