@@ -11,6 +11,7 @@ export type EditableShortcutId =
   | 'actions'
   | 'generateCandidates'
   | 'solveSingles'
+  | 'pauseOrSwitchView'
   | 'nextPuzzle'
   | 'shortcutHelp'
 
@@ -37,6 +38,7 @@ export const DEFAULT_SHORTCUTS: ShortcutPreferences = {
   actions: 'a',
   generateCandidates: 'g',
   solveSingles: 's',
+  pauseOrSwitchView: ' ',
   nextPuzzle: 'n',
   shortcutHelp: '?',
 }
@@ -53,6 +55,7 @@ export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'actions', label: 'Open Actions', description: 'Open the menu for common solving actions.', category: 'Puzzle actions' },
   { id: 'generateCandidates', label: 'Generate all candidates', description: 'Add every currently available candidate to empty cells.', category: 'Puzzle actions' },
   { id: 'solveSingles', label: 'Solve all singles', description: 'Place every currently available single.', category: 'Puzzle actions' },
+  { id: 'pauseOrSwitchView', label: 'Pause or switch view', description: 'Pause or resume play. After solving, switch between the grid and results.', category: 'Puzzle actions' },
   { id: 'nextPuzzle', label: 'Next puzzle', description: 'Start the next puzzle after solving.', category: 'Puzzle actions' },
   { id: 'shortcutHelp', label: 'Keyboard shortcuts', description: 'Open this keyboard shortcut page.', category: 'Puzzle actions' },
 ]
@@ -61,14 +64,15 @@ const ids = EDITABLE_SHORTCUTS.map(({ id }) => id)
 const listeners = new Set<() => void>()
 
 export function shortcutLabel(key: string) {
+  if (key === ' ') return 'Space'
   return /^[a-z]$/.test(key) ? key.toUpperCase() : key
 }
 
-export function editableShortcutKey(event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>) {
+export function editableShortcutKey(event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>, id?: EditableShortcutId) {
   if (event.altKey || event.ctrlKey || event.metaKey) return null
   if (event.key === '?') return '?'
-  if (event.shiftKey || !/^[a-z]$/i.test(event.key)) return null
-  return event.key.toLowerCase()
+  const key = event.key.toLowerCase()
+  return !event.shiftKey && validKey(key, id) ? key : null
 }
 
 export function shortcutMatches(
@@ -99,8 +103,8 @@ export function shortcutConflict(shortcuts: ShortcutPreferences, id: EditableSho
   return ids.find((candidate) => candidate !== id && shortcuts[candidate] === key) ?? null
 }
 
-function validKey(value: unknown): value is string {
-  return typeof value === 'string' && (/^[a-z]$/.test(value) || value === '?')
+function validKey(value: unknown, id?: EditableShortcutId): value is string {
+  return typeof value === 'string' && (/^[a-z]$/.test(value) || value === '?' || (id === 'pauseOrSwitchView' && value === ' '))
 }
 
 export function parseShortcutPreferences(value: unknown): ShortcutPreferences {
@@ -114,8 +118,8 @@ export function parseShortcutPreferences(value: unknown): ShortcutPreferences {
     next[id] = [...'abcdefghijklmnopqrstuvwxyz'].find((key) => !reserved.has(key)) ?? next[id]
   }
   for (const id of ids) {
-    if (saved[id] !== undefined && !validKey(saved[id])) return DEFAULT_SHORTCUTS
-    if (validKey(saved[id])) {
+    if (saved[id] !== undefined && !validKey(saved[id], id)) return DEFAULT_SHORTCUTS
+    if (validKey(saved[id], id)) {
       const conflictsWithUnsavedDefault = ids.some((candidate) => candidate !== id && saved[candidate] === undefined &&
         next[candidate] === saved[id])
       if (!conflictsWithUnsavedDefault) next[id] = saved[id]
@@ -156,7 +160,7 @@ export const shortcutStore = {
   getSnapshot: () => current,
   getServerSnapshot: () => DEFAULT_SHORTCUTS,
   set(id: EditableShortcutId, key: string) {
-    if (!validKey(key) || shortcutConflict(current, id, key)) return false
+    if (!validKey(key, id) || shortcutConflict(current, id, key)) return false
     publish({ ...current, [id]: key })
     return true
   },

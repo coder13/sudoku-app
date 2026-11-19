@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   appTextZoomShortcut, DEFAULT_SHORTCUTS, EDITABLE_SHORTCUTS, editableShortcutKey, highlightedDigitShortcut,
-  parseShortcutPreferences, shortcutConflict, shortcutMatches,
+  parseShortcutPreferences, shortcutConflict, shortcutLabel, shortcutMatches,
 } from '../src/sudoku/shortcuts.ts'
 
 test('default editable shortcuts are unique', () => {
@@ -58,6 +58,21 @@ test('shortcut matching follows customized bindings and rejects modifiers', () =
   assert.equal(shortcutMatches({ altKey: false, ctrlKey: false, key: 'X', metaKey: false, shiftKey: false }, shortcuts, 'pencilMode'), true)
   assert.equal(shortcutMatches({ altKey: false, ctrlKey: true, key: 'x', metaKey: false, shiftKey: false }, shortcuts, 'pencilMode'), false)
   assert.equal(shortcutMatches({ altKey: false, ctrlKey: false, key: '?', metaKey: false, shiftKey: true }, shortcuts, 'shortcutHelp'), true)
+})
+
+test('Space is the default for pausing or switching views and can be reassigned', () => {
+  const { pauseOrSwitchView: _, ...olderPreferences } = { ...DEFAULT_SHORTCUTS, digitMode: 'v' }
+  const migrated = parseShortcutPreferences(olderPreferences)
+  const space = { altKey: false, ctrlKey: false, key: ' ', metaKey: false, shiftKey: false }
+  assert.equal(migrated.digitMode, 'v')
+  assert.equal(shortcutLabel(migrated.pauseOrSwitchView), 'Space')
+  assert.equal(editableShortcutKey(space, 'pauseOrSwitchView'), ' ')
+  assert.equal(editableShortcutKey(space, 'digitMode'), null)
+  assert.equal(shortcutMatches(space, migrated, 'pauseOrSwitchView'), true)
+  assert.equal(shortcutMatches({ ...space, shiftKey: true }, migrated, 'pauseOrSwitchView'), false)
+  const custom = parseShortcutPreferences({ ...migrated, pauseOrSwitchView: 'f' })
+  assert.equal(shortcutMatches(space, custom, 'pauseOrSwitchView'), false)
+  assert.equal(shortcutMatches({ ...space, key: 'f' }, custom, 'pauseOrSwitchView'), true)
 })
 
 test('highlighted digit shortcuts use Shift plus the digit row', () => {

@@ -190,13 +190,39 @@ export const Paused: Story = {
     expect(puzzleAfter.width).toBeCloseTo(puzzleBefore.width, 2)
     expect(puzzleAfter.height).toBeCloseTo(puzzleBefore.height, 2)
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Pause puzzle' }))
+    const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
+    grid.querySelector<HTMLElement>('[tabindex="0"]')?.focus()
+    await userEvent.keyboard(' ')
     await canvas.findByRole('status', { name: 'Puzzle paused' })
+    await userEvent.keyboard(' ')
+    await canvas.findByRole('grid', { name: 'Sudoku grid' })
   },
 }
 export const LargeGridText: Story = { args: { appearance: { ...DEFAULT_APPEARANCE, gridTextScale: MAX_GRID_TEXT_SCALE } } }
 export const Draft: Story = { args: { game: namedDraft, games: [namedDraft] } }
-export const Solved: Story = { args: { game: solved, games: [solved] } }
+export const Solved: Story = {
+  args: { game: solved, games: [solved] },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (canvasElement.querySelector('.mobile-panel-layout')) return
+    const toggle = canvas.getByRole('button', { name: 'View grid' })
+    const card = toggle.closest('.puzzle')!
+    const stage = card.querySelector('.puzzle-stage')!
+    const timer = canvas.getByRole('timer')
+    const layout = () => [card, stage, toggle, timer].map(element => element.getBoundingClientRect().toJSON())
+    await canvasElement.ownerDocument.fonts.ready
+    const before = layout()
+
+    await userEvent.click(toggle)
+    await expect(toggle).toHaveAccessibleName('View results')
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toBeVisible()
+    await expect(layout()).toEqual(before)
+
+    await userEvent.keyboard(' ')
+    await expect(toggle).toHaveAccessibleName('View grid')
+    await expect(canvas.getByRole('heading', { name: 'Puzzle solved' })).toBeVisible()
+    await expect(layout()).toEqual(before)
+  },
+}
 
 export const SolvedMobile: Story = {
   args: { ...Solved.args, appearance: { ...DEFAULT_APPEARANCE, showGuides: false } },
@@ -229,6 +255,16 @@ export const SolvedMobile: Story = {
     await expect(toggle).toHaveFocus()
     await expect(results).toBeVisible()
     await expect(layout()).toEqual(before)
+
+    await userEvent.click(toggle)
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await expect(canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })).toBeVisible()
+    await expect(toggle).toHaveAccessibleName('View results')
+    const original = roomStore.getSnapshot().games.find(game => game.id === solved.id)
+    expect(original?.position).toEqual(solved.position)
+    expect(original?.elapsed).toBe(solved.elapsed)
+    await userEvent.click(toggle)
+    await expect(within(results).getByText('06:27')).toBeVisible()
   },
 }
 

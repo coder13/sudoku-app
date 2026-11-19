@@ -58,9 +58,11 @@ export function KeyboardShortcutsPage() {
       setMessage('Shortcut change canceled.')
       return
     }
-    const key = editableShortcutKey(event.nativeEvent)
+    const key = editableShortcutKey(event.nativeEvent, definition.id)
     if (!key) {
-      setMessage('Choose a letter key or question mark without Ctrl, Command, or Alt.')
+      setMessage(definition.id === 'pauseOrSwitchView'
+        ? 'Choose Space, a letter key, or question mark without Ctrl, Command, or Alt.'
+        : 'Choose a letter key or question mark without Ctrl, Command, or Alt.')
       return
     }
     const conflict = shortcutConflict(shortcuts, definition.id, key)

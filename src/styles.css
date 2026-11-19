@@ -717,6 +717,7 @@ svg { flex-shrink: 0; }
 .puzzle, .standard-puzzle-stack { --board-frame-width: min(100%, var(--board-frame-limit)); }
 .puzzle {
   --board-guide-width: 20px;
+  --board-guide-height: 19px;
   --board-guide-offset: 10px;
   --puzzle-grid-inset: calc(max(0px, (100cqi - var(--board-frame-limit)) / 2) + var(--board-guide-width));
   position: relative;
@@ -732,7 +733,7 @@ svg { flex-shrink: 0; }
 .puzzle:where(:not([data-input-mode])) {
   box-shadow: 0 0 0 .75px color-mix(in srgb, var(--border) 85%, var(--surface)), var(--surface-shadow);
 }
-.puzzle:has(.board-frame.guides-hidden) { --board-guide-width: 0px; --board-guide-offset: 0px; }
+.puzzle:has(.board-frame.guides-hidden) { --board-guide-width: 0px; --board-guide-height: 0px; --board-guide-offset: 0px; }
 .puzzle[data-input-mode] {
   --puzzle-mode-border-width: 3px;
   --puzzle-mode-border-inset: -1px;
@@ -796,7 +797,7 @@ svg { flex-shrink: 0; }
   max-inline-size: max(240px, calc(var(--board-frame-width) + 2 * var(--puzzle-padding-inline) + 2px));
   margin-inline: auto;
 }
-.desktop-play-resizable .standard-workspace-page .puzzle[data-input-mode] { margin-inline-start: 0; }
+.desktop-play-resizable .standard-workspace-page :is(.puzzle[data-input-mode], .puzzle[data-desktop-solved]) { margin-inline-start: 0; }
 .desktop-play-resizable .standard-puzzle-stack {
   --board-frame-limit: calc(var(--play-columns-width) - var(--play-input-width) - var(--puzzle-column-padding));
 }
@@ -982,15 +983,13 @@ svg { flex-shrink: 0; }
   align-self: center;
   gap: var(--space-6) 9px;
 }
-.puzzle:has(.sudoku-grid) :is(.puzzle-metadata, .puzzle-collection-credit) { margin-inline-start: var(--puzzle-grid-inset); }
+.puzzle:is([data-desktop-solved], :has(.sudoku-grid)) :is(.puzzle-metadata, .puzzle-collection-credit) { margin-inline-start: var(--puzzle-grid-inset); }
 
 .puzzle-difficulty { color: var(--muted); font-size: 0.8125rem; font-weight: 720; }
 .puzzle-auto-mode { color: var(--muted); font-size: 0.75rem; }
 .puzzle-auto-mode::before { content: '·'; margin-inline-end: var(--space-6); }
-.puzzle-view-toggle { display: grid; place-items: center; min-height: 36px; padding-inline: var(--space-10); font-size: 0.75rem; }
+.puzzle-view-toggle { flex: none; inline-size: 8em; min-height: 36px; padding-inline: var(--space-10); font-size: 0.75rem; }
 .puzzle-view-toggle.button:not(:disabled):active { transform: none; }
-.puzzle-view-toggle > span { grid-area: 1 / 1; }
-.puzzle-view-toggle > span[aria-hidden="true"] { visibility: hidden; }
 .puzzle-view-toggle[aria-pressed="true"] {
   border-color: var(--selected-border);
   background: var(--selected-bg);
@@ -2050,20 +2049,25 @@ svg { flex-shrink: 0; }
 .empty-board { grid-area: puzzle; display: grid; justify-items: center; align-content: center; gap: var(--space-14); min-height: 300px; }
 
 .completion-frame { container-type: inline-size; }
-/* Results use the available workspace height, including resized desktop panels. */
-.standard-puzzle-stack:has([data-completion]) { display: block; height: 100%; overflow: hidden; }
-.dock-puzzle-panel:has([data-completion]) { overflow: hidden; }
-.puzzle-column:has([data-completion]) { height: 100%; min-height: 0; container-type: inline-size; }
-.puzzle[data-completion] { height: 100%; max-height: calc(100cqw + 96px); min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
-.puzzle[data-completion] .puzzle-stage { min-height: 0; }
-.puzzle[data-completion] .completion-frame, .board-overlay > .completion-frame {
+/* Keep the same card and stage bounds in both views of a solved desktop puzzle. */
+.standard-puzzle-stack:has([data-desktop-solved]) { display: block; height: 100%; overflow: hidden; }
+.dock-puzzle-panel:has([data-desktop-solved]) { overflow: hidden; }
+.puzzle-column:has(> [data-desktop-solved]) { height: 100%; min-height: 0; container-type: inline-size; }
+.puzzle[data-desktop-solved] { height: 100%; max-height: calc(100cqw + 96px); min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+.puzzle[data-desktop-solved] .puzzle-stage { min-height: 0; overflow: auto; }
+.puzzle[data-desktop-solved] .completion-frame, .board-overlay > .completion-frame {
   display: block;
   width: 100%;
   height: 100%;
   min-height: 0;
   container: completion / size;
 }
-.puzzle[data-completion] .completion, .board-overlay .completion { height: 100%; aspect-ratio: auto; }
+.puzzle[data-desktop-solved] .completion-frame {
+  width: var(--board-frame-width);
+  padding-inline-start: var(--board-guide-width);
+  padding-block-start: var(--board-guide-height);
+}
+.puzzle[data-desktop-solved] .completion, .board-overlay .completion { height: 100%; aspect-ratio: auto; }
 .board-overlay .completion-frame { animation: none; }
 .completion {
   grid-area: board;

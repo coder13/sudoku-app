@@ -86,7 +86,7 @@ function useTimer(id: string, running: boolean) {
       if (seconds < 1) return
       started += seconds * 1000
       if (!puzzleTiming.getSnapshot().trackTime) return
-      roomStore.update(id, (current) => current.timeUntracked ? current : { ...current, elapsed: current.elapsed + seconds })
+      roomStore.update(id, (current) => current.timeUntracked || isSolved(current) ? current : { ...current, elapsed: current.elapsed + seconds })
     }
 
     function handleVisibility() {
@@ -111,6 +111,7 @@ function useTimer(id: string, running: boolean) {
 }
 
 export type WorktableActions = { check: () => void }
+type SolvedGridSession = { current: Game }
 
 type HintPosition = Pick<Position, 'center' | 'corner' | 'eliminations'> & {
   gameId: string
@@ -173,7 +174,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 }
 
 export function Worktable({
-  game, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
+  game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
   beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
   cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
@@ -213,7 +214,14 @@ export function Worktable({
   puzzleBrowserView: PuzzleBrowserView
   setPuzzleBrowserView: (view: PuzzleBrowserView) => void
 }) {
-  useActionHistory(game)
+  // The saved solve still owns the results. Editing the grid uses a temporary session.
+  const [solvedGrid, setSolvedGrid] = useState<{ session: SolvedGridSession; game: Game } | null>(null)
+  const solvedGridSession = useRef<SolvedGridSession | null>(null)
+  const completed = isSolved(savedGame)
+  const playground = completed && solvedGrid?.game.id === savedGame.id ? solvedGrid : null
+  const session = playground?.session
+  const game = playground?.game ?? savedGame
+  useActionHistory(savedGame)
   const start = game.givens[40] === '0' ? 40 : Math.max(0, game.givens.indexOf('0'))
   const modeBadgeId = useId()
   const puzzleStageId = useId()
@@ -267,7 +275,6 @@ export function Worktable({
   const [solutionHintOpen, setSolutionHintOpen] = useState(false)
   const [focusHintRequest, setFocusHintRequest] = useState(0)
   const [focusChainsRequest, setFocusChainsRequest] = useState(0)
-  const [solvedView, setSolvedView] = useState<'results' | 'grid'>('results')
   const [completionActionsTarget, setCompletionActionsTarget] = useState<HTMLElement | null>(null)
   const [ratingFailed, setRatingFailed] = useState(false)
   const [singlesCheck, setSinglesCheck] = useState<{ givens: string; variant: Game['variant']; needsMore: boolean }>()
@@ -307,7 +314,7 @@ export function Worktable({
   // A loading draft skips solver effects but reserves the regular play UI.
   const presentationDraft = draft && !placeholder
   const candidateMode = advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
-  const solved = isSolved(game)
+  const solved = playground ? isSolved(game) : completed
   const mobileHintOpen = mobile && hintRevealed && !draft && !solved
   const showMobileHintCard = mobileHintOpen || rearranging
   const hint = hintState?.position === hintPosition ? hintState : null
@@ -360,12 +367,12 @@ export function Worktable({
       text: hintStage === 'technique' ? '' : endpointMarks ? locationClue.text
         : [describeHintDigits(deduction), locationClue?.text].filter(Boolean).join(' '),
     }
-  const showResults = solved && solvedView === 'results'
-  const showSolvedGrid = solved && solvedView === 'grid'
+  const showResults = completed && !playground
+  const showSolvedGrid = Boolean(playground)
   const { id, givens, difficulty, score, variant, generatedWithAuto } = game
   const analysisDialogOpen = analysisOpen && mobile && !draft && !solved
   const needsRating = difficulty === undefined || score === undefined
-  const needsAttempt = !solved && !game.ratingAttempt
+  const needsAttempt = !completed && !game.ratingAttempt
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
@@ -476,32 +483,71 @@ export function Worktable({
       : null
 
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
-  const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || solved)
-  useTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !solved && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
+  const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || completed)
+  useTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !completed && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
     !resetOpen && !cancelDraftOpen && !variantRulesOpen && !analysisDialogOpen)
 
+  function openSolvedGrid(position = savedGame) {
+    const game = { ...position, paused: false }
+    const session = { current: game }
+    solvedGridSession.current = session
+    setSolvedGrid({ session, game })
+  }
+
+  function toggleSolvedView() {
+    if (showSolvedGrid) {
+      solvedGridSession.current = null
+      setSolvedGrid(null)
+    } else openSolvedGrid()
+  }
+
+  function readWorkingGame() {
+    if (session) return solvedGridSession.current === session ? session.current : undefined
+    return roomStore.getSnapshot().games.find(item => item.id === id)
+  }
+
+  const updateWorkingGame = useCallback((transform: (current: Game) => Game) => {
+    if (session) {
+      if (solvedGridSession.current !== session) return
+      const next = transform(session.current)
+      if (next !== session.current) {
+        session.current = next
+        setSolvedGrid({ session, game: next })
+      }
+    } else if (!completed) {
+      roomStore.update(id, current => isSolved(current) ? current : transform(current))
+    }
+  }, [completed, id, session])
+
+  function togglePause() {
+    setActionsOpen(false)
+    setPuzzleMenuOpen(false)
+    updateWorkingGame((current) => setGamePaused(current, !current.paused))
+  }
+
   useEffect(() => {
-    if (!timing.trackTime && !draft && !solved && game.started && !game.timeUntracked) {
+    if (!timing.trackTime && !draft && !completed && game.started && !game.timeUntracked) {
       roomStore.update(id, (current) => isSolved(current) ? current : markSolveUntimed(current))
     }
-  }, [draft, game.started, game.timeUntracked, id, solved, timing.trackTime])
+  }, [completed, draft, game.started, game.timeUntracked, id, timing.trackTime])
 
   const markHintVisible = useCallback(() => {
-    if (!deduction || previewing || solved) return
+    if (!deduction || previewing || completed) return
     roomStore.update(id, (current) => {
-      if (!matchesHintPosition(current, hintPosition)) return current
+      if (isSolved(current) || !matchesHintPosition(current, hintPosition)) return current
       const removals = hintEliminations(hintPosition.values, completeCandidateMasks(current), current.position.eliminations)
       void observeTechniqueActions(current, deduction.actions, 'hint', removals)
       return withRatingHints(current, [hintKey(deduction.actions)], false, {
         at: Date.now(), position: `${hintPosition.values}:${removals?.join(',') ?? ''}`,
       })
     })
-  }, [deduction, hintPosition, id, previewing, solved])
+  }, [completed, deduction, hintPosition, id, previewing])
 
   const markSolutionVisible = useCallback(() => {
+    if (completed) return
     markTechniqueSolution({ givens, variant })
     roomStore.finishRatingAttempt(id, 'solution')
-  }, [givens, id, variant])
+  }, [completed, givens, id, variant])
 
   useLayoutEffect(() => {
     puzzleCardRef.current?.closest<HTMLElement>('.dock-puzzle-panel')?.scrollTo(0, 0)
@@ -520,7 +566,8 @@ export function Worktable({
     setStartDrawingOnOpen(false)
     setSolutionStep(0)
     setSolutionHintOpen(false)
-    setSolvedView('results')
+    solvedGridSession.current = null
+    setSolvedGrid(null)
     setRatingFailed(false)
     dragSelection.current = null
     candidateDrag.current = null
@@ -664,10 +711,10 @@ export function Worktable({
 
   useEffect(() => {
     if (!autoGenerateCandidates || !masks) return
-    roomStore.update(id, (current) => current.givens === givens && valuesOf(current) === values && needsInitialCandidates(current)
+    updateWorkingGame((current) => current.givens === givens && valuesOf(current) === values && needsInitialCandidates(current)
       ? replaceCandidates(current, masks, { recordHistory: false })
       : current)
-  }, [autoGenerateCandidates, givens, id, masks, values])
+  }, [autoGenerateCandidates, givens, masks, updateWorkingGame, values])
 
   useEffect(() => {
     let current = true
@@ -744,9 +791,11 @@ export function Worktable({
   }, [mobileHintOpen, solved])
 
   useEffect(() => {
-    if (!solved) setSolvedView('results')
-    else if (!mobile && showSolvedGrid) boardRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus({ preventScroll: true })
-  }, [mobile, solved, showSolvedGrid])
+    if (!completed) {
+      solvedGridSession.current = null
+      setSolvedGrid(null)
+    } else if (!mobile && showSolvedGrid) boardRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus({ preventScroll: true })
+  }, [completed, mobile, showSolvedGrid])
 
   useEffect(() => {
     if (!puzzleMenuOpen) return
@@ -856,7 +905,7 @@ export function Worktable({
   function edit(transform: (current: Game) => Game, kind: ActionKind = transform === undo ? 'undo' : transform === redo ? 'redo' : 'edit',
     options?: { technique?: string; actions?: readonly DeductionAction[] }) {
     if (disabled) return
-    roomStore.update(game.id, (current) => recordAction(current, transform(current), kind, options))
+    updateWorkingGame((current) => recordAction(current, transform(current), kind, options))
   }
 
   function enterFromInput(cells: number[], digit: number, inputMode: Mode, options?: EnterOptions) {
@@ -865,7 +914,7 @@ export function Worktable({
       const origin = current
       const next = enter(origin, cells, inputMode, digit, options)
       const actions = playerActions(origin, next, cells, inputMode, digit)
-      if (actions.length && !solved) void observeTechniqueActions(origin, actions, 'independent',
+      if (actions.length && !completed) void observeTechniqueActions(origin, actions, 'independent',
         hintEliminations(valuesOf(origin), completeCandidateMasks(origin), origin.position.eliminations))
       return next
     })
@@ -1084,7 +1133,7 @@ export function Worktable({
       return
     }
     if (!canDragCandidates || values[index] !== '0') return
-    const initial = roomStore.getSnapshot().games.find((item) => item.id === game.id) ?? game
+    const initial = readWorkingGame() ?? game
     const digit = selectedDigit!
     const mask = candidateMode === 'candidate'
       ? initial.position.center[index] | initial.position.corner[index]
@@ -1163,8 +1212,20 @@ export function Worktable({
       if (event.key === 'Shift') setCandidatePreviewCell(null)
       if (event.key === 'Tab' || event.key === 'Enter' || event.key === ' ' || ARROWS[event.key]) setPointerFocusedCell(null)
       const target = event.target
-      if (event.defaultPrevented || rearranging || game.paused || (solved && !showSolvedGrid) || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || cancelDraftOpen || analysisDialogOpen || event.altKey ||
-        (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(target.tagName)))) return
+      if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || cancelDraftOpen || analysisDialogOpen || event.altKey ||
+        (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, a')))) return
+      if (!draft && !placeholder && !previewing && !variantRulesOpen && (completed || game.started) &&
+        !event.isComposing && shortcutMatches(event, shortcuts, 'pauseOrSwitchView')) {
+        if (target instanceof HTMLElement && (target.closest('dialog[open]') ||
+          (event.key === ' ' && target.closest('button, summary, [role="button"]') && !target.matches('[role="gridcell"][data-cell]')))) return
+        event.preventDefault()
+        if (!event.repeat) {
+          if (completed) toggleSolvedView()
+          else togglePause()
+        }
+        return
+      }
+      if (game.paused || (solved && !showSolvedGrid)) return
       if (desktop && !draft && !solved && !placeholder && shortcutMatches(event, shortcuts, 'chainDrawing')) {
         event.preventDefault()
         if (event.repeat) return
@@ -1330,7 +1391,7 @@ export function Worktable({
       const status = variant
         ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
         : await runEngine({ type: 'analyze', values })
-      const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
+      const current = readWorkingGame()
       if (!current || valuesOf(current) !== values) return
       if (!draft && status === 'multiple') {
         setDialogResult({ title: 'Puzzle check', text: 'This grid has more than one solution.', tone: 'neutral' })
@@ -1357,13 +1418,13 @@ export function Worktable({
     setBusy(true)
     try {
       const masks = await playCandidates(game)
-      const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
+      const current = readWorkingGame()
       if (!current || valuesOf(current) !== values) return
       if (!masks) {
         setDialogResult({ title: 'Puzzle action', text: 'Candidates cannot be generated until the grid conflicts are resolved.', tone: 'error' })
         return
       }
-      roomStore.update(game.id, (latest) => valuesOf(latest) === values
+      updateWorkingGame((latest) => valuesOf(latest) === values
         ? recordAction(latest, replaceCandidates(latest, masks), 'candidates') : latest)
     } catch (error) {
       setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
@@ -1380,7 +1441,7 @@ export function Worktable({
     setBusy(true)
     try {
       const result = await solveSingleValues(variant, values, eliminations, displayedCandidates ?? undefined)
-      const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
+      const current = readWorkingGame()
       if (!current || valuesOf(current) !== values || current.position.eliminations !== eliminations) return
       if (result === values) {
         setDialogResult({ title: 'Puzzle action', text: 'There are no singles to solve right now.', tone: 'neutral' })
@@ -1389,11 +1450,12 @@ export function Worktable({
       const removedCandidates = eliminations?.some(Boolean) || (displayedCandidates && masks?.some((mask, cell) =>
         values[cell] === '0' && (mask & ~displayedCandidates[cell]) !== 0))
       const assistance = values === givens && !removedCandidates && !result.includes('0') ? 'all' : 'partial'
-      roomStore.update(game.id, (latest) => {
+      updateWorkingGame((latest) => {
         if (valuesOf(latest) !== values || latest.position.eliminations !== eliminations) return latest
+        const next = recordAction(latest, fillEntries(latest, result), 'singles')
+        if (completed) return next
         const placements = [...result].flatMap((digit, cell) => digit !== '0' && values[cell] !== digit ? [{ place: { cell, digit: Number(digit) } }] : [])
         void observeTechniqueActions(latest, placements, 'automated')
-        const next = recordAction(latest, fillEntries(latest, result), 'singles')
         return latest.ratingAttempt ? { ...next, ratingAttempt: addSinglesAssistance(latest.ratingAttempt, assistance) } : next
       })
     } catch (error) {
@@ -1441,7 +1503,7 @@ export function Worktable({
     } finally {
       setBusy(false)
     }
-    const current = roomStore.getSnapshot().games.find((item) => item.id === id)
+    const current = readWorkingGame()
     if (requestId === techniqueHintRequest.current && current && matchesHintPosition(current, hintPosition)) setHint(result)
     else if (result.page) void runEngine({ type: 'release-hints', collection: result.page.collection }).catch(() => {})
   }
@@ -1480,7 +1542,7 @@ export function Worktable({
     } finally {
       setBusy(false)
     }
-    const latest = roomStore.getSnapshot().games.find((item) => item.id === id)
+    const latest = readWorkingGame()
     if (request === techniqueHintRequest.current && latest && matchesHintPosition(latest, position)) setHint(result)
   }
 
@@ -1535,9 +1597,9 @@ export function Worktable({
       if (!currentPosition) return current
       const next = applyDeduction(current, actions, candidates)
       applied = next !== current
-      if (applied && !hintSnapshot) void observeTechniqueActions(current, actions, 'independent',
+      if (applied && !hintSnapshot && !completed) void observeTechniqueActions(current, actions, 'independent',
         hintEliminations(valuesOf(current), completeCandidateMasks(current), current.position.eliminations))
-      return applied && hintSnapshot ? withRatingHints(next, [hintKey(actions)], true) : next
+      return applied && hintSnapshot && !completed ? withRatingHints(next, [hintKey(actions)], true) : next
     }, hintSnapshot ? 'hint' : 'edit', { technique, actions })
     return applied
   }
@@ -1670,7 +1732,7 @@ export function Worktable({
   const chainsPanel = <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection}
     digitHighlight={advancedWorkspace && sketch.drawing ? { digit: chainHighlightDigit, onChange: setChainHighlightDigit } : undefined} />
   const completionPanel = showResults || (mobile && showSolvedGrid) ? (
-    <CompletedPuzzle game={game} games={games} catchUpPuzzle={catchUpPuzzle} preferredDifficulty={preferredDifficulty}
+    <CompletedPuzzle game={savedGame} games={games} catchUpPuzzle={catchUpPuzzle} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={showResults && !rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
       actionsTarget={mobile ? completionActionsTarget : null}
       showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle} onResumePuzzle={roomStore.select}
@@ -1823,7 +1885,7 @@ export function Worktable({
     <button onClick={() => { setPuzzleMenuOpen(false); setResetOpen(true) }}>
       <RotateCcw size={17} /> Reset puzzle
     </button>
-    {!solved && <>
+    {!completed && <>
       <div className="app-menu-separator" role="separator" />
       <button onClick={() => { setPuzzleMenuOpen(false); onStopPlaying() }} disabled={busy}>
         <LogOut size={17} /> Stop playing
@@ -1855,7 +1917,7 @@ export function Worktable({
     </div>
   )
   const canSelectCell = !game.paused && !showMobileResults && !rearranging
-  const gridInputMode = placeholder || draft || solved || previewing || (sketch.drawing && chainMasks)
+  const gridInputMode = placeholder || draft || showResults || previewing || (sketch.drawing && chainMasks)
     ? undefined
     : eraseMode ? 'erase' : colorMode || brush !== null ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging ? undefined : gridInputMode
@@ -1904,16 +1966,16 @@ export function Worktable({
         <h2>Puzzle paused</h2>
         {showElapsedTime && <p>Your elapsed time is stopped.</p>}
         <Button type="button" variant="primary" onClick={() => {
-          roomStore.update(game.id, (current) => setGamePaused(current, false))
+          updateWorkingGame((current) => setGamePaused(current, false))
         }}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
       </div>
     </div>
   )
   const puzzlePanel = (
-      <div className="puzzle-column" data-solved-edge={mobile && solved && !previewing ? modeBadgePosition.edge : undefined}>
+      <div className="puzzle-column" data-solved-edge={completed && !previewing ? modeBadgePosition.edge : undefined}>
         <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
           data-input-mode={gridInputMode}
-          data-completion={!mobile && showResults && !previewing || undefined}
+          data-desktop-solved={desktop && completed && !previewing || undefined}
           style={{ '--board-font-scale': appearance.gridTextScale } as CSSProperties}>
         {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
           {difficulty && <span className="puzzle-difficulty">
@@ -1928,7 +1990,8 @@ export function Worktable({
           {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
             {formatTime(game.elapsed)}
           </span>}
-          {catchUpPuzzle && !showResults && !placeholder && !draft && <Button variant="quiet" className="puzzle-catch-up"
+          {catchUpPuzzle && !placeholder && !draft && <Button variant="quiet" className="puzzle-catch-up"
+            style={showResults ? { visibility: 'hidden' } : undefined}
             onClick={() => roomStore.select(catchUpPuzzle.id)} title={`Open ${catchUpPuzzle.title} from another linked device`}>
             Catch up <ArrowRight size={14} aria-hidden="true" />
           </Button>}
@@ -1945,18 +2008,14 @@ export function Worktable({
                 aria-label={`${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
                 <Info size={16} aria-hidden="true" />{variant.id === 'mixed' ? 'Mixed rules' : variantName(variant)}
               </Button>}
-              {solved && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
-                aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} onClick={() => setSolvedView(showSolvedGrid ? 'results' : 'grid')}>
-                <span aria-hidden={showSolvedGrid || undefined}>View grid</span>
-                <span aria-hidden={!showSolvedGrid || undefined}>View results</span>
+              {completed && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
+                aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={toggleSolvedView}>
+                {showSolvedGrid ? 'View results' : 'View grid'}
               </Button>}
-              {timing.showPause && !solved && game.started && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
-                aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'} title={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
-                aria-pressed={game.paused} onClick={() => {
-                  setActionsOpen(false)
-                  setPuzzleMenuOpen(false)
-                  roomStore.update(game.id, (current) => setGamePaused(current, !current.paused))
-                }}>
+              {timing.showPause && !completed && game.started && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
+                aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
+                title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${shortcutLabel(shortcuts.pauseOrSwitchView)})`}
+                aria-pressed={game.paused} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={togglePause}>
                 <span className="pause-toggle-icons" aria-hidden="true">
                   <Pause className="pause-toggle-pause" size={18} />
                   <Play className="pause-toggle-play" size={18} />
@@ -1988,7 +2047,7 @@ export function Worktable({
               <Board givens={givens} values={values} showGuides={appearance.showGuides} />
             </div>
             <div className="puzzle-placeholder-message">{placeholder}</div>
-          </div> : !draft && !solved ? (
+          </div> : !draft && !completed ? (
             <div className="puzzle-play-layers" data-paused={game.paused || undefined}>
               <div className="puzzle-play-layer puzzle-live-layer" aria-hidden={game.paused || undefined} inert={game.paused}>
                 {livePuzzleStage}
@@ -2039,7 +2098,7 @@ export function Worktable({
           } : undefined}
           disabled={disabled || (solved && !showSolvedGrid)} draft={presentationDraft} inputSize={inputSize} panelHeight={panelHeight}
           setPanelHeight={setPanelHeight} beginResize={beginResize} multi={multi} toggleMulti={toggleMulti} />
-        {mobile && solved && <section ref={setCompletionActionsTarget} className="surface mobile-completion-actions"
+        {mobile && completed && <section ref={setCompletionActionsTarget} className="surface mobile-completion-actions"
           aria-label="Next puzzle options" hidden={!showMobileResults} data-no-panel-hold />}
       </div>
   )
@@ -2191,12 +2250,13 @@ export function Worktable({
       {analysisDialogOpen && <PuzzleAnalysis game={game} close={() => setAnalysisOpen(false)} onSelectTechnique={showTechniqueHints} />}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
       <Modal title="Reset puzzle" open={resetOpen} onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
-        <p>{game.timeUntracked ? 'Remove all placed digits, candidates, and colors from this puzzle?'
+        <p>{completed || game.timeUntracked ? 'Remove all placed digits, candidates, and colors from this puzzle?'
           : 'Remove all placed digits, candidates, colors, and elapsed time from this puzzle?'}</p>
         <div className="dialog-actions">
           <Button onClick={() => setResetOpen(false)}>Cancel</Button>
           <Button variant="danger" onClick={() => {
-            roomStore.update(game.id, restartGame)
+            if (completed) openSolvedGrid({ ...restartGame(game), elapsed: savedGame.elapsed, timeUntracked: savedGame.timeUntracked })
+            else updateWorkingGame(restartGame)
             setSelected([])
             setColorBrush(null)
             setSelectedColor(null)
