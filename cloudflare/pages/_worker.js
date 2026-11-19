@@ -71,9 +71,13 @@ async function loadPublicPuzzle(request, path) {
   if (request.method !== 'GET') throw new HttpError(405, 'Method not allowed.')
   let response
   try {
-    response = await fetch(source.url(id), { redirect: 'error', signal: AbortSignal.timeout(5_000) })
+    response = await fetch(source.url(id), { redirect: 'manual', signal: AbortSignal.timeout(5_000) })
   } catch {
     throw new HttpError(502, 'Could not open the published puzzle.')
+  }
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel()
+    throw new HttpError(502, 'The puzzle source redirected to another location.')
   }
   if (response.status === 404) throw new HttpError(404, 'The published puzzle could not be found.')
   if (!response.ok || !response.body) throw new HttpError(502, 'The puzzle source is unavailable.')

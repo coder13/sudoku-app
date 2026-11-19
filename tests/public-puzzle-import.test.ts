@@ -16,12 +16,19 @@ test('the worker extracts published codes only from fixed provider URLs', async 
   assert.deepEqual(fetcher.mock.calls.map(call => call.arguments[0]), [
     'https://sudoku.coach/en/s/Ab12', 'https://sudokupad.app/api/puzzle/abcde12345',
   ])
-  assert.equal(fetcher.mock.calls[0].arguments[1]?.redirect, 'error')
+  assert.equal(fetcher.mock.calls[0].arguments[1]?.redirect, 'manual')
   assert.equal((await request('other/Ab12')).status, 404)
   assert.equal((await request('sudoku-coach/Ab12/extra')).status, 404)
   assert.equal((await request('sudokupad/Ab%2f12')).status, 404)
   assert.equal((await request('sudokupad/Ab12', { method: 'POST' })).status, 405)
   assert.equal(fetcher.mock.callCount(), 2)
+})
+
+test('the Pages worker does not follow a redirect from a published provider', async ({ mock }) => {
+  const fetcher = mock.method(globalThis, 'fetch', async () =>
+    new Response(null, { status: 302, headers: { Location: 'https://another.example/puzzle' } }))
+  assert.equal((await request('sudokupad/Ab12')).status, 502)
+  assert.equal(fetcher.mock.callCount(), 1)
 })
 
 test('the worker bounds stream reads and rejects ambiguous or unavailable sources', async (context) => {
