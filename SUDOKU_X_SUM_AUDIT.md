@@ -107,7 +107,7 @@ node --experimental-strip-types scripts/profile-exhaustive-hints.mjs \
   tests/fixtures/x-sum-murphy.json baseline.wasm baseline-each.jsonl each 3000 3
 ```
 
-The 115 cold detector requests that finished on both builds match in full. Several forcing-net requests returned an empty list. The app-order rating and walkthrough finished within 30 ms in the diagnostic controls, so they did not justify a second optimization on this fixture. The full-hint and forcing controls preserve the same costs and order. [Draft PR 267](https://github.com/coder13/sudoku-app/pull/267)
+The 115 cold detector requests that finished on both builds match in full. Several forcing-net requests returned an empty list. The app-order rating and walkthrough finished within 30 ms in the diagnostic controls, so they did not justify a second optimization on this fixture. The full-hint and forcing controls preserve the same costs and order. [Merged PR 267](https://github.com/coder13/sudoku-app/pull/267)
 
 ### Existing families and package cost
 
