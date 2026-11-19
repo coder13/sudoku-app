@@ -4,7 +4,11 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSPropertie
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
-import { emptyNumberPosition, generatedNumberTokens, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE, rememberNumberDifficulty, saveNumberProgress, type NumberMove, type NumberProgress } from '../number-puzzles/progress'
+import {
+  emptyNumberPosition, generatedNumberTokens, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE,
+  parseNumberProgress, readNumberProgress, rememberNumberDifficulty, saveNumberProgress,
+  type NumberMove, type NumberProgress, type SavedNumberProgress,
+} from '../number-puzzles/progress'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultyOptions, PuzzleDifficultyStep } from './DifficultySelector'
 import { PuzzlesSectionNav } from './PuzzlesSectionNav'
@@ -76,8 +80,12 @@ function puzzleDestination(game: NumberGame, entry: NumberPuzzleEntry) {
 
 function boardPosition(game: NumberGame, id: string, board: NumberBoard) {
   const key = positionKey(game, id)
-  const editable = board.cells.map(cell => !cell.block && !cell.given)
+  const editable = editableCells(board)
   return { editable, key, load: () => loadNumberProgress(key, editable, board.maxValue) }
+}
+
+function editableCells(board: NumberBoard) {
+  return board.cells.map(cell => !cell.block && !cell.given)
 }
 
 function NumberGameHeading({ game, title, inPlay, children }: {
@@ -108,6 +116,20 @@ function NumberGameHeading({ game, title, inPlay, children }: {
   </header>
 }
 
+type ProgressStatus = 'started' | 'solved'
+type GeneratedProgress = {
+  active: NumberPuzzleEntry[]
+  solved: Map<NumberPuzzleDifficulty, number>
+}
+
+function progressStatus(board: NumberBoard, saved: SavedNumberProgress): ProgressStatus | null {
+  const progress = parseNumberProgress(saved, editableCells(board), board.maxValue)
+  if (!progress) return null
+  const { position, past, future } = progress
+  if (!past.length && !future.length && !position.values.some(Boolean) && !position.notes.some(Boolean)) return null
+  return board.check(position.values).complete ? 'solved' : 'started'
+}
+
 /** Use for the difficulty and resume page of a standalone number puzzle. */
 export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }: { config: NumberGameConfig<Entry> }) {
   const { entries, game, name, generatedEntry } = config
@@ -115,47 +137,75 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   const levels = numberPuzzleDifficulties.filter(level => entries.some(entry => entry.difficulty === level))
   const [difficulty, setDifficulty] = useState<NumberPuzzleDifficulty>(levels[0])
   const generation = useNumberPuzzleGeneration(generatedEntry ? game : null)
-  const [generated, setGenerated] = useState<readonly Entry[]>([])
-  const [started, setStarted] = useState<ReadonlySet<string>>(new Set())
-  const [solved, setSolved] = useState<ReadonlySet<string>>(new Set())
-  const [ready, setReady] = useState(false)
+  const [catalogProgress, setCatalogProgress] = useState<ReadonlyMap<string, ProgressStatus> | null>(null)
+  const [generatedProgress, setGeneratedProgress] = useState<GeneratedProgress | null>(null)
 
   useEffect(() => {
-    const active = new Set<string>()
-    const complete = new Set<string>()
-    const generatedEntries = generatedEntry ? generatedNumberTokens(game).flatMap((id, index) => {
-      try {
-        if (!localStorage.getItem(positionKey(game, id))) return []
-        const entry = generatedEntry(id, index + 1)
-        return entry ? [entry] : []
-      } catch {
-        return []
-      }
-    }) : []
-    for (const entry of [...entries, ...generatedEntries]) {
-      const board = config.board(entry)
-      const progress = boardPosition(game, entry.id, board).load()
-      if (!progress) continue
-      const { position, past, future } = progress
-      if (!past.length && !future.length && !position.values.some(Boolean) && !position.notes.some(Boolean)) continue
-      if (board.check(position.values).complete) complete.add(entry.id)
-      else active.add(entry.id)
+    const catalog = new Map<string, ProgressStatus>()
+    for (const entry of entries) {
+      const saved = readNumberProgress(positionKey(game, entry.id))
+      const status = saved && progressStatus(config.board(entry), saved)
+      if (status) catalog.set(entry.id, status)
     }
-    setGenerated(generatedEntries)
-    setStarted(active)
-    setSolved(complete)
     const savedDifficulty = loadNumberDifficulty(game)
     if (savedDifficulty && entries.some(entry => entry.difficulty === savedDifficulty)) setDifficulty(savedDifficulty)
-    setReady(true)
+    setCatalogProgress(catalog)
+
+    const history = generatedEntry ? generatedNumberTokens(game) : []
+    const generated: GeneratedProgress = { active: [], solved: new Map() }
+    if (!generatedEntry || !history.length) {
+      setGeneratedProgress(generated)
+      return
+    }
+
+    setGeneratedProgress(null)
+    let cursor = 0
+    const queue = new MessageChannel()
+    const closeQueue = () => {
+      queue.port1.close()
+      queue.port2.close()
+    }
+    const readBatch = () => {
+      const deadline = performance.now() + 6
+      do {
+        const id = history[cursor++]
+        const saved = readNumberProgress(positionKey(game, id))
+        if (!saved) continue
+        const entry = generatedEntry(id, cursor)
+        if (!entry) continue
+        const status = progressStatus(config.board(entry), saved)
+        const { difficulty, number } = entry
+        if (status === 'solved') generated.solved.set(difficulty, (generated.solved.get(difficulty) ?? 0) + 1)
+        if (status === 'started') generated.active.push({ id, difficulty, number, generated: true })
+      } while (cursor < history.length && performance.now() < deadline)
+
+      if (cursor < history.length) queue.port2.postMessage(null)
+      else {
+        closeQueue()
+        setGeneratedProgress(generated)
+      }
+    }
+    // Allow the picker to paint before checking generated boards.
+    queue.port1.onmessage = readBatch
+    const frame = window.requestAnimationFrame(() => queue.port2.postMessage(null))
+    return () => {
+      window.cancelAnimationFrame(frame)
+      closeQueue()
+    }
   }, [config, entries, game, generatedEntry])
 
-  const active = [...entries, ...generated].filter(entry => started.has(entry.id))
-  const statistics = new Map<NumberPuzzleDifficulty, DifficultyStatistics>(levels.map(level => [
-    level, { solved: [...entries, ...generated].filter(entry => entry.difficulty === level && solved.has(entry.id)).length, averageSeconds: null },
+  const ready = catalogProgress !== null
+  const active = [...entries.filter(entry => catalogProgress?.get(entry.id) === 'started'), ...(generatedProgress?.active ?? [])]
+  const statistics = generatedProgress && new Map<NumberPuzzleDifficulty, DifficultyStatistics>(levels.map(level => [
+    level, {
+      solved: entries.filter(entry => entry.difficulty === level && catalogProgress?.get(entry.id) === 'solved').length +
+        (generatedProgress.solved.get(level) ?? 0),
+      averageSeconds: null,
+    },
   ]))
   const group = entries.filter(entry => entry.difficulty === difficulty)
-  const next = group.find(entry => !started.has(entry.id) && !solved.has(entry.id))
-    ?? group.find(entry => started.has(entry.id)) ?? group[0]
+  const next = group.find(entry => !catalogProgress?.has(entry.id))
+    ?? group.find(entry => catalogProgress?.get(entry.id) === 'started') ?? group[0]
   const busy = generation.pending !== null
   const GameIcon = { kakuro: Hash, calcudoku: Calculator, futoshiki: MoveHorizontal, hidato: PathIcon, rullo: Sigma }[game]
 
