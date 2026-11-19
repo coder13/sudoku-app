@@ -32,7 +32,7 @@ Search by component name or browse the sections below.
 | [PuzzleCheckResult](../../../../src/components/PuzzleCheckResult.tsx) | `PuzzleCheckResult` displays the outcome of an explicit puzzle check. |
 | [SolutionPath](../../../../src/components/SolutionPath.tsx) | `SolutionPath` embeds a list of logical solving steps. `SolutionDialog` presents that path in a modal. |
 | [Worktable](../../../../src/components/Worktable.tsx) | `Worktable` coordinates interactions, solving tools, and state for a playable puzzle. |
-| [CompletedPuzzle](../../../../src/components/CompletedPuzzle.tsx) | `CompletedPuzzle` shows the result and next actions after a solve. Use the new puzzle routes for choosing a different variant or difficulty. |
+| [CompletedPuzzle](../../../../src/components/CompletedPuzzle.tsx) | `CompletedPuzzle` shows solve results and finds the next playable attempt in last-played order. Pass `onResumePuzzle` to open the existing attempt by ID. New puzzle opens the variant and difficulty picker. When a collection can continue, its next puzzle is the primary action. |
 
 ## Layout and navigation
 
