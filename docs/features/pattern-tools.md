@@ -2,6 +2,8 @@
 
 Open **Subsets** from the puzzle menu or the mobile input tools. Select an area on the grid.
 
+- In **From cell**, select one empty cell. The tool lists subsets that contain that cell and can remove candidates. It checks the row, column, and box or region that contain the cell.
+- Select a result to show its pattern. Select **Show removals** to mark the candidates that the pattern rules out.
 - In **Hidden**, tap a cell to select its box. Drag along a row or column to select it. You can also use the **Row**, **Column**, and **Box** buttons to change the area at that cell. Select digits to compare their locations.
 - In **Naked**, tap cells to see the digits they contain. The grid marks a row, column, or box that they share. If a cell shares no area with the selection, it starts a new selection.
 - Select **Find a subset** to search the marked area. Use **Show pattern** and **Show removals** to reveal the analysis in steps.

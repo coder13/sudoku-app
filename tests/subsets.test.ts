@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { digitLocations, findHouseSubsets, selectedDigits, sharedSubsetHouses, subsetHouseCells } from '../src/sudoku/subsets.ts'
+import { digitLocations, findCellSubsets, findHouseSubsets, selectedDigits, sharedSubsetHouses, subsetHouseCells } from '../src/sudoku/subsets.ts'
 
 const row = subsetHouseCells({ row: 0 })
 const mask = (...digits: number[]) => digits.reduce((bits, digit) => bits | (1 << (digit - 1)), 0)
@@ -44,4 +44,28 @@ test('grid selections use the actual box or jigsaw region', () => {
   assert.deepEqual(sharedSubsetHouses([1, 12], { size: 6, boxRows: 2, boxColumns: 3 }), {})
   const regions = Array.from({ length: 9 }, (_, region) => Array.from({ length: 9 }, (_, row) => row * 9 + (region + row) % 9))
   assert.deepEqual(sharedSubsetHouses([0, 10], undefined, { regions: { type: 'jigsaw', regions }, rules: [] }), { box: { box: 0 } })
+})
+
+test('cell search finds subsets that contain the cell and combines matches across houses', () => {
+  const masks = Array<number>(81).fill(0)
+  masks.splice(0, 4, mask(1, 2), mask(1, 2), mask(1, 3), mask(2, 4))
+  masks[9] = mask(2, 5)
+  const pair = findCellSubsets(0, masks).find(({ kind, cells }) => kind === 'naked' && cells.join() === '0,1')
+  assert.deepEqual(pair, {
+    kind: 'naked', cells: [0, 1], digits: [1, 2], houses: [{ row: 0 }, { box: 0 }],
+    removals: [{ cell: 2, digit: 1 }, { cell: 3, digit: 2 }, { cell: 9, digit: 2 }],
+  })
+  assert.ok(findCellSubsets(2, masks).every(({ cells }) => cells.includes(2)))
+  assert.deepEqual(findCellSubsets(4, masks), [])
+})
+
+test('cell search can find a hidden pair in the selected column', () => {
+  const masks = Array<number>(81).fill(0)
+  masks[0] = mask(1, 2, 3)
+  masks[27] = mask(1, 2, 4)
+  masks[54] = mask(3, 4)
+  assert.deepEqual(findCellSubsets(27, masks), [{
+    kind: 'hidden', cells: [0, 27], digits: [1, 2], houses: [{ column: 0 }],
+    removals: [{ cell: 0, digit: 3 }, { cell: 27, digit: 4 }],
+  }])
 })

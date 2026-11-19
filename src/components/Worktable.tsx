@@ -476,7 +476,8 @@ export function Worktable({
   const masks = currentNotes?.masks
   const subsetMasks = useMemo(() => candidateToolMasks(masks, values, displayedCandidates, eliminations),
     [masks, values, displayedCandidates, eliminations])
-  const subset = useSubsets(subsetsVisible ? subsetMasks : null, grid ?? CLASSIC_GRID, variant?.puzzle)
+  const subset = useSubsets(subsetsVisible ? subsetMasks : null, grid ?? CLASSIC_GRID,
+    selected.length === 1 ? selected[0] : null, variant?.puzzle)
   const inspectSubset = subsetsVisible && !hintAnnotations && !disabled && !solved && Boolean(subsetMasks)
   const sweepSubsetScope = inspectSubset && subset.kind === 'hidden'
   const autoGenerateCandidates = advancedModes.autoGenerateCandidates && !draft && !solved && needsInitialCandidates(game)
@@ -2274,6 +2275,10 @@ export function Worktable({
       highlightCandidateCount={!hintAnnotations && !inspectSubset && highlightCandidatePairs ? 2 : null}
       boardRef={boardRef} onCell={inspectSubset ? (cell) => {
         setActive(cell)
+        if (subset.kind === 'cell') {
+          setAnchor(cell)
+          setSelected([cell])
+        }
         subset.selectCell(cell)
       } : canSelectCell && !paintingCandidates ? clickCell : undefined}
       onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations && !inspectSubset ? doubleClickCell : undefined}

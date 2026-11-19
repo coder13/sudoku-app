@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Columns3, Eye, Grid2X2, Rows3 } from 'lucide-react'
+import { cellReference } from '../sudoku/hints'
 import { houseName } from '../sudoku/lesson-diagram'
 import { SUBSET_SCOPES } from '../sudoku/subsets'
 import { Button, IconButton } from './Button'
@@ -6,6 +7,26 @@ import type { useSubsets } from './useSubsets'
 
 const subsetNames = ['', '', 'pair', 'triple', 'quadruple']
 const scopeIcons = { row: Rows3, column: Columns3, box: Grid2X2 }
+
+function CellSubsetResults({ search, size, regionLabel }: {
+  search: ReturnType<typeof useSubsets>['cellSearch']; size: number; regionLabel: string
+}) {
+  const { active, cell, matches, removals, selectMatch, toggleRemovals } = search
+  if (cell === null) return <p>Select an empty cell to find subsets that contain it.</p>
+  const name = cellReference(cell, 'concise', undefined, size)
+  return <div className="cell-subset-results">
+    <p role="status">{matches.length === 0 ? `No subsets with removals at ${name}.`
+      : `${matches.length} ${matches.length === 1 ? 'subset' : 'subsets'} at ${name}`}</p>
+    {matches.length > 0 && <div className="cell-subset-matches" role="group" aria-label="Subsets at the selected cell">
+      {matches.map((match, index) => <Button key={`${match.kind}:${match.cells.join(',')}:${match.digits.join(',')}`}
+        aria-pressed={active === index} onClick={() => selectMatch(index)}>
+        <span>{match.kind === 'hidden' ? 'Hidden' : 'Naked'} {subsetNames[match.digits.length]}</span>
+        <small>{match.houses.map((house) => houseName(house).replace('box', regionLabel.toLowerCase())).join(' · ')}</small>
+      </Button>)}
+    </div>}
+    {active !== undefined && <Button variant="quiet" onClick={toggleRemovals}>{removals ? 'Hide removals' : 'Show removals'}</Button>}
+  </div>
+}
 
 /** Inspect the grid selection and reveal a subset clue on request. */
 export function SubsetsPanel({ tool, size, unavailable, regionLabel = 'Box' }: {
@@ -16,10 +37,13 @@ export function SubsetsPanel({ tool, size, unavailable, regionLabel = 'Box' }: {
   const activeHouse = house && houseName(house).replace('box', regionLabel.toLowerCase())
   return <section className="subsets-panel" aria-label="Subsets">
     <div className="subset-kind" role="group" aria-label="Subset type">
+      <Button aria-pressed={kind === 'cell'} onClick={() => tool.chooseKind('cell')}>From cell</Button>
       <Button aria-pressed={kind === 'hidden'} onClick={() => tool.chooseKind('hidden')}>Hidden</Button>
       <Button aria-pressed={kind === 'naked'} onClick={() => tool.chooseKind('naked')}>Naked</Button>
     </div>
-    {unavailable ? <p role="status">{unavailable}</p> : <>
+    {unavailable ? <p role="status">{unavailable}</p>
+    : kind === 'cell' ? <CellSubsetResults search={tool.cellSearch} size={size} regionLabel={regionLabel} />
+    : <>
       <p>{kind === 'naked' ? `Select cells that share a row, column, or ${regionLabel.toLowerCase()}.`
         : house ? 'Select digits to compare where they can go.'
         : `Tap a cell to select its ${labels[scope].toLowerCase()}. Drag along a row or column to select it.`}</p>

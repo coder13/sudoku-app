@@ -1,19 +1,22 @@
-import { useRef, useState, type PointerEvent } from 'react'
+import { useMemo, useRef, useState, type PointerEvent } from 'react'
 import type { VariantPuzzle } from '../sudoku/engine'
 import { hasCandidate } from '../sudoku/game'
-import { digitLocations, findHouseSubsets, selectedDigits, sharedSubsetHouses, SUBSET_SCOPES, subsetHouseCells, type SubsetKind, type SubsetScope } from '../sudoku/subsets'
+import { digitLocations, findCellSubsets, findHouseSubsets, selectedDigits, sharedSubsetHouses, SUBSET_SCOPES, subsetHouseCells, type SubsetKind, type SubsetScope } from '../sudoku/subsets'
 import type { PlayGrid } from '../sudoku/grid'
 import type { BoardAnnotations, CandidateAnnotation, CellAnnotation } from './BoardAnnotations'
 
 type Reveal = { masks: readonly number[]; match: number; stage: 'location' | 'pattern' | 'removals' }
 type Sweep = { pointerId: number; cell: number; scope?: 'row' | 'column' }
+type Mode = SubsetKind | 'cell'
+type CellReveal = { cell: number; masks: readonly number[]; index: number; removals: boolean }
 
-export function useSubsets(masks: readonly number[] | null, grid: PlayGrid, puzzle?: VariantPuzzle) {
-  const [kind, setKind] = useState<SubsetKind>('hidden')
+export function useSubsets(masks: readonly number[] | null, grid: PlayGrid, selectedCell: number | null, puzzle?: VariantPuzzle) {
+  const [kind, setKind] = useState<Mode>('cell')
   const [scope, setScope] = useState<SubsetScope>('box')
   const [anchor, setAnchor] = useState<number | null>(null)
   const [selected, setSelected] = useState<number[]>([])
   const [reveal, setReveal] = useState<Reveal>()
+  const [cellReveal, setCellReveal] = useState<CellReveal>()
   const sweep = useRef<Sweep>(null)
   const [preview, setPreview] = useState<Pick<Sweep, 'cell' | 'scope'>>()
   const { size } = grid
@@ -28,16 +31,23 @@ export function useSubsets(masks: readonly number[] | null, grid: PlayGrid, puzz
   const picks = kind === 'hidden' ? selected.filter((digit) => locations[digit - 1]?.length) : selectedCells
   const digits = kind === 'naked' && masks ? selectedDigits(picks, masks) : picks
   const activeReveal = reveal?.masks === masks ? reveal : undefined
-  const found = activeReveal && findHouseSubsets(cells, activeReveal.masks, kind)
+  const found = kind !== 'cell' && activeReveal ? findHouseSubsets(cells, activeReveal.masks, kind) : undefined
   const match = activeReveal && found?.[activeReveal.match]
   const stage = activeReveal?.stage
   const showMatch = match && stage !== 'location'
+  const searchCell = kind === 'cell' && selectedCell !== null && masks?.[selectedCell] ? selectedCell : null
+  const cellMatches = useMemo(() => searchCell === null || !masks ? [] : findCellSubsets(searchCell, masks, grid, puzzle),
+    [searchCell, masks, grid, puzzle])
+  const openedCellMatch = cellReveal?.cell === searchCell && cellReveal.masks === masks ? cellReveal : undefined
+  const cellMatch = openedCellMatch && cellMatches[openedCellMatch.index]
 
-  function chooseKind(next: SubsetKind) {
+  function chooseKind(next: Mode) {
     if (next === kind) return
+    if (searchCell !== null) setAnchor(searchCell)
     setKind(next)
     setSelected([])
     setReveal(undefined)
+    setCellReveal(undefined)
   }
 
   function chooseScope(next: SubsetScope) {
@@ -46,6 +56,10 @@ export function useSubsets(masks: readonly number[] | null, grid: PlayGrid, puzz
   }
 
   function selectCell(cell: number) {
+    if (kind === 'cell') {
+      setCellReveal(undefined)
+      return
+    }
     if (kind === 'hidden') {
       setAnchor(cell)
     } else {
@@ -117,21 +131,34 @@ export function useSubsets(masks: readonly number[] | null, grid: PlayGrid, puzz
     setReveal({ ...activeReveal, match, stage: 'location' })
   }
 
+  function selectCellMatch(index: number) {
+    if (masks && searchCell !== null) {
+      setCellReveal(openedCellMatch?.index === index ? undefined : { cell: searchCell, masks, index, removals: false })
+    }
+  }
+
   let annotations: BoardAnnotations | undefined
   if (masks) {
     const previewHouse = kind === 'hidden' && preview?.scope && sharedSubsetHouses([preview.cell], grid, puzzle)[preview.scope]
-    const area = previewHouse ? subsetHouseCells(previewHouse, grid, puzzle) : cells
+    const area = previewHouse ? subsetHouseCells(previewHouse, grid, puzzle) : kind === 'cell'
+      ? cellMatch?.houses.flatMap((house) => subsetHouseCells(house, grid, puzzle)) ?? []
+      : cells
     const houseMarks = new Map<number, CellAnnotation>(area.map((cell) => [cell, { fill: 'var(--subset-scope-fill)' }]))
     const marks = new Map<number, Map<number, CandidateAnnotation>>()
-    const markedCells = previewHouse ? [] : showMatch ? match.cells : kind === 'hidden' ? [...new Set(picks.flatMap((digit) => locations[digit - 1]))] : picks
-    const markedDigits = showMatch ? match.digits : digits
+    const inspectedMatch = cellMatch ?? (showMatch ? match : undefined)
+    const markedCells = previewHouse ? [] : inspectedMatch?.cells ??
+      (kind === 'hidden' ? [...new Set(picks.flatMap((digit) => locations[digit - 1]))] : picks)
+    const markedDigits = inspectedMatch?.digits ?? digits
     for (const cell of markedCells) {
       houseMarks.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'selected for subset inspection' })
       marks.set(cell, new Map(markedDigits.filter((digit) => hasCandidate(masks[cell], digit))
         .map((digit) => [digit, { color: 'var(--lesson-pattern)', label: 'selected candidate' }])))
     }
-    if (!previewHouse && stage === 'removals' && match) {
-      for (const { cell, digit } of match.removals) {
+    if (searchCell !== null) {
+      houseMarks.set(searchCell, { fill: 'var(--lesson-pattern-fill)', outline: 'var(--lesson-pattern)', label: 'selected for subset search' })
+    }
+    if (!previewHouse && (stage === 'removals' || openedCellMatch?.removals) && inspectedMatch) {
+      for (const { cell, digit } of inspectedMatch.removals) {
         const cellMarks = marks.get(cell) ?? new Map<number, CandidateAnnotation>()
         cellMarks.set(digit, { color: 'var(--lesson-removal)', label: 'can be removed', mark: 'strike' })
         marks.set(cell, cellMarks)
@@ -144,5 +171,12 @@ export function useSubsets(masks: readonly number[] | null, grid: PlayGrid, puzz
     kind, house, houses, scope: activeScope, locations, emptyCells, picks, digits,
     chooseScope, chooseKind, selectCell, toggleDigit, annotations, startSweep, moveSweep, endSweep,
     clue: { total: found?.length, match, stage, index: reveal?.match ?? 0, find, advance, selectMatch, clear: () => setReveal(undefined) },
+    cellSearch: {
+      cell: searchCell, matches: cellMatches, active: openedCellMatch?.index,
+      removals: openedCellMatch?.removals ?? false, selectMatch: selectCellMatch,
+      toggleRemovals: () => {
+        if (openedCellMatch) setCellReveal({ ...openedCellMatch, removals: !openedCellMatch.removals })
+      },
+    },
   }
 }

@@ -7,6 +7,7 @@ export type SubsetKind = 'hidden' | 'naked'
 export const SUBSET_SCOPES = ['row', 'column', 'box'] as const
 export type SubsetScope = typeof SUBSET_SCOPES[number]
 type Subset = { cells: number[]; digits: number[]; removals: Candidate[] }
+type CellSubset = Subset & { kind: SubsetKind; houses: House[] }
 
 export function subsetHouseCells(house: House, grid: PlayGrid = CLASSIC_GRID, puzzle?: VariantPuzzle) {
   return puzzle ? variantHouseCells('box' in house ? { region: house.box } : house, puzzle) : gridHouseCells(house, grid)
@@ -77,4 +78,32 @@ export function findHouseSubsets(house: readonly number[], masks: readonly numbe
     }
   }
   return matches
+}
+
+export function findCellSubsets(cell: number, masks: readonly number[], grid: PlayGrid = CLASSIC_GRID, puzzle?: VariantPuzzle): CellSubset[] {
+  if (!masks[cell]) return []
+  const patterns = new Map<string, CellSubset>()
+  for (const house of Object.values(sharedSubsetHouses([cell], grid, puzzle))) {
+    const members = subsetHouseCells(house, grid, puzzle)
+    for (const kind of ['hidden', 'naked'] as const) {
+      for (const subset of findHouseSubsets(members, masks, kind)) {
+        if (!subset.cells.includes(cell)) continue
+        const cells = [...subset.cells].sort((a, b) => a - b)
+        const digits = [...subset.digits].sort((a, b) => a - b)
+        const key = `${kind}:${cells.join(',')}:${digits.join(',')}`
+        const pattern = patterns.get(key)
+        if (!pattern) {
+          patterns.set(key, { ...subset, kind, cells, digits, houses: [house] })
+          continue
+        }
+        pattern.houses.push(house)
+        for (const removal of subset.removals) {
+          if (!pattern.removals.some(({ cell, digit }) => cell === removal.cell && digit === removal.digit)) {
+            pattern.removals.push(removal)
+          }
+        }
+      }
+    }
+  }
+  return [...patterns.values()].sort((a, b) => a.cells.length - b.cells.length)
 }

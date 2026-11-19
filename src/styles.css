@@ -3943,5 +3943,12 @@ a.game-row { text-decoration: none; color: inherit; }
 
 .subset-clue-header { justify-content: space-between; width: 100%; }
 .subset-match-nav { color: var(--muted); white-space: nowrap; }
+.cell-subset-results, .cell-subset-matches { display: grid; gap: var(--space-6); }
+.cell-subset-results > .button { justify-self: start; }
+.cell-subset-matches > .button {
+  justify-content: space-between;
+  text-align: start;
+}
+.cell-subset-matches small { color: var(--muted); text-align: end; }
 .puzzle-stage { --strong-link-overlay: #4c6780; }
 :root:is([data-color-mode="dark"], [data-theme="andoku"]) .puzzle-stage { --strong-link-overlay: #9bbad5; }
