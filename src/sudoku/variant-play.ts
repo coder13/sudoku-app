@@ -5,7 +5,7 @@ import { miniCandidates } from './mini-play.ts'
 import { algebraicCandidates } from './algebraic-play.ts'
 import { readDisabledHintTechniques } from './hint-preferences.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from './variant-generation.ts'
-import { variantIdForPuzzle, type PlayableVariant, type VariantGame } from './variants.ts'
+import type { PlayableVariant, VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
 let playOrder: Promise<string[]> | undefined
@@ -28,7 +28,9 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')
-  const excluded = games.flatMap(game => game.variant && variantIdForPuzzle(game.variant.puzzle) === id ? [game.variant.puzzle] : [])
+  // Equivalent clues can give an imported puzzle a different variant label.
+  // Let the native logical key compare complete definitions across that history.
+  const excluded = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
   const initial = seed % recipes.length
   for (let attempt = 0; attempt <= recipes.length; attempt++) {
     const recipe = recipes[(initial + Math.max(0, attempt - 1)) % recipes.length]

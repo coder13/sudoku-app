@@ -75,11 +75,17 @@ export function createCalcudoku(size: number, cages: readonly Cage[]): Calcudoku
     if (!tuples.length) throw new Error('A Calcudoku cage has no valid arithmetic combinations.')
     if (operator === 'equal') givens[cells[0]] = target
     const length = cells.length
+    const cache = new Map<number, readonly number[] | null>()
     return {
       label: `${target}${operatorSymbol[operator]} cage at ${cellLabel(Math.min(...cells), size)}`,
       cells,
       support(domains: readonly number[]) {
         const masks = cells.map(cell => domains[cell])
+        // A digit mask uses nine bits. Five masks fit in an exact JS number.
+        const key = masks.reduce((encoded, mask) => encoded * 512 + mask, 0)
+        const cached = cache.get(key)
+        if (cached !== undefined) return cached
+
         const supported = masks.map(() => 0)
         tuple: for (let offset = 0; offset < tuples.length; offset += length) {
           for (let i = 0; i < length; i++) {
@@ -88,7 +94,10 @@ export function createCalcudoku(size: number, cages: readonly Cage[]): Calcudoku
           for (let i = 0; i < length; i++) supported[i] |= tuples[offset + i]
           if (supported.every((mask, i) => mask === masks[i])) break
         }
-        return supported[0] ? supported : null
+        const result = supported[0] ? supported : null
+        if (cache.size >= 128) cache.clear()
+        cache.set(key, result)
+        return result
       },
     }
   })
