@@ -2476,7 +2476,7 @@ export function Worktable({
           focusChainsRequest={focusChainsRequest}
           focusColorsRequest={focusColorsRequest} onColorsVisibleChange={setDesktopColorsVisible}
           onChainsVisibleChange={setDesktopChainsVisible}
-          onChainsTabShown={startDrawingOnChainOpen}
+          onChainsTabSelected={startDrawingOnChainOpen}
           onSolutionVisibleChange={setDesktopSolutionVisible} /> : undefined} />
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
