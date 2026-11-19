@@ -85,11 +85,26 @@ test('6 × 6 SudokuPad rejects ambiguous bulbs, unknown companion rules, and alt
   })), /exactly one end/)
   await assert.rejects(detectPuzzle(encode({ ...source,
     lines: [{ ...source.lines[0], wayPoints: [[0.5, 0.5], [1.5, 3.5]] }],
-  })), /ambiguous thermometer segment/)
+  })), /ambiguous line segment/)
   await assert.rejects(detectPuzzle(encode({ ...source,
     metadata: { ...source.metadata, rules: source.metadata.rules + '\n\nKnight moves have different digits.' },
   })), /authored rules/)
   await assert.rejects(detectPuzzle(encode({ ...source, overlays: [{}] })), /unsupported rules or markings/)
   source.regions[0][0] = source.regions[1][0]
   await assert.rejects(detectPuzzle(encode(source)), /share a cell/)
+})
+
+test('6 × 6 SudokuPad lines combine Renban with a thermometer and expand skipped cells', async () => {
+  const source = thermoExport(3)
+  const pink = { wayPoints: [[1.5, 0.5], [1.5, 2.5]], color: '#f067f0ff', thickness: 19.2 }
+  const clause = 'Digits along a pink line form a set of non-repeating consecutive digits in any order.'
+  const imported = await detectPuzzle(encode({ ...source, lines: [pink, ...source.lines],
+    metadata: { ...source.metadata, rules: source.metadata.rules + '\n\n' + clause } }))
+  assert.deepEqual(imported.sixRules, [
+    { type: 'renban', cells: [6, 7, 8] },
+    { type: 'thermometer', cells: [0, 1, 2, 3] },
+  ])
+  const pure = await detectPuzzle(encode({ ...source, lines: [pink], underlays: [],
+    metadata: { ...source.metadata, rules: source.metadata.rules.split('\n\n')[0] + '\n\n' + clause } }))
+  assert.deepEqual(pure.sixRules, [{ type: 'renban', cells: [6, 7, 8] }])
 })

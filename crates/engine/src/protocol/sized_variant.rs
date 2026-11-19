@@ -30,6 +30,11 @@ enum Rule {
     Thermometer {
         cells: Vec<usize>,
     },
+    Renban {
+        cells: Vec<usize>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        segments: Option<Vec<Vec<usize>>>,
+    },
     AlgebraicCage {
         cells: Vec<usize>,
         total: Total,
@@ -76,6 +81,23 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Diagonal { diagonal } => Self::Diagonal(diagonal),
             Rule::Parity { cells, parity } => Self::Parity { cells, parity },
             Rule::Thermometer { cells } => Self::Thermometer { cells },
+            Rule::Renban { cells, segments } => {
+                if let Some(segments) = segments {
+                    if segments.is_empty()
+                        || segments.iter().any(Vec::is_empty)
+                        || segments.iter().flatten().any(|cell| !cells.contains(cell))
+                        || cells
+                            .iter()
+                            .any(|cell| !segments.iter().any(|part| part.contains(cell)))
+                    {
+                        return Err((
+                            "invalid-rules",
+                            "Renban drawing paths must cover the same cells as the line.",
+                        ));
+                    }
+                }
+                Self::Renban { cells }
+            }
             Rule::AlgebraicCage { .. } => {
                 return Err((
                     "unsupported-rule",

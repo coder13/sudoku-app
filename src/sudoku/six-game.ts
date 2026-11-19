@@ -23,8 +23,15 @@ export function isSixRuleList(value: unknown): value is SixDefinition['rules'] {
     if (rule.type === 'parity') {
       return Object.keys(rule).length === 3 && cells.length > 0 && (rule.parity === 'even' || rule.parity === 'odd')
     }
-    return rule.type === 'thermometer' && Object.keys(rule).length === 2 &&
-      cells.length >= 2 && cells.length <= 6 && new Set(cells).size === cells.length
+    if (!cells.length || cells.length > 6 || new Set(cells).size !== cells.length) return false
+    if (rule.type === 'thermometer') return Object.keys(rule).length === 2 && cells.length >= 2
+    if (rule.type !== 'renban' || Object.keys(rule).some(key => !['type', 'cells', 'segments'].includes(key))) return false
+    if (rule.segments === undefined) return true
+    const segments: unknown = rule.segments
+    if (!Array.isArray(segments) || segments.length === 0 || segments.length > 128 ||
+      segments.some(part => !Array.isArray(part) || part.length === 0 || part.length > 128 ||
+        part.some(cell => !cells.includes(cell)))) return false
+    return new Set(segments.flat()).size === cells.length
   })
 }
 
@@ -56,6 +63,9 @@ export function restoreSixGame({ rules, solution, author }: SixGame, grid: SixGr
       if (new Set(sixDiagonalCells(rule.diagonal).map(cell => solution[cell])).size !== 6) return
     } else if (rule.type === 'parity') {
       if (rule.cells.some(cell => Number(solution[cell]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
+    } else if (rule.type === 'renban') {
+      const digits = rule.cells.map(cell => Number(solution[cell]))
+      if (new Set(digits).size !== digits.length || Math.max(...digits) - Math.min(...digits) !== digits.length - 1) return
     } else if (rule.cells.some((cell, index) => index > 0 && solution[cell] <= solution[rule.cells[index - 1]])) return
   }
   return { rules, solution, ...(isSixAuthor(author) && { author }) }
@@ -66,6 +76,7 @@ export function sixRuleDescriptions(grid: SixGrid, rules: SixGame['rules']) {
   for (const rule of rules) {
     if (rule.type === 'diagonal') clues.add(`Place each digit from 1 to 6 once on the ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal.`)
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
+    else if (rule.type === 'renban') clues.add('The cells on each Renban line contain different consecutive digits in any order.')
     else clues.add('Digits strictly increase from the bulb to the tip of each thermometer.')
   }
   return [`Place each digit from 1 to 6 once in every row, column, and ${grid.boxRows} × ${grid.boxColumns} box.`, ...clues]
