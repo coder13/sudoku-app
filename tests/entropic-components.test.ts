@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { after, before, test } from 'node:test'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -10,7 +11,6 @@ import { describeHint } from '../src/sudoku/hints.ts'
 import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { generationVariant, isVariantId, variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { assertEntropicProof } from './helpers/entropic-truth.ts'
@@ -145,14 +145,15 @@ test('sharing a progressed Entropic mixed source retains its complete original r
       ...makeGame('entropic-share', 'Entropic Lines', source.puzzle.givens, 'imported'),
       variant,
     }
+    const progressed = enter(game, [0], 'value', Number(source.solution[0]))
     const html = renderToStaticMarkup(
       createElement(SharePuzzle, {
-        game: enter(game, [0], 'value', Number(source.solution[0])),
+        game: progressed,
         close() {},
       })
     )
-    const code = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-    assert.deepEqual((await detectPuzzle(code)).variant, { id: variant.id, puzzle: variant.puzzle })
+    assert.match(html, /Create link/)
+    assert.deepEqual((await publishFixture(progressed)).variant, { id: variant.id, puzzle: variant.puzzle })
   } finally {
     if (prior) Object.defineProperty(globalThis, 'window', prior)
     else Reflect.deleteProperty(globalThis, 'window')

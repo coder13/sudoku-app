@@ -1,5 +1,3 @@
-import type { Game } from './game.ts'
-
 const GRID = /^[0-9.]{81}$/
 
 export const STARTER = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'
@@ -47,24 +45,11 @@ export function textGridCells(text: string): string {
     .replace(/[\s|│┃]/g, '')
 }
 
-export type ShareFormat = 'link' | 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
+export type ShareFormat = 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
 
-export function puzzleLinkHash({ givens, variant, grid }: Pick<Game, 'givens' | 'variant' | 'grid'>): string {
-  if (grid) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, grid, givens }))}`
-  if (!variant) return `puzzle=${givens}`
-  const { version, rules, regions } = variant.puzzle
-  return `variant=${encodeURIComponent(JSON.stringify({ id: variant.id, puzzle: { version, givens, rules, regions } }))}`
-}
-
-export function puzzlePlayLink(game: Game, origin = ''): string {
-  const search = game.source === 'draft' ? '' : `?${new URLSearchParams({ puzzle: game.id })}`
-  return `${origin}/${search}#${puzzleLinkHash(game)}`
-}
-
-export function exportPuzzle(givens: string, format: ShareFormat, origin = '', size = 9): string {
+export function exportPuzzle(givens: string, format: ShareFormat, size = 9): string {
   const dots = givens.replace(/0/g, '.')
   switch (format) {
-    case 'link': return `${origin}/#${puzzleLinkHash({ givens })}`
     case 'givens': return dots
     case 'grid': return dots.match(new RegExp(`.{${size}}`, 'g'))?.join('\n') ?? ''
     case 'hodoku': return `:0000:x:${dots}:::`

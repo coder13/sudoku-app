@@ -1,6 +1,6 @@
 import { Button, IconButton, buttonClassName } from './Button'
 import { Link, useLocation, useMatch, useNavigate, useRouterState } from '@tanstack/react-router'
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
   Monitor, Moon, SlidersHorizontal, Sun,
@@ -10,7 +10,6 @@ import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficu
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { MINI_GRID } from '../sudoku/grid'
 import { gameGenerationVariant, type NewPuzzleId } from '../sudoku/new-puzzle'
-import { puzzleLinkHash } from '../sudoku/formats'
 import { createGameId, EMPTY, makeGame, setGamePaused, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
@@ -29,6 +28,7 @@ import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/s
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
 import { SavePuzzle, SharePuzzle } from './PuzzleDialogs'
+import { SharedPuzzlePage } from './SharedPuzzlePage'
 import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
@@ -85,6 +85,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     select: state => state.matches.at(-1)?.staticData.standalonePuzzlePage === true,
   })
   const puzzleParam = useMatch({ from: '/', shouldThrow: false, select: m => m.search.puzzle })
+  const shareParam = useMatch({ from: '/', shouldThrow: false, select: m => m.search.share })
   const learning = Boolean(useMatch({ from: '/learn', shouldThrow: false }))
   const settingsParam = useMatch({ from: '/settings/$section', shouldThrow: false, select: ({ params }) => params.section })
   const settingsSection = isSettingsSection(settingsParam) ? settingsParam : null
@@ -111,6 +112,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [openingOnLaunch, setOpeningOnLaunch] = useState(homeRoute)
   // Static hosting serves the same home HTML for every puzzle query.
   const requested = workspaceReady ? puzzleParam : undefined
+  const shared = workspaceReady ? shareParam : undefined
   const playRoute = homeRoute && Boolean(requested)
   const playing = playRoute || settingsRoute
   const [resizeMode, setResizeMode] = useState(false)
@@ -127,15 +129,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const syncConnection = useSyncExternalStore(deviceSync.subscribeConnection, deviceSync.getConnection, deviceSync.getServerConnection)
   const peerPuzzles = useSyncExternalStore(deviceSync.subscribePresence, deviceSync.getPeerPuzzles, deviceSync.getServerPeerPuzzles)
   const game = games.find(item => item.id === (requested ?? active))
-  const playableGivens = game?.source === 'draft' ? undefined : game?.givens
-  const puzzleVariant = game?.variant
-  const puzzleGrid = game?.grid
-  const canonicalPuzzleHash = useMemo(() => playableGivens ? puzzleLinkHash({ givens: playableGivens, variant: puzzleVariant, grid: puzzleGrid }) : '',
-    [playableGivens, puzzleVariant, puzzleGrid])
   const locationHash = locationHref.split('#', 2)[1] ?? ''
   const puzzleLink = PUZZLE_LINK.test(locationHash)
   const hasRequestedGame = Boolean(requested && game)
-  const openingPuzzleLink = puzzleLink && !hasRequestedGame && !linkError
+  const openingPuzzleLink = shared === undefined && puzzleLink && !hasRequestedGame && !linkError
   const viewedPuzzle = playRoute && game && game.source !== 'draft' ? game.id : null
   const peerPuzzle = playedPeerPuzzle()
   const newPuzzleDefaults: NewPuzzlePreference = newPuzzlePreference ?? {
@@ -234,19 +231,19 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', zoomText, true)
   }, [workspaceReady])
   useEffect(() => roomStore.onPlay(id => {
-    const openingSharedLink = PUZZLE_LINK.test(window.location.hash.slice(1))
-    if (!openingSharedLink) setOpeningOnLaunch(false)
-    if (!id && !new URLSearchParams(window.location.search).has('puzzle')) return
+    const location = new URL(window.location.href)
+    const legacyLink = PUZZLE_LINK.test(location.hash.slice(1))
+    if (!legacyLink) setOpeningOnLaunch(false)
+    if (!id && !location.searchParams.has('puzzle')) return
+    setLinkError('')
     if (id) {
-      const next = roomStore.getSnapshot().games.find(game => game.id === id)
-      const hash = next && next.source !== 'draft' ? puzzleLinkHash(next) : undefined
-      void navigate({ to: '/', search: { puzzle: id }, hash, viewTransition: false })
-    }
-    else void navigate({ to: '/puzzles/browse', viewTransition: false })
+      const replace = location.pathname === '/' && (legacyLink || location.searchParams.has('share'))
+      void navigate({ to: '/', search: { puzzle: id }, replace, viewTransition: false })
+    } else void navigate({ to: '/puzzles/browse', viewTransition: false })
   }), [navigate])
   useEffect(() => {
     if (!workspaceReady) return
-    if (!homeRoute || (stoppedPlaying && !requested) || linkError) {
+    if (!homeRoute || shared !== undefined || (stoppedPlaying && !requested) || linkError) {
       if (openingOnLaunch) setOpeningOnLaunch(false)
       return
     }
@@ -272,20 +269,20 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     }
     if (!sync.linked) roomStore.startFirstPuzzle()
     if (openingOnLaunch && sync.ready) setOpeningOnLaunch(false)
-  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, sync.linked, games, game, active, navigate, puzzleLink, openingOnLaunch, openingPuzzleLink])
+  }, [workspaceReady, homeRoute, requested, shared, stoppedPlaying, linkError, sync.ready, sync.linked, games, game, active, navigate, puzzleLink, openingOnLaunch, openingPuzzleLink])
   useEffect(() => {
     if (!workspaceReady || !requested || !hasRequestedGame) return
     const location = new URL(window.location.href)
     // The address can change before the router finishes updating the matched puzzle.
     if (location.pathname !== '/' || location.searchParams.get('puzzle') !== requested) return
     roomStore.view(requested)
-    if (canonicalPuzzleHash && location.hash !== `#${canonicalPuzzleHash}`) {
-      void navigate({ to: '/', search: { puzzle: requested }, hash: canonicalPuzzleHash, replace: true, viewTransition: false })
+    if (PUZZLE_LINK.test(location.hash.slice(1))) {
+      void navigate({ to: '/', search: { puzzle: requested }, replace: true, viewTransition: false })
     }
-  }, [workspaceReady, requested, hasRequestedGame, canonicalPuzzleHash, locationHash, navigate])
+  }, [workspaceReady, requested, hasRequestedGame, locationHash, navigate])
   const acceptsPuzzleLinks = homeRoute || settingsRoute
   useEffect(() => {
-    if (!acceptsPuzzleLinks || !workspaceReady || !puzzleLink || hasRequestedGame || (requested && !sync.ready)) return
+    if (!acceptsPuzzleLinks || !workspaceReady || shared !== undefined || !puzzleLink || hasRequestedGame || (requested && !sync.ready)) return
     const href = window.location.href
     let active = true
     const cancelled = () => !active || window.location.href !== href || Boolean(requested &&
@@ -303,7 +300,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     }
     void handleLink()
     return () => { active = false }
-  }, [acceptsPuzzleLinks, workspaceReady, puzzleLink, hasRequestedGame, requested, sync.ready, sync.linked, locationHref, locationHash, navigate])
+  }, [acceptsPuzzleLinks, workspaceReady, puzzleLink, hasRequestedGame, requested, shared, sync.ready, sync.linked, locationHref, locationHash, navigate])
   useEffect(() => {
     if (!menuOpen) return
 
@@ -550,7 +547,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {!standalonePuzzlePage && (puzzlesRoute || (homeRoute && !requested)) && (
+      {!standalonePuzzlePage && (puzzlesRoute || (homeRoute && !requested && shared === undefined && !(workspaceReady && openingPuzzleLink))) && (
         <PuzzlesPage games={games} active={active} setDifficulty={setDifficulty} newPuzzlePreference={newPuzzleDefaults}
           rememberNewPuzzle={rememberNewPuzzle} preferencesReady={workspaceReady}
           loadingPuzzles={!workspaceReady || (sync.linked && !sync.ready)} onCreatePuzzle={createPuzzle}
@@ -558,7 +555,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       )}
       <PlayContent.Provider value={playing && !workspaceReady ? (
         <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
-      ) : playRoute && openingPuzzleLink ? (
+      ) : homeRoute && shared !== undefined ? (
+        <SharedPuzzlePage key={shared} id={shared} games={games} linked={sync.linked} syncReady={sync.ready} />
+      ) : homeRoute && workspaceReady && openingPuzzleLink ? (
         <main className="page sync-page"><h1>Opening puzzle…</h1></main>
       ) : playRoute && game && openingOnLaunch ? (
         <main className="page sync-page"><h1>Loading puzzle…</h1></main>
@@ -620,7 +619,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       </div>}</MotionSurface>
 
       {panel === 'import' && <ImportPuzzle close={close} onPlay={close} />}
-      {panel === 'share' && game && <SharePuzzle game={game} close={close} />}
+      {panel === 'share' && game && <SharePuzzle key={game.id} game={game} close={close} />}
       {settingsRoute && <Settings close={closeSettings} section={settingsSection}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
         appearance={appearance} setAppearance={setAppearance}
