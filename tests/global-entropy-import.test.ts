@@ -173,7 +173,12 @@ test('raw exports preserve their encoded scope while incomplete authored sources
   const ordered = deferred.find((source: { url: string }) => source.url.endsWith('7nms'))
   await assert.rejects(detectPuzzle(ordered.code), /cosmeticText/)
   assert.match(ordered.deferred, /order digit groups.*169/)
-  for (const id of ['HqJ9', 'FLAb', '2j53']) {
+  const emptyConsecutive = deferred.find((source: { url: string }) => source.url.endsWith('HqJ9'))
+  const entropy = (await detectPuzzle(emptyConsecutive.code)).variant!.puzzle
+  assert.ok(entropy.rules!.some(rule => rule.type === 'global-entropy'))
+  assert.ok(!entropy.rules!.some(rule => rule.type === 'consecutive-line'))
+  assertVariantCompletion(entropy, emptyConsecutive.solution)
+  for (const id of ['FLAb', '2j53']) {
     const source = deferred.find((source: { url: string }) => source.url.endsWith(id))
     await assert.rejects(detectPuzzle(source.code), /unsupported|not supported|version|region/i)
   }

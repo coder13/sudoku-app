@@ -194,6 +194,18 @@ function BetweenClue({ cells, endpoints = false }: { cells: readonly number[]; e
   </g>
 }
 
+function ConsecutiveClue({ cells, segments }: Extract<VariantRule, { type: 'consecutive-line' }>) {
+  return <g className="variant-consecutive-line">
+    {(segments ?? [cells]).map((path, index) => lineSkipsCells(path) ? <g key={index}>
+      {path.slice(1).map((cell, i) => <line key={i} className={lineSkipsCells([path[i], cell]) ? 'variant-consecutive-jump' : undefined}
+        x1={center(path[i])[0]} y1={center(path[i])[1]} x2={center(cell)[0]} y2={center(cell)[1]} />)}
+      {[...new Set(path)].map(cell => <circle key={cell} cx={center(cell)[0]} cy={center(cell)[1]} r=".11" />)}
+    </g> : path.length === 1
+      ? <circle key={index} cx={center(path[0])[0]} cy={center(path[0])[1]} r=".11" />
+      : <polyline key={index} points={points(path)} />)}
+  </g>
+}
+
 function RegionSumClue({ rule, color, number }: { rule: Extract<VariantRule, { type: 'region-sum' }>; color: string; number: number }) {
   const paths = rule.segments ?? [rule.cells]
   const separated = paths.some(lineSkipsCells)
@@ -337,8 +349,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
       if (overlay === 'colored-line') {
         const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]] : undefined
-        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(lineSkipsCells)
-        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : rule.type === 'region-sum' ? regionSumColor(index) : renbanColor(index)
+        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || (rule.type === 'region-sum' || rule.type === 'consecutive-line') && (rule.segments ?? [rule.cells]).some(lineSkipsCells)
+        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'consecutive-line' ? 'var(--consecutive-line-ink)' : rule.type === 'between' ? 'var(--board-ink)' : rule.type === 'region-sum' ? regionSumColor(index) : renbanColor(index)
         return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
           {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} endpoints={endpoints} dashed={dashed} color={color} />)}
         </g>
@@ -397,6 +409,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           </g>
         case 'renban':
           return <RenbanClue key={index} {...rule} number={renbanIndices.get(index)! + 1} />
+        case 'consecutive-line':
+          return <ConsecutiveClue key={index} {...rule} />
         case 'between':
           return <BetweenClue key={index} cells={rule.cells} />
         case 'region-sum':
@@ -505,6 +519,11 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
       }
       case 'renban':
         for (const cell of rule.cells) labels[cell].push(`Renban line ${rules.slice(0, index + 1).filter(rule => rule.type === 'renban').length}, ${rule.cells.length === 1 ? 'one-cell set, any digit 1–9' : `${rule.cells.length} different consecutive digits in any order`}`)
+        break
+      case 'consecutive-line':
+        for (const [step, cell] of rule.cells.entries()) labels[cell].push(rule.cells.length === 1
+          ? 'Consecutive Line, one cell with no digit restriction'
+          : `Consecutive Line position ${step + 1} of ${rule.cells.length}, digits in order with a difference of one`)
         break
       case 'palindrome':
         for (const cell of rule.cells) {

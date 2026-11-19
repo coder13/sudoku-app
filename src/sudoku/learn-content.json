@@ -7880,6 +7880,45 @@
           "difficulty": "medium"
         },
         {
+          "id": "consecutive-line",
+          "title": "Consecutive lines",
+          "summary": "Read a Consecutive Line from either end. Its digits increase by 1 at every step in one direction.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Follow the line from end to end"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at either end. Try a run that goes up by 1. Then try one that goes down by 1.",
+                "Each cell must fit the same run. A line can bend on the grid, but the digits cannot switch from rising to falling."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "consecutive-line",
+              "copy": {
+                "description": "The end digits are 6 and 8. The middle cell needs 7 in R1C5, so remove 1."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "consecutive-line", "title": "Consecutive lines" }
+              ],
+              "guide": {
+                "start": "Find the two ends of the line.",
+                "check": "Check which runs fit every cell. Try both directions.",
+                "reason": "Remove a candidate if neither direction puts it in that position."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
           "id": "renban",
           "title": "Renban lines",
           "summary": "A Renban line contains different consecutive digits in any order. A four-cell line that contains both 3 and 6 must also contain 4 and 5, even before you know their positions.",

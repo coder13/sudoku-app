@@ -3687,6 +3687,17 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-renban circle { stroke: none; opacity: .72; }
 .variant-renban-overlap line { stroke-linecap: round; }
+.variant-clues { --consecutive-line-ink: light-dark(#ac444b, #eb8d95); }
+.variant-consecutive-line polyline, .variant-consecutive-line line {
+  fill: none;
+  stroke: var(--consecutive-line-ink);
+  stroke-width: .105;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .8;
+}
+.variant-consecutive-line .variant-consecutive-jump { stroke-dasharray: .1 .08; }
+.variant-consecutive-line circle { fill: var(--consecutive-line-ink); }
 .variant-palindrome polyline {
   fill: none;
   stroke: var(--board-ink);

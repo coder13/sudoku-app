@@ -5,7 +5,7 @@ import { parsePuzzle, textGridCells } from './formats.ts'
 import { isGridText, isMiniGrid, MINI_GRID, sixGridFromRegions, type SizedGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
-import { coachConnectedLines } from './coach-lines.ts'
+import { coachConnectedLines, coachConsecutiveLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
@@ -213,7 +213,7 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'consecutiveLine', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -353,13 +353,14 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
         }
         rules.push({ type: 'extra-house', cells: segment.cells })
       }
-    } else if (constraint.type === 'palindromeLine' || constraint.type === 'renban' || constraint.type === 'regionSumLine') {
-      const name = constraint.type === 'renban' ? 'Renban' : constraint.type === 'regionSumLine' ? 'Region Sum' : 'Palindrome'
+    } else if (['palindromeLine', 'renban', 'regionSumLine', 'consecutiveLine'].includes(constraint.type)) {
+      const consecutive = constraint.type === 'consecutiveLine'
+      const name = consecutive ? 'Consecutive' : constraint.type === 'renban' ? 'Renban' : constraint.type === 'regionSumLine' ? 'Region Sum' : 'Palindrome'
       const settings = constraint.settings
       if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key)))) {
         throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
       }
-      if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no ${name} cells.`)
+      if (!constraint.segments.length && !consecutive) throw new Error(`This Sudoku Coach puzzle has no ${name} cells.`)
       const paths = constraint.segments.map((segment: unknown) => {
         if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length || hasData(segment.parameters) ||
           segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= 81)) {
@@ -367,6 +368,10 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
         }
         return segment.cells as number[]
       })
+      if (consecutive) {
+        for (const line of coachConsecutiveLines(paths)) rules.push({ type: 'consecutive-line', ...line })
+        continue
+      }
       for (const line of coachConnectedLines(paths)) {
         if (constraint.type !== 'regionSumLine') {
           rules.push({ type: constraint.type === 'renban' ? 'renban' : 'palindrome', ...line })

@@ -13,6 +13,31 @@ const X_SOLUTION: &str =
 const EMPTY: [u8; 81] = [0; 81];
 const NO_REMOVALS: [u16; 81] = [0; 81];
 
+#[test]
+fn consecutive_line_keeps_both_directions_without_allowing_turns_or_repeats() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules = vec![PuzzleRule::Consecutive {
+        cells: vec![0, 40, 80],
+        segments: Some(vec![vec![40, 0], vec![80, 40]]),
+    }];
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[40] = 5;
+    let masks = compiled.candidates(&entries, &NO_REMOVALS).unwrap();
+    assert_eq!(masks[0], 0b00101000);
+    assert_eq!(masks[80], 0b00101000);
+    entries[0] = 4;
+    assert_eq!(compiled.candidates(&entries, &NO_REMOVALS).unwrap()[80], 0b00100000);
+    entries[80] = 4;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    puzzle.rules = vec![PuzzleRule::Consecutive {
+        cells: vec![0, 40, 80],
+        segments: Some(vec![vec![0, 80], vec![80, 40]]),
+    }];
+    assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::InvalidRule(0))));
+}
+
 fn irregular_regions() -> Vec<Vec<usize>> {
     let mut regions: Vec<Vec<usize>> = (0..9)
         .map(|region| {

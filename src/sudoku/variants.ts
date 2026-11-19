@@ -117,6 +117,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
   },
+  'consecutive-line': {
+    name: 'Consecutive Lines',
+    rule: 'The digits on a Consecutive Line increase by 1 at each step in one direction. Read from either end. A line cannot change direction.',
+  },
   xv: {
     name: 'XV',
     rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
@@ -284,7 +288,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
       return ends.includes(a) || ends.includes(b)
     }
-    if (rule.type === 'thermometer' || rule.type === 'renban') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'thermometer' || rule.type === 'renban' || rule.type === 'consecutive-line') return rule.cells.includes(a) && rule.cells.includes(b)
     return false
   })
 }
@@ -425,6 +429,17 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
     case 'between': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 3)
+    case 'consecutive-line': {
+      if (!Object.keys(rule).every(key => ['type', 'cells', 'segments'].includes(key)) || !validCells(rule.cells, 1) || rule.cells.length > 9) return false
+      if (rule.segments === undefined) return true
+      if (!Array.isArray(rule.segments) || !rule.segments.length || !rule.segments.every(path =>
+        Array.isArray(path) && path.length > 0 && path.every(cell => rule.cells.includes(cell)))) return false
+      const indices = rule.segments.flatMap((path: readonly number[]) => path.slice(1).map((cell, i) =>
+        [rule.cells.indexOf(path[i]), rule.cells.indexOf(cell)] as const))
+      return new Set(rule.segments.flat()).size === rule.cells.length &&
+        indices.every(([a, b]) => Math.abs(a - b) === 1) &&
+        new Set(indices.map(([a, b]) => Math.min(a, b))).size === rule.cells.length - 1
+    }
     case 'region-sum': return Object.keys(rule).every(key => ['type', 'cells', 'groupByRegion', 'segments'].includes(key)) &&
       validCells(rule.cells, 2) && (rule.groupByRegion === undefined || typeof rule.groupByRegion === 'boolean') &&
       (rule.segments === undefined || Array.isArray(rule.segments) && rule.segments.length > 0 &&
@@ -508,6 +523,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   whispers: PUZZLE_VARIANTS.whispers.name,
   palindrome: PUZZLE_VARIANTS.palindrome.name,
   between: PUZZLE_VARIANTS.between.name,
+  'consecutive-line': PUZZLE_VARIANTS['consecutive-line'].name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
   parity: PUZZLE_VARIANTS.parity.name,
   'anti-king': PUZZLE_VARIANTS['anti-king'].name,
@@ -580,6 +596,11 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
       }
       case 'renban':
         descriptions.push(PUZZLE_VARIANTS.renban.rule)
+        break
+      case 'consecutive-line':
+        descriptions.push(PUZZLE_VARIANTS['consecutive-line'].rule)
+        if ((rule.segments ?? [rule.cells]).some(lineSkipsCells)) descriptions.push(
+          'A dashed Consecutive connector skips cells. Only cells with a small dot belong to that line.')
         break
       case 'inequality':
         descriptions.push(PUZZLE_VARIANTS.inequality.rule)
