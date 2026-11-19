@@ -1,5 +1,7 @@
 import definitions from './foundation-visuals.json' with { type: 'json' }
 import type { BoardAnnotations, BoardLink, BoardRegion, CandidateAnnotation } from '../components/BoardAnnotations'
+import type { SizedVariantPosition } from './engine.ts'
+import type { MiniGrid } from './grid.ts'
 
 export type VisualMark = 'pattern' | 'accent' | 'removal' | 'result'
 export type VisualKey = VisualMark | 'strong' | 'weak' | 'arrow'
@@ -20,6 +22,8 @@ export type FoundationVisualDefinition = {
   title: string
   note: string
   region?: BoardRegion
+  grid?: MiniGrid
+  algebraicCages?: SizedVariantPosition['rules']
   candidates?: Record<string, number[]>
   key: VisualKey[]
   steps: VisualStep[]
@@ -33,11 +37,13 @@ export const visualColors: Record<VisualMark, string> = {
 }
 
 export function foundationBoard(visual: FoundationVisualDefinition, step: VisualStep) {
-  const candidates = Array<number>(81).fill(0)
+  const { grid, algebraicCages } = visual
+  const cellCount = (grid?.size ?? 9) ** 2
+  const candidates = Array<number>(cellCount).fill(0)
   for (const [cell, digits] of Object.entries(step.candidates ?? visual.candidates ?? {})) {
     candidates[Number(cell)] = digits.reduce((mask, digit) => mask | (1 << (digit - 1)), 0)
   }
-  const values = Array<string>(81).fill('0')
+  const values = Array<string>(cellCount).fill('0')
   for (const [cell, digit] of Object.entries(step.filled ?? {})) values[Number(cell)] = String(digit)
   const marks = new Map<number, Map<number, CandidateAnnotation>>()
   for (const { cell, digit, kind } of step.marks ?? []) {
@@ -49,5 +55,5 @@ export function foundationBoard(visual: FoundationVisualDefinition, step: Visual
     candidates: marks,
     links: step.links?.map(({ kind, ...link }) => ({ ...link, color: visualColors.pattern, dashed: kind === 'weak' })),
   }
-  return { givens: '0'.repeat(81), values: values.join(''), candidates, annotations }
+  return { grid, algebraicCages, givens: '0'.repeat(cellCount), values: values.join(''), candidates, annotations }
 }

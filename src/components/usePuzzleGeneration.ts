@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { type DifficultyPreference } from '../sudoku/difficulty'
+import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
 import { EngineError, runEngine } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
 import { createGameId, makeGame } from '../sudoku/game'
@@ -8,7 +9,7 @@ import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
 import { MINI_GRID } from '../sudoku/grid'
-import { miniDifficulty, MINI_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, variantDifficulty } from '../sudoku/variants'
 import { generationRuleset, type VariantGenerationOptions } from '../sudoku/variant-rulesets'
 
@@ -35,6 +36,19 @@ export function usePuzzleGeneration() {
     setError('')
     try {
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+      if (variant === 'algebraic-cages') {
+        const difficulty = miniDifficulty(preference)
+        const { digits, rules } = await runEngine({ type: 'generate-algebraic', seed, difficulty, exclude: roomStore.playedAlgebraicPuzzles() })
+        const givens = digits.join('')
+        const algebraic = await verifyAlgebraicPuzzle({ givens, rules })
+        const rating = await rateAlgebraicPuzzle(givens, rules)
+        if (!mounted.current) return
+        if (rating?.difficulty !== difficulty) throw new Error('The walkthrough did not match the selected difficulty.')
+        const game = makeGame(createGameId(), nextPuzzleTitle(`${ALGEBRAIC_CAGES_NAME} `), givens, 'generated', undefined, MINI_GRID)
+        roomStore.add({ ...game, algebraic, difficulty, score: rating.points })
+        onGenerated?.()
+        return
+      }
       if (variant === 'mini') {
         const difficulty = miniDifficulty(preference)
         const exclude = roomStore.playedMiniGivens().map(givens => Array.from(givens, Number))

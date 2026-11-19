@@ -16,3 +16,4 @@ export const StrongLink: Story = { args: { visual: 'strong-link' } }
 export const WeakLink: Story = { args: { visual: 'weak-link' } }
 export const GroupedLink: Story = { args: { visual: 'grouped-link' } }
 export const NestedProof: Story = { args: { visual: 'nested-branches' } }
+export const AlgebraicCageBounds: Story = { args: { visual: 'algebraic-cage-bounds' } }

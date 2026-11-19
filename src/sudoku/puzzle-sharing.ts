@@ -1,6 +1,8 @@
 import { isCollectionReference, type CollectionReference } from './collection-reference.ts'
 import type { Game } from './game.ts'
 import { CLASSIC_GRID, isGridText, isMiniGrid, type MiniGrid } from './grid.ts'
+import { isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
+import { isSizedSudokuPadCode } from './sized-sudoku-pad.ts'
 import { isPlayablePuzzle, isPuzzleVariantId, type VariantGame } from './variants.ts'
 
 export type SharedPuzzleDefinition = {
@@ -8,6 +10,7 @@ export type SharedPuzzleDefinition = {
   title: string
   givens: string
   grid?: MiniGrid
+  algebraic?: { rules: readonly AlgebraicCage[] } | { sudokuPad: string }
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
   collection?: CollectionReference
 }
@@ -29,10 +32,13 @@ export function puzzleDefinitionForSharing(game: Game): SharedPuzzleDefinition {
   const variant = game.variant
   const { rules, regions } = variant?.puzzle ?? {}
   const collection = game.collection && { collectionId: game.collection.collectionId, puzzleId: game.collection.puzzleId }
+  const algebraic = game.algebraic?.source ? { sudokuPad: game.algebraic.source.code }
+    : game.algebraic ? { rules: game.algebraic.rules } : undefined
   return {
     version: 1, title: game.title, givens: game.givens, grid: game.grid,
     variant: variant && { id: variant.id, puzzle: { version: variant.puzzle.version, givens: game.givens, rules, regions } },
     collection,
+    ...(algebraic && { algebraic }),
   }
 }
 
@@ -66,13 +72,19 @@ export async function publishSharedPuzzle(game: Game, signal?: AbortSignal): Pro
 export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Promise<SharedPuzzleDefinition> {
   if (!isSharedPuzzleId(id)) throw new Error('This puzzle link is invalid.')
   const data = await sharingRequest(`/${id.toLowerCase()}`, undefined, signal) as Partial<SharedPuzzleDefinition>
-  const { version, title, givens, variant, collection, grid } = data
+  const { version, title, givens, variant, collection, grid, algebraic } = data
   if (version !== 1 || typeof title !== 'string' || !title.trim() || title.length > 72 ||
     (grid !== undefined && (!isMiniGrid(grid) || variant !== undefined)) || !isGridText(givens, grid ?? CLASSIC_GRID) ||
+    (algebraic !== undefined && (!grid || !validSharedAlgebraic(algebraic))) ||
     (variant !== undefined && (!variant || !isPuzzleVariantId(variant.id) ||
       !isPlayablePuzzle(variant.id, variant.puzzle) || variant.puzzle.givens !== givens)) ||
     (collection !== undefined && !isCollectionReference(collection))) {
     throw new Error('This link uses an unsupported puzzle definition.')
   }
-  return { version, title, givens, variant, collection, grid }
+  return { version, title, givens, variant, collection, grid, ...(algebraic && { algebraic }) }
+}
+
+function validSharedAlgebraic(value: unknown): value is NonNullable<SharedPuzzleDefinition['algebraic']> {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 1) return false
+  return 'sudokuPad' in value ? isSizedSudokuPadCode(value.sudokuPad) : 'rules' in value && isAlgebraicCageList(value.rules)
 }

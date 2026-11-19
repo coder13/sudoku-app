@@ -23,7 +23,7 @@ type Props = {
   advancedModes: AdvancedModes
   colorMode: boolean
   toggleColorMode: () => void
-  onOpenColors?: () => void
+  onOpenColorTools?: () => void
   colorsActive?: boolean
   colorTarget: ColorTarget
   setColorTarget: (target: ColorTarget) => void
@@ -78,6 +78,7 @@ export function Controls(props: Props) {
   const candidateColors = colors && props.colorTarget === 'candidate'
   const darkColors = props.selectedDigit !== null && props.selectedDigit > COLOR_FAMILIES.length
   const gridSize = props.gridSize ?? 9
+  const colorToolsLabel = gridSize === 9 ? 'Colors & Chains' : 'Colors'
   const choices = colors ? COLOR_FAMILIES.map((_, index) => index + 1 + (darkColors ? COLOR_FAMILIES.length : 0)) : DIGITS.slice(0, gridSize)
   const alternate = props.selectedDigit === null ? null : alternateColorShade(props.selectedDigit)
   const counts = Array(10).fill(0) as number[]
@@ -257,11 +258,11 @@ export function Controls(props: Props) {
                 )}
               </div>
             )}
-            {!props.draft && !(props.compact && props.onActions) && (props.advancedModes.colorsEnabled || props.onOpenColors) && (
-              <IconButton className="color-mode-button" title={`${props.onOpenColors ? 'Colors' : 'Color mode'} (${shortcutLabel(shortcuts.colorMode)})`}
-                aria-label={props.onOpenColors ? 'Open colors panel' : 'Color mode'}
+            {!props.draft && !(props.compact && props.onActions) && (props.advancedModes.colorsEnabled || props.onOpenColorTools) && (
+              <IconButton className="color-mode-button" title={`${props.onOpenColorTools ? colorToolsLabel : 'Color mode'} (${shortcutLabel(shortcuts.colorMode)})`}
+                aria-label={props.onOpenColorTools ? `Open ${colorToolsLabel}` : 'Color mode'}
                 aria-pressed={props.colorMode || props.colorsActive || false} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)}
-                onClick={props.onOpenColors ?? props.toggleColorMode} disabled={props.onOpenColors ? props.disabled : editsDisabled}>
+                onClick={props.onOpenColorTools ?? props.toggleColorMode} disabled={props.onOpenColorTools ? props.disabled : editsDisabled}>
                 <Palette size={18} />
               </IconButton>
             )}
