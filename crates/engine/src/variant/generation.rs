@@ -40,6 +40,8 @@ pub struct VariantGenerationOptions {
     pub required_rule: Option<String>,
     /// Previously emitted puzzles to exclude, including equivalent rotations and reflections.
     /// Whispers path direction, segmentation and duplicate edges do not change identity.
+    /// Palindrome and Clone matching-digit components are compared transitively;
+    /// free odd centers and alternative drawings do not add constraints.
     /// Optional drawing paths do not distinguish otherwise identical logical puzzles.
     pub exclude: Vec<VariantPuzzle>,
 }

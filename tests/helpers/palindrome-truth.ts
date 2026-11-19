@@ -15,10 +15,10 @@ export function assertPalindromeProof(position: VariantPosition, proof: VariantD
   assert.ok(proof.actions.length > 0)
   for (const action of proof.actions) {
     const candidate = 'place' in action ? action.place : action.eliminate
-    const index = rule.cells.indexOf(candidate.cell)
+    const index: number = rule.cells.indexOf(candidate.cell)
     assert.ok(index >= 0)
     const opposite = rule.cells.length - 1 - index
-    const support = evidence.domains[index] & evidence.domains[opposite]
+    const support: number = evidence.domains[index] & evidence.domains[opposite]
     const bit = 1 << (candidate.digit - 1)
     assert.ok(evidence.domains[index] & bit)
     if ('place' in action) assert.equal(support, bit)

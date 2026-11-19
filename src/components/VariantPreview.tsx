@@ -16,6 +16,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   'non-consecutive': [],
   parity: [{ type: 'parity', cells: [20, 48], parity: 'odd' }, { type: 'parity', cells: [24, 60], parity: 'even' }],
   whispers: [],
+  palindrome: [{ type: 'palindrome', cells: [0, 10, 20, 30, 31, 32] }, { type: 'palindrome', cells: [48, 49, 50, 60, 70, 80] }],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
   'little-killer': [],
