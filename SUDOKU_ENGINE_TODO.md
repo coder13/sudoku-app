@@ -34,7 +34,7 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 The current priority is UI parity for all seven rule families already in the engine, plus New Puzzle generation for every supported variant, including the thirteen import-only families. [Parity inventory and acceptance](SUDOKU_ENGINE_UI_PARITY.md)
 
-- [ ] Integrate Between Lines with complete import, visible/accessibly labelled clues, input/candidates, history, persistence, sharing, hints, Finder/pages and solutions. [Issue 63](https://github.com/coder13/sudoku-app/issues/63)
+- [x] Integrate Between Lines with complete import, visible/accessibly labelled clues, input/candidates, history, persistence, sharing, hints, Finder/pages and solutions. [PR 190](https://github.com/coder13/sudoku-app/pull/190)
 - [x] Preserve the complete published Newman grid/solution and Raumplaner’s original zero-given Between/black-dot export. Independently verify both unique completions, original path order and all companion rules.
 - [x] Add basic Between app acceptance/import, endpoint/interior conflict restrictions and cleanup in both Pencil modes. Check every partial three-cell assignment independently in both orientations, repeated interior digits, histories and hidden-setting rejection. TypeScript and the 120-component catalog pass.
 - [x] Keep Between paths, endpoint circles, overlapping line families and accessible cell roles visible on desktop/mobile; preserve all eight grid symmetries and sharing after progress.
@@ -43,7 +43,7 @@ The current priority is UI parity for all seven rule families already in the eng
 - [x] Reproduce the rotated-puzzle fallback and pass native full-puzzle exclusions through the app generation path. Verify that Medium retries exclude the played puzzle and all square symmetries.
 - [x] Check light/dark clue renders at 290/540 pixels and measure actual Between candidates, verification, exact solves, ratings, hints, input, SSR and both New Puzzle levels. Verify the unchanged Wasm and pinned-baseline JavaScript/CSS costs. [Audit](SUDOKU_BETWEEN_AUDIT.md)
 - [x] Complete the final full rerun: all 547 app tests and 330 Wasm contracts pass, along with TypeScript, catalog and production/offline build.
-- [ ] Pass exact-head release gates and merge Between Lines.
+- [x] Pass exact-head release gates and merge Between Lines. Head `f459103` passed 366 native, 547 app and 330 Wasm tests, sixteen capability combinations, four profiles, strict Cargo docs and deployment in [CI 44447946113](https://github.com/coder13/sudoku-app/actions/runs/44447946113). [PR 190](https://github.com/coder13/sudoku-app/pull/190) reached main at `30bbd85`; fetched main contains the reviewed head and merge, with identical shipping sources.
 - [ ] Add New Puzzle generation for the thirteen existing import-only variants, with checked recipes and full player-flow tests. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
 - [ ] Integrate Region Sum Lines. [Issue 67](https://github.com/coder13/sudoku-app/issues/67)
 - [ ] Integrate Clone. [Issue 42](https://github.com/coder13/sudoku-app/issues/42)

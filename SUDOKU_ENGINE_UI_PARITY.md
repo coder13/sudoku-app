@@ -1,10 +1,10 @@
 # Engine and app UI parity
 
-The current priority is to expose the rule families already implemented in the engine. Starting main `ff9c9b9` has 27 native rule types and Jigsaw layouts. Its app accepts twenty native rule families, with twenty-one named variants plus Classic. Seven rule families have native candidates, exact solving, logical proofs and teaching fixtures but need app integration. The first integration below adds Between Lines, including New Puzzle generation.
+The current priority is to expose the rule families already implemented in the engine. Main `30bbd85` has 27 native rule types and Jigsaw layouts. Its app accepts twenty-one native rule families, with twenty-two named variants plus Classic. Nine variants plus Classic are offered in New Puzzle. Six native families still need app integration; thirteen older playable families still need New Puzzle recipes.
 
 | Rule family | Engine | App integration | Issue |
 | --- | --- | --- | --- |
-| Between Lines | In main | In progress in `codex/sudoku-ui-parity-between` | [63](https://github.com/coder13/sudoku-app/issues/63) |
+| Between Lines | In main | Released, including Easy/Medium New Puzzle | [PR 190](https://github.com/coder13/sudoku-app/pull/190) |
 | Region Sum Lines | In main | Pending | [67](https://github.com/coder13/sudoku-app/issues/67) |
 | Clone | In main | Pending | [42](https://github.com/coder13/sudoku-app/issues/42) |
 | Sandwich | In main | Pending | [68](https://github.com/coder13/sudoku-app/issues/68) |
@@ -22,7 +22,7 @@ Fog visibility is a separate engine feature tracked in [91](https://github.com/c
 
 The existing engine compiles ordered paths of at least three distinct cells. Every interior digit lies strictly between the two endpoint digits; interior digits can repeat when their houses and other rules permit it. Each original Coach `betweenLine` segment compiles independently. App rule acceptance, Coach decoding, grid markings, cell descriptions, placement cleanup and complete help/storage flows are now implemented, reusing existing native proofs and Learn content. [Source, behavior, generation and performance audit](SUDOKU_BETWEEN_AUDIT.md)
 
-The first source controls are Philip Newman's [Between, the Lines](https://www.gmpuzzles.com/blog/2026/08/between-lines-sudoku-by-philip-newman/), with its published grid and solution PDFs, and Raumplaner's complete [Between the Dots](https://sudoku.coach/en/s/9KxH), which combines twelve Between paths and eleven black dots with zero givens. Keep every companion clue. The source fixtures retain original links, givens, ordered paths, printed completions and the original Coach code. Independent numeric search verifies one solution for both complete sources, matching the printed completions. The Newman control closes in one independent search node; the mixed Coach control uses 201. Static rendered clues and actual app contracts pass; exact-head release gates remain pending.
+The first source controls are Philip Newman's [Between, the Lines](https://www.gmpuzzles.com/blog/2026/08/between-lines-sudoku-by-philip-newman/), with its published grid and solution PDFs, and Raumplaner's complete [Between the Dots](https://sudoku.coach/en/s/9KxH), which combines twelve Between paths and eleven black dots with zero givens. Keep every companion clue. The source fixtures retain original links, givens, ordered paths, printed completions and the original Coach code. Independent numeric search verifies one solution for both complete sources, matching the printed completions. The Newman control closes in one independent search node; the mixed Coach control uses 201. Static clue renders, actual app contracts and all exact-head release gates pass. The integration is on main at `30bbd85`.
 
 ## New Puzzle generation parity
 
