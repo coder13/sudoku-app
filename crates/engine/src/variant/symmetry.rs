@@ -59,7 +59,8 @@ fn key_impl(
                 for rule in &mut copy.rules {
                     if let PuzzleRule::Whispers { cells, .. }
                     | PuzzleRule::Entropic { cells }
-                    | PuzzleRule::Modular { cells } = rule
+                    | PuzzleRule::Modular { cells }
+                    | PuzzleRule::Renban { cells, .. } = rule
                     {
                         cells.sort_unstable();
                     }

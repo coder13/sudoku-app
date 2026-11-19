@@ -1,7 +1,7 @@
 export type LatinRule = {
   label: string
   cells: readonly number[]
-  support: (domains: readonly number[]) => number[] | null
+  support: (domains: readonly number[]) => readonly number[] | null
 }
 
 export type LatinPuzzle = {
@@ -133,17 +133,48 @@ export function findLatinHint(puzzle: LatinPuzzle, values: readonly number[]): L
   return valid ? hint : null
 }
 
+// Search starts from a fixed point at every child. Recheck only rules that
+// touch a changed cell, then queue their neighbors as domains shrink.
+function propagateExact(
+  puzzle: LatinPuzzle, domains: number[], rulesByCell: readonly number[][], first: readonly number[],
+) {
+  const queue = [...first]
+  const queued = new Uint8Array(puzzle.rules.length)
+  for (const rule of queue) queued[rule] = 1
+  for (let front = 0; front < queue.length; front++) {
+    const index = queue[front]
+    queued[index] = 0
+    const rule = puzzle.rules[index]
+    const support = rule.support(domains)
+    if (!support) return false
+    rule.cells.forEach((cell, offset) => {
+      if (domains[cell] === support[offset]) return
+      domains[cell] = support[offset]
+      for (const next of rulesByCell[cell]) {
+        if (queued[next]) continue
+        queued[next] = 1
+        queue.push(next)
+      }
+    })
+  }
+  return true
+}
+
 export function solveLatin(puzzle: LatinPuzzle, values: readonly number[] = [], limit = 20_000) {
   let nodes = 0
   let limited = false
   const solutions: number[][] = []
-  function visit(domains: number[]) {
+  const rulesByCell: number[][] = puzzle.givens.map(() => [])
+  puzzle.rules.forEach((rule, index) => {
+    for (const cell of rule.cells) rulesByCell[cell].push(index)
+  })
+  function visit(domains: number[], pending: readonly number[]) {
     if (nodes >= limit) {
       limited = true
       return
     }
     nodes++
-    if (!propagate(puzzle, domains)) return
+    if (!propagateExact(puzzle, domains, rulesByCell, pending)) return
     let branch = -1
     let smallest = puzzle.size + 1
     for (let i = 0; i < domains.length; i++) {
@@ -160,10 +191,10 @@ export function solveLatin(puzzle: LatinPuzzle, values: readonly number[] = [], 
     for (let choices = domains[branch]; choices && !limited && solutions.length < 2; choices &= choices - 1) {
       const next = domains.slice()
       next[branch] = choices & -choices
-      visit(next)
+      visit(next, rulesByCell[branch])
     }
   }
-  visit(initialDomains(puzzle, values))
+  visit(initialDomains(puzzle, values), puzzle.rules.map((_, index) => index))
   const status = limited ? 'search-limit' : (['unsolvable', 'unique', 'multiple'] as const)[solutions.length]
   return { status, solution: solutions[0] ?? null, nodes }
 }

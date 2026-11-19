@@ -145,3 +145,11 @@ export const CalcudokuFromGameTypes: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
   },
 }
+
+export const RenbanVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=renban" />,
+}
+export const RenbanDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=renban" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}

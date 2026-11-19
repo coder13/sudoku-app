@@ -239,7 +239,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   background: var(--surface-raised);
 }
 .lesson-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: var(--space-16); align-items: start; min-width: 0; font-size: 0.875rem; line-height: 1.5; }
-.lesson-workbench[data-preview] { grid-template-columns: minmax(0, 1fr); }
+.lesson-workbench[data-tools="false"] { grid-template-columns: minmax(0, 1fr); }
 .lesson-workbench .board-frame { max-width: min(470px, calc(var(--diagram-columns, 9) * 46px + 20px)); margin-inline: auto; }
 .lesson-workbench-tools { display: grid; align-content: start; gap: var(--space-12); min-width: 0; }
 .lesson-workbench .controls { width: 100%; height: auto; padding: var(--space-8); }
