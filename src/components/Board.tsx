@@ -45,7 +45,6 @@ type Props = {
   onGridKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void
   onCellDoubleClick?: (index: number, event: MouseEvent) => void
   onCandidate?: (candidate: Candidate) => void
-  canSelectCandidate?: (candidate: Candidate) => boolean
   onPaintCandidate?: (candidate: Candidate) => void
   onCandidateHover?: (candidate: Candidate | null) => void
   isLinkTarget?: (candidate: Candidate) => boolean
@@ -67,7 +66,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 export function Board({
   variantPuzzle, grid: sizedGrid, algebraicCages, sixRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
-  selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, onCandidate, canSelectCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
+  selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
 }: Props) {
   const grid = sizedGrid ?? CLASSIC_GRID
@@ -133,19 +132,17 @@ export function Board({
   const gridMask = (cell: number) => candidates?.[cell] ??
     ((position?.corner[cell] ?? 0) | (usesDigitSlots(cell) ? position?.center[cell] ?? 0 : 0))
   const centerMask = (cell: number) => usesDigitSlots(cell) ? 0 : position?.center[cell] ?? 0
-  const selectableDigits = (cell: number, slotted: boolean) => marksOf((slotted ? gridMask : centerMask)(cell))
-    .filter((digit) => !canSelectCandidate || canSelectCandidate({ cell, digit }))
   let tabCandidate: CandidateSlot | undefined
   if (candidateAction) {
     if (candidateFocus && playableCell(candidateFocus.cell) &&
-      selectableDigits(candidateFocus.cell, candidateFocus.slotted).includes(candidateFocus.digit)) {
+      hasCandidate((candidateFocus.slotted ? gridMask : centerMask)(candidateFocus.cell), candidateFocus.digit)) {
       tabCandidate = candidateFocus
     } else {
-      const hasCandidates = (cell: number) => playableCell(cell) && (selectableDigits(cell, true).length || selectableDigits(cell, false).length)
+      const hasCandidates = (cell: number) => playableCell(cell) && (gridMask(cell) || centerMask(cell))
       const cell = hasCandidates(active) ? active : Array.from(values).findIndex((_, index) => hasCandidates(index))
       if (cell !== -1) {
-        const slotted = selectableDigits(cell, true).length > 0
-        tabCandidate = { cell, digit: selectableDigits(cell, slotted)[0], slotted }
+        const slotted = Boolean(gridMask(cell))
+        tabCandidate = { cell, digit: marksOf((slotted ? gridMask : centerMask)(cell))[0], slotted }
       }
     }
   }
@@ -288,8 +285,8 @@ export function Board({
                   } as CSSProperties
                   const highlightClass = !previewEdit && digit === focusDigit && candidateHighlightStyle && candidateHighlightStyle !== 'cell'
                     ? `candidate-match candidate-match-${candidateHighlightStyle}` : undefined
-                  const candidate = { cell: index, digit }
-                  if (candidateAction && (!canSelectCandidate || canSelectCandidate(candidate))) {
+                  if (candidateAction) {
+                    const candidate = { cell: index, digit }
                     const pending = selectedCandidate?.cell === index && selectedCandidate.digit === digit
                     const linkTarget = isLinkTarget?.(candidate)
                     const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],

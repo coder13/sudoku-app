@@ -40,3 +40,9 @@ test('a saved mobile tab must be one of the open tools', () => {
     drawingIntent: null, launchPaused: true,
   })
 })
+
+test('the Subsets tab survives a reload in this tab', () => {
+  const storage = new MemoryStorage()
+  createPlaySession(storage).set('puzzle-a', 'mobileInput', { open: ['chains', 'subsets'], active: 'subsets' })
+  assert.deepEqual(createPlaySession(storage).getSnapshot().mobileInput, { open: ['chains', 'subsets'], active: 'subsets' })
+})

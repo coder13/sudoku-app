@@ -282,6 +282,7 @@ export function Worktable({
   const [desktopColorsVisible, setDesktopColorsVisible] = useState(false)
   const [focusColorsRequest, setFocusColorsRequest] = useState(0)
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
+  const [desktopInputVisible, setDesktopInputVisible] = useState(false)
   const [desktopSubsetsVisible, setDesktopSubsetsVisible] = useState(false)
   const [focusSubsetsRequest, setFocusSubsetsRequest] = useState(0)
   const [showStrongLinks, setShowStrongLinks] = useState(false)
@@ -464,6 +465,11 @@ export function Worktable({
     : advancedWorkspace ? showRightPanel : openInsightTabs.some(({ id }) => id === 'colors')
   const chainsPanelOpen = mobile ? openMobileTools.includes('chains')
     : advancedWorkspace ? showRightPanel : openInsightTabs.some(({ id }) => id === 'chains')
+  const chainKeypadVisible = !grid && chainsPanelOpen && (mobile ? activeMobileInput === 'digits'
+    : advancedWorkspace && desktopInputVisible)
+  const drawingIntent = savedPlayState?.drawingIntent ?? null
+  const chainDrawingRequested = drawingIntent ?? (game.chainSketch?.pending != null)
+  const chainsActive = chainsVisible || (chainKeypadVisible && (showStrongLinks || chainDrawingRequested))
   const variantEliminations = (variant || grid) && eliminations
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.six === six ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
@@ -481,7 +487,7 @@ export function Worktable({
   const offerSingles = !draft && !solved && (grid || generatedWithAuto || (
     !ratingPending && needsSinglesCheck && singlesCheck?.givens === givens && singlesCheck.variant === variant && singlesCheck.needsMore
   ))
-  const showChainSketches = chainsVisible || !grid && Boolean(game.chainSketch)
+  const showChainSketches = chainsActive || !grid && Boolean(game.chainSketch)
   const chainMasks = useMemo(() => {
     if (!showChainSketches || draft || solved) return null
     return currentNotes ? subsetMasks : candidateToolMasks(puzzleNotes?.masks, values, displayedCandidates, eliminations)
@@ -492,16 +498,15 @@ export function Worktable({
   const playerHighlightMask = colorMode || eraseMode ? 0 : highlightedDigitMask
   const startHighlightDigit = playerHighlightMask ? onlyCandidate(playerHighlightMask) : coloringDigit
   const sketch = useChainSketch(game, chainGraph, {
-    canDraw: chainsVisible && !completed, graphCurrent: Boolean(masks), canAnalyze: canAnalyzeChains, startHighlightDigit,
-    drawingIntent: savedPlayState?.drawingIntent ?? null,
+    canDraw: chainsActive && !completed, graphCurrent: Boolean(masks), canAnalyze: canAnalyzeChains, startHighlightDigit,
+    drawingIntent,
     setDrawingIntent: intent => playSession.set(id, 'drawingIntent', intent),
   })
   const chainHighlightDigit = sketch.active.highlightedDigit
   const strongLinkMask = playerHighlightMask || (startHighlightDigit ? 1 << (startHighlightDigit - 1) : 0)
-  const strongLinksVisible = showStrongLinks && chainsVisible && canAnalyzeChains && !hintAnnotations
+  const strongLinksVisible = showStrongLinks && chainsActive && canAnalyzeChains && !hintAnnotations
   const strongLinks = useStrongLinkOverlay(strongLinksVisible ? chainGraph : null, strongLinkMask, sketch.annotations)
-  const showingStrongLinks = strongLinksVisible && strongLinks.count > 0
-  const selectingChainStart = showingStrongLinks && !sketch.drawing && !sketch.active.hidden
+  const browsingStrongLinks = strongLinksVisible && !sketch.drawing
   const canPaint = !cellColorsDisabled
   const colorsVisible = mobile ? activeMobileInput === 'colors'
     : advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
@@ -1087,6 +1092,11 @@ export function Worktable({
     showDigitHighlights(digit === 0 ? 0 : strongLinkMask ^ (1 << (digit - 1)), 'any')
   }
 
+  function selectStrongLinkCandidate(candidate: Candidate) {
+    if (strongLinks.canStart(candidate) && !sketch.active.hidden) sketch.beginAt(candidate)
+    else toggleStrongLinkDigit(candidate.digit)
+  }
+
   function toggleChainHighlight(digit: number) {
     if (strongLinksVisible) {
       toggleStrongLinkDigit(digit)
@@ -1461,7 +1471,7 @@ export function Worktable({
         event.preventDefault()
         if (event.repeat) return
         if (sketch.drawing) stopDrawingAndFocusGrid()
-        else if (chainsVisible && chainGraph) sketch.toggle()
+        else if (chainsActive && chainGraph) sketch.toggle()
         else if (!chainsVisible || previewing) {
           setStartDrawingOnOpen(true)
           showChains()
@@ -1489,10 +1499,10 @@ export function Worktable({
       const key = event.key.toLowerCase()
       const shortcut = event.ctrlKey || event.metaKey
       const highlightedDigit = highlightedDigitShortcut(event) ?? functionKeyDigit(event.key)
-      if (sketch.drawing || selectingChainStart) {
+      if (sketch.drawing || browsingStrongLinks) {
         if (key === 'escape') {
           event.preventDefault()
-          if (selectingChainStart) setShowStrongLinks(false)
+          if (browsingStrongLinks) setShowStrongLinks(false)
           else if (sketch.pending === null) stopDrawingAndFocusGrid()
           else sketch.endPath()
         } else if (shortcut && key === 'z' && !event.shiftKey) {
@@ -1964,8 +1974,7 @@ export function Worktable({
     : 'Loading candidates…'
   const chainsPanel = grid ? <p className="analysis-empty">Use the Technique Finder to explore deductions on this grid.</p>
     : <ChainsPanel sketch={sketch} onApply={applyChainEdits} shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection} compact={mobile}
-    digitHighlight={advancedWorkspace && sketch.drawing && !strongLinksVisible ? { digit: chainHighlightDigit, onChange: sketch.setHighlightedDigit } : undefined}
-    strongLinks={{ shown: showStrongLinks, mask: strongLinkMask, count: strongLinks.count, toggleDigit: toggleStrongLinkDigit,
+    strongLinks={{ shown: showStrongLinks, hasHighlights: strongLinkMask !== 0, count: strongLinks.count,
       toggle: () => {
         if (!showStrongLinks) changeHintVisuals('player')
         setShowStrongLinks((shown) => !shown)
@@ -2213,7 +2222,7 @@ export function Worktable({
     </div>
   )
   const canSelectCell = !game.paused && !showMobileResults && !rearranging
-  const gridInputMode = placeholder || draft || showResults || previewing || inspectSubset || showingStrongLinks || (sketch.drawing && chainMasks)
+  const gridInputMode = placeholder || draft || showResults || previewing || inspectSubset || browsingStrongLinks || (sketch.drawing && chainMasks)
     ? undefined
     : eraseMode ? 'erase' : colorMode || brush !== null ? 'color' : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging ? undefined : gridInputMode
@@ -2227,14 +2236,13 @@ export function Worktable({
       label="Solution preview" showGuides={appearance.showGuides} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
-  : (sketch.drawing || showingStrongLinks) && chainMasks ? (
+  : (sketch.drawing || browsingStrongLinks) && chainMasks ? (
     <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={sixRules} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       highlightedDigit={chainHighlightDigit} highlightedDigitMask={strongLinksVisible ? strongLinkMask : 0}
       highlightedDigitMatch="any" highlighting={highlighting} highlightCandidateCount={highlightCandidatePairs ? 2 : null}
-      showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.drawing ? sketch.select : selectingChainStart ? sketch.beginAt : undefined}
-      canSelectCandidate={selectingChainStart ? strongLinks.canStart : undefined}
+      showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.drawing ? sketch.select : selectStrongLinkCandidate}
       onCandidateHover={sketch.drawing ? sketch.hover : undefined}
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
@@ -2370,7 +2378,7 @@ export function Worktable({
             </>
           )}
         </div>
-        <div id={puzzleStageId} ref={puzzleStageRef} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || showingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
+        <div id={puzzleStageId} ref={puzzleStageRef} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || browsingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
           onContextMenu={(event) => { if (!cellHold.suppressContextMenu(event)) preventControlClickMenu(event) }} onPointerUp={finishControlClick}
           onBlur={(event) => {
             const cell = event.target.dataset.cell
@@ -2418,10 +2426,10 @@ export function Worktable({
             if (colorsVisible) setColorBrush(null)
             setColorMode(false); setPencil(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
           }}
-          selectedDigit={selectingChainStart || sketch.drawing ? (strongLinksVisible ? null : chainHighlightDigit) : colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0}
-          highlightedDigitMask={eraseMode ? 0 : highlightedDigitMask} onToggleDigitHighlight={!draft && !solved && !previewing ? toggleDigitHighlight : undefined}
+          selectedDigit={browsingStrongLinks || sketch.drawing ? (strongLinksVisible ? null : chainHighlightDigit) : colorMode ? selectedColor : selectedDigit} hasCellSelection={selected.length > 0}
+          highlightedDigitMask={strongLinksVisible ? strongLinkMask : sketch.drawing || eraseMode ? 0 : highlightedDigitMask} onToggleDigitHighlight={!draft && !solved && !previewing ? toggleDigitHighlight : undefined}
           digitHighlightMatch={digitHighlight.match} onDigitHighlightMatchChange={!draft && !solved && !previewing ? changeDigitHighlightMatch : undefined}
-          values={values} input={sketch.drawing || selectingChainStart ? toggleChainHighlight : input} chainDrawing={sketch.drawing || selectingChainStart}
+          values={values} input={sketch.drawing || browsingStrongLinks ? toggleChainHighlight : input} chainDrawing={sketch.drawing || browsingStrongLinks}
           undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
           onCheck={presentationDraft || previewing ? undefined : () => { void runCheck() }}
           compact={mobile} actionsButtonRef={actionsMenuButtonRef} actionsOpen={actionsOpen}
@@ -2534,7 +2542,7 @@ export function Worktable({
           focusSolutionRequest={focusSolutionRequest}
           focusChainsRequest={focusChainsRequest} focusSubsetsRequest={focusSubsetsRequest} onSubsetsVisibleChange={setDesktopSubsetsVisible}
           focusColorsRequest={focusColorsRequest} onColorsVisibleChange={setDesktopColorsVisible}
-          onChainsVisibleChange={setDesktopChainsVisible}
+          onChainsVisibleChange={setDesktopChainsVisible} onInputVisibleChange={setDesktopInputVisible}
           onSolutionVisibleChange={setDesktopSolutionVisible} /> : undefined} />
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
