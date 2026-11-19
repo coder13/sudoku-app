@@ -38,8 +38,9 @@ export const MobileInputTools: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, canvasElement, userEvent }) => {
     if (!canvasElement.querySelector('.mobile-panel-layout')) return
-    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Colors & Chains' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Input tools' }))
+    const inputTools = await canvas.findByRole('group', { name: 'Input tools' })
+    await userEvent.click(within(inputTools).getByRole('button', { name: 'Colors & Chains' }))
     const tabs = canvas.getByRole('tablist', { name: 'Sudoku input' })
     await expect(within(tabs).getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
     await expect(within(tabs).getByRole('tab', { name: 'Chains' })).toBeInTheDocument()
@@ -311,7 +312,7 @@ export const HintWithGrid: Story = {
   args: { game: paintCells(starter, [{ cell: 2, color: 1 }]) },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
-    await userEvent.click(await canvas.findByRole('button', { name: 'Colors', exact: true }))
+    await userEvent.click(await canvas.findByRole('button', { name: /^Colors$/ }))
     await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
     const viewHint = await canvas.findByRole('button', { name: 'View hint' })
     await waitFor(() => {
