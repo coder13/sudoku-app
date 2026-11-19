@@ -7,6 +7,7 @@ import { quadrupleCells, WINDOKU_REGIONS, type PlayableVariant } from './variant
 export type VariantSeed = {
   seed: number
   maxGivens: number
+  maxAttempts?: number
   cageSizes?: number[]
   dotCount?: number
   layout?: string
@@ -46,8 +47,8 @@ export function variantGenerationRequest(
     case 'diagonal':
       rules.push({ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' })
       break
-    case 'anti-knight':
-      rules.push({ type: 'anti-knight' })
+    case 'anti-knight': case 'anti-king':
+      rules.push({ type: id })
       break
     case 'killer-cages':
       derivedClues.push({ type: 'killer-cage-sizes', sizes: recipe.cageSizes!, coverGrid: true })
@@ -89,7 +90,7 @@ export function variantGenerationRequest(
       break
   }
   return {
-    type: 'generate-variant', seed, maxAttempts: 1,
+    type: 'generate-variant', seed, maxAttempts: recipe.maxAttempts ?? 1,
     template: { version: 1, givens: recipe.layout ?? '0'.repeat(81), rules,
       regions: id === 'jigsaw' ? jigsawLayout(recipe.regions!) : undefined },
     derivedClues, givens: [0, recipe.maxGivens], requiredRule: id === 'windoku' ? 'extra-house' : id, difficulty, techniqueOrder,

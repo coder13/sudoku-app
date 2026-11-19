@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
-import { conflictsOf, enter, makeGame, redo, undo } from '../src/sudoku/game.ts'
+import { conflictsOf, enter, makeGame, redo, undo, type Game } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { generationVariant, isPlayablePuzzle, variantName, variantPeers, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { countCellRuleSolutions } from './helpers/cell-rule-oracle.ts'
@@ -24,7 +24,7 @@ test('Anti-King imports retain the global rule, player-facing name and shared de
   const imported = await detectPuzzle(source)
   assert.deepEqual(imported.variant, { id: 'anti-king', puzzle: fixture.puzzle })
   assert.equal(variantName(imported.variant), 'Anti-King')
-  assert.equal(generationVariant(imported.variant), undefined)
+  assert.equal(generationVariant(imported.variant), 'anti-king')
   assert.ok(variantRuleDescriptions(fixture.puzzle).some(text => text.includes('touching at a corner')))
   assert.deepEqual((await detectPuzzle('#variant=' + encodeURIComponent(JSON.stringify(imported.variant)))).variant, imported.variant)
 })
@@ -58,7 +58,7 @@ test('every geometric corner pair is recognized without row wrapping or unrelate
 })
 
 test('placing a digit clears both kinds of candidate mark across corners and history restores them', () => {
-  let game = { ...makeGame('king-history', 'King of Diamonds', fixture.puzzle.givens, 'imported'),
+  let game: Game = { ...makeGame('king-history', 'King of Diamonds', fixture.puzzle.givens, 'imported'),
     variant: { id: 'anti-king' as const, puzzle: fixture.puzzle, solution: fixture.solution } }
   game = enter(game, [12, 23], 'center', 8)
   game = enter(game, [12], 'corner', 8)

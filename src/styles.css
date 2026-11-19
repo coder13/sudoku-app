@@ -1740,7 +1740,7 @@ svg { flex-shrink: 0; }
     repeating-linear-gradient(to right, transparent 0 calc(100% / 9 - 1px), var(--preview-cell-line) calc(100% / 9 - 1px) calc(100% / 9)),
     repeating-linear-gradient(to bottom, transparent 0 calc(100% / 9 - 1px), var(--preview-cell-line) calc(100% / 9 - 1px) calc(100% / 9));
 }
-.new-puzzle-variant-preview .variant-knight { position: relative; font-size: 3rem; }
+.new-puzzle-variant-preview :is(.variant-knight, .variant-king) { position: relative; font-size: 3rem; }
 .new-puzzle-variant-copy { grid-column: 1 / -1; }
 .new-puzzle-variant-copy > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
 .new-puzzle-variant-copy h2 { font-size: 1.125rem; }
@@ -3196,7 +3196,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     var(--board-bg);
   overflow: hidden;
 }
-.variant-knight { font-size: 1.6875rem; line-height: 1; color: var(--board-ink); }
+.variant-knight, .variant-king { font-size: 1.6875rem; line-height: 1; color: var(--board-ink); }
 .variant-preview[data-variant="jigsaw"] { background: var(--board-bg); }
 .variant-preview-regions { fill: none; stroke: var(--grid-strong); stroke-width: .23; }
 .variant-clues { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }

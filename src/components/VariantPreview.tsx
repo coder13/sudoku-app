@@ -1,4 +1,5 @@
 import type { VariantRule } from '../sudoku/engine'
+import { Crown } from 'lucide-react'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
 import { regionMembership, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
 import { VariantClues } from './VariantClues'
@@ -10,6 +11,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   diagonal: [{ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' }],
   jigsaw: [],
   'anti-knight': [],
+  'anti-king': [],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
   'little-killer': [],
@@ -44,5 +46,6 @@ export function VariantPreview({ variant }: { variant: VariantId }) {
     {variant === 'x-sum' && <span className="variant-x-sum-preview"><span>10</span><span>3 + 2 + 5</span></span>}
     {variant === 'skyscrapers' && <svg className="variant-clues variant-skyscrapers-preview" viewBox="0 0 9 9" focusable="false"><text x=".4" y="5.2">3</text><path d="M2 7V5H3V7M4 7V2H5V7M6 7V3H7V7M7.5 7V1H8.5V7" /></svg>}
     {variant === 'anti-knight' && <span className="variant-knight">♞</span>}
+    {variant === 'anti-king' && <Crown className="variant-king" size="1em" aria-hidden="true" focusable="false" />}
   </span>
 }
