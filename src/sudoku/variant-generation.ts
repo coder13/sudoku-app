@@ -64,7 +64,7 @@ export function variantGenerationRequest(
     case 'parity':
       derivedClues.push({ type: 'parity', cells: recipe.markedCells! })
       break
-    case 'thermometer': case 'between': case 'region-sum': case 'palindrome': case 'entropic': case 'modular':
+    case 'thermometer': case 'between': case 'region-sum': case 'palindrome': case 'entropic': case 'modular': case 'renban':
       for (const cells of recipe.lines!) rules.push({ type: id, cells })
       break
     case 'whispers':
