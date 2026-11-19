@@ -758,6 +758,12 @@ The exact solver reproduces the published solution to Mitchell Lee’s two-given
 
 Keep version 1 for a single 9×9 grid. A future format can add a digit count and an explicit layout for each grid. For 4×4, 6×6, and 16×16, derive house length, symbols, and candidate masks from that count. Build and verify the sized single grid before adding composition.
 
+The requested [Algebraic Cages I](https://sudokupad.app/babxk5ixus) provides a complete 4×4 control. [Source and expected result](SUDOKU_ALGEBRAIC_CAGES_RESEARCH.md).
+
+- [x] Inspect the complete source and independently enumerate all 288 standard completed grids. Verify its unique digit grid and `x = 6` with all three cages intact.
+- [ ] Implement sized single grids, starting with 4×4 digits 1–4 and 2×2 boxes. Preserve 9×9 contracts and complete native/Wasm, app, hints/solutions, storage and generation coverage. [Issue 224](https://github.com/coder13/sudoku-app/issues/224)
+- [ ] Add Algebraic Killer Cages with shared positive-integer variables and typed expression totals. Preserve `x`, `x+1` and `x-5`, cage distinctness and all source cells. Verify joint digit/variable counting, explained bounds, multiple hints, complete UI/storage/replay and checked generation. [Issue 225](https://github.com/coder13/sudoku-app/issues/225)
+
 Give each playable coordinate one cell ID across overlapping grids. Build houses from each grid’s local layout and let shared cells belong to houses in both grids. Scope geometry rules and outside clues to the grid that defines them. Verify that conflicting givens in a shared cell fail validation. In Samurai, verify that each overlap can transfer candidates between its two grids.
 
 The engine takes visibility separately from the full puzzle. Visibility lists the revealed givens and rules and the candidate removals a player has established. Hints and replay use the resulting visible puzzle, including any checks that a uniqueness-based proof needs. Exact solution verification uses the full rules. The reveal policy can update visibility after each placement. [Fog projection](crates/engine/src/variant/visibility.rs)
