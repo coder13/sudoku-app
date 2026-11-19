@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { kakuroRecipeSignature } from '../scripts/generate-kakuro-catalog.mts'
 import { kakuroCatalog } from '../src/kakuro/catalog.ts'
-import { checkKakuro, createKakuro, findKakuroHint, solveKakuro, type KakuroPuzzle, type KakuroRun } from '../src/kakuro/engine.ts'
+import { checkKakuro, createKakuro, findKakuroHint, findKakuroHints, solveKakuro, type KakuroPuzzle, type KakuroRun } from '../src/kakuro/engine.ts'
 
 function enumerateTuples(run: KakuroRun): number[][] {
   const result: number[][] = []
@@ -62,6 +62,13 @@ test('every Kakuro recipe has one independently counted solution and a complete 
     assert.equal(exact.nodes, 1, id)
     assert.ok(exact.solution, id)
     const path = puzzle.cells.map(() => 0)
+    const placements = findKakuroHints(puzzle, path)
+    assert.deepEqual(placements[0], findKakuroHint(puzzle, path), id)
+    assert.equal(new Set(placements.map(hint => hint.cell)).size, placements.length, id)
+    for (const hint of placements) {
+      assert.equal(path[hint.cell], 0, id)
+      assert.equal(hint.digit, exact.solution[hint.cell], id)
+    }
     let depth = 0
     while (!checkKakuro(puzzle, path).complete) {
       const hint = findKakuroHint(puzzle, path)

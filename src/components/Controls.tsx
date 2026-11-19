@@ -1,15 +1,17 @@
+import { PlayActionsButton } from './PlayLayout'
 import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent,
   type ReactNode, type Ref, type SetStateAction,
   useEffect, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowUpDown, Check, Delete, Eraser, Highlighter, Layers2, ListChecks, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { ArrowUpDown, Check, Delete, Eraser, Highlighter, Layers2, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { alternateColorShade, COLORS, COLOR_FAMILIES, DIGITS, hasCandidate, type ColorTarget, type Mode } from '../sudoku/game'
 import type { DigitHighlightMatch } from '../sudoku/highlighting'
 import type { AdvancedModes } from '../sudoku/preferences'
 import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 import { ColorTargetPicker } from './CellColorPalette'
+import { PuzzleKeypad } from './PuzzleKeypad'
 import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
 import { useTouchHold } from './useTouchHold'
 
@@ -180,13 +182,9 @@ export function Controls(props: Props) {
               aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></IconButton>}
             {props.onActions && (
               <div className="controls-actions-wrap">
-                <IconButton type="button" ref={props.actionsButtonRef} className="actions-key"
-                  aria-label="Actions" title={`Actions (${shortcutLabel(shortcuts.actions)})`} disabled={props.disabled} aria-expanded={props.actionsOpen}
-                  aria-keyshortcuts={shortcutLabel(shortcuts.actions)}
-                  aria-controls={props.actionsOpen ? (props.compact ? 'mobile-actions-menu' : 'input-actions-menu') : undefined}
-                  aria-haspopup={props.compact ? 'dialog' : undefined} onClick={props.onActions}>
-                  <ListChecks size={20} aria-hidden="true" />
-                </IconButton>
+                <PlayActionsButton ref={props.actionsButtonRef} mobile={Boolean(props.compact)} open={Boolean(props.actionsOpen)}
+                  title={`Actions (${shortcutLabel(shortcuts.actions)})`} disabled={props.disabled}
+                  aria-keyshortcuts={shortcutLabel(shortcuts.actions)} onClick={props.onActions} />
                 {props.actionsMenu}
               </div>
             )}
@@ -200,7 +198,8 @@ export function Controls(props: Props) {
               </div>
             )}
             {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
-            <div className={`keypad ${colors ? 'palette' : gridSize === 4 ? 'mini-keypad' : gridSize === 6 ? 'six-keypad' : ''}`} role="group" aria-label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
+            <PuzzleKeypad variant={colors ? 'palette' : gridSize === 4 ? 'mini' : gridSize === 6 ? 'six' : undefined}
+              label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
                 const singleHighlight = props.highlightedDigitMask === (1 << (digit - 1))
                 const armed = props.selectedDigit === digit || (canHighlightDigits && singleHighlight)
@@ -223,7 +222,7 @@ export function Controls(props: Props) {
                   </button>
                 )
               })}
-            </div>
+            </PuzzleKeypad>
             {colors && <Button type="button" className="color-shade-switch"
               title={`Switch color shade (${shortcutLabel(shortcuts.switchColorShade)})`}
               aria-keyshortcuts={shortcutLabel(shortcuts.switchColorShade)}
