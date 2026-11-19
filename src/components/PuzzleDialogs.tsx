@@ -3,8 +3,11 @@ import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Link2, Trash2 } from 'lucide-react'
 import { analyzeMini } from '../sudoku/mini-play'
 import { runEngine } from '../sudoku/engine'
+import { algebraicLabel, connectedCage, isAlgebraicCageList, parseAlgebraicTotal, type AlgebraicCage } from '../sudoku/algebraic-cages'
+import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
 import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
-import { isSolved, makeGame, valuesOf, type Game } from '../sudoku/game'
+import { isSolved, makeGame, move, valuesOf, type Game } from '../sudoku/game'
+import { MINI_GRID } from '../sudoku/grid'
 import { publishSharedPuzzle, sharedPuzzleLink } from '../sudoku/puzzle-sharing'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
@@ -121,7 +124,7 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
     <Modal title="Share puzzle" onClose={close}>
       <div className="dialog-form">
         <p>Share {game.title} so someone else can solve it. Your progress stays private.</p>
-        {!game.variant && <>
+        {!game.variant && !game.algebraic && <>
           <label htmlFor="share-format">Format</label>
           <SelectControl id="share-format" value={format} disabled={sharing} onChange={(event) => {
             setFormat(event.target.value as 'link' | ShareFormat)
@@ -148,6 +151,78 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
   )
 }
 
+export function EditCages({ game, close }: { game: Game; close: () => void }) {
+  const [rules] = useState(game.position.draftCages ?? [])
+  const [editing, setEditing] = useState(-1)
+  const [label, setLabel] = useState('')
+  const [cells, setCells] = useState<readonly number[]>([])
+  const [error, setError] = useState('')
+  const id = useId()
+  const { size } = MINI_GRID
+  const cellName = (cell: number) => `R${Math.floor(cell / size) + 1}C${cell % size + 1}`
+  const occupied = new Set(rules.flatMap((rule, index) => index === editing ? [] : rule.cells))
+
+  function select(index: number) {
+    setEditing(index)
+    setLabel(rules[index]?.label ?? '')
+    setCells(rules[index]?.cells ?? [])
+    setError('')
+  }
+
+  function update(next: readonly AlgebraicCage[]) {
+    let changed = false
+    roomStore.update(game.id, current => {
+      if (current.source !== 'draft' || JSON.stringify(current.position.draftCages) !== JSON.stringify(rules)) return current
+      changed = true
+      return move(current, { ...current.position, draftCages: next })
+    })
+    if (changed) close()
+    else setError('The draft changed. Reopen Edit cages to see the latest cages.')
+  }
+
+  function save(event: FormEvent) {
+    event.preventDefault()
+    const total = parseAlgebraicTotal(label.trim().replace(/\s*([+−-])\s*/, (_, sign) => sign === '−' ? '-' : sign))
+    if (!total) { setError('Enter a total such as 7, x, x+1, or x−5.'); return }
+    if (cells.length > size || !connectedCage(cells)) {
+      setError('Select one to four cells connected by shared edges.')
+      return
+    }
+    const cage: AlgebraicCage = { type: 'algebraic-cage', cells: [...cells].sort((a, b) => a - b), label: algebraicLabel(total), total }
+    const next = [...rules]
+    if (editing < 0) next.push(cage)
+    else next[editing] = cage
+    if (!isAlgebraicCageList(next, { draft: true })) { setError('Each cell can belong to only one cage.'); return }
+    update(next)
+  }
+
+  return <Modal title="Edit cages" onClose={close}>
+    <form className="dialog-form" onSubmit={save}>
+      <label htmlFor={`${id}-cage`}>Cage</label>
+      <SelectControl id={`${id}-cage`} value={editing} onChange={event => select(Number(event.currentTarget.value))}>
+        <option value={-1}>New cage</option>
+        {rules.map((rule, index) => <option key={rule.cells[0]} value={index}>{rule.label} · {rule.cells.map(cellName).join(', ')}</option>)}
+      </SelectControl>
+      <label htmlFor={`${id}-label`}>Cage total</label>
+      <input id={`${id}-label`} value={label} onChange={event => { setLabel(event.currentTarget.value); setError('') }} maxLength={46} />
+      <p>Use a whole number or a letter with an optional offset, such as x−5. Each letter has the same positive integer value in all its cages.</p>
+      <fieldset className="cage-editor-cells">
+        <legend>Cells</legend>
+        {Array.from({ length: size ** 2 }, (_, cell) => <Button key={cell} type="button" aria-pressed={cells.includes(cell)}
+          disabled={occupied.has(cell)} onClick={() => {
+            setCells(current => current.includes(cell) ? current.filter(value => value !== cell) : [...current, cell])
+            setError('')
+          }}>{cellName(cell)}</Button>)}
+      </fieldset>
+      {error && <p role="alert" className="form-error">{error}</p>}
+      <div className="dialog-actions spread">
+        {editing >= 0 && <Button type="button" variant="danger" onClick={() => update(rules.filter((_, index) => index !== editing))}>Remove cage</Button>}
+        <Button type="submit" variant="primary">Save cage</Button>
+      </div>
+    </form>
+  </Modal>
+}
+
 export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
   const [title, setTitle] = useState(game.title === 'Untitled puzzle' ? '' : game.title)
   const [error, setError] = useState('')
@@ -160,22 +235,34 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
     setError('')
     setBusy(true)
     const givens = valuesOf(game)
+    const rules = game.position.draftCages
     try {
-      const status = game.grid ? await analyzeMini(givens) : await runEngine({ type: 'analyze', values: givens })
-      if (status !== 'unique') throw new Error(validation[status].text)
+      if (rules && !isAlgebraicCageList(rules)) throw new Error('Add at least one cage with a letter before saving.')
+      const algebraic = rules ? await verifyAlgebraicPuzzle({ givens, rules }) : undefined
+      const rating = algebraic ? await rateAlgebraicPuzzle(givens, algebraic.rules) : null
+      if (!algebraic) {
+        const status = game.grid ? await analyzeMini(givens) : await runEngine({ type: 'analyze', values: givens })
+        if (status !== 'unique') throw new Error(validation[status].text)
+      }
       if (!mounted.current) return
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
-      if (!current || current.source !== 'draft' || valuesOf(current) !== givens) {
+      if (!current || current.source !== 'draft' || valuesOf(current) !== givens ||
+        JSON.stringify(current.position.draftCages) !== JSON.stringify(rules)) {
         throw new Error('The draft changed. Reopen this dialog to save the latest grid.')
       }
+      const saveGame = (id: string, created: number) => ({
+        ...makeGame(id, title.trim(), givens, 'custom', created, game.grid), saved: true, ...(algebraic && {
+          algebraic, difficulty: rating?.difficulty ?? null, score: rating?.points ?? null,
+        }),
+      })
       if (game.editingId) {
         const original = roomStore.getSnapshot().games.find((item) => item.id === game.editingId)
         if (!original) throw new Error('The saved puzzle is no longer available.')
-        roomStore.update(original.id, () => ({ ...makeGame(original.id, title.trim(), givens, 'custom', original.created, game.grid), saved: true }))
+        roomStore.update(original.id, () => saveGame(original.id, original.created))
         roomStore.remove(game.id)
         roomStore.select(original.id)
       } else {
-        roomStore.update(game.id, () => ({ ...makeGame(game.id, title.trim(), givens, 'custom', game.created, game.grid), saved: true }))
+        roomStore.update(game.id, () => saveGame(game.id, game.created))
       }
       close()
     } catch (reason) {

@@ -6,6 +6,8 @@ import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
+import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
+import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { isSharedPuzzleId } from './puzzle-sharing.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
 import {
@@ -53,14 +55,15 @@ function validCandidateColors(value: unknown, grid: PlayGrid): boolean {
   })
 }
 
-function validPosition(value: unknown, grid: PlayGrid): value is Position {
+function validPosition(value: unknown, grid: PlayGrid, cageDraft: boolean): value is Position {
   if (!value || typeof value !== 'object') return false
-  const { entries, center, corner, colors, candidateColors, eliminations } = value as Position
+  const { entries, center, corner, colors, candidateColors, eliminations, draftCages } = value as Position
   const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === grid.size ** 2 &&
     items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
   const mask = (1 << grid.size) - 1
   return isGridText(entries, grid) &&
     validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) &&
+    (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
     (eliminations === undefined || validDigits(eliminations, mask))
 }
@@ -71,12 +74,13 @@ export function readGame(id: string, data: string | null): Game | undefined {
     const value = JSON.parse(data) as Game
     if (value.grid !== undefined && (!isMiniGrid(value.grid) || value.variant !== undefined)) return
     const grid = value.grid ?? CLASSIC_GRID
+    const cageDraft = Boolean(value.grid && value.source === 'draft' && value.position?.draftCages !== undefined)
     if (
       value.id === id && typeof value.title === 'string' && value.title.length <= 72 &&
       sources.includes(value.source) && isGridText(value.givens, grid) &&
       (value.variant === undefined || validVariantSave(value.variant, value.givens)) &&
-      validPosition(value.position, grid) && Array.isArray(value.past) && value.past.every(position => validPosition(position, grid)) &&
-      Array.isArray(value.future) && value.future.every(position => validPosition(position, grid)) &&
+      validPosition(value.position, grid, cageDraft) && Array.isArray(value.past) && value.past.every(position => validPosition(position, grid, cageDraft)) &&
+      Array.isArray(value.future) && value.future.every(position => validPosition(position, grid, cageDraft)) &&
       Number.isSafeInteger(value.elapsed) && value.elapsed >= 0 && Number.isSafeInteger(value.created) &&
       typeof value.started === 'boolean' && typeof value.paused === 'boolean' &&
       (value.saved === undefined || typeof value.saved === 'boolean') &&
@@ -84,6 +88,12 @@ export function readGame(id: string, data: string | null): Game | undefined {
       (value.editingId === undefined || (typeof value.editingId === 'string' && value.editingId.length <= 100)) &&
       (value.returnId === undefined || (typeof value.returnId === 'string' && value.returnId.length <= 100))
     ) {
+      if (value.algebraic !== undefined) {
+        if (!value.grid || value.source === 'draft' || !value.algebraic) return
+        const algebraic = restoreAlgebraicGame(value.algebraic, value.givens)
+        if (!algebraic) return
+        value.algebraic = algebraic
+      }
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
@@ -434,7 +444,7 @@ export const roomStore = {
     onStorage({ storageArea: localStorage, key: GAME_PREFIX + id } as StorageEvent)
   },
   playedMiniGivens() {
-    const result = new Set(room.games.filter(game => game.grid && game.source !== 'draft').map(game => game.givens))
+    const result = new Set(room.games.filter(game => game.grid && !game.algebraic && game.source !== 'draft').map(game => game.givens))
     try {
       for (const key of Object.keys(localStorage)) {
         if (!key.startsWith(SEEN_PREFIX)) continue
@@ -443,6 +453,28 @@ export const roomStore = {
       }
     } catch { /* Saved puzzles remain available if browser storage is unavailable. */ }
     return [...result]
+  },
+  playedAlgebraicPuzzles() {
+    const puzzles = new Map(room.games.flatMap(game => game.algebraic
+      ? [[puzzleIdentity(game), algebraicPosition(game.algebraic, game.givens)] as const] : []))
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (!key.startsWith(`${SEEN_PREFIX}algebraic:`)) continue
+        const identity = key.slice(SEEN_PREFIX.length)
+        if (puzzles.has(identity)) continue
+        const start = 'algebraic:'.length
+        const separator = identity.indexOf(':', start)
+        const givens = identity.slice(start, separator)
+        if (separator < 0 || !isGridText(givens, MINI_GRID)) continue
+        const json = identity.slice(separator + 1)
+        try {
+          const definitions = JSON.parse(`[${json}]`) as Pick<AlgebraicCage, 'cells' | 'total'>[]
+          const rules = definitions.map(({ cells, total }) => ({ type: 'algebraic-cage', cells, total, label: algebraicLabel(total) }))
+          if (isAlgebraicCageList(rules)) puzzles.set(identity, algebraicPosition({ rules }, givens))
+        } catch { /* Skip a single invalid seen-puzzle record. */ }
+      }
+    } catch { /* Saved puzzles remain available when browser storage is unavailable. */ }
+    return [...puzzles.values()]
   },
   getSnapshot: () => room,
   getServerSnapshot: () => initial,
