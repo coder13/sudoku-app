@@ -4,6 +4,7 @@ import lzString from 'lz-string'
 import { analyzeAlgebraic } from '../src/sudoku/algebraic-play.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { puzzleLinkHash } from '../src/sudoku/formats.ts'
+import { foundationVisuals } from '../src/sudoku/foundation-visuals.ts'
 import { applyDeduction, fillEntries, isSolved, redo, restartGame, undo } from '../src/sudoku/game.ts'
 import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { analyzeMini } from '../src/sudoku/mini-play.ts'
@@ -96,4 +97,16 @@ test('generated algebraic definitions are deterministic, replayable, and exclude
   assert.deepEqual(game.algebraic.rules, generated.rules)
   assert.equal((await puzzleSolution(game)).board, game.algebraic.solution)
   assert.equal(await analyzeMini(game.givens), 'multiple')
+})
+
+test('the lesson figures and practice have the candidate removals proved by their visible cages', async () => {
+  for (const [id, removed] of [['algebraic-cage-bounds', [2, 3, 4]], ['algebraic-cage-practice', [4]]] as const) {
+    const { grid, algebraicCages } = foundationVisuals[id]
+    assert.ok(grid && algebraicCages)
+    const proof = await runEngine({
+      type: 'sized-variant', operation: 'cage-proof', rule: 0,
+      position: { version: 2, grid, digits: Array(16).fill(0), rules: algebraicCages },
+    })
+    assert.deepEqual(proof?.actions, removed.map(digit => ({ eliminate: { cell: algebraicCages[0].cells[0], digit } })))
+  }
 })
