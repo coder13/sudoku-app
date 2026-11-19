@@ -3,11 +3,12 @@ import { ArrowLeft, X } from 'lucide-react'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { DeductionAction } from '../sudoku/engine'
 import { describeHint, describeHintRemovals } from '../sudoku/hints'
-import { cellName, lessonDiagram } from '../sudoku/lesson-diagram'
+import { cellName, lessonDiagram, type DiagramStep } from '../sudoku/lesson-diagram'
 import { practiceClueAnnotations, practiceSearch } from '../sudoku/lesson-guidance'
 import type { PracticeGuide } from '../sudoku/lesson-content'
 import type { LessonExercise } from '../sudoku/lesson-examples'
 import { DeductionExplanation, DeductionOutcome } from './HintCard'
+import { DiagramSteps, useDiagramSteps } from './DiagramSteps'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardAnnotations } from './BoardAnnotations'
 
@@ -55,17 +56,20 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
   const clues = useMemo(() => {
     const { start, check, follow } = practiceSearch(puzzle, practiceGuide)
     const checkAnnotations = practiceClueAnnotations(check)
-    const stages = [
+    const stages: { title: string; text: string; annotations: BoardAnnotations; steps?: DiagramStep[] }[] = [
       { title: 'Where to look', text: start.text, annotations: practiceClueAnnotations(start) },
       { title: 'What to check', text: check.text, annotations: checkAnnotations },
     ]
-    if (follow) stages.push({ title: 'Follow the pattern', text: follow,
-      annotations: 'forcing' in puzzle.deduction.evidence ? checkAnnotations : lessonDiagram(puzzle, undefined, { showActions: false }).annotations })
+    if (follow) {
+      const diagram = 'forcing' in puzzle.deduction.evidence ? undefined : lessonDiagram(puzzle, undefined, { showActions: false })
+      stages.push({ title: 'Follow the pattern', text: follow, annotations: diagram?.annotations ?? checkAnnotations, steps: diagram?.steps })
+    }
     return stages
   }, [puzzle, practiceGuide])
   const clue = step === null ? undefined : clues[step]
   const solution = step === clues.length
   const solutionDiagram = useMemo(() => solution ? lessonDiagram(puzzle) : undefined, [puzzle, solution])
+  const diagramSteps = useDiagramSteps(solutionDiagram?.steps ?? clue?.steps)
   useLayoutEffect(() => {
     if (stepBody.current) stepBody.current.scrollTop = 0
     if (solution) stepBody.current?.focus({ preventScroll: true })
@@ -91,6 +95,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
         {clue ? <><h3>{clue.title}</h3><p>{clue.text}</p></>
           : solution ? <h3>Solution</h3> : <p className="lesson-practice-instruction">{instruction ?? defaultInstruction}</p>}
       </div>
+      {diagramSteps && <DiagramSteps {...diagramSteps} />}
       {solutionDiagram && <>
         <DeductionOutcome removals={describeHintRemovals(puzzle.deduction, { cellReferenceStyle: 'concise' })}
           text={describeHint(puzzle.deduction, { cellReferenceStyle: 'concise' }).text} />
@@ -106,7 +111,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
       const { cell } = 'place' in action ? action.place : action.eliminate
       return [cell, { outline: 'var(--lesson-result)', label: actionText(action) }]
     })),
-  } : solutionDiagram?.annotations ?? clue?.annotations
+  } : diagramSteps?.annotations ?? solutionDiagram?.annotations ?? clue?.annotations
 
   return <LessonWorkbench puzzle={puzzle} label={`Practice grid for ${technique}`} annotations={annotations}
     initialPencil={canRemove && !canPlace}

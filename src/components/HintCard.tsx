@@ -1,6 +1,6 @@
 import { Button, IconButton } from './Button'
 import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
 
@@ -15,7 +15,7 @@ type ExplanationProps = {
 }
 type OutcomeProps = { removals?: readonly HintRemoval[]; text?: string }
 
-export function HintCard({ hint, onClose, onShown, visuals, navigation, action, lessDetail, secondaryAction, lesson, removals, ...explanation }: {
+export function HintCard({ hint, onClose, onShown, visuals, navigation, action, lessDetail, secondaryAction, lesson, removals, diagramSteps, ...explanation }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
@@ -26,6 +26,7 @@ export function HintCard({ hint, onClose, onShown, visuals, navigation, action, 
   secondaryAction?: HintAction & { expanded?: boolean }
   lesson?: { id: string; title: string }
   removals?: readonly HintRemoval[]
+  diagramSteps?: ReactNode
 } & ExplanationProps) {
   const card = useRef<HTMLElement>(null)
   useLayoutEffect(() => {
@@ -74,6 +75,7 @@ export function HintCard({ hint, onClose, onShown, visuals, navigation, action, 
           </div>}
         </div>}
       </div>
+      {diagramSteps}
       <DeductionExplanation {...explanation} />
       <DeductionOutcome removals={removals} text={hint.text} />
     </aside>

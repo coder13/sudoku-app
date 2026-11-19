@@ -178,6 +178,7 @@ export function Board({
                 const candidateCountMatches = !value && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
                 const cellStyle = cellAnnotation && {
                   '--cell-fill': error ? undefined : cellAnnotation.fill,
+                  '--annotation-fill-image': error ? undefined : cellAnnotation.fillImage,
                   color: error ? undefined : cellAnnotation.ink,
                   '--annotation-outline': cellAnnotation.outline,
                 } as CSSProperties

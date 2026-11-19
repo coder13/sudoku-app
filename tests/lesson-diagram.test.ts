@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import ts from 'typescript'
 import type { Deduction, HintChoice } from '../src/sudoku/engine.ts'
+import { boardLinkRoutes } from '../src/sudoku/board-link-geometry.ts'
 import { hintLocation, lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { findDisallowedTeachingWord, validateContent } from '../tools/lesson-editor/validate.mjs'
 
@@ -129,38 +130,58 @@ test('Doubly linked ALS-XZ explains a removal supported by only one of the two s
   candidates[3] = mask(1, 4)
   candidates[4] = mask(2, 4)
   candidates[6] = mask(1, 5)
-  candidates[10] = mask(3, 5)
+  candidates[19] = mask(3, 5)
   candidates[13] = mask(3, 4)
   const deduction: Deduction = {
-    technique: 'als-xz', actions: [{ eliminate: { cell: 6, digit: 1 } }, { eliminate: { cell: 10, digit: 3 } }],
+    technique: 'als-xz', actions: [{ eliminate: { cell: 6, digit: 1 } }, { eliminate: { cell: 19, digit: 3 } }],
     evidence: { 'als-xz': { sets: [
       { cells: [0, 1], digits: [1, 2, 3] }, { cells: [3, 4, 13], digits: [1, 2, 3, 4] },
     ], links: [1, 2] } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.match(diagram.reason, /The 1 candidates in sets 1 and 2 share row 1/)
+  assert.match(diagram.reason, /The 1 candidates in set 1 and set 2 share row 1/)
   assert.match(diagram.reason, /One set must skip 1 and the other must skip 2/)
   assert.match(diagram.reason, /At least one of R1C1 and R1C4 must be 1/)
-  assert.match(diagram.reason, /At least one of R1C1 and R1C2 must be 3\. Putting 3 in R2C2/)
+  assert.match(diagram.reason, /At least one of R1C1 and R1C2 must be 3\. If R3C2 is 3/)
+  assert.equal(diagram.steps?.length, 4)
+  assert.ok(!diagram.annotations.candidates?.get(13)?.has(3))
 })
 
-test('ALS-XY-Wing names the middle set and the digit passed to the last set', () => {
+test('ALS-XY-Wing shows both memberships, one link at a time, and every removal', () => {
   const candidates = Array(81).fill(0)
-  candidates[0] = mask(1, 8)
-  candidates[3] = mask(1, 2)
-  candidates[12] = mask(2, 8)
-  candidates[9] = mask(7, 8)
+  for (const [cell, digits] of [[8, [3, 6, 8]], [16, [1, 9]], [25, [6, 8, 9]], [26, [6, 8]],
+    [34, [2, 6, 8, 9]], [35, [2, 5, 6, 8]], [44, [2, 5, 6, 8]], [52, [1, 2, 9]]] as const) {
+    candidates[cell] = mask(...digits)
+  }
   const deduction: Deduction = {
-    technique: 'als-xy-wing', actions: [{ eliminate: { cell: 9, digit: 8 } }],
+    technique: 'als-xy-wing', actions: [{ eliminate: { cell: 8, digit: 6 } }, { eliminate: { cell: 8, digit: 8 } }],
     evidence: { 'als-chain': { sets: [
-      { cells: [0], digits: [1, 8] }, { cells: [3], digits: [1, 2] }, { cells: [12], digits: [2, 8] },
-    ], links: [1, 2] } },
+      { cells: [25, 26], digits: [6, 8, 9] }, { cells: [16, 52], digits: [1, 2, 9] }, { cells: [26, 35, 44], digits: [2, 5, 6, 8] },
+    ], links: [9, 2] } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.match(diagram.reason, /If it skips 8, it must use 1/)
-  assert.match(diagram.reason, /The 1 candidates in sets 1 and 2 share row 1/)
-  assert.match(diagram.reason, /rules it out in set 2 \(R1C4\)\. This set must use 2/)
-  assert.match(diagram.reason, /The 2 candidates in sets 2 and 3 share column 4/)
-  assert.match(diagram.reason, /rules it out in set 3 \(R2C4\)\. This set must use 8/)
-  assert.match(diagram.reason, /At least one of R1C1 and R2C4 must be 8/)
+  assert.ok(diagram.steps)
+  const [sets, nine, two, removals] = diagram.steps
+  assert.deepEqual(diagram.steps.map(({ label }) => label), ['Sets', 'Link on 9', 'Link on 2', 'Removals'])
+  assert.equal(sets.annotations.cells?.get(26)?.label, 'First wing and Second wing')
+  assert.match(sets.annotations.cells?.get(26)?.fillImage ?? '', /--lesson-set-1.*--lesson-set-3/)
+  assert.equal(sets.annotations.candidates?.size, 0)
+  assert.deepEqual([...nine.annotations.candidates!.keys()].sort(), [16, 25, 52])
+  assert.equal(nine.annotations.links?.length, 2)
+  assert.ok(boardLinkRoutes(nine.annotations.links!).some(route => route.length === 4))
+  assert.deepEqual([...two.annotations.candidates!.keys()].sort(), [35, 44, 52])
+  assert.equal(two.annotations.links?.length, 2)
+  assert.equal(removals.annotations.links, undefined)
+  for (const digit of [6, 8]) {
+    assert.equal(removals.annotations.candidates?.get(8)?.get(digit)?.mark, 'strike')
+    for (const cell of [25, 26, 35, 44]) assert.equal(removals.annotations.candidates?.get(cell)?.get(digit)?.mark, 'ring')
+  }
+  assert.match(diagram.reason, /If R1C9 is 6.*R3C8 through box 3.*column 9/)
+  assert.match(nine.text!, /share column 8/)
+  assert.match(two.text!, /share box 6/)
+  assert.match(diagram.reason, /only 1 to fill its 2 cells/)
+  assert.match(removals.text!, /every possible 6 and 8/)
+  const clue = lessonDiagram({ deduction, candidates }, undefined, { showActions: false })
+  assert.equal(clue.steps?.length, 3)
+  assert.equal(clue.annotations.candidates?.size, 0)
 })

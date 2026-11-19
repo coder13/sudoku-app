@@ -10,9 +10,10 @@ export type BoardLink = {
   color: string
   dashed?: boolean
   arrow?: boolean
+  offsetLongAligned?: boolean
 }
 
-export type CellAnnotation = { fill?: string; outline?: string; ink?: string; label?: string }
+export type CellAnnotation = { fill?: string; fillImage?: string; outline?: string; ink?: string; label?: string }
 export type CandidateAnnotation = { color: string; mark?: 'ring' | 'strike'; label?: string }
 
 export type BoardAnnotations = {

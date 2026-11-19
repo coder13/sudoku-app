@@ -43,6 +43,7 @@ import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
 import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
+import { DiagramSteps, useDiagramSteps } from './DiagramSteps'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
@@ -338,7 +339,8 @@ export function Worktable({
     if (!fullHint || !deduction || !hintCandidates) return undefined
     return lessonDiagram({ deduction, candidates: hintCandidates }, deduction.pattern, { cellReferenceStyle, difficulty: hintDifficulty })
   }, [fullHint, deduction, hintCandidates, cellReferenceStyle, hintDifficulty])
-  const availableHintAnnotations = hintDiagram?.annotations ?? locationClue?.annotations ?? (recoveryLocationVisible
+  const hintSteps = useDiagramSteps(hintDiagram?.steps)
+  const availableHintAnnotations = hintSteps?.annotations ?? hintDiagram?.annotations ?? locationClue?.annotations ?? (recoveryLocationVisible
     ? { cells: new Map([[recovery.cell, { fill: 'var(--lesson-pattern-fill)', outline: 'var(--lesson-pattern)', label: 'Check candidates' }]]) }
     : undefined)
   const playerVisualsSelected = visibleHint?.visuals === 'player'
@@ -1612,6 +1614,8 @@ export function Worktable({
       : recovery ? { label: 'Restore candidate', onClick: applyCandidateRecovery }
         : { label: 'Apply hint', onClick: applyHint }
   const explanation = solutionHintPanel ? stepDiagram : hintDiagram
+  const solutionSteps = useDiagramSteps(solutionHintPanel ? stepDiagram?.steps : undefined)
+  const visibleDiagramSteps = solutionHintPanel ? solutionSteps : playerVisualsSelected ? undefined : hintSteps
   const revealedDeduction = solutionHintPanel ? replayedSolutionStep?.deduction : fullHint && !recovery ? deduction : undefined
   const recoveryExplanation = !solutionHintPanel && recovery && fullHint
     ? explainCandidateRecovery(game, recovery, cellReferenceStyle) : undefined
@@ -1626,6 +1630,7 @@ export function Worktable({
         }) : undefined}
         onClose={() => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)}
         onShown={!solutionHintPanel && deduction ? markHintVisible : undefined}
+        diagramSteps={visibleDiagramSteps && <DiagramSteps {...visibleDiagramSteps} />}
         visuals={availableHintAnnotations && !disabled && !solved ? {
           visible: !playerVisualsSelected,
           onToggle: () => changeHintVisuals(playerVisualsSelected ? 'hint' : 'player'),
@@ -1830,7 +1835,7 @@ export function Worktable({
   const visibleChainAnnotations = !hintAnnotations && !paintingCandidates && sketch.annotations.links?.length ? sketch.annotations : undefined
   const solutionGrid = (
     <Board variantPuzzle={variant?.puzzle} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
-      candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
+      candidates={previewPosition?.candidates} annotations={solutionSteps?.annotations ?? stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} />
   )
   const livePuzzleStage = previewing ? solutionGrid : completionPanel ? completionPanel

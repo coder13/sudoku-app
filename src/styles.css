@@ -844,7 +844,7 @@ svg { flex-shrink: 0; }
 .puzzle-paused h2 { margin-top: var(--space-2); font-size: 1.25rem; }
 .puzzle-paused p { color: var(--muted); font-size: 0.8125rem; }
 .puzzle-paused .button { min-height: 38px; margin-top: 5px; }
-.learn-page, .puzzle-stage, :root[data-theme="andoku"] .board-body {
+.learn-page, .puzzle-stage, .hint-card, :root[data-theme="andoku"] .board-body {
   --lesson-area-fill: #edf1fb;
   --lesson-secondary-fill: #f3effb;
   --lesson-pattern-fill: #dce8fc;
@@ -852,8 +852,18 @@ svg { flex-shrink: 0; }
   --lesson-accent: #805216;
   --lesson-result: #186444;
   --lesson-removal: #a02645;
+  --lesson-link: #333647;
+  --lesson-set-1: var(--lesson-pattern-fill);
+  --lesson-set-2: #fbe2c5;
+  --lesson-set-3: #cfeee7;
+  --lesson-set-4: #eadbf8;
+  --lesson-set-5: #f7edbc;
+  --lesson-set-6: #daebc6;
+  --lesson-set-7: #f7dae7;
+  --lesson-set-8: #dfe5ec;
+  --lesson-set-9: #f0dcd2;
 }
-:root:is([data-color-mode="dark"], [data-theme="andoku"]) :is(.learn-page, .puzzle-stage) {
+:root:is([data-color-mode="dark"], [data-theme="andoku"]) :is(.learn-page, .puzzle-stage, .hint-card) {
   --lesson-area-fill: #272740;
   --lesson-secondary-fill: #32263c;
   --lesson-pattern-fill: #303a60;
@@ -861,6 +871,15 @@ svg { flex-shrink: 0; }
   --lesson-accent: #ffd18b;
   --lesson-result: #95e8bf;
   --lesson-removal: #ff99b1;
+  --lesson-link: #e2e5f4;
+  --lesson-set-2: #593c24;
+  --lesson-set-3: #204b47;
+  --lesson-set-4: #4a3559;
+  --lesson-set-5: #534a26;
+  --lesson-set-6: #354a2d;
+  --lesson-set-7: #573343;
+  --lesson-set-8: #36444f;
+  --lesson-set-9: #513b32;
 }
 .hint-dock {
   margin-top: var(--space-12);
@@ -924,6 +943,18 @@ svg { flex-shrink: 0; }
 .hint-card-reason, .hint-card-removals { margin-top: var(--space-14); }
 .hint-card :is(.hint-card-reason, .hint-card-removals) h3 { margin: 0; font-size: 0.8125rem; font-weight: 780; }
 .hint-card .hint-card-reason p { margin-top: var(--space-6); line-height: 1.6; }
+.diagram-steps { font-size: 0.875rem; }
+.hint-card .diagram-steps { margin-top: var(--space-6); }
+.diagram-step-buttons { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.diagram-step-buttons .button { min-height: 34px; padding-inline: var(--space-8); font-size: 0.8125rem; }
+.diagram-step-buttons .button[aria-pressed="true"] { background: var(--selected-bg); color: var(--dark-purple); border-color: var(--dark-purple); }
+.diagram-steps p { margin-top: var(--space-6); }
+.diagram-set-key { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); margin: var(--space-6) 0 0; padding: 0; list-style: none; }
+.diagram-set-key li { display: flex; align-items: baseline; gap: var(--space-6); }
+.diagram-set-swatch { flex: 0 0 12px; height: 12px; border: 1px solid var(--border-strong); border-radius: 3px; background: var(--set-swatch); }
+@media (pointer: coarse) {
+  .diagram-step-buttons .button { min-height: 44px; }
+}
 .hint-reason-steps { display: grid; gap: var(--space-10); margin: var(--space-10) 0 0; padding-inline-start: var(--space-22); font-size: 0.875rem; line-height: 1.6; }
 .hint-reason-steps li { padding-inline-start: 3px; }
 .hint-card-removals ul { display: grid; gap: var(--space-8); margin: var(--space-8) 0 0; padding: 0; list-style: none; }
@@ -1060,6 +1091,7 @@ svg { flex-shrink: 0; }
 .cell {
   --cell-fill: var(--cell-base-bg, var(--board-bg));
   background: var(--cell-fill);
+  background-image: var(--annotation-fill-image, none);
   border: 0;
   border-right: 1px solid var(--cell-grid-line, var(--grid-line));
   border-bottom: 1px solid var(--cell-grid-line, var(--grid-line));
