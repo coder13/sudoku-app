@@ -1,6 +1,6 @@
 # Modular Lines New Puzzle integration
 
-Base: main `8b4ed99`, including the walkthrough fix from PR 198, mobile/sync integration from PR 228 and roadmap additions from PR 226. This isolated change adds Medium Modular Lines New Puzzle and repairs equivalent played-history exclusions. Exact-head CI, deployment and release remain pending.
+Base: main `e4e6b60`, including the walkthrough fix from PR 198, mobile/sync integration from PR 228 and roadmap additions from PR 226 and Cloudflare deployment automation from PR 201. This isolated change adds Medium Modular Lines New Puzzle and repairs equivalent played-history exclusions. Exact-head CI, deployment and release remain pending.
 
 ## Rules, constructions and original sources
 
@@ -38,7 +38,7 @@ Independent test helpers share literal sliding-triple extraction while enumerati
 
 ## Local validation
 
-The minimal variants all-target check and all 381 native cases, including seven Cargo examples, pass. Fresh Wasm, strict app/new-contract/benchmark types and the 131-component catalog pass. All 497 Wasm contracts pass. After integrating main's mobile/sync changes, repeated suites pass all 669 app tests and 497 Wasm contracts. The engine and protocol remain unchanged across that merge. App callers and package comparisons are repeated against the updated baseline. Final production covers 171 routes and passes three actual-build offline contracts.
+The minimal variants all-target check and all 381 native cases, including seven Cargo examples, pass. Fresh Wasm, strict app/new-contract/benchmark types and the 131-component catalog pass. All 497 Wasm contracts pass. After integrating main's mobile/sync changes, repeated suites pass all 669 app tests and 497 Wasm contracts. The engine and protocol remain unchanged across that merge. App callers and package comparisons are repeated against the updated baseline. The later deployment-only main update changes no app, engine or existing dependency version. Fresh CI verifies its added development tool and lockfile. Final production covers 171 routes and passes three actual-build offline contracts.
 
 All thirty recipes retain full geometry and distinct independent identities. Sixty successive actual puzzles have multiple sound hints and complete proof-checked replay. Every action agrees with the independent unique completion. Generation and walkthrough ratings agree. All 108 app history representations and eighteen archived native failures pass. Actual persistence/reload, progress, undo/redo, exact solutions and shared definitions retain every rule.
 
@@ -86,6 +86,6 @@ Fresh Darwin Wasm is 3,417,504 raw / 895,333 default-Node-gzip bytes, SHA-256 `c
 
 Final client asset sums are JavaScript 6,387,777 raw / 2,092,783 gzip and CSS 316,396 / 44,538. A fresh main `8b4ed99` UI baseline gives deltas of +10,671 / +424 JavaScript and +238 / +26 CSS bytes. Both distributions include the same main walkthrough, mobile and sync changes. The baseline uses the verified unchanged pre-Modular engine artifact. Totals sum default Node gzip per asset and exclude HTML, service workers and manifests. All five generated metadata JSON files and both lockfiles are byte-identical.
 
-The first head `20c6227` passes CI 44573337200 with 381 native, 660 app and 497 Wasm tests, capability/profile/docs gates and ready deployment. Main then merged PR 228. The combined head must pass fresh exact-head CI for sixteen capability combinations, four profiles, strict full/core/variants docs and the full app/Wasm suites. Ready deployment, downloaded-engine checks, reviewed-head merge and fetched-main source equality remain release gates. Retain the original dirty R&D checkout. Continue source-format, grid/symbol/Fog, mixed human-solving and broader performance work in their existing issues.
+The first head `20c6227` passes CI 44573337200 with 381 native, 660 app and 497 Wasm tests, capability/profile/docs gates and ready deployment. Main then merged PR 228. The combined head must pass fresh exact-head CI for sixteen capability combinations, four profiles, strict full/core/variants docs and the full app/Wasm suites. Ready exact-head deployments, including the new Cloudflare job, downloaded-engine checks, reviewed-head merge and fetched-main source equality remain release gates. Retain the original dirty R&D checkout. Continue source-format, grid/symbol/Fog, mixed human-solving and broader performance work in their existing issues.
 
 Raw calibration, independent construction/partition checks, exclusions, history probes, complete response comparisons and measurements remain under `/tmp/sudoku-modular-generation-research`. The isolated source worktree is `/private/tmp/sudoku-modular-new-puzzle`.
