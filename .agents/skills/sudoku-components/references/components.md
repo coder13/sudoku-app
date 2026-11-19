@@ -98,10 +98,13 @@ Search by component name or browse the sections below.
 | [learn.index](../../../../src/routes/learn.index.tsx) | `LessonOverview` introduces the learning catalog. |
 | [learn](../../../../src/routes/learn.tsx) | `LearnLayout` arranges lesson navigation and content. `TechniqueNavigation` navigates the lesson catalog. |
 
-## Kakuro and game types
+## Standalone number puzzles
 
 | Module | Components and use |
 | --- | --- |
 | [Game types](../../../../src/routes/puzzles.games.tsx) | `GameTypePicker` lists the games available from the Sudoku variant picker. |
-| [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` owns the play page. `KakuroHeading` and `KakuroBoard` are private to these pages. |
+| [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` owns the play page. |
 | [Kakuro play route](../../../../src/routes/puzzles.kakuro_.$puzzle.tsx) | `KakuroPlayRoute` opens a catalog puzzle from its URL. |
+| [Number puzzle](../../../../src/components/NumberPuzzle.tsx) | `NumberGameDifficulty` lists difficulty and local progress. `NumberGamePlay` uses a game-specific board, rules, and hint function. `NumberGameHeading` and `NumberPuzzleBoard` handle internal navigation and play. |
+| [Calcudoku](../../../../src/components/Calcudoku.tsx) | `CalcudokuDifficultyPage` selects difficulty. `CalcudokuPlay` supplies arithmetic cage borders, clue labels, and rules. |
+| [Calcudoku play route](../../../../src/routes/puzzles.calcudoku_.$puzzle.tsx) | `CalcudokuPlayRoute` opens a catalog puzzle from its URL. |
