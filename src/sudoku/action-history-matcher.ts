@@ -1,15 +1,18 @@
 import { matchingTechnique, type ActionMatcher } from './action-history.ts'
 import { runEngine, type DeductionAction } from './engine.ts'
-import type { MiniGrid } from './grid.ts'
+import type { SizedGrid } from './grid.ts'
+import { sixHintChoices } from './six-play.ts'
+import type { SixGame } from './six-game.ts'
 import { miniHintChoices } from './mini-play.ts'
 import { getVariantPlayOrder } from './variant-play.ts'
 import type { VariantGame } from './variants.ts'
 
-export function actionHistoryMatcher(variant?: VariantGame, run: typeof runEngine = runEngine, grid?: MiniGrid): ActionMatcher {
+export function actionHistoryMatcher(variant?: VariantGame, run: typeof runEngine = runEngine, grid?: SizedGrid, six?: SixGame): ActionMatcher {
   type Proof = { technique: string; actions: readonly DeductionAction[] }
   const positions = new Map<Parameters<ActionMatcher>[0], Promise<Proof[]>>()
   async function proofsAt(position: Parameters<ActionMatcher>[0], actions: readonly DeductionAction[]): Promise<Proof[]> {
-    if (grid) return (await miniHintChoices(position.values, position.eliminations, run))?.choices ?? []
+    if (six && grid?.size === 6) return (await sixHintChoices(six, grid, position.values, position.eliminations, run))?.choices ?? []
+    if (grid?.size === 4) return (await miniHintChoices(position.values, position.eliminations, run))?.choices ?? []
     if (variant) {
       const proofs = await run({
         type: 'variant', operation: 'hints',

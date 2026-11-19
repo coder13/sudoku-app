@@ -1539,6 +1539,7 @@ svg { flex-shrink: 0; }
     box-shadow var(--motion-fast), opacity var(--motion-fast), transform var(--motion-fast);
 }
 .key:not(:disabled):active { transform: scale(.96); transition-duration: var(--motion-press-duration); }
+.keypad.six-keypad { grid-template: repeat(2, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); }
 .keypad.mini-keypad { grid-template: repeat(2, minmax(0, 1fr)) / repeat(2, minmax(0, 1fr)); }
 .keypad:not(.palette) .key { min-height: 0; }
 .desktop-play-resizable .standard-input-stack .keypad:not(.palette) .key {

@@ -393,6 +393,10 @@ enum ResponseValue {
     SizedHints(Option<crate::SizedHints>),
     SizedDeduction(Option<crate::SizedDeduction>),
     #[cfg(feature = "variants")]
+    SizedConstraintTrace(Option<Vec<crate::SizedConstraintTracePosition>>),
+    #[cfg(feature = "variants")]
+    SizedConstraintHints(Option<crate::SizedConstraintHints>),
+    #[cfg(feature = "variants")]
     AlgebraicTrace(Option<Vec<crate::AlgebraicTracePosition>>),
     #[cfg(feature = "variants")]
     AlgebraicHints(Option<crate::AlgebraicHints>),

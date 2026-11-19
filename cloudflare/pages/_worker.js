@@ -115,10 +115,16 @@ function fields(value, required, optional = {}) {
 
 const integer = (min, max) => value => Number.isInteger(value) && value >= min && value <= max
 const list = (valid, min, max = Infinity) => value => Array.isArray(value) && value.length >= min && value.length <= max && value.every(valid)
-const givens = (value, mini) => typeof value === 'string' && (mini ? /^[0-4]{16}$/ : /^[0-9]{81}$/).test(value)
+const givens = (value, size = 9) => typeof value === 'string' && (size === 4 ? /^[0-4]{16}$/ : size === 6 ? /^[0-6]{36}$/ : /^[0-9]{81}$/).test(value)
 const boolean = value => typeof value === 'boolean'
 const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
+const sixGrid = value => fields(value, { size: oneOf(6), boxRows: oneOf(2), boxColumns: oneOf(3) }) ||
+  fields(value, { size: oneOf(6), boxRows: oneOf(3), boxColumns: oneOf(2) })
+const sixRule = value => fields(value, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
+  fields(value, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(integer(0, 35), 1, 36) }) ||
+  (fields(value, { type: oneOf('thermometer'), cells: list(integer(0, 35), 2, 6) }) && new Set(value.cells).size === value.cells.length)
+const sixRules = list(sixRule, 0, 128)
 const algebraicCage = value => {
   if (!fields(value, { type: oneOf('algebraic-cage'), cells: list(integer(0, 15), 1, 4), label: label => typeof label === 'string',
     total: total => fields(total, { type: oneOf('fixed'), value: integer(1, 10) }) ||
@@ -196,9 +202,11 @@ async function sharePuzzle(request, db, path) {
     const data = await input(request, maxDefinitionBytes, 'This puzzle definition is too large to share.')
     if (!fields(data, {
       version: oneOf(1), title: title => typeof title === 'string' && title.trim().length > 0 && title.length <= 72,
-      givens: value => givens(value, data.grid !== undefined),
-    }, { grid: miniGrid, algebraic: value => data.grid !== undefined && algebraic(value),
-      variant: value => data.grid === undefined && variant(value, data.givens), collection })) {
+      givens: value => givens(value, data.grid?.size),
+    }, { grid: value => miniGrid(value) || sixGrid(value), algebraic: value => data.grid?.size === 4 && algebraic(value),
+      sixRules: value => data.grid?.size === 6 && sixRules(value),
+      variant: value => data.grid === undefined && variant(value, data.givens), collection }) ||
+      (data.grid?.size === 6 && !Object.hasOwn(data, 'sixRules'))) {
       throw new HttpError(400, 'Invalid puzzle definition.')
     }
     const id = crypto.randomUUID()

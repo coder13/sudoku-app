@@ -124,7 +124,7 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
     <Modal title="Share puzzle" onClose={close}>
       <div className="dialog-form">
         <p>Share {game.title} so someone else can solve it. Your progress stays private.</p>
-        {!game.variant && !game.algebraic && <>
+        {!game.variant && !game.algebraic && !game.six && <>
           <label htmlFor="share-format">Format</label>
           <SelectControl id="share-format" value={format} disabled={sharing} onChange={(event) => {
             setFormat(event.target.value as 'link' | ShareFormat)

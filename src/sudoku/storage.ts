@@ -1,4 +1,4 @@
-import { CLASSIC_GRID, MINI_GRID, isGridText, isMiniGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, type PlayGrid } from './grid.ts'
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
@@ -6,6 +6,7 @@ import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
+import { restoreSixGame } from './six-game.ts'
 import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { isSharedPuzzleId } from './puzzle-sharing.ts'
@@ -72,9 +73,9 @@ export function readGame(id: string, data: string | null): Game | undefined {
   if (!data) return
   try {
     const value = JSON.parse(data) as Game
-    if (value.grid !== undefined && (!isMiniGrid(value.grid) || value.variant !== undefined)) return
+    if (value.grid !== undefined && (!isSizedGrid(value.grid) || value.variant !== undefined)) return
     const grid = value.grid ?? CLASSIC_GRID
-    const cageDraft = Boolean(value.grid && value.source === 'draft' && value.position?.draftCages !== undefined)
+    const cageDraft = Boolean(grid.size === 4 && value.source === 'draft' && value.position?.draftCages !== undefined)
     if (
       value.id === id && typeof value.title === 'string' && value.title.length <= 72 &&
       sources.includes(value.source) && isGridText(value.givens, grid) &&
@@ -89,11 +90,17 @@ export function readGame(id: string, data: string | null): Game | undefined {
       (value.returnId === undefined || (typeof value.returnId === 'string' && value.returnId.length <= 100))
     ) {
       if (value.algebraic !== undefined) {
-        if (!value.grid || value.source === 'draft' || !value.algebraic) return
+        if (grid.size !== 4 || value.source === 'draft' || !value.algebraic) return
         const algebraic = restoreAlgebraicGame(value.algebraic, value.givens)
         if (!algebraic) return
         value.algebraic = algebraic
       }
+      if (grid.size === 6) {
+        if (value.source === 'draft' || !value.six) return
+        const six = restoreSixGame(value.six, grid, value.givens)
+        if (!six) return
+        value.six = six
+      } else if (value.six !== undefined) return
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
@@ -444,7 +451,7 @@ export const roomStore = {
     onStorage({ storageArea: localStorage, key: GAME_PREFIX + id } as StorageEvent)
   },
   playedMiniGivens() {
-    const result = new Set(room.games.filter(game => game.grid && !game.algebraic && game.source !== 'draft').map(game => game.givens))
+    const result = new Set(room.games.filter(game => game.grid?.size === 4 && !game.algebraic && game.source !== 'draft').map(game => game.givens))
     try {
       for (const key of Object.keys(localStorage)) {
         if (!key.startsWith(SEEN_PREFIX)) continue

@@ -174,7 +174,21 @@ export type SixGrid = { size: 6 } & ({ boxRows: 2; boxColumns: 3 } | { boxRows: 
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' }>
   | { type: 'thermometer'; cells: readonly number[] }
 export type SizedConstraintPosition = SizedClassicPosition & { grid: SixGrid; rules: readonly SizedConstraintRule[] }
-type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition; operation: 'analyze' | 'solve' | 'candidates' }
+type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
+  | { operation: 'analyze' | 'solve' | 'candidates' }
+  | { operation: 'hints'; eliminations?: readonly number[]; limit: number }
+  | { operation: 'trace'; eliminations?: readonly number[]; singlesOnly?: boolean }
+)
+
+export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction }
+  | { type: 'rule'; rule: number; actions: DeductionAction[] }
+  | { type: 'contradiction'; assumption: Candidate; placements: Candidate[]; failure: SizedConstraintFailure }
+
+type SizedConstraintFailure = { type: 'cell'; cell: number }
+  | { type: 'missing-digit' | 'repeated-digit'; house: House; digit: number }
+  | { type: 'rule'; rule: number }
+
+type SizedConstraintTracePosition = Omit<SizedClassicTracePosition, 'deduction'> & { deduction: SizedConstraintStep | null }
 
 export type AlgebraicBounds = {
   variables: Record<string, [number, number]>
@@ -587,7 +601,10 @@ export type EngineResult<T extends EngineRequest> =
   ) :
   T extends SizedConstraintRequest ? (
     T['operation'] extends 'analyze' ? Analysis :
-    T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null : number[] | null
+    T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
+    T['operation'] extends 'hints' ? { candidates: number[]; choices: SizedConstraintStep[] } | null :
+    T['operation'] extends 'trace' ? SizedConstraintTracePosition[] | null :
+    number[] | null
   ) :
   T extends SizedVariantRequest ? (
     T['operation'] extends 'analyze' ? Analysis :

@@ -1,15 +1,59 @@
 import { useId, useMemo } from 'react'
-import type { SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
+import type { SizedConstraintRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts } from '../sudoku/region-sum'
+import { sixDiagonalCells } from '../sudoku/grid'
 import { cloneLayout } from '../sudoku/clone'
 
-const x = (cell: number) => cell % 9
-const y = (cell: number) => Math.floor(cell / 9)
-const center = (cell: number) => [x(cell) + 0.5, y(cell) + 0.5] as const
+const x = (cell: number, size = 9) => cell % size
+const y = (cell: number, size = 9) => Math.floor(cell / size)
+const center = (cell: number, size = 9) => [x(cell, size) + 0.5, y(cell, size) + 0.5] as const
 const pairKey = (a: number, b: number) => Math.min(a, b) * 81 + Math.max(a, b)
-const points = (cells: readonly number[]) => cells.map((cell) => center(cell).join(',')).join(' ')
+const points = (cells: readonly number[], size = 9) => cells.map(cell => center(cell, size).join(',')).join(' ')
+
+function ParityClue({ parity, cells, size = 9 }: Extract<SizedConstraintRule, { type: 'parity' }> & { size?: number }) {
+  return <g className={`variant-parity variant-parity-${parity}`}>
+    {[...new Set(cells)].map(cell => parity === 'odd'
+      ? <circle key={cell} cx={center(cell, size)[0]} cy={center(cell, size)[1]} r=".36" />
+      : <rect key={cell} x={x(cell, size) + .14} y={y(cell, size) + .14} width=".72" height=".72" />)}
+  </g>
+}
+
+function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?: number }) {
+  return <line className="variant-diagonal" x1={diagonal === 'main' ? 0 : size} y1="0"
+    x2={diagonal === 'main' ? size : 0} y2={size} />
+}
+
+function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
+  const [bulbX, bulbY] = center(cells[0], size)
+  return <g className="variant-thermometer">
+    <polyline points={points(cells, size)} />
+    <circle cx={bulbX} cy={bulbY} r=".32" />
+  </g>
+}
+
+export function SixClues({ rules }: { rules: readonly SizedConstraintRule[] }) {
+  return <svg viewBox="0 0 6 6" aria-hidden="true" className="variant-clues">
+    {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={6} />)}
+    {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={6} />)}
+    {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={6} />)}
+  </svg>
+}
+
+export function sixClueLabels(rules: readonly SizedConstraintRule[]) {
+  const labels: Set<string>[] = Array.from({ length: 36 }, () => new Set())
+  for (const rule of rules) {
+    if (rule.type === 'diagonal') {
+      for (const cell of sixDiagonalCells(rule.diagonal)) labels[cell].add(rule.diagonal === 'main' ? 'top-left diagonal' : 'top-right diagonal')
+    } else if (rule.type === 'parity') {
+      for (const cell of rule.cells) labels[cell].add(rule.parity === 'odd' ? 'odd circle, digit must be 1, 3, or 5' : 'even square, digit must be 2, 4, or 6')
+    } else {
+      rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'thermometer bulb' : index === rule.cells.length - 1 ? 'thermometer tip' : 'thermometer'))
+    }
+  }
+  return labels.map(items => [...items].join(', '))
+}
 
 // Use the same side of an edge even when a directed clue reverses its endpoints.
 function pairCenter(a: number, b: number, offset = 0) {
@@ -294,11 +338,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           })}</g>
         }
         case 'parity':
-          return <g key={index} className={`variant-parity variant-parity-${rule.parity}`}>
-            {rule.cells.map(cell => rule.parity === 'odd'
-              ? <circle key={cell} cx={center(cell)[0]} cy={center(cell)[1]} r=".36" />
-              : <rect key={cell} x={x(cell) + .14} y={y(cell) + .14} width=".72" height=".72" />)}
-          </g>
+          return <ParityClue key={index} {...rule} />
         case 'quadruple': {
           const cx = x(rule.topLeft) + 1
           const cy = y(rule.topLeft) + 1
@@ -311,8 +351,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
           </g>
         }
         case 'diagonal':
-          return <line key={index} className="variant-diagonal" x1={rule.diagonal === 'main' ? 0 : 9} y1="0"
-            x2={rule.diagonal === 'main' ? 9 : 0} y2="9" />
+          return <DiagonalClue key={index} diagonal={rule.diagonal} />
         case 'extra-house':
           return disjoint.has(index) ? null : <ExtraRegion key={index} cells={rule.cells} />
         case 'killer-cages':
@@ -343,10 +382,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         case 'region-sum':
           return <RegionSumClue key={index} rule={rule} color={regionSumColor(index)} number={regionSumIndices.get(index)! + 1} />
         case 'thermometer':
-          return <g key={index} className="variant-thermometer">
-            <polyline points={points(rule.cells)} />
-            <circle cx={center(rule.cells[0])[0]} cy={center(rule.cells[0])[1]} r=".32" />
-          </g>
+          return <ThermometerClue key={index} cells={rule.cells} />
         case 'arrow':
           return <ArrowClue key={index} {...rule} marker={marker} />
         case 'kropki':

@@ -44,6 +44,10 @@ export const HINT_CANDIDATES_ERROR: PuzzleHint = {
 
 const TECHNIQUE_LABELS: Record<string, string> = {
   'algebraic-cage-bounds': 'Algebraic cage bounds',
+  'sized-contradiction': 'Candidate contradiction',
+  'sized-diagonal': 'Diagonal',
+  'sized-parity': 'Odd and even',
+  'sized-thermometer': 'Thermometer',
   'whispers-house-support': 'Whispers and shared houses',
   '3d-medusa': '3D Medusa',
   'non-consecutive-locked-candidates-2': 'Non-Consecutive locked candidates (2 cells)',

@@ -175,6 +175,8 @@ pub(super) enum Operation {
     },
     Trace {
         eliminations: Option<Vec<u16>>,
+        #[serde(default, rename = "singlesOnly")]
+        singles_only: bool,
     },
     CageProof {
         rule: usize,
@@ -257,7 +259,7 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             SEARCH_LIMIT,
             limit.min(256),
         )),
-        Operation::Trace { eliminations } => ResponseValue::AlgebraicTrace(puzzle.trace(
+        Operation::Trace { eliminations, .. } => ResponseValue::AlgebraicTrace(puzzle.trace(
             digits,
             removals(eliminations)?,
             SEARCH_LIMIT,
@@ -297,6 +299,16 @@ fn execute_six(
         .collect::<Result<Vec<_>, _>>()?;
     let puzzle = SizedConstraintGrid::new(grid, &constraints)
         .ok_or(("invalid-rules", "Check the cells and paths in the rules."))?;
+    let removals = |value: Option<Vec<u16>>| {
+        let value = value.unwrap_or_else(|| vec![0; digits.len()]);
+        if value.len() != digits.len() || value.iter().any(|mask| mask & !0x3f != 0) {
+            return Err((
+                "invalid-eliminations",
+                "The candidate masks must match the grid.",
+            ));
+        }
+        Ok(value)
+    };
     let value = match operation {
         Operation::Analyze => json!(match puzzle.analyze(digits, SEARCH_LIMIT) {
             Analysis::Unique => "unique",
@@ -308,6 +320,26 @@ fn execute_six(
                 .map(|digits| json!({ "digits": digits, "variables": {} }))
         ),
         Operation::Candidates => json!(puzzle.candidates(digits)),
+        Operation::Hints {
+            eliminations,
+            limit,
+        } => {
+            return Ok(ResponseValue::SizedConstraintHints(puzzle.hints(
+                digits,
+                &removals(eliminations)?,
+                limit.min(1024),
+            )));
+        }
+        Operation::Trace {
+            eliminations,
+            singles_only,
+        } => {
+            return Ok(ResponseValue::SizedConstraintTrace(puzzle.trace(
+                digits.to_vec(),
+                removals(eliminations)?,
+                singles_only,
+            )));
+        }
         _ => {
             return Err((
                 "unsupported-operation",

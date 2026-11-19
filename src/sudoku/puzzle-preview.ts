@@ -1,6 +1,7 @@
 import { runEngine } from './engine.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
 import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
+import { verifySixPuzzle } from './six-game.ts'
 import { analyzeMini } from './mini-play.ts'
 import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
 import { findSharedAttempt } from './puzzle-sharing.ts'
@@ -10,7 +11,7 @@ import { variantName } from './variants.ts'
 
 export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] | 'Photo or screenshot'; grade?: PuzzleGrade | null }
 
-export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic'>) {
+export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic' | 'grid' | 'sixRules'>) {
   const identity = puzzleIdentity(imported)
   return games.find(game => game.source !== 'draft' && puzzleIdentity(game) === identity)
 }
@@ -29,12 +30,17 @@ export async function prepareSharedPuzzle(id: string, games: readonly Game[], si
 }
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
-  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic } = imported
+  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sixRules } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
-    : variant ? `Imported ${variantName(variant)} puzzle` : grid ? 'Imported Mini Sudoku' : 'Imported puzzle'
+    : variant ? `Imported ${variantName(variant)} puzzle` : grid?.size === 6 ? 'Imported 6 × 6 Sudoku' : grid ? 'Imported Mini Sudoku' : 'Imported puzzle'
   const game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
+  if (grid?.size === 6) {
+    if (!sixRules) throw new Error('This 6 × 6 puzzle is missing its rule list.')
+    game.six = existing?.six ?? await verifySixPuzzle({ grid, givens, rules: sixRules })
+    return { game: applyPuzzleGrade(game, null), format, grade: null }
+  }
   if (algebraic && grid) {
     game.algebraic = await verifyAlgebraicPuzzle({ givens, ...algebraic })
     const rating = await rateAlgebraicPuzzle(givens, game.algebraic.rules)

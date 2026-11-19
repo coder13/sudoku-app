@@ -14,7 +14,10 @@ pub use algebraic::{
 #[cfg(feature = "variants")]
 mod constraints;
 #[cfg(feature = "variants")]
-pub use constraints::{SizedConstraint, SizedConstraintGrid, SizedDiagonal, SizedParity};
+pub use constraints::{
+    SizedConstraint, SizedConstraintFailure, SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep,
+    SizedConstraintTracePosition, SizedDiagonal, SizedParity,
+};
 
 #[cfg(feature = "generation")]
 mod generation;

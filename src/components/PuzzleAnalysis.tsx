@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
 import type { TechniqueCatalog } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
+import { sixHintChoices, SIX_TECHNIQUES } from '../sudoku/six-play'
 import { MINI_TECHNIQUES, miniHintChoices } from '../sudoku/mini-play'
 import { ALGEBRAIC_CAGE_TECHNIQUE, algebraicHintChoices } from '../sudoku/algebraic-play'
-import { ALGEBRAIC_CAGES_NAME } from '../sudoku/new-puzzle'
+import { ALGEBRAIC_CAGES_NAME, MINI_NAME, SIX_NAME } from '../sudoku/new-puzzle'
 import { HINT_CANDIDATES_ERROR, HINT_ERROR, techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
@@ -69,14 +70,14 @@ type ContentsProps = { game: Game; active?: boolean; onSelectTechnique?: (techni
 const algebraicTechniques = [...MINI_TECHNIQUES, ALGEBRAIC_CAGE_TECHNIQUE]
 
 export function PuzzleAnalysisContents(props: ContentsProps) {
-  return props.game.grid ? <MiniAnalysis {...props} /> : <StandardAnalysis {...props} />
+  return props.game.grid ? <SizedAnalysis {...props} /> : <StandardAnalysis {...props} />
 }
 
-function MiniAnalysis({ game, active = true, onSelectTechnique }: ContentsProps) {
+function SizedAnalysis({ game, active = true, onSelectTechnique }: ContentsProps) {
   const values = valuesOf(game)
-  const { algebraic } = game
-  const techniques = algebraic ? algebraicTechniques : MINI_TECHNIQUES
-  const size = game.grid!.size
+  const { algebraic, grid, six } = game
+  const techniques = six ? SIX_TECHNIQUES : algebraic ? algebraicTechniques : MINI_TECHNIQUES
+  const size = grid!.size
   const eliminations = useMemo(() => hintEliminations(values, completeCandidateMasks(game), game.position.eliminations, size),
     [values, game.position, size])
   const solved = isSolved(game)
@@ -87,7 +88,8 @@ function MiniAnalysis({ game, active = true, onSelectTechnique }: ContentsProps)
   useEffect(() => {
     if (!active || solved) return
     let current = true
-    const request = algebraic ? algebraicHintChoices(algebraic, values, eliminations) : miniHintChoices(values, eliminations)
+    const request = six && grid?.size === 6 ? sixHintChoices(six, grid, values, eliminations)
+      : algebraic ? algebraicHintChoices(algebraic, values, eliminations) : miniHintChoices(values, eliminations)
     void request.then(found => {
       if (!current) return
       if (!found) { setFailedKey(key); return }
@@ -104,10 +106,10 @@ function MiniAnalysis({ game, active = true, onSelectTechnique }: ContentsProps)
       setScan({ key, results: Object.fromEntries(techniques.map(id => [id, { count: counts.get(id)?.size ?? 0 }])) })
     }, () => { if (current) setFailedKey(key) })
     return () => { current = false }
-  }, [active, algebraic, solved, values, eliminations, key, techniques])
+  }, [active, algebraic, grid, six, solved, values, eliminations, key, techniques])
 
   const results = scan?.key === key ? scan.results : {}
-  const groups = filterAnalysisGroups([{ title: algebraic ? ALGEBRAIC_CAGES_NAME : 'Mini Sudoku', techniques: [...techniques] }], results, hideZero, solved)
+  const groups = filterAnalysisGroups([{ title: six ? SIX_NAME : algebraic ? ALGEBRAIC_CAGES_NAME : MINI_NAME, techniques: [...techniques] }], results, hideZero, solved)
   return <div className="puzzle-analysis-content">
     {failedKey === key ? <p role="alert" className="analysis-error">Check the placed digits and candidates, then try again.</p> : <>
       <label className="analysis-zero-filter">

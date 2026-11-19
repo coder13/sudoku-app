@@ -1,22 +1,23 @@
 import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from 'react'
-import type { Candidate, SizedVariantPosition, VariantPuzzle } from '../sudoku/engine'
+import type { Candidate, SizedConstraintRule, SizedVariantPosition, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
-import { CLASSIC_GRID, type MiniGrid } from '../sudoku/grid'
+import { CLASSIC_GRID, type SizedGrid } from '../sudoku/grid'
 import { activeHighlightDigit, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
-import { AlgebraicCages, VariantClues, cageLabelInset, variantCellLabels } from './VariantClues'
+import { AlgebraicCages, SixClues, VariantClues, cageLabelInset, sixClueLabels, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 
 type Props = {
   descriptionId?: string
   variantPuzzle?: VariantPuzzle
-  grid?: MiniGrid
+  grid?: SizedGrid
   algebraicCages?: SizedVariantPosition['rules']
+  sixRules?: readonly SizedConstraintRule[]
   givens: string
   values: string
   position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors'>>
@@ -62,24 +63,25 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle, grid: miniGrid, algebraicCages, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle, grid: sizedGrid, algebraicCages, sixRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onCellDoubleClick, onCandidate, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
 }: Props) {
-  const grid = miniGrid ?? CLASSIC_GRID
+  const grid = sizedGrid ?? CLASSIC_GRID
   const { size: gridSize, boxRows, boxColumns } = grid
   const variantRules = variantPuzzle?.rules
   const outside = useMemo(() => outsideClueLayout(variantRules), [variantRules])
   const hasOutside = Object.values(outside.depths).some(Boolean)
   const clones = cloneLayout(variantRules)
   const disjoint = useMemo(() => disjointGroupRuleIndices(variantRules ?? []), [variantRules])
-  const gridLabel = [miniGrid ? `4 × 4 ${label.toLowerCase()}` : label, variantRules?.some(rule => rule.type === 'global-entropy')
+  const gridLabel = [sizedGrid ? `${gridSize} × ${gridSize} ${label.toLowerCase()}` : label, variantRules?.some(rule => rule.type === 'global-entropy')
     && 'Global Entropy: every 2 × 2 area needs a low digit 1–3, a medium digit 4–6 and a high digit 7–9, including across box or region borders.',
     disjoint.size && DISJOINT_GROUPS_RULE].filter(Boolean).join(' ')
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [regions])
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
+  const sixLabels = useMemo(() => sixRules ? sixClueLabels(sixRules) : undefined, [sixRules])
   const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
     ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
   const algebraicLabels = useMemo(() => {
@@ -116,11 +118,11 @@ export function Board({
   const usesDigitSlots = (cell: number) => layout === 'grid' || annotationSlots?.has(cell)
   // An outside total needs its complete row or column visible in teaching diagrams.
   const visibleRegion = hasOutside ? undefined : region
-  const coordinates = miniGrid ? DIGITS.slice(0, gridSize) : DIGITS
+  const coordinates = sizedGrid ? DIGITS.slice(0, gridSize) : DIGITS
   const rows = visibleRegion ? coordinates.slice(visibleRegion.row, visibleRegion.row + visibleRegion.rows) : coordinates
   const columns = visibleRegion ? coordinates.slice(visibleRegion.column, visibleRegion.column + visibleRegion.columns) : coordinates
-  const size = { ...((visibleRegion || miniGrid) && { '--board-rows': rows.length, '--board-columns': columns.length }),
-    ...(miniGrid && { '--candidate-rows': boxRows, '--candidate-columns': boxColumns }),
+  const size = { ...((visibleRegion || sizedGrid) && { '--board-rows': rows.length, '--board-columns': columns.length }),
+    ...(sizedGrid && { '--candidate-rows': boxRows, '--candidate-columns': boxColumns }),
     ...(hasOutside && Object.fromEntries(Object.entries(outside.depths).map(([side, depth]) => ['--outside-' + side, depth]))),
     ...(hasOutside && { '--outside-left-track': `${outside.depths.left}fr`, '--outside-right-track': `${outside.depths.right}fr` }),
   } as CSSProperties
@@ -179,7 +181,7 @@ export function Board({
       {outside.depths.bottom > 0 && <div className="outside-clues-bottom" aria-hidden="true" />}
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
-      <div className={`board-body${variantPuzzle || algebraicCages?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
+      <div className={`board-body${variantPuzzle || algebraicCages?.length || sixRules?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}
@@ -247,6 +249,7 @@ export function Board({
                   regionAtCell !== undefined && `region ${regionAtCell + 1}`,
                   cellAnnotation?.label,
                   cellClues?.[index]?.join(', '),
+                  sixLabels?.[index],
                   algebraicLabels.descriptions.get(index)?.join(', '),
                   !value && candidateLabel,
                   matchesFilter ? matchAnyDigit
@@ -260,7 +263,7 @@ export function Board({
                 const classes = [
                   'cell',
                   fixed ? 'given' : 'entry',
-                  !filterCandidates && highlighting.relatedCells && selected.some((cell) => peer(index, cell, variantPuzzle, grid)) ? 'peer' : '',
+                  !filterCandidates && highlighting.relatedCells && selected.some((cell) => peer(index, cell, variantPuzzle, grid, sixRules)) ? 'peer' : '',
                   highlighting.matchingDigits && value === focusDigit ? 'matching' : '',
                   candidateHighlightStyle === 'cell' ? matchesWithExtras ? 'candidate-highlight-light' : 'candidate-highlight-cell' : '',
                   candidateHighlightStyle === 'outline' ? 'candidate-highlight-outline' : '',
@@ -345,6 +348,7 @@ export function Board({
           ))}
         </div>
         <BoardMarks items={variantClues} />
+        {sixRules && sixRules.length > 0 && <div className="board-variant-clues"><SixClues rules={sixRules} /></div>}
         {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><AlgebraicCages rules={algebraicCages} /></div>}
         {hasOutside && <OutsideClues layout={outside} hidden={overlay?.visible} />}
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} />

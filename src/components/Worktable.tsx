@@ -15,9 +15,11 @@ import {
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { analyzeMini, miniSingles, solveMini } from '../sudoku/mini-play'
+import { sixPosition, sixRuleDescriptions } from '../sudoku/six-game'
+import { sixSingles } from '../sudoku/six-play'
 import { algebraicRules, analyzeAlgebraic, checkAlgebraicHintPosition } from '../sudoku/algebraic-play'
 import { isAlgebraicCageList } from '../sudoku/algebraic-cages'
-import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE } from '../sudoku/new-puzzle'
+import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, SIX_NAME } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID } from '../sudoku/grid'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
 import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
@@ -78,8 +80,9 @@ const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
 }
 
-async function solveSingleValues({ grid, variant, algebraic }: Pick<Game, 'grid' | 'variant' | 'algebraic'>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
-  if (grid) {
+async function solveSingleValues({ grid, variant, algebraic, six }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'six'>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
+  if (six && grid?.size === 6) return sixSingles(six, grid, values, eliminations, displayedCandidates)
+  if (grid?.size === 4) {
     if (algebraic) checkAlgebraicHintPosition(algebraic, values, hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size))
     return miniSingles(values, eliminations, displayedCandidates)
   }
@@ -291,7 +294,7 @@ export function Worktable({
   const [busy, setBusy] = useState(false)
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [notes, setNotes] = useState<{
-    gameId: string; values: string; eliminations?: number[]; variant?: Game['variant']; algebraic?: Game['algebraic']; masks: number[] | null; failed?: boolean
+    gameId: string; values: string; eliminations?: number[]; variant?: Game['variant']; algebraic?: Game['algebraic']; six?: Game['six']; masks: number[] | null; failed?: boolean
   }>()
   const [hintState, setHint] = useState<HintState | null>(null)
   const [hintRevealed, setHintRevealed] = useState(false)
@@ -345,7 +348,7 @@ export function Worktable({
   const hintPosition = useMemo(() => ({ gameId: game.id, values, center, corner, eliminations }),
     [game.id, values, center, corner, eliminations])
   useEffect(() => () => { techniqueHintRequest.current++ }, [hintPosition])
-  const conflicts = useMemo(() => conflictsOf(values, game.variant?.puzzle, grid), [values, game.variant, grid])
+  const conflicts = useMemo(() => conflictsOf(values, game.variant?.puzzle, grid, game.six?.rules), [values, game.variant, grid, game.six])
   const draft = game.source === 'draft'
   // A loading draft skips solver effects but reserves the regular play UI.
   const presentationDraft = draft && !placeholder
@@ -405,10 +408,10 @@ export function Worktable({
     }
   const showResults = completed && !playground
   const showSolvedGrid = Boolean(playground)
-  const { id, givens, difficulty, score, variant, algebraic, generatedWithAuto } = game
+  const { id, givens, difficulty, score, variant, algebraic, six, generatedWithAuto } = game
   const draftCages = game.position.draftCages
   const cages = algebraic?.rules ?? draftCages
-  const sizedName = cages ? ALGEBRAIC_CAGES_NAME : MINI_NAME
+  const sizedName = cages ? ALGEBRAIC_CAGES_NAME : grid?.size === 6 ? SIX_NAME : MINI_NAME
   const analysisDialogOpen = analysisOpen && mobile && !draft && !solved
   const needsRating = !grid && (difficulty === undefined || score === undefined)
   const needsAttempt = !grid && !completed && !game.ratingAttempt
@@ -438,13 +441,13 @@ export function Worktable({
   const chainsPanelOpen = mobile ? openMobileTools.includes('chains')
     : advancedWorkspace ? showRightPanel : openInsightTabs.some(({ id }) => id === 'chains')
   const variantEliminations = (variant || grid) && eliminations
-  const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic ? notes : undefined
+  const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.six === six ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
   const masks = currentNotes?.masks
   const autoGenerateCandidates = advancedModes.autoGenerateCandidates && !draft && !solved && needsInitialCandidates(game)
   const hasSingles = useMemo(() => !draft && !solved && Boolean(masks &&
-    singleFromCandidates(values, displayedCandidates ?? masks, eliminations, variant?.puzzle, grid)),
-    [draft, solved, masks, values, displayedCandidates, eliminations, variant, grid])
+    singleFromCandidates(values, displayedCandidates ?? masks, eliminations, variant?.puzzle, grid, six?.rules)),
+    [draft, solved, masks, values, displayedCandidates, eliminations, variant, grid, six])
   const needsSinglesCheck = !grid && !generatedWithAuto && difficulty !== 'easy'
   const offerSingles = !draft && !solved && (grid || generatedWithAuto || (
     !ratingPending && needsSinglesCheck && singlesCheck?.givens === givens && singlesCheck.variant === variant && singlesCheck.needsMore
@@ -794,13 +797,13 @@ export function Worktable({
     if (draft || solved) return
 
     void playCandidates(game).then((masks) => {
-      if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, masks })
+      if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, six, masks })
     }).catch(() => {
-      if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, masks: null, failed: true })
+      if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, six, masks: null, failed: true })
     })
 
     return () => { current = false }
-  }, [id, draft, solved, values, variant, algebraic, variantEliminations, grid])
+  }, [id, draft, solved, values, variant, algebraic, six, variantEliminations, grid])
 
   useLayoutEffect(() => {
     if (!startDrawingOnOpen || !chainsVisible || !currentNotes) return
@@ -968,14 +971,14 @@ export function Worktable({
 
   useEffect(() => {
     let current = true
-    setSolution(algebraic?.solution ?? variant?.solution ?? null)
-    if (!draft && !variant && !algebraic) {
+    setSolution(six?.solution ?? algebraic?.solution ?? variant?.solution ?? null)
+    if (!draft && !variant && !algebraic && !six) {
       void (grid ? solveMini(game.givens) : runEngine({ type: 'solve', values: game.givens }))
         .then((result) => { if (current) setSolution(result) })
         .catch(() => { /* Checking still works if the solution cannot be loaded. */ })
     }
     return () => { current = false }
-  }, [draft, game.givens, variant, algebraic, grid])
+  }, [draft, game.givens, variant, algebraic, six, grid])
 
   const errors = useMemo(() => {
     const result = new Set<number>()
@@ -1534,7 +1537,9 @@ export function Worktable({
     setDialogResult(null)
     try {
       if (draftCages && !isAlgebraicCageList(draftCages)) throw new Error('Add at least one cage with a letter before checking.')
-      const status = cages ? await analyzeAlgebraic({ rules: cages }, values) : grid ? await analyzeMini(values) : variant
+      const status = six && grid?.size === 6
+        ? await runEngine({ type: 'sized-variant', position: sixPosition(grid, six, values), operation: 'analyze' })
+        : cages ? await analyzeAlgebraic({ rules: cages }, values) : grid ? await analyzeMini(values) : variant
         ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
         : await runEngine({ type: 'analyze', values })
       const current = readWorkingGame()
@@ -1640,9 +1645,9 @@ export function Worktable({
       result = { position: hintPosition, choices: [], index: 0, stage: 'technique', error: copy }
       if (incorrectCandidates && removals) {
         try {
-          const answer = algebraic ? algebraic.solution : grid ? await solveMini(values) : variant ? await runEngine({
+          const answer = six?.solution ?? algebraic?.solution ?? (grid ? await solveMini(values) : variant ? await runEngine({
             type: 'variant', operation: 'solve', position: { puzzle: variant.puzzle, entries: game.position.entries },
-          }) : await runEngine({ type: 'solve', values })
+          }) : await runEngine({ type: 'solve', values }))
           if (answer) result.recovery = findCandidateRecovery(game, answer, removals)
         } catch { /* Keep the general candidate warning if recovery cannot be verified. */ }
       }
@@ -2105,20 +2110,20 @@ export function Worktable({
   const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
     ? sketch.annotations : undefined
   const solutionGrid = (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={six?.rules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : sketch.drawing && chainMasks ? (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} givens={givens} values={values} position={game.position} errors={errors}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={six?.rules} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} showPlayerColors={showPlayerColors} label="Sudoku grid for drawing links"
       highlightedDigit={chainHighlightDigit} highlighting={highlighting} highlightCandidateCount={highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={six?.rules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={hintAnnotations && hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations ?? visibleChainAnnotations}
       showAnnotatedCandidates={Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
@@ -2243,7 +2248,7 @@ export function Worktable({
           }}>
           {placeholder ? <div className="puzzle-placeholder-stage">
             <div className="puzzle-grid-reservation" aria-hidden="true" inert>
-              <Board grid={grid} algebraicCages={cages} givens={givens} values={values} showGuides={appearance.showGuides} />
+              <Board grid={grid} algebraicCages={cages} sixRules={six?.rules} givens={givens} values={values} showGuides={appearance.showGuides} />
             </div>
             <div className="puzzle-placeholder-message">{placeholder}</div>
           </div> : !draft && !completed ? (
@@ -2446,7 +2451,7 @@ export function Worktable({
       {(variant || grid) && <Modal title={`${grid ? sizedName : variantName(variant)} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>
         <div className="variant-rules-copy">
           {algebraic?.source?.author && <p>By {algebraic.source.author}</p>}
-          {(algebraic ? algebraicRules(algebraic) : variant ? variantRuleDescriptions(variant.puzzle) : [MINI_RULE]).map(rule => <p key={rule}>{rule}</p>)}
+          {(algebraic ? algebraicRules(algebraic) : six && grid?.size === 6 ? sixRuleDescriptions(grid, six.rules) : variant ? variantRuleDescriptions(variant.puzzle) : [MINI_RULE]).map(rule => <p key={rule}>{rule}</p>)}
         </div>
       </Modal>}
       {mobile && solutionPathRevealed && solutionPath && <SolutionDialog

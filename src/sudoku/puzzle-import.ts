@@ -2,13 +2,14 @@ import lzString from 'lz-string'
 import type { CollectionReference } from './collection-reference.ts'
 import type { SixGrid, SizedConstraintRule, VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle, textGridCells } from './formats.ts'
-import { isGridText, isMiniGrid, MINI_GRID, type MiniGrid } from './grid.ts'
+import { isGridText, isMiniGrid, MINI_GRID, type SizedGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
+import { isSixRuleList, type SixGame } from './six-game.ts'
 import type { AlgebraicDefinition } from './algebraic-game.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
@@ -31,7 +32,8 @@ export type ImportedPuzzle = {
   givens: string
   format: ImportFormat
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
-  grid?: MiniGrid
+  grid?: SizedGrid
+  sixRules?: SixGame['rules']
   algebraic?: AlgebraicDefinition
   title?: string
   sharedPuzzleId?: string
@@ -39,11 +41,11 @@ export type ImportedPuzzle = {
 }
 
 export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
-  const { givens, variant, collection, title, grid, algebraic } = await downloadSharedPuzzle(id, signal)
+  const { givens, variant, collection, title, grid, algebraic, sixRules } = await downloadSharedPuzzle(id, signal)
   const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
   if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the shared givens.')
   const cages = sizing ? { rules: sizing.rules, source: sizing.source } : algebraic && 'rules' in algebraic ? algebraic : undefined
-  return { givens, variant, collection, title, grid, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
+  return { givens, variant, collection, title, grid, sixRules, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -170,10 +172,15 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
   return data
 }
 
-async function fromCoach(code: string): Promise<ImportedPuzzle> {
+async function fromCoach(code: string, published = false): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
+  if (published && data.gridSize === 9) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
+  if (data.gridSize === 6) {
+    const { givens, grid, rules } = readCoachSix(data)
+    return { givens, grid, sixRules: rules, format: 'Sudoku Coach' }
+  }
   if (data.gridSize !== 4 && data.gridSize !== 9) {
-    throw new Error('Import supports 4 × 4 and 9 × 9 Sudoku Coach grids.')
+    throw new Error('Import supports 4 × 4, 6 × 6, and 9 × 9 Sudoku Coach grids.')
   }
   if (data.gridSize === MINI_GRID.size) {
     const givens = data.givenDigits === undefined ? '0'.repeat(MINI_GRID.size ** 2) : data.givenDigits
@@ -453,7 +460,10 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
 
 /** Decode a six-by-six Coach export without dropping active rules. */
 export async function decodeCoachSix(code: string) {
-  const data = await decodeCoach(code)
+  return readCoachSix(await decodeCoach(code))
+}
+
+function readCoachSix(data: Record<string, unknown>) {
   if (data.gridSize !== 6) throw new Error('This Sudoku Coach puzzle does not have a 6 × 6 grid.')
   const givens = data.givenDigits ?? '0'.repeat(36)
   if (typeof givens !== 'string' || !/^[0-6]{36}$/.test(givens)) throw new Error('This 6 × 6 puzzle has invalid givens.')
@@ -470,7 +480,7 @@ export async function decodeCoachSix(code: string) {
     const firstColumn = Math.floor(cell % 6 / boxColumns) * boxColumns
     return label === regions[firstRow * 6 + firstColumn]
   }))
-  if (!grid) throw new Error('Import requires six 2 × 3 or 3 × 2 boxes.')
+  if (!grid) throw new Error('Import requires six rectangular boxes of 2 × 3 or 3 × 2 cells.')
 
   const constraints = data.givenConstraints ?? []
   if (!Array.isArray(constraints)) throw new Error('This 6 × 6 puzzle has invalid rules.')
@@ -489,6 +499,7 @@ export async function decodeCoachSix(code: string) {
     }
     throw new Error('This 6 × 6 rule has an invalid cell or path.')
   })
+  if (!isSixRuleList(rules)) throw new Error('This 6 × 6 export contains invalid rules.')
   return { version: 2 as const, grid, givens, rules }
 }
 
@@ -592,15 +603,15 @@ function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): Import
   throw new Error('This SudokuPad link does not contain the puzzle data. For Classic puzzles, copy the 81 givens.')
 }
 
-async function fromSudokuPadLink(id: string): Promise<ImportedPuzzle> {
-  const response = await fetch(`/api/v1/import/sudokupad/${id}`)
+async function publishedPuzzleCode(source: 'sudoku-coach' | 'sudokupad', id: string) {
+  const response = await fetch(`/api/v1/import/${source}/${id}`, { signal: AbortSignal.timeout(20_000) })
   if (!response.ok) {
     const { error } = await response.json().catch(() => ({}))
-    throw new Error(typeof error === 'string' ? error : 'Could not open the published SudokuPad puzzle.')
+    throw new Error(typeof error === 'string' ? error : 'Could not open this published puzzle.')
   }
   const { code } = await response.json()
   if (typeof code !== 'string' || code.length > MAX_IMPORT_LENGTH) throw new Error('This link does not contain a supported puzzle export.')
-  return fromSudokuPad(code)
+  return code
 }
 
 export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
@@ -645,7 +656,8 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
     if (url.hash.startsWith('#puzzle=')) return { givens: parsePuzzle(url.href), format: 'Puzzle link' }
     const host = url.hostname.replace(/^www\./, '')
     if (host === 'sudoku.coach') {
-      if (/^\/(?:[a-z]{2}\/)?s\//i.test(url.pathname)) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
+      const id = url.pathname.match(/^\/(?:[a-z]{2}\/)?s\/([A-Za-z0-9]{1,16})\/?$/i)?.[1]
+      if (id) return fromCoach(await publishedPuzzleCode('sudoku-coach', id), true)
       const code = url.pathname.match(/^\/(?:[a-z]{2}\/)?(?:play|solver|construct)\/([^/]+)\/?$/i)?.[1] ?? ''
       if (code.toLowerCase().startsWith('scv')) return fromCoach(decodeURIComponent(code))
       if (/^[0-4.]{16}$/.test(code)) return { givens: code.replaceAll('.', '0'), format: 'Sudoku Coach', grid: MINI_GRID }
@@ -657,7 +669,7 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
     if (['sudokupad.app', 'beta.sudokupad.app', 'sudokupad.svencodes.com', 'app.crackingthecryptic.com'].includes(host)) {
       const code = decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, '')
       if ((host === 'sudokupad.app' || host === 'beta.sudokupad.app') && /^[A-Za-z0-9_-]{1,64}$/.test(code) &&
-        !/^(?:scl|ctc|scf|fpuz)/i.test(code)) return fromSudokuPadLink(code)
+        !/^(?:scl|ctc|scf|fpuz)/i.test(code)) return fromSudokuPad(await publishedPuzzleCode('sudokupad', code))
       return fromSudokuPad(code)
     }
     throw new Error('This link format is not supported. Try pasting the puzzle code or its 81 givens.')
