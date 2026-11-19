@@ -82,6 +82,8 @@ catalog! {
     NonConsecutive: "non-consecutive", 8, Easy;
     /// Apply a marked inequality.
     Inequality: "inequality", 8, Easy;
+    /// Compare a minimum or maximum cell with an edge neighbor.
+    MinMax: "min-max", 8, Easy;
     /// Match candidates among clone cells.
     Clone: "clone", 17, Easy;
     /// Apply a consecutive or double relation from Kropki marks.
@@ -986,7 +988,7 @@ impl CompiledVariant {
                     )
                 }));
             }
-            AntiKing | AntiKnight | Clone | Inequality | Kropki | NonConsecutive | Palindrome
+            AntiKing | AntiKnight | Clone | Inequality | MinMax | Kropki | NonConsecutive | Palindrome
             | Thermometer | Whispers | Xv | AdjacentTotal => {
                 let domains = std::array::from_fn(|cell| position.domain(cell));
                 for clue in self

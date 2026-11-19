@@ -44,6 +44,21 @@ before(async () => {
 })
 after(async () => { await server?.close() })
 
+test('the board draws direction and labels the comparisons for Min/Max cells', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Mixed clue grid',
+    variantPuzzle: { version: 1, givens, rules: [
+      { type: 'min-max', cells: [7, 8], maximum: false },
+      { type: 'min-max', cells: [17], maximum: true },
+    ] },
+  }))
+  assert.match(html, /variant-min-max variant-minimum/)
+  assert.match(html, /variant-min-max variant-maximum/)
+  assert.match(html, /minimum, smaller than row 1, column 7; row 2, column 8/)
+  assert.match(html, /maximum, larger than row 1, column 9; row 2, column 8; row 3, column 9/)
+})
+
 test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
   const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
     new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))

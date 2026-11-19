@@ -149,6 +149,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         }
         case 'clone': return { ...rule, groups: rule.groups.map(group => group.map(cell)) }
         case 'inequality': return { ...rule, less: cell(rule.less), greater: cell(rule.greater) }
+        case 'min-max': return { ...rule, cells: rule.cells.map(cell) }
         case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }
         case 'entropic': case 'modular': case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
         case 'palindrome': case 'renban': case 'region-sum': return { ...rule, cells: rule.cells.map(cell),

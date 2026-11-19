@@ -117,6 +117,10 @@ export const PUZZLE_VARIANTS = {
     name: 'Inequality',
     rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
   },
+  'min-max': {
+    name: 'Minimum and Maximum',
+    rule: 'Inward arrows mark a minimum. Outward arrows mark a maximum. Compare the marked digit with its edge neighbors. Skip neighbors in the same clue group.',
+  },
   xv: {
     name: 'XV',
     rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
@@ -297,6 +301,11 @@ export function cellsShareEdge(a: number, b: number) {
   return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) + Math.abs(a % 9 - b % 9) === 1
 }
 
+export function minMaxNeighbors(cells: readonly number[], cell: number) {
+  return [cell - 9, cell - 1, cell + 1, cell + 9].filter(neighbor =>
+    neighbor >= 0 && neighbor < 81 && cellsShareEdge(cell, neighbor) && !cells.includes(neighbor))
+}
+
 export function palindromePartner(cells: readonly number[], cell: number) {
   const index = cells.indexOf(cell)
   if (index < 0 || index === cells.length - 1 - index) return undefined
@@ -339,6 +348,10 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
       for (let other = 1; other <= 9; other++) {
         if (from === rule.less ? other <= digit : other >= digit) excluded |= 1 << (other - 1)
       }
+    }
+    if (rule.type === 'min-max' && edge && rule.cells.includes(from) !== rule.cells.includes(to)) {
+      const fromIsLarger = rule.cells.includes(from) === rule.maximum
+      excluded |= fromIsLarger ? 511 & ~((1 << (digit - 1)) - 1) : (1 << digit) - 1
     }
     if (rule.type === 'palindrome' && palindromePartner(rule.cells, from) === to) {
       excluded |= 511 & ~(1 << (digit - 1))
@@ -408,6 +421,8 @@ function isPlayableRule(rule: VariantRule): boolean {
     case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
       Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
     case 'inequality': return validCells([rule.less, rule.greater], 2)
+    case 'min-max': return Object.keys(rule).every(key => ['type', 'cells', 'maximum'].includes(key)) &&
+      typeof rule.maximum === 'boolean' && validCells(rule.cells, 1)
     case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
     case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
@@ -498,6 +513,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
   xv: PUZZLE_VARIANTS.xv.name,
   inequality: PUZZLE_VARIANTS.inequality.name,
+  'min-max': PUZZLE_VARIANTS['min-max'].name,
   'extra-house': 'Extra regions',
   diagonal: VARIANTS.diagonal.name,
   'killer-cages': VARIANTS['killer-cages'].name,
@@ -584,6 +600,12 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
       case 'inequality':
         descriptions.push(PUZZLE_VARIANTS.inequality.rule)
         break
+      case 'min-max': {
+        descriptions.push(PUZZLE_VARIANTS['min-max'].rule)
+        const cells = rule.cells.map(cell => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`).join(', ')
+        descriptions.push(`${rule.maximum ? 'Maximum' : 'Minimum'} group (${cells}). Its digits must be ${rule.maximum ? 'larger' : 'smaller'} than each edge neighbor outside the group.`)
+        break
+      }
       case 'adjacent-total':
         descriptions.push(PUZZLE_VARIANTS['adjacent-total'].rule)
         break

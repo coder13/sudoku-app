@@ -222,6 +222,7 @@ impl SquareTransform {
                 *less = self.cell(*less);
                 *greater = self.cell(*greater);
             }
+            MinMax { cells, .. } => self.unordered(cells),
             Kropki {
                 consecutive,
                 ratio_two,

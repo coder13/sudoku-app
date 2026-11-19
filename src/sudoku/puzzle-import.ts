@@ -311,6 +311,15 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
       }
       if (five.length || ten.length) rules.push({ type: 'xv', ...(five.length > 0 && { five: { pairs: five } }), ...(ten.length > 0 && { ten: { pairs: ten } }) })
       rules.push(...totals)
+    } else if (constraint.type === 'minimum' || constraint.type === 'maximum') {
+      const cells: number[] = []
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Minimum or Maximum cell.')
+        }
+        cells.push(segment.cells[0])
+      }
+      if (cells.length) rules.push({ type: 'min-max', cells, maximum: constraint.type === 'maximum' })
     } else if (constraint.type === 'greaterLess') {
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no inequality signs.')
       for (const segment of constraint.segments) {

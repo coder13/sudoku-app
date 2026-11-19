@@ -200,6 +200,24 @@ impl PairCompiler {
                 valid_cells(&cells, 2..=2)?;
                 self.clues.push(pair(&source, cells, |a, b| a < b));
             }
+            PuzzleRule::MinMax { cells, maximum } => {
+                let marked = cell_mask(cells).filter(|&mask| mask != 0).ok_or(invalid)?;
+                for &cell in cells {
+                    let neighbors = [
+                        (cell % 9 > 0).then(|| cell - 1),
+                        (cell % 9 < 8).then(|| cell + 1),
+                        (cell >= 9).then(|| cell - 9),
+                        (cell < 72).then(|| cell + 9),
+                    ];
+                    for neighbor in neighbors.into_iter().flatten() {
+                        if marked & (1 << neighbor) == 0 {
+                            self.clues.push(pair(&source, [cell, neighbor], |a, b| {
+                                if *maximum { a > b } else { a < b }
+                            }));
+                        }
+                    }
+                }
+            }
             PuzzleRule::Kropki {
                 consecutive,
                 ratio_two,
