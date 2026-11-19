@@ -1,0 +1,70 @@
+{
+  "sourceAppHead": "a3f6f6dc864dd2c0ee49d4c82f5ae5106c282a38",
+  "sourceHost": "darwin arm64",
+  "engineSha256": "291a61e8b43a92921902173415725a098219e69a8582c8fa4cfc44ef926dc8f7",
+  "patterns": [
+    {
+      "name": "Balanced thirds",
+      "cells": [
+        0,
+        3,
+        6,
+        11,
+        14,
+        17,
+        19,
+        22,
+        25,
+        27,
+        30,
+        33,
+        38,
+        41,
+        44,
+        46,
+        49,
+        52,
+        54,
+        57,
+        60,
+        65,
+        68,
+        71,
+        73,
+        76,
+        79
+      ],
+      "provenance": "Authored balanced marker geometry. Marker values are derived from each sampled completion."
+    },
+    {
+      "name": "Big Eight marker geometry",
+      "cells": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        19,
+        25,
+        28,
+        34,
+        38,
+        39,
+        40,
+        41,
+        42,
+        46,
+        52,
+        55,
+        61,
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "source": "https://www.gmpuzzles.com/blog/2023/03/even-odd-sudoku-by-thomas-snyder-2/",
+      "provenance": "All original marker positions. Generated values and givens are derived anew; the complete original published puzzle remains unchanged in parity-big-eight.json."
+    }
+  ]
+}

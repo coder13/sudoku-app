@@ -27,7 +27,7 @@ test('Coach odd/even segments preserve both marker kinds, cell order and native 
     }) }))
   assert.deepEqual(imported.variant, { id: 'parity', puzzle: fixture.puzzle })
   assert.equal(variantName(imported.variant), 'Odd/Even')
-  assert.equal(generationVariant(imported.variant), undefined)
+  assert.equal(generationVariant(imported.variant), 'parity')
   assert.deepEqual((await detectPuzzle('#variant=' + encodeURIComponent(JSON.stringify(imported.variant)))).variant, imported.variant)
   assert.equal(variantRuleDescriptions(fixture.puzzle).length, 3)
 })

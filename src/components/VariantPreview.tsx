@@ -13,6 +13,7 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   'anti-knight': [],
   'anti-king': [],
   'non-consecutive': [],
+  parity: [{ type: 'parity', cells: [20, 48], parity: 'odd' }, { type: 'parity', cells: [24, 60], parity: 'even' }],
   between: [{ type: 'between', cells: [10, 19, 28, 29, 30] }, { type: 'between', cells: [52, 61, 70, 69] }],
   'region-sum': [{ type: 'region-sum', cells: [10, 20, 12, 22, 32, 40, 48, 58] }],
   'little-killer': [],

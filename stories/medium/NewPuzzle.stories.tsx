@@ -55,3 +55,11 @@ export const NonConsecutiveVariant: Story = {
 export const NonConsecutiveDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=non-consecutive" />,
 }
+
+export const OddEvenVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=parity" />,
+}
+
+export const OddEvenDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=parity" />,
+}
