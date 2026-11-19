@@ -146,7 +146,7 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'palindromeLine', 'renban', 'entropicLine', 'modularLine'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'betweenLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -272,6 +272,19 @@ async function fromCoach(code: string): Promise<ImportedPuzzle> {
           throw new Error(`This Sudoku Coach puzzle has an invalid ${name} path.`)
         }
         rules.push({ type: constraint.type === 'entropicLine' ? 'entropic' : 'modular', cells: segment.cells })
+      }
+    } else if (constraint.type === 'betweenLine') {
+      const settings = constraint.settings
+      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
+        !LINE_STYLING.has(key) && key !== 'bulbSize' && key !== 'bulbBorderThickness'))) {
+        throw new Error('This Sudoku Coach Between line uses unsupported settings.')
+      }
+      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Between lines.')
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Between line.')
+        }
+        rules.push({ type: 'between', cells: segment.cells })
       }
     } else if (constraint.type === 'whisper') {
       const settings = constraint.settings

@@ -1,0 +1,209 @@
+{
+  "compiler": "https://sudoku.coach/js/jCfXtZs-1776367508519.js",
+  "compilerSha256": "567c7f9023cfff3a7f8feb4f8393d3b10a1f85f9539ef48f31c577b105ad521f",
+  "examples": [
+    {
+      "url": "https://sudoku.coach/en/s/9KxH",
+      "title": "Between the Dots",
+      "author": "Raumplaner",
+      "published": "2025-09-10 05:45:39",
+      "description": "",
+      "code": "SCv7_32_f2e8r4th9r1j0446rv2v6fv4prrdjrmapb38geg4d92pdmlk98mh0l3tesn0h2l0qj575ingrnsvppvjp4657m9sijrmolg9cok2uudsre7seenlcmm4fcrq7icr4c9bt9gelmq157pp9qrbprhnq6djg4sucocnnv4uff6tppfkkko28vc009vg3rh20mg528g134ggn8qsp8cvv9eqsueilr9vj34v26e608qsg3bntb8h7oqhn0i5e041sg8g889ha2vfs0uap06r51rm00hjr211rb45cds85d5nas67kndkgu9ge298g02tdgtp4rmjkm0d8kls2cgso5rn029emppoi209m51q1tmaja4edgkg6p3hdh101mior8a30bur7mrqiqjdccgeiuj4vgv8cbcd9ltinvipddsglehrumimvgtr2ed5cmk9ko5ffrb8rad2b8n47latu45l35ft9bo1neue88n47latba4946lrhi6alr629fkm75o6v9bobtfp0c4dormn",
+      "imageUrl": "https://sudoku.coach/open_graph_images/9KxH.png",
+      "puzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {
+            "type": "between",
+            "cells": [
+              10,
+              19,
+              28,
+              37,
+              46,
+              55,
+              64,
+              65,
+              66,
+              67,
+              68,
+              69,
+              70
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              29,
+              38,
+              47,
+              56,
+              57,
+              58,
+              59
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              73,
+              74,
+              75,
+              76,
+              77
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              63,
+              54,
+              45,
+              36,
+              27
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              20,
+              21,
+              22,
+              23,
+              24,
+              33,
+              42,
+              51,
+              60
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              3,
+              4,
+              5,
+              6,
+              7
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              15,
+              16,
+              17,
+              26,
+              35,
+              44
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              40,
+              39,
+              30,
+              31,
+              32,
+              41,
+              50,
+              49,
+              48
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              78,
+              79,
+              80,
+              71
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              34,
+              43,
+              52,
+              61
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              13,
+              12,
+              11,
+              2
+            ]
+          },
+          {
+            "type": "between",
+            "cells": [
+              1,
+              0,
+              9,
+              18
+            ]
+          },
+          {
+            "type": "kropki",
+            "ratioTwo": {
+              "pairs": [
+                [
+                  53,
+                  62
+                ],
+                [
+                  42,
+                  41
+                ],
+                [
+                  36,
+                  37
+                ],
+                [
+                  46,
+                  47
+                ],
+                [
+                  56,
+                  65
+                ],
+                [
+                  58,
+                  49
+                ],
+                [
+                  31,
+                  22
+                ],
+                [
+                  21,
+                  12
+                ],
+                [
+                  14,
+                  5
+                ],
+                [
+                  8,
+                  17
+                ],
+                [
+                  57,
+                  66
+                ]
+              ],
+              "negative": false
+            }
+          }
+        ]
+      },
+      "solution": "493172586785694123261385794129546837637218459548937261354861972972453618816729345"
+    }
+  ]
+}

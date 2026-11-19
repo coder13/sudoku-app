@@ -7609,7 +7609,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Try a digit in each bulb. If the ends are 2 and 6, every interior cell needs a 3, 4, or 5. Reject those ends if an interior cell has none of those candidates.",
+                "Try a digit in each endpoint circle. If the ends are 2 and 6, every interior cell needs a 3, 4, or 5. Reject those ends if an interior cell has none of those candidates.",
                 "Compare the endpoint pairs that remain. Remove an interior candidate if none of those pairs leaves room for it."
               ]
             },
@@ -7617,7 +7617,7 @@
               "type": "diagram",
               "example": "between",
               "copy": {
-                "description": "The endpoints are 8 in R6C8 and 4 in R5C8. R5C7 lies between them and can use only 5, 6, or 7."
+                "description": "The circles contain 8 in R6C8 and 4 in R5C8, so interior digits must be 5, 6, or 7. Remove 9 from R5C7."
               }
             },
             {
@@ -7629,7 +7629,7 @@
                 }
               ],
               "guide": {
-                "start": "Read the two bulb cells at the ends. Every digit between them must be larger than the smaller end and smaller than the larger end.",
+                "start": "Read the two circles at the ends. Every digit between them must be larger than the smaller end and smaller than the larger end.",
                 "check": "Try an endpoint pair. Find at least one digit in that range for every interior cell. The interior digits can appear in any order.",
                 "reason": "Reject a pair if any interior cell cannot fit. Remove an interior candidate if no possible pair leaves room for it."
               }

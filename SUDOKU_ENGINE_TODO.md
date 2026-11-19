@@ -32,6 +32,27 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 ## App integration
 
+The current priority is UI parity for all seven rule families already in the engine, plus New Puzzle generation for every supported variant, including the thirteen import-only families. [Parity inventory and acceptance](SUDOKU_ENGINE_UI_PARITY.md)
+
+- [x] Integrate Between Lines with complete import, visible/accessibly labelled clues, input/candidates, history, persistence, sharing, hints, Finder/pages and solutions. [PR 190](https://github.com/coder13/sudoku-app/pull/190)
+- [x] Preserve the complete published Newman grid/solution and Raumplaner’s original zero-given Between/black-dot export. Independently verify both unique completions, original path order and all companion rules.
+- [x] Add basic Between app acceptance/import, endpoint/interior conflict restrictions and cleanup in both Pencil modes. Check every partial three-cell assignment independently in both orientations, repeated interior digits, histories and hidden-setting rejection. TypeScript and the 120-component catalog pass.
+- [x] Keep Between paths, endpoint circles, overlapping line families and accessible cell roles visible on desktop/mobile; preserve all eight grid symmetries and sharing after progress.
+- [x] Calibrate Between Easy generation on twenty seeds: twenty distinct thirty-given puzzles, all independently unique and dependent on Between Lines. Add the native request recipe, New Puzzle choice and preview.
+- [x] Verify Between help/storage/practice, full source replay, every hint page, Finder counts and exact solutions. Calibrate nineteen unique Medium successes from forty one-attempt seeds and add three checked fallback recipes, preserving the default Medium choice.
+- [x] Reproduce the rotated-puzzle fallback and pass native full-puzzle exclusions through the app generation path. Verify that Medium retries exclude the played puzzle and all square symmetries.
+- [x] Check light/dark clue renders at 290/540 pixels and measure actual Between candidates, verification, exact solves, ratings, hints, input, SSR and both New Puzzle levels. Verify the unchanged Wasm and pinned-baseline JavaScript/CSS costs. [Audit](SUDOKU_BETWEEN_AUDIT.md)
+- [x] Complete the final full rerun: all 547 app tests and 330 Wasm contracts pass, along with TypeScript, catalog and production/offline build.
+- [x] Pass exact-head release gates and merge Between Lines. Head `f459103` passed 366 native, 547 app and 330 Wasm tests, sixteen capability combinations, four profiles, strict Cargo docs and deployment in [CI 44447946113](https://github.com/coder13/sudoku-app/actions/runs/44447946113). [PR 190](https://github.com/coder13/sudoku-app/pull/190) reached main at `30bbd85`; fetched main contains the reviewed head and merge, with identical shipping sources.
+- [ ] Add New Puzzle generation for the thirteen existing import-only variants, with checked recipes and full player-flow tests. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
+- [ ] Integrate Region Sum Lines. [Issue 67](https://github.com/coder13/sudoku-app/issues/67)
+- [ ] Integrate Clone. [Issue 42](https://github.com/coder13/sudoku-app/issues/42)
+- [ ] Integrate Sandwich. [Issue 68](https://github.com/coder13/sudoku-app/issues/68)
+- [ ] Integrate Little Killer. [Issue 69](https://github.com/coder13/sudoku-app/issues/69)
+- [ ] Integrate X-Sums. [Issue 70](https://github.com/coder13/sudoku-app/issues/70)
+- [ ] Integrate Skyscrapers. [Issue 80](https://github.com/coder13/sudoku-app/issues/80)
+
+
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
 
 - [x] Audit Modular Lines against Newman's published eighteen-given puzzle/solution PDFs, the versioned Coach compiler, its official demo and eight original Coach exports. Preserve independent paths, short paths and repeated references; independently verify all three complete 9 × 9 sources. [Issue 59](https://github.com/coder13/sudoku-app/issues/59) · [Source and integration audit](SUDOKU_MODULAR_AUDIT.md)
