@@ -12,15 +12,16 @@ function timeOf(timestamp: number) {
   return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })
 }
 
-/** Show the transport state on the puzzle card and the last confirmed activity in Device sync. */
+/** Show a green dot for a healthy connection on the puzzle card and confirmed activity in Device sync. */
 export function SyncConnectionStatus({ connection, detailed = false }: { connection: SyncConnection; detailed?: boolean }) {
   const { mode, checkFailed, lastCheck, lastNotification } = connection
   if (mode === 'unlinked') return null
   const problem = checkFailed && mode !== 'offline'
   const { label, detail } = statuses[mode]
-  const badge = <span className="sync-connection-label" data-connection={problem ? 'failure' : mode} role="status">
+  const dotOnly = !detailed && mode === 'live' && !problem
+  const badge = <span className="sync-connection-label" data-connection={problem ? 'failure' : mode} role="status" title={dotOnly ? label : undefined}>
     <span className="sync-connection-dot" aria-hidden="true" />
-    {problem && !detailed ? 'Cloud check failed' : label}
+    <span className={dotOnly ? 'sr-only' : undefined}>{problem && !detailed ? 'Cloud check failed' : label}</span>
   </span>
   if (!detailed) return badge
   return <div className="sync-connection-detail">
