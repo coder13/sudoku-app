@@ -59,10 +59,16 @@ function puzzleFromFill(layout: KakuroPuzzle, values: readonly number[]): Kakuro
   return createKakuro(layout.width, cells)
 }
 
-/** Give rotations, reflections, and digit complements the same signature. */
-export function kakuroRecipeSignature(puzzle: KakuroPuzzle): string {
+type SignatureLayout = {
+  size: string
+  runs: { index: number; prefix: string; complementBase: number }[]
+}
+
+const signatureLayouts = new Map<string, SignatureLayout[]>()
+
+function buildSignatureLayouts(puzzle: KakuroPuzzle): SignatureLayout[] {
   const white = puzzle.cells.flatMap((cell, index) => cell === null ? [index] : [])
-  const signatures: string[] = []
+  const layouts: SignatureLayout[] = []
   for (const transpose of [false, true]) {
     for (const flipRows of [1, -1]) {
       for (const flipColumns of [1, -1]) {
@@ -79,18 +85,45 @@ export function kakuroRecipeSignature(puzzle: KakuroPuzzle): string {
         const height = Math.max(...rows) - firstRow + 1
         const index = new Map(white.map((cell, i) =>
           [cell, (rows[i] - firstRow) * width + columns[i] - firstColumn]))
-        for (const complement of [false, true]) {
-          const runs = puzzle.runs.map(run => {
-            const total = complement ? run.cells.length * 10 - run.total : run.total
-            const cells = run.cells.map(cell => index.get(cell)!).sort((a, b) => a - b)
-            return `${cells.join(',')}=${total}`
-          })
-          signatures.push(`${width}x${height}|${runs.sort().join('|')}`)
-        }
+        const runs = puzzle.runs.map((run, runIndex) => ({
+          index: runIndex,
+          prefix: run.cells.map(cell => index.get(cell)!).sort((a, b) => a - b).join(',') + '=',
+          complementBase: run.cells.length * 10,
+        }))
+        // Each run covers a different set of cells. Sort once, before adding its sum.
+        runs.sort((a, b) => a.prefix < b.prefix ? -1 : a.prefix > b.prefix ? 1 : 0)
+        layouts.push({ size: `${width}x${height}`, runs })
       }
     }
   }
-  return signatures.sort()[0]
+  return layouts
+}
+
+/** Give rotations, reflections, and digit complements the same signature. */
+export function kakuroRecipeSignature(puzzle: KakuroPuzzle): string {
+  // The clue, direction, and length identify all cells in a contiguous run.
+  const key = puzzle.width + '|' + puzzle.runs.map(run =>
+    `${run.clue}${run.direction === 'across' ? 'a' : 'd'}${run.cells.length}`).join(',')
+  let layouts = signatureLayouts.get(key)
+  if (!layouts) {
+    layouts = buildSignatureLayouts(puzzle)
+    if (signatureLayouts.size >= 32) signatureLayouts.delete(signatureLayouts.keys().next().value!)
+    signatureLayouts.set(key, layouts)
+  }
+
+  let signature: string | undefined
+  for (const { size, runs } of layouts) {
+    let original = size
+    let complement = size
+    for (const { index, prefix, complementBase } of runs) {
+      const total = puzzle.runs[index].total
+      original += `|${prefix}${total}`
+      complement += `|${prefix}${complementBase - total}`
+    }
+    const first = original < complement ? original : complement
+    if (signature === undefined || first < signature) signature = first
+  }
+  return signature!
 }
 
 function hintDifficulty(puzzle: KakuroPuzzle, whiteCount: number): NumberPuzzleDifficulty | null {
