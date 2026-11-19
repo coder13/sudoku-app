@@ -140,9 +140,23 @@ function runSupport(run: KakuroRun, domains: readonly number[]): number[] | null
   return support[0] ? support : null
 }
 
+function runFitsEntries(run: KakuroRun, values: readonly number[]): boolean {
+  let entered = 0
+  for (const cell of run.cells) {
+    const value = values[cell] ?? 0
+    if (value === 0) continue
+    const digit = digitMask(value)
+    if (!digit || (entered & digit)) return false
+    entered |= digit
+  }
+
+  // Empty cells have no candidate restrictions during a rule check.
+  // Any valid digit set that contains the entries can fill those cells.
+  return totalsByLength[run.cells.length][run.total].some(mask => (mask & entered) === entered)
+}
+
 export function checkKakuro(puzzle: KakuroPuzzle, values: readonly number[]) {
-  const domains = createDomains(puzzle, values)
-  const conflicts = puzzle.runs.filter(run => !runSupport(run, domains))
+  const conflicts = puzzle.runs.filter(run => !runFitsEntries(run, values))
   const complete = !conflicts.length && puzzle.cells.every((cell, i) => cell !== null || digitMask(values[i]) !== 0)
   return { conflicts, complete }
 }

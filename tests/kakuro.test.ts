@@ -99,6 +99,26 @@ test('rules catch duplicate digits even when a run has the correct sum', () => {
   assert.equal(solveKakuro(puzzle, [], 1).status, 'search-limit')
 })
 
+test('partial entries must fit a distinct digit set for each clue', () => {
+  const puzzle = createKakuro(4, [
+    {}, { down: 8 }, { down: 3 }, { down: 5 },
+    { across: 8 }, null, null, null,
+    { across: 8 }, null, null, null,
+  ])
+  const values = [0, 0, 0, 0, 0, 5]
+  assert.deepEqual(checkKakuro(puzzle, values), { conflicts: [], complete: false })
+
+  // 7 fits the down clue with 1, but the across clue would need two
+  // distinct digits that add up to 1.
+  values[5] = 7
+  assert.deepEqual(checkKakuro(puzzle, values).conflicts.map(run => run.clue), [4])
+
+  for (const invalid of [-1, 2.5, 10, NaN]) {
+    values[5] = invalid
+    assert.deepEqual(checkKakuro(puzzle, values).conflicts.map(run => run.clue), [1, 4])
+  }
+})
+
 test('a clue owns only its contiguous run and every white cell requires both directions', () => {
   assert.throws(() => createKakuro(3, [{}, { down: 6 }, { down: 3 }, { across: 3 }, null, null, {}, null, null]),
     /one across clue and one down clue/)

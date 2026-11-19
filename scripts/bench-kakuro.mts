@@ -13,6 +13,7 @@ const largestPartial = largestSolution.map((value, index) => index % 3 === 0 ? v
 const columns = [3, 5, 7, 9, 11, 13, 15, 17, 10]
 const row = [{ across: 45 }, ...columns.map(() => null)]
 const long = createKakuro(10, [{}, ...columns.map(down => ({ down })), ...row, ...row])
+const longPartial = solveKakuro(long).solution!.map((value, index) => index % 3 === 0 ? value : 0)
 const profiles = [
   ['check rules, empty Hard', () => checkKakuro(board, [])],
   ['check rules, partial Hard', () => checkKakuro(board, partial)],
@@ -21,6 +22,7 @@ const profiles = [
   [`check rules, partial ${largest.id}`, () => checkKakuro(largest.puzzle, largestPartial)],
   [`find a hint, empty ${largest.id}`, () => findKakuroHint(largest.puzzle, [])],
   [`exact solve, empty ${largest.id}`, () => solveKakuro(largest.puzzle)],
+  ['check rules, partial nine-cell runs', () => checkKakuro(long, longPartial)],
   ['exact solve, nine-cell runs', () => solveKakuro(long)],
 ] as const
 
