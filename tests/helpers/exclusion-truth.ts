@@ -33,10 +33,10 @@ export function assertExclusionProof(position: VariantPosition, proof: VariantDe
     if (rule.type === 'extra-house') declared.push({ extra: index })
     if (rule.type === 'diagonal') declared.push({ diagonal: rule.diagonal })
   })
+  const allHouses = declared.map(house => houseCells(position.puzzle, house))
   const board = [...position.puzzle.givens].map((digit, cell) => Number(digit === '0' ? position.entries?.[cell] ?? '0' : digit))
   const domains = board.map((placed, cell) => placed ? [] : Array.from({ length: 9 }, (_, index) => index + 1).filter(digit =>
-    !((position.eliminations?.[cell] ?? 0) & 1 << (digit - 1)) && declared.every(house => {
-      const cells = houseCells(position.puzzle, house)
+    !((position.eliminations?.[cell] ?? 0) & 1 << (digit - 1)) && allHouses.every(cells => {
       return !cells.includes(cell) || cells.every(other => board[other] !== digit)
     })))
   let alternatives: Candidate[]

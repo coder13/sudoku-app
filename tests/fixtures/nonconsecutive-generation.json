@@ -1,0 +1,23 @@
+{
+  "engineSha256": "291a61e8b43a92921902173415725a098219e69a8582c8fa4cfc44ef926dc8f7",
+  "layouts": [
+    {
+      "name": "Literally No One completion",
+      "source": "https://www.gmpuzzles.com/blog/2025/07/nonconsecutive-sudoku-by-philip-newman/",
+      "provenance": "Complete printed completion; the original twenty-one-given puzzle remains intact in nonconsecutive-newman.json.",
+      "solution": "482519637159736482637284915263847591748195263915362748591628374826473159374951826"
+    },
+    {
+      "name": "Authored completion witness 1",
+      "provenance": "Native blank-template Non-Consecutive generation, one attempt, seed 6, 20,000-node checks, Easy, at most thirty givens, pinned app order. Not a published clue set.",
+      "solution": "529147368741863592386295147863529714417386259295714683638471925952638471174952836"
+    },
+    {
+      "name": "Authored completion witness 2",
+      "provenance": "Native blank-template Non-Consecutive generation, one attempt, seed 16, 20,000-node checks, Easy, at most thirty givens, pinned app order. Not a published clue set.",
+      "solution": "264185739931647582758293146185726394427359618693814275379462851516938427842571963"
+    }
+  ],
+  "sourceHost": "darwin arm64",
+  "sourceAppHead": "20425be4db869eb85edf851d596b391fa722ae66"
+}
