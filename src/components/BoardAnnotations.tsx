@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { boardLinkRoutes, type BoardPoint } from '../sudoku/board-link-geometry'
+import { boardLinkRoutes, type BoardPoint, type CandidateInsets } from '../sudoku/board-link-geometry'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 
 export type BoardRegion = { row: number; column: number; rows: number; columns: number }
@@ -23,12 +23,12 @@ export type BoardAnnotations = {
 
 const CELL = 10
 
-export function BoardLinks({ links, region }: { links?: readonly BoardLink[]; region?: BoardRegion }) {
+export function BoardLinks({ links, region, candidateInsets }: { links?: readonly BoardLink[]; region?: BoardRegion; candidateInsets?: CandidateInsets }) {
   const id = useId()
   const viewBox = region ? `${region.column * CELL} ${region.row * CELL} ${region.columns * CELL} ${region.rows * CELL}` : '0 0 90 90'
   const counts = new Map<string, number>()
   const items: BoardMark[] = []
-  const routes = boardLinkRoutes(links ?? [])
+  const routes = boardLinkRoutes(links ?? [], candidateInsets)
   for (const [index, { color, dashed, arrow }] of (links ?? []).entries()) {
     const points = routes[index]
     if (points.length < 2) continue

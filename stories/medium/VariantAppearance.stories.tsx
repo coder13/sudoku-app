@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
 import betweenNewman from '../../tests/fixtures/between-newman.json'
 import regionSumNewman from '../../tests/fixtures/region-sum-newman.json'
+import cloneMurphy from '../../tests/fixtures/clone-murphy.json'
 import { Board } from '../../src/components/Board'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
 import { jigsawLayout, variantSeeds } from '../../src/sudoku/variant-generation'
@@ -83,4 +84,22 @@ export const RegionSumClosedAndSeparated: Story = {
     { type: 'region-sum', cells: [28, 30, 38], groupByRegion: true },
   ] }, 'Closed Region Sum path and combined region visits'),
   parameters: { docs: { description: { story: 'The first clue keeps its closing edge. The second clue combines its two visits to the same region. Dashed connectors skip unmarked cells; dots identify the logical cells.' } } },
+}
+
+export const CloneShapes: Story = {
+  args: candidateGrid(cloneMurphy.puzzle as VariantPuzzle, 'Clone Sudoku grid'),
+  parameters: { docs: { description: { story: 'Legs in a Snare by Bill Murphy. Shading retains its two pairs of published shapes. Matching letters require matching digits; different letters need not be different digits. Candidate grids reserve a lower strip for the letters.' } } },
+}
+
+export const CloneShapesCompact: Story = { ...CloneShapes, parameters: { ...CloneShapes.parameters, gridWidth: 290 } }
+
+export const CloneOverlappingCopies: Story = {
+  args: { ...candidateGrid({ version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'clone', groups: [[0, 40], [8, 30, 52]] }, { type: 'clone', groups: [[40, 80]] },
+    { type: 'killer-cages', cages: [{ cells: [0, 1], sum: 7 }] },
+    { type: 'thermometer', cells: [8, 17, 26] },
+  ] }, 'Clone labels with overlapping clues'), annotations: { links: [
+    { from: { cell: 0, digit: 1 }, to: { cell: 40, digit: 9 }, color: 'var(--board-selected-border)' },
+  ] } },
+  parameters: { gridWidth: 290, docs: { description: { story: 'Overlapping Clone sets link R1C1, R5C5 and R9C9 under one letter. Another letter matches three cells. Cages and thermometers retain their own meaning. Candidate links follow the space reserved for letters and cage totals.' } } },
 }

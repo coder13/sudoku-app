@@ -2,6 +2,7 @@ import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, Vari
 import { DIGITS, onlyCandidate } from './game.ts'
 import { lineGroups } from './line-groups.ts'
 import { regionSumParts } from './region-sum.ts'
+import { cloneLayout } from './clone.ts'
 import { cellReference, type CellReferenceOptions } from './hints.ts'
 import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName } from './variants.ts'
 
@@ -58,7 +59,7 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
         reason: `The smallest possible digit in ${at(rule.less)} is ${smaller[0]}. The largest in ${at(rule.greater)} is ${larger.at(-1)}. Each candidate needs a partner on the correct side of the sign.` }
     }
     case 'clone':
-      return { description: 'The highlighted clone cells must contain the same digit.',
+      return { description: `Clone ${cloneLayout(puzzle.rules).at[a]!.label} links ${new Intl.ListFormat('en', { type: 'conjunction' }).format(cells.map(at))}. These cells must contain the same digit.`,
         reason: 'A digit missing from one cell cannot go in any of its copies.' }
     case 'kropki': {
       const dots = rules.filter(r => r?.type === 'kropki')

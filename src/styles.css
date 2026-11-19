@@ -3312,6 +3312,15 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   inset-block-start: 30%;
   font-size: calc(min(calc(clamp(6px, 2.05cqw, 11px) * var(--board-font-scale, 1)), 2.22cqw) * var(--app-text-scale));
 }
+.variant-board .cell[data-clone] .candidate-marks { inset-block-end: 28%; }
+.variant-clone rect { fill: currentColor; fill-opacity: .16; }
+.variant-clone path { fill: none; stroke: currentColor; stroke-opacity: .6; stroke-width: .025; }
+.variant-clone-label text {
+  font-size: .22px;
+  font-weight: 700;
+}
+.variant-clone-label-halo { fill: none; stroke: var(--board-bg); stroke-width: .045; }
+.variant-clone-label-mark { fill: var(--board-ink); }
 .variant-board .board-links { z-index: 3; }
 .variant-extra-region rect { fill: var(--board-selected-border); opacity: .1; }
 .variant-extra-region path { fill: none; stroke: var(--board-selected-border); stroke-opacity: .4; stroke-width: .025; }

@@ -24,6 +24,9 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
         entropyAreas.push([cell, cell + 1, cell + 9, cell + 10])
       }
     }
+    else if (rule.type === 'clone') for (const group of rule.groups) {
+      for (const cell of group.slice(1)) edges.push([group[0], cell, (a, b) => a === b])
+    }
     else if (rule.type === 'renban') sets.push({ cells: rule.cells })
     else if (rule.type === 'killer-cages') sets.push(...rule.cages)
     else if (rule.type === 'parity') rule.cells.forEach(cell => edges.push([cell, cell, (a,b) => a === b && a % 2 === (rule.parity === 'odd' ? 1 : 0)]))

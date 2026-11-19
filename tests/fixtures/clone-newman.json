@@ -1,0 +1,86 @@
+{
+  "source": "https://www.gmpuzzles.com/blog/2026/04/clone-sudoku-by-philip-newman-2/",
+  "title": "Hello There",
+  "author": "Philip Newman",
+  "published": "2026-04-24",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2026/260424-CloneSudoku-HelloThere.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2026/260424-CloneSudoku-HelloThere-soln.pdf",
+  "pdfSha256": "2220375d65d22db8e140a78c5cce58ff579920ab69d159436e493612da38e503",
+  "solutionPdfSha256": "54fcb7348696fdfee7f75c55591ce9b42dd51c194a3f994b30d48220ee80836f",
+  "puzzle": {
+    "version": 1,
+    "givens": "010000000000020300040000000600007000000000000000800009000400000000000506000700000",
+    "rules": [
+      {
+        "type": "clone",
+        "groups": [
+          [
+            0,
+            56
+          ],
+          [
+            2,
+            58
+          ],
+          [
+            9,
+            65
+          ],
+          [
+            10,
+            66
+          ],
+          [
+            11,
+            67
+          ],
+          [
+            18,
+            74
+          ],
+          [
+            20,
+            76
+          ]
+        ]
+      },
+      {
+        "type": "clone",
+        "groups": [
+          [
+            4,
+            60
+          ],
+          [
+            5,
+            61
+          ],
+          [
+            6,
+            62
+          ],
+          [
+            14,
+            70
+          ],
+          [
+            22,
+            78
+          ],
+          [
+            23,
+            79
+          ],
+          [
+            24,
+            80
+          ]
+        ]
+      }
+    ]
+  },
+  "solution": "513678294798124365246593178659247813824319657371856429965431782137982546482765931",
+  "originalOnlineUrl": "https://sudokupad.app/philip-newman/20260424-hello-there",
+  "originalOnlineCode": "fpuzN4IgzglgXgpiBcBOANCALhNAbO8QCYAGfANgFpCAWM%2FS%2BAAgAkYssB7egFQAsYAnOKgCGAVzTc2fBCAAK3CFggAHegDkYAdwC2QgHYhUfETjAw001ZJ1Z6YEQBM2AaxH0jJ%2BkKVKsATwB0ADq6AMLsujAMAEowAOYQbLpg9GwAZvTiMLZCWllg3F4wAPSSEDC6aEIYiUUAxmzsfJ4C9LXhMGDInrr29FoiYGitiZUQuhm82bn09hDxaMljE3k5WQJYVRAAbllKbJDVSUG6wQBqZRr0AOIAggDKKeNXALIyIlBQJgzcaGhKYPAikUNCD%2FLEtEp3p8Ov56loigAjdixIqVFGxIRgIoGECxPgQewIADaRNAtWkAGIAGJUgCihBIhBxtRufD4Ql8xJA1LpDKZAF0AL7IUBbIRYES4ACMqHiO308DQRhgwrJlJp9MZzNZ7M58CJ3I1fJAQpFqpA5LwFIAIoRbTTtWyOVybXbCA7TWqrbb7VTHbqXT73X7PRbKUGHagWU69QbXb6Taqk%2FzkKSw1ajVqozrnfrDbytaHLfnNUzszGXZmBebizzS%2F7c3Gq4mzSKQGKJbh8LLtuUEErJTXw27Ixac7HuRGQ%2BaO5KEABmHvy%2FvKpNmlNp2vN8sBvN142h2e4ShLvuK1dtrcFstjit75ueofekd%2BneNycvltej8Jt8T%2BPBl%2B6Y%2FoBf6Bp%2Bj7rqmorinO8AkKeCoDiqrbAGuaFtkeCAAOyISug6ocm0HoSRhGERuGGUTOsG4AAHHh54EVRZEwZ2CAoLivZIauFHocB%2B5Zreu5NteQFYfAJ6ccujEod%2BAk3tGwklgefG1lODb%2FupRbDr%2BQnvgBHpPiBo6KfpWmCrxqH8duen%2Fg%2BRnyRplaidpGaiWB94uXx4kAKwMchDnqR5cbmZhNEIAhUlngFlmUdZ7m2c59aHuF8C4VF3FMfF9bBcphaqTpoGJXuoVyUFxUhRBgWfrlBnTvyKYgE4Cg4HwtRCLEuCbiwWBgFyURSiEUo4gNITziN%2BBDRNIT4NN42oFE85TQtS3jUWPV9XmUTYWNI07T5I20btC1HZQh0hAdC2IMdIBRNdB3rawm0GttITYXtIS0R9iDnV9V1vSN11%2Fbd10%2FY9vX9YNl23YNJAjYN70LZNcMrRdI1LSjt1Le9QqNWADRiAkCpEn5MqLghuH0d2KAnrhKD0TK3YnuTyB%2BUzyAIX5KCLjKlMc6zyAoOzfNk8gVPIMzyAyignPILhi64TK9F%2BQhJ7U4L%2FN%2BZLvNi8g3ai3Tuvdlr%2FMnuLuGy9zUtCkAA%3D%3D",
+  "formatNotes": "The original online export encodes Clone through cell colors and custom rules text and includes unsummed cages. Native/shared definitions are transcribed from the original PDFs. Typed f-puzzles controls use the official cells/cloneCells schema; original authored exports still require the format work in issue 7."
+}

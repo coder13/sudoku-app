@@ -1,0 +1,78 @@
+{
+  "source": "https://www.gmpuzzles.com/blog/2026/03/clone-sudoku-by-bill-murphy-2/",
+  "title": "Legs in a Snare",
+  "author": "Bill Murphy",
+  "published": "2026-03-29",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2026/260329-CloneSudoku-LegsInASnare.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2026/260329-CloneSudoku-LegsInASnare-soln.pdf",
+  "pdfSha256": "8fafb54a83b3bb03d1466292542103ef550fd50bd6184cb8d2310c223b39fe99",
+  "solutionPdfSha256": "a6000f4a5e0620572818b74e84c2c303a591ac928ada203ed84d92ad34f8d222",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000670000000080000007090010005020020706030030800010040600000050000000061000000",
+    "rules": [
+      {
+        "type": "clone",
+        "groups": [
+          [
+            1,
+            49
+          ],
+          [
+            2,
+            50
+          ],
+          [
+            10,
+            58
+          ],
+          [
+            11,
+            59
+          ],
+          [
+            19,
+            67
+          ],
+          [
+            20,
+            68
+          ]
+        ]
+      },
+      {
+        "type": "clone",
+        "groups": [
+          [
+            12,
+            60
+          ],
+          [
+            13,
+            61
+          ],
+          [
+            21,
+            69
+          ],
+          [
+            22,
+            70
+          ],
+          [
+            30,
+            78
+          ],
+          [
+            31,
+            79
+          ]
+        ]
+      }
+    ]
+  },
+  "solution": "192438675673951482584267193816345729925716834437892516248673951359184267761529348",
+  "originalOnlineUrl": "https://sudokupad.app/gdsmnii13o",
+  "originalOnlineCode": "fpuzN4IgzglgXgpiBcBOANCALhNAbO8QBkYBzMAAgEkA7UgQVIGVKBDAJzlSYFc0ALAexYIQAIQhYspALKcWABx4BPEKhaccYGGiEA5AQFsmE+pwAmfANadSAJTUwyNWbKwKAdDeIQ+lMnwBmpLwwpGBMesFgPEyywUyUJqQAxnxYfDKkepxgaEneaEwQ1BAmMJQYiYakJhBEmGSFpMWl5ZWyfJAY3mCuyiBELMUIANpDwAC+yKCJQgDEAGJzAKIADABsyyATU7MLK+ubk1tHkyAAboacuKuotaelCGiqMFtnF7gA7DcQd5QPT0cAXWQoxe0zw8yWaw2oJ2kP2MPBABFlsiFgdtkiUcs0cdxidzlhLggABxfH5/S6A4F4jEgCF7aEnMF03ZQ9EgZkzZGoubsznc7G8l4EonwT59b73eCPSmHfFvBAoCXk6X/Q5AkHywm4ACMZKlMuectpXKxOKZswF5tAItwAFZ9b9VbKaa9tQgAEyOilG8Ya122z3e52+4UKsXBw24t2i67Kg1qgPhgDMkcTY39Yfd8FT8adUeNMdwpLzPoRLLhjJNrPhhcD8D1pZDVM1NvDABY0y6s7Gu76ObCGXzB2zy6aecPMROW0nsw6mwWaWOa1WB+CV5O6VahRap4L0RnqT2rn3jwhG7cE93jWPt5vx/vAUDwCluF4nUM9SgvZ3U6Trp8DoAcgqYoA6eqdqSXoOqSnZesBX4gcgpJ6tcqadg6nxeig37IJhyCochSGdr+yCfKSuHgcg1w/kRwGgXhBFIQ6KB6rByDwWRXHXHqDrYcRyEAmMQA",
+  "formatNotes": "The original online export encodes Clone through cell colors and custom rules text. Native/shared definitions are transcribed from the original PDFs. Typed f-puzzles controls use the official cells/cloneCells schema; original authored exports still require the format work in issue 7."
+}
