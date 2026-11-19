@@ -32,6 +32,10 @@ export const VARIANTS = {
     name: 'Anti-Knight',
     rule: 'Cells a chess knight’s move apart cannot share a digit. A knight moves two cells in one direction and one cell across.',
   },
+  'anti-king': {
+    name: 'Anti-King',
+    rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
+  },
   between: {
     name: 'Between Lines',
     rule: 'The digits inside each Between line must lie strictly between the digits in its two circles. The smaller endpoint can be at either end. Interior digits can repeat if the other puzzle rules allow it. Touching lines stay independent.',
@@ -77,10 +81,6 @@ export const VARIANTS = {
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
-  'anti-king': {
-    name: 'Anti-King',
-    rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
-  },
   'non-consecutive': {
     name: 'Non-Consecutive',
     rule: 'Cells sharing an edge cannot contain consecutive digits. Diagonal neighbors are unrestricted by this rule, and 1 and 9 are not consecutive.',

@@ -39,3 +39,11 @@ export const XSumsDifficulty: Story = {
 export const SkyscrapersDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=skyscrapers" />,
 }
+
+export const AntiKingDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=anti-king" />,
+}
+
+export const AntiKingVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=anti-king" />,
+}

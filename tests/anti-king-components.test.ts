@@ -7,11 +7,12 @@ import { createServer, type ViteDevServer } from 'vite'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { conflictsOf, enter, makeGame } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { isVariantId, VARIANTS, variantDifficulties } from '../src/sudoku/variants.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/anti-king-newman.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
-let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, CompletedPuzzle: Component
+let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, CompletedPuzzle: Component, VariantPreview: Component
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] } })
@@ -19,8 +20,22 @@ before(async () => {
   ;({ MobilePanelLayout } = await server.ssrLoadModule('/src/components/MobilePanelLayout.tsx'))
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
 })
 after(async () => { await server?.close() })
+
+test('New Puzzle offers Anti-King with a distinct king preview and verified Easy/Medium choices', () => {
+  assert.ok(isVariantId('anti-king'))
+  assert.equal(VARIANTS['anti-king'].name, 'Anti-King')
+  assert.match(VARIANTS['anti-king'].rule, /one row and one column apart/)
+  assert.deepEqual(variantDifficulties('anti-king'), ['easy', 'medium'])
+  const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'anti-king' }))
+  assert.match(html, /data-variant="anti-king"/)
+  assert.match(html, /lucide-crown/)
+  assert.match(html, /<path /)
+  assert.ok(!html.includes('♚'))
+  assert.ok(!html.includes('♞'))
+})
 
 test('desktop and mobile grids label Anti-King and highlight its actual corner neighbors', () => {
   const board = createElement(Board, { variantPuzzle: fixture.puzzle, givens: fixture.puzzle.givens, values: fixture.puzzle.givens,
@@ -49,7 +64,7 @@ test('both conflicting corner placements receive the visible conflict class and 
   }
 })
 
-test('sharing retains Anti-King after progress and completion offers the puzzle chooser', async () => {
+test('sharing retains Anti-King after progress and completion offers another calibrated puzzle', async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { hostname: 'example.test', origin: 'https://example.test' } } })
   try {
@@ -62,7 +77,9 @@ test('sharing retains Anti-King after progress and completion offers the puzzle 
     game.position.entries = [...fixture.solution].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
     const completed = renderToStaticMarkup(createElement(CompletedPuzzle, { game, games: [game], preferredDifficulty: 'medium',
       ratingPending: false, shortcutEnabled: false, showGuides: true, onChooseDifficulty() {}, onChooseVariant() {} }))
-    assert.match(completed, /Choose another puzzle/)
+    assert.match(completed, /Next medium puzzle/)
+    assert.match(completed, /Choose difficulty/)
+    assert.match(completed, /Choose variant/)
   } finally {
     if (previous) Object.defineProperty(globalThis, 'window', previous)
     else Reflect.deleteProperty(globalThis, 'window')

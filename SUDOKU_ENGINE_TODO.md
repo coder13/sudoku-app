@@ -78,6 +78,14 @@ The current priority is UI parity for all seven rule families already in the eng
 - [x] Inspect light/dark 290/540px Skyscrapers and all-outside-family renders, retain exact legacy input/SSR output, measure complete caller/generation/retained-capacity/package costs and verify unchanged Wasm/metadata. Actual Hard New Puzzle measures 24.050/30.359 ms median/p95. [Audit](SUDOKU_SKYSCRAPERS_AUDIT.md)
 
 
+### Older playable variants: New Puzzle generation
+
+- [x] Calibrate Anti-King from blank templates with the actual app order and independent uniqueness, completion and required-family checks. Seeds 1–100 yield 87 Easy/19 Medium results at one attempt and 100 Easy/63 Medium at six attempts, with at most thirty givens and 20,000 nodes per exact check. Preserve the 8-point Easy technique and scoring version 8.
+- [x] Add the isolated Anti-King New Puzzle choice, vector crown preview, verified Easy/Medium recipes and per-recipe attempt budgets. Focused contracts verify forty distinct actual generated puzzles with several hints, complete human replay and corner proofs, plus deterministic repeats, a checked fallback, symmetry/mixed-alias exclusions and generated-puzzle storage/sharing.
+- [x] Pass 635 app tests, 429 Wasm contracts and strict app/new-contract/benchmark types with the 123-component catalog. Preserve all eighty paired legacy generation requests/outcomes and exact input/Board SSR output across twelve controls. Measure actual Easy/Medium generation and the known fresh-miss/fallback path; inspect the final vector crown in light/dark 290/540px references.
+- [x] Verify final Anti-King production across 171 routes and three offline checks, inspect the actual vector preview and confirm unchanged Wasm/five generated JSON files. Record +337 gzip JS bytes/+16 CSS, actual generation latency, paired compatibility and honest empty-history fallback repeats in the [audit](SUDOKU_ANTI_KING_GENERATION_AUDIT.md).
+- [ ] Pass exact-head Anti-King CI/deployment and merge its separate New Puzzle integration. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
+
 Track app-ready variants individually in [the integration issue](https://github.com/coder13/sudoku-app/issues/35). Every new variant needs visible clues, accessible rules, working input, save/reload, shared puzzle data, and verified hints before full integration.
 
 - [x] Audit Modular Lines against Newman's published eighteen-given puzzle/solution PDFs, the versioned Coach compiler, its official demo and eight original Coach exports. Preserve independent paths, short paths and repeated references; independently verify all three complete 9 × 9 sources. [Issue 59](https://github.com/coder13/sudoku-app/issues/59) · [Source and integration audit](SUDOKU_MODULAR_AUDIT.md)
