@@ -78,17 +78,19 @@ test('live sync upgrades only authenticated same-origin devices and signals comm
     const create = syncRequest(undefined, fetcher)
     const first = await create<Credentials>('libraries', 'POST', {})
     const other = await create<Credentials>('libraries', 'POST', {})
-    const connect = (token: string, origin = 'https://sudoku.example') => fetcher('/api/v1/live', {
-      headers: { Origin: origin, Upgrade: 'websocket', 'Sec-WebSocket-Protocol': 'sudoku-sync, ' + token },
+    const connect = (token: string, origin = 'https://sudoku.example', feature = '') => fetcher('/api/v1/live', {
+      headers: { Origin: origin, Upgrade: 'websocket', 'Sec-WebSocket-Protocol': ['sudoku-sync', token, feature].filter(Boolean).join(', ') },
     })
     assert.equal((await connect(first.token, 'https://unrelated.example')).status, 403)
     assert.equal((await connect('0'.repeat(64))).status, 401)
     assert.equal(upgrades.length, 0)
     assert.equal((await connect(first.token)).status, 204)
-    assert.equal((await connect(other.token)).status, 204)
+    assert.equal((await connect(other.token, undefined, 'sudoku-sync-presence')).status, 204)
     assert.notEqual(upgrades[0].library, upgrades[1].library)
     assert.equal(upgrades[0].request.headers.get('X-Sync-Device'), first.id)
     assert.equal(upgrades[0].request.headers.has('Sec-WebSocket-Protocol'), false)
+    assert.equal(upgrades[0].request.headers.has('X-Sync-Presence'), false)
+    assert.equal(upgrades[1].request.headers.get('X-Sync-Presence'), '1')
 
     const auth = syncRequest(first.token, fetcher)
     const a = client(first, auth)

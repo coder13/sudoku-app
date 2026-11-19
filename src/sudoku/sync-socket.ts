@@ -1,5 +1,7 @@
 import type { Credentials } from './sync-engine.ts'
 
+const presenceProtocol = 'sudoku-sync-presence'
+
 export type LiveConnection = 'inactive' | 'connecting' | 'live' | 'fallback'
 
 type Callbacks = {
@@ -7,6 +9,7 @@ type Callbacks = {
   opened: () => void
   changes: () => void
   devices: () => void
+  presence: (puzzles: readonly string[]) => void
   revoked: () => void
 }
 
@@ -19,6 +22,9 @@ export function createSyncSocket(callbacks: Callbacks) {
   let lastPing = 0
   let waitingForPong = false
   let status: LiveConnection = 'inactive'
+  let selectedPuzzle: string | null = null
+  let announcedPuzzle: string | null = null
+  let presenceSupported = false
 
   function publish(next: LiveConnection) {
     if (status === next) return
@@ -32,10 +38,20 @@ export function createSyncSocket(callbacks: Callbacks) {
     connection.send('ping')
   }
 
+  function announcePuzzle() {
+    const puzzle = document.hidden ? null : selectedPuzzle
+    if (!presenceSupported || status !== 'live' || socket?.readyState !== WebSocket.OPEN || puzzle === announcedPuzzle) return
+    socket.send('puzzle:' + (puzzle ?? ''))
+    announcedPuzzle = puzzle
+  }
+
   function close() {
     const previous = socket
     socket = undefined
     waitingForPong = false
+    announcedPuzzle = null
+    presenceSupported = false
+    callbacks.presence([])
     previous?.close()
   }
 
@@ -70,11 +86,12 @@ export function createSyncSocket(callbacks: Callbacks) {
       if (status === 'inactive') publish('connecting')
       const url = new URL('/api/v1/live', location.href)
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-      const connection = new WebSocket(url, ['sudoku-sync', device.token])
+      const connection = new WebSocket(url, ['sudoku-sync', device.token, presenceProtocol])
       socket = connection
       connectedAt = Date.now()
       connection.onopen = () => {
         if (socket !== connection) return
+        presenceSupported = connection.protocol === presenceProtocol
         ping(connection)
         callbacks.opened()
       }
@@ -85,13 +102,24 @@ export function createSyncSocket(callbacks: Callbacks) {
           waitingForPong = false
           delay = 1000
           publish('live')
+          announcePuzzle()
+        }
+        if (presenceSupported && typeof data === 'string' && data.startsWith('presence:')) {
+          try {
+            const peers: unknown = JSON.parse(data.slice('presence:'.length))
+            if (Array.isArray(peers)) {
+              const puzzles = peers.flatMap(peer => typeof peer?.puzzle === 'string' &&
+                typeof peer?.device === 'string' && peer.device !== device?.id ? [peer.puzzle] : [])
+              callbacks.presence([...new Set(puzzles)])
+            }
+          } catch { /* An invalid frame cannot change presence. */ }
         }
         if (!document.hidden && data === 'changes') callbacks.changes()
         if (!document.hidden && data === 'devices') callbacks.devices()
       }
       connection.onclose = ({ code }) => {
         if (socket !== connection) return
-        socket = undefined
+        close()
         if (code === 4001) revoked()
         else reconnect()
       }
@@ -101,6 +129,10 @@ export function createSyncSocket(callbacks: Callbacks) {
   }
 
   return {
+    showPuzzle(puzzle: string | null) {
+      selectedPuzzle = puzzle
+      announcePuzzle()
+    },
     update(next: Credentials | null) {
       if (!next || !navigator.onLine) { stop(); return }
       if (next.id !== device?.id || next.token !== device.token) {

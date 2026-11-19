@@ -15,18 +15,25 @@ let state = initial
 
 export type SyncConnection = {
   mode: 'unlinked' | 'offline' | Exclude<LiveConnection, 'inactive'>
-  lastCheck: number | null
-  lastNotification: number | null
   checkFailed: boolean
 }
-const initialConnection: SyncConnection = { mode: 'unlinked', lastCheck: null, lastNotification: null, checkFailed: false }
+const initialConnection: SyncConnection = { mode: 'unlinked', checkFailed: false }
 let connection = initialConnection
 const connectionListeners = new Set<() => void>()
+const noPeers: readonly string[] = []
+let peerPuzzles = noPeers
+let viewedPuzzle: string | null = null
+const presenceListeners = new Set<() => void>()
+
+function publishPresence(puzzles: readonly string[]) {
+  if (puzzles.length === peerPuzzles.length && puzzles.every((id, index) => peerPuzzles[index] === id)) return
+  peerPuzzles = puzzles
+  presenceListeners.forEach(fn => fn())
+}
 
 function publishConnection(update: Partial<SyncConnection>) {
   const next = { ...connection, ...update }
-  if (next.mode === connection.mode && next.lastCheck === connection.lastCheck &&
-      next.lastNotification === connection.lastNotification && next.checkFailed === connection.checkFailed) return
+  if (next.mode === connection.mode && next.checkFailed === connection.checkFailed) return
   connection = next
   connectionListeners.forEach(fn => fn())
 }
@@ -205,7 +212,7 @@ function reportError(target: ActiveDevice, error: unknown) {
 }
 
 function recordCloudCheck(ready: boolean) {
-  publishConnection({ lastCheck: Date.now(), checkFailed: false })
+  publishConnection({ checkFailed: false })
   publish({ linked: true, ready, message: failures.size
     ? 'Some puzzle changes are saved on this device and could not sync.' : '' })
 }
@@ -341,6 +348,16 @@ export const deviceSync = {
   },
   getConnection: () => connection,
   getServerConnection: () => initialConnection,
+  subscribePresence(fn: () => void) {
+    presenceListeners.add(fn)
+    return () => { presenceListeners.delete(fn) }
+  },
+  getPeerPuzzles: () => peerPuzzles,
+  getServerPeerPuzzles: () => noPeers,
+  showPuzzle(id: string | null) {
+    viewedPuzzle = id
+    live?.showPuzzle(id)
+  },
   connect() {
     connected = true
     const unsubscribe = roomStore.onEdit((id, handoff) => {
@@ -371,13 +388,15 @@ export const deviceSync = {
         if (!active) return
         publishConnection({ mode: !navigator.onLine ? 'offline' : mode === 'inactive' ? 'connecting' : mode })
       },
-      changes: () => { publishConnection({ lastNotification: Date.now() }); requestPull() },
+      changes: () => requestPull(),
       devices: devicesChanged,
+      presence: publishPresence,
       revoked: () => { retryAt = 0; requestPull(0) },
     })
     live = socket
     function wake() {
       const target = currentDevice()
+      socket.showPuzzle(viewedPuzzle)
       socket.update(target?.device ?? null)
       if (target && !document.hidden && navigator.onLine) socket.check(Date.now())
       if (target && !navigator.onLine) {
@@ -408,6 +427,7 @@ export const deviceSync = {
       void flush()
     }
     function visible() {
+      socket.showPuzzle(viewedPuzzle)
       if (document.hidden) flushHandoff()
       else { wake(); devicesChanged() }
     }

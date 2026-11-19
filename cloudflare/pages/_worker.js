@@ -89,6 +89,7 @@ async function api(request, { DB: db, SYNC_EVENTS: events }, ctx, url) {
   const upgrade = path === 'live'
   if (!upgrade && !/^(invitations|devices(?:\/[\w-]+)?|settings|changes|puzzles\/[\w-]+)$/.test(path)) throw new HttpError(404, 'Not found.')
   let raw = request.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1]
+  let wantsPresence = false
   if (upgrade) {
     if (!events) throw new HttpError(503, 'Live sync is unavailable.')
     if (method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
@@ -97,8 +98,9 @@ async function api(request, { DB: db, SYNC_EVENTS: events }, ctx, url) {
     if (request.headers.get('Origin') !== url.origin) throw new HttpError(403, 'Unexpected request origin.')
     // Browsers cannot set Authorization on a WebSocket. Use the unselected
     // subprotocol for the token so it stays out of request URLs and responses.
-    const [protocol, token] = (request.headers.get('Sec-WebSocket-Protocol') ?? '').split(',').map(value => value.trim())
+    const [protocol, token, feature] = (request.headers.get('Sec-WebSocket-Protocol') ?? '').split(',').map(value => value.trim())
     raw = protocol === 'sudoku-sync' && secretPattern.test(token ?? '') ? token : undefined
+    wantsPresence = feature === 'sudoku-sync-presence'
   }
   const includeSettings = path === 'changes' && url.searchParams.has('settings')
   const authQuery = includeSettings
@@ -108,8 +110,10 @@ async function api(request, { DB: db, SYNC_EVENTS: events }, ctx, url) {
   if (!device) throw new HttpError(401, 'This device is no longer linked.')
   const { library } = device
   if (upgrade) {
+    const headers = new Headers({ Upgrade: 'websocket', 'X-Sync-Device': device.id })
+    if (wantsPresence) headers.set('X-Sync-Presence', '1')
     return events.getByName(library).fetch(new Request(request.url, {
-      headers: { Upgrade: 'websocket', 'X-Sync-Device': device.id },
+      headers,
     }))
   }
   if (path === 'invitations' && method === 'POST') {

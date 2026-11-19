@@ -125,7 +125,7 @@ export function DeviceSyncPage() {
     // Static hosts may redirect to a trailing slash on reload, resetting the router's index.
     const navigation = (window as Window & { navigation?: { canGoBack: boolean } }).navigation
     if (canGoBack || (navigation?.canGoBack ?? window.history.length > 1)) router.history.back()
-    else if (root) void router.navigate({ to: '/', search: {}, replace: true })
+    else if (root) void router.navigate({ to: '/puzzles/browse', replace: true })
     else if (backToScanner || screen === 'invite') void router.navigate({
       to: '/sync/$step', params: { step: backToScanner ? 'scan' : 'devices' }, replace: true,
     })
@@ -150,7 +150,7 @@ export function DeviceSyncPage() {
       <h1 ref={heading} tabIndex={-1}>{screen === 'start' ? 'Device sync' : syncPageTitles[screen]}</h1>
     </header>
     {productionSync && <p><strong>Production sync.</strong> Changes here sync to the live app.</p>}
-    {status.linked && screen === 'devices' && <SyncConnectionStatus connection={connection} detailed />}
+    {status.linked && screen === 'devices' && <SyncConnectionStatus connection={connection} showLabel />}
     {status.message && <p role="status">{status.message}</p>}
     {(error || listError) && <p className="workspace-error" role="alert">{error || listError}</p>}
     {!status.linked && status.ready && screen === 'confirm' && ticket && <>

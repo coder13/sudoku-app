@@ -451,7 +451,7 @@ export const roomStore = {
     const next = { ...room, games, playerRating: playerRatingFor(games), storageAvailable: room.storageAvailable && saved && seenSaved }
     if (game.savedForLater) publish(next)
     else playPuzzle(next, game)
-    if (saved) announceEdit(game.id)
+    if (saved) announceEdit(game.id, !game.savedForLater && game.source !== 'draft')
   },
   update(id: string, update: (game: Game) => Game, { derived = false } = {}) {
     const current = room.games.find((game) => game.id === id)

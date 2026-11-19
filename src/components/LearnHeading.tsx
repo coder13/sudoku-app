@@ -15,7 +15,7 @@ export function LearnHeading({ title, summary, difficulty, children }: {
   return <header className="lesson-heading">
     <nav className="learn-breadcrumbs" aria-label="Breadcrumb">
       <ol role="list">
-        <li><Link to="/" activeOptions={activeOptions}>Sudoku</Link></li>
+        <li><Link to="/puzzles/browse" activeOptions={activeOptions}>Sudoku</Link></li>
         {title !== undefined && <li>
           <ChevronRight size={12} aria-hidden="true" />
           <Link to="/learn" activeOptions={activeOptions}>{learnOverview.title}</Link>

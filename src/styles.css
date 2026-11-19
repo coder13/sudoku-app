@@ -120,6 +120,7 @@ svg { flex-shrink: 0; }
 .advanced-region-controls { display: flex; align-items: center; gap: 3px; padding-right: 5px; border-right: 1px solid var(--border); }
 .advanced-region-controls .icon-button { width: 32px; min-height: 32px; border-color: transparent; background: transparent; }
 .advanced-region-controls .icon-button[aria-pressed="true"] { border-color: transparent; background: var(--surface-muted); color: var(--ink); }
+.topbar-brand { display: flex; align-items: center; gap: var(--space-8); }
 .wordmark { display: flex; align-items: center; gap: var(--space-10); font-size: 1.5rem; font-weight: 800; letter-spacing: -.045em; color: inherit; text-decoration: none; }
 .brand-mark {
   width: 35px;
@@ -804,17 +805,14 @@ svg { flex-shrink: 0; }
   font-weight: 650;
 }
 .sync-connection-dot { width: 0.55em; height: 0.55em; flex: none; border-radius: 50%; background: currentColor; }
+.topbar-brand .sync-connection-dot { width: 8px; height: 8px; }
 .sync-connection-label[data-connection="live"] .sync-connection-dot { background: #2a9355; }
 .sync-connection-label[data-connection="failure"] { color: var(--danger-ink); }
-.sync-connection-detail { display: grid; gap: var(--space-8); padding: var(--space-12); border: 1px solid var(--border); border-radius: 8px; }
-.sync-connection-detail .sync-connection-label { font-size: 0.875rem; color: inherit; }
-.sync-connection-detail p, .sync-connection-detail dl { margin: 0; }
-.sync-connection-detail dl { display: grid; gap: var(--space-4); font-size: 0.8125rem; }
-.sync-connection-detail dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-4) var(--space-12); }
-.sync-connection-detail dt { color: var(--muted); }
-.sync-connection-detail dd { margin: 0; }
+.device-sync-page > .sync-connection-label { font-size: 0.875rem; }
 
 .puzzle-stage { position: relative; min-width: 0; }
+.puzzle-peer-status { display: inline-flex; color: var(--dark-purple); }
+.puzzle-metadata .puzzle-catch-up { min-height: 34px; padding-inline: var(--space-8); gap: var(--space-4); font-size: 0.75rem; }
 .puzzle-placeholder-stage { position: relative; }
 .puzzle-grid-reservation { visibility: hidden; pointer-events: none; }
 .puzzle-placeholder-message { position: absolute; inset: 0; display: grid; place-items: center; overflow: auto; padding: var(--space-16); }

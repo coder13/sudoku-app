@@ -148,6 +148,13 @@ export const ClickAwayClearsCell: Story = {
   },
 }
 export const InProgress: Story = { args: { game: inProgress, games: [inProgress] } }
+export const OpenOnAnotherDevice: Story = { args: { game: inProgress, games: [inProgress], sharedOnOtherDevice: true } }
+export const CatchUpOnAnotherDevice: Story = {
+  args: { game: solved, games: [solved, inProgress], catchUpPuzzle: inProgress },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('button', { name: /^Catch up/ })).toBeVisible()
+  },
+}
 export const GridModeCue: Story = {
   args: { game: inProgress, games: [inProgress] },
   play: async ({ canvas, userEvent }) => {

@@ -20,7 +20,7 @@ import { PuzzleCollections } from './PuzzleCollections'
 import { collectionDifficulties, getCollectionPuzzle, getCollection } from '../sudoku/collections'
 
 const sections = {
-  puzzles: { to: '/', label: 'Active Puzzles', icon: Grid3X3 },
+  puzzles: { to: '/puzzles/browse', label: 'Active Puzzles', icon: Grid3X3 },
   new: { to: '/puzzles/new', label: 'New puzzle', icon: Dices },
   solved: { to: '/puzzles/solved', label: 'Solved puzzles', icon: Trophy },
   collections: { to: '/puzzles/collections', label: 'Collections', icon: BookOpen },
@@ -318,7 +318,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
             ? <IconButton className="puzzles-back" aria-label="Back to variant" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
             : <Link to="/puzzles/new" search={{ variant }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
               aria-label="Back to variant"><ChevronLeft size={21} /></Link>)
-            : section !== 'puzzles' && <Link to="/" search={{}} className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
+            : section !== 'puzzles' && <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
         <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{pageTitle}</h1>
       </header>
       <nav className="main-menu-tabs" aria-label="Puzzles sections">
