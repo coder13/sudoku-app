@@ -98,7 +98,7 @@ svg { flex-shrink: 0; }
 
 :where(
   .app-menu :is(button, a), .puzzle-context-menu button, .desktop-insight-tabs button, .advanced-browser-tabs button,
-  .advanced-browser-list button, .desktop-dockview .dv-tab, .chain-row, .chain-swatches, .chain-color-input i,
+  .advanced-browser-list button, .desktop-dockview .dv-tab, .chain-row, .chain-swatches,
   .cell-color-swatch, .game-row, .game-row-with-options, .choice-button, .option-icon,
   .main-menu-tabs :is(button, a), .main-difficulty-options label,
   .settings-tabs :is(button, a), .settings-mobile-menu :is(button, a), .settings-header-back, .settings-menu-icon,
@@ -475,7 +475,6 @@ svg { flex-shrink: 0; }
 .desktop-dockview .dv-sash:active::after { background: var(--border-strong); }
 .dock-panel-content { width: 100%; height: 100%; min-width: 0; padding: 0; overflow: auto; }
 .desktop-dock .surface { border: 0; border-radius: 0; box-shadow: none; }
-.desktop-dock .puzzle { min-height: 100%; }
 .dock-puzzle-panel { container-type: size; }
 .dock-puzzle-panel .puzzle {
   --puzzle-padding-inline: var(--space-10);
@@ -541,20 +540,34 @@ svg { flex-shrink: 0; }
 .chain-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-6); }
 .chains-panel .button { min-height: 34px; padding-inline: 9px; font-size: 0.75rem; }
 .chain-panel-tools { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-8); }
+.chain-panel-tools .apply-chain-edits { margin-inline-start: auto; }
 .chain-draw-tools, .chain-path-actions, .chain-edit-actions { gap: var(--space-4); }
 .chain-path-actions, .chain-edit-actions { display: flex; }
+.chain-edit-actions { align-items: center; margin-inline-start: auto; }
 .chain-draw-tools .button { padding-inline: var(--space-8); }
+.chain-actions-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  color: var(--ink);
+}
+.chain-actions-menu:not(:popover-open) { display: none; }
+.chain-actions-menu:not([style]) { visibility: hidden; }
+.chain-actions-menu button[aria-disabled="true"] { opacity: .48; cursor: default; }
 .chain-list { display: grid; gap: var(--space-4); padding: 0; margin: 0; list-style: none; }
 .chain-row { min-width: 0; padding: var(--space-4) var(--space-8) var(--space-8); border: 1px solid var(--border); border-radius: 8px; }
 .chain-row:not([data-active]) { cursor: pointer; }
 .chain-row[data-active] { background: var(--surface-muted); border-color: var(--selected-border); }
 .chain-row[data-hidden] .chain-swatches { opacity: .45; }
-.chain-row-actions { display: flex; align-items: center; gap: var(--space-4); }
+.chain-row-actions { display: flex; align-items: flex-start; gap: var(--space-4); }
 .chain-select {
   flex: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
+  display: grid;
+  align-content: center;
+  gap: var(--space-2);
+  min-width: 0;
   min-height: 34px;
   padding: 0;
   border: 0;
@@ -565,6 +578,11 @@ svg { flex-shrink: 0; }
   text-align: left;
   cursor: pointer;
 }
+.chain-select-label { display: flex; align-items: center; gap: var(--space-6); min-width: 0; line-height: 1.25; }
+.chain-select .chain-name { flex: none; white-space: nowrap; }
+.chain-type-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--muted); }
+.chain-select :is(.chain-notation, .chain-empty) { font-weight: 400; line-height: 1.25; overflow-wrap: anywhere; }
+.chain-select .chain-empty { color: var(--muted); }
 .chain-swatches { display: inline-flex; gap: 3px; }
 .chain-swatches i { width: 8px; height: 8px; border-radius: 50%; }
 .chain-row h2 { font-size: 0.75rem; margin-bottom: 2px; }
@@ -586,23 +604,19 @@ svg { flex-shrink: 0; }
   font: inherit;
 }
 .chains-panel .icon-button { width: 34px; height: 34px; min-height: 34px; }
-.chain-color-input { position: relative; }
-.chain-color-input i {
-  position: absolute;
-  inset-inline-start: 10px;
-  top: 50%;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-.chain-color-input select { padding-inline-start: 25px; }
+.chain-color-trigger { min-width: 0; }
+.chain-color-options { display: grid; gap: var(--space-8); }
+.chain-color-options .button { justify-content: flex-start; min-height: 44px; }
+.chain-color-options .button[aria-pressed="true"] { background: var(--selected-bg); border-color: var(--selected-border); }
+.chain-color-options .chain-swatches i { width: 14px; height: 14px; }
 .chain-legend { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-14); font-size: 0.75rem; color: var(--muted); }
 .chain-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .chain-legend i { width: 18px; border-top: 2px solid var(--ink); }
 .chain-legend .weak-link { border-top-style: dashed; }
 .chain-analysis { display: grid; justify-items: start; gap: var(--space-6); min-width: 0; padding-top: var(--space-10); border-top: 1px solid var(--border); }
+.chain-analysis-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); width: 100%; }
+.chain-result-navigation { display: flex; align-items: center; gap: var(--space-4); flex: none; }
+.chain-proof + .chain-proof { margin-top: var(--space-8); }
 .chain-results, .chain-links ol { display: grid; gap: 3px; margin: 0; padding-inline-start: var(--space-18); overflow-wrap: anywhere; }
 .chain-links ol { margin-top: var(--space-6); }
 .chain-links summary { cursor: pointer; }
@@ -810,11 +824,6 @@ svg { flex-shrink: 0; }
 }
 .puzzle:has(.draft-tip) { grid-template: ". actions" auto "grid grid" auto "draft draft" auto / minmax(0, 1fr) auto; }
 .puzzle-actions { grid-area: actions; justify-content: flex-end; margin: 0; }
-.puzzle-actions .puzzle-tools-trigger {
-  flex: none;
-  border-radius: 50%;
-  box-shadow: var(--surface-shadow);
-}
 .puzzle-stage { grid-area: grid; }
 .draft-tip { grid-area: draft; }
 .puzzle-menu-wrap { position: relative; }
@@ -1081,7 +1090,18 @@ svg { flex-shrink: 0; }
   touch-action: none;
   z-index: 7;
 }
-.puzzle-mode-tab:active { cursor: grabbing; }
+.puzzle-mode-tab:not(.puzzle-tools-trigger):active { cursor: grabbing; }
+.puzzle-tools-trigger {
+  --mode-offset: 0%;
+  --puzzle-mode-corner-radius: var(--radius);
+  --puzzle-mode-border-inset: -1px;
+  --puzzle-mode-border-width: 3px;
+  --puzzle-mode-accent: light-dark(#176c5e, #83dac6);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.puzzle:has(.puzzle-mode-tab[data-edge="bottom"][data-half="start"]) .puzzle-tools-trigger { --mode-offset: 100%; }
+.puzzle-tools-trigger:disabled { opacity: 0.5; cursor: default; }
 .puzzle-mode-tab:is([data-edge="top"], [data-edge="bottom"]) {
   inset-inline-start: var(--mode-tab-offset);
 }
@@ -1378,6 +1398,10 @@ svg { flex-shrink: 0; }
   z-index: -1;
 }
 .board-body:has(> .board-links) .center-marks > [data-mark="strike"]::before { background: var(--center-note-bg); }
+.chain-sketch .chain-candidate[data-mark="strike"] { background: transparent; box-shadow: none; }
+.chain-sketch .board-body:has(> .board-links) .board-candidate[data-mark="strike"]::before {
+  background: color-mix(in srgb, var(--chain-removal) 16%, var(--board-bg));
+}
 .board-links, .board-outside-clues {
   position: absolute;
   inset: 2px;
@@ -3110,7 +3134,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     --mode-tab-depth: var(--space-16);
   }
   .standard-workspace-page .puzzle-mode-tab[data-edge="bottom"] svg { width: 13px; height: 13px; }
-  .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger, .puzzle-zoom-reset, .puzzle-tools-trigger) { width: 44px; min-height: 44px; }
+  .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger, .puzzle-zoom-reset) { width: 44px; min-height: 44px; }
   .mobile-puzzle-menu { max-width: calc(100vw - 16px); overscroll-behavior: contain; }
   .mobile-puzzle-menu button { min-height: 44px; }
   .mobile-puzzle-menu button:focus-visible { outline-offset: -2px; }
@@ -3118,8 +3142,15 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     /* Keep room for both the hint and digit input. Short screens can still scroll. */
     --board-frame-limit: max(130px, calc(100dvh - var(--topbar-height) - 540px));
   }
-  .standard-workspace-page .workspace:has(.mobile-panel-layout[data-input-sized]) .mobile-panel .puzzle {
-    min-height: var(--mobile-resized-puzzle-height);
+  .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle-column {
+    box-sizing: content-box;
+    min-block-size: var(--mobile-resized-puzzle-height);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+  }
+  .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle {
+    inline-size: 100%;
     --board-frame-limit: calc(var(--mobile-resized-puzzle-height) - var(--mobile-puzzle-chrome-height));
   }
   .standard-workspace-page .draft-tip {
@@ -3253,41 +3284,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-input-tabs .mobile-input-tool :is(button, select, summary) { min-width: var(--tool-target-size); min-height: var(--tool-target-size); }
   .mobile-input-tool .button { padding-inline: var(--space-8); gap: var(--space-4); font-size: 0.75rem; }
   .mobile-input-tool .icon-button { width: var(--tool-target-size); flex-shrink: 0; }
-  .mobile-input-tool .chain-editor {
-    --chain-columns: minmax(88px, 3fr) minmax(84px, 2fr);
-    margin-top: var(--space-4);
-    padding-top: var(--space-4);
-    gap: var(--space-4);
-  }
-  .mobile-input-tool :is(.chain-settings, .chain-draw-tools) {
-    display: grid;
-    grid-template-columns: var(--chain-columns);
-    gap: var(--space-6);
-  }
-  .mobile-input-tool .chain-select-input { position: relative; min-width: 0; }
-  .mobile-input-tool .chain-select-input select { appearance: none; padding-inline-end: 24px; text-overflow: ellipsis; }
-  .mobile-input-tool .chain-select-input::after {
-    content: "";
-    position: absolute;
-    inset-inline-end: 10px;
-    inset-block-start: 50%;
-    width: 7px;
-    height: 7px;
-    border: solid var(--ink);
-    border-width: 0 2px 2px 0;
-    transform: translateY(-70%) rotate(45deg);
-    pointer-events: none;
-  }
-  .mobile-input-tool .chain-select-input:has(select:disabled)::after { opacity: .48; }
-  .mobile-input-tool .chain-path-actions {
-    display: grid;
-    grid-template-columns: minmax(var(--tool-target-size), 3fr) minmax(var(--tool-target-size), 2fr);
-  }
-  .mobile-input-tool .chain-path-actions .button { padding: var(--space-4); white-space: normal; }
+  .mobile-input-tool .chain-draw-tools { display: flex; flex-wrap: wrap; align-items: center; }
+  .mobile-input-tool .chain-path-actions { flex: 1 1 auto; flex-wrap: wrap; }
+  .mobile-input-tool .chain-path-actions .button { padding: var(--space-4) var(--space-6); }
   .mobile-input-tool .chain-path-actions svg { flex: none; }
-  .mobile-input-tool .chain-edit-actions { align-items: center; }
-  @container (width < 280px) {
-    .mobile-input-tool .chain-path-actions svg { display: none; }
+  @media (max-width: 359px) {
+    .mobile-input-tool .chain-path-actions .button > svg { display: none; }
   }
   .mobile-input-tool .chain-links summary { align-content: center; }
   .mobile-input-tool kbd { display: none; }

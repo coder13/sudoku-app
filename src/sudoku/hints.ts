@@ -39,7 +39,7 @@ export const HINT_ERROR: PuzzleHint = {
 }
 export const HINT_CANDIDATES_ERROR: PuzzleHint = {
   title: 'Review your candidates',
-  text: 'A digit the solution needs is missing from your candidates. Restore the missing candidate or generate all candidates again.',
+  text: 'A digit the solution needs is missing from your candidates. Restore the missing candidate or generate candidates again.',
 }
 
 const TECHNIQUE_LABELS: Record<string, string> = {

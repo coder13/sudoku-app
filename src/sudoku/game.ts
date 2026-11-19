@@ -35,6 +35,8 @@ export type Position = {
   draftSixRules?: SixGame['rules']
 }
 
+export type HistoryPosition = Position & { chainSketch?: ChainSketchState | null }
+
 export type Game = {
   id: string
   title: string
@@ -52,8 +54,8 @@ export type Game = {
   analysisUsed?: true
   givens: string
   position: Position
-  past: Position[]
-  future: Position[]
+  past: HistoryPosition[]
+  future: HistoryPosition[]
   actionHistory?: ActionHistoryEntry[]
   chainSketch?: ChainSketchState
   elapsed: number
@@ -357,25 +359,34 @@ export function clearCandidateColors(game: Game): Game {
   return move(game, position)
 }
 
+function swapHistoryPosition(game: Game, target: HistoryPosition) {
+  if (target.chainSketch === undefined) return { game: { ...game, position: target }, snapshot: game.position }
+  const { chainSketch, ...position } = target
+  return {
+    game: { ...game, position, chainSketch: chainSketch ?? undefined },
+    snapshot: { ...game.position, chainSketch: game.chainSketch ?? null },
+  }
+}
+
 export function undo(game: Game): Game {
   const previous = game.past.at(-1)
   if (!previous) return game
+  const step = swapHistoryPosition(game, previous)
   return {
-    ...game,
-    position: previous,
+    ...step.game,
     past: game.past.slice(0, -1),
-    future: [...game.future, game.position],
+    future: [...game.future, step.snapshot],
   }
 }
 
 export function redo(game: Game): Game {
   const next = game.future.at(-1)
   if (!next) return game
+  const step = swapHistoryPosition(game, next)
   return {
-    ...game,
-    position: next,
+    ...step.game,
     future: game.future.slice(0, -1),
-    past: [...game.past, game.position],
+    past: [...game.past, step.snapshot],
   }
 }
 

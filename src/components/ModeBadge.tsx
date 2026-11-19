@@ -141,7 +141,8 @@ export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, 
   }
 
   return <>
-    <button type="button" className="puzzle-mode-tab" data-edge={displayedPosition.edge} data-no-panel-hold
+    <button type="button" className="puzzle-mode-tab" data-edge={displayedPosition.edge}
+      data-half={displayedPosition.offset < 0.5 ? 'start' : 'end'} data-no-panel-hold
       aria-label="Cycle input mode" aria-description="Drag or use the left and right arrow keys to move the icon around the puzzle card."
       style={{ '--mode-offset': `${displayedPosition.offset * 100}%` } as CSSProperties}
       onPointerDown={startDrag} onDragStart={(event) => event.preventDefault()}

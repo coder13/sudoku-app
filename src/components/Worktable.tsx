@@ -6,6 +6,7 @@ import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbul
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
+import { applyChainDeduction } from '../sudoku/chain-sketch'
 import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
@@ -275,6 +276,7 @@ export function Worktable({
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
   const [desktopViews, setDesktopViews] = usePlayPreference('desktopViews')
   const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
+  const startDrawingOnChainOpen = useCallback(() => setStartDrawingOnOpen(true), [])
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [savedHighlightMode, setSavedHighlightMode] = usePlayPreference('highlightMode')
   const [savedPencil, setPencil] = usePlayPreference('pencil')
@@ -1792,12 +1794,15 @@ export function Worktable({
     if (!mobile) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
   }
 
-  function applyToCurrentPosition(actions: readonly DeductionAction[], candidates: readonly number[], hintSnapshot?: HintPosition, technique?: string) {
+  function applyToCurrentPosition(actions: readonly DeductionAction[], candidates: readonly number[], {
+    hintSnapshot, technique, chainIds,
+  }: { hintSnapshot?: HintPosition; technique?: string; chainIds?: readonly number[] } = {}) {
     let applied = false
     edit((current) => {
       const currentPosition = matchesHintPosition(current, hintSnapshot ?? hintPosition)
-      if (!currentPosition) return current
-      const next = applyDeduction(current, actions, candidates, advancedModes.autoRemoveCandidates)
+      if (!currentPosition || (chainIds && current.chainSketch !== savedGame.chainSketch)) return current
+      const next = chainIds ? applyChainDeduction(current, chainIds, actions, candidates, advancedModes.autoRemoveCandidates)
+        : applyDeduction(current, actions, candidates, advancedModes.autoRemoveCandidates)
       applied = next !== current
       if (applied && !hintSnapshot && !completed) void observeTechniqueActions(current, actions, 'independent',
         hintEliminations(valuesOf(current), completeCandidateMasks(current), current.position.eliminations))
@@ -1807,12 +1812,15 @@ export function Worktable({
   }
 
   function applyChainEdits(actions: readonly DeductionAction[]) {
-    if (canAnalyzeChains && chainMasks && applyToCurrentPosition(actions, chainMasks)) sketch.suspend()
+    if (!canAnalyzeChains || !chainMasks ||
+      !applyToCurrentPosition(actions, chainMasks, { chainIds: sketch.appliedChainIds })) return false
+    sketch.suspend()
+    return true
   }
 
   function applyHint() {
     if (!deduction || !hintCandidates || !visibleHint) return
-    applyToCurrentPosition(deduction.actions, hintCandidates, visibleHint.position, deduction.technique)
+    applyToCurrentPosition(deduction.actions, hintCandidates, { hintSnapshot: visibleHint.position, technique: deduction.technique })
     setHint(null)
     setHintRevealed(false)
     if (!mobile) puzzleMenuButtonRef.current?.focus({ preventScroll: true })
@@ -1946,6 +1954,7 @@ export function Worktable({
   </button>
   function selectMobileInput(tab: MobileInputTab, openBothTools = false) {
     if (tab !== 'digits') changeHintVisuals('player')
+    if (tab === 'chains' && activeMobileInput !== 'chains') setStartDrawingOnOpen(true)
     playSession.set(id, 'mobileInput', (current) => ({
       open: openBothTools ? grid ? ['colors'] : ['colors', 'chains'] : current.open,
       active: tab,
@@ -1991,6 +2000,7 @@ export function Worktable({
     setActionsOpen(false)
     changeHintVisuals('player')
     if (advancedWorkspace) {
+      startDrawingOnChainOpen()
       if (previewing) closeSolutionPath()
       else puzzleMenuButtonRef.current?.focus({ preventScroll: true })
       onOpenRightPanel()
@@ -1999,6 +2009,7 @@ export function Worktable({
   }
 
   function openDesktopView(view: DesktopPuzzleView, alsoOpen?: DesktopPuzzleView) {
+    if (view === 'chains' && activeDesktopTab?.id !== 'chains') setStartDrawingOnOpen(true)
     setDesktopViews((current) => {
       const requested = alsoOpen ? [view, alsoOpen] : [view]
       const missing = requested.filter((id) => !current.open.includes(id))
@@ -2059,7 +2070,7 @@ export function Worktable({
   const commonSolvingMenuItems = <>
     <button onClick={() => { void generateCandidates() }} disabled={busy || solved}
       aria-keyshortcuts={shortcutLabel(shortcuts.generateCandidates)}>
-      <PencilLine size={17} /> Generate all candidates
+      <PencilLine size={17} /> Generate candidates
       <kbd className="menu-shortcut" aria-hidden="true">{shortcutLabel(shortcuts.generateCandidates)}</kbd>
     </button>
     <button aria-pressed={highlightCandidatePairs} disabled={solved} onClick={() => {
@@ -2281,11 +2292,6 @@ export function Worktable({
                   <Play className="pause-toggle-play" size={18} />
                 </span>
               </IconButton>}
-              {puzzleToolsAvailable && <IconButton className="puzzle-tools-trigger" type="button"
-                aria-label={`Open ${colorToolsLabel} from puzzle card`} title={colorToolsLabel} disabled={disabled}
-                onClick={event => mobile ? openMobileInput('colors', event.currentTarget) : showColors(true)}>
-                <Palette size={18} aria-hidden="true" />
-              </IconButton>}
               <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
                 <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"
                   title="Puzzle options" disabled={Boolean(placeholder)} aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
@@ -2319,6 +2325,11 @@ export function Worktable({
           ) : livePuzzleStage}
         </div>
         <PuzzleCollectionCredit game={game} />
+        {puzzleToolsAvailable && <button className="puzzle-mode-tab puzzle-tools-trigger" type="button" data-edge="bottom" data-no-panel-hold
+          aria-label={`Open ${colorToolsLabel} from puzzle card`} title={colorToolsLabel} disabled={disabled}
+          onClick={event => mobile ? openMobileInput('colors', event.currentTarget) : showColors(true)}>
+          <Palette size={15} aria-hidden="true" />
+        </button>}
         {badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleCardRef}
           position={modeBadgePosition} onPosition={setModeBadgePosition} onCycleMode={() => {
             if (colorsVisible) setColorBrush(null)
@@ -2465,6 +2476,7 @@ export function Worktable({
           focusChainsRequest={focusChainsRequest}
           focusColorsRequest={focusColorsRequest} onColorsVisibleChange={setDesktopColorsVisible}
           onChainsVisibleChange={setDesktopChainsVisible}
+          onChainsTabSelected={startDrawingOnChainOpen}
           onSolutionVisibleChange={setDesktopSolutionVisible} /> : undefined} />
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>

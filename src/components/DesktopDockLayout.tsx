@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { GripVertical } from 'lucide-react'
 import {
   DockviewReact,
@@ -43,6 +43,7 @@ type DockContent = {
   focusChainsRequest?: number
   focusColorsRequest?: number
   onChainsVisibleChange?: (visible: boolean) => void
+  onChainsTabSelected?: () => void
   onColorsVisibleChange?: (visible: boolean) => void
   onSolutionVisibleChange?: (visible: boolean) => void
 }
@@ -63,7 +64,7 @@ function InputPanel() {
 
 function ChainsDockPanel({ api }: IDockviewPanelProps) {
   const { chains, onChainsVisibleChange } = useContext(DockContentContext)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!onChainsVisibleChange) return
     onChainsVisibleChange(api.isVisible)
     const subscription = api.onDidVisibilityChange(({ isVisible }) => onChainsVisibleChange(isVisible))
@@ -289,7 +290,7 @@ export function resetDesktopPanelLayout() {
 export function DesktopDockLayout({
   puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
   focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusColorsRequest,
-  onChainsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
+  onChainsVisibleChange, onChainsTabSelected, onColorsVisibleChange, onSolutionVisibleChange,
 }: DockContent) {
   const [layoutReady, setLayoutReady] = useState(false)
   const apiRef = useRef<DockviewApi | null>(null)
@@ -386,13 +387,21 @@ export function DesktopDockLayout({
     setLayoutReady(true)
   }
 
+  function selectChainsTab(target: EventTarget) {
+    // Dockview selects the tab before the event bubbles.
+    const tab = target instanceof Element && target.closest('[data-tab-panel-id="chains"][aria-selected="false"]')
+    if (tab) onChainsTabSelected?.()
+  }
+
   return (
     <DockContentContext.Provider value={{
       puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
       focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusColorsRequest,
       onChainsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
     }}>
-      <section ref={rootRef} className={`desktop-dock ${layoutReady ? 'dock-ready' : ''}`} aria-label="Advanced workspace panels">
+      <section ref={rootRef} className={`desktop-dock ${layoutReady ? 'dock-ready' : ''}`} aria-label="Advanced workspace panels"
+        onPointerDownCapture={event => { if (event.button === 0) selectChainsTab(event.target) }}
+        onKeyDownCapture={event => { if (event.key === 'Enter' || event.key === ' ') selectChainsTab(event.target) }}>
         <DockviewReact className="desktop-dockview" theme={sudokuDockTheme} components={components}
           defaultTabComponent={FixedPanelTab} disableFloatingGroups hideBorders
           proportionalLayout dndStrategy="pointer" getTabContextMenuItems={() => []}
