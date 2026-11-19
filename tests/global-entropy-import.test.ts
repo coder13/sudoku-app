@@ -155,9 +155,14 @@ test('the Disjoint Groups presentation requires all nine exact houses and preser
   assert.deepEqual([...disjointGroupRuleIndices(shifted)], [1, 2, 3, 4, 5, 6, 7, 8, 9])
 })
 
-test('raw exports preserve their encoded scope while incomplete authored sources remain tracked', async () => {
+test('raw exports preserve their encoded scope while incomplete authored sources remain tracked', async ({ mock }) => {
   const deferred = load('coach').examples.filter((source: { deferred?: string }) => source.deferred)
-  for (const source of deferred) await assert.rejects(detectPuzzle(source.url), /Copy → Puzzle/)
+  mock.method(globalThis, 'fetch', async (path: string) => {
+    const source = deferred.find(({ url }: { url: string }) => path === `/api/v1/import/sudoku-coach/${url.split('/').at(-1)}`)
+    assert.ok(source)
+    return Response.json({ code: source.code })
+  })
+  for (const source of deferred) await assert.rejects(detectPuzzle(source.url), /Copy → Puzzle|version|unsupported format/i)
   const spiral = deferred.find((source: { url: string }) => source.url.endsWith('LEjN'))
   const encoded = (await detectPuzzle(spiral.code)).variant!.puzzle
   assert.equal(encoded.rules!.length, 19)

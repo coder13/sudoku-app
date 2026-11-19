@@ -167,7 +167,7 @@ test('malformed paths and unknown parameters reject without partial imports', as
 test('incomplete source exports stay explicit rather than losing unsupported companion rules', async () => {
   const deferred = load('coach').examples.filter((source: { deferred?: string }) => source.deferred)
   assert.equal(deferred.length, 6)
-  for (const source of deferred) await assert.rejects(detectPuzzle(source.code), /unsupported|not supported|version|region|difference|cosmetic|9 × 9/i, source.url)
+  for (const source of deferred) await assert.rejects(detectPuzzle(source.code), /unsupported|not supported|version|rectangular boxes|region|difference|cosmetic|9 × 9/i, source.url)
   assert.match(deferred.find((source: { url: string }) => source.url.endsWith('9ZMr')).deferred, /difference.*three.*85/i)
 })
 
