@@ -1,6 +1,6 @@
 # Entropic Lines New Puzzle integration
 
-Base: main `c806791`, with reviewed Global Entropy source `79b85a8`. This isolated change adds Medium Entropic Lines to New Puzzle. Exact-head CI, deployment and release remain pending.
+Base: main `c806791`, with reviewed Global Entropy source `79b85a8`. This isolated change adds Medium Entropic Lines to New Puzzle. [PR 222](https://github.com/coder13/sudoku-app/pull/222) is released at main `b689221`, reviewed head `1b5b6e3`. Every exact-head CI and deployment gate passes. Main now offers twenty-two variants plus Classic, with six older generation families remaining.
 
 ## Rules and complete sources
 
@@ -46,7 +46,7 @@ Sixty successive actual puzzles have multiple sound hints and complete solution 
 
 A separate actual-app probe completes one hundred successive Medium requests with no repeats or search limits. Every result is independently unique and line-dependent, with several hints. This finite history sample does not prove success for every seed or history.
 
-All 655 app tests and 489 Wasm contracts pass. The 124-component catalog and app/new-contract/benchmark types pass. All 171 production routes and three actual-build offline contracts pass. Light/dark static references at 290/540 pixels use the actual SVG and line CSS. They do not establish browser layout, keyboard, pointer or interaction coverage. Exact-head feature/profile/docs CI and deployment remain pending.
+All 655 app tests and 489 Wasm contracts pass. The 124-component catalog and app/new-contract/benchmark types pass. All 171 production routes and three actual-build offline contracts pass. Light/dark static references at 290/540 pixels use the actual SVG and line CSS. They do not establish browser layout, keyboard, pointer or interaction coverage. All exact-head gates pass in [CI 44563289009](https://github.com/coder13/sudoku-app/actions/runs/44563289009): 379 native cases, sixteen capability combinations, four profiles and strict full/core/variants docs. The same reviewed head passes 655 app tests, 489 Wasm contracts, types/catalog and ready deployment.
 
 
 ## Controlled measurements
@@ -88,6 +88,26 @@ Complete input positions and Board SSR strings agree across twenty controls, inc
 
 Fresh Darwin Wasm is 3,440,578 raw / 897,292 default-Node-gzip bytes, SHA-256 `68c06e8ac772a5c834752cad4f45a0e5d808adc8085bafdff25729225118df40`. The preceding artifact is 3,439,486 / 895,930 bytes, SHA-256 `22c8e168046610fb65a1600e6f47336a9bc357282815078c255966bc8b2d96fa`. The measured delta is +1,092 raw / +1,362 gzip bytes. Build paths and optimizer/code-generation effects can affect these totals.
 
-Production client asset sums are JavaScript 6,332,232 raw / 2,078,321 gzip and CSS 303,410 / 42,015. Deltas are +10,339 / +650 JavaScript and +98 / +18 CSS bytes. Totals sum default Node gzip per asset and exclude HTML, service workers and manifests. All five generated metadata JSON files and both lockfiles are byte-identical. Private key code stays inside the generation feature boundary. Exact-head CI will check sixteen capability combinations, four package profiles and strict full/core/variants Cargo documentation.
+Production client asset sums are JavaScript 6,332,232 raw / 2,078,321 gzip and CSS 303,410 / 42,015. Deltas are +10,339 / +650 JavaScript and +98 / +18 CSS bytes. Totals sum default Node gzip per asset and exclude HTML, service workers and manifests. All five generated metadata JSON files and both lockfiles are byte-identical. Private key code stays inside the generation feature boundary. Exact-head CI passes sixteen capability combinations, four package profiles and strict full/core/variants Cargo documentation.
 
 The isolated source worktree is `/private/tmp/sudoku-entropic-new-puzzle`. Raw calibration, archived counterexamples, independent history probes, full logs and comparison scripts remain under `/tmp/sudoku-entropic-generation-research`. The original dirty R&D checkout remains untouched. Keep authored Coach formats, grid/symbol extensions, Fog and partial human paths open in their existing issues.
+
+
+## Deployment verification
+
+Netlify deploy `6aff1fb771e074d05d3371a1` is ready at reviewed head `1b5b6e38216e6ef792cb1f56af4c0eab330cdc06`. Read-only HTTP verifies both Entropic New Puzzle shells with status 200. The active entry is `/assets/index-CfOUqpgR.js`, with `/assets/index-DMY7zpVi.css`. All thirty literal deployed recipes match the tested bank. Preview geometry and corrected dash CSS are present.
+
+The active `engine.worker-wu7SPj_m.js` references `engine-Bcp4vPBi.wasm`: 3,440,514 raw bytes, SHA-256 `6d5022295d6a91cc8627e111653cb22f8f1447ea4fa9dffe04dfcd362c94dea6`. Local protocol checks against those downloaded bytes verify all eighteen repaired history cases. All thirty deployed recipes have independent uniqueness, Entropic dependence, Medium status and several hints. This is not browser interaction. Host/build paths explain separate Darwin and Linux artifacts. Cross-host byte equality is not claimed.
+
+## Next family: Modular Lines
+
+Keep the complete published Newman Entropic/Modular puzzle and both complete Coach mixed sources unchanged. New generation preparation uses an explicit construction instead of stripping their companions. The digit bijection `1,2,3,4,5,6,7,8,9 → 1,4,7,2,5,8,3,6,9` maps Entropic ranges to Modular remainder classes. Every original pure-template path stays present with the corresponding Modular relation. These are newly constructed Modular puzzles, not published Modular transcriptions.
+
+Seeds 1–100 per geometry, one attempt and 20,000 nodes yield 97/98/97 successes at fourteen to twenty givens. At fourteen to seventeen, yields are 80/96/90. Blank counterparts at zero to thirty yield 95/1/33. Accepted candidates are independently unique, Modular-dependent and solved Medium with the unchanged 27-point technique. Thirty selected candidates have matching full traces, several hints, 125 direct Modular proofs and 4,725 completion-checked actions.
+
+Eighteen concrete Modular exclusion failures remain across reversal, decomposition and valid remainder-group renamings. Exact and duplicate-rule controls already work. Independent enumeration of all 362,880 digit bijections finds 1,296 preserving either partition, but only thirty-six preserving both together. Mixed Entropic/Modular keys must not independently rename either partition. Preserve numeric meaning and independent paths before the separate app integration. Full provenance, scripts and raw results remain under `/tmp/sudoku-modular-generation-research`.
+
+
+## Main verification
+
+Fetched main contains reviewed head `1b5b6e38216e6ef792cb1f56af4c0eab330cdc06` and merge `b68922160ff4ffbc346422f77fdaeaa2b64b5eee`. The reviewed tree and fetched main are identical after the code merge. The source worktree remains clean and pinned to the reviewed head. Release documentation uses a separate worktree. The original dirty R&D checkout remains untouched.
