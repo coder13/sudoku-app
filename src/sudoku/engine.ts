@@ -205,6 +205,7 @@ export type EngineRequest =
   | SizedClassicRequest
   | SizedVariantRequest
   | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
+  | { type: 'generate-algebraic'; seed: number; exclude?: readonly SizedVariantPosition[] }
   | { type: 'capabilities' }
   | VariantRequest
   | { type: 'canonical-puzzles'; values: readonly string[] }
@@ -584,6 +585,7 @@ export type EngineResult<T extends EngineRequest> =
     AlgebraicCageProof | null
   ) :
   T extends { type: 'generate-mini' } ? number[] :
+  T extends { type: 'generate-algebraic' } ? SizedVariantPosition :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
   T extends { type: 'canonical-puzzles' | 'impossible-templates' } ? string[] :
@@ -687,6 +689,7 @@ function connectionFor(request: EngineRequest, options: WorkerOptions) {
   switch (request.type) {
     case 'generate':
     case 'generate-mini':
+    case 'generate-algebraic':
     case 'generate-constrained':
     case 'generate-targeted':
     case 'generate-from-pool':

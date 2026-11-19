@@ -50,8 +50,8 @@ export function textGridCells(text: string): string {
 export type ShareFormat = 'link' | 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
 
 export function puzzleLinkHash({ givens, variant, grid, algebraic }: Pick<Game, 'givens' | 'variant' | 'grid' | 'algebraic'>): string {
-  if (algebraic) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, sudokuPad: algebraic.source.code }))}`
-  if (grid) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, grid, givens }))}`
+  if (algebraic?.source) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, sudokuPad: algebraic.source.code }))}`
+  if (grid) return `sized=${encodeURIComponent(JSON.stringify({ version: 2, grid, givens, rules: algebraic?.rules }))}`
   if (!variant) return `puzzle=${givens}`
   const { version, rules, regions } = variant.puzzle
   return `variant=${encodeURIComponent(JSON.stringify({ id: variant.id, puzzle: { version, givens, rules, regions } }))}`

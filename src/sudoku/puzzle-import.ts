@@ -5,7 +5,8 @@ import { isGridText, isMiniGrid, MINI_GRID, type MiniGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
-import { decodeSizedSudokuPad, type SizedSudokuPadImport } from './sized-sudoku-pad.ts'
+import { decodeSizedSudokuPad } from './sized-sudoku-pad.ts'
+import { isAlgebraicCageList, type AlgebraicDefinition } from './algebraic-game.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000
@@ -28,7 +29,7 @@ export type ImportedPuzzle = {
   format: ImportFormat
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
   grid?: MiniGrid
-  algebraic?: Pick<SizedSudokuPadImport, 'rules' | 'source'>
+  algebraic?: AlgebraicDefinition
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -551,8 +552,12 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
         return fromSudokuPad(shared.sudokuPad, 'Puzzle link')
       }
       if (!record(shared) || shared.version !== 2 || !isMiniGrid(shared.grid) || !isGridText(shared.givens, MINI_GRID) ||
-        Object.keys(shared).some(key => !['version', 'grid', 'givens'].includes(key))) {
+        Object.keys(shared).some(key => !['version', 'grid', 'givens', 'rules'].includes(key))) {
         throw new Error('This link is missing a supported sized Sudoku puzzle.')
+      }
+      if (shared.rules !== undefined) {
+        if (!isAlgebraicCageList(shared.rules)) throw new Error('This sized puzzle has unsupported rules or invalid algebraic cages.')
+        return { givens: shared.givens, format: 'Puzzle link', grid: MINI_GRID, algebraic: { rules: shared.rules } }
       }
       return { givens: shared.givens, format: 'Puzzle link', grid: MINI_GRID }
     }

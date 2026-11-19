@@ -1,11 +1,16 @@
 import { algebraicPosition, type AlgebraicGame } from './algebraic-game.ts'
 import { EngineError, runEngine, type AlgebraicStep, type HintChoice } from './engine.ts'
 import { miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
+import { MINI_RULE } from './new-puzzle.ts'
 
 export const ALGEBRAIC_CAGE_TECHNIQUE = 'algebraic-cage-bounds'
 
 export function algebraicRules(game: AlgebraicGame) {
-  return game.source.rulesText.split(/(?:^|\n)\* /).filter(Boolean)
+  return game.source?.rulesText.split(/(?:^|\n)\* /).filter(Boolean) ?? [
+    MINI_RULE,
+    'The digits in each cage are distinct and add to the total shown in its top-left corner.',
+    'Each letter stands for a positive integer. The same letter has the same value in every cage.',
+  ]
 }
 
 function sumRange(lower: number, upper: number) {

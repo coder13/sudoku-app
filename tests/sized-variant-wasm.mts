@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import lzString from 'lz-string'
 import { analyzeAlgebraic } from '../src/sudoku/algebraic-play.ts'
+import { runEngine } from '../src/sudoku/engine.ts'
 import { puzzleLinkHash } from '../src/sudoku/formats.ts'
 import { applyDeduction, fillEntries, isSolved, redo, restartGame, undo } from '../src/sudoku/game.ts'
+import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { analyzeMini } from '../src/sudoku/mini-play.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
@@ -42,7 +44,7 @@ test('a SudokuPad short link retains the rules through solve, hints, replay, sha
   const { game } = await prepareImportedPuzzle('https://sudokupad.app/contract-puzzle')
   const algebraic = game.algebraic
   assert.ok(algebraic)
-  assert.equal(algebraic.source.code, code)
+  assert.equal(algebraic.source?.code, code)
   assert.equal(game.title, 'Two related totals')
   assert.equal(algebraic.solution, expected)
   assert.equal(await analyzeMini(givens), 'multiple')
@@ -69,8 +71,29 @@ test('a SudokuPad short link retains the rules through solve, hints, replay, sha
   const share = '#' + puzzleLinkHash(game)
   assert.equal(findImportedPuzzle([game], await detectPuzzle(share))?.id, game.id)
   assert.deepEqual((await prepareImportedPuzzle(share)).game.algebraic, algebraic)
+  const nativeGame = { ...game, algebraic: { rules: algebraic.rules, solution: algebraic.solution } }
+  const nativeLink = '#' + puzzleLinkHash(nativeGame)
+  assert.deepEqual((await prepareImportedPuzzle(nativeLink)).game.algebraic, nativeGame.algebraic)
+  assert.deepEqual(readGame(nativeGame.id, JSON.stringify(nativeGame))?.algebraic, nativeGame.algebraic)
   const trace = await puzzleSolution(game)
   assert.equal(trace.status, 'solved')
   assert.equal(trace.board, expected)
   assert.ok(trace.steps.some(step => step.technique === 'algebraic-cage-bounds'))
+})
+
+test('generated algebraic definitions are deterministic, replayable, and excluded in either cage order', async () => {
+  const request = { type: 'generate-algebraic', seed: 42 } as const
+  const generated = await runEngine(request)
+  assert.deepEqual(await runEngine(request), generated)
+  assert.deepEqual(generated.grid, MINI_GRID)
+  const exclude = { ...generated, rules: [...generated.rules].reverse().map(rule => ({ ...rule, cells: [...rule.cells].reverse() })) }
+  assert.notDeepEqual(await runEngine({ ...request, exclude: [exclude] }), generated)
+  const link = '#sized=' + encodeURIComponent(JSON.stringify({
+    version: generated.version, grid: generated.grid, givens: generated.digits.join(''), rules: generated.rules,
+  }))
+  const { game } = await prepareImportedPuzzle(link)
+  assert.ok(game.algebraic)
+  assert.deepEqual(game.algebraic.rules, generated.rules)
+  assert.equal((await puzzleSolution(game)).board, game.algebraic.solution)
+  assert.equal(await analyzeMini(game.givens), 'multiple')
 })

@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use super::{ResponseValue, ResultValue, puzzle_error};
@@ -7,7 +7,7 @@ use crate::{
     SizedAlgebraicCages,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Definition {
     version: u8,
@@ -16,7 +16,7 @@ pub(super) struct Definition {
     rules: Vec<Rule>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 enum Rule {
     AlgebraicCage {
@@ -26,7 +26,7 @@ enum Rule {
     },
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 enum Total {
     Fixed { value: u16 },
@@ -50,6 +50,69 @@ impl From<Rule> for AlgebraicCage {
             label,
         }
     }
+}
+
+#[cfg(feature = "generation")]
+impl From<AlgebraicCage> for Rule {
+    fn from(
+        AlgebraicCage {
+            cells,
+            total,
+            label,
+        }: AlgebraicCage,
+    ) -> Self {
+        let total = match total {
+            CageTotal::Fixed(value) => Total::Fixed { value },
+            CageTotal::Variable { name, offset } => Total::Variable { name, offset },
+        };
+        Self::AlgebraicCage {
+            cells,
+            total,
+            label,
+        }
+    }
+}
+
+#[cfg(feature = "generation")]
+pub(super) fn generate(seed: u32, exclude: Vec<Definition>) -> ResultValue<ResponseValue> {
+    let grid = GridSpec {
+        size: 4,
+        box_rows: 2,
+        box_columns: 2,
+    };
+    let mut excluded = Vec::new();
+    for definition in exclude {
+        let Definition {
+            version,
+            grid: layout,
+            digits,
+            rules,
+        } = definition;
+        if version != SIZED_GRID_VERSION || layout != grid || digits.iter().any(|&digit| digit > 4)
+        {
+            return Err((
+                "invalid-exclusion",
+                "Exclusions must use a 4 × 4 algebraic grid.",
+            ));
+        }
+        let givens = digits
+            .try_into()
+            .map_err(|_| ("invalid-exclusion", "Exclusions must contain 16 cells."))?;
+        let mut cages: Vec<AlgebraicCage> = rules.into_iter().map(AlgebraicCage::from).collect();
+        for cage in &mut cages {
+            cage.cells.sort_unstable();
+        }
+        cages.sort_unstable_by(|left, right| left.cells.cmp(&right.cells));
+        excluded.push(crate::GeneratedAlgebraic { givens, cages });
+    }
+    let generated = crate::generate_algebraic(seed, &excluded)
+        .ok_or_else(|| puzzle_error(Analysis::SearchLimit))?;
+    Ok(ResponseValue::AlgebraicPuzzle(Definition {
+        version: SIZED_GRID_VERSION,
+        grid,
+        digits: generated.givens.to_vec(),
+        rules: generated.cages.into_iter().map(Rule::from).collect(),
+    }))
 }
 
 #[derive(Deserialize)]

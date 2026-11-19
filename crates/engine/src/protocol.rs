@@ -57,6 +57,12 @@ enum Request {
         #[serde(default)]
         exclude: Vec<[u8; 16]>,
     },
+    #[cfg(all(feature = "generation", feature = "variants"))]
+    GenerateAlgebraic {
+        seed: u32,
+        #[serde(default)]
+        exclude: Vec<sized_variant::Definition>,
+    },
     SizedClassic {
         position: sized::Definition,
         #[serde(flatten)]
@@ -389,6 +395,8 @@ enum ResponseValue {
     AlgebraicTrace(Option<Vec<crate::AlgebraicTracePosition>>),
     #[cfg(feature = "variants")]
     AlgebraicHints(Option<crate::AlgebraicHints>),
+    #[cfg(all(feature = "generation", feature = "variants"))]
+    AlgebraicPuzzle(sized_variant::Definition),
     HintPage(hint_pages::HintPage),
     Hints { choices: Vec<Hint>, available: usize },
     HintsWithPatterns {
@@ -983,6 +991,8 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             crate::generate_mini(seed, difficulty, &exclude).map(|puzzle| json!(puzzle))
                 .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
+        #[cfg(all(feature = "generation", feature = "variants"))]
+        Request::GenerateAlgebraic { seed, exclude } => return sized_variant::generate(seed, exclude),
         Request::SizedClassic { position, operation } => return sized::execute(position, operation),
         #[cfg(feature = "variants")]
         Request::SizedVariant { position, operation } => return sized_variant::execute(position, operation),
@@ -1602,6 +1612,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
                 | "impossible-templates"
                 | "generate-targeted"
                 | "generate-mini"
+                | "generate-algebraic"
                 | "generate-constrained"
                 | "generate-from-pool"
                 | "generate-variant"
@@ -1634,7 +1645,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
         return Some("teaching");
     }
     if !cfg!(feature = "variants")
-        && (matches!(kind, "variant" | "sized-variant" | "generate-variant")
+        && (matches!(kind, "variant" | "sized-variant" | "generate-variant" | "generate-algebraic")
             || (matches!(
                 kind,
                 "techniques" | "practice-examples" | "generate-practice-example"

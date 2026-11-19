@@ -19,12 +19,12 @@ export async function prepareImportedPuzzle(input: string, games: readonly Game[
   const imported = await detectPuzzle(input)
   const { givens, variant, format, grid, algebraic } = imported
   const existing = findImportedPuzzle(games, imported)
-  const name = algebraic ? (algebraic.source.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
+  const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
     : variant ? `Imported ${variantName(variant)} puzzle` : grid ? 'Imported Mini Sudoku' : 'Imported puzzle'
   const game = makeGame(createGameId(), name, givens, 'imported', undefined, grid)
   if (algebraic && grid) {
-    game.algebraic = await verifyAlgebraicImport({ givens, grid, ...algebraic })
+    game.algebraic = await verifyAlgebraicImport({ givens, ...algebraic })
     return { game: applyPuzzleGrade(game, null), format, grade: null }
   }
   if (!existing) {

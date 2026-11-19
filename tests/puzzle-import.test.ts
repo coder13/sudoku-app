@@ -52,7 +52,7 @@ test('Mini Sudoku imports text and versioned links and rejects unsupported autho
   await assert.rejects(detectPuzzle(JSON.stringify({ ...puzzle, 'diagonal+': true })), /rules that Mini Sudoku cannot import/)
   const rules = [{ type: 'diagonal', diagonal: 'main' }]
   const invalidShare = '#sized=' + encodeURIComponent(JSON.stringify({ version: 2, grid, givens, rules }))
-  await assert.rejects(detectPuzzle(invalidShare), /missing a supported sized Sudoku puzzle/)
+  await assert.rejects(detectPuzzle(invalidShare), /unsupported rules or invalid algebraic cages/)
 })
 
 test('imports the supplied Killer grid from a Sudoku Coach code or link', async () => {
