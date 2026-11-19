@@ -103,3 +103,19 @@ export const ModularDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=modular" />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 }
+
+export const KakuroFromGameTypes: Story = {
+  ...ChooseVariant,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
+    await expect(await canvas.findByRole('heading', { name: 'Choose a game type' })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('link', { name: /Kakuro/ }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Easy/ }))
+    const cell = await canvas.findByRole('button', { name: /^R2C3, empty/ })
+    await userEvent.click(cell)
+    await userEvent.keyboard('1')
+    await expect(cell).toHaveAccessibleName(/^R2C3, 1/)
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+  },
+}

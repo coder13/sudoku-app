@@ -96,3 +96,11 @@ Search by component name or browse the sections below.
 | [learn.$technique](../../../../src/routes/learn.$technique.tsx) | `LessonPage` resolves the selected lesson for its route. |
 | [learn.index](../../../../src/routes/learn.index.tsx) | `LessonOverview` introduces the learning catalog. |
 | [learn](../../../../src/routes/learn.tsx) | `LearnLayout` arranges lesson navigation and content. `TechniqueNavigation` navigates the lesson catalog. |
+
+## Kakuro and game types
+
+| Module | Components and use |
+| --- | --- |
+| [Game types](../../../../src/routes/puzzles.games.tsx) | `GameTypePicker` lists the games available from the Sudoku variant picker. |
+| [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` owns the play page. `KakuroHeading` and `KakuroBoard` are private to these pages. |
+| [Kakuro play route](../../../../src/routes/puzzles.kakuro_.$puzzle.tsx) | `KakuroPlayRoute` opens a catalog puzzle from its URL. |

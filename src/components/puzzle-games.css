@@ -1,0 +1,13 @@
+.puzzle-game-page { overflow-y: auto; padding-bottom: var(--space-32); }
+.puzzle-game-page > .puzzles-layout {
+  flex: none;
+  width: min(100%, 40rem);
+  display: grid;
+  grid-template: none;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-14);
+  margin-inline: auto;
+}
+.puzzle-game-page > .puzzles-layout.kakuro-layout { width: min(100%, 54rem); }
+.puzzle-game-page > .puzzles-layout > .puzzles-page-heading { grid-area: auto; }
+.puzzle-game-page .game-row small { white-space: normal; }
