@@ -4,7 +4,7 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { sixDiagonalCells } from './grid.ts'
 import { sixPosition, type SixGame } from './six-game.ts'
 
-export const SIX_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-contradiction'] as const
+export const SIX_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-contradiction'] as const
 
 function sixHintChoice({ rules }: SixGame, step: SizedConstraintStep): HintChoice {
   if (step.type === 'house') return miniHintChoice(step.proof)
@@ -25,6 +25,9 @@ function sixHintChoice({ rules }: SixGame, step: SizedConstraintStep): HintChoic
   } else if (rule.type === 'parity') {
     description = rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.'
     reason = rule.parity === 'odd' ? 'The marked cells can only contain 1, 3, or 5.' : 'The marked cells can only contain 2, 4, or 6.'
+  } else if (rule.type === 'renban') {
+    description = `The ${rule.cells.length} cells on this line contain different consecutive digits in any order.`
+    reason = 'Remove each candidate that cannot be used in its cell in any consecutive set that fits the line.'
   } else {
     description = 'The digits strictly increase along this thermometer, from the bulb to the tip.'
     reason = 'Each remaining candidate fits in at least one increasing sequence using the candidates along the thermometer. Remove the candidates that fit in none.'
@@ -53,7 +56,8 @@ function contradictionHint(rules: SixGame['rules'], { assumption, placements, fa
     } else {
       locations.push(...rule.cells)
       conflict = rule.type === 'parity' ? 'A marked cell has no digit of the required parity.'
-        : 'The thermometer has no strictly increasing sequence from bulb to tip.'
+        : rule.type === 'renban' ? 'No set of different consecutive digits fits the Renban line.'
+          : 'The thermometer has no strictly increasing sequence from bulb to tip.'
     }
   } else {
     const house = houseName(failure.house)

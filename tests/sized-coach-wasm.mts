@@ -100,3 +100,27 @@ test('6 × 6 generation meets both difficulty recipes in both box orientations',
     }
   }
 })
+
+test('mixed 6 × 6 Renban and thermometer need both overlapping rules in both box orientations', async () => {
+  const givens = '403000000010030000006200000000060005'
+  const position = { version: 2, grid: { size: 6, boxRows: 2, boxColumns: 3 }, digits: Array.from(givens, Number),
+    rules: [{ type: 'renban', cells: [23, 22, 15, 21], segments: [[23, 22, 15], [15, 21]] },
+      { type: 'thermometer', cells: [27, 22, 29] }] } as const
+  const transpose = (cell: number) => (cell % 6) * 6 + Math.floor(cell / 6)
+  const transposed = { ...position, grid: { size: 6, boxRows: 3, boxColumns: 2 },
+    digits: position.digits.map((_, index) => position.digits[transpose(index)]),
+    rules: [{ type: 'renban', cells: position.rules[0].cells.map(transpose),
+      segments: position.rules[0].segments.map(path => path.map(transpose)) },
+    { type: 'thermometer', cells: position.rules[1].cells.map(transpose) }] } as const
+
+  for (const [puzzle, solution] of [[position, expected], [transposed, [...expected].map((_, index) => expected[transpose(index)]).join('')]] as const) {
+    assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: puzzle }), 'unique')
+    assert.equal((await runEngine({ type: 'sized-variant', operation: 'solve', position: puzzle }))?.digits.join(''), solution)
+    for (const rule of puzzle.rules) {
+      assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: { ...puzzle, rules: [rule] } }), 'multiple')
+    }
+    const trace = await runEngine({ type: 'sized-variant', operation: 'trace', position: puzzle })
+    assert.equal(trace?.at(-1)?.digits.join(''), solution)
+    assert.ok(trace?.some(step => step.deduction?.type === 'rule' && step.deduction.rule === 0))
+  }
+})

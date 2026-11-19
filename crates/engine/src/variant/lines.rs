@@ -191,7 +191,7 @@ impl LineConstraint {
                 }
             }
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
-            LineKind::Renban => renban_support(domains, support),
+            LineKind::Renban => renban_support::<9, 512>(domains, support),
             LineKind::ThreeGroups(line) => line.support(domains, support),
             LineKind::Between => between_support(domains, support),
             LineKind::Outside(clue) => {
@@ -201,7 +201,7 @@ impl LineConstraint {
     }
 }
 
-fn renban_support(domains: &[u16], support: &mut [u16]) {
+pub(crate) fn renban_support<const N: usize, const CACHE: usize>(domains: &[u16], support: &mut [u16]) {
     match *domains {
         [single] => support[0] = single,
         [a, b] => support.copy_from_slice(&[a & (b << 1 | b >> 1), b & (a << 1 | a >> 1)]),
@@ -222,10 +222,10 @@ fn renban_support(domains: &[u16], support: &mut [u16]) {
         }
         _ => {
             let len = domains.len();
-            let mut matches = [0; 9];
-            for first in 0..=9 - len {
+            let mut matches = [0; N];
+            for first in 0..=N - len {
                 let interval = ((1 << len) - 1) << first;
-                super::search::record_support(interval, domains, &mut matches, &mut [None; 512]);
+                super::search::record_support(interval, domains, &mut matches, &mut [None; CACHE]);
             }
             support.copy_from_slice(&matches[..len]);
         }

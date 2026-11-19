@@ -56,6 +56,11 @@ export function sixDigitExclusions(rules: readonly SizedConstraintRule[] | undef
   if (!rules) return 0
   let excluded = 0
   for (const rule of rules) {
+    if (rule.type === 'renban' && cell !== other && rule.cells.includes(cell) && rule.cells.includes(other)) {
+      for (let candidate = 1; candidate <= 6; candidate++) {
+        if (candidate === digit || Math.abs(candidate - digit) >= rule.cells.length) excluded |= 1 << (candidate - 1)
+      }
+    }
     if (rule.type !== 'thermometer') continue
     const offset = rule.cells.indexOf(cell)
     const otherOffset = rule.cells.indexOf(other)
