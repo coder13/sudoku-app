@@ -209,6 +209,14 @@ async function fromCoach(code: string, published = false): Promise<ImportedPuzzl
 function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']): VariantRule[] {
   if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const rules: VariantRule[] = []
+  const labeledDots = constraints.some(layer => record(layer) &&
+    (layer.type === 'difference' || layer.type === 'ratio') &&
+    Array.isArray(layer.segments) && layer.segments.some(segment => {
+      if (!record(segment) || !record(segment.parameters)) return false
+      const kind = layer.type === 'difference' ? 'difference' : 'ratio'
+      const value = segment.parameters[kind]
+      return value !== undefined && value !== (kind === 'difference' ? 1 : 2)
+    }))
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
@@ -327,21 +335,26 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
         settings.negativeConstraint !== undefined && typeof settings.negativeConstraint !== 'boolean')) {
         throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
       }
-      const pairs = constraint.segments.map((segment: unknown) => {
+      const defaultValue = kind === 'difference' ? 1 : 2
+      const dots = constraint.segments.map((segment: unknown) => {
         if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
           !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== kind)) {
           throw new Error(`This Sudoku Coach puzzle has an invalid ${constraint.type} marker.`)
         }
-        const expected = constraint.type === 'difference' ? 1 : 2
-        if (segment.parameters[kind] !== undefined && segment.parameters[kind] !== expected) {
-          throw new Error(`This Sudoku Coach ${constraint.type} marker is not supported yet.`)
+        const parameter = segment.parameters[kind]
+        const value = parameter === undefined ? defaultValue : parameter
+        if (typeof value !== 'number' || !Number.isInteger(value) || value < defaultValue || value > defaultValue + 7) {
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${kind} value.`)
         }
-        return segment.cells as [number, number]
+        return { cells: segment.cells as [number, number], value }
       })
-      const marks = { pairs, negative: record(settings) && settings.negativeConstraint === true }
-      rules.push(constraint.type === 'difference'
-        ? { type: 'kropki', consecutive: marks }
-        : { type: 'kropki', ratioTwo: marks })
+      const negative = record(settings) && settings.negativeConstraint === true
+      if (labeledDots) {
+        if (dots.length || negative) rules.push({ type: 'labeled-dots', relation: kind, marks: dots, negative })
+      } else {
+        const marks = { pairs: dots.map(dot => dot.cells), negative }
+        rules.push(kind === 'difference' ? { type: 'kropki', consecutive: marks } : { type: 'kropki', ratioTwo: marks })
+      }
     } else if (constraint.type === 'region') {
       if (unsupportedClueStyling(constraint.settings)) {
         throw new Error('This Sudoku Coach extra region uses unsupported settings.')
@@ -451,10 +464,11 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
   // Coach exempts difference markers from its global relation, independently of rule order.
   // The positive dot remains a separate rule and still requires a difference of one.
   const exceptions = [...new Map(rules.flatMap(rule => rule.type === 'kropki'
-    ? (rule.consecutive?.pairs ?? []).filter(([a, b]) => cellsShareEdge(a, b)).map(([a, b]) => {
+    ? rule.consecutive?.pairs ?? [] : rule.type === 'labeled-dots' && rule.relation === 'difference' ? rule.marks.map(mark => mark.cells) : [])
+    .filter(([a, b]) => cellsShareEdge(a, b)).map(([a, b]) => {
       const pair = [Math.min(a, b), Math.max(a, b)] as const
       return [pair.join(','), pair] as const
-    }) : [])).values()]
+    })).values()]
   if (exceptions.length) for (const [index, rule] of rules.entries()) {
     if (rule.type === 'non-consecutive') rules[index] = { ...rule, except: exceptions }
   }

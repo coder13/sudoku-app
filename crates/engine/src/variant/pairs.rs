@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{CompiledVariant, MarkedPairs, Parity, PuzzleRule, VariantDefinitionError, cell_mask};
+use super::{CompiledVariant, DotRelation, MarkedPairs, Parity, PuzzleRule, VariantDefinitionError, cell_mask};
 use crate::{
     CELLS, DIGITS,
     hints::{digit_bit, digits},
@@ -95,6 +95,13 @@ pub(super) struct PairCompiler {
     clues: Vec<PairClue>,
     kropki: Markers,
     xv: Markers,
+    labeled: [LabeledLayer; 2],
+}
+
+#[derive(Default)]
+struct LabeledLayer {
+    marked: BTreeSet<[usize; 2]>,
+    negative: Vec<usize>,
 }
 
 #[derive(Default)]
@@ -212,6 +219,26 @@ impl PairCompiler {
                     invalid,
                 )?;
             }
+            PuzzleRule::LabeledDots { relation, marks, negative } => {
+                let ratio = *relation == DotRelation::Ratio;
+                let layer = &mut self.labeled[usize::from(ratio)];
+                if *negative {
+                    layer.negative.push(index);
+                }
+                if marks.is_empty() && !negative {
+                    return Err(invalid);
+                }
+                for mark in marks {
+                    let [a, b] = mark.cells;
+                    if a >= CELLS || b >= CELLS ||
+                        (a / 9).abs_diff(b / 9) + (a % 9).abs_diff(b % 9) != 1 ||
+                        !(if ratio { 2..=9 } else { 1..=8 }).contains(&mark.value) {
+                        return Err(invalid);
+                    }
+                    layer.marked.insert([a.min(b), a.max(b)]);
+                    self.clues.push(pair(&source, [a, b], |a, b| relation.matches(mark.value, a, b)));
+                }
+            }
             PuzzleRule::Xv { five, ten } => {
                 add_markers(&mut self.xv, index, [five, ten], XV, invalid)?;
             }
@@ -276,6 +303,15 @@ impl PairCompiler {
     pub fn finish(mut self, puzzle: &mut CompiledVariant) {
         finish_markers(&mut self.clues, self.kropki, "kropki", KROPKI);
         finish_markers(&mut self.clues, self.xv, "xv", XV);
+        for (kind, layer) in self.labeled.into_iter().enumerate() {
+            if layer.negative.is_empty() {
+                continue;
+            }
+            let source = Arc::new(RuleSource { id: "labeled-dots", indices: layer.negative });
+            for cells in orthogonal_pairs().filter(|edge| !layer.marked.contains(edge)) {
+                self.clues.push(pair(&source, cells, |a, b| !KROPKI[kind](a, b)));
+            }
+        }
         let mut allowed = BTreeMap::<_, Allowed>::new();
         for clue in &self.clues {
             // The chess rules already contribute to the exact solver's peer table.

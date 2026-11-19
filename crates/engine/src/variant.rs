@@ -117,6 +117,35 @@ pub struct MarkedPairs {
     pub negative: bool,
 }
 
+/// Arithmetic relation shown by a labeled dot.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "kebab-case"))]
+pub enum DotRelation {
+    /// The difference between the two digits.
+    Difference,
+    /// The larger digit divided by the smaller digit.
+    Ratio,
+}
+
+impl DotRelation {
+    fn matches(self, value: u8, a: u8, b: u8) -> bool {
+        match self {
+            Self::Difference => a.abs_diff(b) == value,
+            Self::Ratio => a.max(b) == value * a.min(b),
+        }
+    }
+}
+
+/// A marked edge and its printed value.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(deny_unknown_fields))]
+pub struct LabeledDot {
+    /// Two edge-sharing cell indices.
+    pub cells: [usize; 2],
+    /// Exact difference or ratio for this dot.
+    pub value: u8,
+}
+
 /// Direction from an outside clue into the grid.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(
@@ -262,6 +291,16 @@ rules! {
         /// Black dots for a ratio of two.
         #[cfg_attr(feature = "wasm-api", serde(default))]
         ratio_two: MarkedPairs,
+    }
+    /// Constrain dot values and optionally forbid their default relation on unmarked edges.
+    LabeledDots => "labeled-dots" {
+        /// Whether the dots give differences or ratios.
+        relation: DotRelation,
+        /// Marked edges, including any dots with the default value.
+        marks: Vec<LabeledDot>,
+        /// Exclude the default relation on edges without a dot of this type.
+        #[cfg_attr(feature = "wasm-api", serde(default))]
+        negative: bool,
     }
     /// Constrain adjacent digits using V and X markers.
     Xv => "xv" {

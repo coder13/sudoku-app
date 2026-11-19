@@ -50,6 +50,7 @@ export type VariantRule =
   | { type: 'non-consecutive'; except?: readonly (readonly [number, number])[] }
   | { type: 'inequality'; less: number; greater: number }
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
+  | { type: 'labeled-dots'; relation: 'difference' | 'ratio'; marks: readonly { cells: readonly [number, number]; value: number }[]; negative?: boolean }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
   | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
   | { type: 'thermometer' | 'between'; cells: readonly number[] }

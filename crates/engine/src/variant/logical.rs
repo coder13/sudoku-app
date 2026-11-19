@@ -86,6 +86,8 @@ catalog! {
     Clone: "clone", 17, Easy;
     /// Apply a consecutive or double relation from Kropki marks.
     Kropki: "kropki", 20, Easy;
+    /// Apply an exact difference or ratio shown by a labeled dot.
+    LabeledDots: "labeled-dots", 19, Easy;
     /// A house places a digit in two adjacent cells, excluding neighboring digits there.
     NonConsecutiveLockedPair: "non-consecutive-locked-candidates-2", 20, Easy;
     /// Apply a sum relation from XV marks.
@@ -986,7 +988,7 @@ impl CompiledVariant {
                     )
                 }));
             }
-            AntiKing | AntiKnight | Clone | Inequality | Kropki | NonConsecutive | Palindrome
+            AntiKing | AntiKnight | Clone | Inequality | Kropki | LabeledDots | NonConsecutive | Palindrome
             | Thermometer | Whispers | Xv | AdjacentTotal => {
                 let domains = std::array::from_fn(|cell| position.domain(cell));
                 for clue in self

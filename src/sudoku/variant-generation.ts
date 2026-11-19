@@ -155,6 +155,9 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           ...(rule.segments && { segments: rule.segments.map(path => path.map(cell)) }) }
         case 'thermometer': case 'between': return { ...rule, cells: rule.cells.map(cell) }
         case 'arrow': return { ...rule, circle: cell(rule.circle), cells: rule.cells.map(cell) }
+        case 'labeled-dots': return { ...rule, marks: rule.marks.map(mark => ({
+          ...mark, cells: [cell(mark.cells[0]), cell(mark.cells[1])] as const,
+        })) }
         case 'kropki': {
           const reflectMarks = (marks: typeof rule.consecutive) =>
             marks && { ...marks, pairs: marks.pairs?.map(([a, b]) => [cell(a), cell(b)] as const) }

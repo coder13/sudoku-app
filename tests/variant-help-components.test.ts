@@ -44,6 +44,21 @@ before(async () => {
 })
 after(async () => { await server?.close() })
 
+test('the board prints labeled dot values and describes the relation across each edge', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Sudoku with labeled dots',
+    variantPuzzle: { version: 1, givens, rules: [
+      { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 1], value: 2 }] },
+      { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 3 }] },
+    ] },
+  }))
+  assert.match(html, /variant-dot-value-white[^>]+>2/)
+  assert.match(html, /variant-dot-value-black[^>]+>3/)
+  assert.match(html, /white dot, difference 2 with row 1, column 2/)
+  assert.match(html, /black dot, ratio 3 to 1 with row 1, column 1/)
+})
+
 test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
   const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
     new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))

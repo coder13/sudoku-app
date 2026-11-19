@@ -207,6 +207,20 @@ function RegionSumClue({ rule, color, number }: { rule: Extract<VariantRule, { t
   </g>
 }
 
+function DotClue({ a, b, black, paired, compact, value }: {
+  a: number; b: number; black: boolean; paired: boolean; compact: boolean; value?: number
+}) {
+  const offset = paired ? (black ? 1 : -1) * (compact ? .1 : .125) : 0
+  const cx = (x(a) + x(b) + 1) / 2 + (x(a) === x(b) ? offset : 0)
+  const cy = (y(a) + y(b) + 1) / 2 + (y(a) === y(b) ? offset : 0)
+  const color = black ? 'black' : 'white'
+  return <>
+    <circle className={`variant-dot variant-dot-${color}`} cx={cx} cy={cy} r={compact ? .085 : .105} />
+    {value !== undefined && <text x={cx} y={cy} className={`variant-dot-value variant-dot-value-${color}`}
+      fontSize={compact ? .12 : .15}>{value}</text>}
+  </>
+}
+
 function InequalityClue({ less, greater, offset, compact = false }: { less: number; greater: number; offset: number; compact?: boolean }) {
   const [ax, ay] = center(less), [bx, by] = center(greater)
   const length = Math.hypot(bx - ax, by - ay)
@@ -293,7 +307,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const regionSumColor = (index: number) => ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0'][regionSumIndices.get(index)! % 4]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
+    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
@@ -313,6 +327,12 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
     if (rule.type === 'xv') {
       for (const [kind, marks] of [rule.five, rule.ten].entries()) for (const [a, b] of marks?.pairs ?? []) {
         addSum(a, b, kind === 0 ? 5 : 10, 'xv')
+      }
+    }
+    if (rule.type === 'labeled-dots') {
+      for (const { cells: [a, b] } of rule.marks) {
+        const key = pairKey(a, b)
+        dots.set(key, (dots.get(key) ?? 0) | (rule.relation === 'ratio' ? 2 : 1))
       }
     }
     if (rule.type !== 'kropki') continue
@@ -408,15 +428,18 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
         case 'kropki':
           return <g key={index}>{[rule.consecutive, rule.ratioTwo].flatMap((marks, kind) =>
             (marks?.pairs ?? []).map(([a, b]) => {
-              const other = dots.get(pairKey(a, b)) === 3
-              // A sum of three can validly share both dots and a sign. Keep
-              // the complete group inside the cells even at the grid edge.
-              const compact = other && sums.has(pairKey(a, b))
-              const offset = other ? (kind ? 1 : -1) * (compact ? .1 : .125) : 0
-              return <circle key={`${kind}-${a}-${b}`} className={`variant-dot ${kind ? 'variant-dot-black' : 'variant-dot-white'}`}
-                cx={(x(a) + x(b) + 1) / 2 + (x(a) === x(b) ? offset : 0)}
-                cy={(y(a) + y(b) + 1) / 2 + (y(a) === y(b) ? offset : 0)} r={compact ? .085 : .105} />
+              const paired = dots.get(pairKey(a, b)) === 3
+              return <DotClue key={`${kind}-${a}-${b}`} a={a} b={b} black={kind === 1}
+                paired={paired} compact={paired && sums.has(pairKey(a, b))} />
             }))}</g>
+        case 'labeled-dots': {
+          const black = rule.relation === 'ratio'
+          return <g key={index}>{rule.marks.map(({ cells: [a, b], value }, mark) => {
+            const edge = pairKey(a, b), paired = dots.get(edge) === 3
+            return <DotClue key={mark} a={a} b={b} black={black} paired={paired} compact={paired && sums.has(edge)}
+              value={value !== (black ? 2 : 1) ? value : undefined} />
+          })}</g>
+        }
         default: return null
       }
     })}
@@ -543,6 +566,13 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
             labels[a].push(`${color} dot with ${reference(b)}`)
             labels[b].push(`${color} dot with ${reference(a)}`)
           }
+        }
+        break
+      case 'labeled-dots':
+        for (const { cells: [a, b], value } of rule.marks) {
+          const label = rule.relation === 'ratio' ? `black dot, ratio ${value} to 1` : `white dot, difference ${value}`
+          labels[a].push(`${label} with ${reference(b)}`)
+          labels[b].push(`${label} with ${reference(a)}`)
         }
         break
       default: break
