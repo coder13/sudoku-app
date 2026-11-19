@@ -1,6 +1,6 @@
 //! Logical keys for generation exclusions, separate from public source data.
 
-use super::{PuzzleRule, VariantPuzzle, key_impl};
+use super::{PuzzleRule, VariantPuzzle, digit_invariant, key_impl};
 use crate::CELLS;
 
 // Drawing paths do not change a puzzle's logical identity. Keep them in the
@@ -49,7 +49,52 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
             _ => {}
         }
     }
-    key_impl(&logical, true)
+    // Repeated conjunctive rules add no restriction. Source rule lists and
+    // public canonical definitions keep their original structure.
+    logical.rules.sort_unstable();
+    logical.rules.dedup();
+    let entropy = logical
+        .rules
+        .iter()
+        .any(|rule| matches!(rule, PuzzleRule::GlobalEntropy {}))
+        && logical.rules.iter().all(|rule| {
+            digit_invariant(rule)
+                || matches!(
+                    rule,
+                    PuzzleRule::GlobalEntropy {} | PuzzleRule::Entropic { .. }
+                )
+        });
+    key_impl(&logical, true, |copy| {
+        if entropy {
+            rename_groups(&mut copy.givens, &[0, 0, 0, 0, 1, 1, 1, 2, 2, 2]);
+        }
+    })
+}
+
+// First appearances name the three equal-sized digit groups and their members.
+// This models group permutations and permutations within a group, not arbitrary
+// digit relabeling. Numeric companion rules conservatively disable it above.
+fn rename_groups(givens: &mut [u8; CELLS], partition: &[usize; 10]) {
+    let mut group_names = [usize::MAX; 3];
+    let mut members = [0; 3];
+    let mut digits = [0; 10];
+    let mut next_group = 0;
+    for given in givens {
+        if *given == 0 {
+            continue;
+        }
+        let digit = usize::from(*given);
+        let group = partition[digit];
+        if group_names[group] == usize::MAX {
+            group_names[group] = next_group;
+            next_group += 1;
+        }
+        if digits[digit] == 0 {
+            digits[digit] = (group_names[group] * 3 + members[group] + 1) as u8;
+            members[group] += 1;
+        }
+        *given = digits[digit];
+    }
 }
 
 // A matching-digit component has the same meaning whether it is written as
@@ -110,177 +155,4 @@ fn normalize_equalities(puzzle: &mut VariantPuzzle) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::super::{SquareTransform, canonical_variant, generation_key};
-    use super::*;
-
-    fn whispers(cells: &[usize], min_difference: u8) -> PuzzleRule {
-        PuzzleRule::Whispers {
-            cells: cells.to_vec(),
-            min_difference,
-        }
-    }
-
-    #[test]
-    fn played_whispers_identity_uses_edges_under_every_grid_symmetry() {
-        let original = VariantPuzzle {
-            rules: vec![whispers(&[0, 10, 20, 10, 0], 5), whispers(&[10, 0], 4)],
-            ..VariantPuzzle::classic([0; CELLS])
-        };
-        let expected = generation_key(&original);
-        for transform in SquareTransform::ALL {
-            let mut equivalent = VariantPuzzle {
-                rules: vec![
-                    whispers(&[20, 10], 5),
-                    whispers(&[10, 0], 5),
-                    whispers(&[0, 10], 5),
-                ],
-                ..original.clone()
-            };
-            transform.puzzle(&mut equivalent);
-            assert_eq!(generation_key(&equivalent), expected);
-        }
-        // Exclusion normalization must never rewrite a source puzzle.
-        let public = canonical_variant(&original).unwrap();
-        assert!(
-            public
-                .rules
-                .iter()
-                .any(|rule| matches!(rule, PuzzleRule::Whispers { cells, .. } if cells.len() == 5))
-        );
-        assert_eq!(original.rules[0], whispers(&[0, 10, 20, 10, 0], 5));
-    }
-
-    #[test]
-    fn played_whispers_identity_keeps_minimums_and_separate_edge_sets() {
-        let definition = |rules| VariantPuzzle {
-            rules,
-            ..VariantPuzzle::classic([0; CELLS])
-        };
-        let original = definition(vec![whispers(&[0, 10, 20], 5)]);
-        assert_ne!(
-            generation_key(&original),
-            generation_key(&definition(vec![whispers(&[0, 10, 20], 4)]))
-        );
-        assert_ne!(
-            generation_key(&original),
-            generation_key(&definition(vec![whispers(&[0, 10], 5)]))
-        );
-        assert_ne!(
-            generation_key(&original),
-            generation_key(&definition(vec![
-                whispers(&[0, 10, 20], 5),
-                whispers(&[0, 20], 5),
-            ]))
-        );
-        // Directed increasing paths keep their existing identity.
-        let thermometer = definition(vec![PuzzleRule::Thermometer {
-            cells: vec![0, 10, 20],
-        }]);
-        let mut changed = thermometer.clone();
-        changed.givens[0] = 1;
-        let mut reversed = changed.clone();
-        reversed.rules = vec![PuzzleRule::Thermometer {
-            cells: vec![20, 10, 0],
-        }];
-        assert_ne!(generation_key(&changed), generation_key(&reversed));
-    }
-
-    #[test]
-    fn played_equalities_ignore_path_grouping_but_keep_public_sources() {
-        let original = VariantPuzzle {
-            rules: vec![
-                PuzzleRule::Palindrome {
-                    cells: vec![0, 12, 20, 40],
-                    segments: Some(vec![vec![0, 12, 20], vec![20, 40]]),
-                },
-                PuzzleRule::Clone {
-                    groups: vec![vec![40, 80]],
-                },
-            ],
-            ..VariantPuzzle::classic([0; CELLS])
-        };
-        let mut given = original.clone();
-        given.givens[0] = 1;
-        given.givens[12] = 2;
-        given.givens[25] = 3;
-        let expected = generation_key(&given);
-        let representations = [
-            vec![
-                PuzzleRule::Palindrome {
-                    cells: vec![40, 20, 12, 0],
-                    segments: None,
-                },
-                PuzzleRule::Clone {
-                    groups: vec![vec![80, 40]],
-                },
-            ],
-            vec![
-                PuzzleRule::Palindrome {
-                    cells: vec![40, 0],
-                    segments: None,
-                },
-                PuzzleRule::Palindrome {
-                    cells: vec![20, 12],
-                    segments: None,
-                },
-                PuzzleRule::Clone {
-                    groups: vec![vec![0, 80]],
-                },
-            ],
-            vec![PuzzleRule::Clone {
-                groups: vec![vec![80, 40, 0], vec![20, 12], vec![0, 80]],
-            }],
-        ];
-        for rules in representations {
-            for transform in SquareTransform::ALL {
-                let mut equivalent = VariantPuzzle {
-                    rules: rules.clone(),
-                    ..given.clone()
-                };
-                transform.puzzle(&mut equivalent);
-                for digit in &mut equivalent.givens {
-                    if *digit != 0 {
-                        *digit = 10 - *digit;
-                    }
-                }
-                assert_eq!(generation_key(&equivalent), expected);
-            }
-        }
-        assert_eq!(given.rules, original.rules);
-        let public = canonical_variant(&given).unwrap();
-        assert!(public.rules.iter().any(|rule| matches!(rule,
-            PuzzleRule::Palindrome { cells, segments: Some(_) } if cells.len() == 4)));
-        assert!(public.rules.iter().any(|rule| matches!(rule,
-            PuzzleRule::Clone { groups } if groups.len() == 1 && groups[0].len() == 2)));
-    }
-
-    #[test]
-    fn played_palindromes_keep_mirror_pairings_and_ignore_free_centers() {
-        let definition = |cells| VariantPuzzle {
-            rules: vec![PuzzleRule::Palindrome {
-                cells,
-                segments: None,
-            }],
-            ..VariantPuzzle::classic([0; CELLS])
-        };
-        assert_ne!(
-            generation_key(&definition(vec![0, 10, 40, 50])),
-            generation_key(&definition(vec![0, 10, 50, 40]))
-        );
-        let odd = definition(vec![0, 13, 40]);
-        assert_eq!(
-            generation_key(&odd),
-            generation_key(&definition(vec![0, 22, 40]))
-        );
-        let mut changed = odd.clone();
-        changed.rules.push(PuzzleRule::Palindrome {
-            cells: vec![13, 22],
-            segments: None,
-        });
-        assert_ne!(generation_key(&odd), generation_key(&changed));
-        changed = odd.clone();
-        changed.rules.push(PuzzleRule::AntiKing {});
-        assert_ne!(generation_key(&odd), generation_key(&changed));
-    }
-}
+mod tests;

@@ -9,6 +9,8 @@ export type VariantSeed = {
   maxGivens: number
   minGivens?: number
   maxAttempts?: number
+  /** Fresh-search budget after all checked recipes fail to produce an unplayed puzzle. */
+  retryAttempts?: number
   cageSizes?: number[]
   dotCount?: number
   markedCells?: number[]
@@ -50,7 +52,7 @@ export function variantGenerationRequest(
     case 'diagonal':
       rules.push({ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' })
       break
-    case 'anti-knight': case 'anti-king': case 'non-consecutive':
+    case 'anti-knight': case 'anti-king': case 'non-consecutive': case 'global-entropy':
       rules.push({ type: id })
       break
     case 'killer-cages':
