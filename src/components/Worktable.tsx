@@ -478,7 +478,7 @@ export function Worktable({
     [masks, values, displayedCandidates, eliminations])
   const subset = useSubsets(subsetsVisible ? subsetMasks : null, grid ?? CLASSIC_GRID, variant?.puzzle)
   const inspectSubset = subsetsVisible && !hintAnnotations && !disabled && !solved && Boolean(subsetMasks)
-  const selectSubsetCells = inspectSubset && subset.kind === 'naked'
+  const sweepSubsetScope = inspectSubset && subset.kind === 'hidden'
   const autoGenerateCandidates = advancedModes.autoGenerateCandidates && !draft && !solved && needsInitialCandidates(game)
   const hasSingles = useMemo(() => !draft && !solved && Boolean(masks &&
     singleFromCandidates(values, displayedCandidates ?? masks, eliminations, variant?.puzzle, grid, six?.rules)),
@@ -1455,6 +1455,7 @@ export function Worktable({
       const target = event.target
       if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || cancelDraftOpen || analysisDialogOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, a')))) return
+      if (inspectSubset && event.key === ' ' && boardRef.current?.contains(target as Node)) return
       if (!draft && !placeholder && !previewing && !variantRulesOpen && (completed || game.started || game.paused) &&
         !event.isComposing && shortcutMatches(event, shortcuts, 'pauseOrSwitchView')) {
         if (target instanceof HTMLElement && (target.closest('dialog[open]') ||
@@ -1521,7 +1522,10 @@ export function Worktable({
         }
         return
       }
-      if (key === 'escape' && (brush !== null || paintingCandidates)) {
+      if (inspectSubset && !shortcut && /^[1-9]$/.test(key)) {
+        event.preventDefault()
+        if (!event.repeat) subset.toggleDigit(Number(key))
+      } else if (key === 'escape' && (brush !== null || paintingCandidates)) {
         const cell = target instanceof HTMLElement ? target.closest<HTMLElement>('.paint-candidate')?.closest<HTMLElement>('[data-cell]') : null
         if (cell) {
           const index = Number(cell.dataset.cell)
@@ -1558,6 +1562,10 @@ export function Worktable({
         const col = Math.min(gridSize - 1, Math.max(0, active % gridSize + dx))
         const next = row * gridSize + col
         setActive(next)
+        if (inspectSubset) {
+          boardRef.current?.querySelector<HTMLElement>(`[data-cell="${next}"]`)?.focus({ preventScroll: true })
+          return
+        }
         const givenDigit = givenDigitAt(game.givens, next)
         if (!highlightedDigitMask) {
           if (givenDigit) setSelectedDigit(givenDigit)
@@ -2258,19 +2266,22 @@ export function Worktable({
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
       overlay={mobile && completionPanel ? { content: completionPanel, visible: showMobileResults } : undefined}
-      highlightedDigit={selectedDigit ?? (visibleChainAnnotations ? chainHighlightDigit : null)} highlightedDigitMask={hintAnnotations ? 0 : playerHighlightMask}
+      highlightedDigit={inspectSubset ? null : selectedDigit ?? (visibleChainAnnotations ? chainHighlightDigit : null)}
+      highlightedDigitMask={hintAnnotations || inspectSubset ? 0 : playerHighlightMask}
       highlightedDigitMatch={digitHighlight.match}
       selected={inspectSubset ? [] : selected} active={active}
       pointerFocusedCell={pointerFocusedCell}
-      highlightCandidateCount={!hintAnnotations && highlightCandidatePairs ? 2 : null}
-      boardRef={boardRef} onCell={selectSubsetCells ? (cell) => {
-        if (subset.emptyCells.includes(cell)) subset.toggle(cell)
+      highlightCandidateCount={!hintAnnotations && !inspectSubset && highlightCandidatePairs ? 2 : null}
+      boardRef={boardRef} onCell={inspectSubset ? (cell) => {
+        setActive(cell)
+        subset.selectCell(cell)
       } : canSelectCell && !paintingCandidates ? clickCell : undefined}
-      onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations && !selectSubsetCells ? doubleClickCell : undefined}
+      onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations && !inspectSubset ? doubleClickCell : undefined}
       onPaintCandidate={paintingCandidates && !inspectSubset ? colorCandidate : undefined}
-      dragSelect={canSelectCell && !selectSubsetCells && (highlightMode || canDragCandidates)}
-      onCellPointerDown={canSelectCell && !paintingCandidates && !selectSubsetCells ? startCellDrag : undefined}
-      onCellPointerMove={canSelectCell && !paintingCandidates && !selectSubsetCells ? continueCellDrag : undefined}
+      dragSelect={sweepSubsetScope || canSelectCell && !inspectSubset && (highlightMode || canDragCandidates)}
+      onCellPointerDown={sweepSubsetScope ? subset.startSweep : canSelectCell && !paintingCandidates && !inspectSubset ? startCellDrag : undefined}
+      onCellPointerMove={sweepSubsetScope ? subset.moveSweep : canSelectCell && !paintingCandidates && !inspectSubset ? continueCellDrag : undefined}
+      onGridPointerEnd={sweepSubsetScope ? subset.endSweep : undefined}
       onGridPointerLeave={() => {
         hoveredCell.current = null
         setCandidatePreviewCell(null)

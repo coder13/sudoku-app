@@ -1,50 +1,52 @@
-import { ChevronLeft, ChevronRight, Eye } from 'lucide-react'
-import { cellReference } from '../sudoku/hints'
+import { ChevronLeft, ChevronRight, Columns3, Eye, Grid2X2, Rows3 } from 'lucide-react'
 import { houseName } from '../sudoku/lesson-diagram'
+import { SUBSET_SCOPES } from '../sudoku/subsets'
 import { Button, IconButton } from './Button'
-import { SelectControl } from './SelectControl'
 import type { useSubsets } from './useSubsets'
 
-const houses = ['Row', 'Column', 'Box']
 const subsetNames = ['', '', 'pair', 'triple', 'quadruple']
+const scopeIcons = { row: Rows3, column: Columns3, box: Grid2X2 }
 
-/** Inspect candidate locations or selected cells in one row, column, or box during play. */
+/** Inspect the grid selection and reveal a subset clue on request. */
 export function SubsetsPanel({ tool, size, unavailable, regionLabel = 'Box' }: {
   tool: ReturnType<typeof useSubsets>; size: number; unavailable?: string; regionLabel?: string
 }) {
-  const { kind, house, houseIndex, locations, emptyCells, picks, digits, clue } = tool
-  const nameCell = (cell: number) => cellReference(cell, 'concise', undefined, size)
-  const activeHouse = houseName(house).replace('box', regionLabel.toLowerCase())
+  const { kind, house, houses, scope, locations, emptyCells, picks, digits, clue } = tool
+  const labels = { row: 'Row', column: 'Column', box: regionLabel }
+  const activeHouse = house && houseName(house).replace('box', regionLabel.toLowerCase())
   return <section className="subsets-panel" aria-label="Subsets">
-    <div className="subset-controls">
-      <div className="subset-kind" role="group" aria-label="Subset type">
-        <Button aria-pressed={kind === 'hidden'} onClick={() => tool.chooseKind('hidden')}>Hidden</Button>
-        <Button aria-pressed={kind === 'naked'} onClick={() => tool.chooseKind('naked')}>Naked</Button>
-      </div>
-      <label>House
-        <SelectControl aria-label="House" value={houseIndex} onChange={(event) => tool.chooseHouse(Number(event.target.value))}>
-          {houses.map((label, group) => <optgroup key={label} label={group === 2 ? regionLabel : label}>
-            {Array.from({ length: size }, (_, offset) => <option key={offset} value={group * size + offset}>
-              {group === 2 ? regionLabel : label} {offset + 1}
-            </option>)}
-          </optgroup>)}
-        </SelectControl>
-      </label>
+    <div className="subset-kind" role="group" aria-label="Subset type">
+      <Button aria-pressed={kind === 'hidden'} onClick={() => tool.chooseKind('hidden')}>Hidden</Button>
+      <Button aria-pressed={kind === 'naked'} onClick={() => tool.chooseKind('naked')}>Naked</Button>
     </div>
     {unavailable ? <p role="status">{unavailable}</p> : <>
-      <p>{kind === 'hidden' ? 'Select digits to compare where they can go.' : 'Select cells to see which digits they contain.'}</p>
-      <div className={`subset-items${kind === 'hidden' && size === 9 ? ' subset-digits' : ''}`} role="group" aria-label={kind === 'hidden' ? 'Digits in this house' : 'Empty cells in this house'}>
-        {kind === 'hidden' ? locations.map((cells, i) => <Button key={i} disabled={!cells.length}
-          aria-pressed={picks.includes(i + 1)} aria-label={`Digit ${i + 1}, ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`}
-          onClick={() => tool.toggle(i + 1)}>{i + 1}<small>{cells.length}</small></Button>)
-          : emptyCells.map((cell) => <Button key={cell} aria-pressed={picks.includes(cell)} onClick={() => tool.toggle(cell)}>{nameCell(cell)}</Button>)}
+      <p>{kind === 'naked' ? `Select cells that share a row, column, or ${regionLabel.toLowerCase()}.`
+        : house ? 'Select digits to compare where they can go.'
+        : `Tap a cell to select its ${labels[scope].toLowerCase()}. Drag along a row or column to select it.`}</p>
+      <div className="subset-scope" role="group" aria-label="Grid area">
+        {SUBSET_SCOPES.map((choice) => {
+          const Icon = scopeIcons[choice]
+          const target = houses[choice]
+          const label = target ? houseName(target).split(' ').at(-1) : undefined
+          return <Button key={choice} variant="quiet" aria-pressed={scope === choice}
+            disabled={kind === 'naked' && !!house && !target}
+            onClick={() => tool.chooseScope(choice)}>
+            <Icon size={16} aria-hidden="true" /> {labels[choice]}{label && ` ${label}`}
+          </Button>
+        })}
       </div>
-      {emptyCells.length === 0 && <p>This house is complete.</p>}
+      {kind === 'hidden' && house && emptyCells.length > 0 && <div className={`subset-items${size === 9 ? ' subset-digits' : ''}`}
+        role="group" aria-label={`Digits in ${activeHouse}`}>
+        {locations.map((cells, i) => <Button key={i} disabled={!cells.length}
+          aria-pressed={picks.includes(i + 1)} aria-label={`Digit ${i + 1}, ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`}
+          onClick={() => tool.toggleDigit(i + 1)}>{i + 1}<small>{cells.length}</small></Button>)}
+      </div>}
+      {house && emptyCells.length === 0 && <p>This {labels[scope].toLowerCase()} is complete.</p>}
       {picks.length > 0 && <p role="status" className="subset-selection">
         {kind === 'hidden' ? `${picks.length} selected · ${new Set(picks.flatMap((digit) => locations[digit - 1])).size} possible cells`
           : `${picks.length} ${picks.length === 1 ? 'cell' : 'cells'} · ${digits.length} ${digits.length === 1 ? 'digit' : 'digits'} (${digits.join(', ')})`}
       </p>}
-      <div className="subset-clue">
+      {house && <div className="subset-clue">
         {clue.total === undefined ? <Button disabled={emptyCells.length < 3} onClick={clue.find}><Eye size={15} aria-hidden="true" /> Find a subset</Button>
           : <>
             <div className="subset-clue-header" role="status">
@@ -63,7 +65,7 @@ export function SubsetsPanel({ tool, size, unavailable, regionLabel = 'Box' }: {
               <Button variant="quiet" onClick={clue.clear}>Clear clue</Button>
             </div>
           </>}
-      </div>
+      </div>}
     </>}
   </section>
 }
