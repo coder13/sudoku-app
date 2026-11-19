@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, Grid3X3, Hash } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { IconButton, iconButtonClassName } from '../components/Button'
+import { iconButtonClassName } from '../components/Button'
 import '../components/puzzle-games.css'
 
 export const Route = createFileRoute('/puzzles/games')({
@@ -19,13 +19,15 @@ function GameTypePicker() {
   return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
     <div className="puzzles-layout">
       <header className="puzzles-page-heading">
-        {fromSudokuVariant && canGoBack
-          ? <IconButton aria-label="Back to Sudoku variants" onClick={() => router.history.back()}>
-            <ChevronLeft size={21} aria-hidden="true" />
-          </IconButton>
-          : <Link to="/puzzles/new" className={iconButtonClassName()} aria-label="Back to Sudoku variants">
-            <ChevronLeft size={21} aria-hidden="true" />
-          </Link>}
+        <Link to="/puzzles/new" className={iconButtonClassName()} aria-label="Back to Sudoku variants"
+          onClick={event => {
+            if (fromSudokuVariant && canGoBack && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+              event.preventDefault()
+              router.history.back()
+            }
+          }}>
+          <ChevronLeft size={21} aria-hidden="true" />
+        </Link>
         <h1 ref={heading} tabIndex={-1}>Choose a game type</h1>
       </header>
       <ul className="game-list main-puzzle-list motion-screen">

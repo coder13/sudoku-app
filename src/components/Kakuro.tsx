@@ -22,11 +22,15 @@ function KakuroHeading({ title, inPlay, children }: { title: string; inPlay?: bo
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [title])
 
   return <header className="puzzles-page-heading kakuro-heading">
-    {fromParent && canGoBack
-      ? <IconButton aria-label={label} onClick={() => router.history.back()}><ChevronLeft size={21} aria-hidden="true" /></IconButton>
-      : <Link to={inPlay ? '/puzzles/kakuro' : '/puzzles/games'} className={iconButtonClassName()} aria-label={label}>
-        <ChevronLeft size={21} aria-hidden="true" />
-      </Link>}
+    <Link to={inPlay ? '/puzzles/kakuro' : '/puzzles/games'} className={iconButtonClassName()} aria-label={label}
+      onClick={event => {
+        if (fromParent && canGoBack && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+          event.preventDefault()
+          router.history.back()
+        }
+      }}>
+      <ChevronLeft size={21} aria-hidden="true" />
+    </Link>
     <div><h1 ref={heading} tabIndex={-1}>{title}</h1>{children}</div>
   </header>
 }
