@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { variantName } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
@@ -15,5 +16,5 @@ test('the app verifies a Latin Square with an authored extra region in Wasm', as
   const { game } = await prepareImportedPuzzle(code)
   assert.equal(game.variant?.solution, solution)
   assert.deepEqual(game.variant.puzzle.regions, { type: 'latin-square' })
-  assert.match(game.title, /Latin Square/)
+  assert.match(variantName(game.variant), /Latin Square/)
 })
