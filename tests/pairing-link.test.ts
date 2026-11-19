@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPairingScanTracker, pairingTicket, readPairingLink } from '../src/sudoku/pairing-link.ts'
+import { createPairingScanTracker, pairingTicket, PRODUCTION_SYNC_ORIGIN, readPairingLink, sharesPairingService } from '../src/sudoku/pairing-link.ts'
 
 test('QR scanning accepts only a pairing ticket for the current app', () => {
   const site = 'https://sudoku.example'
@@ -25,6 +25,15 @@ test('recognizes a valid code from the hosted site without accepting its ticket 
   assert.equal(pairingTicket(text, origin), ticket)
   assert.equal(readPairingLink('ftp://klyn-sudoku.pages.dev/sync#pair=' + ticket), null)
   assert.equal(readPairingLink('https://klyn-sudoku.pages.dev@other.example/sync#pair=' + ticket), null)
+})
+
+test('both production URLs use the same pairing service, separate from previews and local sync', () => {
+  const customDomain = 'https://sudoku.klyn.gay'
+  assert.equal(sharesPairingService(customDomain, PRODUCTION_SYNC_ORIGIN), true)
+  assert.equal(sharesPairingService(PRODUCTION_SYNC_ORIGIN, customDomain), true)
+  assert.equal(sharesPairingService(customDomain, 'http://127.0.0.1:8766'), false)
+  assert.equal(sharesPairingService('https://branch.klyn-sudoku.pages.dev', PRODUCTION_SYNC_ORIGIN), false)
+  assert.equal(sharesPairingService('https://sudoku.klyn.gay.example', PRODUCTION_SYNC_ORIGIN), false)
 })
 
 test('the same live pairing code must be visible for at least 500 ms', () => {

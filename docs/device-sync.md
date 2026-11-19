@@ -4,7 +4,7 @@ On your first device, open **Options → Device sync → Set up new sync**. On t
 
 The sync entry page is `/sync`. Scanning, recovery, confirmation, invitations, and linked devices each have a URL under it. Back and Forward follow those steps. Reloading an invitation in the same tab keeps its original expiry. The camera advances to confirmation once the same code has stayed in view for half a second. A selected photo opens confirmation as soon as it decodes.
 
-Open the same Sudoku site address on both devices when pairing. For a local UI that pairs with the live app, use the production sync mode below.
+Open the same Sudoku site address on both devices when pairing. Both live addresses, `sudoku.klyn.gay` and `klyn-sudoku.pages.dev`, use the same pairing service. For a local UI that pairs with the live app, use the production sync mode below.
 
 Linking combines completed puzzles and puzzles in progress from both devices. Each independent attempt keeps its own URL, even when two attempts use the same grid. If both devices changed the same attempt, sync keeps a conflict copy. Home shows in-progress puzzles by most recent play. Puzzle sharing gives the recipient their own attempt. A device already linked to a separate library cannot join a second library directly.
 
@@ -31,7 +31,7 @@ For UI iteration, leave Pages dev on port 8788 and run `npm run dev` in a second
 npm run dev:prod-sync
 ```
 
-On the Mac, open `http://127.0.0.1:8768/sync`. On your linked device, open [the live Sudoku app](https://klyn-sudoku.pages.dev/sync) and choose **Link another device**. Scan that code in the local app and confirm the link. Use the same local address on subsequent visits to retain this browser's device credentials.
+On the Mac, open `http://127.0.0.1:8768/sync`. On your linked device, open [the live Sudoku app](https://sudoku.klyn.gay/sync) and choose **Link another device**. Scan that code in the local app and confirm the link. Use the same local address on subsequent visits to retain this browser's device credentials.
 
 Vite serves the UI locally and forwards sync requests to the deployed Pages Worker. This mode uses the production library, so puzzle and settings edits sync to your linked devices. The dedicated port keeps this browser's local saves and credentials separate from the ordinary dev server.
 

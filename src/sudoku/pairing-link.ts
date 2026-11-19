@@ -1,4 +1,13 @@
 export const PRODUCTION_SYNC_ORIGIN = 'https://klyn-sudoku.pages.dev'
+const productionOrigins = new Set([PRODUCTION_SYNC_ORIGIN, 'https://sudoku.klyn.gay'])
+
+export function isProductionSyncOrigin(origin: string): boolean {
+  return productionOrigins.has(origin)
+}
+
+export function sharesPairingService(origin: string, expectedOrigin: string): boolean {
+  return origin === expectedOrigin || (isProductionSyncOrigin(origin) && isProductionSyncOrigin(expectedOrigin))
+}
 
 // Parse the source address separately so the scanner can explain a site mismatch.
 export function readPairingLink(text: string): { origin: string; ticket: string } | null {

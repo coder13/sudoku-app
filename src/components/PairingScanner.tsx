@@ -1,9 +1,7 @@
 import { Button, buttonClassName } from './Button'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type jsQR from 'jsqr'
-import { createPairingScanTracker, PRODUCTION_SYNC_ORIGIN, readPairingLink } from '../sudoku/pairing-link'
-
-const hostedScanner = PRODUCTION_SYNC_ORIGIN + '/sync/scan'
+import { createPairingScanTracker, isProductionSyncOrigin, readPairingLink, sharesPairingService } from '../sudoku/pairing-link'
 
 function readCode(source: CanvasImageSource, width: number, height: number, decode: typeof jsQR, maxEdge: number) {
   const scale = Math.min(1, maxEdge / Math.max(width, height))
@@ -28,9 +26,10 @@ export function PairingScanner({ pairingOrigin, onTicket }: {
   const [cameraError, setCameraError] = useState('')
   const [error, setError] = useState('')
   const [otherOrigin, setOtherOrigin] = useState<string | null>(null)
+  const matchingScanner = otherOrigin && isProductionSyncOrigin(otherOrigin) ? new URL('/sync/scan', otherOrigin) : null
   const checkCode = useCallback((text: string) => {
     const link = readPairingLink(text)
-    const mismatch = link && link.origin !== pairingOrigin ? link.origin : null
+    const mismatch = link && !sharesPairingService(link.origin, pairingOrigin) ? link.origin : null
     setOtherOrigin(mismatch)
     setError(link ? '' : 'Use the QR code from Device sync on your other device.')
     return mismatch ? null : link?.ticket ?? null
@@ -114,10 +113,10 @@ export function PairingScanner({ pairingOrigin, onTicket }: {
     {cameraError ? <p role="status">{cameraError}</p> : !cameraReady && <p role="status">Opening camera…</p>}
     {error && <p role="alert">{error}</p>}
     {otherOrigin && <p className="sync-scan-origin" role="alert">This code is for{' '}
-      <strong>{otherOrigin === PRODUCTION_SYNC_ORIGIN ? 'klyn-sudoku.pages.dev' : otherOrigin}</strong>.
-      {otherOrigin !== PRODUCTION_SYNC_ORIGIN && ' Open Device sync at that address and scan again.'}
+      <strong>{matchingScanner?.host ?? otherOrigin}</strong>.
+      {!matchingScanner && ' Open Device sync at that address and scan again.'}
     </p>}
-    {otherOrigin === PRODUCTION_SYNC_ORIGIN && <a className={buttonClassName('primary')} href={hostedScanner}>Scan on klyn-sudoku.pages.dev</a>}
+    {matchingScanner && <a className={buttonClassName('primary')} href={matchingScanner.href}>Scan on {matchingScanner.host}</a>}
     <input ref={file} type="file" accept="image/*" hidden aria-label="QR photo" onChange={event => {
       const photo = event.target.files?.[0]
       event.target.value = ''
