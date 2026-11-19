@@ -103,3 +103,43 @@ The Wasm size change accompanies the optional rule field and the generation iden
 Fetched main contains both the reviewed head and merge commit, with identical Rust, scripts, app, tests, stories, dependencies and component catalog. The isolated source worktree remains pinned to that reviewed head. The separately compiled preview engine is 3,416,046 bytes, SHA-256 `f4f2a123db3a51b2d7873dc8354098204637dd402efa60ebad58b0e9accdc149`; all 7,103 complete-response comparisons against the local artifact pass, including the 200 generation outcomes. Read-only HTTP confirms the published shell, Region Sum lesson, service-worker asset list and referenced Wasm asset. Deployment verification uses the actual service-worker asset path. These checks do not constitute live layout, keyboard or pointer review.
 
 Issue 67 is closed. Issue 192 retains the partial human paths, single FaxQ hint and slow rating/search work. Five existing native UI families, thirteen older New Puzzle integrations, authored-source semantics, remaining formats and the full R&D goal remain open.
+
+## Tridagon refutations in mixed ratings
+
+The full 8AGt puzzle retains its Region Sum, Non-Consecutive, Anti-Knight, and Anti-King rules. A named app Wasm profile on `b9ffe95` recorded 8,448 samples across one full trace and three ratings. Forcing branch propagation accounted for 3,927 exclusive samples. The Tridagon guardian refutation loop accounted for another 2,004. This trace finishes in 185 steps and scores 4,058 points.
+
+Each Tridagon refutation tries one candidate assumption against a list of guardians. A branch can start a new guardian inference only when it removes all but one guardian or removes them all. In a list of at least two guardians, that branch must remove at least one of the first two. The engine now uses each guardian's removal index to find those assumptions. It checks the full clause and tries each remaining assumption in the original order. The independent Rust regression checks every index bit against the facts from a separate branch search.
+
+### Paired app Wasm timings
+
+The baseline commit is `290041376b28421f8fee69ccc01bbd8d195698e4`. The measured candidate is `1e4279ee3ff5cba16fe3e6231572efff203d6597`. Rust 1.92.0 built both stripped app Wasm binaries. Node 22.23.1 ran on logical CPUs 6 and 7 of an AMD Ryzen 7 7840U under Arch Linux 7.1.8.
+
+Each case records the first request, one warmup, and five measured requests per build. Build order alternates. With five samples, p95 is the largest sample. The measurements include serialization and app Wasm execution in Node.
+
+| Published source and operation | Baseline median / p95 (ms) | Candidate median / p95 (ms) |
+| --- | ---: | ---: |
+| 8AGt app-order rating | 2,175.50 / 2,195.47 | 1,660.20 / 1,714.92 |
+| 8AGt app-order trace | 2,165.54 / 2,182.84 | 1,651.70 / 1,659.36 |
+| 91BB app-order rating | 397.26 / 400.68 | 394.35 / 396.07 |
+| 8oer app-order rating | 161.66 / 162.78 | 162.36 / 163.39 |
+| FaxQ app-order rating | 174.85 / 177.75 | 157.39 / 160.28 |
+| 8AGt opening Tridagon forcing proofs | 36.79 / 38.13 | 36.61 / 37.25 |
+| FaxQ opening Tridagon forcing proofs | 1.224 / 1.569 | 1.217 / 1.573 |
+
+Both opening Tridagon scans return zero proofs. The 8AGt trace finishes with the published solution and the same proof for every step. The [measurement data](docs/measurements/region-sum-rating.json) contains the timing samples and response hashes.
+
+The first 8AGt rating in each instance takes 2,377.32 and 1,837.24 ms. Instantiation takes 19.99 and 14.83 ms. These are single measurements. The initial replay had slow samples on both builds. Its 8AGt rating medians were 2,714.10 and 2,147.61 ms. The recorded table uses the complete repeat.
+
+Both Wasm instances reach 5,570,560 bytes of linear-memory capacity in the paired replay. App Wasm shrinks by 9,833 raw bytes and 835 gzip bytes. A capacity snapshot gives the buffer size. The run uses one Node process for both instances.
+
+### Reproduction and validation
+
+Build both app Wasm binaries at the pinned commits with separate Cargo target directories. Run these commands from the branch that contains this audit.
+
+```sh
+node --experimental-strip-types scripts/bench-region-sum-rating.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm --region-sum --classic-tridagon
+cargo test --locked --release -p sudoku-app-engine --all-features --lib guardian_tests
+```
+
+The comparison matches 4,197 complete variant responses and 148 Classic responses. It includes ordered proofs, all hint pages, disabled techniques, explicit removals, and the complete source ratings and traces. All six native guardian tests pass. All 140 seeded generation pairs match across seven recipes with six attempts and 20,000 nodes per request. X-Sudoku generation p95 rises from 2.083 to 3.929 ms in that check.
