@@ -57,7 +57,32 @@ impl CompiledVariant {
             eliminations,
             max_nodes,
             SearchMode::PropagateHouses,
+            &mut None,
         )
+    }
+
+    /// Return a completion only after proving that it is unique.
+    ///
+    /// This uses the same traversal and node budget as [`Self::analyze`].
+    pub fn solve_unique(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Board, VariantPositionError> {
+        let mut solution = None;
+        let analysis = self.analyze_with_mode(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PropagateHouses,
+            &mut solution,
+        )?;
+        if analysis == Analysis::Unique {
+            Ok(solution.expect("a completed count of one records its solution"))
+        } else {
+            Err(VariantPositionError::Puzzle(analysis))
+        }
     }
 
     // Earlier uniqueness success can trigger expensive empty graph searches.
@@ -73,6 +98,7 @@ impl CompiledVariant {
             eliminations,
             max_nodes,
             SearchMode::PreserveTraversal,
+            &mut None,
         )
     }
 
@@ -82,13 +108,14 @@ impl CompiledVariant {
         eliminations: &[u16; CELLS],
         mut max_nodes: u32,
         mode: SearchMode,
+        solution: &mut Option<Board>,
     ) -> Result<Analysis, VariantPositionError> {
         let position = match self.prepare(entries, eliminations) {
             Ok(position) => position,
             Err(VariantPositionError::Puzzle(analysis)) => return Ok(analysis),
             Err(error) => return Err(error),
         };
-        let count = self.search(position, 2, &mut max_nodes, &mut None, mode, &mut digits);
+        let count = self.search(position, 2, &mut max_nodes, solution, mode, &mut digits);
         Ok(match count {
             None => Analysis::SearchLimit,
             Some(0) => Analysis::Unsolvable,

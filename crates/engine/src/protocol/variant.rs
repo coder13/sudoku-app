@@ -71,6 +71,7 @@ pub(super) enum Operation {
     SolveSingles,
     Analyze,
     Solve,
+    SolveUnique,
     Hints,
     Rate,
     Trace,
@@ -237,7 +238,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         Some(_)
             if matches!(
                 operation,
-                Operation::Analyze | Operation::Solve | Operation::Candidates | Operation::SolveSingles
+                Operation::Analyze | Operation::Solve | Operation::SolveUnique | Operation::Candidates | Operation::SolveSingles
             ) =>
         {
             return Err((
@@ -324,6 +325,11 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             };
             json!(grid_string(solution.map_err(position_error)?))
         }
+        Operation::SolveUnique => match compiled.solve_unique(entries, eliminations, budget) {
+            Ok(solution) => json!({ "status": "unique", "solution": grid_string(solution) }),
+            Err(VariantPositionError::Puzzle(analysis)) => json!({ "status": puzzle_error(analysis).0 }),
+            Err(error) => return Err(position_error(error)),
+        },
         Operation::Hints => {
             let enabled = order()?;
             let limit = options.limit.unwrap_or(DEFAULT_HINT_LIMIT);
