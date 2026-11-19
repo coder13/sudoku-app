@@ -5,7 +5,7 @@ import { validActionHistory } from './action-history.ts'
 import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
-import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
+import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type HistoryPosition, type Position } from './game.ts'
 import { isSixRuleList, restoreSixGame } from './six-game.ts'
 import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
@@ -58,7 +58,7 @@ function validCandidateColors(value: unknown, grid: PlayGrid): boolean {
 
 function validPosition(value: unknown, grid: PlayGrid, cageDraft: boolean, sixDraft: boolean): value is Position {
   if (!value || typeof value !== 'object') return false
-  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSixRules } = value as Position
+  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSixRules, chainSketch } = value as HistoryPosition
   const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === grid.size ** 2 &&
     items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
   const mask = (1 << grid.size) - 1
@@ -67,7 +67,8 @@ function validPosition(value: unknown, grid: PlayGrid, cageDraft: boolean, sixDr
     (sixDraft ? isSixRuleList(draftSixRules) : draftSixRules === undefined) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
-    (eliminations === undefined || validDigits(eliminations, mask))
+    (eliminations === undefined || validDigits(eliminations, mask)) &&
+    (chainSketch == null || validChainSketchState(chainSketch))
 }
 
 export function readGame(id: string, data: string | null): Game | undefined {

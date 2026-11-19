@@ -59,7 +59,7 @@ function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCa
         close()
       }}>
       {onGenerateCandidates && <button type="button" disabled={candidatesDisabled} onClick={() => { close(); onGenerateCandidates() }}>
-        <PencilLine size={17} aria-hidden="true" /> Generate all candidates
+        <PencilLine size={17} aria-hidden="true" /> Generate candidates
       </button>}
       <button type="button" onClick={() => { close(); onOpen(trigger.current) }}>
         <Palette size={17} aria-hidden="true" /> {colorsOnly ? 'Colors' : 'Colors & Chains'}

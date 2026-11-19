@@ -27,16 +27,17 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   const height = input.offsetHeight
   // The grid is square, so the remaining card height belongs to the surrounding UI.
   const chrome = parseFloat(layout.style.getPropertyValue('--mobile-puzzle-chrome-height')) || puzzle.offsetHeight - grid.offsetWidth
+  const puzzleHeight = parseFloat(layout.style.getPropertyValue('--mobile-resized-puzzle-height')) || puzzle.offsetHeight
   const minGrid = withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH
-  const minPuzzle = Math.min(puzzle.offsetHeight, chrome + minGrid)
+  const minPuzzle = Math.min(puzzleHeight, chrome + minGrid)
   const min = height - body.offsetHeight + keypad.offsetHeight
   return {
     input: height,
-    puzzle: puzzle.offsetHeight,
+    puzzle: puzzleHeight,
     chrome,
     minPuzzle,
     min,
-    max: Math.max(min, height + puzzle.offsetHeight - minPuzzle),
+    max: Math.max(min, height + puzzleHeight - minPuzzle),
   }
 }
 

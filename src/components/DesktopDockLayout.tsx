@@ -43,6 +43,7 @@ type DockContent = {
   focusChainsRequest?: number
   focusColorsRequest?: number
   onChainsVisibleChange?: (visible: boolean) => void
+  onChainsTabShown?: () => void
   onColorsVisibleChange?: (visible: boolean) => void
   onSolutionVisibleChange?: (visible: boolean) => void
 }
@@ -62,16 +63,19 @@ function InputPanel() {
 }
 
 function ChainsDockPanel({ api }: IDockviewPanelProps) {
-  const { chains, onChainsVisibleChange } = useContext(DockContentContext)
+  const { chains, onChainsVisibleChange, onChainsTabShown } = useContext(DockContentContext)
   useEffect(() => {
     if (!onChainsVisibleChange) return
     onChainsVisibleChange(api.isVisible)
-    const subscription = api.onDidVisibilityChange(({ isVisible }) => onChainsVisibleChange(isVisible))
+    const subscription = api.onDidVisibilityChange(({ isVisible }) => {
+      onChainsVisibleChange(isVisible)
+      if (isVisible) onChainsTabShown?.()
+    })
     return () => {
       subscription.dispose()
       onChainsVisibleChange(false)
     }
-  }, [api, onChainsVisibleChange])
+  }, [api, onChainsVisibleChange, onChainsTabShown])
   return <div className="dock-panel-content">{chains}</div>
 }
 
@@ -289,7 +293,7 @@ export function resetDesktopPanelLayout() {
 export function DesktopDockLayout({
   puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
   focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusColorsRequest,
-  onChainsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
+  onChainsVisibleChange, onChainsTabShown, onColorsVisibleChange, onSolutionVisibleChange,
 }: DockContent) {
   const [layoutReady, setLayoutReady] = useState(false)
   const apiRef = useRef<DockviewApi | null>(null)
@@ -390,7 +394,7 @@ export function DesktopDockLayout({
     <DockContentContext.Provider value={{
       puzzle, input, chains, cellColors, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
       focusHintRequest, focusAnalysisRequest, focusSolutionRequest, focusChainsRequest, focusColorsRequest,
-      onChainsVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
+      onChainsVisibleChange, onChainsTabShown, onColorsVisibleChange, onSolutionVisibleChange,
     }}>
       <section ref={rootRef} className={`desktop-dock ${layoutReady ? 'dock-ready' : ''}`} aria-label="Advanced workspace panels">
         <DockviewReact className="desktop-dockview" theme={sudokuDockTheme} components={components}

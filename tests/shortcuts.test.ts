@@ -13,7 +13,7 @@ test('saved shortcut preferences accept valid partial changes', () => {
   assert.deepEqual(parseShortcutPreferences({ digitMode: 'v' }), { ...DEFAULT_SHORTCUTS, digitMode: 'v' })
 })
 
-test('older saved shortcuts gain the Generate all candidates default without creating a conflict', () => {
+test('older saved shortcuts gain the Generate candidates default without creating a conflict', () => {
   const { generateCandidates: _, ...olderPreferences } = DEFAULT_SHORTCUTS
   assert.deepEqual(parseShortcutPreferences(olderPreferences), DEFAULT_SHORTCUTS)
   assert.deepEqual(parseShortcutPreferences({ ...olderPreferences, digitMode: 'g' }), DEFAULT_SHORTCUTS)

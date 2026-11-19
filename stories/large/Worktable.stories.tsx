@@ -72,6 +72,8 @@ export const PuzzleCardTools: Story = {
   play: async ({ canvas, userEvent }) => {
     const shortcut = canvas.getByRole('button', { name: 'Open Colors & Chains from puzzle card' })
     await expect(shortcut).toBeVisible()
+    await expect(shortcut).toHaveAttribute('data-edge', 'bottom')
+    await expect(shortcut.closest('.puzzle-actions')).toBeNull()
     shortcut.focus()
     await userEvent.keyboard('{Enter}')
     await expect(canvas.getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
@@ -96,8 +98,7 @@ export const RemoveBranchTip: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open Colors & Chains from puzzle card' }))
     await userEvent.click(canvas.getByRole('tab', { name: 'Chains' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Draw links' }))
-    const grid = within(canvas.getByRole('grid', { name: 'Sudoku grid for drawing links' }))
+    const grid = within(await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' }))
     const chain = canvas.getByRole('button', { name: /^Chain 1$/ })
     const branchNotation = /, 4r6c6 = 1r6c6/
     const junction = grid.getByRole('button', { name: /^4 in row 6, column 6\b/ })

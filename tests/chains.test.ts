@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { analyzeChainPaths, analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainColors, chainExtensionStrength, completeChainLoop, completeMedusa, makeChainGraph, type ChainEdge } from '../src/sudoku/chains.ts'
-import { newChainSketch, pruneChainsAfterMove, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
-import { EMPTY, enter, makeGame, paintCandidate, STARTER_GAME } from '../src/sudoku/game.ts'
+import { applyChainDeduction, newChainSketch, pruneChainsAfterMove, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
+import { EMPTY, enter, makeGame, paintCandidate, redo, STARTER_GAME, undo } from '../src/sudoku/game.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { variantHouseMasks } from '../src/sudoku/variants.ts'
 
@@ -42,6 +42,33 @@ test('a link requires live candidates that conflict in a cell or house', () => {
   assert.equal(links.strength(id(0), id(30)), undefined)
   assert.equal(links.strength(id(0), id(0)), undefined)
   assert.equal(links.strength(id(0, 3), id(1, 3)), undefined)
+})
+
+test('applying chain deductions removes their sketches and records one puzzle undo step', () => {
+  const first = { ...newChainSketch(1), history: [[], pathEdges(id(0, 1), id(0, 2))] }
+  const second = { ...newChainSketch(2), history: [[], pathEdges(id(1, 3), id(1, 4))] }
+  const chainSketch = { sketches: [first, second], activeId: 1, pending: id(0, 2) }
+  const game = { ...makeGame('chain-apply', 'Chain apply', EMPTY, 'imported'), chainSketch }
+  const candidates = Array<number>(81).fill(511)
+  const applied = applyChainDeduction(game, [1], [{ eliminate: { cell: 0, digit: 2 } }, { place: { cell: 8, digit: 5 } }],
+    candidates, true)
+  assert.equal(applied.past.length, 1)
+  assert.equal(applied.position.eliminations?.[0], 2)
+  assert.equal(applied.position.entries[8], '5')
+  assert.deepEqual(applied.chainSketch, { sketches: [second], activeId: 2, pending: null })
+  const restored = undo(readGame(game.id, JSON.stringify(applied))!)
+  assert.deepEqual(restored.position, game.position)
+  assert.deepEqual(restored.chainSketch, chainSketch)
+  const redone = redo(readGame(game.id, JSON.stringify(restored))!)
+  assert.deepEqual(redone.position, applied.position)
+  assert.deepEqual(redone.chainSketch, applied.chainSketch)
+
+  const empty = applyChainDeduction(game, [1, 2], [{ eliminate: { cell: 0, digit: 2 } }], candidates, true)
+  assert.equal(empty.chainSketch, undefined)
+  assert.deepEqual(undo(empty).chainSketch, chainSketch)
+  assert.equal(redo(undo(empty)).chainSketch, undefined)
+  assert.equal(applyChainDeduction(game, [1], [{ eliminate: { cell: 0, digit: 2 } }, { place: { cell: 0, digit: 2 } }],
+    candidates, true), game)
 })
 
 test('an X-chain can use a conjugate pair as weak and remove a candidate that sees both ends', () => {

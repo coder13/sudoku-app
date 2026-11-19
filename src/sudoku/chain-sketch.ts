@@ -1,5 +1,6 @@
 import { chainCandidate, type ChainEdge } from './chains.ts'
-import type { Game } from './game.ts'
+import type { DeductionAction } from './engine.ts'
+import { applyDeduction, conflictsOf, fillEntries, hasCandidate, move, valuesOf, type Game } from './game.ts'
 
 export const CHAIN_COLORS = ['Blue', 'Orange', 'Purple', 'Teal', 'Pink', 'Green'] as const
 export type ChainColor = typeof CHAIN_COLORS[number]
@@ -33,6 +34,40 @@ export function newChainSketch(id: number): ChainSketch {
 }
 
 export const initialChainSketch: ChainSketchState = { sketches: [newChainSketch(1)], activeId: 1, pending: null }
+
+export function applyChainDeduction(game: Game, chainIds: readonly number[], actions: readonly DeductionAction[],
+  candidates: readonly number[], removeCandidates: boolean): Game {
+  const before = game.chainSketch
+  if (!before || !actions.length || !chainIds.some(id => before.sketches.some(sketch => sketch.id === id))) return game
+
+  const removals = actions.filter(action => 'eliminate' in action)
+  const eliminated = applyDeduction(game, removals, candidates, removeCandidates)
+  if (removals.length && eliminated === game) return game
+  const placements = actions.filter(action => 'place' in action)
+  let position = eliminated.position
+  if (placements.length) {
+    const values = [...valuesOf(game)]
+    for (const { place: { cell, digit } } of placements) {
+      if (values[cell] !== '0' || !hasCandidate(candidates[cell] & ~(position.eliminations?.[cell] ?? 0), digit)) return game
+      values[cell] = String(digit)
+    }
+    const filled = values.join('')
+    if (conflictsOf(filled, game.variant?.puzzle, game.grid, game.six?.rules).size) return game
+    position = fillEntries(eliminated, filled, removeCandidates).position
+  }
+
+  const sketches = before.sketches.filter(({ id }) => !chainIds.includes(id))
+  const activeIndex = before.sketches.findIndex(({ id }) => id === before.activeId)
+  const activeId = sketches.find(({ id }) => id === before.activeId)?.id ?? sketches[Math.min(activeIndex, sketches.length - 1)]?.id
+  const applied = move(game, position)
+  return {
+    ...applied,
+    past: [...applied.past.slice(0, -1), { ...game.position, chainSketch: before }],
+    chainSketch: activeId === undefined ? undefined : {
+      sketches, activeId, pending: before.activeId === activeId ? before.pending : null,
+    },
+  }
+}
 
 function validNode(node: unknown): node is number {
   return typeof node === 'number' && Number.isInteger(node) && node >= 0 && node < 729

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Candidate } from '../sudoku/engine'
+import type { Candidate, DeductionAction } from '../sudoku/engine'
 import {
   chainColor, initialChainSketch, MAX_CHAIN_HISTORY, newChainSketch, removeUnavailableChains,
   type ChainColor, type ChainSketch, type ChainSketchState,
@@ -72,10 +72,15 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     }
   }) : [], [graph, sketches])
   const activeAnalysis = analyzed.find(({ id }) => id === active.id)
-  const allActions = useMemo(() => {
-    if (!canAnalyze) return []
-    const actions = analyzed.flatMap(({ chains, medusas }) => [...chains, ...medusas].flatMap(({ actions }) => actions))
-    return [...new Map(actions.map(action => [techniqueActionKey(action), action])).values()]
+  const applicable = useMemo(() => {
+    const actions = new Map<string, DeductionAction>()
+    const chainIds: number[] = []
+    if (canAnalyze) for (const { id, chains, medusas } of analyzed) {
+      const edits = [...chains, ...medusas].flatMap(({ actions }) => actions)
+      if (edits.length) chainIds.push(id)
+      for (const action of edits) actions.set(techniqueActionKey(action), action)
+    }
+    return { actions: [...actions.values()], chainIds }
   }, [analyzed, canAnalyze])
   const loopCompletions = useMemo(() => {
     const completions = new Map<ChainAnalysis, ChainEdge[]>()
@@ -159,13 +164,11 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
         if ('place' in action) {
           const { cell, digit } = action.place
           const colored = candidateMarks.get(cell)?.get(digit)
+          if (colored?.mark === 'strike') continue
           mark(candidateId(action.place), { color: colored?.color ?? 'var(--chain-placement)',
             mark: 'ring', label: [colored?.label, 'forced placement'].filter(Boolean).join(', ') })
         } else {
-          const { cell, digit } = action.eliminate
-          const colored = candidateMarks.get(cell)?.get(digit)
-          mark(candidateId(action.eliminate), { color: colored?.color ?? 'var(--chain-removal)',
-            mark: 'strike', label: [colored?.label, 'can be removed'].filter(Boolean).join(', ') })
+          mark(candidateId(action.eliminate), { color: 'var(--chain-removal)', mark: 'strike', label: 'can be removed' })
         }
       }
     }
@@ -286,7 +289,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     suspend: () => setDrawingIntent(false),
     chains: canAnalyze ? activeAnalysis?.chains ?? [] : [],
     medusas: canAnalyze ? activeAnalysis?.medusas ?? [] : [],
-    allActions,
+    allActions: applicable.actions, appliedChainIds: applicable.chainIds,
     hasLinks: edges.length > 0,
     canUndo: active.history.length > 1,
     canFinishLoop: (chain: ChainAnalysis) => loopCompletions.has(chain),
