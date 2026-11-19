@@ -12,6 +12,9 @@ use crate::{
 };
 use std::{cell::OnceCell, collections::BTreeMap};
 
+mod packing;
+use packing::{Family, compatible_support};
+
 #[cfg(feature = "variants")]
 mod witnesses;
 
@@ -286,57 +289,6 @@ fn required(support: u128) -> u128 {
         .fold(0, |forced, sites| forced | sites)
 }
 
-#[derive(Clone, Copy)]
-struct Family<'a> {
-    digit: usize,
-    allowed: u128,
-    layouts: &'a [u128],
-}
-
-fn compatible_support(families: &[Family<'_>], mut support: [u128; 9]) -> [u128; 9] {
-    let mut witness = [0; 9];
-    for (index, family) in families.iter().enumerate() {
-        let followers: Vec<_> = families[..index]
-            .iter()
-            .chain(&families[index + 1..])
-            .copied()
-            .collect();
-        for cell in cells(family.allowed & !support[family.digit]) {
-            let target = cell_bit(cell);
-            if support[family.digit] & target != 0 {
-                continue;
-            }
-            // One disjoint combination certifies each cell in each of its layouts.
-            // Find additional witnesses only for cells that still need support.
-            let result = family.layouts.iter().copied().find(|&layout| {
-                layout & target != 0
-                    && layout & !family.allowed == 0
-                    && disjoint_layouts(&followers, layout, &mut witness)
-            });
-            if let Some(layout) = result {
-                witness[family.digit] = layout;
-                for (supported, used) in support.iter_mut().zip(witness) {
-                    *supported |= used;
-                }
-            }
-        }
-    }
-    support
-}
-
-fn disjoint_layouts(families: &[Family<'_>], occupied: u128, witness: &mut [u128; 9]) -> bool {
-    let Some((family, rest)) = families.split_first() else {
-        return true;
-    };
-    let forbidden = occupied | !family.allowed;
-    for &layout in family.layouts {
-        if layout & forbidden == 0 && disjoint_layouts(rest, occupied | layout, witness) {
-            witness[family.digit] = layout;
-            return true;
-        }
-    }
-    false
-}
 
 #[cfg(test)]
 mod tests {

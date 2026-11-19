@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPairingScanTracker, pairingTicket } from '../src/sudoku/pairing-link.ts'
+import { createPairingScanTracker, pairingTicket, PRODUCTION_SYNC_ORIGIN, readPairingLink, sharesPairingService } from '../src/sudoku/pairing-link.ts'
 
 test('QR scanning accepts only a pairing ticket for the current app', () => {
   const site = 'https://sudoku.example'
@@ -14,6 +14,26 @@ test('QR scanning accepts only a pairing ticket for the current app', () => {
     'https://anyone@sudoku.example' + path, site + '/sync?target=elsewhere#pair=' + token, '/sync#pair=' + token]) {
     assert.equal(pairingTicket(text, site), null)
   }
+})
+
+test('recognizes a valid code from the hosted site without accepting its ticket on localhost', () => {
+  const origin = 'https://klyn-sudoku.pages.dev'
+  const ticket = 'b'.repeat(64)
+  const text = origin + '/sync#pair=' + ticket
+  assert.deepEqual(readPairingLink(text), { origin, ticket })
+  assert.equal(pairingTicket(text, 'http://localhost:8767'), null)
+  assert.equal(pairingTicket(text, origin), ticket)
+  assert.equal(readPairingLink('ftp://klyn-sudoku.pages.dev/sync#pair=' + ticket), null)
+  assert.equal(readPairingLink('https://klyn-sudoku.pages.dev@other.example/sync#pair=' + ticket), null)
+})
+
+test('both production URLs use the same pairing service, separate from previews and local sync', () => {
+  const customDomain = 'https://sudoku.klyn.gay'
+  assert.equal(sharesPairingService(customDomain, PRODUCTION_SYNC_ORIGIN), true)
+  assert.equal(sharesPairingService(PRODUCTION_SYNC_ORIGIN, customDomain), true)
+  assert.equal(sharesPairingService(customDomain, 'http://127.0.0.1:8766'), false)
+  assert.equal(sharesPairingService('https://branch.klyn-sudoku.pages.dev', PRODUCTION_SYNC_ORIGIN), false)
+  assert.equal(sharesPairingService('https://sudoku.klyn.gay.example', PRODUCTION_SYNC_ORIGIN), false)
 })
 
 test('the same live pairing code must be visible for at least 500 ms', () => {

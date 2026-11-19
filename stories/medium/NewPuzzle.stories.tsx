@@ -1,25 +1,33 @@
-import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { fn } from 'storybook/test'
-import { NewPuzzle } from '../../src/components/PuzzleDialogs'
-import { DialogStory } from '../support/frames'
+import { expect } from 'storybook/test'
+import { PreviewRouter } from '../support/frames'
 
 const meta = {
-  title: 'Medium/Dialogs/New puzzle',
-  component: NewPuzzle,
+  title: 'Medium/Puzzles/New puzzle',
   tags: ['!autodocs'],
-  args: { close: fn(), difficulty: 'easy', onDifficultyChange: fn(), onCreate: fn(), onImport: fn() },
-  render: (args) => {
-    const [difficulty, setDifficulty] = useState(args.difficulty)
-    return <DialogStory label="New puzzle">{(close) =>
-      <NewPuzzle {...args} difficulty={difficulty} close={() => { args.close(); close() }}
-        onDifficultyChange={(value) => { args.onDifficultyChange(value); setDifficulty(value) }} />
-    }</DialogStory>
-  },
-} satisfies Meta<typeof NewPuzzle>
+  parameters: { layout: 'fullscreen' },
+} satisfies Meta
 export default meta
 type Story = StoryObj<typeof meta>
-export const Easy: Story = {}
-export const Extreme: Story = { args: { difficulty: 'extreme' } }
-export const Windoku: Story = { args: { initialVariant: 'windoku', difficulty: 'medium' } }
-export const AutomaticDifficulty: Story = { args: { difficulty: 'auto' } }
+
+export const ChooseVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=classic" />,
+}
+
+export const ChooseDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=windoku" />,
+}
+
+export const Mobile: Story = {
+  ...ChooseVariant,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Next variant' }))
+    await canvas.findByRole('heading', { name: 'Killer' })
+    await userEvent.click(canvas.getByRole('link', { name: 'Continue' }))
+    await canvas.findByRole('heading', { name: 'Choose difficulty' })
+    await expect(canvas.getByText('Killer', { exact: true })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Back to variant' }))
+    await expect(await canvas.findByRole('heading', { name: 'Killer' })).toBeVisible()
+  },
+}

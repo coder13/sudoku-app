@@ -21,9 +21,11 @@ import { Route as LearnTechniqueRouteImport } from './routes/learn.$technique'
 import { Route as PuzzlesBrowseRouteImport } from './routes/puzzles.browse'
 import { Route as PuzzlesCollectionsRouteImport } from './routes/puzzles.collections'
 import { Route as PuzzlesNewRouteImport } from './routes/puzzles.new'
+import { Route as PuzzlesSolvedRouteImport } from './routes/puzzles.solved'
 import { Route as PuzzlesStatisticsRouteImport } from './routes/puzzles.statistics'
 import { Route as SettingsSectionRouteImport } from './routes/settings.$section'
 import { Route as SyncStepRouteImport } from './routes/sync.$step'
+import { Route as PuzzlesNewDifficultyRouteImport } from './routes/puzzles.new.difficulty'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -85,6 +87,11 @@ const PuzzlesNewRoute = PuzzlesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => PuzzlesRoute,
 } as any)
+const PuzzlesSolvedRoute = PuzzlesSolvedRouteImport.update({
+  id: '/solved',
+  path: '/solved',
+  getParentRoute: () => PuzzlesRoute,
+} as any)
 const PuzzlesStatisticsRoute = PuzzlesStatisticsRouteImport.update({
   id: '/statistics',
   path: '/statistics',
@@ -100,6 +107,11 @@ const SyncStepRoute = SyncStepRouteImport.update({
   path: '/$step',
   getParentRoute: () => SyncRoute,
 } as any)
+const PuzzlesNewDifficultyRoute = PuzzlesNewDifficultyRouteImport.update({
+  id: '/difficulty',
+  path: '/difficulty',
+  getParentRoute: () => PuzzlesNewRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -112,11 +124,13 @@ export interface FileRoutesByFullPath {
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
-  '/puzzles/new': typeof PuzzlesNewRoute
+  '/puzzles/new': typeof PuzzlesNewRouteWithChildren
+  '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/sync/$step': typeof SyncStepRoute
   '/learn/': typeof LearnIndexRoute
+  '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -128,11 +142,13 @@ export interface FileRoutesByTo {
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
-  '/puzzles/new': typeof PuzzlesNewRoute
+  '/puzzles/new': typeof PuzzlesNewRouteWithChildren
+  '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/sync/$step': typeof SyncStepRoute
   '/learn': typeof LearnIndexRoute
+  '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -146,11 +162,13 @@ export interface FileRoutesById {
   '/learn/$technique': typeof LearnTechniqueRoute
   '/puzzles/browse': typeof PuzzlesBrowseRoute
   '/puzzles/collections': typeof PuzzlesCollectionsRoute
-  '/puzzles/new': typeof PuzzlesNewRoute
+  '/puzzles/new': typeof PuzzlesNewRouteWithChildren
+  '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/sync/$step': typeof SyncStepRoute
   '/learn/': typeof LearnIndexRoute
+  '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -166,10 +184,12 @@ export interface FileRouteTypes {
     | '/puzzles/browse'
     | '/puzzles/collections'
     | '/puzzles/new'
+    | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
     | '/sync/$step'
     | '/learn/'
+    | '/puzzles/new/difficulty'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -182,10 +202,12 @@ export interface FileRouteTypes {
     | '/puzzles/browse'
     | '/puzzles/collections'
     | '/puzzles/new'
+    | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
     | '/sync/$step'
     | '/learn'
+    | '/puzzles/new/difficulty'
   id:
     | '__root__'
     | '/'
@@ -199,10 +221,12 @@ export interface FileRouteTypes {
     | '/puzzles/browse'
     | '/puzzles/collections'
     | '/puzzles/new'
+    | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
     | '/sync/$step'
     | '/learn/'
+    | '/puzzles/new/difficulty'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -301,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PuzzlesNewRouteImport
       parentRoute: typeof PuzzlesRoute
     }
+    '/puzzles/solved': {
+      id: '/puzzles/solved'
+      path: '/solved'
+      fullPath: '/puzzles/solved'
+      preLoaderRoute: typeof PuzzlesSolvedRouteImport
+      parentRoute: typeof PuzzlesRoute
+    }
     '/puzzles/statistics': {
       id: '/puzzles/statistics'
       path: '/statistics'
@@ -322,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SyncStepRouteImport
       parentRoute: typeof SyncRoute
     }
+    '/puzzles/new/difficulty': {
+      id: '/puzzles/new/difficulty'
+      path: '/difficulty'
+      fullPath: '/puzzles/new/difficulty'
+      preLoaderRoute: typeof PuzzlesNewDifficultyRouteImport
+      parentRoute: typeof PuzzlesNewRoute
+    }
   }
 }
 
@@ -337,17 +375,31 @@ const LearnRouteChildren: LearnRouteChildren = {
 
 const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren)
 
+interface PuzzlesNewRouteChildren {
+  PuzzlesNewDifficultyRoute: typeof PuzzlesNewDifficultyRoute
+}
+
+const PuzzlesNewRouteChildren: PuzzlesNewRouteChildren = {
+  PuzzlesNewDifficultyRoute: PuzzlesNewDifficultyRoute,
+}
+
+const PuzzlesNewRouteWithChildren = PuzzlesNewRoute._addFileChildren(
+  PuzzlesNewRouteChildren,
+)
+
 interface PuzzlesRouteChildren {
   PuzzlesBrowseRoute: typeof PuzzlesBrowseRoute
   PuzzlesCollectionsRoute: typeof PuzzlesCollectionsRoute
-  PuzzlesNewRoute: typeof PuzzlesNewRoute
+  PuzzlesNewRoute: typeof PuzzlesNewRouteWithChildren
+  PuzzlesSolvedRoute: typeof PuzzlesSolvedRoute
   PuzzlesStatisticsRoute: typeof PuzzlesStatisticsRoute
 }
 
 const PuzzlesRouteChildren: PuzzlesRouteChildren = {
   PuzzlesBrowseRoute: PuzzlesBrowseRoute,
   PuzzlesCollectionsRoute: PuzzlesCollectionsRoute,
-  PuzzlesNewRoute: PuzzlesNewRoute,
+  PuzzlesNewRoute: PuzzlesNewRouteWithChildren,
+  PuzzlesSolvedRoute: PuzzlesSolvedRoute,
   PuzzlesStatisticsRoute: PuzzlesStatisticsRoute,
 }
 

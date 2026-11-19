@@ -9,6 +9,6 @@ function ImportPage() {
   const canGoBack = useCanGoBack()
   return <ImportPuzzle fullPage close={() => {
     if (canGoBack) router.history.back()
-    else void navigate({ to: '/puzzles', replace: true })
+    else void navigate({ to: '/', search: {}, replace: true })
   }} />
 }

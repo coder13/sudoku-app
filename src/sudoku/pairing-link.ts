@@ -1,12 +1,30 @@
-// A QR code supplies a ticket for this app. Its contents are never used as a navigation target.
-export function pairingTicket(text: string, origin: string): string | null {
+export const PRODUCTION_SYNC_ORIGIN = 'https://klyn-sudoku.pages.dev'
+const productionOrigins = new Set([PRODUCTION_SYNC_ORIGIN, 'https://sudoku.klyn.gay'])
+
+export function isProductionSyncOrigin(origin: string): boolean {
+  return productionOrigins.has(origin)
+}
+
+export function sharesPairingService(origin: string, expectedOrigin: string): boolean {
+  return origin === expectedOrigin || (isProductionSyncOrigin(origin) && isProductionSyncOrigin(expectedOrigin))
+}
+
+// Parse the source address separately so the scanner can explain a site mismatch.
+export function readPairingLink(text: string): { origin: string; ticket: string } | null {
   try {
     const url = new URL(text)
     const path = url.pathname.replace(/\/$/, '')
-    if (url.origin !== origin || url.username || url.password || url.search ||
+    if ((url.protocol !== 'https:' && url.protocol !== 'http:') || url.username || url.password || url.search ||
         (path !== '/sync' && path !== '/sync/confirm')) return null
-    return /^#pair=([a-f0-9]{64})$/.exec(url.hash)?.[1] ?? null
+    const ticket = /^#pair=([a-f0-9]{64})$/.exec(url.hash)?.[1]
+    return ticket ? { origin: url.origin, ticket } : null
   } catch { return null }
+}
+
+// Only accept tickets for this site. Never navigate to a URL supplied by a QR code.
+export function pairingTicket(text: string, origin: string): string | null {
+  const link = readPairingLink(text)
+  return link?.origin === origin ? link.ticket : null
 }
 
 /** Feed consecutive camera observations to this tracker until a ticket stays in view for half a second. */

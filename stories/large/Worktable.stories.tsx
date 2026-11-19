@@ -22,7 +22,7 @@ const meta = {
     workspaceMode: DEFAULT_WORKSPACE_MODE,
     cellReferenceStyle: DEFAULT_CELL_REFERENCE_STYLE,
     multi: false, actionsRef: { current: null }, inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(),
-    beginResize: fn(), toggleMulti: fn(), onDifficultyChange: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(), onStopPlaying: fn(),
+    beginResize: fn(), toggleMulti: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(), onStopPlaying: fn(),
     onNewPuzzle: fn(), onCreatePuzzle: fn(), onEditPuzzle: fn(),
     showLeftPanel: true, showRightPanel: true, showBottomPanel: true, onOpenHintPanel: fn(), onOpenRightPanel: fn(),
     puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),
@@ -266,14 +266,13 @@ function WorktableExample(args: ComponentProps<typeof Worktable>) {
   const room = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot)
   const [height, setHeight] = useState(args.panelHeight)
   const [multi, setMulti] = useState(args.multi)
-  const [difficulty, setDifficulty] = useState(args.preferredDifficulty)
   const actionsRef = useRef<WorktableActions | null>(null)
   const game = room.games.find(({ id }) => id === room.active) ?? args.game
   return <div className="story-app worktable-story">
     <main className="page standard-workspace-page" aria-label="Sudoku workspace"><div className="workspace">
-      <Worktable {...args} key={`${game.id}-${game.source}`} game={game} games={room.games} preferredDifficulty={difficulty}
+      <Worktable {...args} key={`${game.id}-${game.source}`} game={game} games={room.games}
         actionsRef={actionsRef} panelHeight={height} setPanelHeight={setHeight} multi={multi}
-        toggleMulti={() => setMulti((value) => !value)} onDifficultyChange={setDifficulty} />
+        toggleMulti={() => setMulti((value) => !value)} />
     </div></main>
   </div>
 }

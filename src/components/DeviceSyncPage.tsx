@@ -4,7 +4,7 @@ import { ArrowLeft, KeyRound, Link2, QrCode } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { PairingInvitation } from './PairingInvitation'
 import { PairingScanner } from './PairingScanner'
-import { pairingTicket } from '../sudoku/pairing-link'
+import { pairingTicket, PRODUCTION_SYNC_ORIGIN } from '../sudoku/pairing-link'
 import { LinkedDeviceRow } from './LinkedDeviceRow'
 import { useMobileLayout } from './mobile-layout'
 import { deviceSync, recoveryStorage } from '../sudoku/device-sync'
@@ -12,6 +12,7 @@ import { isSyncPage, syncPageTitles } from '../sudoku/sync-pages'
 
 type Invitation = { ticket: string; expires: number; issuer: string }
 const invitationStorage = 'sudoku-app:sync:tab-invitation'
+const productionSync = import.meta.env.SUDOKU_PRODUCTION_SYNC === true
 declare module '@tanstack/history' {
   interface HistoryState {
     fromSyncScanner?: boolean
@@ -28,6 +29,7 @@ export function DeviceSyncPage() {
   const segment = current.pathname.split('/')[2] ?? ''
   const screen = isSyncPage(segment) ? segment : 'start'
   const ticket = typeof window === 'undefined' ? null : pairingTicket(new URL(current.href, location.origin).href, location.origin)
+  const pairingOrigin = productionSync ? PRODUCTION_SYNC_ORIGIN : typeof window === 'undefined' ? '' : location.origin
   const [key, setKey] = useState(() => {
     try { return localStorage.getItem(recoveryStorage + deviceSync.credentials()?.id) ?? '' } catch { return '' }
   })
@@ -145,6 +147,7 @@ export function DeviceSyncPage() {
         onClick={back}><ArrowLeft size={20} /></IconButton>
       <h1 ref={heading} tabIndex={-1}>{screen === 'start' ? 'Device sync' : syncPageTitles[screen]}</h1>
     </header>
+    {productionSync && <p><strong>Production sync.</strong> Changes here sync to the live app.</p>}
     {status.message && <p role="status">{status.message}</p>}
     {(error || listError) && <p className="workspace-error" role="alert">{error || listError}</p>}
     {!status.linked && status.ready && screen === 'confirm' && ticket && <>
@@ -160,7 +163,7 @@ export function DeviceSyncPage() {
       </ChoiceButton>
     </div>}
     {!status.linked && status.ready && screen === 'scan' && <>
-        <PairingScanner onTicket={confirmTicket} />
+        <PairingScanner pairingOrigin={pairingOrigin} onTicket={confirmTicket} />
         <Link className={buttonClassName()} to="/sync/$step" params={{ step: 'recover' }}><KeyRound size={16} aria-hidden />Use a recovery key</Link>
     </>}
     {!status.linked && status.ready && screen === 'recover' &&
@@ -173,7 +176,7 @@ export function DeviceSyncPage() {
       <Link className={buttonClassName()} to="/sync/$step" params={{ step: 'devices' }} replace>View linked devices</Link>
     </>}
     {status.linked && screen === 'invite' && (activeInvite
-      ? <PairingInvitation key={invite.ticket} link={location.origin + '/sync#pair=' + invite.ticket} expires={invite.expires} onClose={back} />
+      ? <PairingInvitation key={invite.ticket} link={pairingOrigin + '/sync#pair=' + invite.ticket} expires={invite.expires} onClose={back} />
       : <Button variant="primary" disabled={working} onClick={() => void action(showCode)}>Create a new link</Button>)}
     {status.linked && screen === 'devices' && <Button ref={inviteButton} variant="primary" disabled={working}
       onClick={() => void action(showCode)}><QrCode size={18} />Link another device</Button>}
