@@ -174,6 +174,27 @@ export const CalcudokuFromGameTypes: Story = {
   },
 }
 
+export const FutoshikiFromGameTypes: Story = {
+  ...ChooseVariant,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Change game type' }))
+    await userEvent.click(await canvas.findByRole('link', { name: /Futoshiki/ }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Start easy puzzle' }))
+    const cell = await canvas.findByRole('button', { name: /^R2C3, empty/ })
+    await expect(cell).toHaveAccessibleName(/R2C3 is less than R2C2/)
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect(canvas.getByRole('button', { name: /^R2C2, empty/ })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Futoshiki difficulty' }))
+    const increase = await canvas.findByRole('button', { name: 'Increase difficulty' })
+    await userEvent.click(increase)
+    await userEvent.click(increase)
+    await userEvent.click(canvas.getByRole('button', { name: 'Start hard puzzle' }))
+    await expect(await canvas.findByRole('group', { name: 'Digit pad' })).toHaveClass('six-keypad')
+  },
+}
+
 export const RenbanVariant: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new?variant=renban" />,
 }

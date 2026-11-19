@@ -1,5 +1,5 @@
 import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
-import { Calculator, Check, ChevronLeft, ChevronRight, Hash, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
@@ -22,7 +22,7 @@ import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
 import './number-puzzle.css'
 
-export type NumberGame = GeneratedNumberGame
+export type NumberGame = GeneratedNumberGame | 'futoshiki'
 
 type BoardCell = {
   label?: string
@@ -48,15 +48,16 @@ export type NumberBoard = {
 }
 
 export type NumberGameConfig<Entry extends NumberPuzzleEntry> = {
-  game: NumberGame
   name: string
   rules: string
   entries: readonly Entry[]
   techniques: readonly string[]
   board: (entry: Entry) => NumberBoard
   hasClueCells?: boolean
-  generatedEntry?: (id: string, number: number) => Entry | null
-}
+} & (
+  | { game: GeneratedNumberGame; generatedEntry?: (id: string, number: number) => Entry | null }
+  | { game: 'futoshiki'; generatedEntry?: never }
+)
 
 function positionKey(game: NumberGame, id: string) {
   return `${game}.position.v1.${id}`
@@ -151,7 +152,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   const next = group.find(entry => !started.has(entry.id) && !solved.has(entry.id))
     ?? group.find(entry => started.has(entry.id)) ?? group[0]
   const busy = generation.pending !== null
-  const GameIcon = game === 'kakuro' ? Hash : Calculator
+  const GameIcon = { kakuro: Hash, calcudoku: Calculator, futoshiki: MoveHorizontal }[game]
 
   function start() {
     if (generatedEntry) generation.generate(difficulty)
@@ -552,7 +553,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           </div>
         </div>
         <div className="keypad-stack">
-          <PuzzleKeypad label="Digit pad" variant={maxValue === 4 ? 'mini' : undefined}>
+          <PuzzleKeypad label="Digit pad" variant={maxValue === 4 ? 'mini' : maxValue === 6 ? 'six' : undefined}>
             {digits.map(digit => <button key={digit} type="button" className="key"
               aria-label={`Enter ${digit}`} disabled={locked || !editable[selection]}
               onClick={() => enter(digit)}>{digit}</button>)}

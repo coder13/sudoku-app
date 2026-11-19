@@ -5,6 +5,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { ocrAssetFileNames } from './scripts/ocr-assets.ts'
 import { calcudokuCatalog } from './src/calcudoku/catalog.ts'
+import { futoshikiCatalog } from './src/futoshiki/catalog.ts'
 import { kakuroCatalog } from './src/kakuro/catalog.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
 import { syncPageTitles } from './src/sudoku/sync-pages.ts'
@@ -69,6 +70,8 @@ function prerenderPages() {
     '/puzzles/calcudoku',
     '/puzzles/calcudoku/generated',
     ...calcudokuCatalog.map(({ id }) => `/puzzles/calcudoku/${id}`),
+    '/puzzles/futoshiki',
+    ...futoshikiCatalog.map(({ id }) => `/puzzles/futoshiki/${id}`),
     '/puzzles/kakuro',
     '/puzzles/kakuro/generated',
     ...kakuroCatalog.map(({ id }) => `/puzzles/kakuro/${id}`),

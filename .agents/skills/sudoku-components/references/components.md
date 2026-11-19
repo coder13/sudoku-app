@@ -112,3 +112,5 @@ Search by component name or browse the sections below.
 | [Number puzzle](../../../../src/components/NumberPuzzle.tsx) | `NumberGameDifficulty` uses the shared selector, remembers the last difficulty, and lists local progress. It can start a catalog or generated puzzle. `NumberGamePlay` uses the shared Play layout, keypad, Hint, Solution, and Technique finder. It receives a game-specific board, check, hints, and exact solver. `NumberGameHeading` and `NumberPuzzleBoard` handle internal navigation and play. |
 | [Calcudoku](../../../../src/components/Calcudoku.tsx) | `CalcudokuDifficultyPage` selects difficulty. `CalcudokuPlay` supplies arithmetic cage borders, clue labels, and rules. |
 | [Calcudoku play route](../../../../src/routes/puzzles.calcudoku_.$puzzle.tsx) | `CalcudokuPlayRoute` opens a catalog or generated puzzle from its URL. |
+| [Futoshiki](../../../../src/components/Futoshiki.tsx) | `FutoshikiDifficultyPage` selects difficulty. `FutoshikiPlay` supplies directed inequality symbols, givens, and rules. |
+| [Futoshiki play route](../../../../src/routes/puzzles.futoshiki_.$puzzle.tsx) | `FutoshikiPlayRoute` opens a catalog puzzle from its URL. |
