@@ -36,6 +36,9 @@ pub enum SizedConstraint {
     Thermometer {
         cells: Vec<usize>,
     },
+    Renban {
+        cells: Vec<usize>,
+    },
 }
 
 /// A deduction from a standard house or one authored rule.
@@ -97,6 +100,7 @@ pub struct SizedConstraintGrid {
     parity: Vec<(usize, u16)>,
     diagonals: Vec<Vec<usize>>,
     thermometers: Vec<Vec<usize>>,
+    renbans: Vec<Vec<usize>>,
 }
 
 impl SizedConstraintGrid {
@@ -105,6 +109,7 @@ impl SizedConstraintGrid {
         let mut parity = vec![layout.full_mask; layout.cell_count()];
         let mut diagonals = Vec::new();
         let mut thermometers = Vec::new();
+        let mut renbans = Vec::new();
         for rule in rules {
             match rule {
                 SizedConstraint::Diagonal(direction) => {
@@ -138,6 +143,17 @@ impl SizedConstraintGrid {
                     }
                     thermometers.push(cells.clone());
                 }
+                SizedConstraint::Renban { cells } => {
+                    if spec.size > 9
+                        || !(1..=spec.size).contains(&cells.len())
+                        || cells.iter().enumerate().any(|(index, &cell)| {
+                            cell >= layout.cell_count() || cells[..index].contains(&cell)
+                        })
+                    {
+                        return None;
+                    }
+                    renbans.push(cells.clone());
+                }
             }
         }
         let parity = parity
@@ -151,6 +167,7 @@ impl SizedConstraintGrid {
             parity,
             diagonals,
             thermometers,
+            renbans,
         })
     }
 
@@ -164,7 +181,7 @@ impl SizedConstraintGrid {
         self.search(digits, budget, 1).1
     }
 
-    /// Apply the placed digits, parity, and support through overlapping thermometers.
+    /// Apply the placed digits and propagate support through overlapping rules.
     pub fn candidates(&self, digits: &[u8]) -> Option<Vec<u16>> {
         let mut candidates = self.layout.candidates(digits)?;
         if !self.permits(digits) {
@@ -204,6 +221,12 @@ impl SizedConstraintGrid {
             for cells in &self.thermometers {
                 changed |= self.restrict_thermometer(cells, candidates);
             }
+            for cells in &self.renbans {
+                for (&cell, &mask) in cells.iter().zip(&self.renban_masks(cells, candidates)) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
             if !changed {
                 break;
             }
@@ -231,6 +254,22 @@ impl SizedConstraintGrid {
             };
         }
         changed
+    }
+
+    fn renban_masks(&self, cells: &[usize], candidates: &[u16]) -> [u16; 9] {
+        let mut domains = [0; 9];
+        let mut support = [0; 9];
+        for (slot, &cell) in domains.iter_mut().zip(cells) {
+            *slot = candidates[cell];
+        }
+        let domains = &domains[..cells.len()];
+        let masks = &mut support[..cells.len()];
+        if self.layout.spec.size <= 6 {
+            crate::variant::renban_support::<6, 64>(domains, masks);
+        } else {
+            crate::variant::renban_support::<9, 512>(domains, masks);
+        }
+        support
     }
 
     /// Match each rule against the same candidate snapshot so a hint can identify
@@ -328,6 +367,15 @@ impl SizedConstraintGrid {
                             house.candidates[cell] & !support[cell],
                             &mut actions,
                         );
+                    }
+                }
+                SizedConstraint::Renban { cells } => {
+                    let support = self.renban_masks(cells, &domains);
+                    for (&cell, &mask) in cells.iter().zip(&support) {
+                        if mask == 0 {
+                            return None;
+                        }
+                        eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
                     }
                 }
             }
@@ -520,6 +568,9 @@ impl SizedConstraintGrid {
                     self.restrict_thermometer(cells, &mut support);
                     support.contains(&0)
                 }
+                SizedConstraint::Renban { cells } => {
+                    self.renban_masks(cells, &domains)[..cells.len()].contains(&0)
+                }
             };
             if fails {
                 return Some(SizedConstraintFailure::Rule { rule });
@@ -581,6 +632,22 @@ impl SizedConstraintGrid {
                     low += 1;
                 }
                 true
+            })
+            && self.renbans.iter().all(|cells| {
+                let mut used = 0u16;
+                for &cell in cells {
+                    if digits[cell] == 0 {
+                        continue;
+                    }
+                    let bit = 1 << (digits[cell] - 1);
+                    if used & bit != 0 {
+                        return false;
+                    }
+                    used |= bit;
+                }
+                used == 0
+                    || (u16::BITS - used.leading_zeros() - used.trailing_zeros()) as usize
+                        <= cells.len()
             })
     }
 }

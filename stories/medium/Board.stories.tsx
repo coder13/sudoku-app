@@ -29,6 +29,7 @@ export const SixWithCombinedRules: Story = {
       { type: 'diagonal', diagonal: 'main' },
       { type: 'parity', parity: 'even', cells: [3, 15] },
       { type: 'parity', parity: 'odd', cells: [25] },
+      { type: 'renban', cells: [20, 13, 19] },
       { type: 'thermometer', cells: [12, 13, 20, 27] },
     ],
     selected: [20], candidates: Array.from({ length: 36 }, (_, cell) => cell === 20 ? 0b101000 : 0),

@@ -14,16 +14,17 @@ const ruleNames = {
   odd: 'Odd circles',
   even: 'Even squares',
   thermometer: 'Thermometer',
+  renban: 'Renban line',
 }
 
 type RuleChoice = keyof typeof ruleNames
 const cellName = (cell: number) => `R${Math.floor(cell / 6) + 1}C${cell % 6 + 1}`
 const ruleChoice = (rule: SizedConstraintRule) => rule.type === 'diagonal' ? rule.diagonal
-  : rule.type === 'parity' ? rule.parity : 'thermometer'
+  : rule.type === 'parity' ? rule.parity : rule.type
 
 function draftRule(kind: RuleChoice, cells: readonly number[]): SizedConstraintRule {
   if (kind === 'main' || kind === 'anti') return { type: 'diagonal', diagonal: kind }
-  if (kind === 'thermometer') return { type: 'thermometer', cells }
+  if (kind === 'thermometer' || kind === 'renban') return { type: kind, cells }
   return { type: 'parity', parity: kind, cells }
 }
 
@@ -36,7 +37,9 @@ export function EditSixRules({ game, layout, close }: { game: Game; layout: SixG
   const [error, setError] = useState('')
   const id = useId()
   const otherRules = rules.filter((_, index) => index !== editing)
-  const rule = draftRule(kind, cells)
+  const previous = rules[editing]
+  const rule = kind === 'renban' && previous?.type === 'renban' && cells === previous.cells
+    ? previous : draftRule(kind, cells)
   const preview = isSixRuleList([rule]) ? [...otherRules, rule] : otherRules
 
   function selectRule(index: number) {
@@ -52,7 +55,7 @@ export function EditSixRules({ game, layout, close }: { game: Game; layout: SixG
     setActive(cell)
     setError('')
     setCells(current => current.includes(cell) ? current.filter(item => item !== cell)
-      : kind === 'thermometer' && current.length === 6 ? current : [...current, cell])
+      : (kind === 'thermometer' || kind === 'renban') && current.length === 6 ? current : [...current, cell])
   }
 
   function moveFocus(event: KeyboardEvent<HTMLDivElement>) {
@@ -86,7 +89,8 @@ export function EditSixRules({ game, layout, close }: { game: Game; layout: SixG
     if (editing < 0) next.push(rule)
     else next[editing] = rule
     if (!isSixRuleList(next)) {
-      setError(kind === 'thermometer' ? 'Select two to six cells for the thermometer.' : 'Select the cells for this rule.')
+      setError(kind === 'thermometer' ? 'Select two to six cells for the thermometer.'
+        : kind === 'renban' ? 'Select up to six cells for the Renban line.' : 'Select the cells for this rule.')
       return
     }
     update(next)
@@ -111,7 +115,8 @@ export function EditSixRules({ game, layout, close }: { game: Game; layout: SixG
       </SelectControl>
       {'cells' in rule && <p id={`${id}-instructions`}>{kind === 'thermometer'
         ? 'Select the cells in order, from the bulb to the tip.'
-        : 'Select the cells that should have a marker.'}</p>}
+        : kind === 'renban' ? 'Select the cells in the order you want to draw the line.'
+          : 'Select the cells that should have a marker.'}</p>}
       <Board grid={layout} sixRules={preview} givens={game.givens} values={valuesOf(game)} showGuides
         label="Rule editor" selected={cells} active={active} onCell={'cells' in rule ? selectCell : undefined}
         onGridKeyDown={'cells' in rule ? moveFocus : undefined}

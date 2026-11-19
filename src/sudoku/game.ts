@@ -143,7 +143,8 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   if (game.grid?.size === 6) {
     const rules = game.six?.rules ?? game.sixRules ?? []
     const keys = [...new Set(rules.map(rule => JSON.stringify(orderedPuzzleFields(
-      rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) } : rule,
+      rule.type === 'renban' ? { type: rule.type, cells: [...rule.cells].sort((a, b) => a - b) }
+        : rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) } : rule,
     ))))].sort()
     return `six:${game.grid.boxRows}:${game.givens}:${keys.join(',')}`
   }

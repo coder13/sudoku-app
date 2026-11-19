@@ -33,21 +33,45 @@ function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?:
   </g>
 }
 
+const renbanColors = ['#cf419c', '#8353be', '#d26878', '#aa48bf']
+
+function RenbanClue({ cells, segments, number, size = 9 }: {
+  cells: readonly number[]; segments?: readonly (readonly number[])[]; number: number; size?: number
+}) {
+  const color = renbanColors[(number - 1) % renbanColors.length]
+  return <g className="variant-renban" data-renban={number} stroke={color} fill={color}>
+    {(segments ?? [cells]).map((path, part) => path.length === 1
+      ? <circle key={part} cx={center(path[0], size)[0]} cy={center(path[0], size)[1]} r=".12" />
+      : <polyline key={part} points={points(path, size)} />)}
+  </g>
+}
+
 export function SixClues({ rules }: { rules: readonly SizedConstraintRule[] }) {
-  return <svg viewBox="0 0 6 6" aria-hidden="true" className="variant-clues">
+  const renbans = rules.filter(rule => rule.type === 'renban')
+  const lanes = coloredLineOverlapLanes(renbans, 6)
+  return <svg viewBox="0 0 6 6" aria-hidden="true" className="variant-clues" data-six-clues>
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={6} />)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={6} />)}
     {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={6} />)}
+    {renbans.map((rule, index) => <RenbanClue key={index} {...rule} number={index + 1} size={6} />)}
+    {[...lanes].map(([index, edges]) => <g key={index} className="variant-renban-overlap" data-renban={index + 1}>
+      {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={6} color={renbanColors[index % renbanColors.length]} />)}
+    </g>)}
   </svg>
 }
 
 export function sixClueLabels(rules: readonly SizedConstraintRule[]) {
   const labels: Set<string>[] = Array.from({ length: 36 }, () => new Set())
+  let renbanNumber = 0
   for (const rule of rules) {
     if (rule.type === 'diagonal') {
       for (const cell of sixDiagonalCells(rule.diagonal)) labels[cell].add(rule.diagonal === 'main' ? 'top-left diagonal' : 'top-right diagonal')
     } else if (rule.type === 'parity') {
       for (const cell of rule.cells) labels[cell].add(rule.parity === 'odd' ? 'odd circle, digit must be 1, 3, or 5' : 'even square, digit must be 2, 4, or 6')
+    } else if (rule.type === 'renban') {
+      renbanNumber++
+      for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1
+        ? 'one cell, any digit from 1 to 6' : `${rule.cells.length} different consecutive digits in any order`}`)
     } else {
       rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'thermometer bulb' : index === rule.cells.length - 1 ? 'thermometer tip' : 'thermometer'))
     }
@@ -201,8 +225,8 @@ function InequalityClue({ less, greater, offset, compact = false }: { less: numb
 
 type SumKind = 'xv' | 'adjacent-total'
 
-function ColoredLineLane({ cells, lane, count, color, endpoints, dashed }: { cells: readonly [number, number]; lane: number; count: number; color: string; endpoints?: readonly number[]; dashed?: boolean }) {
-  const [ax, ay] = center(cells[0]), [bx, by] = center(cells[1])
+function ColoredLineLane({ cells, lane, count, color, endpoints, dashed, size = 9 }: { cells: readonly [number, number]; lane: number; count: number; color: string; endpoints?: readonly number[]; dashed?: boolean; size?: number }) {
+  const [ax, ay] = center(cells[0], size), [bx, by] = center(cells[1], size)
   const length = Math.hypot(bx - ax, by - ay)
   const offset = (lane - (count - 1) / 2) * Math.min(.1, .26 / count)
   const dx = -(by - ay) / length * offset, dy = (bx - ax) / length * offset
@@ -263,7 +287,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const coloredLanes = useMemo(() => coloredLineOverlapLanes(rules), [rules])
   const renbanIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'renban') renbanIndices.set(index, renbanIndices.size) })
-  const renbanColor = (index: number) => ['#cf419c', '#8353be', '#d26878', '#aa48bf'][renbanIndices.get(index)! % 4]
+  const renbanColor = (index: number) => renbanColors[renbanIndices.get(index)! % renbanColors.length]
   const regionSumIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0'][regionSumIndices.get(index)! % 4]
@@ -372,11 +396,7 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
               : <polyline points={points(rule.cells)} />}
           </g>
         case 'renban':
-          return <g key={index} className="variant-renban" data-renban={renbanIndices.get(index)! + 1} stroke={renbanColor(index)} fill={renbanColor(index)}>
-            {(rule.segments ?? [rule.cells]).map((path, part) => path.length === 1
-              ? <circle key={part} cx={center(path[0])[0]} cy={center(path[0])[1]} r=".12" />
-              : <polyline key={part} points={points(path)} />)}
-          </g>
+          return <RenbanClue key={index} {...rule} number={renbanIndices.get(index)! + 1} />
         case 'between':
           return <BetweenClue key={index} cells={rule.cells} />
         case 'region-sum':
