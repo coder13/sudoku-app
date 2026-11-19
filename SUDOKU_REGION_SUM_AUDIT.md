@@ -1,6 +1,6 @@
 # Region Sum Lines app integration
 
-Implementation and controlled timing baseline: main `a761a71970f58aa240fbfeeab7e37f3a68b4e34c`. Before release, merge main `acf77b1f63ca6b3b1ca740bde580be27efc54ce3`, including the independent solved-view and mobile-header changes. The native equal-sum rule, proof formatter, 48-point Medium technique and three practice positions already exist. This integration adds complete app support and Medium New Puzzle recipes. Scoring version 8, technique costs and enabled-technique semantics stay unchanged.
+Implementation and controlled timing baseline: main `a761a71970f58aa240fbfeeab7e37f3a68b4e34c`. Before release, the branch incorporated main `acf77b1f63ca6b3b1ca740bde580be27efc54ce3`, including the independent solved-view and mobile-header changes. The native equal-sum rule, proof formatter, 48-point Medium technique and three practice positions already exist. This integration adds complete app support and Medium New Puzzle recipes. Scoring version 8, technique costs and enabled-technique semantics stay unchanged.
 
 ## Source and mathematical controls
 
@@ -44,7 +44,7 @@ Generation carves fresh givens from the attributed Symmetease layout and compati
 
 `compare-geometry-engines.mjs` compares the released Between artifact with the new app artifact using exact full responses, including failures, ordering, scores, scoring version, evidence and scopes. All **7,103 responses** match: 363 positive practice positions, 121 detectors and complete traces/ratings/every hint page across 45 stored corpus positions, followed by 200 generation requests across ten families. Those generation pairs retain 194 accepted results and six exhausted searches (one Windoku, one Diagonal, four Jigsaw). Twenty new Region Sum requests all succeed. No scoring metadata is stripped from the comparisons.
 
-Local verification passes 369 native tests including seven Cargo doc examples, 562 app tests, 345 Wasm contracts, TypeScript, strict typing of all new contracts and the 121-component catalog. Strict full/core/variants Cargo docs pass. After integrating main `acf77b1`, the full 562-app/345-Wasm suites, TypeScript, catalog and production/offline build pass again, with 171 prerendered routes. The integration leaves the tested native sources and app Wasm hash unchanged. Final feature-matrix, four-profile, deployment and exact-head merge gates remain pending.
+Local verification passes 369 native tests including seven Cargo doc examples, 562 app tests, 345 Wasm contracts, TypeScript, strict typing of all new contracts and the 121-component catalog. Strict full/core/variants Cargo docs pass. After integrating main `acf77b1`, the full 562-app/345-Wasm suites, TypeScript, catalog and production/offline build pass again, with 171 prerendered routes. The integration leaves the tested native sources and app Wasm hash unchanged. All exact-head feature-matrix, four-profile, app/Wasm, strict documentation and deployment gates pass; the release is recorded below.
 
 ## Performance
 
@@ -95,3 +95,11 @@ The package baseline is a separate production build of main `acf77b1`, compared 
 | App Wasm | 3,430,109 / 898,293 | 3,416,046 / 893,636 | -14,063 / -4,657 |
 
 The Wasm size change accompanies the optional rule field and the generation identity fix; it is not a separate algorithm optimization or a promised future size saving. Reduced-profile costs and feature gates are checked in release CI. The remaining five native UI families, thirteen older generation integrations, authored-source semantics, other formats and the broader R&D goal remain open.
+
+## Release
+
+[PR 193](https://github.com/coder13/sudoku-app/pull/193) merged at `3706a0f19bb4f8ffb25e6dca4762d05be1a10f17` after all checks passed on reviewed head `4d284a679d8cd92507dc6e3f82a71c8cd652f274` in [CI run 44460015789](https://github.com/coder13/sudoku-app/actions/runs/44460015789). Completed logs confirm 369 native tests including seven Cargo examples, sixteen capability combinations, strict full/core/variants docs, four Wasm profiles, 562 app tests, 345 Wasm contracts, TypeScript and the 121-component catalog. Deployment and header checks pass. The local production/offline build prerenders 171 routes.
+
+Fetched main contains both the reviewed head and merge commit, with identical Rust, scripts, app, tests, stories, dependencies and component catalog. The isolated source worktree remains pinned to that reviewed head. The separately compiled preview engine is 3,416,046 bytes, SHA-256 `f4f2a123db3a51b2d7873dc8354098204637dd402efa60ebad58b0e9accdc149`; all 7,103 complete-response comparisons against the local artifact pass, including the 200 generation outcomes. Read-only HTTP confirms the published shell, Region Sum lesson, service-worker asset list and referenced Wasm asset. Deployment verification uses the actual service-worker asset path. These checks do not constitute live layout, keyboard or pointer review.
+
+Issue 67 is closed. Issue 192 retains the partial human paths, single FaxQ hint and slow rating/search work. Five existing native UI families, thirteen older New Puzzle integrations, authored-source semantics, remaining formats and the full R&D goal remain open.
