@@ -101,10 +101,10 @@ for (const [caseIndex, { operation, maxNodes, expected }] of cases.entries()) {
       } else {
         assert.deepEqual(result.game.variant.puzzle, puzzle)
         assert.equal(result.game.variant.solution, solution)
-        assert.deepEqual(calls.map(call => call.request.operation), ['analyze', 'solve', 'rate'])
-        assert.equal(calls[2].response.value.status, 'stalled')
-        assert.equal(calls[2].response.value.points, 0)
-        assert.equal(calls[2].response.value.scoringVersion, 8)
+        assert.deepEqual(calls.map(call => call.request.operation), ['solve-unique', 'rate'])
+        assert.equal(calls[1].response.value.status, 'stalled')
+        assert.equal(calls[1].response.value.points, 0)
+        assert.equal(calls[1].response.value.scoringVersion, 8)
         // ID and creation time come from the app, independently of the engine.
         const { id: _, created, ...game } = result.game
         response = { ...result, game, calls: calls.map(({ request, response }) => ({ request, response })) }
