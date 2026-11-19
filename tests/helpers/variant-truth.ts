@@ -73,6 +73,12 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         break
       }
       case 'inequality': assert.ok(digits[rule.less] < digits[rule.greater]); break
+      case 'between': {
+        const first = digits[rule.cells[0]], last = digits[rule.cells[rule.cells.length - 1]]
+        for (const cell of rule.cells.slice(1, -1)) assert.ok(
+          first < digits[cell] && digits[cell] < last || last < digits[cell] && digits[cell] < first)
+        break
+      }
       case 'thermometer':
         rule.cells.slice(1).forEach((cell, i) => assert.ok(digits[rule.cells[i]] < digits[cell]))
         break

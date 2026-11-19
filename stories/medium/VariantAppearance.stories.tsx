@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
+import betweenNewman from '../../tests/fixtures/between-newman.json'
 import { Board } from '../../src/components/Board'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
 import { jigsawLayout, variantSeeds } from '../../src/sudoku/variant-generation'
@@ -48,4 +49,19 @@ export const Jigsaw: Story = {
   parameters: { docs: { description: { story:
     'Thin grid lines separate every row and column. Bold outlines show the nine irregular regions. Every row, column, and outlined region contains 1–9. [PuzzleLab](https://puzzlelab.app/jigsaw-sudoku) · [Kawu](https://kawu.com/jigsaw-sudoku)',
   } } },
+}
+
+export const BetweenLines: Story = {
+  args: candidateGrid(betweenNewman.puzzle as VariantPuzzle, 'Between Lines Sudoku grid'),
+  parameters: { docs: { description: { story: 'Between, the Lines by Philip Newman. Two outlined circles bound each independent path. Every interior digit is strictly between the endpoint digits; interior digits can repeat when the other rules allow it.' } } },
+}
+
+export const BetweenLinesCompact: Story = {
+  ...BetweenLines,
+  parameters: { ...BetweenLines.parameters, gridWidth: 290 },
+}
+
+export const BetweenSeparatedCells: Story = {
+  args: candidateGrid({ version: 1, givens: '0'.repeat(81), rules: [{ type: 'between', cells: [0, 40, 80] }] }, 'Between line with separated cells'),
+  parameters: { docs: { description: { story: 'The dashed connectors skip unmarked cells. The small dot identifies R5C5 as the one interior cell between the two endpoint circles.' } } },
 }

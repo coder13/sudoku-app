@@ -1,0 +1,113 @@
+{
+  "source": "https://www.gmpuzzles.com/blog/2026/08/between-lines-sudoku-by-philip-newman/",
+  "title": "Between, the Lines",
+  "author": "Philip Newman",
+  "published": "2026-08-22",
+  "pdf": "https://www.gmpuzzles.com/images/puzzles2026/260822-BetweenLinesSudoku-BetweenTheLines.pdf",
+  "solutionPdf": "https://www.gmpuzzles.com/images/puzzles2026/260822-BetweenLinesSudoku-BetweenTheLines-soln.pdf",
+  "pdfSha256": "409ce0be75139565204c8409389b8fb78fc57d81269c71609b7dbdebc24da66c",
+  "solutionPdfSha256": "0127e224985db5e4c54b0028e828210b0d175f9673fc84f25bd8fafa6184b3a4",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000003000001050000070000000703005000000000400602000000020000040800000600000000",
+    "rules": [
+      {
+        "type": "between",
+        "cells": [
+          2,
+          1,
+          0,
+          9,
+          18,
+          19,
+          20
+        ]
+      },
+      {
+        "type": "between",
+        "cells": [
+          10,
+          11,
+          12,
+          21,
+          30,
+          29,
+          28
+        ]
+      },
+      {
+        "type": "between",
+        "cells": [
+          14,
+          23,
+          32,
+          33,
+          34,
+          25,
+          16
+        ]
+      },
+      {
+        "type": "between",
+        "cells": [
+          24,
+          15,
+          6,
+          7,
+          8,
+          17,
+          26
+        ]
+      },
+      {
+        "type": "between",
+        "cells": [
+          54,
+          63,
+          72,
+          73,
+          74,
+          65,
+          56
+        ]
+      },
+      {
+        "type": "between",
+        "cells": [
+          64,
+          55,
+          46,
+          47,
+          48,
+          57,
+          66
+        ]
+      },
+      {
+        "type": "between",
+        "cells": [
+          52,
+          51,
+          50,
+          59,
+          68,
+          69,
+          70
+        ]
+      },
+      {
+        "type": "between",
+        "cells": [
+          60,
+          61,
+          62,
+          71,
+          80,
+          79,
+          78
+        ]
+      }
+    ]
+  },
+  "solution": "721958463394261758568374921816793245932145687457682319179526834243817596685439172"
+}

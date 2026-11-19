@@ -1,6 +1,7 @@
 import { STARTER } from './formats.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
+import { betweenState } from './between.ts'
 import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
@@ -164,6 +165,17 @@ export function valuesOf(game: Game): string {
   return [...game.givens].map((digit, i) => digit === '0' ? game.position.entries[i] : digit).join('')
 }
 
+function placedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
+  const areas = globalEntropyState(puzzle, values)
+  const lines = betweenState(puzzle, values)
+  if (!areas) return lines
+  if (!lines) return areas
+  return {
+    allowed: areas.allowed.map((mask, cell) => mask & lines.allowed[cell]),
+    conflicts: new Set([...areas.conflicts, ...lines.conflicts]),
+  }
+}
+
 export function conflictsOf(values: string, puzzle?: VariantPuzzle): Set<number> {
   const conflicts = new Set<number>()
   for (let i = 0; i < 81; i++) {
@@ -176,7 +188,7 @@ export function conflictsOf(values: string, puzzle?: VariantPuzzle): Set<number>
       }
     }
   }
-  for (const cell of globalEntropyState(puzzle, values)?.conflicts ?? []) conflicts.add(cell)
+  for (const cell of placedRuleState(puzzle, values)?.conflicts ?? []) conflicts.add(cell)
   return conflicts
 }
 
@@ -342,9 +354,9 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
           remaining & ~((peer(cell, i, game.variant?.puzzle) ? bit : 0) |
             variantDigitExclusions(game.variant?.puzzle, cell, i, value)), mask)
         const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
-        const areaMasks = globalEntropyState(game.variant?.puzzle, values)?.allowed
-        center = center.map((mask, i) => clearCandidates(mask, i) & (areaMasks?.[i] ?? 511))
-        corner = corner.map((mask, i) => clearCandidates(mask, i) & (areaMasks?.[i] ?? 511))
+        const ruleMasks = placedRuleState(game.variant?.puzzle, values)?.allowed
+        center = center.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
+        corner = corner.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
       } else {
         center = center.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
         corner = corner.map((mask, i) => editable.includes(i) && game.position.entries[i] === '0' ? 0 : mask)
@@ -451,10 +463,10 @@ export function fillEntries(game: Game, nextValues: string): Game {
 
   if (changed) {
     const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
-    const areaMasks = globalEntropyState(game.variant?.puzzle, values)?.allowed
-    if (areaMasks) for (let cell = 0; cell < 81; cell++) {
-      center[cell] &= areaMasks[cell]
-      corner[cell] &= areaMasks[cell]
+    const ruleMasks = placedRuleState(game.variant?.puzzle, values)?.allowed
+    if (ruleMasks) for (let cell = 0; cell < 81; cell++) {
+      center[cell] &= ruleMasks[cell]
+      corner[cell] &= ruleMasks[cell]
     }
   }
   return changed ? move(game, { ...game.position, entries: entries.join(''), center, corner }) : game

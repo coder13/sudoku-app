@@ -1,8 +1,8 @@
-import { EngineError, runEngine, type Difficulty, type GeneratedVariant, type VariantPosition } from './engine.ts'
+import { EngineError, runEngine, type Difficulty, type VariantPosition } from './engine.ts'
 import { type Game, type Position, valuesOf } from './game.ts'
 import { readDisabledHintTechniques } from './hint-preferences.ts'
-import { reflectVariant, variantGenerationRequest, variantSeeds, variantTechniqueOrder } from './variant-generation.ts'
-import { type PlayableVariant, type VariantGame } from './variants.ts'
+import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from './variant-generation.ts'
+import { variantIdForPuzzle, type PlayableVariant, type VariantGame } from './variants.ts'
 
 let playOrder: Promise<string[]> | undefined
 
@@ -21,31 +21,19 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
   const techniqueOrder = await getVariantPlayOrder()
   const recipes = variantSeeds[id][difficulty]
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')
-  const seen = new Set(games.filter((game) => game.variant?.id === id).map((game) => game.givens))
-  let previouslyPlayed: GeneratedVariant | undefined
+  const excluded = games.flatMap(game => game.variant && variantIdForPuzzle(game.variant.puzzle) === id ? [game.variant.puzzle] : [])
   const initial = seed % recipes.length
   for (let attempt = 0; attempt <= recipes.length; attempt++) {
     const recipe = recipes[(initial + Math.max(0, attempt - 1)) % recipes.length]
     const request = variantGenerationRequest(id, difficulty, recipe, techniqueOrder, attempt === 0 ? seed : recipe.seed)
     if (attempt === 0) request.maxNodes = 20_000
+    if (excluded.length) request.exclude = excluded
     try {
-      const generated = await runEngine(request)
-      if (!seen.has(generated.puzzle.givens)) return generated
-      previouslyPlayed ??= generated
-      const puzzle = reflectVariant(generated.puzzle, (seed % 7) + 1)
-      if (seen.has(puzzle.givens)) continue
-      const position = { puzzle }
-      const rating = await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder: generated.rating.techniqueOrder })
-      if (rating.status !== 'stalled' && rating.status.solved === difficulty &&
-        await runEngine({ type: 'variant', operation: 'analyze', position }) === 'unique') {
-        const solution = await runEngine({ type: 'variant', operation: 'solve', position })
-        return { ...generated, puzzle, rating, solution }
-      }
+      return await runEngine(request)
     } catch (error) {
       if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
     }
   }
-  if (previouslyPlayed) return previouslyPlayed
   throw new EngineError('No puzzle found for this difficulty.', 'search-limit')
 }
 
