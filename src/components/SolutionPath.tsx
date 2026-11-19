@@ -2,13 +2,16 @@ import { Button, IconButton } from './Button'
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import type { Difficulty, LogicalSolution, MoveAvailability, PuzzleRating } from '../sudoku/engine'
+import type { MiniSolutionTrace } from '../sudoku/mini-play'
 import { techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { deductionResults } from '../sudoku/lesson-diagram'
 import { Modal } from './Modal'
 
+type SolutionTrace = LogicalSolution | MiniSolutionTrace
+
 export type SolutionPathState =
   | { status: 'loading' }
-  | { status: 'ready'; trace: LogicalSolution }
+  | { status: 'ready'; trace: SolutionTrace }
   | { status: 'unavailable'; message: string }
 
 type Props = {
@@ -20,10 +23,15 @@ type Props = {
   onReveal?: () => void
   embedded?: boolean
   cellReferenceStyle?: CellReferenceStyle
+  gridSize?: number
   techniqueDifficulties?: Readonly<Partial<Record<string, Difficulty>>>
 }
 
-export function solutionEndSummary(status: PuzzleRating['status']): PuzzleHint {
+export function solutionStatus(trace: SolutionTrace) {
+  return 'rating' in trace ? trace.rating.status : trace.status
+}
+
+export function solutionEndSummary(status: PuzzleRating['status'] | 'solved'): PuzzleHint {
   return status === 'stalled'
     ? { title: 'Last position', text: 'The solver reached the end of its available moves.' }
     : { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
@@ -48,12 +56,13 @@ function bottleneckLabel(availability?: MoveAvailability) {
 }
 
 export function SolutionPath({ state, index, onSelect, onRetry, onClose, onReveal, embedded = false,
-  cellReferenceStyle, techniqueDifficulties }: Props) {
+  cellReferenceStyle, gridSize, techniqueDifficulties }: Props) {
   const list = useRef<HTMLOListElement>(null)
   const close = useRef<HTMLButtonElement>(null)
   const trace = state.status === 'ready' ? state.trace : undefined
   const count = trace?.steps.length ?? 0
-  const last = trace && solutionEndSummary(trace.rating.status)
+  const status = trace && solutionStatus(trace)
+  const last = status && solutionEndSummary(status)
   const moveAvailability = trace?.moveAvailability
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
 
@@ -117,7 +126,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
                 <span className="solution-step-number">{stepIndex + 1}</span>
                 <span>
                   <strong>{techniqueLabel(step.technique)}</strong>
-                  <small>{deductionResults(step.actions, { cellReferenceStyle, difficulty: techniqueDifficulties?.[step.technique] }).join(' ')}</small>
+                  <small>{deductionResults(step.actions, { cellReferenceStyle, gridSize, difficulty: techniqueDifficulties?.[step.technique] }).join(' ')}</small>
                   {bottleneck && <small className="solution-step-bottleneck">{bottleneck}</small>}
                 </span>
               </button>
@@ -128,7 +137,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
               tabIndex={index === count ? 0 : -1} onClick={() => onSelect(count)}>
               <span>
                 <strong>{last.title}</strong>
-                {trace.rating.status === 'stalled' && <small>{last.text}</small>}
+                {status === 'stalled' && <small>{last.text}</small>}
                 {lastBottleneck && <small className="solution-step-bottleneck">{lastBottleneck}</small>}
               </span>
             </button>

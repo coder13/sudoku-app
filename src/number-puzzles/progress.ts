@@ -1,3 +1,5 @@
+import { generatedNumberToken, type GeneratedNumberGame } from './generated.ts'
+
 export type NumberPosition = { values: number[]; notes: number[] }
 
 export function emptyNumberPosition(cells: number): NumberPosition {
@@ -26,5 +28,23 @@ export function saveNumberPosition(key: string, position: NumberPosition): boole
     return true
   } catch {
     return false
+  }
+}
+
+export function generatedNumberTokens(game: GeneratedNumberGame): string[] {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(`${game}.generated.v1`) ?? '[]')
+    return Array.isArray(stored) ? stored.filter(token => generatedNumberToken(token)) : []
+  } catch {
+    return []
+  }
+}
+
+export function rememberGeneratedNumberPuzzle(game: GeneratedNumberGame, token: string): void {
+  try {
+    const known = generatedNumberTokens(game)
+    if (!known.includes(token)) localStorage.setItem(`${game}.generated.v1`, JSON.stringify([...known, token]))
+  } catch {
+    // The puzzle link still identifies the board when storage is unavailable.
   }
 }

@@ -1,5 +1,5 @@
 import { hidatoCatalog, type HidatoEntry } from '../hidato/catalog'
-import { checkHidato, findHidatoHint } from '../hidato/engine'
+import { checkHidato, findHidatoHint, solveHidato } from '../hidato/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 
 const hidato: NumberGameConfig<HidatoEntry> = {
@@ -19,6 +19,10 @@ const hidato: NumberGameConfig<HidatoEntry> = {
         return { given, endpoint, label: given === 1 ? 'start of path' : given === end ? 'end of path' : undefined }
       }),
       check: values => checkHidato(puzzle, values),
+      solve: () => {
+        const result = solveHidato(puzzle)
+        return result.status === 'unique' ? result.solution : null
+      },
       hint: values => findHidatoHint(puzzle, values),
     }
   },

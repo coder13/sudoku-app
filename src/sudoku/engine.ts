@@ -132,7 +132,82 @@ type VariantRequest = {
   ))
 )
 
+export type SizedClassicPosition = {
+  version: 2
+  grid: { size: number; boxRows: number; boxColumns: number }
+  digits: readonly number[]
+}
+
+type SizedClassicRequest = { type: 'sized-classic'; position: SizedClassicPosition } & (
+  | { operation: 'analyze' }
+  | { operation: 'candidates' }
+  | { operation: 'solve' }
+  | { operation: 'next-deduction'; eliminations?: readonly number[] }
+  | { operation: 'hints'; eliminations?: readonly number[]; limit?: number }
+  | { operation: 'trace'; eliminations?: readonly number[]; singlesOnly?: boolean }
+)
+
+export type SizedClassicDeduction = {
+  technique: 'naked-single' | 'hidden-single' | 'locked-candidate'
+  houses: House[]
+  candidates: Candidate[]
+  actions: DeductionAction[]
+}
+
+export type SizedClassicTracePosition = {
+  digits: number[]
+  eliminations: number[]
+  candidates: number[]
+  deduction: SizedClassicDeduction | null
+}
+
+export type SizedVariantPosition = SizedClassicPosition & {
+  rules: readonly {
+    type: 'algebraic-cage'
+    cells: readonly number[]
+    total: { type: 'fixed'; value: number } | { type: 'variable'; name: string; offset: number }
+    label: string
+  }[]
+}
+
+export type AlgebraicBounds = {
+  variables: Record<string, [number, number]>
+  cages: { cage: number; sumLower: number; sumUpper: number }[]
+}
+
+export type AlgebraicCageProof = {
+  target: number
+  bounds: AlgebraicBounds
+  totalLower: number
+  totalUpper: number
+  actions: DeductionAction[]
+}
+
+export type AlgebraicStep = { type: 'house'; proof: SizedClassicDeduction } | { type: 'cage'; proof: AlgebraicCageProof }
+export type AlgebraicRating = { difficulty: 'easy' | 'medium'; points: number }
+
+export type AlgebraicTracePosition = {
+  digits: number[]
+  eliminations: number[]
+  candidates: number[]
+  step: AlgebraicStep | null
+}
+
+type SizedVariantRequest = { type: 'sized-variant'; position: SizedVariantPosition } & (
+  | { operation: 'analyze' }
+  | { operation: 'solve' }
+  | { operation: 'rate' }
+  | { operation: 'bounds' }
+  | { operation: 'hints'; eliminations?: readonly number[]; limit: number }
+  | { operation: 'trace'; eliminations?: readonly number[] }
+  | { operation: 'cage-proof'; rule: number; eliminations?: readonly number[] }
+)
+
 export type EngineRequest =
+  | SizedClassicRequest
+  | SizedVariantRequest
+  | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
+  | { type: 'generate-algebraic'; seed: number; difficulty?: AlgebraicRating['difficulty']; exclude?: readonly SizedVariantPosition[] }
   | { type: 'capabilities' }
   | VariantRequest
   | { type: 'canonical-puzzles'; values: readonly string[] }
@@ -496,6 +571,24 @@ export type VariantPracticeExercise = {
 export type EngineResult<T extends EngineRequest> =
   T extends { type: 'capabilities' } ? EngineCapabilities :
   T extends VariantRequest ? VariantResult<T> :
+  T extends SizedClassicRequest ? (
+    T['operation'] extends 'analyze' ? Analysis :
+    T['operation'] extends 'next-deduction' ? SizedClassicDeduction | null :
+    T['operation'] extends 'hints' ? { candidates: number[]; choices: SizedClassicDeduction[] } | null :
+    T['operation'] extends 'trace' ? SizedClassicTracePosition[] | null :
+    number[] | null
+  ) :
+  T extends SizedVariantRequest ? (
+    T['operation'] extends 'analyze' ? Analysis :
+    T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
+    T['operation'] extends 'rate' ? AlgebraicRating | null :
+    T['operation'] extends 'bounds' ? AlgebraicBounds | null :
+    T['operation'] extends 'hints' ? { candidates: number[]; choices: AlgebraicStep[] } | null :
+    T['operation'] extends 'trace' ? AlgebraicTracePosition[] | null :
+    AlgebraicCageProof | null
+  ) :
+  T extends { type: 'generate-mini' } ? number[] :
+  T extends { type: 'generate-algebraic' } ? SizedVariantPosition :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
   T extends { type: 'canonical-puzzles' | 'impossible-templates' } ? string[] :
@@ -598,6 +691,8 @@ type WorkerOptions = { interactive?: boolean; background?: boolean }
 function connectionFor(request: EngineRequest, options: WorkerOptions) {
   switch (request.type) {
     case 'generate':
+    case 'generate-mini':
+    case 'generate-algebraic':
     case 'generate-constrained':
     case 'generate-targeted':
     case 'generate-from-pool':

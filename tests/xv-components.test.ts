@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { after, before, test } from 'node:test'
 import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -77,9 +78,10 @@ test('sharing progressed XV puzzles retains the starting givens and independent 
     const { puzzle, solution } = load('xv-clover')
     const game = { ...makeGame('xv-share', 'XV', puzzle.givens, 'imported'), variant: { id: 'xv' as const, puzzle, solution } }
     const cell = puzzle.givens.indexOf('0')
-    const html = renderToStaticMarkup(createElement(SharePuzzle, { game: enter(game, [cell], 'value', Number(solution[cell])), close() {} }))
-    const payload = html.match(/<textarea[^>]*id="share-output"[^>]*>([^<]+)<\/textarea>/)![1]
-    assert.deepEqual((await detectPuzzle(payload)).variant, { id: 'xv', puzzle })
+    const progressed = enter(game, [cell], 'value', Number(solution[cell]))
+    const html = renderToStaticMarkup(createElement(SharePuzzle, { game: progressed, close() {} }))
+    assert.match(html, /Create link/)
+    assert.deepEqual((await publishFixture(progressed)).variant, { id: 'xv', puzzle })
     const negative: VariantPuzzle = { ...puzzle, rules: [{ type: 'xv', five: { negative: true }, ten: { negative: false } }] }
     assert.deepEqual((await detectPuzzle('#variant=' + encodeURIComponent(JSON.stringify({ id: 'xv', puzzle: negative })))).variant?.puzzle, negative)
   } finally { if (prior) Object.defineProperty(globalThis, 'window', prior); else Reflect.deleteProperty(globalThis, 'window') }
