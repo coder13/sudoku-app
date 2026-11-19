@@ -7,7 +7,7 @@ mod algebraic;
 #[cfg(feature = "variants")]
 pub use algebraic::{
     AlgebraicBounds, AlgebraicCage, AlgebraicCageBound, AlgebraicCageProof, AlgebraicCompletion,
-    AlgebraicHints, AlgebraicStep, AlgebraicTracePosition, CageTotal, SizedAlgebraicCages,
+    AlgebraicDifficulty, AlgebraicHints, AlgebraicRating, AlgebraicStep, AlgebraicTracePosition, CageTotal, SizedAlgebraicCages,
 };
 
 #[cfg(feature = "generation")]

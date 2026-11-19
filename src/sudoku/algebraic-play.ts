@@ -39,7 +39,7 @@ function algebraicHintChoice({ rules }: AlgebraicGame, step: AlgebraicStep): Hin
   }
 }
 
-export function analyzeAlgebraic(game: AlgebraicGame, values: string) {
+export function analyzeAlgebraic(game: Pick<AlgebraicGame, 'rules'>, values: string) {
   return runEngine({ type: 'sized-variant', operation: 'analyze', position: algebraicPosition(game, values) })
 }
 

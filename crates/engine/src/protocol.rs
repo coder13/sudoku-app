@@ -60,6 +60,7 @@ enum Request {
     #[cfg(all(feature = "generation", feature = "variants"))]
     GenerateAlgebraic {
         seed: u32,
+        difficulty: Option<crate::AlgebraicDifficulty>,
         #[serde(default)]
         exclude: Vec<sized_variant::Definition>,
     },
@@ -992,7 +993,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
         #[cfg(all(feature = "generation", feature = "variants"))]
-        Request::GenerateAlgebraic { seed, exclude } => return sized_variant::generate(seed, exclude),
+        Request::GenerateAlgebraic { seed, difficulty, exclude } => return sized_variant::generate(seed, difficulty, exclude),
         Request::SizedClassic { position, operation } => return sized::execute(position, operation),
         #[cfg(feature = "variants")]
         Request::SizedVariant { position, operation } => return sized_variant::execute(position, operation),

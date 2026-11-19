@@ -6,7 +6,8 @@ import { EMPTY } from './game.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad } from './sized-sudoku-pad.ts'
-import { isAlgebraicCageList, type AlgebraicDefinition } from './algebraic-game.ts'
+import { isAlgebraicCageList } from './algebraic-cages.ts'
+import type { AlgebraicDefinition } from './algebraic-game.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
 export const MAX_IMPORT_LENGTH = 20_000

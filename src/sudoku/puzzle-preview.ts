@@ -1,5 +1,5 @@
 import { runEngine } from './engine.ts'
-import { verifyAlgebraicImport } from './algebraic-game.ts'
+import { verifyAlgebraicPuzzle } from './algebraic-game.ts'
 import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
 import { detectPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
 import { analyzeMini } from './mini-play.ts'
@@ -24,7 +24,7 @@ export async function prepareImportedPuzzle(input: string, games: readonly Game[
     : variant ? `Imported ${variantName(variant)} puzzle` : grid ? 'Imported Mini Sudoku' : 'Imported puzzle'
   const game = makeGame(createGameId(), name, givens, 'imported', undefined, grid)
   if (algebraic && grid) {
-    game.algebraic = await verifyAlgebraicImport({ givens, ...algebraic })
+    game.algebraic = await verifyAlgebraicPuzzle({ givens, ...algebraic })
     return { game: applyPuzzleGrade(game, null), format, grade: null }
   }
   if (!existing) {

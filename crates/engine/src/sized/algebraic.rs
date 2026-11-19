@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{GridSpec, SizedDeduction, SizedGrid};
+use super::{GridSpec, SizedDeduction, SizedGrid, SizedTechnique};
 use crate::{Analysis, Candidate, HintAction};
 
 /// A cage's total. All references to a name share one positive integer.
@@ -100,6 +100,52 @@ pub struct AlgebraicTracePosition {
     pub eliminations: Vec<u16>,
     pub candidates: Vec<u16>,
     pub step: Option<AlgebraicStep>,
+}
+
+/// Difficulty bands for a complete 4 × 4 algebraic walkthrough.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum AlgebraicDifficulty {
+    Easy,
+    Medium,
+}
+
+/// The weighted sum of steps on the deterministic algebraic walkthrough.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct AlgebraicRating {
+    pub points: u16,
+    pub difficulty: AlgebraicDifficulty,
+}
+
+impl AlgebraicRating {
+    pub fn from_trace(trace: &[AlgebraicTracePosition]) -> Option<Self> {
+        if trace.last()?.digits.contains(&0) {
+            return None;
+        }
+        let points = trace
+            .iter()
+            .filter_map(|position| position.step.as_ref())
+            .map(|step| match step {
+                AlgebraicStep::House(proof) => match proof.technique {
+                    SizedTechnique::NakedSingle => 1,
+                    SizedTechnique::HiddenSingle => 2,
+                    SizedTechnique::LockedCandidate => 3,
+                },
+                AlgebraicStep::Cage(_) => 4,
+            })
+            .sum();
+        let difficulty = if points <= 27 {
+            AlgebraicDifficulty::Easy
+        } else {
+            AlgebraicDifficulty::Medium
+        };
+        Some(Self { points, difficulty })
+    }
 }
 
 /// Supported steps and the candidate masks used to find them.

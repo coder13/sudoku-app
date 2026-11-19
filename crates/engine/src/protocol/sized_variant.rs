@@ -3,8 +3,8 @@ use serde_json::json;
 
 use super::{ResponseValue, ResultValue, puzzle_error};
 use crate::{
-    AlgebraicCage, Analysis, CageTotal, GridSpec, SEARCH_LIMIT, SIZED_GRID_VERSION,
-    SizedAlgebraicCages,
+    AlgebraicCage, AlgebraicRating, Analysis, CageTotal, GridSpec, SEARCH_LIMIT,
+    SIZED_GRID_VERSION, SizedAlgebraicCages,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -74,7 +74,11 @@ impl From<AlgebraicCage> for Rule {
 }
 
 #[cfg(feature = "generation")]
-pub(super) fn generate(seed: u32, exclude: Vec<Definition>) -> ResultValue<ResponseValue> {
+pub(super) fn generate(
+    seed: u32,
+    difficulty: Option<crate::AlgebraicDifficulty>,
+    exclude: Vec<Definition>,
+) -> ResultValue<ResponseValue> {
     let grid = GridSpec {
         size: 4,
         box_rows: 2,
@@ -105,7 +109,7 @@ pub(super) fn generate(seed: u32, exclude: Vec<Definition>) -> ResultValue<Respo
         cages.sort_unstable_by(|left, right| left.cells.cmp(&right.cells));
         excluded.push(crate::GeneratedAlgebraic { givens, cages });
     }
-    let generated = crate::generate_algebraic(seed, &excluded)
+    let generated = crate::generate_algebraic(seed, difficulty, &excluded)
         .ok_or_else(|| puzzle_error(Analysis::SearchLimit))?;
     Ok(ResponseValue::AlgebraicPuzzle(Definition {
         version: SIZED_GRID_VERSION,
@@ -120,6 +124,7 @@ pub(super) fn generate(seed: u32, exclude: Vec<Definition>) -> ResultValue<Respo
 pub(super) enum Operation {
     Analyze,
     Solve,
+    Rate,
     Bounds,
     Hints {
         eliminations: Option<Vec<u16>>,
@@ -184,6 +189,11 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             }))
         }
         Operation::Solve => ResponseValue::Json(json!(puzzle.solve(&digits, SEARCH_LIMIT))),
+        Operation::Rate => ResponseValue::Json(json!(
+            puzzle
+                .trace(digits, vec![0; 16], SEARCH_LIMIT)
+                .and_then(|trace| AlgebraicRating::from_trace(&trace))
+        )),
         Operation::Bounds => ResponseValue::Json(json!(puzzle.bounds(&digits))),
         Operation::Hints {
             eliminations,

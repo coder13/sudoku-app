@@ -14,6 +14,7 @@ import type { ActionHistoryEntry } from './action-history.ts'
 import type { CollectionReference } from './collection-reference.ts'
 import type { ChainSketchState } from './chain-sketch.ts'
 import type { AlgebraicGame } from './algebraic-game.ts'
+import type { AlgebraicCage } from './algebraic-cages.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -29,6 +30,7 @@ export type Position = {
   colors: number[]
   candidateColors?: Record<number, Record<number, number>>
   eliminations?: number[]
+  draftCages?: readonly AlgebraicCage[]
 }
 
 export type Game = {

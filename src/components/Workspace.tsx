@@ -9,7 +9,7 @@ import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { MINI_GRID } from '../sudoku/grid'
-import { gameGenerationVariant, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { gameGenerationVariant, isSizedPuzzleId, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { puzzleLinkHash } from '../sudoku/formats'
 import { createGameId, EMPTY, makeGame, setGamePaused, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
@@ -28,7 +28,7 @@ import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
-import { SavePuzzle, SharePuzzle } from './PuzzleDialogs'
+import { EditCages, SavePuzzle, SharePuzzle } from './PuzzleDialogs'
 import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
@@ -38,7 +38,7 @@ import { usePageAppearance } from './usePageAppearance'
 import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
 
-type Panel = 'import' | 'share' | 'publish' | null
+type Panel = 'import' | 'share' | 'publish' | 'cages' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
 const PUZZLE_LINK = /^(?:puzzle|variant|sized)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
@@ -130,8 +130,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const playableGivens = game?.source === 'draft' ? undefined : game?.givens
   const puzzleVariant = game?.variant
   const puzzleGrid = game?.grid
-  const canonicalPuzzleHash = useMemo(() => playableGivens ? puzzleLinkHash({ givens: playableGivens, variant: puzzleVariant, grid: puzzleGrid }) : '',
-    [playableGivens, puzzleVariant, puzzleGrid])
+  const puzzleAlgebraic = game?.algebraic
+  const canonicalPuzzleHash = useMemo(() => playableGivens ? puzzleLinkHash({ givens: playableGivens, variant: puzzleVariant, grid: puzzleGrid, algebraic: puzzleAlgebraic }) : '',
+    [playableGivens, puzzleVariant, puzzleGrid, puzzleAlgebraic])
   const locationHash = locationHref.split('#', 2)[1] ?? ''
   const puzzleLink = PUZZLE_LINK.test(locationHash)
   const hasRequestedGame = Boolean(requested && game)
@@ -457,15 +458,18 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   function createPuzzle(variant?: NewPuzzleId) {
     setPanel(null)
-    const grid = variant === 'mini' ? MINI_GRID : undefined
+    const grid = isSizedPuzzleId(variant) ? MINI_GRID : undefined
     const givens = grid ? '0'.repeat(grid.size ** 2) : EMPTY
-    roomStore.add({ ...makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid), returnId: active ?? undefined })
+    const draft = makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid)
+    if (variant === 'algebraic-cages') draft.position.draftCages = []
+    roomStore.add({ ...draft, returnId: active ?? undefined })
   }
 
   function editPuzzle() {
     if (!game || game.source !== 'custom') return
     const draft = makeGame(createGameId(), game.title, '0'.repeat(game.givens.length), 'draft', undefined, game.grid)
-    roomStore.add({ ...draft, editingId: game.id, returnId: game.id, position: { ...draft.position, entries: game.givens } })
+    roomStore.add({ ...draft, editingId: game.id, returnId: game.id,
+      position: { ...draft.position, entries: game.givens, draftCages: game.algebraic?.rules } })
   }
 
   function cancelDraft() {
@@ -589,7 +593,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onOpenHintPanel={() => setPanelVisibility('bottom', true)}
                 onOpenRightPanel={() => setPanelVisibility('right', true)}
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
-                onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.grid ? 'mini' : undefined)} onEditPuzzle={editPuzzle}
+                onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages' : game?.grid ? 'mini' : undefined)} onEditPuzzle={editPuzzle}
+                onEditCages={() => setPanel('cages')}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
                 onStopPlaying={() => {
                   if (!game) return
@@ -630,6 +635,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         workspaceMode={workspaceMode} setWorkspaceMode={mobile ? undefined : setWorkspaceMode}
         draft={game?.source === 'draft'} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}
+      {panel === 'cages' && game?.position.draftCages && <EditCages game={game} close={close} />}
     </DesktopPlayLayout>
   )
 }

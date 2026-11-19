@@ -58,12 +58,16 @@ function Cage({ cells, captionWidth, captionInset, size = 9 }: {
   </>
 }
 
-/** Outline the authored arithmetic cages in a 4×4 grid. Board owns the text labels. */
-export function AlgebraicCages({ rules }: { rules: SizedVariantPosition['rules'] }) {
+/** Outline arithmetic cages and include captions when used without Board. */
+export function AlgebraicCages({ rules, captions = false }: { rules: SizedVariantPosition['rules']; captions?: boolean }) {
   return <svg className="variant-clues" viewBox="0 0 4 4" aria-hidden="true">
-    {rules.map((rule, index) => <g key={index} data-algebraic-cage={index}>
-      <Cage cells={rule.cells} captionInset={.1} captionWidth={Math.min(.75, .13 * rule.label.length + .05)} size={4} />
-    </g>)}
+    {rules.map((rule, index) => {
+      const first = Math.min(...rule.cells)
+      return <g key={index} data-algebraic-cage={index}>
+        <Cage cells={rule.cells} captionInset={.1} captionWidth={Math.min(.75, .13 * rule.label.length + .05)} size={4} />
+        {captions && <text className="variant-algebraic-preview-label" x={first % 4 + .12} y={Math.floor(first / 4) + .3}>{rule.label}</text>}
+      </g>
+    })}
   </svg>
 }
 

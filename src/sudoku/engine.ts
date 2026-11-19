@@ -184,6 +184,7 @@ export type AlgebraicCageProof = {
 }
 
 export type AlgebraicStep = { type: 'house'; proof: SizedClassicDeduction } | { type: 'cage'; proof: AlgebraicCageProof }
+export type AlgebraicRating = { difficulty: 'easy' | 'medium'; points: number }
 
 export type AlgebraicTracePosition = {
   digits: number[]
@@ -195,6 +196,7 @@ export type AlgebraicTracePosition = {
 type SizedVariantRequest = { type: 'sized-variant'; position: SizedVariantPosition } & (
   | { operation: 'analyze' }
   | { operation: 'solve' }
+  | { operation: 'rate' }
   | { operation: 'bounds' }
   | { operation: 'hints'; eliminations?: readonly number[]; limit: number }
   | { operation: 'trace'; eliminations?: readonly number[] }
@@ -205,7 +207,7 @@ export type EngineRequest =
   | SizedClassicRequest
   | SizedVariantRequest
   | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
-  | { type: 'generate-algebraic'; seed: number; exclude?: readonly SizedVariantPosition[] }
+  | { type: 'generate-algebraic'; seed: number; difficulty?: AlgebraicRating['difficulty']; exclude?: readonly SizedVariantPosition[] }
   | { type: 'capabilities' }
   | VariantRequest
   | { type: 'canonical-puzzles'; values: readonly string[] }
@@ -579,6 +581,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends SizedVariantRequest ? (
     T['operation'] extends 'analyze' ? Analysis :
     T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
+    T['operation'] extends 'rate' ? AlgebraicRating | null :
     T['operation'] extends 'bounds' ? AlgebraicBounds | null :
     T['operation'] extends 'hints' ? { candidates: number[]; choices: AlgebraicStep[] } | null :
     T['operation'] extends 'trace' ? AlgebraicTracePosition[] | null :

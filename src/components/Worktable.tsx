@@ -16,6 +16,7 @@ import {
 } from '../sudoku/game'
 import { analyzeMini, miniSingles, solveMini } from '../sudoku/mini-play'
 import { algebraicRules, analyzeAlgebraic, checkAlgebraicHintPosition } from '../sudoku/algebraic-play'
+import { isAlgebraicCageList } from '../sudoku/algebraic-cages'
 import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID } from '../sudoku/grid'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
@@ -195,7 +196,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
+  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
   cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -226,6 +227,7 @@ export function Worktable({
   onNewPuzzle: (step?: 'difficulty') => void
   onCreatePuzzle: () => void
   onEditPuzzle: () => void
+  onEditCages?: () => void
   showLeftPanel: boolean
   showRightPanel: boolean
   showBottomPanel: boolean
@@ -404,7 +406,9 @@ export function Worktable({
   const showResults = completed && !playground
   const showSolvedGrid = Boolean(playground)
   const { id, givens, difficulty, score, variant, algebraic, generatedWithAuto } = game
-  const sizedName = algebraic ? ALGEBRAIC_CAGES_NAME : MINI_NAME
+  const draftCages = game.position.draftCages
+  const cages = algebraic?.rules ?? draftCages
+  const sizedName = cages ? ALGEBRAIC_CAGES_NAME : MINI_NAME
   const analysisDialogOpen = analysisOpen && mobile && !draft && !solved
   const needsRating = !grid && (difficulty === undefined || score === undefined)
   const needsAttempt = !grid && !completed && !game.ratingAttempt
@@ -1529,11 +1533,12 @@ export function Worktable({
     setBusy(true)
     setDialogResult(null)
     try {
-      const status = algebraic ? await analyzeAlgebraic(algebraic, values) : grid ? await analyzeMini(values) : variant
+      if (draftCages && !isAlgebraicCageList(draftCages)) throw new Error('Add at least one cage with a letter before checking.')
+      const status = cages ? await analyzeAlgebraic({ rules: cages }, values) : grid ? await analyzeMini(values) : variant
         ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
         : await runEngine({ type: 'analyze', values })
       const current = readWorkingGame()
-      if (!current || valuesOf(current) !== values) return
+      if (!current || valuesOf(current) !== values || current.position.draftCages !== draftCages) return
       if (!draft && status === 'multiple') {
         setDialogResult({ title: 'Puzzle check', text: 'This grid has more than one solution.', tone: 'neutral' })
       } else if (!draft && status !== 'search-limit') {
@@ -2097,26 +2102,26 @@ export function Worktable({
   const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
     ? sketch.annotations : undefined
   const solutionGrid = (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={algebraic?.rules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : sketch.drawing && chainMasks ? (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={algebraic?.rules} givens={givens} values={values} position={game.position} errors={errors}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} showPlayerColors={showPlayerColors} label="Sudoku grid for drawing links"
       highlightedDigit={chainHighlightDigit} highlighting={highlighting} highlightCandidateCount={highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={algebraic?.rules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={hintAnnotations && hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations ?? visibleChainAnnotations}
       showAnnotatedCandidates={Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
-      label={algebraic ? 'Algebraic Cages Sudoku grid' : variant ? `${variantName(variant)} Sudoku grid` : undefined}
+      label={cages ? 'Algebraic Cages Sudoku grid' : variant ? `${variantName(variant)} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
       overlay={mobile && completionPanel ? { content: completionPanel, visible: showMobileResults } : undefined}
@@ -2186,6 +2191,7 @@ export function Worktable({
           {presentationDraft ? (
             <>
               <Button onClick={() => setCancelDraftOpen(true)}><X size={17} /> Cancel</Button>
+              {draftCages && onEditCages && <Button onClick={onEditCages} aria-haspopup="dialog">Edit cages</Button>}
               <Button variant="primary" className="publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</Button>
             </>
           ) : (
@@ -2234,7 +2240,7 @@ export function Worktable({
           }}>
           {placeholder ? <div className="puzzle-placeholder-stage">
             <div className="puzzle-grid-reservation" aria-hidden="true" inert>
-              <Board grid={grid} algebraicCages={algebraic?.rules} givens={givens} values={values} showGuides={appearance.showGuides} />
+              <Board grid={grid} algebraicCages={cages} givens={givens} values={values} showGuides={appearance.showGuides} />
             </div>
             <div className="puzzle-placeholder-message">{placeholder}</div>
           </div> : !draft && !completed ? (

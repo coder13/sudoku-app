@@ -8,7 +8,7 @@ import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { gameGenerationVariant, gameVariantId, miniDifficulties, miniDifficulty, MINI_NAME } from '../sudoku/new-puzzle'
+import { gameGenerationVariant, gameVariantId, isSizedPuzzleId, miniDifficulties, miniDifficulty, MINI_NAME } from '../sudoku/new-puzzle'
 import { variantDifficulties, variantDifficulty, variantDifficultyLabel, variantName } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
@@ -66,9 +66,10 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
     puzzle.id !== game.id && puzzle.id !== nextCollectionAttempt?.id && puzzle.source !== 'draft')
   const resumeFirst = Boolean(nextActive && (!inCollection || !collectionNext))
-  const nextDifficulty = recipe === 'mini' ? miniDifficulty(game.difficulty ?? preferredDifficulty) : variantDifficulty(recipe, preferredDifficulty)
+  const sizedRecipe = isSizedPuzzleId(recipe)
+  const nextDifficulty = sizedRecipe ? miniDifficulty(game.difficulty ?? preferredDifficulty) : variantDifficulty(recipe, preferredDifficulty)
   const nextLabel = needsChoice ? 'Choose another puzzle' : nextDifficulty === 'auto'
-    ? `Next ${variantDifficultyLabel(recipe === 'mini' ? undefined : recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
+    ? `Next ${variantDifficultyLabel(sizedRecipe ? undefined : recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
   const result = results.get(game.id)
   const ratingChange = result && Math.round(result.after) - Math.round(result.before)
   const difficultyLabel = game.difficulty ? DIFFICULTY_LABELS[game.difficulty] : 'Unrated'

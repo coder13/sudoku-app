@@ -1,4 +1,5 @@
 import lzString from 'lz-string'
+import { parseAlgebraicTotal } from './algebraic-cages.ts'
 import { MINI_GRID, isGridText } from './grid.ts'
 import type { SizedVariantPosition } from './engine.ts'
 
@@ -45,15 +46,9 @@ function readRule(cage: unknown): Cage {
   const cells = cage.cells.map(cellIndex)
   if (new Set(cells).size !== cells.length) return reject('A SudokuPad cage lists the same cell twice.')
   const label = typeof cage.value === 'number' || typeof cage.value === 'string' ? String(cage.value) : ''
-  if (/^[1-9][0-9]?$/.test(label) && Number(label) <= 10) {
-    return { type: 'algebraic-cage', cells, label, total: { type: 'fixed', value: Number(label) } }
-  }
-  const expression = /^([A-Za-z][A-Za-z0-9_]{0,31})([+-][0-9]{1,10})?$/.exec(label)
-  const offset = Number(expression?.[2] ?? 0)
-  if (!expression || offset < -2147483648 || offset > 2147483647) {
-    return reject('This SudokuPad cage has an unsupported total expression.')
-  }
-  return { type: 'algebraic-cage', cells, label, total: { type: 'variable', name: expression[1], offset } }
+  const total = parseAlgebraicTotal(label)
+  if (!total) return reject('This SudokuPad cage has an unsupported total expression.')
+  return { type: 'algebraic-cage', cells, label, total }
 }
 
 /** Decode the plain-JSON SCL envelope used by the supported 4×4 arithmetic export. */

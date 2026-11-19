@@ -1,7 +1,10 @@
 use std::collections::HashSet;
 
 use super::{GridSpec, Random, shuffled_solution};
-use crate::{AlgebraicCage, AlgebraicStep, Analysis, CageTotal, SizedAlgebraicCages};
+use crate::{
+    AlgebraicCage, AlgebraicDifficulty, AlgebraicRating, AlgebraicStep, Analysis, CageTotal,
+    SizedAlgebraicCages,
+};
 
 const GRID: GridSpec = GridSpec {
     size: 4,
@@ -19,7 +22,11 @@ pub struct GeneratedAlgebraic {
 }
 
 /// Generate a unique puzzle that needs every cage and has a complete logical path.
-pub fn generate_algebraic(seed: u32, exclude: &[GeneratedAlgebraic]) -> Option<GeneratedAlgebraic> {
+pub fn generate_algebraic(
+    seed: u32,
+    difficulty: Option<AlgebraicDifficulty>,
+    exclude: &[GeneratedAlgebraic],
+) -> Option<GeneratedAlgebraic> {
     let mut random = Random::from_seed(seed);
     let exclusions: HashSet<_> = exclude.iter().collect();
     for _ in 0..ATTEMPTS {
@@ -43,6 +50,9 @@ pub fn generate_algebraic(seed: u32, exclude: &[GeneratedAlgebraic]) -> Option<G
         }
         if let Some(trace) = game.trace(givens.to_vec(), vec![0; 16], NODE_BUDGET)
             && trace.last()?.digits == solution
+            && difficulty.is_none_or(|level| {
+                AlgebraicRating::from_trace(&trace).is_some_and(|rating| rating.difficulty == level)
+            })
             && trace
                 .iter()
                 .any(|position| matches!(position.step, Some(AlgebraicStep::Cage(_))))

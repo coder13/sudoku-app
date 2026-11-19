@@ -123,11 +123,17 @@ fn algebraic_cage_rules_distinguish_conflict_infeasibility_and_multiple_completi
 #[test]
 fn generated_algebraic_puzzles_need_each_cage_and_replay_to_a_unique_solution() {
     use std::collections::HashSet;
-    use sudoku_app_engine::{AlgebraicStep, generate_algebraic};
+    use sudoku_app_engine::{
+        AlgebraicDifficulty, AlgebraicRating, AlgebraicStep, SizedTechnique, generate_algebraic,
+    };
 
     let mut samples = HashSet::new();
-    for seed in 0..128 {
-        let generated = generate_algebraic(seed, &[]).unwrap_or_else(|| panic!("seed {seed}"));
+    for (difficulty, seed) in [AlgebraicDifficulty::Easy, AlgebraicDifficulty::Medium]
+        .into_iter()
+        .flat_map(|difficulty| (0..128).map(move |seed| (difficulty, seed)))
+    {
+        let generated = generate_algebraic(seed, Some(difficulty), &[])
+            .unwrap_or_else(|| panic!("{difficulty:?} seed {seed}"));
         assert!(samples.insert(generated.clone()), "duplicate seed {seed}");
         let grid = SizedGrid::new(MINI).unwrap();
         assert_eq!(grid.analyze(&generated.givens, 1_000), Analysis::Multiple);
@@ -138,6 +144,21 @@ fn generated_algebraic_puzzles_need_each_cage_and_replay_to_a_unique_solution() 
             .trace(generated.givens.to_vec(), vec![0; 16], 1_000)
             .unwrap();
         assert_eq!(trace.last().unwrap().digits, solution.digits);
+        let rating = AlgebraicRating::from_trace(&trace).unwrap();
+        assert_eq!(rating.difficulty, difficulty);
+        let points: u16 = trace
+            .iter()
+            .filter_map(|position| position.step.as_ref())
+            .map(|step| match step {
+                AlgebraicStep::Cage(_) => 4,
+                AlgebraicStep::House(step) => match step.technique {
+                    SizedTechnique::NakedSingle => 1,
+                    SizedTechnique::HiddenSingle => 2,
+                    SizedTechnique::LockedCandidate => 3,
+                },
+            })
+            .sum();
+        assert_eq!(rating.points, points);
         assert!(
             trace
                 .iter()
@@ -154,10 +175,13 @@ fn generated_algebraic_puzzles_need_each_cage_and_replay_to_a_unique_solution() 
         }
     }
 
-    let original = generate_algebraic(42, &[]).unwrap();
-    assert_eq!(generate_algebraic(42, &[]).unwrap(), original);
+    let original = generate_algebraic(42, Some(AlgebraicDifficulty::Easy), &[]).unwrap();
+    assert_eq!(
+        generate_algebraic(42, Some(AlgebraicDifficulty::Easy), &[]).unwrap(),
+        original
+    );
     assert_ne!(
-        generate_algebraic(42, &[original.clone()]).unwrap(),
+        generate_algebraic(42, Some(AlgebraicDifficulty::Easy), &[original.clone()]).unwrap(),
         original
     );
 }

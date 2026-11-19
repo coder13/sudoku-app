@@ -12,7 +12,7 @@ import { techniqueLabel } from '../sudoku/hints'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { ALGEBRAIC_CAGES_NAME, gameVariantId, isGameVariantId, miniDifficulty, MINI_NAME, MINI_RULE, newPuzzleVariants, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, newPuzzleVariants, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
 import { VariantPreview } from './VariantPreview'
@@ -171,7 +171,8 @@ function NewPuzzleVariant({ variant, ruleset, onCreate }: {
 }) {
   const navigate = useNavigate()
   const index = newPuzzleVariants.indexOf(variant)
-  const { name, rule } = variant === 'mini' ? { name: MINI_NAME, rule: MINI_RULE } : VARIANTS[variant]
+  const { name, rule } = variant === 'mini' ? { name: MINI_NAME, rule: MINI_RULE }
+    : variant === 'algebraic-cages' ? { name: ALGEBRAIC_CAGES_NAME, rule: ALGEBRAIC_CAGES_RULE } : VARIANTS[variant]
 
   function browse(direction: number) {
     const count = newPuzzleVariants.length
@@ -198,7 +199,7 @@ function NewPuzzleVariant({ variant, ruleset, onCreate }: {
         <p>{rule}</p>
       </div>
     </div>
-    {variant !== 'mini' && <VariantRulesetSelector variant={variant} value={ruleset} onChange={next => {
+    {!isSizedPuzzleId(variant) && <VariantRulesetSelector variant={variant} value={ruleset} onChange={next => {
       void navigate({ to: '/puzzles/new', search: { variant, ruleset: next }, replace: true, resetScroll: false })
     }} />}
     <Link to="/puzzles/new/difficulty" search={{ variant, ruleset }} state={{ fromPuzzleVariantPicker: true }}
@@ -221,11 +222,12 @@ function NewPuzzleDifficulty({ variant, ruleset, difficulty, save }: {
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const navigate = useNavigate()
-  const preset = variant === 'mini' ? undefined : generationRuleset(variant, ruleset)
+  const sized = isSizedPuzzleId(variant)
+  const preset = sized ? undefined : generationRuleset(variant, ruleset)
   const { recommended } = usePlayerRating()
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
-  const selected = variant === 'mini' ? miniDifficulty(selection ?? difficulty) : variantDifficulty(variant, selection ?? difficulty)
-  const autoLabel = variantDifficultyLabel(variant === 'mini' ? undefined : variant, 'auto', recommended)
+  const selected = sized ? miniDifficulty(selection ?? difficulty) : variantDifficulty(variant, selection ?? difficulty)
+  const autoLabel = variantDifficultyLabel(sized ? undefined : variant, 'auto', recommended)
   function start() {
     const onGenerated = () => {
       save({ variant, difficulty: selected, ...(preset ? { ruleset: preset.id } : {}) })
@@ -236,9 +238,9 @@ function NewPuzzleDifficulty({ variant, ruleset, difficulty, save }: {
   return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
     <p className="new-puzzle-variant-summary">
       <VariantPreview variant={variant} ruleset={ruleset} />
-      <span>{preset?.name ?? (variant === 'mini' ? MINI_NAME : VARIANTS[variant].name)}</span>
+      <span>{preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : VARIANTS[variant].name)}</span>
     </p>
-    {variant !== 'mini' && <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
+    {!sized && <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: next }, replace: true, resetScroll: false })
     }} />}
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
@@ -327,7 +329,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
   const screen = section === 'new' ? difficultyScreen ? 'difficulty' : 'variant' : undefined
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
-  const ruleset = variant === 'mini' ? undefined : generationRuleset(variant, newPuzzleSearch?.ruleset ?? newPuzzlePreference.ruleset)?.id
+  const ruleset = isSizedPuzzleId(variant) ? undefined : generationRuleset(variant, newPuzzleSearch?.ruleset ?? newPuzzlePreference.ruleset)?.id
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
     : screen === 'variant' ? 'Choose a variant'
       : section === 'puzzles' ? 'Puzzles'
@@ -339,7 +341,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
 
   function savePuzzlePreference(preference: NewPuzzlePreference) {
     rememberNewPuzzle(preference)
-    if (preference.variant !== 'mini') setDifficulty(preference.difficulty)
+    if (!isSizedPuzzleId(preference.variant)) setDifficulty(preference.difficulty)
   }
 
   function content(current: Section) {
