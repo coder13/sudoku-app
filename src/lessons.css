@@ -76,9 +76,10 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   box-shadow: inset 3px 0 var(--selected-border);
   font-weight: 730;
 }
-.lesson-overview, .technique-lesson { display: grid; gap: var(--space-24); max-width: 810px; min-width: 0; }
+.lesson-overview, .technique-lesson { --lesson-section-gap: var(--space-24); display: grid; gap: var(--lesson-section-gap); max-width: 810px; min-width: 0; }
 .lesson-heading { display: grid; gap: var(--space-8); min-width: 0; }
-.technique-lesson > .lesson-heading { padding-block-end: var(--space-16); border-block-end: 1px solid var(--border); }
+.lesson-intro { display: grid; gap: var(--space-8); margin-block-start: calc(var(--space-8) - var(--lesson-section-gap)); }
+.technique-lesson > .lesson-intro { padding-block-end: var(--space-16); border-block-end: 1px solid var(--border); }
 .learn-page :where(a:not(.button, .lesson-overview-link, .learn-nav-link)) { color: var(--dark-purple); text-underline-offset: .2em; }
 .learn-breadcrumbs ol {
   display: flex;
@@ -124,7 +125,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   text-decoration: none;
 }
 .lesson-prerequisite-link:hover, .lesson-prerequisite-link:focus-visible { border-color: var(--selected-border); background: var(--selected-bg); }
-.lesson-overview { gap: clamp(var(--space-28), 5cqw, 44px); }
+.lesson-overview { --lesson-section-gap: clamp(var(--space-28), 5cqw, 44px); }
 .lesson-overview-section { display: grid; gap: var(--space-10); font-size: 1rem; line-height: 1.65; }
 .lesson-overview-level > :is(h3, summary) { font-size: 1rem; font-weight: 730; }
 .lesson-overview-level > summary { cursor: pointer; }
@@ -396,10 +397,20 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
   .lesson-prerequisite-link svg { display: none; }
 }
 
+@media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
+  .app-shell .lesson-heading {
+    position: sticky;
+    inset-block-start: var(--topbar-height);
+    z-index: 2;
+    background: var(--page-bg);
+  }
+  :root:has(.app-shell .learn-page) { scroll-padding-block-start: calc(var(--topbar-height) + 6rem); }
+}
+
 @container (max-width: 640px) {
   .lesson-workbench { grid-template-columns: minmax(0, 1fr); }
   .lesson-workbench-guide, .lesson-workbench-guide ~ .lesson-workbench-tools { grid-area: auto; }
-  .technique-lesson { gap: var(--space-18); }
+  .technique-lesson { --lesson-section-gap: var(--space-18); }
 }
 
 @container (max-width: 405px) {

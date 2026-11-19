@@ -689,7 +689,7 @@ svg { flex-shrink: 0; }
   position: relative;
   min-width: 0;
 }
-.puzzle-column:has(.puzzle[data-input-mode]) { padding-inline: var(--space-8); }
+.puzzle-column:is([data-solved-edge], :has(.puzzle[data-input-mode])) { padding-inline: var(--space-8); }
 .workspace > .puzzle-column { grid-area: puzzle; }
 .surface {
   --surface-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024;
@@ -776,7 +776,7 @@ svg { flex-shrink: 0; }
   .puzzle[data-input-mode]::after { border-color: CanvasText; }
   .puzzle[data-input-mode="pencil"]::after { background: none; mask: none; }
 }
-.standard-workspace-page .puzzle[data-input-mode],
+.standard-workspace-page :is(.puzzle[data-input-mode], [data-solved-edge] > .puzzle),
 .standard-workspace-page .standard-puzzle-stack:has(> .puzzle-column > .puzzle[data-input-mode]) > .hint-dock {
   max-inline-size: max(240px, calc(var(--board-frame-width) + 2 * var(--puzzle-padding-inline) + 2px));
   margin-inline: auto;
@@ -865,7 +865,7 @@ svg { flex-shrink: 0; }
 .hint-dock {
   margin-top: var(--space-12);
 }
-.mobile-completion, .completion-frame { animation: surface-enter var(--motion-standard-duration) var(--motion-enter) both; }
+.completion-frame { animation: surface-enter var(--motion-standard-duration) var(--motion-enter) both; }
 .hint-dock .hint-card {
   max-height: clamp(104px, 18dvh, 180px);
   overflow: auto;
@@ -953,7 +953,10 @@ svg { flex-shrink: 0; }
 .puzzle-difficulty { color: var(--muted); font-size: 0.8125rem; font-weight: 720; }
 .puzzle-auto-mode { color: var(--muted); font-size: 0.75rem; }
 .puzzle-auto-mode::before { content: '·'; margin-inline-end: var(--space-6); }
-.puzzle-view-toggle { min-height: 36px; padding-inline: var(--space-10); font-size: 0.75rem; }
+.puzzle-view-toggle { display: grid; place-items: center; min-height: 36px; padding-inline: var(--space-10); font-size: 0.75rem; }
+.puzzle-view-toggle.button:not(:disabled):active { transform: none; }
+.puzzle-view-toggle > span { grid-area: 1 / 1; }
+.puzzle-view-toggle > span[aria-hidden="true"] { visibility: hidden; }
 .puzzle-view-toggle[aria-pressed="true"] {
   border-color: var(--selected-border);
   background: var(--selected-bg);
@@ -991,6 +994,13 @@ svg { flex-shrink: 0; }
 .col-labels { grid-area: columns; grid-template-columns: repeat(var(--board-columns, 9), 1fr); align-items: start; }
 .row-labels { grid-area: rows; grid-template-rows: repeat(var(--board-rows, 9), 1fr); align-items: center; justify-items: start; padding-left: var(--space-2); }
 .board-body { grid-area: board; position: relative; container-type: inline-size; }
+.board-frame[data-overlay="true"] > :is(.col-labels, .row-labels),
+.board-frame[data-overlay="true"] > .board-body > :not(.board-overlay),
+.board-frame[data-overlay="false"] > .board-body > .board-overlay { opacity: 0; }
+.board-overlay { position: absolute; inset: 0; z-index: 4; transition: opacity var(--board-shape-motion); }
+@starting-style {
+  .board-overlay { opacity: 0; }
+}
 .sudoku-grid {
   border: 2px solid var(--board-outline);
   border-radius: 8px;
@@ -1051,10 +1061,10 @@ svg { flex-shrink: 0; }
   inset-inline-start: var(--mode-tab-inset);
   border-radius: 6px 0 0 6px;
 }
-.puzzle-column:has(.puzzle-mode-tab[data-edge="top"]) { padding-block-start: var(--space-22); }
-.puzzle-column:has(.puzzle-mode-tab[data-edge="bottom"]) { padding-block-end: var(--space-22); }
-.puzzle-column:has(.puzzle-mode-tab[data-edge="left"]) { padding-inline-start: var(--space-20); }
-.puzzle-column:has(.puzzle-mode-tab[data-edge="right"]) { padding-inline-end: var(--space-20); }
+.puzzle-column:is([data-solved-edge="top"], :has(.puzzle-mode-tab[data-edge="top"])) { padding-block-start: var(--space-22); }
+.puzzle-column:is([data-solved-edge="bottom"], :has(.puzzle-mode-tab[data-edge="bottom"])) { padding-block-end: var(--space-22); }
+.puzzle-column:is([data-solved-edge="left"], :has(.puzzle-mode-tab[data-edge="left"])) { padding-inline-start: var(--space-20); }
+.puzzle-column:is([data-solved-edge="right"], :has(.puzzle-mode-tab[data-edge="right"])) { padding-inline-end: var(--space-20); }
 .sudoku-grid.drag-select { touch-action: none; }
 .grid-row { display: grid; grid-template-columns: repeat(var(--board-columns, 9), minmax(0, 1fr)); min-height: 0; }
 .cell {
@@ -1442,7 +1452,15 @@ svg { flex-shrink: 0; }
 }
 .input-switch button[aria-pressed="true"] { background: var(--selected-bg); border-color: var(--selected-border); box-shadow: 0 1px 2px #0000000d; color: var(--dark-purple); }
 .input-switch button:disabled, .key:disabled { opacity: .55; }
-.keypad { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.keypad {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .keypad:not(.palette) { aspect-ratio: 1; grid-template-rows: repeat(3, minmax(0, 1fr)); }
 .key {
   display: grid;
@@ -1971,14 +1989,15 @@ svg { flex-shrink: 0; }
 .puzzle-column:has([data-completion]) { height: 100%; min-height: 0; container-type: inline-size; }
 .puzzle[data-completion] { height: 100%; max-height: calc(100cqw + 96px); min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
 .puzzle[data-completion] .puzzle-stage { min-height: 0; }
-.puzzle[data-completion] .completion-frame {
+.puzzle[data-completion] .completion-frame, .board-overlay > .completion-frame {
   display: block;
   width: 100%;
   height: 100%;
   min-height: 0;
   container: completion / size;
 }
-.puzzle[data-completion] .completion { height: 100%; aspect-ratio: auto; }
+.puzzle[data-completion] .completion, .board-overlay .completion { height: 100%; aspect-ratio: auto; }
+.board-overlay .completion-frame { animation: none; }
 .completion {
   grid-area: board;
   width: 100%;
@@ -2654,7 +2673,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .settings-header-back { justify-self: start; }
   .settings-dialog.settings-subscreen .dialog-heading > .icon-button:last-child { justify-self: end; }
   .settings-desktop { display: none; }
-  .settings-mobile { display: block; flex: 1; }
+  .settings-mobile { display: block; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
   .settings-mobile-menu { display: grid; gap: var(--space-8); }
   .settings-mobile-menu :is(button, a) {
     width: 100%;
@@ -2944,6 +2963,22 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
 
   .standard-workspace-page .compact-controls { height: auto; padding: var(--space-6); }
+  .workspace-controls[data-show-completion] { position: relative; }
+  /* Keep the keypad's space when the next-puzzle actions share its slot. */
+  .workspace-controls[data-show-completion] > .controls { visibility: hidden; }
+  .mobile-completion-actions:not([hidden]) {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: safe center;
+    justify-items: center;
+    padding: var(--space-12);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .mobile-completion-actions .completion-footer { width: min(100%, 25rem); gap: var(--space-8); }
+  .mobile-completion-actions .button { min-height: 44px; padding-inline: var(--space-6); font-size: 0.8125rem; }
+  .mobile-completion-actions .completion-actions .completion-resume { min-height: 56px; padding-inline: var(--space-10); }
   .compact-controls .controls-content {
     height: auto;
     grid-template-columns: 48px minmax(0, var(--input-size, 210px)) 44px;
@@ -3066,37 +3101,24 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-hint-panel .hint-card .hint-card-reason p { margin-top: var(--space-4); }
   .mobile-hint-panel .hint-reason-steps { margin-top: var(--space-6); gap: var(--space-6); }
 
-  .standard-workspace-page:has(.mobile-completion-layout) { overflow: hidden; }
-  .mobile-completion-layout { grid-area: 1 / 1 / -1 / -1; height: 100%; min-height: 0; }
-  .mobile-completion .puzzle { max-height: none; }
-  .mobile-completion .completion-frame { display: block; width: 100%; }
-  .mobile-completion .completion {
-    aspect-ratio: auto;
-    padding: var(--space-12);
-    gap: var(--space-8);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    background: var(--surface);
-    overflow: hidden;
-  }
-  .mobile-completion .completion-heading {
+  .board-overlay .completion { padding: var(--space-12); gap: var(--space-8); }
+  .mobile-panel .completion-results { border: 1px solid var(--border); }
+  .mobile-panel .completion-summary { gap: var(--space-12); }
+  .board-overlay .completion-heading {
     grid-template-columns: 32px minmax(0, 1fr);
     column-gap: var(--space-8);
     justify-items: start;
     text-align: start;
   }
-  .mobile-completion .completion-icon { display: grid; width: 32px; height: 32px; grid-row: 1 / span 2; }
-  .mobile-completion .completion-heading p { display: block; }
-  .mobile-completion .completion-result > div { padding-block: var(--space-6); }
-  .mobile-completion .completion-result dt { font-size: 0.6875rem; }
-  .mobile-completion .completion-result dd { font-size: 0.875rem; }
-  .mobile-completion .completion-stats { display: grid; }
-  .mobile-completion .completion-stats dt { font-size: 0.6875rem; }
-  .mobile-completion .completion-stats dd { font-size: 1rem; }
-  .mobile-completion .completion-actions .button { min-height: 44px; padding-inline: var(--space-6); font-size: 0.8125rem; }
-  .mobile-completion .completion-actions .completion-resume { min-height: 56px; padding-inline: var(--space-10); }
-  .mobile-completion .completion-actions .secondary { min-height: 40px; margin-block: var(--space-2); padding-inline: var(--space-4); font-size: 0.75rem; }
-  .mobile-completion .completion-next svg { display: none; }
+  .board-overlay .completion-icon { display: grid; width: 32px; height: 32px; grid-row: 1 / span 2; }
+  .board-overlay .completion-heading p { display: block; }
+  .mobile-panel .completion-heading h1 { color: var(--ink); }
+  .board-overlay .completion-result > div { padding-block: var(--space-6); }
+  .board-overlay .completion-result dt { font-size: 0.6875rem; }
+  .board-overlay .completion-result dd { font-size: 0.875rem; }
+  .board-overlay .completion-stats { display: grid; }
+  .board-overlay .completion-stats dt { font-size: 0.6875rem; }
+  .board-overlay .completion-stats dd { font-size: 1rem; }
 
   :root[data-theme="andoku"] .compact-controls .left-actions:has(.puzzle-check-button) { height: auto; grid-template-rows: none; }
 
@@ -3137,13 +3159,13 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 
 @container completion (height < 440px) {
   .completion-frame .completion-results { padding: var(--space-12); gap: var(--space-8); }
-  .completion-summary { gap: var(--space-6); }
-  .completion-results .completion-heading { display: block; text-align: center; }
-  .completion-results .completion-heading :is(.completion-icon, p) { display: none; }
+  .completion-results:has(> .completion-footer) .completion-summary { gap: var(--space-6); }
+  .completion-results:has(> .completion-footer) .completion-heading { display: block; text-align: center; }
+  .completion-results:has(> .completion-footer) .completion-heading :is(.completion-icon, p) { display: none; }
 }
 
 @container completion (height < 360px) and (width > 520px) {
-  .completion-frame .completion-results {
+  .completion-frame .completion-results:has(> .completion-footer) {
     display: grid;
     grid-template: minmax(0, 1fr) / repeat(2, minmax(0, 1fr));
     align-content: stretch;
@@ -3394,3 +3416,38 @@ a.game-row { text-decoration: none; color: inherit; }
 .sync-camera { display: block; width: 100%; max-height: 40vh; object-fit: contain; background: #141414; border-radius: 8px; }
 .sync-camera[hidden] { display: none; }
 .sync-scan-origin { overflow-wrap: anywhere; }
+
+@media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
+  .app-shell:has(> :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view), .device-sync-page, .shortcuts-page)) > .topbar {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 20;
+  }
+  .app-shell > :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view), .device-sync-page, .shortcuts-page) {
+    --mobile-page-heading-top: var(--topbar-height);
+  }
+  :is(.puzzles-page, .shortcuts-page, .page.device-sync-page) { padding-block-start: 0; }
+  :is(.puzzles-layout > .puzzles-page-heading, .import-page > .puzzles-page-heading, .shortcuts-page-heading, .device-sync-page > .sync-heading) {
+    position: sticky;
+    inset-block-start: var(--mobile-page-heading-top, 0px);
+    z-index: 2;
+    padding-block-start: 17px;
+    background: var(--page-bg);
+  }
+  :is(.puzzles-layout, .import-page) > .puzzles-page-heading { min-height: 59px; }
+  .puzzles-difficulty-page { min-height: calc(100dvh - var(--topbar-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  .puzzles-difficulty-page .main-menu-panel { display: flex; flex-direction: column; }
+  .puzzles-difficulty-page .new-puzzle-step { width: min(100%, 420px); margin: auto; }
+  .puzzles-difficulty-page .new-puzzle-variant-summary {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-8);
+    font-size: 1.0625rem;
+    text-align: center;
+  }
+  .puzzles-difficulty-page .new-puzzle-variant-summary .variant-preview { width: 76px; border-radius: 5px; }
+  @media (orientation: landscape) and (min-width: 560px) and (max-height: 450px) {
+    .puzzles-difficulty-page .new-puzzle-step { grid-template-columns: 96px minmax(0, 1fr); align-items: center; }
+    .puzzles-difficulty-page .new-puzzle-step > :not(.new-puzzle-variant-summary, .difficulty-selector) { grid-column: 1 / -1; }
+  }
+}
