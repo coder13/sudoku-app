@@ -1,4 +1,4 @@
-.number-puzzle-block {
+.number-puzzle-grid[data-game="kakuro"] .number-puzzle-block {
   position: relative;
   background: var(--ink);
   color: var(--board-bg);
@@ -8,7 +8,7 @@
   line-height: 1;
 }
 
-.number-puzzle-block[data-clue="true"] {
+.number-puzzle-grid[data-game="kakuro"] .number-puzzle-block[data-clue="true"] {
   background-image: linear-gradient(45deg, transparent 49%, var(--grid-strong) 49% 51%, transparent 51%);
 }
 

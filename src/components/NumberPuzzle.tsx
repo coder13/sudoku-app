@@ -1,5 +1,5 @@
 import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
-import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Undo2 } from 'lucide-react'
+import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Undo2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
@@ -22,7 +22,7 @@ import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
 import './number-puzzle.css'
 
-export type NumberGame = GeneratedNumberGame | 'futoshiki'
+export type NumberGame = GeneratedNumberGame | 'futoshiki' | 'hidato'
 
 type BoardCell = {
   label?: string
@@ -30,6 +30,7 @@ type BoardCell = {
   decoration?: ReactNode
   edges?: string
   block?: boolean
+  endpoint?: boolean
 }
 
 type Hint = { cell: number; value: number; marked: number[]; technique: string } & (
@@ -56,7 +57,7 @@ export type NumberGameConfig<Entry extends NumberPuzzleEntry> = {
   hasClueCells?: boolean
 } & (
   | { game: GeneratedNumberGame; generatedEntry?: (id: string, number: number) => Entry | null }
-  | { game: 'futoshiki'; generatedEntry?: never }
+  | { game: Exclude<NumberGame, GeneratedNumberGame>; generatedEntry?: never }
 )
 
 function positionKey(game: NumberGame, id: string) {
@@ -152,7 +153,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   const next = group.find(entry => !started.has(entry.id) && !solved.has(entry.id))
     ?? group.find(entry => started.has(entry.id)) ?? group[0]
   const busy = generation.pending !== null
-  const GameIcon = { kakuro: Hash, calcudoku: Calculator, futoshiki: MoveHorizontal }[game]
+  const GameIcon = { kakuro: Hash, calcudoku: Calculator, futoshiki: MoveHorizontal, hidato: PathIcon }[game]
 
   function start() {
     if (generatedEntry) generation.generate(difficulty)
@@ -222,6 +223,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const [ready, setReady] = useState(false)
   const [selection, setSelection] = useState(() => editable.indexOf(true))
   const [notes, setNotes] = useState(false)
+  const [numberInput, setNumberInput] = useState('')
+  const numberField = useRef<HTMLInputElement>(null)
   const [history, setHistory] = useState<NumberPosition[]>([])
   const [future, setFuture] = useState<NumberPosition[]>([])
   const [showCheck, setShowCheck] = useState(false)
@@ -332,7 +335,10 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       }
     } else if (/^[1-9]$/.test(event.key) || event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault()
-      enter(Number(event.key) || 0)
+      if (maxValue > 9 && /^[1-9]$/.test(event.key) && !locked && editable[selection]) {
+        setNumberInput(event.key)
+        numberField.current?.focus()
+      } else enter(Number(event.key) || 0)
     } else if (event.key.toLowerCase() === 'n') {
       event.preventDefault()
       setNotes(current => !current)
@@ -363,6 +369,11 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     if (!hint) return
     enter(hint.value, hint.cell, false)
     cellButtons.current.get(hint.cell)?.focus({ preventScroll: true })
+  }
+
+  function selectCell(index: number) {
+    if (index !== selection) setNumberInput('')
+    setSelection(index)
   }
 
   function closeInsight(id: Insight) {
@@ -418,7 +429,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     return (
       <div className="number-puzzle-grid" data-game={game} role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
         style={{ '--number-puzzle-columns': width } as CSSProperties} onKeyDown={preview ? undefined : onGridKey}>
-        {board.cells.map(({ label, block, decoration, edges, given }, index) => {
+        {board.cells.map(({ label, block, decoration, edges, given, endpoint }, index) => {
           if (block) {
             return <div key={index} className="number-puzzle-block" data-clue={Boolean(label)}
               data-conflict={!preview && conflictCells.has(index)} data-hint={context.has(index)} role={label ? 'img' : undefined}
@@ -435,12 +446,14 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
             tabIndex={selection === index ? 0 : -1} aria-pressed={preview ? undefined : selection === index}
             disabled={Boolean(preview)} data-entry={Boolean(value && !given)}
             data-conflict={!preview && conflictCells.has(index)} data-hint={shownHint?.cell === index} data-context={context.has(index)}
-            data-edges={edges} data-given={Boolean(given)} data-decorated={Boolean(decoration)}
+            data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
             aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
-            onFocus={() => setSelection(index)} onClick={() => setSelection(index)}>
+            onFocus={() => selectCell(index)} onClick={() => selectCell(index)}>
             {decoration}
-            {value || <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
-              <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
+            {value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
+              : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
+                : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
+                  <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
           </button>
         })}
       </div>
@@ -553,11 +566,25 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           </div>
         </div>
         <div className="keypad-stack">
-          <PuzzleKeypad label="Digit pad" variant={maxValue === 4 ? 'mini' : maxValue === 6 ? 'six' : undefined}>
+          {maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
+            event.preventDefault()
+            const value = Number(numberInput)
+            if (!value || value > maxValue) return
+            enter(value)
+            setNumberInput('')
+            cellButtons.current.get(selection)?.focus()
+          }}>
+            <input ref={numberField} value={numberInput} aria-label={`Number from 1 to ${maxValue}`}
+              placeholder={`1 to ${maxValue}`} inputMode="numeric" maxLength={String(maxValue).length}
+              disabled={locked || !editable[selection]} onChange={event => setNumberInput(event.currentTarget.value.replace(/\D/g, ''))} />
+            <Button type="submit" variant="primary" disabled={locked || !editable[selection] || !Number(numberInput) || Number(numberInput) > maxValue}>
+              {notes ? 'Add note' : 'Place'}
+            </Button>
+          </form> : <PuzzleKeypad label="Digit pad" variant={maxValue === 4 ? 'mini' : maxValue === 6 ? 'six' : undefined}>
             {digits.map(digit => <button key={digit} type="button" className="key"
               aria-label={`Enter ${digit}`} disabled={locked || !editable[selection]}
               onClick={() => enter(digit)}>{digit}</button>)}
-          </PuzzleKeypad>
+          </PuzzleKeypad>}
         </div>
         <div className="side-actions right-actions" role="group" aria-label="Input modes">
           <IconButton aria-label="Pencil mode" title="Pencil mode" aria-pressed={notes} disabled={locked}

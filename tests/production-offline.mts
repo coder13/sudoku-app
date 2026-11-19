@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from 'node:fs/promises'
 import test from 'node:test'
 import { calcudokuCatalog } from '../src/calcudoku/catalog.ts'
 import { futoshikiCatalog } from '../src/futoshiki/catalog.ts'
+import { hidatoCatalog } from '../src/hidato/catalog.ts'
 import { kakuroCatalog } from '../src/kakuro/catalog.ts'
 
 // Run after Vite build and scripts/build-offline.mjs. Compare the actual build
@@ -76,5 +77,16 @@ test('each Futoshiki puzzle precaches every inequality sign', async () => {
     const html = await readFile(new URL('.' + path, client), 'utf8')
     assert.ok(html.includes('aria-label="Futoshiki board"'), `${id} prerenders its board`)
     assert.equal([...html.matchAll(/class="futoshiki-sign"/g)].length, puzzle.inequalities.length)
+  }
+})
+
+test('each Hidato puzzle precaches its playable cells and both endpoints', async () => {
+  for (const { id, puzzle } of hidatoCatalog) {
+    const path = `/puzzles/hidato/${id}/index.html`
+    assert.ok(cached.has(path), `${id} has a precached shell`)
+    const html = await readFile(new URL('.' + path, client), 'utf8')
+    assert.ok(html.includes('aria-label="Hidato board"'), `${id} prerenders its board`)
+    assert.equal([...html.matchAll(/class="number-puzzle-cell"/g)].length, puzzle.cells.length)
+    assert.equal([...html.matchAll(/class="number-puzzle-endpoint"/g)].length, 2)
   }
 })

@@ -114,3 +114,5 @@ Search by component name or browse the sections below.
 | [Calcudoku play route](../../../../src/routes/puzzles.calcudoku_.$puzzle.tsx) | `CalcudokuPlayRoute` opens a catalog or generated puzzle from its URL. |
 | [Futoshiki](../../../../src/components/Futoshiki.tsx) | `FutoshikiDifficultyPage` selects difficulty. `FutoshikiPlay` supplies directed inequality symbols, givens, and rules. |
 | [Futoshiki play route](../../../../src/routes/puzzles.futoshiki_.$puzzle.tsx) | `FutoshikiPlayRoute` opens a catalog puzzle from its URL. |
+| [Hidato](../../../../src/components/Hidato.tsx) | `HidatoDifficultyPage` selects difficulty. `HidatoPlay` supplies board holes, givens, and path endpoints. It uses a number field for puzzles with values above 9. |
+| [Hidato play route](../../../../src/routes/puzzles.hidato_.$puzzle.tsx) | `HidatoPlayRoute` opens a catalog puzzle from its URL. |

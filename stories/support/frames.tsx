@@ -11,9 +11,11 @@ import { Route as GameTypesRoute } from '../../src/routes/puzzles.games'
 import { KakuroDifficultyPage, KakuroPlay } from '../../src/components/Kakuro'
 import { CalcudokuDifficultyPage, CalcudokuPlay } from '../../src/components/Calcudoku'
 import { FutoshikiDifficultyPage, FutoshikiPlay } from '../../src/components/Futoshiki'
+import { HidatoDifficultyPage, HidatoPlay } from '../../src/components/Hidato'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
 import { calcudokuCatalog } from '../../src/calcudoku/catalog'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
+import { hidatoCatalog } from '../../src/hidato/catalog'
 import type { NumberGame } from '../../src/components/NumberPuzzle'
 
 export const noop = () => {}
@@ -73,6 +75,7 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
       ...numberGame('kakuro', KakuroDifficultyPage, KakuroPlay, kakuroCatalog),
       ...numberGame('calcudoku', CalcudokuDifficultyPage, CalcudokuPlay, calcudokuCatalog),
       ...numberGame('futoshiki', FutoshikiDifficultyPage, FutoshikiPlay, futoshikiCatalog),
+      ...numberGame('hidato', HidatoDifficultyPage, HidatoPlay, hidatoCatalog),
     ]
     const newPuzzle = createRoute({
       getParentRoute: () => puzzles, path: 'new',
