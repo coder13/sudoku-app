@@ -242,7 +242,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const resumable = inProgress(games)
     const puzzle = (localLaunch ? resumable.find(item => item.id === active) : undefined) ?? resumable[0]
     if (puzzle) void navigate({ to: '/', search: { puzzle: puzzle.id }, replace: true, viewTransition: false })
-  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, games, active, navigate, puzzleLink])
+    else if (!sync.linked) roomStore.startFirstPuzzle()
+  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, sync.linked, games, active, navigate, puzzleLink])
   useEffect(() => {
     if (!workspaceReady || !requested || !hasRequestedGame) return
     const location = new URL(window.location.href)

@@ -55,6 +55,7 @@ export const roomStore: typeof appStore = {
   stopPlaying(id) {
     if (room.active === id) publish({ ...room, active: null, stoppedPlaying: true })
   },
+  startFirstPuzzle() {},
   add(game) {
     const games = [game, ...room.games]
     if (game.savedForLater) publish({ ...room, games })
