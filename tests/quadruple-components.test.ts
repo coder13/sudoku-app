@@ -116,7 +116,8 @@ test('the real share dialog posts the starting definition only after Create link
     const tree = capture(SharePuzzle, { game: current, close() {} })
     assert.equal(fetch.mock.callCount(), 0)
     assert.ok(!tree.some(({ props }) => props.id === 'share-output'))
-    const create = tree.find(({ props }) => props.variant === 'primary' && typeof props.onClick === 'function')!
+    const create = tree.find(({ type, props }) => type === 'button' && String(props.className).includes('primary'))
+    assert.ok(create)
     await (create.props.onClick as () => Promise<void>)()
     assert.equal(fetch.mock.callCount(), 1)
     const [path, request] = fetch.mock.calls[0].arguments
