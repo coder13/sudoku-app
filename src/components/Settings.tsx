@@ -10,7 +10,7 @@ import { type ErrorMode } from '../sudoku/game'
 import { CELL_REFERENCE_LABELS, type CellReferenceStyle } from '../sudoku/hints'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
 import {
-  gridTextScalePercentage, INPUT_SIZE_STEP, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
+  CANDIDATE_TEXT_SIZES, gridTextScalePercentage, INPUT_SIZE_STEP, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
   stepGridTextScale,
   type AdvancedModes, type AppearancePreferences, type CandidateHighlightStyle,
   type HighlightPreferences, type ThemeId, type WorkspaceMode,
@@ -84,6 +84,7 @@ export function HighlightSettings({ highlighting, setHighlighting }: {
             </label>
           ))}
         </fieldset>
+        <p className="settings-intro">To highlight several digits, touch and hold each digit on the keypad or Shift-click it.</p>
       </div>
     </div>
   )
@@ -180,6 +181,15 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
             })}><Plus size={18} /></IconButton>
         </div>
       </div>
+      <label className="setting-row-heading">
+        <span><strong>Candidate size</strong><small>Scale candidates relative to the puzzle text size.</small></span>
+        <SelectControl value={appearance.candidateTextSize} onChange={(event) => {
+          const candidateTextSize = CANDIDATE_TEXT_SIZES.find(size => size === Number(event.target.value))
+          if (candidateTextSize) setAppearance({ ...appearance, candidateTextSize })
+        }}>
+          {CANDIDATE_TEXT_SIZES.map(size => <option key={size} value={size}>{size}%</option>)}
+        </SelectControl>
+      </label>
       <div className="input-size-setting setting-row-heading">
         <span><strong>Digit size</strong><small>Adjust the digit buttons.</small></span>
         <div className="size-stepper" role="group" aria-label="Digit size">
@@ -267,7 +277,7 @@ function PuzzleTimingSettings() {
     <label className="advanced-toggle">
       <input type="checkbox" checked={timing.showTimer}
         onChange={(event) => puzzleTiming.set('showTimer', event.target.checked)} />
-      <span><strong>Show timer</strong><small>Display elapsed time during timed solves.</small></span>
+      <span><strong>Show timer while solving</strong><small>Hide the clock during play and still see your time in the results.</small></span>
     </label>
     <label className="advanced-toggle">
       <input type="checkbox" checked={timing.showPause}
@@ -288,7 +298,7 @@ function PuzzleTimingSettings() {
 }
 
 export function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, setErrorMode, draft,
-  cellReferenceStyle, setCellReferenceStyle,
+  cellReferenceStyle, setCellReferenceStyle, onApplyPaperStyle, paperStyleApplied,
 }: {
   section: Exclude<Section, 'appearance' | 'highlighting'>
   advancedModes: AdvancedModes
@@ -298,6 +308,8 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
   draft: boolean
   cellReferenceStyle: CellReferenceStyle
   setCellReferenceStyle: (style: CellReferenceStyle) => void
+  onApplyPaperStyle?: () => void
+  paperStyleApplied?: boolean
 }) {
   const candidateLayoutGroup = useId()
   const cellReferenceGroup = useId()
@@ -319,6 +331,15 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
               <span><strong>Center and corner</strong><small>Place candidates in cell centers or corners.</small></span>
             </label>
           </fieldset>
+          <label className="advanced-select settings-select">
+            <span><strong>Keypad progress</strong><small>Choose how the keypad shows your progress for each digit.</small></span>
+            <SelectControl value={advancedModes.keypadProgress}
+              onChange={(event) => setAdvancedModes({ ...advancedModes, keypadProgress: event.target.value as AdvancedModes['keypadProgress'] })}>
+              <option value="dim">Dim when complete</option>
+              <option value="count">Show remaining count</option>
+              <option value="off">Off</option>
+            </SelectControl>
+          </label>
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.colorsEnabled}
               onChange={(event) => setAdvancedModes({ ...advancedModes, colorsEnabled: event.target.checked })} />
@@ -334,6 +355,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
               onChange={(event) => setAdvancedModes({ ...advancedModes, doubleClickSingles: event.target.checked })} />
             <span><strong>Double-click naked singles</strong><small>Place a naked single with a double-click.</small></span>
           </label>
+          <p className="settings-intro">With no cell selected, tap a digit first, then tap cells to place it.</p>
         </div>
       </div>
     )
@@ -343,7 +365,6 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
     return (
       <div className="settings-section mobile-title-duplicate">
         <h3>Solving style</h3>
-        <p className="settings-intro">Choose how the app responds while you solve.</p>
         <div className="advanced-options">
           <PuzzleTimingSettings />
           <label className="advanced-toggle">
@@ -351,10 +372,21 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
               onChange={(event) => setAdvancedModes({ ...advancedModes, autoGenerateCandidates: event.target.checked })} />
             <span><strong>Automatically generate candidates</strong><small>Add candidates once per puzzle and again after a reset.</small></span>
           </label>
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={advancedModes.autoRemoveCandidates}
+              onChange={(event) => setAdvancedModes({ ...advancedModes, autoRemoveCandidates: event.target.checked })} />
+            <span><strong>Automatically remove candidates</strong><small>Remove candidates that a digit placement rules out.</small></span>
+          </label>
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={advancedModes.autoPlaceNakedSingles}
+              onChange={(event) => setAdvancedModes({ ...advancedModes, autoPlaceNakedSingles: event.target.checked })} />
+            <span><strong>Automatically place naked singles</strong><small>After you place a digit, also place any available naked singles.</small></span>
+          </label>
           {!draft ? (
             <label className="advanced-select settings-select">
               <span><strong>Error display</strong><small>Choose when mistakes are highlighted.</small></span>
               <SelectControl value={errorMode} onChange={(event) => setErrorMode(event.target.value as ErrorMode)}>
+                <option value="conflicts">Flag conflicts only</option>
                 <option value="all">Flag all errors immediately</option>
                 <option value="incorrect">Flag incorrect digits immediately</option>
                 <option value="none">Don’t flag errors</option>
@@ -363,6 +395,11 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
           ) : (
             <div className="settings-placeholder"><SlidersHorizontal size={20} /><span><strong>Error display</strong><small>Error options become available while solving a puzzle.</small></span></div>
           )}
+          {onApplyPaperStyle && <div className="setting-row-heading">
+            <span><strong>Paper style</strong><small>Hide the timer and turn off solving aids, error feedback, and automatic highlights.</small></span>
+            <Button onClick={onApplyPaperStyle} disabled={paperStyleApplied}
+              aria-label={paperStyleApplied ? 'Paper style applied' : 'Apply Paper style'}>{paperStyleApplied ? 'Applied' : 'Apply'}</Button>
+          </div>}
         </div>
       </div>
     )
@@ -411,6 +448,19 @@ export function Settings({
   close, section = null, advancedModes, setAdvancedModes, appearance, setAppearance, highlighting, setHighlighting, errorMode, setErrorMode,
   inputSize, setInputSize, draft, cellReferenceStyle, setCellReferenceStyle, workspaceMode, setWorkspaceMode,
 }: SettingsProps) {
+  const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
+  const paperStyleApplied = !timing.showTimer && errorMode === 'none' && advancedModes.keypadProgress === 'off' &&
+    !advancedModes.autoGenerateCandidates && !advancedModes.autoRemoveCandidates && !advancedModes.autoPlaceNakedSingles &&
+    !advancedModes.doubleClickSingles && !highlighting.relatedCells && !highlighting.matchingDigits && !highlighting.matchingCandidates
+
+  function applyPaperStyle() {
+    setAdvancedModes({ ...advancedModes, autoGenerateCandidates: false, autoRemoveCandidates: false,
+      autoPlaceNakedSingles: false, doubleClickSingles: false, keypadProgress: 'off' })
+    setHighlighting({ ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false })
+    setErrorMode('none')
+    puzzleTiming.set('showTimer', false)
+  }
+
   function exitSettings(callback?: () => void) {
     close()
     callback?.()
@@ -419,7 +469,8 @@ export function Settings({
   function renderGeneral(currentSection: Exclude<Section, 'appearance' | 'highlighting'>) {
     return <GeneralSettings section={currentSection} advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
       errorMode={errorMode} setErrorMode={setErrorMode} draft={draft}
-      cellReferenceStyle={cellReferenceStyle} setCellReferenceStyle={setCellReferenceStyle} />
+      cellReferenceStyle={cellReferenceStyle} setCellReferenceStyle={setCellReferenceStyle}
+      onApplyPaperStyle={applyPaperStyle} paperStyleApplied={paperStyleApplied} />
   }
 
   function renderSection(screen: Section) {

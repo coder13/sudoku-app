@@ -6,7 +6,9 @@ import { recordAction } from '../src/sudoku/action-history.ts'
 import { ratingAttemptFor } from '../src/sudoku/player-rating.ts'
 import { activityPrefix, inProgress } from '../src/sudoku/puzzle-activity.ts'
 import { readTiming, TIMING_KEY } from '../src/sudoku/puzzle-timing.ts'
+import { ADVANCED_MODE_KEY, APPEARANCE_KEY, ERROR_MODE_KEY, readPreferences } from '../src/sudoku/preferences.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
+import { syncSettings } from '../src/sudoku/sync-settings.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 
@@ -357,6 +359,40 @@ test('pause on open and the last puzzle pause state travel between linked device
     assert.equal(readTiming(a.storage).pauseOnOpen, true)
     assert.equal(readTiming(a.storage).showTimer, false)
   } finally { sqlite.close() }
+})
+
+test('solving options and candidate size sync through their existing settings groups', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const a = client(creator, phone), b = client(second, computer)
+    const defaults = readPreferences(a.storage)
+    assert.equal(defaults.errorMode, 'conflicts')
+    assert.equal(defaults.advancedModes.autoRemoveCandidates, true)
+    assert.equal(defaults.advancedModes.autoPlaceNakedSingles, false)
+    assert.equal(defaults.advancedModes.keypadProgress, 'dim')
+    assert.equal(defaults.appearance.candidateTextSize, 100)
+
+    a.storage.setItem(ADVANCED_MODE_KEY, JSON.stringify({ ...defaults.advancedModes,
+      autoRemoveCandidates: false, autoPlaceNakedSingles: true, keypadProgress: 'count' }))
+    a.storage.setItem(APPEARANCE_KEY, JSON.stringify({ candidateTextSize: 115 }))
+    a.storage.setItem(ERROR_MODE_KEY, 'all')
+    await a.run(); await b.run()
+    const received = readPreferences(b.storage)
+    assert.equal(received.advancedModes.autoRemoveCandidates, false)
+    assert.equal(received.advancedModes.autoPlaceNakedSingles, true)
+    assert.equal(received.advancedModes.keypadProgress, 'count')
+    assert.equal(received.appearance.candidateTextSize, 115)
+    assert.equal(received.errorMode, 'all')
+  } finally { sqlite.close() }
+})
+
+test('changing the default error mode does not overwrite a linked device’s saved choice', async () => {
+  const storage = new MemoryStorage()
+  const checkpoint = 'sync-settings'
+  const remote = { 'error-mode': JSON.stringify('all') }
+  storage.setItem(checkpoint, JSON.stringify(remote))
+  await syncSettings(storage, checkpoint, async () => { throw new Error('Unexpected settings upload') }, remote)
+  assert.equal(storage.getItem(ERROR_MODE_KEY), 'all')
 })
 
 test('settings changed during an upload are still pending after a reload', async () => {
