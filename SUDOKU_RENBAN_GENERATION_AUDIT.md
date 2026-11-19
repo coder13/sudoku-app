@@ -2,7 +2,8 @@
 
 Agent A implements Medium Renban generation under [issue 189](https://github.com/coder13/sudoku-app/issues/189).
 The measured base is main `a400d36`. It includes Mini Sudoku, Algebraic Cages, Kakuro, Calcudoku and UUID sharing.
-Local validation and matched measurements pass. Exact-head CI and deployment checks remain pending. This document does not claim a release.
+[PR 269](https://github.com/coder13/sudoku-app/pull/269) is merged at `548bba6`, reviewed head `67b69f1`. Exact-head engine CI and Cloudflare preview checks pass.
+Production run 44606496440 started for the merge commit. Its completion is not a handoff requirement.
 
 ## Sources and generation
 
@@ -144,7 +145,21 @@ The same-main baseline gives +8,662 raw / +370 gzip JavaScript bytes and unchang
 Totals sum default Node gzip per asset, excluding HTML, service workers and manifests.
 All five generated metadata JSON files and both dependency locks match.
 Both native artifacts use fresh builds of the same current-main backend and SDK. Earlier `3429f0b` measurements remain archived separately.
-Exact-head capability/profile/docs/deployment gates remain pending.
+[Engine CI](https://github.com/coder13/sudoku-app/actions/runs/44604336026) passes sixteen capability combinations, four Wasm profiles, 395 native tests, 702 app tests, 510 Wasm contracts and strict full/core/variants Cargo documentation.
+Cloudflare run 44604335975 passes at the [reviewed preview](https://99ca19a0.klyn-sudoku.pages.dev).
+Its checkout `3e0d7118a9e0f6460f8fa86ab488676b13cde424` has an identical tree to the reviewed head.
+
+Read-only HTTP verifies both New Puzzle shells, exact recipes, preview geometry/CSS and the active Linux Wasm.
+The downloaded 3,679,267-byte engine has SHA-256 `ae3414e9528fc0306a4c29f209a45f390b7b9d0659fe7c05de4c48fe44f1dec5`.
+It passes every independently unique/Renban-dependent/multiple-hint recipe, 225 direct opening proofs and all thirty archived exclusions.
+
+Netlify deploy `6aff55938f27541425ed982f` fails before compilation during repository checkout with HTTP 403.
+The provider reports that the repository is disabled and asks the owner to check the account. Cloudflare and Actions checkout succeed.
+This is an unresolved provider-access failure, not a successful Netlify preview or an app regression.
+
+Fetched main contains the reviewed head and merge. Its Renban shipping sources match the reviewed head.
+The concurrent Trainer layout change remains intact.
+[Production deployment](https://github.com/coder13/sudoku-app/actions/runs/44606496440) started for that merge commit.
 Retain partial original paths and remaining source-format gaps. Generation of these checked puzzles does not close the broader engine goal.
 
 Raw calibration, fixtures, archived replies, logs and comparison scripts remain under `/tmp/sudoku-renban-generation-research`.
