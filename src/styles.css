@@ -3398,15 +3398,7 @@ a.game-row { text-decoration: none; color: inherit; }
 }
 .sync-invitation .sync-panel-heading { justify-content: space-between; gap: var(--space-4); }
 .sync-invitation .sync-panel-heading h2 { margin: 0; }
-.sync-code-frame {
-  width: min(100%, 196px); padding: 6px; box-sizing: border-box;
-  border: 1px solid #626873; background-color: #f8f9fb;
-  background-image: linear-gradient(to right, #626873 2px, transparent 2px),
-    linear-gradient(to bottom, #626873 2px, transparent 2px),
-    linear-gradient(to right, #aab0ba 1px, transparent 1px),
-    linear-gradient(to bottom, #aab0ba 1px, transparent 1px);
-  background-size: calc(100% / 3) 100%, 100% calc(100% / 3), calc(100% / 9) 100%, 100% calc(100% / 9);
-}
+.sync-code-frame { width: 100%; aspect-ratio: 1; }
 .sync-code { display: block; width: 100%; height: auto; background: white; image-rendering: pixelated; }
 .sync-invitation-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
 .sync-invitation-actions p { margin: 0; font-size: 0.875rem; }
