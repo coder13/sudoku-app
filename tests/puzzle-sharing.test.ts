@@ -91,6 +91,7 @@ test('the sharing API requires full rule data for either rectangular 6 × 6 layo
       { type: 'diagonal', diagonal: 'main' },
       { type: 'parity', parity: 'even', cells: [2] },
       { type: 'thermometer', cells: [1, 2, 8, 14] },
+      { type: 'renban', cells: [2, 8, 9, 15], segments: [[2, 8, 9], [9, 15]] },
     ] as const
     for (const grid of [{ size: 6, boxRows: 2, boxColumns: 3 }, { size: 6, boxRows: 3, boxColumns: 2 }] as const) {
       const definition = { version: 1, title: '6 × 6 rule contract', grid, givens, sixRules, sixAuthor: 'Test author' }
@@ -103,6 +104,7 @@ test('the sharing API requires full rule data for either rectangular 6 × 6 layo
         { ...definition, sixAuthor: ' '.repeat(5) },
         { ...definition, sixRules: [{ type: 'thermometer', cells: [1, 35, 1] }] },
         { ...definition, sixRules: [{ type: 'parity', parity: 'odd', cells: [36] }] },
+        { ...definition, sixRules: [{ type: 'renban', cells: [1, 2, 3], segments: [[1, 2, 7]] }] },
         { ...definition, sixRules: [{ type: 'diagonal', diagonal: 'main', solution: givens }] },
       ]) await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
     }

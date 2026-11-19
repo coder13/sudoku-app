@@ -29,3 +29,17 @@ test('six-by-six Coach decoding reports unsupported rules instead of importing a
   await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, givenConstraints: [{ type: 'thermometer', segments: [{ cells: [1, 1] }] }] })), /invalid cell or path/)
   await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, regions: Array(36).fill(0) })), /rectangular boxes/)
 })
+
+test('six-by-six Coach keeps intersecting Renban segments as one set alongside other rules', async () => {
+  const puzzle = { ...six, regions: rectangularRegions(3, 2) }
+  const source = { ...puzzle, givenConstraints: [
+    { type: 'renban', segments: [{ cells: [1, 7, 13] }, { cells: [7, 8] }] },
+    { type: 'thermometer', segments: [{ cells: [1, 7, 13] }] },
+  ] }
+  assert.deepEqual((await decodeCoachSix(coachCode(source))).rules, [
+    { type: 'renban', cells: [1, 7, 13, 8], segments: [[1, 7, 13], [7, 8]] },
+    { type: 'thermometer', cells: [1, 7, 13] },
+  ])
+  source.givenConstraints[0].segments[1].cells[1] = 36
+  await assert.rejects(decodeCoachSix(coachCode(source)), /invalid rules/)
+})

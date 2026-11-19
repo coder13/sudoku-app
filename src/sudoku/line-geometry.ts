@@ -18,27 +18,28 @@ function paths(rule: VariantRule): readonly (readonly number[])[] {
 }
 
 /** Split straight paths at every grid center so long and short overlaps agree. */
-function* edges(lines: readonly (readonly number[])[]) {
+function* edges(lines: readonly (readonly number[])[], size = 9) {
   for (const line of lines) for (let i = 1; i < line.length; i++) {
     const from = line[i - 1], to = line[i]
-    const dx = to % 9 - from % 9, dy = Math.floor(to / 9) - Math.floor(from / 9)
+    const dx = to % size - from % size, dy = Math.floor(to / size) - Math.floor(from / size)
     let a = Math.abs(dx), b = Math.abs(dy)
     while (b) [a, b] = [b, a % b]
     if (!a) continue
-    const delta = (dy * 9 + dx) / a
+    const delta = (dy * size + dx) / a
     for (let step = 0; step < a; step++) {
       const left = from + step * delta, right = left + delta
-      yield Math.min(left, right) * 81 + Math.max(left, right)
+      yield Math.min(left, right) * size ** 2 + Math.max(left, right)
     }
   }
 }
 
 /** Separate line clues that share a visible line segment. */
-export function coloredLineOverlapLanes(rules: readonly VariantRule[]) {
+export function coloredLineOverlapLanes(rules: readonly VariantRule[], size = 9) {
+  const cellCount = size ** 2
   const owners = new Map<number, number[]>()
   rules.forEach((rule, index) => {
     if (rule.type !== 'renban' && rule.type !== 'entropic' && rule.type !== 'modular' && rule.type !== 'between' && rule.type !== 'region-sum') return
-    for (const edge of new Set(edges(paths(rule)))) {
+    for (const edge of new Set(edges(paths(rule), size))) {
       const list = owners.get(edge) ?? []
       list.push(index); owners.set(edge, list)
     }
@@ -48,7 +49,7 @@ export function coloredLineOverlapLanes(rules: readonly VariantRule[]) {
     if (indices.length < 2) continue
     indices.forEach((index, lane) => {
       const lines = result.get(index) ?? []
-      lines.push({ cells: [Math.floor(edge / 81), edge % 81], lane, count: indices.length })
+      lines.push({ cells: [Math.floor(edge / cellCount), edge % cellCount], lane, count: indices.length })
       result.set(index, lines)
     })
   }
