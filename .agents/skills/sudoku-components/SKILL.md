@@ -22,6 +22,8 @@ Put a dismissible card’s close control in its top-right corner. Align its head
 
 ## Interaction states
 
+Use document scrolling for mobile browsing screens so browsers can handle pull-to-refresh. Apply scroll containment to controls or dialogs that need to keep a gesture inside their own surface.
+
 Raised controls get a subtle shadow on hover-capable pointers. Quiet controls get a surface tint. Keep the hit target in place in every state. Preserve the visible keyboard focus ring, pressed selection, disabled state, and reduced-motion support. Make every action available to touch and keyboard users. State guidance follows [MDN’s hover media feature](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/hover), [WCAG Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html), and [Carbon’s button states](https://carbondesignsystem.com/components/button/style/).
 
 ## Add or change a component

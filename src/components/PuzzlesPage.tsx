@@ -1,44 +1,40 @@
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultySelector } from './DifficultySelector'
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type ComponentType } from 'react'
-import { getRouteApi, Link, Outlet, useRouterState } from '@tanstack/react-router'
-import { BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, Trophy } from 'lucide-react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { getRouteApi, Link, useCanGoBack, useLocation, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
+import { ArrowRight, BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, PencilLine, Trophy } from 'lucide-react'
 import {
   DIFFICULTY_LABELS, formatPuzzleRating, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
+import { inProgress } from '../sudoku/puzzle-activity'
 import { techniqueLabel } from '../sudoku/hints'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
 import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel, type VariantId, type PuzzleVariantId } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
-import { useMobileLayout } from './mobile-layout'
-import { MobileNewPuzzle, type MobileNewPuzzleScreen } from './MobileNewPuzzle'
-import { VariantSelector } from './VariantSelector'
+import { VariantPreview } from './VariantPreview'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { PuzzleCollections } from './PuzzleCollections'
 import { collectionDifficulties, getCollectionPuzzle, getCollection } from '../sudoku/collections'
 
-type Section = 'puzzles' | 'new' | 'collections' | 'statistics'
-type SectionItem = { id: Section; label: string; description: string; icon: ComponentType<{ size?: number }> }
-
-const sections: SectionItem[] = [
-  { id: 'puzzles', label: 'Your puzzles', description: 'Continue or switch puzzles', icon: Grid3X3 },
-  { id: 'new', label: 'New puzzle', description: 'Choose a variant and difficulty, or import a puzzle', icon: Dices },
-  { id: 'collections', label: 'Collections', description: 'Explore selected puzzle sets', icon: BookOpen },
-  { id: 'statistics', label: 'Statistics', description: 'Review your solving history', icon: BarChart3 },
-]
-const sectionRoutes: Record<Section, '/puzzles/browse' | '/puzzles/new' | '/puzzles/collections' | '/puzzles/statistics'> = {
-  puzzles: '/puzzles/browse',
-  new: '/puzzles/new',
-  collections: '/puzzles/collections',
-  statistics: '/puzzles/statistics',
-}
+const sections = {
+  puzzles: { to: '/', label: 'Active Puzzles', icon: Grid3X3 },
+  new: { to: '/puzzles/new', label: 'New puzzle', icon: Dices },
+  solved: { to: '/puzzles/solved', label: 'Solved puzzles', icon: Trophy },
+  collections: { to: '/puzzles/collections', label: 'Collections', icon: BookOpen },
+  statistics: { to: '/puzzles/statistics', label: 'Statistics', icon: BarChart3 },
+} as const
+type Section = keyof typeof sections
 const newPuzzleRoute = getRouteApi('/puzzles/new')
 const collectionRoute = getRouteApi('/puzzles/collections')
-const newPuzzleTitle: Record<MobileNewPuzzleScreen, string> = {
-  variant: 'Choose a variant', difficulty: 'Choose difficulty', start: 'New puzzle',
+const newPuzzleVariants = Object.keys(VARIANTS) as VariantId[]
+
+declare module '@tanstack/history' {
+  interface HistoryState {
+    fromPuzzleVariantPicker?: boolean
+  }
 }
 
 function MiniGrid({ values }: { values: string }) {
@@ -49,18 +45,12 @@ function MiniGrid({ values }: { values: string }) {
 
 function puzzleStatus(game: Game) {
   if (game.source === 'draft') return 'Draft puzzle'
-  const rating = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : 'Unrated'
-  if (isSolved(game)) return game.timeUntracked ? `${rating} · Solved` : `${rating} · Solved in ${formatTime(game.elapsed)}`
-  if (game.started) return `${rating} · ${game.timeUntracked ? 'In progress' : formatTime(game.elapsed)}`
-  return `${rating} · Not started`
+  if (isSolved(game)) return game.timeUntracked ? 'Solved' : `Solved in ${formatTime(game.elapsed)}`
+  if (game.started) return game.timeUntracked ? 'In progress' : formatTime(game.elapsed)
+  return 'Not started'
 }
 
-function PuzzleLibrary({ games, active, manage }: {
-  games: Game[]; active: string | null; manage: (id: string) => void
-}) {
-  const title = useId()
-  const activePuzzles = games.filter((game) => !isSolved(game) && !game.savedForLater)
-  const saved = games.filter((game) => !isSolved(game) && game.savedForLater)
+function groupSolvedPuzzles(games: Game[]) {
   const variantOrder: PuzzleVariantId[] = [...Object.keys(PUZZLE_VARIANTS) as Exclude<PuzzleVariantId, 'mixed'>[], 'mixed']
   const difficultyOrder = [...Object.keys(DIFFICULTY_LABELS), 'unrated']
   const solved = games.filter(isSolved).sort((left, right) => {
@@ -70,7 +60,7 @@ function PuzzleLibrary({ games, active, manage }: {
       difficultyOrder.indexOf(left.difficulty ?? 'unrated') - difficultyOrder.indexOf(right.difficulty ?? 'unrated') ||
       right.created - left.created || left.title.localeCompare(right.title)
   })
-  const solvedGroups = solved.reduce<Array<{
+  return solved.reduce<Array<{
     key: string; variant: PuzzleVariantId; difficulty: Game['difficulty']; games: Game[]
   }>>((groups, game) => {
     const variant = game.variant?.id ?? 'classic'
@@ -80,57 +70,118 @@ function PuzzleLibrary({ games, active, manage }: {
     else groups.push({ key, variant, difficulty: game.difficulty, games: [game] })
     return groups
   }, [])
+}
+
+function PuzzleLibrary({ games, active, manage, loading, section }: {
+  games: Game[]; active: string | null; manage: (id: string) => void; loading: boolean; section: 'puzzles' | 'solved'
+}) {
+  const title = useId()
 
   function list(items: Game[]) {
     return <ul className="game-list main-puzzle-list">
       {items.map((game) => {
         const manageable = game.source !== 'draft' && !isSolved(game)
+        const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
+        const useRatingTitle = manageable && game.source === 'generated' && /\bPuzzle \d+$/.test(game.title)
+        const name = useRatingTitle ? rating || 'Unrated' : game.title
+        const variantId = game.variant?.id
+        const variantName = variantId === 'mixed' ? 'Mixed rules' : variantId && PUZZLE_VARIANTS[variantId].name
+        const detail = [useRatingTitle && variantName,
+          !useRatingTitle && rating, puzzleStatus(game)].filter(Boolean).join(' · ')
         return <li key={game.id} className={manageable ? 'game-row-with-options' : undefined}>
           <Link className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
             <MiniGrid values={valuesOf(game)} />
-            <span className="game-row-copy"><strong>{game.title}</strong><small>{puzzleStatus(game)}</small></span>
+            <span className="game-row-copy"><strong>{name}</strong><small>{detail}</small></span>
             {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
           </Link>
           {manageable && <IconButton type="button" variant="quiet" className="game-row-options" aria-haspopup="dialog"
-            aria-label={`Options for ${game.title}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></IconButton>}
+            aria-label={`Options for ${name}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></IconButton>}
         </li>
       })}
     </ul>
   }
 
-  return <section className="main-menu-section" aria-labelledby={title}>
-    <header><h2 id={title}>Your puzzles</h2><p>Continue an active puzzle or review a solved puzzle.</p></header>
-    <section className="puzzle-library-section" aria-labelledby={`${title}-active`}>
-      <h3 id={`${title}-active`}>Active puzzles</h3>
-      {activePuzzles.length > 0 ? list(activePuzzles) : <p className="main-menu-empty">You don’t have any active puzzles.</p>}
-    </section>
+  if (section === 'solved') {
+    const groups = groupSolvedPuzzles(games)
+    return <div className="main-menu-section puzzle-library solved-puzzles">
+      {groups.length > 0 ? groups.map((group) => <section className="solved-puzzle-group" key={group.key}
+        aria-labelledby={`${title}-${group.key}`}>
+        <h2 id={`${title}-${group.key}`}>{group.variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[group.variant].name} · {group.difficulty ? DIFFICULTY_LABELS[group.difficulty] : 'Unrated'}</h2>
+        {list(group.games)}
+      </section>) : loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
+        : <p className="main-menu-empty">No solved puzzles yet.</p>}
+    </div>
+  }
+
+  const activePuzzles = inProgress(games)
+  const saved = games.filter((game) => !isSolved(game) && (game.savedForLater || game.archived))
+  return <div className="main-menu-section puzzle-library">
+    {activePuzzles.length > 0 ? <section className="puzzle-library-section" aria-labelledby={`${title}-active`}>
+      <h2 id={`${title}-active`}>Active Puzzles</h2>
+      {list(activePuzzles)}
+    </section> : loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
+      : <Link className={buttonClassName('primary', 'puzzle-empty-action')} to="/puzzles/new">
+        <Dices size={18} aria-hidden="true" />Start a new puzzle
+      </Link>}
     {saved.length > 0 && <section className="puzzle-library-section saved-for-later" aria-labelledby={`${title}-saved`}>
-      <h3 id={`${title}-saved`}>Saved for later</h3>
+      <h2 id={`${title}-saved`}>Saved for later</h2>
       {list(saved)}
     </section>}
-    <section className="puzzle-library-section solved-puzzles" aria-labelledby={`${title}-solved`}>
-      <h3 id={`${title}-solved`}>Solved puzzles</h3>
-      {solvedGroups.length > 0 ? solvedGroups.map((group) => <section className="solved-puzzle-group" key={group.key}
-        aria-labelledby={`${title}-${group.key}`}>
-        <h4 id={`${title}-${group.key}`}>{group.variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[group.variant].name} · {group.difficulty ? DIFFICULTY_LABELS[group.difficulty] : 'Unrated'}</h4>
-        {list(group.games)}
-      </section>) : <p className="main-menu-empty">You haven’t solved any puzzles yet.</p>}
-    </section>
+  </div>
+}
+
+function NewPuzzleVariant({ variant, onCreate }: {
+  variant: VariantId
+  onCreate: () => void
+}) {
+  const navigate = useNavigate()
+  const index = newPuzzleVariants.indexOf(variant)
+  const { name, rule } = VARIANTS[variant]
+
+  function browse(direction: number) {
+    const count = newPuzzleVariants.length
+    const next = newPuzzleVariants[(index + direction + count) % count]
+    void navigate({ to: '/puzzles/new', search: { variant: next }, replace: true, resetScroll: false, viewTransition: false })
+  }
+
+  return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
+    <div className="new-puzzle-variant-picker" onKeyDown={(event) => {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      event.preventDefault()
+      browse(event.key === 'ArrowLeft' ? -1 : 1)
+    }}>
+      <IconButton aria-label="Previous variant" onClick={() => browse(-1)}>
+        <ChevronLeft size={22} aria-hidden="true" />
+      </IconButton>
+      <div className="new-puzzle-variant-preview"><VariantPreview variant={variant} /></div>
+      <IconButton aria-label="Next variant" onClick={() => browse(1)}>
+        <ChevronRight size={22} aria-hidden="true" />
+      </IconButton>
+      <div className="new-puzzle-variant-copy" aria-live="polite" aria-atomic="true">
+        <div><h2>{name}</h2><small>{index + 1} of {newPuzzleVariants.length}</small></div>
+        <p>{rule}</p>
+      </div>
+    </div>
+    <Link to="/puzzles/new/difficulty" search={{ variant }} state={{ fromPuzzleVariantPicker: true }}
+      className={buttonClassName('primary')}>Continue <ArrowRight size={18} aria-hidden="true" /></Link>
+    <div className="new-puzzle-actions">
+      <Button onClick={onCreate}><PencilLine size={18} aria-hidden="true" />Create puzzle</Button>
+      <Link className={buttonClassName()} to="/import"><FileUp size={18} aria-hidden="true" />Import puzzle</Link>
+    </div>
   </section>
 }
 
-function NewPuzzleSection({ preference, save }: {
-  preference: NewPuzzlePreference
+function NewPuzzleDifficulty({ variant, difficulty, save }: {
+  variant: VariantId
+  difficulty: DifficultyPreference
   save: (preference: NewPuzzlePreference) => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
   const { recommended } = usePlayerRating()
-  const [variant, setVariant] = useState<VariantId>(preference.variant)
   const [selection, setSelection] = useState<DifficultyPreference | null>(null)
-  const selected = variantDifficulty(variant, selection ?? preference.difficulty)
+  const selected = variantDifficulty(variant, selection ?? difficulty)
   const autoLabel = variantDifficultyLabel(variant, 'auto', recommended)
-  const group = useId()
-
   function start() {
     const onGenerated = () => {
       save({ variant, difficulty: selected })
@@ -138,15 +189,11 @@ function NewPuzzleSection({ preference, save }: {
     void generate(selected, onGenerated, variant)
   }
 
-  return <section className="main-menu-section" aria-labelledby={`${group}-title`}>
-    <header className="new-puzzle-heading">
-      <h2 id={`${group}-title`}>New puzzle</h2>
-      <Link className={buttonClassName()} to="/import" disabled={busy}><FileUp size={18} aria-hidden="true" /> Import a puzzle</Link>
-    </header>
-    <VariantSelector value={variant} onChange={setVariant} busy={busy} />
+  return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
+    <p className="new-puzzle-variant-summary"><VariantPreview variant={variant} />{VARIANTS[variant].name}</p>
     <DifficultySelector value={selected} recommended={recommended} variant={variant} disabled={busy} onChange={setSelection} />
     {error && <p className="form-error" role="alert">{error}</p>}
-    <Button variant="primary" className="main-start-puzzle puzzle-start-button" disabled={busy} onClick={start}>
+    <Button variant="primary" className="puzzle-start-button" disabled={busy} onClick={start}>
       <Dices size={18} aria-hidden="true" /> {busy ? 'Generating…' : selected === 'auto'
         ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}
     </Button>
@@ -164,8 +211,7 @@ function Statistics({ games }: { games: Game[] }) {
     const best = matching.reduce((time, game) => game.timeUntracked ? time : Math.min(time, game.elapsed), Infinity)
     return { difficulty, label: DIFFICULTY_LABELS[difficulty], solved: matching.length, best }
   })
-  return <section className="main-menu-section" aria-labelledby="statistics-title">
-    <header><h2 id="statistics-title">Statistics</h2></header>
+  return <section className="main-menu-section" aria-labelledby="puzzles-page-title">
     <dl className="main-stat-cards">
       <div><Trophy size={18} aria-hidden="true" /><dt>{count ? 'Player rating' : 'Starting rating'}</dt><dd>{Math.round(rating)}</dd></div>
       <div><Dices size={18} aria-hidden="true" /><dt>Auto difficulty</dt><dd>{DIFFICULTY_LABELS[recommended]}</dd></div>
@@ -202,38 +248,43 @@ function TechniqueStatistics() {
   </section>
 }
 
-export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference, rememberNewPuzzle, preferencesReady, onCreatePuzzle }: {
+export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference, rememberNewPuzzle, preferencesReady, loadingPuzzles, onCreatePuzzle, error }: {
   games: Game[]
   active: string | null
   setDifficulty: (difficulty: DifficultyPreference) => void
   newPuzzlePreference: NewPuzzlePreference
   rememberNewPuzzle: (preference: NewPuzzlePreference) => void
   preferencesReady: boolean
+  loadingPuzzles: boolean
   onCreatePuzzle: () => void
+  error?: string
 }) {
-  const mobile = useMobileLayout()
+  const router = useRouter()
+  const canGoBack = useCanGoBack()
+  const fromVariantPicker = useLocation({ select: (location) => location.state.fromPuzzleVariantPicker })
   const heading = useRef<HTMLHeadingElement>(null)
   const [managingId, setManagingId] = useState<string | null>(null)
   const managing = games.find((game) => game.id === managingId)
   const routeId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
-  const section: Section | null = routeId === sectionRoutes.puzzles ? 'puzzles'
-    : routeId === sectionRoutes.new ? 'new'
-      : routeId === sectionRoutes.statistics ? 'statistics'
-        : routeId === sectionRoutes.collections ? 'collections' : null
+  const difficultyScreen = routeId === '/puzzles/new/difficulty'
+  const section = difficultyScreen ? 'new'
+    : (Object.keys(sections) as Section[]).find((id) => sections[id].to === routeId) ?? 'puzzles'
   const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
   const collection = getCollection(collectionSearch?.collection)
   const collectionPuzzle = getCollectionPuzzle(collectionSearch?.collection, collectionSearch?.puzzle)?.puzzle
   const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
     collectionDifficulties(collection).includes(collectionSearch.difficulty) ? collectionSearch.difficulty : undefined)
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
-  const mobileNewPuzzle = mobile && section === 'new'
-  const screen = mobileNewPuzzle && preferencesReady ? newPuzzleSearch?.step ?? 'start' : undefined
+  const screen = section === 'new' ? difficultyScreen ? 'difficulty' : 'variant' : undefined
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
-  const backToStart = screen === 'variant' || screen === 'difficulty'
+  const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
+    : screen === 'variant' ? 'Choose a variant'
+      : section === 'puzzles' ? 'Puzzles'
+        : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? sections[section].label
 
   useEffect(() => {
     if (screen) heading.current?.focus({ preventScroll: true })
-  }, [screen, variant])
+  }, [screen])
 
   function savePuzzlePreference(preference: NewPuzzlePreference) {
     rememberNewPuzzle(preference)
@@ -241,47 +292,46 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   }
 
   function content(current: Section) {
-    if (current === 'puzzles') return <PuzzleLibrary games={games} active={active} manage={setManagingId} />
+    if (current === 'puzzles' || current === 'solved') {
+      return <PuzzleLibrary section={current} games={games} active={active} manage={setManagingId} loading={loadingPuzzles} />
+    }
     if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`}
       games={games} />
-    if (current === 'new') return preferencesReady && <NewPuzzleSection preference={newPuzzlePreference} save={savePuzzlePreference} />
+    if (current === 'new') {
+      if (!preferencesReady) return <p className="main-menu-empty" role="status">Loading…</p>
+      return difficultyScreen
+        ? <NewPuzzleDifficulty key={variant} variant={variant} difficulty={newPuzzlePreference.difficulty} save={savePuzzlePreference} />
+        : <NewPuzzleVariant variant={variant} onCreate={onCreatePuzzle} />
+    }
     return <Statistics games={games} />
   }
 
-  const sectionItem = section ? sections.find(({ id }) => id === section)! : null
-  const navigation = <nav className="main-menu-mobile-list puzzles-section-links" aria-label="Puzzles sections">
-    {sections.map((item) => { const Icon = item.icon; return <Link key={item.id} to={sectionRoutes[item.id]}>
-      <span className="main-menu-icon"><Icon size={21} /></span>
-      <span><strong>{item.label}</strong><small>{item.description}</small></span>
-      <ChevronRight size={19} />
-    </Link> })}
-  </nav>
-
-  return <main className={`puzzles-page ${section ? 'puzzles-subscreen' : ''}`}>
-    <header className="puzzles-page-heading">
-      {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"
-        search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
-          : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
-        className={iconButtonClassName('secondary', 'puzzles-back')} aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
-          : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
-        : backToStart ? <Link to="/puzzles/new" search={{}} replace
-          className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to New puzzle"><ChevronLeft size={21} /></Link>
-          : section && <Link to="/puzzles" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to Puzzles"><ChevronLeft size={21} /></Link>}
-      <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{screen ? newPuzzleTitle[screen]
-        : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? sectionItem?.label ?? 'Puzzles'}</h1>
-    </header>
-    {!mobileNewPuzzle && <div className="main-menu-desktop">
+  return <main className={`puzzles-page ${section === 'puzzles' ? 'puzzles-home' : 'puzzles-subscreen'}${screen ? ' new-puzzle-page' : ''}`}>
+    <div className="puzzles-layout">
+      <header className="puzzles-page-heading">
+        {section === 'collections' && collectionSearch?.collection ? <Link to="/puzzles/collections"
+          search={collectionSearch.puzzle ? { ...collectionSearch, difficulty: collectionDifficulty ?? undefined, puzzle: undefined }
+            : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
+          className={iconButtonClassName('secondary', 'puzzles-back')} aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
+            : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
+          : difficultyScreen ? (fromVariantPicker && canGoBack
+            ? <IconButton className="puzzles-back" aria-label="Back to variant" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
+            : <Link to="/puzzles/new" search={{ variant }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
+              aria-label="Back to variant"><ChevronLeft size={21} /></Link>)
+            : section !== 'puzzles' && <Link to="/" search={{}} className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
+        <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{pageTitle}</h1>
+      </header>
       <nav className="main-menu-tabs" aria-label="Puzzles sections">
-        {sections.map((item) => { const Icon = item.icon; return <Link key={item.id} to={sectionRoutes[item.id]}><Icon size={18} />{item.label}</Link> })}
+        {Object.entries(sections).map(([id, { to, label, icon: Icon }]) => (
+          <Link key={id} to={to} search={{}} data-section={id} aria-current={section === id ? 'page' : undefined}
+            activeOptions={{ exact: id !== 'new', includeSearch: false }}><Icon size={18} aria-hidden="true" />{label}</Link>
+        ))}
       </nav>
-      <div className="main-menu-panel motion-screen" key={section ?? 'overview'}>{section ? (!mobile || section !== 'collections') && content(section) : <section className="puzzles-overview"><h2>Puzzles</h2><p>Continue solving, start a new puzzle, explore a collection, or review your statistics.</p>{navigation}</section>}</div>
-    </div>}
-    {(section !== 'new' || mobileNewPuzzle) && <div className="main-menu-mobile motion-screen" key={`mobile-${screen ?? section ?? 'overview'}`}>
-      {mobileNewPuzzle ? screen && <MobileNewPuzzle screen={screen} variant={variant} preference={newPuzzlePreference}
-        remember={rememberNewPuzzle} done={savePuzzlePreference} onCreate={onCreatePuzzle} />
-        : section ? (mobile || section !== 'collections') && content(section) : navigation}
-    </div>}
-    <Outlet />
+      <div className="main-menu-panel motion-screen" key={screen ?? section}>
+        {error && <p className="workspace-error" role="alert">{error}</p>}
+        {content(section)}
+      </div>
+    </div>
     {section === 'puzzles' && managing && <ManagePuzzle game={managing} close={() => setManagingId(null)} />}
   </main>
 }
