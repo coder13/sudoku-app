@@ -106,6 +106,9 @@ export function removeUnavailableChains(state: ChainSketchState, unavailable: (n
 export function pruneChainsAfterMove(previous: Game, next: Game): Game {
   const state = next.chainSketch
   if (!state || next.position === previous.position) return next
+  // Puzzle undo or redo can restore a board and its matching sketch together.
+  if (state !== previous.chainSketch &&
+    (state === previous.past.at(-1)?.chainSketch || state === previous.future.at(-1)?.chainSketch)) return next
   const { entries, center, corner, eliminations } = next.position
   const old = previous.position
   const chainSketch = removeUnavailableChains(state, (node) => {

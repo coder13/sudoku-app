@@ -56,7 +56,8 @@ test('applying chain deductions removes their sketches and records one puzzle un
   assert.equal(applied.position.eliminations?.[0], 2)
   assert.equal(applied.position.entries[8], '5')
   assert.deepEqual(applied.chainSketch, { sketches: [second], activeId: 2, pending: null })
-  const restored = undo(readGame(game.id, JSON.stringify(applied))!)
+  const saved = readGame(game.id, JSON.stringify(applied))!
+  const restored = pruneChainsAfterMove(saved, undo(saved))
   assert.deepEqual(restored.position, game.position)
   assert.deepEqual(restored.chainSketch, chainSketch)
   const redone = redo(readGame(game.id, JSON.stringify(restored))!)
@@ -65,7 +66,7 @@ test('applying chain deductions removes their sketches and records one puzzle un
 
   const empty = applyChainDeduction(game, [1, 2], [{ eliminate: { cell: 0, digit: 2 } }], candidates, true)
   assert.equal(empty.chainSketch, undefined)
-  assert.deepEqual(undo(empty).chainSketch, chainSketch)
+  assert.deepEqual(pruneChainsAfterMove(empty, undo(empty)).chainSketch, chainSketch)
   assert.equal(redo(undo(empty)).chainSketch, undefined)
   assert.equal(applyChainDeduction(game, [1], [{ eliminate: { cell: 0, digit: 2 } }, { place: { cell: 0, digit: 2 } }],
     candidates, true), game)

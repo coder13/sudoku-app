@@ -3146,9 +3146,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     box-sizing: content-box;
     min-block-size: var(--mobile-resized-puzzle-height);
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-content: center;
   }
   .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle {
+    inline-size: 100%;
     --board-frame-limit: calc(var(--mobile-resized-puzzle-height) - var(--mobile-puzzle-chrome-height));
   }
   .standard-workspace-page .draft-tip {
