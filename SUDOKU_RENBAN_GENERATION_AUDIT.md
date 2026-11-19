@@ -1,8 +1,8 @@
 # Renban New Puzzle integration
 
 Agent A implements Medium Renban generation under [issue 189](https://github.com/coder13/sudoku-app/issues/189).
-The current base is main `3429f0b`. It includes Kakuro, pause-setting synchronization and the issue-labeling skill.
-Performance, package and exact-head release checks remain pending. This document does not claim a release.
+The measured base is main `a400d36`. It includes Mini Sudoku, Algebraic Cages, Kakuro, Calcudoku and UUID sharing.
+Local validation and matched measurements pass. Exact-head CI and deployment checks remain pending. This document does not claim a release.
 
 ## Sources and generation
 
@@ -64,16 +64,14 @@ This change preserves the full historical rule definitions.
 
 ## Validation and remaining gates
 
-The first source commit `ab44421` passes 386 native tests, including seven Cargo examples, and the reduced variants all-target check.
-Its fresh Wasm passes 505 contracts. All 673 app tests, strict new-contract types and the earlier 131-component catalog pass.
+The current-main integration passes 395 native tests, including seven Cargo examples, and the reduced variants all-target check.
+Its fresh Wasm passes 510 contracts. All 702 app tests, strict new-contract types and the 147-component catalog pass.
 Every one of the thirty recipes and sixty successive actual puzzles retains independent uniqueness, Renban dependence and multiple sound hints.
 Generated solutions replay through the actual game state with independently enumerated Renban premises.
-Actual persistence, progress, undo/redo, exact solution access and sharing preserve the complete puzzle.
-
-The integration commit `7a5eeb2` applies that source to current main and preserves both Kakuro and Renban stories.
-Its Rust source, Cargo inputs, build script and dependency locks are byte-identical to the tested source commit.
-App types and the updated 137-component catalog pass. All 682 combined-main app tests and 505 Wasm contracts pass.
-The earlier worktree stays preserved with its separate AGENTS.md edit.
+Actual persistence, progress, undo/redo and exact solution access retain the complete puzzle.
+The UUID round trip publishes through the production Worker against isolated SQLite, downloads the definition and prepares it through the actual app import path.
+The imported attempt preserves all rules and the checked solution, without carrying the sender's progress. Legacy variant links remain covered.
+The earlier source worktree stays preserved with its separate AGENTS.md edit.
 
 A longer actual-app probe completes one hundred successive requests without repeats or search limits.
 Every result is independently unique and Renban-dependent, with several sound hints.
@@ -96,56 +94,56 @@ Ordinary hints do not measure exhaustive all-technique scans.
 
 | Actual app caller | Median ms | p95 ms |
 | --- | ---: | ---: |
-| published Clover preview | 0.534 | 0.691 |
-| published candidates | 0.029 | 0.033 |
-| published ordinary hints | 0.174 | 0.250 |
-| published app rating | 0.177 | 0.190 |
-| published exact solve | 0.133 | 0.140 |
-| published walkthrough | 1.093 | 1.458 |
-| actual Medium New Puzzle | 4.235 | 14.524 |
-| fresh miss and checked fallback | 13.410 | 13.513 |
-| thirty played Renban puzzles | 4.409 | 4.505 |
-| three hundred mixed played puzzles | 12.829 | 12.983 |
+| published Clover preview | 0.594 | 0.815 |
+| published candidates | 0.030 | 0.037 |
+| published ordinary hints | 0.195 | 0.534 |
+| published app rating | 0.188 | 0.235 |
+| published exact solve | 0.144 | 0.173 |
+| published walkthrough | 1.237 | 2.082 |
+| actual Medium New Puzzle | 4.875 | 16.150 |
+| fresh miss and checked fallback | 15.227 | 24.908 |
+| thirty played Renban puzzles | 4.812 | 5.115 |
+| three hundred mixed played puzzles | 13.582 | 14.245 |
 
 Forty-five empty-history requests produce forty-one logical identities in that sample.
 The hundred-request saved-history probe verifies distinct results separately.
 The larger timing input keeps thirty Renban puzzles plus 270 checked puzzles from other families.
-Complete cross-family history costs about 8.4 ms more than that thirty-puzzle input in this run.
+Complete cross-family history costs about 8.8 ms more than that thirty-puzzle input in this run.
 This finite sample does not establish every seed, history or latency bound.
 
 | Fixed native history control | Prior definitions | Before median/p95 ms | After median/p95 ms |
 | --- | ---: | ---: | ---: |
-| Renban Medium, seed 99 | 30 | 4.475 / 4.635 | 4.542 / 4.770 |
-| Modular Medium, seed 99 | 30 | 3.607 / 3.745 | 3.615 / 3.740 |
-| Entropic Medium, seed 99 | 30 | 3.580 / 3.660 | 3.589 / 3.687 |
-| Global Entropy Easy, seed 99 | 30 | 2.269 / 2.335 | 2.268 / 2.319 |
-| Global Entropy Medium, seed 99 | 30 | 4.046 / 4.108 | 4.020 / 4.143 |
-| Palindrome Easy, seed 99 | 30 | 1.244 / 1.324 | 1.233 / 1.295 |
-| Palindrome Medium, seed 102 | 30 | 1.851 / 1.901 | 1.844 / 1.952 |
-| Clone Easy, seed 99 | 3 | 0.639 / 0.670 | 0.635 / 0.679 |
-| German Whispers, seed 99 | 30 | 2.798 / 2.867 | 2.801 / 2.967 |
-| Dutch Whispers, seed 99 | 30 | 4.625 / 4.718 | 4.634 / 4.764 |
+| Renban Medium, seed 99 | 30 | 4.719 / 4.935 | 4.804 / 5.088 |
+| Modular Medium, seed 99 | 30 | 3.808 / 4.014 | 3.868 / 4.102 |
+| Entropic Medium, seed 99 | 30 | 3.726 / 4.165 | 3.748 / 3.977 |
+| Global Entropy Easy, seed 99 | 30 | 2.344 / 2.606 | 2.337 / 2.606 |
+| Global Entropy Medium, seed 99 | 30 | 4.131 / 5.411 | 4.144 / 4.465 |
+| Palindrome Easy, seed 99 | 30 | 1.301 / 1.502 | 1.305 / 1.511 |
+| Palindrome Medium, seed 102 | 30 | 1.884 / 2.037 | 1.875 / 1.994 |
+| Clone Easy, seed 99 | 3 | 0.649 / 0.730 | 0.639 / 0.722 |
+| German Whispers, seed 99 | 30 | 2.839 / 2.999 | 2.840 / 2.959 |
+| Dutch Whispers, seed 99 | 30 | 4.825 / 5.021 | 4.818 / 5.195 |
 
 Every full response matches in those fixed controls, including all warm and measured calls.
-Correct Renban identity adds about 0.067 ms at thirty prior definitions. Other medians and tails vary.
+Correct Renban identity adds about 0.085 ms at thirty prior definitions. Other medians and tails vary.
 Both native instances retain 1,638,400 bytes after the history corpus.
 That smaller corpus has a different memory scope from the twenty-five-source comparison above.
 
-The production build prerenders 181 routes and passes four actual-build offline contracts, including every Kakuro board.
+The production build prerenders 192 routes and passes five actual-build offline contracts, including every Kakuro and Calcudoku board.
 Static light/dark previews use actual SVG and CSS at 290 and 540 pixels. The 290-pixel exports are visually inspected.
 Actual route renders preserve the choice and difficulty screens. These checks do not prove browser interaction or paint behavior.
 
 ## Package and release gates
 
-The local artifact is 3,421,223 raw / 897,346 default-Node-gzip bytes, SHA-256 `ec01ce612480cce382a0ad7a8f8a215e40b3baf0b67a79fd4ec4d60aa86f516e`.
-The Modular baseline is 3,417,504 / 895,333 bytes, SHA-256 `c0197bc5572a71059465d27cda4647ae131dd3c30a8204bbcda40706aa7e6927`.
-The observed delta is +3,719 raw / +2,013 gzip bytes. Build-path effects can influence these totals.
+The fresh local artifact is 3,679,331 raw / 977,832 default-Node-gzip bytes, SHA-256 `6c48528f96e596067aba4838da0d6df73e43fff4ef4d82f394525dab9f89042a`.
+The matched current-main baseline is 3,676,486 / 977,127 bytes, SHA-256 `9ee1630e4e5cb79d1272204d4de26c309d26428638d8ca2675f63043badc2576`.
+The observed delta is +2,845 raw / +705 gzip bytes. Build-path effects can influence these totals.
 
-At base `3429f0b`, matched client assets total 6,420,073 raw / 2,105,189 gzip JavaScript bytes and 319,471 / 45,599 CSS bytes.
-The same-main baseline gives +8,662 raw / +470 gzip JavaScript bytes and unchanged CSS.
+At base `a400d36`, matched client assets total 6,464,895 raw / 2,118,690 gzip JavaScript bytes and 321,740 / 46,218 CSS bytes.
+The same-main baseline gives +8,662 raw / +370 gzip JavaScript bytes and unchanged CSS.
 Totals sum default Node gzip per asset, excluding HTML, service workers and manifests.
 All five generated metadata JSON files and both dependency locks match.
-Newer main integrations require refreshed builds and measurements before release.
+Both native artifacts use fresh builds of the same current-main backend and SDK. Earlier `3429f0b` measurements remain archived separately.
 Exact-head capability/profile/docs/deployment gates remain pending.
 Retain partial original paths and remaining source-format gaps. Generation of these checked puzzles does not close the broader engine goal.
 

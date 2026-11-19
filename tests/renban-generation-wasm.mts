@@ -7,7 +7,8 @@ import { generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/vari
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
-import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { isSharedPuzzleId, publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { assertRenbanProof } from './helpers/renban-truth.ts'
@@ -15,6 +16,7 @@ import { renbanKey } from './helpers/renban-key.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
 useWasmWorker()
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-generation.json', import.meta.url), 'utf8')) as {
   sources: { id: string; lines: number[][]; completionTemplate: string }[]
@@ -140,9 +142,10 @@ test('a bounded Renban fresh miss reaches its deterministic checked fallback and
   await assert.rejects(generatePlayableVariant('renban', 'easy', 1, []), error => error instanceof EngineError && error.code === 'unsupported')
 })
 
-test('generated Renban definitions, progress, history, exact solutions and shares survive actual storage', async () => {
-  const keys = ['window', 'localStorage', 'sessionStorage'] as const, originals = keys.map(key => Object.getOwnPropertyDescriptor(globalThis, key))
-  Object.defineProperties(globalThis, { window: { value: {}, configurable: true }, localStorage: { value: new MemoryStorage(), configurable: true }, sessionStorage: { value: new MemoryStorage(), configurable: true } })
+test('generated Renban definitions, progress, history, exact solutions and UUID shares survive actual storage', async () => {
+  const keys = ['window', 'localStorage', 'sessionStorage', 'fetch'] as const, originals = keys.map(key => Object.getOwnPropertyDescriptor(globalThis, key))
+  const { sqlite, fetcher } = syncDatabase()
+  Object.defineProperties(globalThis, { window: { value: {}, configurable: true }, localStorage: { value: new MemoryStorage(), configurable: true }, sessionStorage: { value: new MemoryStorage(), configurable: true }, fetch: { value: fetcher, configurable: true } })
   try {
     const path = '../src/sudoku/storage.ts?renban-generated-save'
     const { roomStore } = await import(path) as typeof import('../src/sudoku/storage.ts')
@@ -156,5 +159,15 @@ test('generated Renban definitions, progress, history, exact solutions and share
     assert.equal((await puzzleSolution(restored)).board, solution)
     const shared = '#variant=' + encodeURIComponent(JSON.stringify({ id: 'renban', puzzle: game.variant!.puzzle }))
     assert.deepEqual((await prepareImportedPuzzle(shared)).game.variant, game.variant)
-  } finally { keys.forEach((key, i) => { if (originals[i]) Object.defineProperty(globalThis, key, originals[i]!); else Reflect.deleteProperty(globalThis, key) }) }
+    const id = await publishSharedPuzzle(restored)
+    assert.ok(isSharedPuzzleId(id))
+    const imported = (await prepareSharedPuzzle(id, [], new AbortController().signal)).game
+    assert.equal(imported.sharedPuzzleId, id)
+    assert.deepEqual(imported.variant, game.variant)
+    assert.equal(valuesOf(imported), game.givens)
+    assert.equal((await puzzleSolution(imported)).board, solution)
+  } finally {
+    sqlite.close()
+    keys.forEach((key, i) => { if (originals[i]) Object.defineProperty(globalThis, key, originals[i]!); else Reflect.deleteProperty(globalThis, key) })
+  }
 })
