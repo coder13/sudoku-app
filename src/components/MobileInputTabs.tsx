@@ -1,10 +1,9 @@
 import { type ReactNode, type Ref, useId, useLayoutEffect, useRef, useState } from 'react'
 import { MoreHorizontal, Palette, PencilLine, ScanSearch, X } from 'lucide-react'
 import { IconButton } from './Button'
+import type { MobileInputTab, MobileInputTool } from '../sudoku/play-session'
 
 const labels = { digits: 'Digits', colors: 'Colors', chains: 'Chains', subsets: 'Subsets' }
-export type MobileInputTab = keyof typeof labels
-export type MobileInputTool = Exclude<MobileInputTab, 'digits'>
 
 function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCandidates, onOpen, onOpenSubsets }: {
   disabled: boolean

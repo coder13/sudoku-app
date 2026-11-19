@@ -142,14 +142,15 @@ pub(super) fn visit(
     // Try shared conclusions first. Only scan other assumptions if the caller
     // still needs deductions after the simpler case analysis.
     if let Some(mut forcing) = forcing {
-        let maximum = forcing.maximum_guardians_to_try();
-        return visit_patterns(search, maximum, &mut |pattern| {
+        let refutations = forcing.refutation_candidates();
+        return visit_patterns(search, refutations.maximum_guardians, &mut |pattern| {
             let guardians: Vec<_> = pattern.guardians(search).collect();
             if guardians.len() < 2 {
                 return ControlFlow::Continue(());
             }
             forcing.visit_refutations(
                 &guardians,
+                &refutations,
                 &mut |action| pattern.requires_forcing(search, action),
                 &mut |action, branches| visit(pattern.forcing_deduction(search, action, branches)),
             )

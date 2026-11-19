@@ -266,29 +266,30 @@ fn reachable(domains: &[u16]) -> u128 {
 }
 
 pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
-    let len = domains.len();
-    let (mut prefix, mut suffix) = ([0u128; 10], [0u128; 10]);
+    let mut prefix = [0u128; 10];
     prefix[0] = 1;
-    suffix[len] = 1;
-    for i in 0..len {
-        prefix[i + 1] = add_digit(prefix[i], domains[i]);
+    for (i, &domain) in domains.iter().enumerate() {
+        prefix[i + 1] = add_digit(prefix[i], domain);
     }
-    if prefix[len] & totals == 0 {
+    if prefix[domains.len()] & totals == 0 {
         return;
     }
-    for i in (0..len).rev() {
-        suffix[i] = add_digit(suffix[i + 1], domains[i]);
-    }
-    for (i, &domain) in domains.iter().enumerate() {
-        let mut before = prefix[i];
-        let mut other_sums = 0;
-        while before != 0 {
-            other_sums |= suffix[i + 1] << before.trailing_zeros();
-            before &= before - 1;
+
+    // Move from the allowed totals back toward the empty prefix. A digit
+    // has support if its shift matches a reachable sum before this cell.
+    let mut allowed = totals;
+    for (i, &domain) in domains.iter().enumerate().rev() {
+        let mut previous = 0;
+        let mut supported = 0;
+        for digit in digits(domain) {
+            let shifted = allowed >> digit;
+            if prefix[i] & shifted != 0 {
+                supported |= digit_bit(digit);
+            }
+            previous |= shifted;
         }
-        support[i] = digits(domain)
-            .filter(|&digit| (other_sums << digit) & totals != 0)
-            .fold(0, |mask, digit| mask | digit_bit(digit));
+        support[i] = supported;
+        allowed = previous;
     }
 }
 
@@ -377,6 +378,61 @@ impl OutsideClue {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod sum_support_tests {
+    use super::sum_support;
+
+    fn enumerate(
+        domains: &[u16],
+        targets: &[usize],
+        chosen: &mut Vec<usize>,
+        total: usize,
+        support: &mut [u16],
+    ) {
+        if chosen.len() == domains.len() {
+            if targets.contains(&total) {
+                for (cell, &digit) in chosen.iter().enumerate() {
+                    support[cell] |= 1 << (digit - 1);
+                }
+            }
+            return;
+        }
+        for digit in 1..=9 {
+            if domains[chosen.len()] & (1 << (digit - 1)) != 0 {
+                chosen.push(digit);
+                enumerate(domains, targets, chosen, total + digit, support);
+                chosen.pop();
+            }
+        }
+    }
+
+    fn check(domains: &[u16], targets: &[usize]) {
+        let mut expected = vec![0; domains.len()];
+        enumerate(domains, targets, &mut vec![], 0, &mut expected);
+        let totals = targets.iter().fold(0, |mask, &target| mask | (1 << target));
+        let mut actual = vec![0; domains.len()];
+        sum_support(domains, totals, &mut actual);
+        assert_eq!(actual, expected, "{domains:?} with totals {targets:?}");
+    }
+
+    #[test]
+    fn candidate_support_matches_direct_sum_enumeration() {
+        for a in [0, 1, 3, 40, 320, 511] {
+            for b in [1, 5, 10, 64, 384, 511] {
+                for c in [0, 2, 7, 80, 256, 511] {
+                    for targets in [&[][..], &[3], &[6, 15, 23], &[11, 19, 27, 127]] {
+                        check(&[a, b, c], targets);
+                    }
+                }
+            }
+        }
+        check(&[], &[0, 127]);
+        check(&[511], &[0, 2, 9, 127]);
+        check(&[384; 9], &[72, 76, 81, 127]);
+        check(&[384; 9], &[76]);
     }
 }
 

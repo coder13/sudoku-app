@@ -2,7 +2,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ScanSearch, ListOrdered, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, Share2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, ScanSearch, Share2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
@@ -34,6 +34,7 @@ import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
+import { defaultMobileInput, playSession, type MobileInputTab, type MobileInputTool } from '../sudoku/play-session'
 import { continueStrongLinkColors } from '../sudoku/strong-link-colors'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
@@ -54,7 +55,7 @@ import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
 import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
-import { MobileInputTabs, type MobileInputTab, type MobileInputTool } from './MobileInputTabs'
+import { MobileInputTabs } from './MobileInputTabs'
 import { PlayHint, PlayLayout } from './PlayLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
@@ -78,7 +79,6 @@ const desktopInsightTabs = [
   { id: 'subsets', label: 'Subsets' },
 ] as const
 
-const defaultMobileInput: { open: MobileInputTool[]; active: MobileInputTab } = { open: [], active: 'digits' }
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0],
@@ -209,7 +209,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
   beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSixRules, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
-  cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
+  pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
   games: Game[]
@@ -234,6 +234,9 @@ export function Worktable({
   onPublish: () => void
   onCancelDraft: () => void
   onStopPlaying: () => void
+  pausedOnLaunch?: boolean
+  onResumeLaunch?: () => void
+  loadingPuzzle?: boolean
   sharedOnOtherDevice?: boolean
   catchUpPuzzle?: Game
   onNewPuzzle: (step?: 'difficulty') => void
@@ -255,7 +258,10 @@ export function Worktable({
   const completed = isSolved(savedGame)
   const playground = completed && solvedGrid?.game.id === savedGame.id ? solvedGrid : null
   const session = playground?.session
-  const game = playground?.game ?? savedGame
+  // Opening a puzzle can pause this tab without changing its cloud save.
+  const launchPaused = pausedOnLaunch && !completed && savedGame.source !== 'draft'
+  const game = useMemo(() => playground?.game ?? (launchPaused && !savedGame.paused ? { ...savedGame, paused: true } : savedGame),
+    [playground, launchPaused, savedGame])
   const grid = game.grid
   const gridSize = (grid ?? CLASSIC_GRID).size
   useActionHistory(savedGame)
@@ -314,7 +320,9 @@ export function Worktable({
   const mobile = useMobileLayout()
   const desktop = !mobile
   const colorMode = desktop && savedColorMode && !automaticHighlightMode
-  const [mobileInput, setMobileInput] = useState(defaultMobileInput)
+  const playState = useSyncExternalStore(playSession.subscribe, playSession.getSnapshot, playSession.getServerSnapshot)
+  const savedPlayState = playState.puzzleId === game.id ? playState : null
+  const mobileInput = savedPlayState?.mobileInput ?? defaultMobileInput
   const [mobileRearranging, setMobileRearranging] = useState(false)
   const rearranging = mobile && mobileRearranging
   const [solutionPath, setSolutionPath] = useState<SolutionPathState | null>(null)
@@ -485,6 +493,8 @@ export function Worktable({
   const startHighlightDigit = playerHighlightMask ? onlyCandidate(playerHighlightMask) : coloringDigit
   const sketch = useChainSketch(game, chainGraph, {
     canDraw: chainsVisible && !completed, graphCurrent: Boolean(masks), canAnalyze: canAnalyzeChains, startHighlightDigit,
+    drawingIntent: savedPlayState?.drawingIntent ?? null,
+    setDrawingIntent: intent => playSession.set(id, 'drawingIntent', intent),
   })
   const chainHighlightDigit = sketch.active.highlightedDigit
   const strongLinkMask = playerHighlightMask || (startHighlightDigit ? 1 << (startHighlightDigit - 1) : 0)
@@ -614,10 +624,16 @@ export function Worktable({
     }
   }, [completed, id, session])
 
+  function resumePuzzle() {
+    if (pausedOnLaunch) onResumeLaunch?.()
+    updateWorkingGame((current) => setGamePaused(current, false))
+  }
+
   function togglePause() {
     setActionsOpen(false)
     setPuzzleMenuOpen(false)
-    updateWorkingGame((current) => setGamePaused(current, !current.paused))
+    if (game.paused) resumePuzzle()
+    else updateWorkingGame((current) => setGamePaused(current, true))
   }
 
   useEffect(() => {
@@ -651,7 +667,6 @@ export function Worktable({
     setDialogResult(null)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    setMobileInput(defaultMobileInput)
     setResetOpen(false)
     setVariantRulesOpen(false)
     setAnalysisOpen(false)
@@ -1974,7 +1989,7 @@ export function Worktable({
   </button>
   function selectMobileInput(tab: MobileInputTab, openBothTools = false) {
     if (tab !== 'digits') changeHintVisuals('player')
-    setMobileInput((current) => ({
+    playSession.set(id, 'mobileInput', (current) => ({
       open: tab === 'subsets' ? [...new Set<MobileInputTool>([...current.open, tab])]
         : openBothTools ? [...new Set<MobileInputTool>([...(grid ? ['colors'] as const : ['colors', 'chains'] as const), ...current.open])]
         : current.open,
@@ -1984,7 +1999,7 @@ export function Worktable({
 
   function closeMobileInput(tool: MobileInputTool) {
     focusMobileInput.current = openMobileTools.length === 1
-    setMobileInput((current) => ({ open: current.open.filter((tab) => tab !== tool), active: 'digits' }))
+    playSession.set(id, 'mobileInput', (current) => ({ open: current.open.filter((tab) => tab !== tool), active: 'digits' }))
   }
 
   function openMobileInput(tool: MobileInputTool, opener = puzzleMenuButtonRef.current) {
@@ -2094,8 +2109,9 @@ export function Worktable({
   const subsetsAction = puzzleToolsAvailable && (
     <button onClick={showSubsets} disabled={disabled}><ScanSearch size={17} /> Subsets</button>
   )
+  const colorToolsLabel = grid ? 'Colors' : 'Colors & Chains'
   const mobileToolsAction = mobileToolsAvailable && (
-    <button onClick={() => showColors()} disabled={disabled}><Palette size={17} /> {grid ? 'Colors' : 'Colors & Chains'}</button>
+    <button onClick={() => showColors()} disabled={disabled}><Palette size={17} /> {colorToolsLabel}</button>
   )
   const hintMenuAction = !draft && !solved && <button onClick={() => { void showHint() }} disabled={busy}>
     <Lightbulb size={17} /> View hint
@@ -2258,9 +2274,7 @@ export function Worktable({
         <span className="puzzle-paused-icon" aria-hidden="true"><Pause size={25} /></span>
         <h2>Puzzle paused</h2>
         {showElapsedTime && <p>Your elapsed time is stopped.</p>}
-        <Button type="button" variant="primary" onClick={() => {
-          updateWorkingGame((current) => setGamePaused(current, false))
-        }}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
+        <Button type="button" variant="primary" onClick={resumePuzzle}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
       </div>
     </div>
   )
@@ -2289,6 +2303,12 @@ export function Worktable({
             aria-label="Open on another linked device" title="Open on another linked device">
             <MonitorSmartphone size={16} aria-hidden="true" />
           </span>}
+          {showPuzzleSync && (loadingPuzzle || syncStatus === 'saving') && (
+            <span className="puzzle-sync-loading" role="status" title="Syncing puzzle progress…">
+              <LoaderCircle size={15} className="loading-spinner" aria-hidden="true" />
+              <span className="sr-only">Syncing puzzle progress…</span>
+            </span>
+          )}
           {syncWarning && <span className="puzzle-sync-warning" role="status">{syncWarning}</span>}
           {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
             {formatTime(game.elapsed)}
@@ -2329,6 +2349,11 @@ export function Worktable({
                   <Pause className="pause-toggle-pause" size={18} />
                   <Play className="pause-toggle-play" size={18} />
                 </span>
+              </IconButton>}
+              {puzzleToolsAvailable && <IconButton className="puzzle-tools-trigger" type="button"
+                aria-label={`Open ${colorToolsLabel} from puzzle card`} title={colorToolsLabel} disabled={disabled}
+                onClick={event => mobile ? openMobileInput('colors', event.currentTarget) : showColors(true)}>
+                <Palette size={18} aria-hidden="true" />
               </IconButton>}
               <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
                 <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"

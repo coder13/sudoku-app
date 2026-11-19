@@ -14,6 +14,7 @@ type Story = StoryObj<typeof meta>
 
 export const AppHeader: Story = {}
 export const LinkedDevices: Story = { args: { showLabel: true } }
+export const LoadingAccount: Story = { args: { loadingAccount: true, showLabel: true } }
 export const Reconnecting: Story = {
   args: { showLabel: true, connection: { mode: 'fallback', checkFailed: false } },
 }

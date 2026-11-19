@@ -5,8 +5,8 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const [beforePath, afterPath, ...options] = process.argv.slice(2)
-assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy] [--global-entropy-corpus] [--modular] [--modular-corpus] [--little-killer]')
-assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy', '--global-entropy-corpus', '--modular', '--modular-corpus', '--little-killer'].includes(option)), 'Unknown comparison option')
+assert.ok(beforePath && afterPath, 'Usage: node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm [--palindrome-trace] [--classic-tridagon] [--exact-houses] [--xv] [--adjacent-total] [--entropic] [--renban] [--entropic-corpus] [--global-entropy] [--global-entropy-corpus] [--modular] [--modular-corpus] [--little-killer] [--region-sum]')
+assert.ok(options.every(option => ['--palindrome-trace', '--classic-tridagon', '--exact-houses', '--xv', '--adjacent-total', '--entropic', '--renban', '--entropic-corpus', '--global-entropy', '--global-entropy-corpus', '--modular', '--modular-corpus', '--little-killer', '--region-sum'].includes(option)), 'Unknown comparison option')
 async function engine(path) {
   const { instance } = await WebAssembly.instantiate(await readFile(path))
   const handle = createEngineHandler(async () => instance.exports)
@@ -220,6 +220,12 @@ if (options.includes('--little-killer')) {
     const rules = puzzle.rules.map((rule, index) => index === 0 ? { ...rule, sum: rule.sum + 1 } : rule)
     const nearMiss = { puzzle: { ...puzzle, rules }, entries: solution }
     assert.equal(await compare({ type: 'variant', operation: 'analyze', position: nearMiss, maxNodes: 1 }, `${name}: sum off by one`), 'conflict')
+  }
+}
+if (options.includes('--region-sum')) {
+  fixtures.push({ name: 'region-sum-newman', position: { puzzle: (await read('../tests/fixtures/region-sum-newman.json')).puzzle } })
+  for (const source of (await read('../tests/fixtures/region-sum-coach.json')).examples) {
+    fixtures.push({ name: `region-sum-coach-${source.url.split('/').pop()}`, position: { puzzle: source.puzzle } })
   }
 }
 for (const { name, position } of fixtures) {

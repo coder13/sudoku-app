@@ -28,6 +28,8 @@ type SyncOptions = {
   uploads?: ReadonlySet<string>
   includeElapsed?: boolean
   settings?: boolean
+  priority?: string
+  onPuzzlesLoaded?: () => void
 }
 
 type Remote = Base & { played: number; game: Game | null }
@@ -163,10 +165,17 @@ export function createSyncEngine(storage: Storage, deviceId: string, request: Sy
     return ids
   }
 
-  async function run({ uploads, includeElapsed = false, settings: includeSettings = true }: SyncOptions = {}) {
+  async function run({ uploads, includeElapsed = false, settings: includeSettings = true, priority, onPuzzlesLoaded }: SyncOptions = {}) {
     const copies = new Map<string, string>()
     const failures = new Map<string, SyncError>()
     const retry = new Set<string>()
+    if (priority) {
+      try {
+        await pull(priority, copies)
+      } catch (error) {
+        if (!(error instanceof SyncError) || error.status !== 404) throw error
+      }
+    }
     let cursor = Number(storage.getItem(cursorKey)) || 0
     type Changes = { id: string; revision: number; sequence: number }[]
     let settings: SettingsValues | undefined
@@ -182,6 +191,7 @@ export function createSyncEngine(storage: Storage, deviceId: string, request: Sy
       }
       if (changes.length < 100) break
     }
+    onPuzzlesLoaded?.()
     for (const id of uploads ?? puzzleIds()) {
       const base = baseFor(id)
       const here = await local(id).catch(error => {

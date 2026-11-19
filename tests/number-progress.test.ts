@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { loadNumberProgress, NUMBER_HISTORY_SIZE, saveNumberProgress, type NumberProgress } from '../src/number-puzzles/progress.ts'
+import { MemoryStorage } from './helpers/memory-storage.ts'
+
+const key = 'calcudoku.position.v1.easy-1'
+const editable = [true, false, true]
+const noted = { values: [0, 0, 0], notes: [0, 0, 4] }
+
+test('number game progress reads old saves and saves both history stacks with the current board', () => {
+  const storage = new MemoryStorage()
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true })
+  try {
+    storage.setItem(key, JSON.stringify(noted))
+    assert.deepEqual(loadNumberProgress(key, editable, 4), { position: noted, past: [], future: [] })
+
+    const progress: NumberProgress = { position: noted, past: [[2, 0, 0]], future: [[2, 3, 0]] }
+    assert.equal(saveNumberProgress(key, progress), true)
+    assert.deepEqual(loadNumberProgress(key, editable, 4), progress)
+
+    const past = [[2, 3, 0], ...Array.from({ length: NUMBER_HISTORY_SIZE }, () => [2, 0, 0])]
+    storage.setItem(key, JSON.stringify({
+      ...noted, past, future: [[2, 0, 0], [1, 2, 0]],
+    }))
+    assert.deepEqual(loadNumberProgress(key, editable, 4), {
+      position: noted, past: past.slice(1), future: [],
+    })
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+})

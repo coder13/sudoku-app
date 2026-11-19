@@ -1,10 +1,10 @@
 import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
 import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Undo2 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
-import { emptyNumberPosition, generatedNumberTokens, loadNumberDifficulty, loadNumberPosition, rememberNumberDifficulty, saveNumberPosition, type NumberPosition } from '../number-puzzles/progress'
+import { emptyNumberPosition, generatedNumberTokens, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE, rememberNumberDifficulty, saveNumberProgress, type NumberMove, type NumberProgress } from '../number-puzzles/progress'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultyOptions, PuzzleDifficultyStep } from './DifficultySelector'
 import { PuzzlesSectionNav } from './PuzzlesSectionNav'
@@ -75,7 +75,7 @@ function puzzleDestination(game: NumberGame, entry: NumberPuzzleEntry) {
 function boardPosition(game: NumberGame, id: string, board: NumberBoard) {
   const key = positionKey(game, id)
   const editable = board.cells.map(cell => !cell.block && !cell.given)
-  return { editable, key, load: () => loadNumberPosition(key, editable, board.maxValue) }
+  return { editable, key, load: () => loadNumberProgress(key, editable, board.maxValue) }
 }
 
 function NumberGameHeading({ game, title, inPlay, children }: {
@@ -132,8 +132,10 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
     }) : []
     for (const entry of [...entries, ...generatedEntries]) {
       const board = config.board(entry)
-      const position = boardPosition(game, entry.id, board).load()
-      if (!position || !position.values.some(Boolean) && !position.notes.some(Boolean)) continue
+      const progress = boardPosition(game, entry.id, board).load()
+      if (!progress) continue
+      const { position, past, future } = progress
+      if (!past.length && !future.length && !position.values.some(Boolean) && !position.notes.some(Boolean)) continue
       if (board.check(position.values).complete) complete.add(entry.id)
       else active.add(entry.id)
     }
@@ -219,14 +221,15 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const { editable, key, load } = useMemo(() => boardPosition(game, entry.id, board), [game, entry.id, board])
   const { width, height, maxValue } = board
   const digits = useMemo(() => Array.from({ length: maxValue }, (_, i) => i + 1), [maxValue])
-  const [position, setPosition] = useState(() => emptyNumberPosition(board.cells.length))
+  const [progress, setProgress] = useState<NumberProgress>(() => ({
+    position: emptyNumberPosition(board.cells.length), past: [], future: [],
+  }))
+  const { position, past, future } = progress
   const [ready, setReady] = useState(false)
   const [selection, setSelection] = useState(() => editable.indexOf(true))
   const [notes, setNotes] = useState(false)
   const [numberInput, setNumberInput] = useState('')
   const numberField = useRef<HTMLInputElement>(null)
-  const [history, setHistory] = useState<NumberPosition[]>([])
-  const [future, setFuture] = useState<NumberPosition[]>([])
   const [showCheck, setShowCheck] = useState(false)
   const [checkResult, setCheckResult] = useState<DialogResult | null>(null)
   const mobile = useMobileLayout()
@@ -253,10 +256,11 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const found = useMemo(() => analysisOpen && !result.complete && !result.marked.length ? board.hints(position.values) : [],
     [analysisOpen, board, position.values, result])
   const locked = !ready || result.complete || previewing
+  const overlayOpen = actionsOpen || rulesOpen || checkResult !== null || mobileInsight !== null
 
   useEffect(() => {
     const stored = load()
-    if (stored) setPosition(stored)
+    if (stored) setProgress(stored)
     setReady(true)
   }, [load])
 
@@ -271,47 +275,66 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
   }
 
-  function update(next: NumberPosition) {
-    setPosition(next)
-    setStorageError(!saveNumberPosition(key, next))
+  function update(next: NumberProgress) {
+    setProgress(next)
+    setStorageError(!saveNumberProgress(key, next))
     setShowCheck(false)
     setHint(null)
     setStatus('')
   }
 
+  function readCell(cell: number): NumberMove {
+    return [cell, position.values[cell], position.notes[cell]]
+  }
+
+  function applyMove([cell, value, marks]: NumberMove, past: NumberMove[], future: NumberMove[]) {
+    const next = { values: [...position.values], notes: [...position.notes] }
+    next.values[cell] = value
+    next.notes[cell] = marks
+    update({ position: next, past, future })
+  }
+
   function enter(value: number, cell = selection, pencil = notes) {
     if (locked || !editable[cell] || !Number.isInteger(value) || value < 0 || value > maxValue) return
-    const next = { values: [...position.values], notes: [...position.notes] }
-    if (value && pencil) {
-      if (next.values[cell]) return
-      next.notes[cell] ^= 1 << (value - 1)
-    } else {
-      if (next.values[cell] === value && !next.notes[cell]) return
-      next.values[cell] = value
-      next.notes[cell] = 0
-    }
-    setHistory([...history, position])
-    setFuture([])
-    update(next)
+    const previous = readCell(cell)
+    const [, digit, marks] = previous
+    const addNote = value > 0 && pencil
+    if (addNote ? digit !== 0 : value === digit && !marks) return
+    const next: NumberMove = addNote ? [cell, 0, marks ^ (1 << (value - 1))] : [cell, value, 0]
+    applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), previous], [])
   }
 
   function undo() {
-    const previous = history.at(-1)
-    if (!previous) return
-    setHistory(history.slice(0, -1))
-    setFuture([...future, position])
-    update(previous)
+    const previous = past.at(-1)
+    if (locked || !previous) return
+    applyMove(previous, past.slice(0, -1), [...future.slice(1 - NUMBER_HISTORY_SIZE), readCell(previous[0])])
   }
 
   function redo() {
     const next = future.at(-1)
-    if (!next) return
-    setHistory([...history, position])
-    setFuture(future.slice(0, -1))
-    update(next)
+    if (locked || !next) return
+    applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), readCell(next[0])], future.slice(0, -1))
   }
 
-  function onGridKey(event: KeyboardEvent<HTMLDivElement>) {
+  const onHistoryKey = useEffectEvent((event: KeyboardEvent) => {
+    if (locked || overlayOpen || rearranging || event.defaultPrevented || event.isComposing ||
+      event.altKey || !(event.ctrlKey || event.metaKey)) return
+    const target = event.target
+    if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, a, dialog[open]'))) return
+    const key = event.key.toLowerCase()
+    if (key !== 'z' && key !== 'y') return
+    event.preventDefault()
+    if (key === 'y' || event.shiftKey) redo()
+    else undo()
+  })
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => onHistoryKey(event)
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  function onGridKey(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (event.key === 'Escape' && hintSelection) {
       closeHint()
       return
@@ -411,7 +434,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     return config.entries.find(candidate => {
       if (candidate.difficulty !== entry.difficulty || candidate.id === entry.id) return false
       const candidateBoard = config.board(candidate)
-      return !candidateBoard.check(boardPosition(game, candidate.id, candidateBoard).load()?.values ?? []).complete
+      return !candidateBoard.check(boardPosition(game, candidate.id, candidateBoard).load()?.position.values ?? []).complete
     })
   }
 
@@ -552,7 +575,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     <section className={`surface controls number-puzzle-controls${mobile ? ' compact-controls' : ''}`} aria-label={`${name} controls`}>
       <div className="controls-content">
         <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
-          <IconButton className="history-button" aria-label="Undo" title="Undo" disabled={locked || !history.length} onClick={undo}><Undo2 size={18} /></IconButton>
+          <IconButton className="history-button" aria-label="Undo" title="Undo" disabled={locked || !past.length} onClick={undo}><Undo2 size={18} /></IconButton>
           <IconButton className="history-button" aria-label="Redo" title="Redo" disabled={locked || !future.length} onClick={redo}><Redo2 size={18} /></IconButton>
           <div className="controls-actions-wrap">
             <PlayActionsButton ref={actionsButton} mobile={mobile} open={actionsOpen} disabled={!ready}
@@ -613,7 +636,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     <PlayLayout desktop={!mobile} puzzle={puzzlePanel} input={inputPanel} hint={hintPanel}
       mobile={{
         puzzleId: key, rearranging, onRearrangingChange: setRearranging, withHint: Boolean(hintPanel),
-        blocked: actionsOpen || rulesOpen || checkResult !== null || mobileInsight !== null, inputTitle: result.complete ? 'Next puzzle' : 'Keypad',
+        blocked: overlayOpen, inputTitle: result.complete ? 'Next puzzle' : 'Keypad',
         hintSwipe: hint ? { dismiss: closeHint, apply: depth === 3 ? { label: 'Apply hint', onClick: applyHint } : undefined } : undefined,
       }}
       insights={insights.active ? {

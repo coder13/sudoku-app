@@ -1,0 +1,1378 @@
+{
+  "commits": {
+    "before": "b9ffe95015c8a2e9c80157e48ca06640d175ade5",
+    "after": "c079efe6d01e4cbe599dbaee5df48794e7aabf41"
+  },
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v22.23.1",
+    "v8": "12.4.254.21-node.56",
+    "os": "Arch Linux 7.1.8",
+    "cpu": "AMD Ryzen 7 7840U",
+    "logicalCpus": [
+      6,
+      7
+    ],
+    "rust": "1.92.0",
+    "cargo": "1.92.0"
+  },
+  "build": {
+    "profile": "app",
+    "release": true,
+    "strip": true,
+    "workerCount": 1,
+    "artifacts": [
+      {
+        "sha256": "0a9ed28b0602656e97ac35fff54bd730a1bfea453cbe27b64a3e847baa3e2db6",
+        "rawBytes": 3987612,
+        "gzipBytes": 1058475
+      },
+      {
+        "sha256": "71c0e6fb4e6a80e030740384fe101454baa4fbfcb635504bc1b83ec56a2b1c90",
+        "rawBytes": 3988839,
+        "gzipBytes": 1058951
+      }
+    ]
+  },
+  "profile": {
+    "requests": [
+      {
+        "id": 1,
+        "elapsedMs": 5735.006001000001,
+        "reply": {
+          "id": 1,
+          "value": "unique"
+        }
+      },
+      {
+        "id": 2,
+        "elapsedMs": 6761.337905,
+        "reply": {
+          "id": 2,
+          "value": "unique"
+        }
+      },
+      {
+        "id": 3,
+        "elapsedMs": 6107.780912000002,
+        "reply": {
+          "id": 3,
+          "value": "unique"
+        }
+      }
+    ],
+    "samples": 17545,
+    "sumSupportExclusive": 4500,
+    "shiftHelperDirectlyFromSumSupport": 2231
+  },
+  "renbanMode": {
+    "fixture": {
+      "file": "tests/fixtures/little-killer-menace.json",
+      "sha256": "82cce79aa71fa38a3af6c06da94fa16d145f69abb6416b1d93c357660b2bbbd2"
+    },
+    "warmups": 1,
+    "samples": 5,
+    "techniqueOrder": [
+      "hidden-single-box",
+      "full-house",
+      "naked-single",
+      "hidden-single",
+      "parity",
+      "anti-king",
+      "anti-knight",
+      "non-consecutive",
+      "inequality",
+      "clone",
+      "kropki",
+      "non-consecutive-locked-candidates-2",
+      "xv",
+      "adjacent-total",
+      "palindrome",
+      "non-consecutive-bivalue",
+      "between",
+      "non-consecutive-locked-candidates-3",
+      "non-consecutive-trivalue",
+      "global-entropy",
+      "thermometer",
+      "cage-combinations",
+      "arrow",
+      "quadruple",
+      "whispers",
+      "entropic",
+      "modular",
+      "whispers-house-support",
+      "renban",
+      "region-sum",
+      "locked-candidates",
+      "little-killer",
+      "cage-house-sum",
+      "locked-pair",
+      "locked-triple",
+      "pointing",
+      "claiming",
+      "naked-pair",
+      "naked-triple",
+      "hidden-pair",
+      "hidden-triple",
+      "x-wing",
+      "swordfish",
+      "skyscraper",
+      "two-string-kite",
+      "empty-rectangle",
+      "skyscrapers",
+      "sandwich",
+      "x-sum",
+      "naked-quadruple",
+      "hidden-quadruple",
+      "jellyfish",
+      "bug-plus-one",
+      "w-wing",
+      "xy-wing",
+      "xyz-wing",
+      "unique-rectangle-1",
+      "unique-rectangle-2",
+      "unique-rectangle-3",
+      "unique-rectangle-4",
+      "unique-rectangle-5",
+      "unique-rectangle-6",
+      "hidden-rectangle",
+      "finned-x-wing",
+      "sashimi-x-wing",
+      "finned-swordfish",
+      "sashimi-swordfish",
+      "finned-jellyfish",
+      "sashimi-jellyfish",
+      "simple-coloring",
+      "3d-medusa",
+      "x-chain",
+      "xy-chain",
+      "wxyz-wing",
+      "unique-loop",
+      "aic",
+      "discontinuous-nice-loop",
+      "continuous-nice-loop",
+      "grouped-aic",
+      "sue-de-coq",
+      "als-xz",
+      "als-xy-wing",
+      "als-chain",
+      "death-blossom",
+      "unique-rectangle-aic",
+      "unique-rectangle-discontinuous-nice-loop",
+      "unique-rectangle-continuous-nice-loop",
+      "fireworks",
+      "firework-w-wing",
+      "firework-l-wing",
+      "firework-als-wing",
+      "firework-aic",
+      "aligned-pair-exclusion",
+      "als-aic",
+      "als-discontinuous-nice-loop",
+      "als-continuous-nice-loop",
+      "exocet",
+      "forcing-chain",
+      "aligned-triplet-exclusion",
+      "tridagon",
+      "tridagon-aic",
+      "tridagon-forcing-net",
+      "dynamic-forcing-net",
+      "advanced-forcing-net",
+      "senior-exocet",
+      "double-exocet",
+      "franken-fish",
+      "mutant-fish",
+      "kraken-fish-1",
+      "kraken-fish-2",
+      "nested-forcing-net",
+      "pattern-overlay",
+      "pairwise-pattern-overlay",
+      "triple-pattern-overlay",
+      "quadruple-pattern-overlay",
+      "quintuple-pattern-overlay"
+    ],
+    "operations": [
+      {
+        "operation": "analyze",
+        "maxNodes": 1000000,
+        "expected": {
+          "value": "unique"
+        },
+        "builds": [
+          {
+            "medianMs": 5501.593314,
+            "p95Ms": 5556.023696,
+            "samplesMs": [
+              5500.063616,
+              5507.218861,
+              5487.84072,
+              5501.593314,
+              5556.023696
+            ],
+            "retainedCapacityBytes": 1572864
+          },
+          {
+            "medianMs": 4335.187703,
+            "p95Ms": 4352.860335,
+            "samplesMs": [
+              4321.533021,
+              4344.279119,
+              4335.187703,
+              4316.079055,
+              4352.860335
+            ],
+            "retainedCapacityBytes": 1572864
+          }
+        ]
+      },
+      {
+        "operation": "solve",
+        "maxNodes": 1000000,
+        "expected": {
+          "value": "945836172837152496261947853476591238328674519519283647782419365694325781153768924"
+        },
+        "builds": [
+          {
+            "medianMs": 4818.17216,
+            "p95Ms": 4844.177349,
+            "samplesMs": [
+              4806.879646,
+              4844.177349,
+              4804.466477,
+              4818.17216,
+              4836.276408
+            ],
+            "retainedCapacityBytes": 1572864
+          },
+          {
+            "medianMs": 3794.103952,
+            "p95Ms": 3810.634425,
+            "samplesMs": [
+              3782.380136,
+              3794.103952,
+              3807.529103,
+              3783.382987,
+              3810.634425
+            ],
+            "retainedCapacityBytes": 1572864
+          }
+        ]
+      },
+      {
+        "operation": "preview",
+        "builds": [
+          {
+            "medianMs": 10345.957241,
+            "p95Ms": 10520.22009,
+            "samplesMs": [
+              10326.516197,
+              10317.385947,
+              10368.100835,
+              10345.957241,
+              10520.22009
+            ],
+            "retainedCapacityBytes": 1572864
+          },
+          {
+            "medianMs": 8162.717943,
+            "p95Ms": 8216.704514,
+            "samplesMs": [
+              8216.704514,
+              8173.954089,
+              8158.462099,
+              8161.010965,
+              8162.717943
+            ],
+            "retainedCapacityBytes": 1572864
+          }
+        ]
+      },
+      {
+        "operation": "analyze",
+        "maxNodes": 20000,
+        "expected": {
+          "value": "search-limit"
+        },
+        "builds": [
+          {
+            "medianMs": 149.174312,
+            "p95Ms": 150.034062,
+            "samplesMs": [
+              149.174312,
+              150.034062,
+              149.425557,
+              147.437854,
+              146.92589
+            ],
+            "retainedCapacityBytes": 1572864
+          },
+          {
+            "medianMs": 115.952185,
+            "p95Ms": 123.005028,
+            "samplesMs": [
+              115.952185,
+              123.005028,
+              115.778489,
+              116.152493,
+              115.390819
+            ],
+            "retainedCapacityBytes": 1572864
+          }
+        ]
+      },
+      {
+        "operation": "solve",
+        "maxNodes": 20000,
+        "expected": {
+          "code": "search-limit"
+        },
+        "builds": [
+          {
+            "medianMs": 146.279695,
+            "p95Ms": 146.785596,
+            "samplesMs": [
+              146.785596,
+              146.422993,
+              146.032629,
+              145.831049,
+              146.279695
+            ],
+            "retainedCapacityBytes": 1572864
+          },
+          {
+            "medianMs": 114.775602,
+            "p95Ms": 115.805141,
+            "samplesMs": [
+              115.452816,
+              114.097374,
+              113.515358,
+              114.775602,
+              115.805141
+            ],
+            "retainedCapacityBytes": 1572864
+          }
+        ]
+      }
+    ]
+  },
+  "cold": [
+    {
+      "instantiateMs": {
+        "medianMs": 14.508623,
+        "p95Ms": 14.715351,
+        "samplesMs": [
+          14.50274,
+          14.715351,
+          14.508623
+        ]
+      },
+      "firstAnalyzeMs": {
+        "medianMs": 5543.892929,
+        "p95Ms": 5690.825017,
+        "samplesMs": [
+          5523.114065,
+          5690.825017,
+          5543.892929
+        ]
+      },
+      "memory": [
+        {
+          "maxRssKiB": 108796,
+          "capacityBytes": 1441792
+        },
+        {
+          "maxRssKiB": 108112,
+          "capacityBytes": 1441792
+        },
+        {
+          "maxRssKiB": 108060,
+          "capacityBytes": 1441792
+        }
+      ]
+    },
+    {
+      "instantiateMs": {
+        "medianMs": 14.773411,
+        "p95Ms": 15.575683,
+        "samplesMs": [
+          14.535261,
+          14.773411,
+          15.575683
+        ]
+      },
+      "firstAnalyzeMs": {
+        "medianMs": 4215.82822,
+        "p95Ms": 4247.966333,
+        "samplesMs": [
+          4158.0132,
+          4215.82822,
+          4247.966333
+        ]
+      },
+      "memory": [
+        {
+          "maxRssKiB": 109352,
+          "capacityBytes": 1441792
+        },
+        {
+          "maxRssKiB": 109264,
+          "capacityBytes": 1441792
+        },
+        {
+          "maxRssKiB": 108660,
+          "capacityBytes": 1441792
+        }
+      ]
+    }
+  ],
+  "otherControls": [
+    {
+      "name": "little-killer-newman",
+      "fixtureSha256": "8ab9729e1e1dcacbf7ec9b9c5650d606ffaea6a3cf3aba477bd1478b14750890",
+      "solution": "583692741916437825274158369741563982625819437398274156862941573439725618157386294",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "builds": [
+        {
+          "medianMs": 0.766729,
+          "p95Ms": 1.170084
+        },
+        {
+          "medianMs": 0.48568,
+          "p95Ms": 0.668138
+        }
+      ]
+    },
+    {
+      "name": "little-killer-newman",
+      "fixtureSha256": "8ab9729e1e1dcacbf7ec9b9c5650d606ffaea6a3cf3aba477bd1478b14750890",
+      "solution": "583692741916437825274158369741563982625819437398274156862941573439725618157386294",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "builds": [
+        {
+          "medianMs": 0.906387,
+          "p95Ms": 1.130749
+        },
+        {
+          "medianMs": 0.568936,
+          "p95Ms": 0.656026
+        }
+      ]
+    },
+    {
+      "name": "little-killer-murphy",
+      "fixtureSha256": "b516294816ced4bc1d2301dac5db1caa788be894771c3134d4e6e2e3b6d01e0f",
+      "solution": "127849635358726941496351872865973124213485796749162583632598417971634258584217369",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "builds": [
+        {
+          "medianMs": 0.867784,
+          "p95Ms": 0.91322
+        },
+        {
+          "medianMs": 0.642891,
+          "p95Ms": 0.676545
+        }
+      ]
+    },
+    {
+      "name": "little-killer-murphy",
+      "fixtureSha256": "b516294816ced4bc1d2301dac5db1caa788be894771c3134d4e6e2e3b6d01e0f",
+      "solution": "127849635358726941496351872865973124213485796749162583632598417971634258584217369",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "builds": [
+        {
+          "medianMs": 0.422461,
+          "p95Ms": 0.62111
+        },
+        {
+          "medianMs": 0.33177,
+          "p95Ms": 0.436722
+        }
+      ]
+    },
+    {
+      "name": "little-killer-mixed",
+      "fixtureSha256": "14a45bf3adf363a33fbc3afb274169abd40a1932425d6073ee786633b126cda7",
+      "solution": "127849635358726941496351872865973124213485796749162583632598417971634258584217369",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "builds": [
+        {
+          "medianMs": 0.545802,
+          "p95Ms": 0.628384
+        },
+        {
+          "medianMs": 0.48297,
+          "p95Ms": 0.631209
+        }
+      ]
+    },
+    {
+      "name": "little-killer-mixed",
+      "fixtureSha256": "14a45bf3adf363a33fbc3afb274169abd40a1932425d6073ee786633b126cda7",
+      "solution": "127849635358726941496351872865973124213485796749162583632598417971634258584217369",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1441792,
+        1441792
+      ],
+      "builds": [
+        {
+          "medianMs": 0.515752,
+          "p95Ms": 0.813702
+        },
+        {
+          "medianMs": 0.45686,
+          "p95Ms": 0.661265
+        }
+      ]
+    },
+    {
+      "name": "little-killer-jigsaw-mixed",
+      "fixtureSha256": "8570aa5c119a4cc0e867d7ce6f4f6bc0f4a3223564a3ae2d733b060b781a8e16",
+      "solution": "473891265265743981891625743529138476147269538386457129914382657658974312732516894",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 1.214252,
+          "p95Ms": 1.507729
+        },
+        {
+          "medianMs": 1.171632,
+          "p95Ms": 1.395679
+        }
+      ]
+    },
+    {
+      "name": "little-killer-jigsaw-mixed",
+      "fixtureSha256": "8570aa5c119a4cc0e867d7ce6f4f6bc0f4a3223564a3ae2d733b060b781a8e16",
+      "solution": "473891265265743981891625743529138476147269538386457129914382657658974312732516894",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 1.207094,
+          "p95Ms": 1.366173
+        },
+        {
+          "medianMs": 1.163391,
+          "p95Ms": 1.195532
+        }
+      ]
+    },
+    {
+      "name": "combined-families",
+      "fixtureSha256": "f26655ec4b9912e4c08642f2e91fae35d03b2bfa179c33735dd381cd49593c6a",
+      "solution": "312864975958273416746195382164952738529387164873641529687419253295736841431528697",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 0.085366,
+          "p95Ms": 0.146266
+        },
+        {
+          "medianMs": 0.08537,
+          "p95Ms": 0.146266
+        }
+      ]
+    },
+    {
+      "name": "combined-families",
+      "fixtureSha256": "f26655ec4b9912e4c08642f2e91fae35d03b2bfa179c33735dd381cd49593c6a",
+      "solution": "312864975958273416746195382164952738529387164873641529687419253295736841431528697",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 0.090746,
+          "p95Ms": 0.152087
+        },
+        {
+          "medianMs": 0.087845,
+          "p95Ms": 0.138521
+        }
+      ]
+    },
+    {
+      "name": "region-sum-newman",
+      "fixtureSha256": "e8a01d6c0feadd24a2ab18399164741c7f562de086ba4dc718d26031d9ae7167",
+      "solution": "923176854548293617716584932139842576267951348485367129871625493394718265652439781",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 0.264703,
+          "p95Ms": 0.303401
+        },
+        {
+          "medianMs": 0.190965,
+          "p95Ms": 0.224723
+        }
+      ]
+    },
+    {
+      "name": "region-sum-newman",
+      "fixtureSha256": "e8a01d6c0feadd24a2ab18399164741c7f562de086ba4dc718d26031d9ae7167",
+      "solution": "923176854548293617716584932139842576267951348485367129871625493394718265652439781",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 0.170967,
+          "p95Ms": 0.178346
+        },
+        {
+          "medianMs": 0.13577,
+          "p95Ms": 0.144542
+        }
+      ]
+    },
+    {
+      "name": "renban-clover",
+      "fixtureSha256": "5fbba1df146f38a3a6965ed1c95891077331b4e0d2b66917c8b9e260e7bf969a",
+      "solution": "891623745654179823237854691128967534349285167765431289916542378472318956583796412",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 0.064036,
+          "p95Ms": 0.099778
+        },
+        {
+          "medianMs": 0.065188,
+          "p95Ms": 0.098486
+        }
+      ]
+    },
+    {
+      "name": "renban-clover",
+      "fixtureSha256": "5fbba1df146f38a3a6965ed1c95891077331b4e0d2b66917c8b9e260e7bf969a",
+      "solution": "891623745654179823237854691128967534349285167765431289916542378472318956583796412",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 0.065619,
+          "p95Ms": 0.124435
+        },
+        {
+          "medianMs": 0.065794,
+          "p95Ms": 0.121709
+        }
+      ]
+    },
+    {
+      "name": "renban-killer-clover",
+      "fixtureSha256": "12e02b5bbba96b953744beb2fd252b64ce9857ffe0939773f3e05bfa9b89a085",
+      "solution": "297681543351249786684375219128956437976413852543827691812794365439562178765138924",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 0.13304,
+          "p95Ms": 0.187443
+        },
+        {
+          "medianMs": 0.133401,
+          "p95Ms": 0.194446
+        }
+      ]
+    },
+    {
+      "name": "renban-killer-clover",
+      "fixtureSha256": "12e02b5bbba96b953744beb2fd252b64ce9857ffe0939773f3e05bfa9b89a085",
+      "solution": "297681543351249786684375219128956437976413852543827691812794365439562178765138924",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 10,
+      "samples": 60,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 0.129023,
+          "p95Ms": 0.136727
+        },
+        {
+          "medianMs": 0.129554,
+          "p95Ms": 0.138
+        }
+      ]
+    },
+    {
+      "name": "inequality-palindrome14",
+      "fixtureSha256": "d4144f82f33abcf458ee1f32bc7fa81627f0ddd440d3bd40225607f3863a4a95",
+      "solution": "459273186618459372327618549846135927195726438732984651264597813973841265581362794",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 2,
+      "samples": 7,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 485.771446,
+          "p95Ms": 487.373949
+        },
+        {
+          "medianMs": 487.695584,
+          "p95Ms": 491.173947
+        }
+      ]
+    },
+    {
+      "name": "inequality-palindrome14",
+      "fixtureSha256": "d4144f82f33abcf458ee1f32bc7fa81627f0ddd440d3bd40225607f3863a4a95",
+      "solution": "459273186618459372327618549846135927195726438732984651264597813973841265581362794",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 2,
+      "samples": 7,
+      "memory": [
+        1507328,
+        1507328
+      ],
+      "builds": [
+        {
+          "medianMs": 398.51988,
+          "p95Ms": 402.564665
+        },
+        {
+          "medianMs": 398.828293,
+          "p95Ms": 403.679404
+        }
+      ]
+    }
+  ],
+  "regionSumControls": [
+    {
+      "slug": "8AGt",
+      "operation": "rate",
+      "warmups": 1,
+      "samples": 5,
+      "fixtureSha256": "79d3741686a68fbd2bd9464b8acfd2d2cf5df7ff80754db2625988eac9e2d5c6",
+      "techniqueOrder": [
+        "hidden-single-box",
+        "full-house",
+        "naked-single",
+        "hidden-single",
+        "parity",
+        "anti-king",
+        "anti-knight",
+        "non-consecutive",
+        "inequality",
+        "clone",
+        "kropki",
+        "non-consecutive-locked-candidates-2",
+        "xv",
+        "adjacent-total",
+        "palindrome",
+        "non-consecutive-bivalue",
+        "between",
+        "non-consecutive-locked-candidates-3",
+        "non-consecutive-trivalue",
+        "global-entropy",
+        "thermometer",
+        "cage-combinations",
+        "arrow",
+        "quadruple",
+        "whispers",
+        "entropic",
+        "modular",
+        "whispers-house-support",
+        "renban",
+        "region-sum",
+        "locked-candidates",
+        "little-killer",
+        "cage-house-sum",
+        "locked-pair",
+        "locked-triple",
+        "pointing",
+        "claiming",
+        "naked-pair",
+        "naked-triple",
+        "hidden-pair",
+        "hidden-triple",
+        "x-wing",
+        "swordfish",
+        "skyscraper",
+        "two-string-kite",
+        "empty-rectangle",
+        "skyscrapers",
+        "sandwich",
+        "x-sum",
+        "naked-quadruple",
+        "hidden-quadruple",
+        "jellyfish",
+        "bug-plus-one",
+        "w-wing",
+        "xy-wing",
+        "xyz-wing",
+        "unique-rectangle-1",
+        "unique-rectangle-2",
+        "unique-rectangle-3",
+        "unique-rectangle-4",
+        "unique-rectangle-5",
+        "unique-rectangle-6",
+        "hidden-rectangle",
+        "finned-x-wing",
+        "sashimi-x-wing",
+        "finned-swordfish",
+        "sashimi-swordfish",
+        "finned-jellyfish",
+        "sashimi-jellyfish",
+        "simple-coloring",
+        "3d-medusa",
+        "x-chain",
+        "xy-chain",
+        "wxyz-wing",
+        "unique-loop",
+        "aic",
+        "discontinuous-nice-loop",
+        "continuous-nice-loop",
+        "grouped-aic",
+        "sue-de-coq",
+        "als-xz",
+        "als-xy-wing",
+        "als-chain",
+        "death-blossom",
+        "unique-rectangle-aic",
+        "unique-rectangle-discontinuous-nice-loop",
+        "unique-rectangle-continuous-nice-loop",
+        "fireworks",
+        "firework-w-wing",
+        "firework-l-wing",
+        "firework-als-wing",
+        "firework-aic",
+        "aligned-pair-exclusion",
+        "als-aic",
+        "als-discontinuous-nice-loop",
+        "als-continuous-nice-loop",
+        "exocet",
+        "forcing-chain",
+        "aligned-triplet-exclusion",
+        "tridagon",
+        "tridagon-aic",
+        "tridagon-forcing-net",
+        "dynamic-forcing-net",
+        "advanced-forcing-net",
+        "senior-exocet",
+        "double-exocet",
+        "franken-fish",
+        "mutant-fish",
+        "kraken-fish-1",
+        "kraken-fish-2",
+        "nested-forcing-net",
+        "pattern-overlay",
+        "pairwise-pattern-overlay",
+        "triple-pattern-overlay",
+        "quadruple-pattern-overlay",
+        "quintuple-pattern-overlay"
+      ],
+      "memory": [
+        5570560,
+        5505024
+      ],
+      "responseSha256": "526cf450b25fb6196bfa2e207573d3d42de393522e59f4bd5159240f7e069471",
+      "rating": {
+        "status": {
+          "solved": "impossible"
+        },
+        "points": 4058,
+        "scoringVersion": 8
+      },
+      "builds": [
+        {
+          "medianMs": 2157.741783,
+          "p95Ms": 2205.42447,
+          "samplesMs": [
+            2205.42447,
+            2164.179712,
+            2148.491763,
+            2157.741783,
+            2148.445093
+          ]
+        },
+        {
+          "medianMs": 2162.93764,
+          "p95Ms": 2210.220563,
+          "samplesMs": [
+            2210.220563,
+            2162.93764,
+            2169.500869,
+            2158.155992,
+            2151.153718
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "FaxQ",
+      "operation": "analyze",
+      "maxNodes": 20000,
+      "warmups": 1,
+      "samples": 5,
+      "fixtureSha256": "79d3741686a68fbd2bd9464b8acfd2d2cf5df7ff80754db2625988eac9e2d5c6",
+      "reference": {
+        "value": "search-limit"
+      },
+      "memory": [
+        5570560,
+        5505024
+      ],
+      "builds": [
+        {
+          "medianMs": 90.696155,
+          "p95Ms": 90.763632,
+          "samplesMs": [
+            90.743855,
+            90.620462,
+            90.696155,
+            90.67186,
+            90.763632
+          ]
+        },
+        {
+          "medianMs": 68.635529,
+          "p95Ms": 68.856616,
+          "samplesMs": [
+            68.856616,
+            68.635529,
+            68.597177,
+            68.64115,
+            68.606234
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "FaxQ",
+      "operation": "analyze",
+      "maxNodes": 1000000,
+      "warmups": 1,
+      "samples": 5,
+      "fixtureSha256": "79d3741686a68fbd2bd9464b8acfd2d2cf5df7ff80754db2625988eac9e2d5c6",
+      "reference": {
+        "value": "unique"
+      },
+      "memory": [
+        5570560,
+        5505024
+      ],
+      "builds": [
+        {
+          "medianMs": 193.452088,
+          "p95Ms": 193.698315,
+          "samplesMs": [
+            193.452088,
+            193.612351,
+            193.423826,
+            193.437191,
+            193.698315
+          ]
+        },
+        {
+          "medianMs": 146.191074,
+          "p95Ms": 146.569315,
+          "samplesMs": [
+            146.077438,
+            146.569315,
+            146.432698,
+            146.151619,
+            146.191074
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "FaxQ",
+      "operation": "solve",
+      "maxNodes": 1000000,
+      "warmups": 1,
+      "samples": 5,
+      "fixtureSha256": "79d3741686a68fbd2bd9464b8acfd2d2cf5df7ff80754db2625988eac9e2d5c6",
+      "reference": {
+        "value": "841793562356824971279156438568347219934218756127965843612479385493581627785632194"
+      },
+      "memory": [
+        5570560,
+        5505024
+      ],
+      "builds": [
+        {
+          "medianMs": 167.520955,
+          "p95Ms": 167.648265,
+          "samplesMs": [
+            167.312851,
+            167.520955,
+            167.617968,
+            167.648265,
+            167.471483
+          ]
+        },
+        {
+          "medianMs": 126.192382,
+          "p95Ms": 126.762326,
+          "samplesMs": [
+            126.140344,
+            126.762326,
+            126.236987,
+            126.192382,
+            126.146717
+          ]
+        }
+      ]
+    }
+  ],
+  "generation": [
+    {
+      "host": "linux x64",
+      "node": "v22.23.1",
+      "artifacts": [
+        {
+          "raw": 3987612,
+          "gzip": 1058475,
+          "sha256": "0a9ed28b0602656e97ac35fff54bd730a1bfea453cbe27b64a3e847baa3e2db6"
+        },
+        {
+          "raw": 3988839,
+          "gzip": 1058951,
+          "sha256": "71c0e6fb4e6a80e030740384fe101454baa4fbfcb635504bc1b83ec56a2b1c90"
+        }
+      ],
+      "method": "Alternate engine order; timings include encoding/decoding, exclude assertions, instantiation, workers and rendering. Exact calls: 2 warmups/5 samples at the same 10m budget. Generation: seeds 1..20, six attempts/20k nodes, no warmups; p95 of five is the maximum."
+    },
+    {
+      "generation": "classic",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          1.176,
+          4.041
+        ],
+        [
+          1.149,
+          2.847
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "x-sudoku",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          1.06,
+          1.967
+        ],
+        [
+          1.027,
+          1.73
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "killer",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          4.092,
+          5.757
+        ],
+        [
+          3.863,
+          5.731
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "jigsaw-killer",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          3.529,
+          4.901
+        ],
+        [
+          3.612,
+          4.197
+        ]
+      ],
+      "memoryBytes": [
+        1507328,
+        1507328
+      ]
+    },
+    {
+      "generation": "windoku",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          0.944,
+          2.327
+        ],
+        [
+          0.948,
+          2.335
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "little-killer-newman",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          7.473,
+          8.552
+        ],
+        [
+          4.404,
+          7.219
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    },
+    {
+      "generation": "little-killer-murphy",
+      "seeds": 20,
+      "legacyOrder": false,
+      "matches": [
+        20,
+        20
+      ],
+      "failedSeeds": [
+        [],
+        []
+      ],
+      "identicalResponses": 20,
+      "distinctPuzzles": [
+        20,
+        20
+      ],
+      "medianP95": [
+        [
+          2.737,
+          4.024
+        ],
+        [
+          2.344,
+          3.278
+        ]
+      ],
+      "memoryBytes": [
+        1441792,
+        1441792
+      ]
+    }
+  ],
+  "responseComparison": "5864 complete responses match on 36 corpus positions and 363 positive practice positions; 121 detector IDs, retained catalogs/scoring and every hint page.",
+  "evidenceSha256": {
+    "paired.jsonl": "b7b3872a0b7da3dce901ebaac2821c0f7851825f50efd84a98faabad35699364",
+    "paired-cold-wasm.jsonl": "057616cf296a48f5b7bcf8dc5c19ccdbee38d4e48e7b43d632952088fc15a689",
+    "paired-controls.jsonl": "ef7bc1834eb8d09bdb7548325e6dc739f33c18af380c3a1773291ed6182b91ce",
+    "paired-region-sum.jsonl": "97ce555801e68faf7a7c4b97d7ae93085d5d89cb0877fa5d519ed7c28354052d",
+    "paired-generation.jsonl": "6d6d39fb528feeb53b2464c75f9976233007a73cc4f0f5e24419b48942481e4d",
+    "sum-baseline.cpuprofile": "510c5ea849366354408c9c3786b9e7c86f70c7adf060d2fa0991de546896da98",
+    "paired-responses.log": "15914dec81df07dc87c74d708653080c09d13601f47baca27219de678e81a970",
+    "generation-recipes.json": "af4f1a53c7bb321708b012a23c982969acc11c7ae1ad6db5a98cceb31da2a55e"
+  }
+}
