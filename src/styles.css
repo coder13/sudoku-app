@@ -3488,5 +3488,7 @@ a.game-row { text-decoration: none; color: inherit; }
 .outside-clues-bottom { grid-area: bottom; aspect-ratio: 9 / var(--outside-bottom); pointer-events: none; }
 .variant-little-killer-preview text { font-size: 1.7px; font-weight: 750; fill: var(--board-ink); }
 .variant-little-killer-preview path { fill: none; stroke: var(--board-ink); stroke-width: .35; }
+.variant-skyscrapers-preview text { font-size: 2px; font-weight: 750; fill: var(--board-ink); }
+.variant-skyscrapers-preview path { fill: var(--board-ink); stroke: none; }
 .variant-sandwich-preview, .variant-x-sum-preview { display: grid; text-align: center; font-size: 9px; line-height: 1.5; color: var(--board-ink); }
 .variant-sandwich-preview > :first-child, .variant-x-sum-preview > :first-child { font-weight: 750; }

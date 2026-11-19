@@ -52,6 +52,10 @@ export const VARIANTS = {
     name: 'X-Sums',
     rule: 'An outside clue gives the sum of the first X digits in its direction. The first digit is X and counts toward the sum. For example, a first digit of 3 means the first three cells add to the clue. Unmarked directions have no X-Sum total.',
   },
+  skyscrapers: {
+    name: 'Skyscrapers',
+    rule: 'Each digit is the height of a building. An outside clue counts the buildings visible from that direction. Count the first building and each new tallest building; taller buildings hide shorter ones behind them. Unmarked directions have no visibility clue.',
+  },
   clone: {
     name: 'Clone',
     rule: 'Cells with the same Clone letter must contain the same digit. Different letters can contain the same digit if the other puzzle rules allow it.',
@@ -399,6 +403,8 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.sum) && rule.sum >= 0 && rule.sum <= 35 && validOutsideRay(rule.cells, rule.direction)
     case 'x-sum': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
       Number.isInteger(rule.sum) && rule.sum >= 1 && rule.sum <= 45 && validOutsideRay(rule.cells, rule.direction)
+    case 'skyscrapers': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'count'].includes(key)) &&
+      Number.isInteger(rule.count) && rule.count >= 1 && rule.count <= 9 && validOutsideRay(rule.cells, rule.direction)
     case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
       Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
     case 'inequality': return validCells([rule.less, rule.greater], 2)
@@ -478,7 +484,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
   return kind !== 'classic' && (id === 'mixed' || kind === id)
 }
 
-const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
+const RULE_NAMES: Record<VariantRule['type'], string> = {
   clone: VARIANTS.clone.name,
   'region-sum': VARIANTS['region-sum'].name,
   entropic: PUZZLE_VARIANTS.entropic.name,
@@ -486,6 +492,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   'little-killer': VARIANTS['little-killer'].name,
   sandwich: VARIANTS.sandwich.name,
   'x-sum': VARIANTS['x-sum'].name,
+  skyscrapers: VARIANTS.skyscrapers.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
   renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
@@ -533,6 +540,9 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         break
       case 'x-sum':
         descriptions.push(VARIANTS['x-sum'].rule, outsideClueLabel(rule))
+        break
+      case 'skyscrapers':
+        descriptions.push(VARIANTS.skyscrapers.rule, outsideClueLabel(rule))
         break
       case 'clone':
         descriptions.push(VARIANTS.clone.rule)

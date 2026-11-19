@@ -1,6 +1,11 @@
 import type { VariantRule } from './engine.ts'
 
-export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-killer' | 'x-sum' }>
+export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-killer' | 'x-sum' | 'skyscrapers' }>
+const ORTHOGONAL_CLUES = {
+  sandwich: { prefix: 'S', name: 'Sandwich' },
+  'x-sum': { prefix: 'X', name: 'X-Sums' },
+  skyscrapers: { prefix: 'Sk', name: 'Skyscrapers' },
+} as const
 export type OutsideSide = 'top' | 'right' | 'bottom' | 'left'
 type Direction = Extract<VariantRule, { direction: string }>['direction']
 const DELTAS: Record<Direction, readonly [number, number]> = {
@@ -50,15 +55,18 @@ export function outsideClueLabel(rule: OutsideRule) {
           ? 'left'
           : 'right'
   const location = `${side} of ${side === 'top' || side === 'bottom' ? 'column ' + ((rule.cells[0] % 9) + 1) : 'row ' + (Math.floor(rule.cells[0] / 9) + 1)}`
+  if (rule.type === 'skyscrapers')
+    return `Skyscrapers ${rule.count}, ${location}: looking from ${cellName(rule.cells[0])}, count the first building and each new tallest building. Exactly ${rule.count} ${rule.count === 1 ? 'building is' : 'buildings are'} visible.`
   return rule.type === 'x-sum'
     ? `X-Sum ${rule.sum}, ${location}: the first digit counts how many cells to add, including itself, starting at ${cellName(rule.cells[0])}.`
     : `Sandwich ${rule.sum}, ${location}: digits strictly between 1 and 9 sum to ${rule.sum}; 1 and 9 are excluded.`
 }
 
-/** Prefix otherwise ambiguous outside totals when both orthogonal rule families are present. */
+/** Prefix otherwise ambiguous outside numbers when orthogonal rule families are combined. */
 export function outsideClueLegend(rules?: readonly VariantRule[]) {
-  return rules?.some(rule => rule.type === 'sandwich') && rules.some(rule => rule.type === 'x-sum')
-    ? ['S = Sandwich', 'X = X-Sums'] : []
+  const active = (Object.keys(ORTHOGONAL_CLUES) as (keyof typeof ORTHOGONAL_CLUES)[])
+    .filter(type => rules?.some(rule => rule.type === type))
+  return active.length > 1 ? active.map(type => `${ORTHOGONAL_CLUES[type].prefix} = ${ORTHOGONAL_CLUES[type].name}`) : []
 }
 
 /** Lay out all edge and corner labels in cell coordinates. Repeated anchors move outward along their ray. */
@@ -77,7 +85,7 @@ export function outsideClueLayout(rules?: readonly VariantRule[]) {
   const legend = outsideClueLegend(rules)
   const anchors = new Map<string, { lane: number; extent: number }>()
   for (const rule of rules ?? []) {
-    if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'x-sum') continue
+    if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'x-sum' && rule.type !== 'skyscrapers') continue
     const [dr, dc] = clueDelta(rule.direction),
       first = rule.cells[0]
     const ox = (first % 9) + 0.5 - dc,
@@ -87,7 +95,7 @@ export function outsideClueLayout(rules?: readonly VariantRule[]) {
     if (rule.type !== 'little-killer') {
       const x = (first % 9) + 0.5 - dc * (0.85 + prior.extent),
         y = Math.floor(first / 9) + 0.5 - dr * (0.85 + prior.extent)
-      const label = (legend.length ? rule.type === 'sandwich' ? 'S' : 'X' : '') + rule.sum
+      const label = (legend.length ? ORTHOGONAL_CLUES[rule.type].prefix : '') + (rule.type === 'skyscrapers' ? rule.count : rule.sum)
       clues.push({ rule, lane: prior.lane, x, y, dr, dc, label })
       const extent = prior.extent + (legend.length ? 0.9 : 0.7)
       if (dr === 1) depths.top = Math.max(depths.top, extent)
