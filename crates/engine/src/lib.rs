@@ -68,6 +68,8 @@ pub use sized::{
 };
 #[cfg(feature = "generation")]
 pub use sized::{MiniDifficulty, generate_mini};
+#[cfg(all(feature = "generation", feature = "variants"))]
+pub use sized::{GeneratedAlgebraic, generate_algebraic};
 pub use sized::{GridSpec, SIZED_GRID_VERSION, SizedDeduction, SizedGrid, SizedHints, SizedTechnique, SizedTracePosition};
 pub use technique::{ProfileError, SolverProfile, Technique};
 #[cfg(feature = "variants")]

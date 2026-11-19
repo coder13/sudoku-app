@@ -118,3 +118,46 @@ fn algebraic_cage_rules_distinguish_conflict_infeasibility_and_multiple_completi
     assert_eq!(answer.digits[0], 4);
     assert_eq!(answer.variables["x"], 9);
 }
+
+#[cfg(feature = "generation")]
+#[test]
+fn generated_algebraic_puzzles_need_each_cage_and_replay_to_a_unique_solution() {
+    use std::collections::HashSet;
+    use sudoku_app_engine::{AlgebraicStep, generate_algebraic};
+
+    let mut samples = HashSet::new();
+    for seed in 0..128 {
+        let generated = generate_algebraic(seed, &[]).unwrap_or_else(|| panic!("seed {seed}"));
+        assert!(samples.insert(generated.clone()), "duplicate seed {seed}");
+        let grid = SizedGrid::new(MINI).unwrap();
+        assert_eq!(grid.analyze(&generated.givens, 1_000), Analysis::Multiple);
+        let puzzle = SizedAlgebraicCages::new(MINI, generated.cages.clone()).unwrap();
+        assert_eq!(puzzle.analyze(&generated.givens, 1_000), Analysis::Unique);
+        let solution = puzzle.solve(&generated.givens, 1_000).unwrap();
+        let trace = puzzle
+            .trace(generated.givens.to_vec(), vec![0; 16], 1_000)
+            .unwrap();
+        assert_eq!(trace.last().unwrap().digits, solution.digits);
+        assert!(
+            trace
+                .iter()
+                .any(|position| matches!(position.step, Some(AlgebraicStep::Cage(_))))
+        );
+        for removed in 0..generated.cages.len() {
+            let mut remaining = generated.cages.clone();
+            remaining.remove(removed);
+            let partial = SizedAlgebraicCages::new(MINI, remaining).unwrap();
+            assert_eq!(
+                partial.analyze(&generated.givens, 1_000),
+                Analysis::Multiple
+            );
+        }
+    }
+
+    let original = generate_algebraic(42, &[]).unwrap();
+    assert_eq!(generate_algebraic(42, &[]).unwrap(), original);
+    assert_ne!(
+        generate_algebraic(42, &[original.clone()]).unwrap(),
+        original
+    );
+}

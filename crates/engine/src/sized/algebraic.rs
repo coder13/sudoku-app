@@ -4,14 +4,14 @@ use super::{GridSpec, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction};
 
 /// A cage's total. All references to a name share one positive integer.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum CageTotal {
     Fixed(u16),
     Variable { name: String, offset: i32 },
 }
 
 /// A nonrepeating sum cage and its original label.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct AlgebraicCage {
     pub cells: Vec<usize>,
     pub total: CageTotal,

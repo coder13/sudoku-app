@@ -3,6 +3,11 @@ use std::collections::HashSet;
 use super::{GridSpec, SizedGrid, SizedTechnique};
 use crate::{Analysis, Random};
 
+#[cfg(feature = "variants")]
+mod algebraic;
+#[cfg(feature = "variants")]
+pub use algebraic::{GeneratedAlgebraic, generate_algebraic};
+
 /// A clue recipe for a 4 × 4 puzzle. Both recipes use singles through completion.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(

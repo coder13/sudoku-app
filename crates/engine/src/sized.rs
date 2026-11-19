@@ -14,6 +14,8 @@ pub use algebraic::{
 mod generation;
 #[cfg(feature = "generation")]
 pub use generation::{MiniDifficulty, generate_mini};
+#[cfg(all(feature = "generation", feature = "variants"))]
+pub use generation::{GeneratedAlgebraic, generate_algebraic};
 
 /// Wire version for a sized Classic grid. Version 1 uses the original 9×9 format.
 pub const SIZED_GRID_VERSION: u8 = 2;
