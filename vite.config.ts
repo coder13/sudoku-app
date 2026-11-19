@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 import { ocrAssetFileNames } from './scripts/ocr-assets.ts'
 import { calcudokuCatalog } from './src/calcudoku/catalog.ts'
 import { futoshikiCatalog } from './src/futoshiki/catalog.ts'
+import { hidatoCatalog } from './src/hidato/catalog.ts'
 import { kakuroCatalog } from './src/kakuro/catalog.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
 import { syncPageTitles } from './src/sudoku/sync-pages.ts'
@@ -71,6 +72,8 @@ function prerenderPages() {
     ...calcudokuCatalog.map(({ id }) => `/puzzles/calcudoku/${id}`),
     '/puzzles/futoshiki',
     ...futoshikiCatalog.map(({ id }) => `/puzzles/futoshiki/${id}`),
+    '/puzzles/hidato',
+    ...hidatoCatalog.map(({ id }) => `/puzzles/hidato/${id}`),
     '/puzzles/kakuro',
     ...kakuroCatalog.map(({ id }) => `/puzzles/kakuro/${id}`),
     '/puzzles/solved',

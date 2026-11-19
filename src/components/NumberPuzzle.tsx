@@ -7,7 +7,7 @@ import { Button, IconButton, buttonClassName, iconButtonClassName } from './Butt
 import './puzzle-games.css'
 import './number-puzzle.css'
 
-export type NumberGame = 'kakuro' | 'calcudoku' | 'futoshiki'
+export type NumberGame = 'kakuro' | 'calcudoku' | 'futoshiki' | 'hidato'
 
 type BoardCell = {
   label?: string
@@ -15,6 +15,7 @@ type BoardCell = {
   decoration?: ReactNode
   edges?: string
   block?: boolean
+  endpoint?: boolean
 }
 
 type Hint = { cell: number; value: number; marked: number[]; reasons: string[] }
@@ -147,6 +148,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const [ready, setReady] = useState(false)
   const [selection, setSelection] = useState(() => editable.indexOf(true))
   const [notes, setNotes] = useState(false)
+  const [numberInput, setNumberInput] = useState('')
+  const numberField = useRef<HTMLInputElement>(null)
   const [history, setHistory] = useState<NumberPosition[]>([])
   const [future, setFuture] = useState<NumberPosition[]>([])
   const [showCheck, setShowCheck] = useState(false)
@@ -174,7 +177,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   function enter(value: number, cell = selection, pencil = notes) {
-    if (locked || !editable[cell] || value > maxValue) return
+    if (locked || !editable[cell] || !Number.isInteger(value) || value < 0 || value > maxValue) return
     const next = { values: [...position.values], notes: [...position.notes] }
     if (value && pencil) {
       if (next.values[cell]) return
@@ -225,7 +228,12 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       }
     } else if (/^[1-9]$/.test(event.key) || event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault()
-      enter(Number(event.key) || 0)
+      if (maxValue > 9 && /^[1-9]$/.test(event.key) && !locked && editable[selection]) {
+        setNumberInput(event.key)
+        numberField.current?.focus()
+      } else {
+        enter(Number(event.key) || 0)
+      }
     } else if (event.key.toLowerCase() === 'n') {
       event.preventDefault()
       setNotes(current => !current)
@@ -255,9 +263,9 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
   const next = ready && result.complete ? nextPuzzle() : undefined
   return <div className="number-puzzle-play motion-screen">
-    <div className="number-puzzle-grid" role="group" aria-label={`${name} board`}
+    <div className="number-puzzle-grid" role="group" aria-label={`${name} board`} data-game={game}
       style={{ '--number-puzzle-columns': width } as CSSProperties} onKeyDown={onGridKey}>
-      {board.cells.map(({ label, block, decoration, edges, given }, index) => {
+      {board.cells.map(({ label, block, decoration, edges, given, endpoint }, index) => {
         if (block) {
           return <div key={index} className="number-puzzle-block" data-clue={Boolean(label)}
             data-conflict={conflictCells.has(index)} data-hint={hintCells.has(index)} role={label ? 'img' : undefined}
@@ -273,19 +281,36 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           ref={button => { if (button) cellButtons.current.set(index, button); else cellButtons.current.delete(index) }}
           tabIndex={selection === index ? 0 : -1} aria-pressed={selection === index}
           data-conflict={conflictCells.has(index)} data-hint={hint?.cell === index} data-context={hintCells.has(index)}
-          data-edges={edges} data-given={Boolean(given)} data-decorated={Boolean(decoration)}
+          data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
           aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
-          onFocus={() => setSelection(index)} onClick={() => setSelection(index)}>
+          onFocus={() => { setSelection(index); if (index !== selection) setNumberInput('') }}
+          onClick={() => { setSelection(index); if (index !== selection) setNumberInput('') }}>
           {decoration}
-          {value || <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
-            <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
+          {value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
+            : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
+            : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
+              <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
         </button>
       })}
     </div>
     <section className="surface number-puzzle-controls" aria-label={`${name} controls`}>
-      <div className="number-puzzle-keypad" role="group" aria-label="Digits">
+      {maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
+        event.preventDefault()
+        const value = Number(numberInput)
+        if (!value || value > maxValue) return
+        enter(value)
+        setNumberInput('')
+        cellButtons.current.get(selection)?.focus()
+      }}>
+        <input ref={numberField} value={numberInput} aria-label={`Number from 1 to ${maxValue}`}
+          placeholder={`1 to ${maxValue}`} inputMode="numeric" maxLength={String(maxValue).length}
+          disabled={locked || !editable[selection]} onChange={event => setNumberInput(event.currentTarget.value.replace(/\D/g, ''))} />
+        <Button type="submit" variant="primary" disabled={locked || !editable[selection] || !Number(numberInput) || Number(numberInput) > maxValue}>
+          {notes ? 'Add note' : 'Place'}
+        </Button>
+      </form> : <div className="number-puzzle-keypad" role="group" aria-label="Digits">
         {digits.map(digit => <Button key={digit} disabled={locked || !editable[selection]} onClick={() => enter(digit)}>{digit}</Button>)}
-      </div>
+      </div>}
       <div className="number-puzzle-actions">
         <Button aria-pressed={notes} disabled={locked} onClick={() => setNotes(current => !current)}>
           <Pencil size={16} aria-hidden="true" />Notes
