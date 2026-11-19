@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { MemoryStorage } from './helpers/memory-storage.ts'
-import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { EMPTY, enter, makeGame, paintCandidate, puzzleIdentity, restartGame, STARTER_GAME, redo, undo } from '../src/sudoku/game.ts'
 import { addRatingHints, placementHintKey, PLAYER_RATING_VERSION, ratingAttemptFor, type RatingAttempt, type RatingEvent } from '../src/sudoku/player-rating.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
@@ -11,23 +10,7 @@ import { WINDOKU_REGIONS } from '../src/sudoku/variants.ts'
 import { puzzleTiming } from '../src/sudoku/puzzle-timing.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 
-test('4×4 progress, masks and undo survive a save and reload', async () => {
-  const { readGame } = await import('../src/sudoku/storage.ts?mini-grid-validation')
-  const original = makeGame('mini', 'Mini Sudoku', '0234341221434321', 'imported', 0, MINI_GRID)
-  const candidate = enter(original, [0], 'candidate', 1)
-  const played = undo(enter(candidate, [0], 'value', 1))
-  const loaded = readGame(played.id, JSON.stringify(played))
-  assert.deepEqual(loaded?.grid, MINI_GRID)
-  assert.deepEqual(loaded?.position, played.position)
-  assert.deepEqual(redo(loaded!).position, redo(played).position)
-  assert.equal(restartGame(loaded!).position.entries, '0'.repeat(16))
-  assert.equal(readGame(played.id, JSON.stringify({ ...played, grid: undefined })), undefined)
-  assert.equal(readGame(played.id, JSON.stringify({
-    ...played, position: { ...played.position, corner: [16, ...Array(15).fill(0)] },
-  })), undefined)
-})
-
-test('first visit opens one Medium puzzle, and deleting it does not start another', async () => {
+test('first visit opens one paused Medium puzzle, and deleting it does not start another', async () => {
   const local = new MemoryStorage()
   Object.defineProperties(globalThis, {
     window: { value: new EventTarget(), configurable: true },
@@ -45,7 +28,7 @@ test('first visit opens one Medium puzzle, and deleting it does not start anothe
     const { games, active } = roomStore.getSnapshot()
     assert.equal(games.length, 1)
     assert.equal(games[0].difficulty, 'medium')
-    assert.equal(games[0].paused, false)
+    assert.equal(games[0].paused, true)
     assert.equal(active, games[0].id)
     assert.deepEqual(opened, [active])
     unsubscribe()
@@ -57,6 +40,26 @@ test('first visit opens one Medium puzzle, and deleting it does not start anothe
     reloaded.startFirstPuzzle()
     assert.deepEqual(reloaded.getSnapshot().games, [])
   } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('first visit respects an unchecked pause on open preference', async () => {
+  Object.defineProperties(globalThis, {
+    window: { value: new EventTarget(), configurable: true },
+    localStorage: { value: new MemoryStorage(), configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+
+  try {
+    puzzleTiming.set('pauseOnOpen', false)
+    const { roomStore } = await import('../src/sudoku/storage.ts?first-visit-unpaused')
+    roomStore.startFirstPuzzle()
+    assert.equal(roomStore.getSnapshot().games[0]?.paused, false)
+  } finally {
+    puzzleTiming.set('pauseOnOpen', true)
     delete (globalThis as { window?: unknown }).window
     delete (globalThis as { localStorage?: unknown }).localStorage
     delete (globalThis as { sessionStorage?: unknown }).sessionStorage

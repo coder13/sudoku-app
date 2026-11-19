@@ -68,7 +68,7 @@ Search by component name or browse the sections below.
 
 | Source | When to use it |
 | --- | --- |
-| [Settings](../../../../src/components/Settings.tsx) | `Settings` composes the settings modal and its sections. `GeneralSettings` renders the selected play or hint settings. `AppearanceSettings` groups appearance and workspace choices. `ThemePreview` shows a palette sample. `ThemeSettings` selects palettes. `SizeSettings` adjusts text and input sizes. `GuideSetting` controls grid guides. `HighlightSettings` configures related cells, digits, and candidates. `PuzzleTimingSettings` controls the timer, pause button, and time tracking. |
+| [Settings](../../../../src/components/Settings.tsx) | `Settings` composes the settings modal and its sections. `GeneralSettings` renders the selected play or hint settings. `AppearanceSettings` groups appearance and workspace choices. `ThemePreview` shows a palette sample. `ThemeSettings` selects palettes. `SizeSettings` adjusts text and input sizes. `GuideSetting` controls grid guides. `HighlightSettings` configures related cells, digits, and candidates. `PuzzleTimingSettings` controls the timer, pause button, pause on open, and time tracking. |
 | [KeyboardShortcutsPage](../../../../src/components/KeyboardShortcutsPage.tsx) | `KeyboardShortcutsPage` reviews, edits, and restores keyboard bindings. |
 | [DeviceSyncPage](../../../../src/components/DeviceSyncPage.tsx) | `DeviceSyncPage` renders the current sync route for enrollment, scanning, confirmation, recovery, invitations, or device management. Its header follows browser history. |
 | [SyncConnectionStatus](../../../../src/components/SyncConnectionStatus.tsx) | Use `SyncConnectionStatus` for the connection dot beside the app wordmark. Show the status label on the Device sync page. |
@@ -96,3 +96,11 @@ Search by component name or browse the sections below.
 | [learn.$technique](../../../../src/routes/learn.$technique.tsx) | `LessonPage` resolves the selected lesson for its route. |
 | [learn.index](../../../../src/routes/learn.index.tsx) | `LessonOverview` introduces the learning catalog. |
 | [learn](../../../../src/routes/learn.tsx) | `LearnLayout` arranges lesson navigation and content. `TechniqueNavigation` navigates the lesson catalog. |
+
+## Kakuro and game types
+
+| Module | Components and use |
+| --- | --- |
+| [Game types](../../../../src/routes/puzzles.games.tsx) | `GameTypePicker` lists the games available from the Sudoku variant picker. |
+| [Kakuro](../../../../src/components/Kakuro.tsx) | `KakuroDifficultyPage` selects difficulty and resumes local puzzles. `KakuroPlay` owns the play page. `KakuroHeading` and `KakuroBoard` are private to these pages. |
+| [Kakuro play route](../../../../src/routes/puzzles.kakuro_.$puzzle.tsx) | `KakuroPlayRoute` opens a catalog puzzle from its URL. |

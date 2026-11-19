@@ -275,6 +275,11 @@ function PuzzleTimingSettings() {
       <span><strong>Show pause button</strong><small>Keep a pause control next to the grid.</small></span>
     </label>
     <label className="advanced-toggle">
+      <input type="checkbox" checked={timing.pauseOnOpen}
+        onChange={(event) => puzzleTiming.set('pauseOnOpen', event.target.checked)} />
+      <span><strong>Pause on open</strong><small>Pause the puzzle when you open the app. Turn this off to reopen it as you left it.</small></span>
+    </label>
+    <label className="advanced-toggle">
       <input type="checkbox" checked={timing.trackTime}
         onChange={(event) => puzzleTiming.set('trackTime', event.target.checked)} />
       <span><strong>Track solve time</strong><small>Turning this off makes the current solve untimed.</small></span>

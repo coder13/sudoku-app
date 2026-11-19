@@ -1357,7 +1357,7 @@ export function Worktable({
       const target = event.target
       if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || dialogResult !== null || resetOpen || cancelDraftOpen || analysisDialogOpen || event.altKey ||
         (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, a')))) return
-      if (!draft && !placeholder && !previewing && !variantRulesOpen && (completed || game.started) &&
+      if (!draft && !placeholder && !previewing && !variantRulesOpen && (completed || game.started || game.paused) &&
         !event.isComposing && shortcutMatches(event, shortcuts, 'pauseOrSwitchView')) {
         if (target instanceof HTMLElement && (target.closest('dialog[open]') ||
           (event.key === ' ' && target.closest('button, summary, [role="button"]') && !target.matches('[role="gridcell"][data-cell]')))) return
@@ -2202,7 +2202,7 @@ export function Worktable({
                 aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={toggleSolvedView}>
                 {showSolvedGrid ? 'View results' : 'View grid'}
               </Button>}
-              {timing.showPause && !completed && game.started && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
+              {timing.showPause && !draft && !completed && (game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
                 aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
                 title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${shortcutLabel(shortcuts.pauseOrSwitchView)})`}
                 aria-pressed={game.paused} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={togglePause}>

@@ -203,6 +203,9 @@ function NewPuzzleVariant({ variant, ruleset, onCreate }: {
     }} />}
     <Link to="/puzzles/new/difficulty" search={{ variant, ruleset }} state={{ fromPuzzleVariantPicker: true }}
       className={buttonClassName('primary')}>Continue <ArrowRight size={18} aria-hidden="true" /></Link>
+    <Link to="/puzzles/games" state={{ fromSudokuVariant: true }} className={buttonClassName('quiet')}>
+      Change game type
+    </Link>
     <div className="new-puzzle-actions">
       <Button onClick={() => onCreate(variant)}><PencilLine size={18} aria-hidden="true" />Create puzzle</Button>
       <Link className={buttonClassName()} to="/import"><FileUp size={18} aria-hidden="true" />Import puzzle</Link>

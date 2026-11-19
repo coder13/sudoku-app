@@ -473,7 +473,8 @@ export const roomStore = {
   },
   startFirstPuzzle() {
     if (firstVisit === false || room.games.length || room.stoppedPlaying) return
-    roomStore.add({ ...makeGame(createGameId(), 'Puzzle 1', FIRST_PUZZLE, 'generated'), difficulty: 'medium', score: 888 })
+    roomStore.add({ ...makeGame(createGameId(), 'Puzzle 1', FIRST_PUZZLE, 'generated'),
+      difficulty: 'medium', score: 888, paused: puzzleTiming.getSnapshot().pauseOnOpen })
   },
   add(game: Game) {
     firstVisit = false

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile, readdir, stat } from 'node:fs/promises'
 import test from 'node:test'
+import { kakuroCatalog } from '../src/kakuro/catalog.ts'
 
 // Run after Vite build and scripts/build-offline.mjs. Compare the actual build
 // with the generated router inventory so new static routes cannot be omitted.
@@ -35,4 +36,14 @@ test('the offline shell includes the same engine binary as the validated source 
   const packaged = assets.filter(path => path.endsWith('.wasm'))
   assert.equal(packaged.length, 1)
   assert.deepEqual(await readFile(new URL('.' + packaged[0], client)), await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url)))
+})
+
+test('each Kakuro puzzle has a precached board for direct and offline opens', async () => {
+  for (const { id, puzzle } of kakuroCatalog) {
+    const path = `/puzzles/kakuro/${id}/index.html`
+    assert.ok(cached.has(path), `${id} has a precached shell`)
+    const html = await readFile(new URL('.' + path, client), 'utf8')
+    assert.ok(html.includes('aria-label="Kakuro board"'), `${id} prerenders its board`)
+    assert.equal([...html.matchAll(/class="kakuro-cell"/g)].length, puzzle.cells.filter(cell => cell === null).length)
+  }
 })
