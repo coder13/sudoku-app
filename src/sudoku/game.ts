@@ -1,4 +1,5 @@
 import { STARTER } from './formats.ts'
+import { CLASSIC_GRID, isGridText, type MiniGrid, type PlayGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
@@ -37,6 +38,7 @@ export type Game = {
   difficulty?: Difficulty | null
   score?: number | null
   variant?: VariantGame
+  grid?: MiniGrid
   generatedWithAuto?: true
   ratingAttempt?: RatingAttempt
   analysisUsed?: true
@@ -86,17 +88,18 @@ export function createGameId(): string {
   return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`
 }
 
-export function makeGame(id: string, title: string, givens: string, source: Source, created = Date.now()): Game {
+export function makeGame(id: string, title: string, givens: string, source: Source, created = Date.now(), grid?: MiniGrid): Game {
+  const cellCount = (grid ?? CLASSIC_GRID).size ** 2
   return {
-    id, title, givens, source, created,
-    position: { entries: EMPTY, center: Array(81).fill(0), corner: Array(81).fill(0), colors: Array(81).fill(0) },
+    id, title, givens, source, created, ...(grid && { grid }),
+    position: { entries: '0'.repeat(cellCount), center: Array(cellCount).fill(0), corner: Array(cellCount).fill(0), colors: Array(cellCount).fill(0) },
     past: [], future: [], elapsed: 0, started: false, paused: false,
   }
 }
 
 export function restartGame(game: Game): Game {
   return {
-    ...makeGame(game.id, game.title, game.givens, game.source, game.created),
+    ...makeGame(game.id, game.title, game.givens, game.source, game.created, game.grid),
     difficulty: game.difficulty,
     collection: game.collection,
     score: game.score,
@@ -156,16 +159,16 @@ export function normalizePuzzleIdentity(identity: string): string {
 
 export const STARTER_GAME = makeGame('warmup', 'The Warm-up', STARTER, 'starter', 0)
 
-export function peer(a: number, b: number, puzzle?: VariantPuzzle): boolean {
-  const ar = Math.floor(a / 9)
-  const br = Math.floor(b / 9)
-  const ac = a % 9
-  const bc = b % 9
+export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID): boolean {
+  const ar = Math.floor(a / grid.size)
+  const br = Math.floor(b / grid.size)
+  const ac = a % grid.size
+  const bc = b % grid.size
   if (ar === br || ac === bc) return true
   if (puzzle?.regions?.type === 'jigsaw') {
     return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
   }
-  return (Math.floor(ar / 3) === Math.floor(br / 3) && Math.floor(ac / 3) === Math.floor(bc / 3)) || variantPeers(puzzle, a, b)
+  return (Math.floor(ar / grid.boxRows) === Math.floor(br / grid.boxRows) && Math.floor(ac / grid.boxColumns) === Math.floor(bc / grid.boxColumns)) || variantPeers(puzzle, a, b)
 }
 
 export function valuesOf(game: Game): string {
@@ -184,12 +187,12 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
   return result
 }
 
-export function conflictsOf(values: string, puzzle?: VariantPuzzle): Set<number> {
+export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID): Set<number> {
   const conflicts = new Set<number>()
-  for (let i = 0; i < 81; i++) {
+  for (let i = 0; i < grid.size ** 2; i++) {
     if (values[i] === '0') continue
-    for (let j = i + 1; j < 81; j++) {
-      if (values[i] === values[j] && peer(i, j, puzzle) ||
+    for (let j = i + 1; j < grid.size ** 2; j++) {
+      if (values[i] === values[j] && peer(i, j, puzzle, grid) ||
         values[j] !== '0' && (variantDigitExclusions(puzzle, i, j, Number(values[i])) & 1 << (Number(values[j]) - 1))) {
         conflicts.add(i)
         conflicts.add(j)
@@ -212,7 +215,7 @@ export function candidateCount(mask: number): number {
 
 export function isSolved(game: Game): boolean {
   const values = valuesOf(game)
-  return game.source !== 'draft' && (game.variant ? values === game.variant.solution : !values.includes('0') && !conflictsOf(values).size)
+  return game.source !== 'draft' && (game.variant ? values === game.variant.solution : !values.includes('0') && !conflictsOf(values, undefined, game.grid).size)
 }
 
 export function setGamePaused(game: Game, paused: boolean): Game {
@@ -281,7 +284,7 @@ export function paintCandidate(game: Game, candidate: Candidate, color: number):
 export function paintCells(game: Game, marks: readonly { cell: number; color: number }[]): Game {
   const colors = [...game.position.colors]
   for (const { cell, color } of marks) {
-    if (!Number.isInteger(cell) || cell < 0 || cell >= 81 ||
+    if (!Number.isInteger(cell) || cell < 0 || cell >= game.givens.length ||
       !Number.isInteger(color) || color < 0 || color > COLORS.length) continue
     colors[cell] = color
   }
@@ -348,6 +351,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
     const add = digit !== 0 && selection.some((i) => colors[i] !== digit)
     colors = colors.map((color, i) => selection.includes(i) ? (add ? digit : 0) : color)
   } else {
+    if (!Number.isInteger(digit) || digit < 0 || digit > (game.grid ?? CLASSIC_GRID).size) return game
     const editable = selection.filter((i) => game.givens[i] === '0')
     if (mode === 'value') {
       const value = options.toggleValue && editable.length === 1 && entries[editable[0]] === String(digit) ? 0 : digit
@@ -359,7 +363,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
       if (value) {
         const bit = 1 << (value - 1)
         const clearCandidates = (mask: number, i: number) => editable.reduce((remaining, cell) =>
-          remaining & ~((peer(cell, i, game.variant?.puzzle) ? bit : 0) |
+          remaining & ~((peer(cell, i, game.variant?.puzzle, game.grid) ? bit : 0) |
             variantDigitExclusions(game.variant?.puzzle, cell, i, value)), mask)
         const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
         const ruleMasks = placedRuleState(game.variant?.puzzle, values)?.allowed
@@ -380,7 +384,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
         return add ? mask | bit : mask & ~bit
       })
       if (mode === 'candidate') {
-        center = Array(81).fill(0)
+        center = Array(game.givens.length).fill(0)
         corner = next
       } else if (mode === 'center') center = next
       else corner = next
@@ -416,11 +420,12 @@ export function paintCandidateStroke(
 }
 
 export function replaceCandidates(game: Game, masks: readonly number[], options: { recordHistory?: boolean } = {}): Game {
-  if (masks.length !== 81) return game
-  const center = Array(81).fill(0)
+  if (masks.length !== game.givens.length) return game
+  const fullMask = (1 << (game.grid ?? CLASSIC_GRID).size) - 1
+  const center = Array(game.givens.length).fill(0)
   const corner = masks.map((mask, index) =>
     game.givens[index] === '0' && game.position.entries[index] === '0'
-      ? mask & 0x1ff & ~(game.position.eliminations?.[index] ?? 0)
+      ? mask & fullMask & ~(game.position.eliminations?.[index] ?? 0)
       : 0)
   if (
     center.every((mask, index) => mask === game.position.center[index]) &&
@@ -447,21 +452,21 @@ export function hintEliminations(values: string, displayedCandidates: readonly n
 }
 
 export function fillEntries(game: Game, nextValues: string): Game {
-  if (!/^[0-9]{81}$/.test(nextValues)) return game
+  if (!isGridText(nextValues, game.grid ?? CLASSIC_GRID)) return game
   const entries = [...game.position.entries]
   const center = [...game.position.center]
   const corner = [...game.position.corner]
   let changed = false
 
-  for (let index = 0; index < 81; index++) {
+  for (let index = 0; index < nextValues.length; index++) {
     const digit = Number(nextValues[index])
     if (game.givens[index] !== '0' || entries[index] !== '0' || digit === 0) continue
     entries[index] = String(digit)
     center[index] = 0
     corner[index] = 0
     const bit = 1 << (digit - 1)
-    for (let peerIndex = 0; peerIndex < 81; peerIndex++) {
-      const removed = (peer(index, peerIndex, game.variant?.puzzle) ? bit : 0) |
+    for (let peerIndex = 0; peerIndex < nextValues.length; peerIndex++) {
+      const removed = (peer(index, peerIndex, game.variant?.puzzle, game.grid) ? bit : 0) |
         variantDigitExclusions(game.variant?.puzzle, index, peerIndex, digit)
       center[peerIndex] &= ~removed
       corner[peerIndex] &= ~removed
@@ -491,7 +496,7 @@ export function applyDeduction(game: Game, actions: readonly DeductionAction[], 
   }
 
   const { center, corner } = game.position
-  const eliminations = [...(game.position.eliminations ?? Array(81).fill(0))]
+  const eliminations = [...(game.position.eliminations ?? Array(game.givens.length).fill(0))]
   const affected = new Set<number>()
   for (const action of actions) {
     if (!('eliminate' in action)) return game

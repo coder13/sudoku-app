@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { MemoryStorage } from './helpers/memory-storage.ts'
+import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { EMPTY, enter, makeGame, paintCandidate, puzzleIdentity, restartGame, STARTER_GAME, redo, undo } from '../src/sudoku/game.ts'
 import { addRatingHints, placementHintKey, PLAYER_RATING_VERSION, ratingAttemptFor, type RatingAttempt, type RatingEvent } from '../src/sudoku/player-rating.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
@@ -9,6 +10,22 @@ import { mixedFixtures } from './helpers/mixed-fixtures.ts'
 import { WINDOKU_REGIONS } from '../src/sudoku/variants.ts'
 import { puzzleTiming } from '../src/sudoku/puzzle-timing.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
+
+test('4×4 progress, masks and undo survive a save and reload', async () => {
+  const { readGame } = await import('../src/sudoku/storage.ts')
+  const original = makeGame('mini', 'Mini Sudoku', '0234341221434321', 'imported', 0, MINI_GRID)
+  const candidate = enter(original, [0], 'candidate', 1)
+  const played = undo(enter(candidate, [0], 'value', 1))
+  const loaded = readGame(played.id, JSON.stringify(played))
+  assert.deepEqual(loaded?.grid, MINI_GRID)
+  assert.deepEqual(loaded?.position, played.position)
+  assert.deepEqual(redo(loaded!).position, redo(played).position)
+  assert.equal(restartGame(loaded!).position.entries, '0'.repeat(16))
+  assert.equal(readGame(played.id, JSON.stringify({ ...played, grid: undefined })), undefined)
+  assert.equal(readGame(played.id, JSON.stringify({
+    ...played, position: { ...played.position, corner: [16, ...Array(15).fill(0)] },
+  })), undefined)
+})
 
 test('readable puzzles remain available when initializing storage cannot write', async () => {
   const local = new MemoryStorage()

@@ -16,6 +16,7 @@ mod practice;
 ))]
 mod protocol;
 mod rank;
+mod sized;
 mod technique;
 #[cfg(feature = "variants")]
 mod variant;
@@ -59,6 +60,7 @@ pub use rank::{
     discover_rank_at, discover_rank_deductions_at, prove_rank_at, rank_deductions_at,
     rank_proof_effort_at, replay_rank_proof_at,
 };
+pub use sized::{GridSpec, SIZED_GRID_VERSION, SizedDeduction, SizedGrid, SizedTechnique};
 pub use technique::{ProfileError, SolverProfile, Technique};
 #[cfg(feature = "variants")]
 pub use variant::{

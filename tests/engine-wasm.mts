@@ -39,6 +39,24 @@ function engineRequests() {
   return { raw, run }
 }
 
+test('sized Classic requests use the structured worker protocol', async () => {
+  const { raw, run } = engineRequests()
+  const request = {
+    type: 'sized-classic',
+    position: { version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits: [...'0234341221434321'].map(Number) },
+  } as const
+  assert.equal(await run({ ...request, operation: 'analyze' }), 'unique')
+  assert.equal((await run({ ...request, operation: 'candidates' }))?.[0], 1)
+  const step = await run({ ...request, operation: 'next-deduction' })
+  assert.deepEqual(step?.actions, [{ place: { cell: 0, digit: 1 } }])
+  assert.equal((await run({ ...request, operation: 'solve' }))?.join(''), '1234341221434321')
+
+  const invalid = await raw({ ...request, operation: 'next-deduction', eliminations: [16] })
+  assert.ok('error' in invalid)
+  assert.equal(invalid.code, 'invalid-eliminations')
+  assert.equal(await run({ type: 'analyze', values: STARTER }), 'unique')
+})
+
 test('technique counts match full deductions before and after a candidate edit', async () => {
   const { raw, run } = engineRequests()
   const values = STARTER

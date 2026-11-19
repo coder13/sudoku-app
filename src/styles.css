@@ -1188,7 +1188,7 @@ svg { flex-shrink: 0; }
   position: absolute;
   inset: 7%;
   display: grid;
-  grid: repeat(3, 1fr) / repeat(3, 1fr);
+  grid: repeat(var(--candidate-rows, 3), 1fr) / repeat(var(--candidate-columns, 3), 1fr);
   place-items: center;
   font-size: calc((clamp(7px, 2.18cqw, 12px) * var(--board-font-scale, 1)) * var(--app-text-scale));
   font-weight: 780;

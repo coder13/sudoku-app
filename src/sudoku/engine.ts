@@ -132,7 +132,28 @@ type VariantRequest = {
   ))
 )
 
+export type SizedClassicPosition = {
+  version: 2
+  grid: { size: number; boxRows: number; boxColumns: number }
+  digits: readonly number[]
+}
+
+type SizedClassicRequest = { type: 'sized-classic'; position: SizedClassicPosition } & (
+  | { operation: 'analyze' }
+  | { operation: 'candidates' }
+  | { operation: 'solve' }
+  | { operation: 'next-deduction'; eliminations?: readonly number[] }
+)
+
+export type SizedClassicDeduction = {
+  technique: 'naked-single' | 'hidden-single' | 'locked-candidate'
+  houses: House[]
+  candidates: Candidate[]
+  actions: DeductionAction[]
+}
+
 export type EngineRequest =
+  | SizedClassicRequest
   | { type: 'capabilities' }
   | VariantRequest
   | { type: 'canonical-puzzles'; values: readonly string[] }
@@ -496,6 +517,11 @@ export type VariantPracticeExercise = {
 export type EngineResult<T extends EngineRequest> =
   T extends { type: 'capabilities' } ? EngineCapabilities :
   T extends VariantRequest ? VariantResult<T> :
+  T extends SizedClassicRequest ? (
+    T['operation'] extends 'analyze' ? Analysis :
+    T['operation'] extends 'next-deduction' ? SizedClassicDeduction | null :
+    number[] | null
+  ) :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
   T extends { type: 'canonical-puzzles' | 'impossible-templates' } ? string[] :

@@ -1,3 +1,4 @@
+import { CLASSIC_GRID, isGridText, isMiniGrid, type PlayGrid } from './grid.ts'
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
@@ -38,38 +39,41 @@ function publish(next: Room) {
   listeners.forEach((listener) => listener())
 }
 
-function validCandidateColors(value: unknown): boolean {
+function validCandidateColors(value: unknown, grid: PlayGrid): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   return Object.entries(value).every(([key, colors]) => {
     const index = Number(key)
-    return Number.isInteger(index) && index >= 0 && index < 81 && String(index) === key &&
+    return Number.isInteger(index) && index >= 0 && index < grid.size ** 2 && String(index) === key &&
       colors && typeof colors === 'object' && !Array.isArray(colors) &&
-      Object.entries(colors).every(([digit, color]) => /^[1-9]$/.test(digit) &&
+      Object.entries(colors).every(([digit, color]) => /^[1-9]$/.test(digit) && Number(digit) <= grid.size &&
         typeof color === 'number' && Number.isInteger(color) && color >= 1 && color <= COLORS.length)
   })
 }
 
-function validPosition(value: unknown): value is Position {
+function validPosition(value: unknown, grid: PlayGrid): value is Position {
   if (!value || typeof value !== 'object') return false
   const { entries, center, corner, colors, candidateColors, eliminations } = value as Position
-  const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === 81 &&
+  const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === grid.size ** 2 &&
     items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
-  return typeof entries === 'string' && /^[0-9]{81}$/.test(entries) &&
-    validDigits(center, 511) && validDigits(corner, 511) && validDigits(colors, COLORS.length) &&
-    (candidateColors === undefined || validCandidateColors(candidateColors)) &&
-    (eliminations === undefined || validDigits(eliminations, 511))
+  const mask = (1 << grid.size) - 1
+  return isGridText(entries, grid) &&
+    validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) &&
+    (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
+    (eliminations === undefined || validDigits(eliminations, mask))
 }
 
 export function readGame(id: string, data: string | null): Game | undefined {
   if (!data) return
   try {
     const value = JSON.parse(data) as Game
+    if (value.grid !== undefined && (!isMiniGrid(value.grid) || value.variant !== undefined)) return
+    const grid = value.grid ?? CLASSIC_GRID
     if (
       value.id === id && typeof value.title === 'string' && value.title.length <= 72 &&
-      sources.includes(value.source) && typeof value.givens === 'string' && /^[0-9]{81}$/.test(value.givens) &&
+      sources.includes(value.source) && isGridText(value.givens, grid) &&
       (value.variant === undefined || validVariantSave(value.variant, value.givens)) &&
-      validPosition(value.position) && Array.isArray(value.past) && value.past.every(validPosition) &&
-      Array.isArray(value.future) && value.future.every(validPosition) &&
+      validPosition(value.position, grid) && Array.isArray(value.past) && value.past.every(position => validPosition(position, grid)) &&
+      Array.isArray(value.future) && value.future.every(position => validPosition(position, grid)) &&
       Number.isSafeInteger(value.elapsed) && value.elapsed >= 0 && Number.isSafeInteger(value.created) &&
       typeof value.started === 'boolean' && typeof value.paused === 'boolean' &&
       (value.saved === undefined || typeof value.saved === 'boolean') &&
