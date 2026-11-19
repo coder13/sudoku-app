@@ -104,3 +104,15 @@ test('invalid cage definitions fail before play and exact search enforces its bu
   assert.throws(() => createCalcudoku(3, [{ ...first, target: 1 }, ...rest]), /no valid arithmetic/)
   assert.equal(solveLatin(puzzle, [], 0).status, 'search-limit')
 })
+
+test('exact search rechecks crossing rules after a branch and keeps cached cage results local', () => {
+  const rows = [0, 1, 2].map(row => ({ cells: [row * 3, row * 3 + 1, row * 3 + 2], operator: 'add' as const, target: 6 }))
+  const puzzle = createCalcudoku(3, rows)
+  assert.equal(solveLatin(puzzle, [], 1).status, 'search-limit')
+  const ambiguous = solveLatin(puzzle)
+  assert.equal(ambiguous.status, 'multiple')
+  assert.ok(ambiguous.solution)
+  assert.ok(checkLatin(puzzle, ambiguous.solution).complete)
+  assert.equal(solveLatin(puzzle, [2, 2]).status, 'unsolvable')
+  assert.deepEqual(solveLatin(puzzle), ambiguous)
+})
