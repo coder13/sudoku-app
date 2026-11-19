@@ -1,9 +1,17 @@
 import type { VariantRule } from './engine.ts'
 
+/** Mark a connection that passes over cells absent from the logical path. */
+export function lineSkipsCells(cells: readonly number[]) {
+  return cells.some((cell, i) => i > 0 && Math.max(
+    Math.abs(cell % 9 - cells[i - 1] % 9),
+    Math.abs(Math.floor(cell / 9) - Math.floor(cells[i - 1] / 9)),
+  ) > 1)
+}
+
 function paths(rule: VariantRule): readonly (readonly number[])[] {
   switch (rule.type) {
     case 'palindrome': case 'renban': return rule.segments ?? [rule.cells]
-    case 'thermometer': case 'whispers': case 'entropic': case 'modular': return [rule.cells]
+    case 'thermometer': case 'between': case 'whispers': case 'entropic': case 'modular': return [rule.cells]
     case 'arrow': return [[rule.circle, ...rule.cells]]
     default: return []
   }
@@ -25,11 +33,11 @@ function* edges(lines: readonly (readonly number[])[]) {
   }
 }
 
-/** Separate colored set/group clues that use the same visible line segment. */
+/** Separate set/group and Between clues that share a visible line segment. */
 export function coloredLineOverlapLanes(rules: readonly VariantRule[]) {
   const owners = new Map<number, number[]>()
   rules.forEach((rule, index) => {
-    if (rule.type !== 'renban' && rule.type !== 'entropic' && rule.type !== 'modular') return
+    if (rule.type !== 'renban' && rule.type !== 'entropic' && rule.type !== 'modular' && rule.type !== 'between') return
     for (const edge of new Set(edges(paths(rule)))) {
       const list = owners.get(edge) ?? []
       list.push(index); owners.set(edge, list)

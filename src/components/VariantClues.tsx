@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react'
 import type { VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
-import { coloredLineOverlapLanes, sharedPalindromeEdges } from '../sudoku/line-geometry'
+import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 
 const x = (cell: number) => cell % 9
 const y = (cell: number) => Math.floor(cell / 9)
@@ -83,6 +83,20 @@ function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly 
   </>
 }
 
+function BetweenClue({ cells, endpoints = false }: { cells: readonly number[]; endpoints?: boolean }) {
+  const separated = lineSkipsCells(cells)
+  return <g className={endpoints ? 'variant-between-endpoints' : 'variant-between'}>
+    {!endpoints && (separated ? <>
+      {cells.slice(1).map((cell, i) => <line key={i} className={
+        Math.max(Math.abs(x(cell) - x(cells[i])), Math.abs(y(cell) - y(cells[i]))) > 1 ? 'variant-between-jump' : undefined}
+        x1={center(cells[i])[0]} y1={center(cells[i])[1]} x2={center(cell)[0]} y2={center(cell)[1]} />)}
+      {cells.slice(1, -1).map(cell => <circle key={cell} className="variant-between-node" cx={center(cell)[0]} cy={center(cell)[1]} r=".11" />)}
+    </> : <polyline points={points(cells)} />)}
+    {endpoints && [cells[0], cells[cells.length - 1]].map(cell =>
+      <circle key={cell} cx={center(cell)[0]} cy={center(cell)[1]} r=".32" />)}
+  </g>
+}
+
 function InequalityClue({ less, greater, offset, compact = false }: { less: number; greater: number; offset: number; compact?: boolean }) {
   const [ax, ay] = center(less), [bx, by] = center(greater)
   const length = Math.hypot(bx - ax, by - ay)
@@ -101,12 +115,15 @@ function InequalityClue({ less, greater, offset, compact = false }: { less: numb
 
 type SumKind = 'xv' | 'adjacent-total'
 
-function ColoredLineLane({ cells, lane, count, color }: { cells: readonly [number, number]; lane: number; count: number; color: string }) {
+function ColoredLineLane({ cells, lane, count, color, endpoints, dashed }: { cells: readonly [number, number]; lane: number; count: number; color: string; endpoints?: readonly number[]; dashed?: boolean }) {
   const [ax, ay] = center(cells[0]), [bx, by] = center(cells[1])
   const length = Math.hypot(bx - ax, by - ay)
   const offset = (lane - (count - 1) / 2) * Math.min(.1, .26 / count)
   const dx = -(by - ay) / length * offset, dy = (bx - ax) / length * offset
-  return <line x1={ax + dx} y1={ay + dy} x2={bx + dx} y2={by + dy} stroke={color} strokeWidth={Math.min(.075, .2 / count)} />
+  const first = endpoints?.includes(cells[0]) ? .32 : 0, last = endpoints?.includes(cells[1]) ? .32 : 0
+  return <line x1={ax + dx + (bx - ax) / length * first} y1={ay + dy + (by - ay) / length * first}
+    x2={bx + dx - (bx - ax) / length * last} y2={by + dy - (by - ay) / length * last}
+    stroke={color} strokeWidth={Math.min(.075, .2 / count)} strokeDasharray={dashed ? '.1 .08' : undefined} />
 }
 
 function whispersLabelPoint(a: number, b: number, marked: boolean) {
@@ -160,12 +177,13 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
   const renbanColor = (index: number) => ['#cf419c', '#8353be', '#d26878', '#aa48bf'][renbanIndices.get(index)! % 4]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : 0
+    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
-    { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | undefined, layer: layer(rule) },
+    { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
     ...(coloredLanes.has(index) ? [{ rule, index, overlay: 'colored-line' as const, layer: .4 }] : []),
     ...(rule.type === 'whispers' && rule.minDifference !== 5 ? [{ rule, index, overlay: 'whispers-label' as const, layer: .75 }] : []),
+    ...(rule.type === 'between' ? [{ rule, index, overlay: 'between-endpoints' as const, layer: .65 }] : []),
   ]).sort((a, b) => a.layer - b.layer)
   const dots = new Map<number, number>()
   const sums = new Map<number, Map<number, SumKind>>()
@@ -199,10 +217,16 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
       </marker>
     </defs>}
     {drawingOrder.map(({ rule, index, overlay }) => {
+      if (overlay === 'between-endpoints' && rule.type === 'between') return <BetweenClue key={`${index}-endpoints`} cells={rule.cells} endpoints />
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
-      if (overlay === 'colored-line') return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
-        {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} color={rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : renbanColor(index)} />)}
-      </g>
+      if (overlay === 'colored-line') {
+        const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]] : undefined
+        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells)
+        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : renbanColor(index)
+        return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
+          {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} endpoints={endpoints} dashed={dashed} color={color} />)}
+        </g>
+      }
       if (overlay === 'palindrome') return <g key={`${index}-overlap`} className="variant-palindrome-overlap">
         {shared.get(index)!.map((edge, i) => <polyline key={i} points={points(edge)} />)}
       </g>
@@ -265,6 +289,8 @@ export function VariantClues({ rules }: { rules: readonly VariantRule[] }) {
               ? <circle key={part} cx={center(path[0])[0]} cy={center(path[0])[1]} r=".12" />
               : <polyline key={part} points={points(path)} />)}
           </g>
+        case 'between':
+          return <BetweenClue key={index} cells={rule.cells} />
         case 'thermometer':
           return <g key={index} className="variant-thermometer">
             <polyline points={points(rule.cells)} />
@@ -372,6 +398,14 @@ export function variantCellLabels(rules: readonly VariantRule[]) {
             : `Palindrome line, same digit as ${reference(partner)}`)
         }
         break
+      case 'between': {
+        const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
+        const number = rules.slice(0, index + 1).filter(rule => rule.type === 'between').length
+        for (const cell of rule.cells) labels[cell].push(ends.includes(cell)
+          ? `Between line ${number} endpoint circle, other endpoint at ${reference(ends.find(end => end !== cell)!)}`
+          : `Between line ${number} interior, digit strictly between the circles at ${ends.map(reference).join(' and ')}`)
+        break
+      }
       case 'thermometer':
         rule.cells.forEach((cell, index) => {
           labels[cell].push(index === 0 ? 'thermometer bulb' :

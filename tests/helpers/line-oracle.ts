@@ -14,6 +14,7 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
   const sets: { cells: readonly number[]; sum?: number }[] = []
   const entropyAreas: number[][] = []
   const quadruples: { cells: number[]; digits: readonly number[] }[] = []
+  const betweenTriples: (readonly [number, number, number])[] = []
   const xv = (puzzle.rules ?? []).filter(rule => rule.type === 'xv')
   for (const rule of puzzle.rules ?? []) {
     if (rule.type === 'global-entropy') {
@@ -31,6 +32,8 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
           ? Math.floor((a - 1) / 3) !== Math.floor((b - 1) / 3) : a % 3 !== b % 3])
       }
     }
+    else if (rule.type === 'between') rule.cells.slice(1, -1).forEach(cell =>
+      betweenTriples.push([rule.cells[0], cell, rule.cells[rule.cells.length - 1]]))
     else if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
       edges.push([cell, rule.cells[rule.cells.length - 1 - i], (a, b) => a === b]))
@@ -109,6 +112,23 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
         const keep = domains[from].filter(digit => a === b ? permits(digit, digit) :
           domains[to].some(other => from === a ? permits(digit, other) : permits(other, digit)))
         changed ||= keep.length !== domains[from].length; domains[from] = keep
+      }
+      // Independent ternary relations. Every interior cell shares the two
+      // endpoint variables, without introducing distinctness among interiors.
+      for (const triple of betweenTriples) {
+        const supported = supportFor(triple, triple, domains, () => {
+          const result = triple.map(() => new Set<number>())
+          for (const a of domains[triple[0]]) for (const b of domains[triple[1]]) for (const c of domains[triple[2]]) {
+            if (a < b && b < c || c < b && b < a) {
+              result[0].add(a); result[1].add(b); result[2].add(c)
+            }
+          }
+          return result
+        })
+        triple.forEach((cell, i) => {
+          const keep = domains[cell].filter(digit => supported[i].has(digit))
+          changed ||= keep.length !== domains[cell].length; domains[cell] = keep
+        })
       }
       for (const clue of sets) {
         const supported = clue.cells.map(() => new Set<number>())

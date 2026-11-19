@@ -52,8 +52,8 @@ export function variantGenerationRequest(
     case 'kropki':
       derivedClues.push({ type: 'markers', family: 'kropki', count: recipe.dotCount })
       break
-    case 'thermometer':
-      for (const cells of recipe.lines!) rules.push({ type: 'thermometer', cells })
+    case 'thermometer': case 'between':
+      for (const cells of recipe.lines!) rules.push({ type: id, cells })
       break
     case 'arrow':
       for (const [circle, ...cells] of recipe.lines!) rules.push({ type: 'arrow', circle, cells })
@@ -98,7 +98,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         case 'entropic': case 'modular': case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
         case 'palindrome': case 'renban': return { ...rule, cells: rule.cells.map(cell),
           ...(rule.segments && { segments: rule.segments.map(path => path.map(cell)) }) }
-        case 'thermometer': return { ...rule, cells: rule.cells.map(cell) }
+        case 'thermometer': case 'between': return { ...rule, cells: rule.cells.map(cell) }
         case 'arrow': return { ...rule, circle: cell(rule.circle), cells: rule.cells.map(cell) }
         case 'kropki': {
           const reflectMarks = (marks: typeof rule.consecutive) =>

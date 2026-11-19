@@ -1,6 +1,7 @@
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
 import { lineGroupMask } from './line-groups.ts'
+import { lineSkipsCells } from './line-geometry.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -27,6 +28,10 @@ export const VARIANTS = {
   'anti-knight': {
     name: 'Anti-Knight',
     rule: 'Cells a chess knight’s move apart cannot share a digit. A knight moves two cells in one direction and one cell across.',
+  },
+  between: {
+    name: 'Between Lines',
+    rule: 'The digits inside each Between line must lie strictly between the digits in its two circles. The smaller endpoint can be at either end. Interior digits can repeat if the other puzzle rules allow it. Touching lines stay independent.',
   },
   thermometer: {
     name: 'Thermometer',
@@ -248,6 +253,10 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
       (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
     if (rule.type === 'entropic' || rule.type === 'modular') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
+    if (rule.type === 'between' && rule.cells.includes(a) && rule.cells.includes(b)) {
+      const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
+      return ends.includes(a) || ends.includes(b)
+    }
     if (rule.type === 'thermometer' || rule.type === 'renban') return rule.cells.includes(a) && rule.cells.includes(b)
     return false
   })
@@ -374,6 +383,7 @@ function isPlayableRule(rule: VariantRule): boolean {
       rule.cells.every((cell, i) => Number.isInteger(cell) && cell >= 0 && cell < 81 && (i === 0 || cell !== rule.cells[i - 1])) &&
       Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
+    case 'between': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 3)
     case 'palindrome': case 'renban': return validCells(rule.cells, rule.type === 'renban' ? 1 : 2) &&
       (rule.type !== 'renban' || rule.cells.length <= 9) && (rule.segments === undefined ||
       Array.isArray(rule.segments) && rule.segments.length > 0 &&
@@ -444,6 +454,7 @@ const RULE_NAMES: Partial<Record<VariantRule['type'], string>> = {
   kropki: VARIANTS.kropki.name,
   whispers: PUZZLE_VARIANTS.whispers.name,
   palindrome: PUZZLE_VARIANTS.palindrome.name,
+  between: PUZZLE_VARIANTS.between.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
   parity: PUZZLE_VARIANTS.parity.name,
   'anti-king': PUZZLE_VARIANTS['anti-king'].name,
@@ -476,6 +487,12 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         break
       case 'modular':
         descriptions.push(PUZZLE_VARIANTS.modular.rule)
+        break
+      case 'between':
+        descriptions.push(PUZZLE_VARIANTS.between.rule)
+        if (lineSkipsCells(rule.cells)) {
+          descriptions.push('A dashed Between connector skips cells. Only the endpoint circles and cells with a small dot belong to that line.')
+        }
         break
       case 'renban':
         descriptions.push(PUZZLE_VARIANTS.renban.rule)

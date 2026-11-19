@@ -11,15 +11,15 @@ import { type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { enter } from '../src/sudoku/game.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
-import { getVariantPlayOrder, playCandidates } from '../src/sudoku/variant-play.ts'
+import { generatePlayableVariant, getVariantPlayOrder, playCandidates } from '../src/sudoku/variant-play.ts'
 import { variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { countLineSolutions } from '../tests/helpers/line-oracle.ts'
 import { useWasmWorker } from '../tests/helpers/wasm-worker.ts'
 const wasmPath = process.env.SUDOKU_BENCH_WASM
 useWasmWorker(wasmPath)
 const family = process.env.SUDOKU_BENCH_FAMILY ?? 'entropic'
-assert.ok(['entropic', 'global-entropy', 'modular'].includes(family), 'Choose entropic, global-entropy or modular')
-const variantClues = family === 'entropic' ? 8 : family === 'modular' ? 12 : 0
+assert.ok(['entropic', 'global-entropy', 'modular', 'between'].includes(family), 'Choose entropic, global-entropy, modular or between')
+const variantClues = family === 'entropic' ? 8 : family === 'modular' ? 12 : family === 'between' ? 8 : 0
 
 test(`measure ${family} engine requests, actual app callers and fixed-template generation`, async () => {
   const load = async (name: string) =>
@@ -37,7 +37,7 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
         name: s.url.split('/').at(-1),
         code: s.code,
         solution: s.solution,
-        complete: !(family === 'entropic' ? ['Hyk5', 'Hafj'] : family === 'modular' ? ['HCHW'] : ['A2s7', 'CJhv']).some((id) => s.url.endsWith(id)),
+        complete: !(family === 'entropic' ? ['Hyk5', 'Hafj'] : family === 'modular' ? ['HCHW'] : ['A2s7', 'CJhv', '9KxH']).some((id) => s.url.endsWith(id)),
       })),
   ]
   const bytes = await readFile(wasmPath ?? new URL('../src/sudoku/generated/engine.wasm', import.meta.url)),
@@ -212,6 +212,7 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
             [...result.matchAll(/class="variant-entropic"/g)].length,
             puzzle.rules!.filter((r) => r.type === 'entropic').length
           )
+          if (family === 'between') assert.equal([...result.matchAll(/class="variant-between-endpoints"/g)].length, puzzle.rules!.filter(rule => rule.type === 'between').length)
           if (family === 'modular') assert.equal([...result.matchAll(/class="variant-modular"/g)].length, puzzle.rules!.filter(rule => rule.type === 'modular').length)
           if (family === 'global-entropy') assert.match(result, /Global Entropy: every 2 × 2 area/)
         }
@@ -272,6 +273,17 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
           'No warmups. Six attempts and 20,000 nodes per exact check. Deterministic repeat, independent uniqueness/dependence and assertions outside timing.',
       })
     )
+    if (family === 'between') for (const difficulty of ['easy', 'medium'] as const) {
+      await sample(`New Puzzle ${difficulty}: fresh seed and bounded fallback`,
+        () => generatePlayableVariant('between', difficulty, 2, []),
+        (generated) => {
+          assert.deepEqual(generated.rating.status, { solved: difficulty })
+          const counted = countLineSolutions(generated.puzzle)
+          assert.equal(counted.count, 1)
+          assert.equal(counted.solution, generated.solution)
+          assert.equal(countLineSolutions({ ...generated.puzzle, rules: generated.puzzle.rules!.filter(rule => rule.type !== 'between') }).count, 2)
+        }, true)
+    }
   } finally {
     await server.close()
   }
