@@ -63,3 +63,14 @@ An alternating benchmark checked 1,200 warm release-Wasm requests per build agai
 The five original SudokuPad exports from TVDK's pack are plain JSON in SCL envelopes. Thermometers combine a path in `lines` with a circular bulb in `underlays`. Renban and Region Sum Lines use the same general-purpose line field. Arrow also requires `arrows` and circle overlays. Kropki uses overlays. The encoded drawing properties and authored rule text both guide import. Treating every line or circle as a logical constraint would change some of these puzzles.
 
 The unmodified [TVDK Thermometer export](https://sudokupad.app/mitbe9yf43) passed import, exact verification against its authored solution, and a 59-step walkthrough. Two drawn paths are stored tip-first. The importer locates the bulb and follows the path in the required direction. It expands skipped cells along straight stretches. A desktop and mobile browser check confirmed all six Thermometers, the final grid, and author credit on the shared preview. The remaining source exports are tracked in [Renban #272](https://github.com/coder13/sudoku-app/issues/272), [Arrow #273](https://github.com/coder13/sudoku-app/issues/273), [Kropki Pairs #274](https://github.com/coder13/sudoku-app/issues/274), and [Region Sum Lines #275](https://github.com/coder13/sudoku-app/issues/275).
+
+The first New Puzzle recipes generate rectangular Classic 6×6 grids in both orientations. Easy uses 16–19 givens and a replay of naked singles. Medium uses 11–14 givens and a replay that includes a hidden single or locked candidate. Each layout and difficulty returned 1,000 distinct puzzles in 1,000 seeds. An independent counter verified one solution for every puzzle in a separate 128-puzzle sample.
+
+| Box layout | Difficulty | Median generation | 95th percentile |
+| --- | --- | ---: | ---: |
+| 2×3 | Easy | 27.8 µs | 44.0 µs |
+| 2×3 | Medium | 322.8 µs | 1,466.2 µs |
+| 3×2 | Easy | 24.1 µs | 29.4 µs |
+| 3×2 | Medium | 162.2 µs | 644.0 µs |
+
+Desktop keyboard and mobile touch checks covered the layout picker, both generation levels, adding a thermometer and two companion rule types, editing and removing clues, undo and redo after reload, exact draft verification, and a public share through the Pages handler backed by SQLite. Game definitions retain rule types and direction independently of solving progress.

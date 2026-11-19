@@ -227,6 +227,7 @@ export type EngineRequest =
   | SizedClassicRequest
   | SizedVariantRequest
   | SizedConstraintRequest
+  | { type: 'generate-six'; seed: number; difficulty: 'easy' | 'medium'; grid: SixGrid; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-algebraic'; seed: number; difficulty?: AlgebraicRating['difficulty']; exclude?: readonly SizedVariantPosition[] }
   | { type: 'capabilities' }
@@ -615,7 +616,7 @@ export type EngineResult<T extends EngineRequest> =
     T['operation'] extends 'trace' ? AlgebraicTracePosition[] | null :
     AlgebraicCageProof | null
   ) :
-  T extends { type: 'generate-mini' } ? number[] :
+  T extends { type: 'generate-mini' | 'generate-six' } ? number[] :
   T extends { type: 'generate-algebraic' } ? SizedVariantPosition :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
@@ -720,6 +721,7 @@ function connectionFor(request: EngineRequest, options: WorkerOptions) {
   switch (request.type) {
     case 'generate':
     case 'generate-mini':
+    case 'generate-six':
     case 'generate-algebraic':
     case 'generate-constrained':
     case 'generate-targeted':

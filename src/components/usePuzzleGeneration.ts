@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { type DifficultyPreference } from '../sudoku/difficulty'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
-import { EngineError, runEngine } from '../sudoku/engine'
+import { EngineError, runEngine, type SixGrid } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
-import { MINI_GRID } from '../sudoku/grid'
-import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { verifySixPuzzle } from '../sudoku/six-game'
+import { MINI_GRID, sixGridForBoxRows } from '../sudoku/grid'
+import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, SIX_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, variantDifficulty } from '../sudoku/variants'
 import { generationRuleset, type VariantGenerationOptions } from '../sudoku/variant-rulesets'
 
@@ -29,7 +30,7 @@ export function usePuzzleGeneration() {
     return () => { mounted.current = false }
   }, [])
 
-  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions) {
+  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: SixGrid['boxRows'] }) {
     if (pending.current) return
     pending.current = true
     setBusy(true)
@@ -46,6 +47,18 @@ export function usePuzzleGeneration() {
         if (rating?.difficulty !== difficulty) throw new Error('The walkthrough did not match the selected difficulty.')
         const game = makeGame(createGameId(), nextPuzzleTitle(`${ALGEBRAIC_CAGES_NAME} `), givens, 'generated', undefined, MINI_GRID)
         roomStore.add({ ...game, algebraic, difficulty, score: rating.points })
+        onGenerated?.()
+        return
+      }
+      if (variant === 'six') {
+        const difficulty = miniDifficulty(preference)
+        const grid = sixGridForBoxRows(options?.boxRows)
+        const exclude = roomStore.playedSixGivens(grid.boxRows).map(givens => Array.from(givens, Number))
+        const givens = (await runEngine({ type: 'generate-six', seed, difficulty, grid, exclude })).join('')
+        const six = await verifySixPuzzle({ grid, givens, rules: [] })
+        if (!mounted.current) return
+        const game = makeGame(createGameId(), nextPuzzleTitle(`${SIX_NAME} `), givens, 'generated', undefined, grid)
+        roomStore.add({ ...game, six, difficulty, score: null })
         onGenerated?.()
         return
       }

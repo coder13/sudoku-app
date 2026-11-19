@@ -57,6 +57,14 @@ enum Request {
         #[serde(default)]
         exclude: Vec<[u8; 16]>,
     },
+    #[cfg(feature = "generation")]
+    GenerateSix {
+        seed: u32,
+        difficulty: crate::MiniDifficulty,
+        grid: crate::GridSpec,
+        #[serde(default)]
+        exclude: Vec<Vec<u8>>,
+    },
     #[cfg(all(feature = "generation", feature = "variants"))]
     GenerateAlgebraic {
         seed: u32,
@@ -996,6 +1004,17 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             crate::generate_mini(seed, difficulty, &exclude).map(|puzzle| json!(puzzle))
                 .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
+        #[cfg(feature = "generation")]
+        Request::GenerateSix { seed, difficulty, grid, exclude } => {
+            if grid.size != 6 || !matches!((grid.box_rows, grid.box_columns), (2, 3) | (3, 2)) {
+                return Err(("invalid-layout", "Use six 2 × 3 or 3 × 2 boxes."));
+            }
+            if exclude.iter().any(|puzzle| puzzle.len() != 36 || puzzle.iter().any(|digit| *digit > 6)) {
+                return Err(("invalid-grid", "The cell count and digits must match the grid size."));
+            }
+            crate::generate_six(grid, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+                .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
+        }
         #[cfg(all(feature = "generation", feature = "variants"))]
         Request::GenerateAlgebraic { seed, difficulty, exclude } => return sized_variant::generate(seed, difficulty, exclude),
         Request::SizedClassic { position, operation } => return sized::execute(position, operation),
@@ -1617,6 +1636,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
                 | "impossible-templates"
                 | "generate-targeted"
                 | "generate-mini"
+                | "generate-six"
                 | "generate-algebraic"
                 | "generate-constrained"
                 | "generate-from-pool"

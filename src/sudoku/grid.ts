@@ -2,6 +2,15 @@ import type { House, SixGrid, SizedClassicPosition, SizedConstraintRule } from '
 
 export const CLASSIC_GRID = { size: 9, boxRows: 3, boxColumns: 3 } as const
 export const MINI_GRID = { size: 4, boxRows: 2, boxColumns: 2 } as const
+const SIX_GRIDS = [
+  { size: 6, boxRows: 2, boxColumns: 3 },
+  { size: 6, boxRows: 3, boxColumns: 2 },
+] as const
+
+export function sixGridForBoxRows(boxRows?: SixGrid['boxRows']): SixGrid {
+  return SIX_GRIDS[boxRows === 3 ? 1 : 0]
+}
+
 export type MiniGrid = typeof MINI_GRID
 export type SizedGrid = MiniGrid | SixGrid
 export type PlayGrid = typeof CLASSIC_GRID | SizedGrid
@@ -23,8 +32,7 @@ export function isSizedGrid(value: unknown): value is SizedGrid {
 
 export function sixGridFromRegions(regions: readonly number[]): SixGrid | undefined {
   if (regions.length !== 36 || new Set(regions).size !== 6) return
-  const layouts = [{ size: 6, boxRows: 2, boxColumns: 3 }, { size: 6, boxRows: 3, boxColumns: 2 }] as const
-  return layouts.find(({ boxRows, boxColumns }) => regions.every((label, cell) => {
+  return SIX_GRIDS.find(({ boxRows, boxColumns }) => regions.every((label, cell) => {
     const firstRow = Math.floor(cell / 6 / boxRows) * boxRows
     const firstColumn = Math.floor(cell % 6 / boxColumns) * boxColumns
     return label === regions[firstRow * 6 + firstColumn]

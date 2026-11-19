@@ -9,10 +9,11 @@ import {
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import { techniqueLabel } from '../sudoku/hints'
+import { sixGridForBoxRows } from '../sudoku/grid'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, SIX_NAME, newPuzzleVariants, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, SIX_NAME, SIX_RULE, newPuzzleVariants, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
 import { VariantPreview } from './VariantPreview'
@@ -165,14 +166,16 @@ function PuzzleLibrary({ games, active, manage, loading }: {
   </div>
 }
 
-function NewPuzzleVariant({ variant, ruleset, onCreate }: {
+function NewPuzzleVariant({ variant, ruleset, boxRows, onCreate }: {
   variant: NewPuzzleId
   ruleset?: GenerationRulesetId
-  onCreate: (variant: NewPuzzleId) => void
+  boxRows?: 2 | 3
+  onCreate: (variant: NewPuzzleId, boxRows?: 2 | 3) => void
 }) {
   const navigate = useNavigate()
   const index = newPuzzleVariants.indexOf(variant)
   const { name, rule } = variant === 'mini' ? { name: MINI_NAME, rule: MINI_RULE }
+    : variant === 'six' ? { name: SIX_NAME, rule: SIX_RULE }
     : variant === 'algebraic-cages' ? { name: ALGEBRAIC_CAGES_NAME, rule: ALGEBRAIC_CAGES_RULE } : VARIANTS[variant]
 
   function browse(direction: number) {
@@ -191,7 +194,7 @@ function NewPuzzleVariant({ variant, ruleset, onCreate }: {
       <IconButton aria-label="Previous variant" onClick={() => browse(-1)}>
         <ChevronLeft size={22} aria-hidden="true" />
       </IconButton>
-      <div className="new-puzzle-variant-preview"><VariantPreview variant={variant} ruleset={ruleset} /></div>
+      <div className="new-puzzle-variant-preview"><VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} /></div>
       <IconButton aria-label="Next variant" onClick={() => browse(1)}>
         <ChevronRight size={22} aria-hidden="true" />
       </IconButton>
@@ -203,22 +206,31 @@ function NewPuzzleVariant({ variant, ruleset, onCreate }: {
     {!isSizedPuzzleId(variant) && <VariantRulesetSelector variant={variant} value={ruleset} onChange={next => {
       void navigate({ to: '/puzzles/new', search: { variant, ruleset: next }, replace: true, resetScroll: false })
     }} />}
-    <Link to="/puzzles/new/difficulty" search={{ variant, ruleset }} state={{ fromPuzzleVariantPicker: true }}
+    {variant === 'six' && <label className="dialog-form">Box layout
+      <SelectControl value={boxRows ?? 2} onChange={event => {
+        void navigate({ to: '/puzzles/new', search: { variant, boxRows: event.target.value === '3' ? 3 : 2 }, replace: true, resetScroll: false })
+      }}>
+        <option value={2}>2 × 3 boxes</option>
+        <option value={3}>3 × 2 boxes</option>
+      </SelectControl>
+    </label>}
+    <Link to="/puzzles/new/difficulty" search={{ variant, ruleset, boxRows }} state={{ fromPuzzleVariantPicker: true }}
       className={buttonClassName('primary')}>Continue <ArrowRight size={18} aria-hidden="true" /></Link>
     <Link to="/puzzles/games" state={{ fromSudokuVariant: true }} className={buttonClassName('quiet')}>
       Change game type
     </Link>
     <div className="new-puzzle-actions">
-      <Button onClick={() => onCreate(variant)}><PencilLine size={18} aria-hidden="true" />Create puzzle</Button>
+      <Button onClick={() => onCreate(variant, boxRows)}><PencilLine size={18} aria-hidden="true" />Create puzzle</Button>
       <Link className={buttonClassName()} to="/import"><FileUp size={18} aria-hidden="true" />Import puzzle</Link>
     </div>
   </section>
 }
 
-function NewPuzzleDifficulty({ variant, ruleset, difficulty, save }: {
+function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
   variant: NewPuzzleId
   ruleset?: GenerationRulesetId
   difficulty: DifficultyPreference
+  boxRows?: 2 | 3
   save: (preference: NewPuzzlePreference) => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
@@ -231,16 +243,17 @@ function NewPuzzleDifficulty({ variant, ruleset, difficulty, save }: {
   const autoLabel = variantDifficultyLabel(sized ? undefined : variant, 'auto', recommended)
   function start() {
     const onGenerated = () => {
-      save({ variant, difficulty: selected, ...(preset ? { ruleset: preset.id } : {}) })
+      save({ variant, difficulty: selected, boxRows, ...(preset ? { ruleset: preset.id } : {}) })
     }
-    void generate(selected, onGenerated, variant, { ruleset: preset?.id })
+    void generate(selected, onGenerated, variant, { ruleset: preset?.id, boxRows })
   }
 
   return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
     <p className="new-puzzle-variant-summary">
-      <VariantPreview variant={variant} ruleset={ruleset} />
-      <span>{preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : VARIANTS[variant].name)}</span>
+      <VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} />
+      <span>{preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : VARIANTS[variant].name)}</span>
     </p>
+    {variant === 'six' && <p>{sixGridForBoxRows(boxRows).boxRows} × {sixGridForBoxRows(boxRows).boxColumns} boxes</p>}
     {!sized && <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: next }, replace: true, resetScroll: false })
     }} />}
@@ -309,7 +322,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   rememberNewPuzzle: (preference: NewPuzzlePreference) => void
   preferencesReady: boolean
   loadingPuzzles: boolean
-  onCreatePuzzle: (variant: NewPuzzleId) => void
+  onCreatePuzzle: (variant: NewPuzzleId, boxRows?: 2 | 3) => void
   error?: string
 }) {
   const router = useRouter()
@@ -331,6 +344,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const screen = section === 'new' ? difficultyScreen ? 'difficulty' : 'variant' : undefined
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
   const ruleset = isSizedPuzzleId(variant) ? undefined : generationRuleset(variant, newPuzzleSearch?.ruleset ?? newPuzzlePreference.ruleset)?.id
+  const boxRows = variant === 'six' ? newPuzzleSearch?.boxRows ?? newPuzzlePreference.boxRows ?? 2 : undefined
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
     : screen === 'variant' ? 'Choose a variant'
       : section === 'puzzles' ? 'Puzzles'
@@ -353,8 +367,8 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     if (current === 'new') {
       if (!preferencesReady) return <p className="main-menu-empty" role="status">Loading…</p>
       return difficultyScreen
-        ? <NewPuzzleDifficulty key={variant} variant={variant} ruleset={ruleset} difficulty={newPuzzlePreference.difficulty} save={savePuzzlePreference} />
-        : <NewPuzzleVariant variant={variant} ruleset={ruleset} onCreate={onCreatePuzzle} />
+        ? <NewPuzzleDifficulty key={variant} variant={variant} ruleset={ruleset} boxRows={boxRows} difficulty={newPuzzlePreference.difficulty} save={savePuzzlePreference} />
+        : <NewPuzzleVariant variant={variant} ruleset={ruleset} boxRows={boxRows} onCreate={onCreatePuzzle} />
     }
     return <Statistics games={games} />
   }
@@ -369,7 +383,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
             : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
           : difficultyScreen ? (fromVariantPicker && canGoBack
             ? <IconButton className="puzzles-back" aria-label="Back to variant" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
-            : <Link to="/puzzles/new" search={{ variant, ruleset }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
+            : <Link to="/puzzles/new" search={{ variant, ruleset, boxRows }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
               aria-label="Back to variant"><ChevronLeft size={21} /></Link>)
             : section !== 'puzzles' && <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
         <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{pageTitle}</h1>

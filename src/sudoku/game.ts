@@ -32,6 +32,7 @@ export type Position = {
   candidateColors?: Record<number, Record<number, number>>
   eliminations?: number[]
   draftCages?: readonly AlgebraicCage[]
+  draftSixRules?: SixGame['rules']
 }
 
 export type Game = {

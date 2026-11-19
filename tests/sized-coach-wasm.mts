@@ -83,3 +83,20 @@ test('a Coach short link preserves 6 × 6 rules through Play, undo, reload and s
     else assert.notEqual(action.eliminate.digit, Number(expected[action.eliminate.cell]))
   }
 })
+
+test('6 × 6 generation meets both difficulty recipes in both box orientations', async () => {
+  for (const grid of [{ size: 6, boxRows: 2, boxColumns: 3 }, { size: 6, boxRows: 3, boxColumns: 2 }] as const) {
+    for (const difficulty of ['easy', 'medium'] as const) {
+      const request = { type: 'generate-six', grid, difficulty, seed: 17 } as const
+      const digits = await runEngine(request)
+      assert.deepEqual(await runEngine(request), digits)
+      assert.notDeepEqual(await runEngine({ ...request, exclude: [digits] }), digits)
+      const position = { version: 2, grid, digits } as const
+      assert.equal(await runEngine({ type: 'sized-classic', position, operation: 'analyze' }), 'unique')
+      const trace = await runEngine({ type: 'sized-classic', position, operation: 'trace' })
+      assert.ok(trace?.length)
+      assert.ok(trace.at(-1)?.digits.every(Boolean))
+      assert.equal(trace.some(step => step.deduction && step.deduction.technique !== 'naked-single'), difficulty === 'medium')
+    }
+  }
+})

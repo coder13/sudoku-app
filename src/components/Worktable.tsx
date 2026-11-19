@@ -199,7 +199,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
+  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSixRules, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
   cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -231,6 +231,7 @@ export function Worktable({
   onCreatePuzzle: () => void
   onEditPuzzle: () => void
   onEditCages?: () => void
+  onEditSixRules?: () => void
   showLeftPanel: boolean
   showRightPanel: boolean
   showBottomPanel: boolean
@@ -411,6 +412,7 @@ export function Worktable({
   const { id, givens, difficulty, score, variant, algebraic, six, generatedWithAuto } = game
   const draftCages = game.position.draftCages
   const cages = algebraic?.rules ?? draftCages
+  const sixRules = six?.rules ?? game.position.draftSixRules
   const sizedName = cages ? ALGEBRAIC_CAGES_NAME : grid?.size === 6 ? SIX_NAME : MINI_NAME
   const analysisDialogOpen = analysisOpen && mobile && !draft && !solved
   const needsRating = !grid && (difficulty === undefined || score === undefined)
@@ -1537,13 +1539,13 @@ export function Worktable({
     setDialogResult(null)
     try {
       if (draftCages && !isAlgebraicCageList(draftCages)) throw new Error('Add at least one cage with a letter before checking.')
-      const status = six && grid?.size === 6
-        ? await runEngine({ type: 'sized-variant', position: sixPosition(grid, six, values), operation: 'analyze' })
+      const status = sixRules && grid?.size === 6
+        ? await runEngine({ type: 'sized-variant', position: sixPosition(grid, { rules: sixRules }, values), operation: 'analyze' })
         : cages ? await analyzeAlgebraic({ rules: cages }, values) : grid ? await analyzeMini(values) : variant
         ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
         : await runEngine({ type: 'analyze', values })
       const current = readWorkingGame()
-      if (!current || valuesOf(current) !== values || current.position.draftCages !== draftCages) return
+      if (!current || valuesOf(current) !== values || current.position.draftCages !== draftCages || current.position.draftSixRules !== game.position.draftSixRules) return
       if (!draft && status === 'multiple') {
         setDialogResult({ title: 'Puzzle check', text: 'This grid has more than one solution.', tone: 'neutral' })
       } else if (!draft && status !== 'search-limit') {
@@ -2110,20 +2112,20 @@ export function Worktable({
   const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
     ? sketch.annotations : undefined
   const solutionGrid = (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={six?.rules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={sixRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : sketch.drawing && chainMasks ? (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={six?.rules} givens={givens} values={values} position={game.position} errors={errors}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={sixRules} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={sketch.annotations} showPlayerColors={showPlayerColors} label="Sudoku grid for drawing links"
       highlightedDigit={chainHighlightDigit} highlighting={highlighting} highlightCandidateCount={highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={sketch.select} onCandidateHover={sketch.hover}
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={six?.rules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sixRules={sixRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={hintAnnotations && hintDiagram ? hintCandidates : undefined} annotations={hintAnnotations ?? visibleChainAnnotations}
       showAnnotatedCandidates={Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
       candidatePreview={canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
@@ -2199,6 +2201,7 @@ export function Worktable({
           {presentationDraft ? (
             <>
               <Button onClick={() => setCancelDraftOpen(true)}><X size={17} /> Cancel</Button>
+              {game.position.draftSixRules && onEditSixRules && <Button onClick={onEditSixRules} aria-haspopup="dialog">Edit rules</Button>}
               {draftCages && onEditCages && <Button onClick={onEditCages} aria-haspopup="dialog">Edit cages</Button>}
               <Button variant="primary" className="publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</Button>
             </>
@@ -2248,7 +2251,7 @@ export function Worktable({
           }}>
           {placeholder ? <div className="puzzle-placeholder-stage">
             <div className="puzzle-grid-reservation" aria-hidden="true" inert>
-              <Board grid={grid} algebraicCages={cages} sixRules={six?.rules} givens={givens} values={values} showGuides={appearance.showGuides} />
+              <Board grid={grid} algebraicCages={cages} sixRules={sixRules} givens={givens} values={values} showGuides={appearance.showGuides} />
             </div>
             <div className="puzzle-placeholder-message">{placeholder}</div>
           </div> : !draft && !completed ? (

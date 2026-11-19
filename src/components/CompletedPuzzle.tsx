@@ -61,6 +61,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = gameGenerationVariant(game)
   const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
+  const boxRows = game.grid?.size === 6 ? game.grid.boxRows : undefined
   const needsChoice = !inCollection && !recipe
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
@@ -98,8 +99,8 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(nextDifficulty, undefined, recipe, { ruleset })
-  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, generate, onChooseVariant, online, nextDifficulty])
+    } else void generate(nextDifficulty, undefined, recipe, { ruleset, boxRows })
+  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, boxRows, generate, onChooseVariant, online, nextDifficulty])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext

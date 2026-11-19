@@ -2,6 +2,7 @@ import { Button, ChoiceButton } from './Button'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Bookmark, Clipboard, Link2, Trash2 } from 'lucide-react'
 import { analyzeMini } from '../sudoku/mini-play'
+import { verifySixPuzzle } from '../sudoku/six-game'
 import { runEngine } from '../sudoku/engine'
 import { algebraicLabel, connectedCage, isAlgebraicCageList, parseAlgebraicTotal, type AlgebraicCage } from '../sudoku/algebraic-cages'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
@@ -236,24 +237,27 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
     setBusy(true)
     const givens = valuesOf(game)
     const rules = game.position.draftCages
+    const sixRules = game.position.draftSixRules
     try {
       if (rules && !isAlgebraicCageList(rules)) throw new Error('Add at least one cage with a letter before saving.')
       const algebraic = rules ? await verifyAlgebraicPuzzle({ givens, rules }) : undefined
       const rating = algebraic ? await rateAlgebraicPuzzle(givens, algebraic.rules) : null
-      if (!algebraic) {
+      const six = game.grid?.size === 6 && sixRules ? await verifySixPuzzle({ grid: game.grid, givens, rules: sixRules }) : undefined
+      if (!algebraic && !six) {
         const status = game.grid ? await analyzeMini(givens) : await runEngine({ type: 'analyze', values: givens })
         if (status !== 'unique') throw new Error(validation[status].text)
       }
       if (!mounted.current) return
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
       if (!current || current.source !== 'draft' || valuesOf(current) !== givens ||
-        JSON.stringify(current.position.draftCages) !== JSON.stringify(rules)) {
+        JSON.stringify(current.position.draftCages) !== JSON.stringify(rules) ||
+        JSON.stringify(current.position.draftSixRules) !== JSON.stringify(sixRules)) {
         throw new Error('The draft changed. Reopen this dialog to save the latest grid.')
       }
       const saveGame = (id: string, created: number) => ({
         ...makeGame(id, title.trim(), givens, 'custom', created, game.grid), saved: true, ...(algebraic && {
           algebraic, difficulty: rating?.difficulty ?? null, score: rating?.points ?? null,
-        }),
+        }), ...(six && { six }),
       })
       if (game.editingId) {
         const original = roomStore.getSnapshot().games.find((item) => item.id === game.editingId)
