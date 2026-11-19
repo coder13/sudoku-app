@@ -31,6 +31,28 @@ test('detects existing formats and compact Classic links', async () => {
   for (const [input, format] of inputs) assert.deepEqual(await detectPuzzle(input), { givens: STARTER, format }, input)
 })
 
+test('imports embedded puzzles with no browser location and resolves shares only on the app origin', async t => {
+  const priorWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  const origin = 'https://sudoku.example'
+  const id = '12345678-1234-4123-8123-123456789abc'
+  const fetch = t.mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, `/api/v1/shares/${id}`)
+    return Response.json({ version: 1, title: 'Shared puzzle', givens: STARTER })
+  })
+  Object.defineProperty(globalThis, 'window', { value: {}, configurable: true })
+  try {
+    assert.deepEqual(await detectPuzzle(`#puzzle=${STARTER}`), { givens: STARTER, format: 'Puzzle link' })
+    await assert.rejects(detectPuzzle(`/?share=${id}`), /link format is not supported/)
+    Object.defineProperty(globalThis, 'window', { value: { location: { origin } }, configurable: true })
+    await assert.rejects(detectPuzzle(`https://elsewhere.example/?share=${id}`), /link format is not supported/)
+    assert.equal((await detectPuzzle(`/?share=${id}`)).sharedPuzzleId, id)
+    assert.equal(fetch.mock.callCount(), 1)
+  } finally {
+    if (priorWindow) Object.defineProperty(globalThis, 'window', priorWindow)
+    else Reflect.deleteProperty(globalThis, 'window')
+  }
+})
+
 test('Mini Sudoku imports text and versioned links and rejects unsupported authored rules', async () => {
   const givens = '0000300201400000'
   const grid = MINI_GRID
