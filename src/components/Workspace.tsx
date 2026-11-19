@@ -1,6 +1,6 @@
 import { Button, IconButton, buttonClassName } from './Button'
 import { Link, useLocation, useMatch, useNavigate } from '@tanstack/react-router'
-import { createContext, type ReactNode, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
   Monitor, Moon, SlidersHorizontal, Sun,
@@ -8,6 +8,7 @@ import {
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
+import { puzzleLinkHash } from '../sudoku/formats'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
@@ -36,7 +37,7 @@ import { Worktable, type WorktableActions } from './Worktable'
 
 type Panel = 'import' | 'share' | 'publish' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
-const PUZZLE_LINK = /^#(?:puzzle|variant)=/
+const PUZZLE_LINK = /^(?:puzzle|variant)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
 const ADVANCED_PANEL_VISIBILITY_KEY = 'sudoku-app:v1:advanced-panel-visibility'
 const DEFAULT_ADVANCED_PANEL_VISIBILITY: AdvancedPanelVisibility = { left: true, right: true, bottom: true, articles: true }
@@ -117,6 +118,14 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const syncConnection = useSyncExternalStore(deviceSync.subscribeConnection, deviceSync.getConnection, deviceSync.getServerConnection)
   const peerPuzzles = useSyncExternalStore(deviceSync.subscribePresence, deviceSync.getPeerPuzzles, deviceSync.getServerPeerPuzzles)
   const game = games.find(item => item.id === (requested ?? active))
+  const playableGivens = game?.source === 'draft' ? undefined : game?.givens
+  const puzzleVariant = game?.variant
+  const canonicalPuzzleHash = useMemo(() => playableGivens ? puzzleLinkHash({ givens: playableGivens, variant: puzzleVariant }) : '',
+    [playableGivens, puzzleVariant])
+  const locationHash = locationHref.split('#', 2)[1] ?? ''
+  const puzzleLink = PUZZLE_LINK.test(locationHash)
+  const hasRequestedGame = Boolean(requested && game)
+  const openingPuzzleLink = puzzleLink && !hasRequestedGame && !linkError
   const viewedPuzzle = playRoute && game && game.source !== 'draft' ? game.id : null
   const peerPuzzle = playedPeerPuzzle()
   const newPuzzleDefaults: NewPuzzlePreference = newPuzzlePreference ?? {
@@ -220,7 +229,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     else void navigate({ to: '/puzzles/browse', viewTransition: false })
   }), [navigate])
   useEffect(() => {
-    if (!workspaceReady || !homeRoute || requested || stoppedPlaying || linkError || PUZZLE_LINK.test(window.location.hash)) return
+    if (!workspaceReady || !homeRoute || requested || stoppedPlaying || linkError || puzzleLink) return
     const localLaunch = hasLocalPuzzleAtLaunch.current
     // Open a local save without waiting for the network. A cloud-only launch
     // waits for the full list so the first download cannot select an older puzzle.
@@ -228,32 +237,35 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const resumable = inProgress(games)
     const puzzle = (localLaunch ? resumable.find(item => item.id === active) : undefined) ?? resumable[0]
     if (puzzle) void navigate({ to: '/', search: { puzzle: puzzle.id }, replace: true, viewTransition: false })
-  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, games, active, navigate])
+  }, [workspaceReady, homeRoute, requested, stoppedPlaying, linkError, sync.ready, games, active, navigate, puzzleLink])
   useEffect(() => {
-    if (workspaceReady && requested && game && !PUZZLE_LINK.test(window.location.hash)) roomStore.view(requested)
-  }, [workspaceReady, requested, game?.id])
+    if (!workspaceReady || !requested || !hasRequestedGame) return
+    roomStore.view(requested)
+    if (canonicalPuzzleHash && canonicalPuzzleHash !== locationHash) {
+      void navigate({ to: '/', search: { puzzle: requested }, hash: canonicalPuzzleHash, replace: true, viewTransition: false })
+    }
+  }, [workspaceReady, requested, hasRequestedGame, canonicalPuzzleHash, locationHash, navigate])
   const acceptsPuzzleLinks = homeRoute || settingsRoute
   useEffect(() => {
-    if (!acceptsPuzzleLinks) return
-    let attempt = 0
+    if (!acceptsPuzzleLinks || !workspaceReady || !puzzleLink || hasRequestedGame || (requested && !sync.ready)) return
+    const href = window.location.href
+    let active = true
+    const cancelled = () => !active || window.location.href !== href || Boolean(requested &&
+      roomStore.getSnapshot().games.some((saved) => saved.id === requested))
     async function handleLink() {
-      const id = ++attempt
-      if (!PUZZLE_LINK.test(window.location.hash)) return
       setLinkError('')
       try {
-        await openPuzzle(window.location.href, () => id !== attempt)
+        if (requested && sync.linked) await deviceSync.refreshPuzzles()
+        if (!cancelled()) await openPuzzle(`#${locationHash}`, cancelled, { freshCopy: Boolean(requested) })
       } catch (error) {
-        if (id === attempt) setLinkError((error as Error).message)
+        if (cancelled()) return
+        setLinkError((error as Error).message)
+        void navigate({ to: '/', search: requested ? { puzzle: requested } : {}, replace: true, viewTransition: false })
       }
-      if (id === attempt) window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
     }
     void handleLink()
-    window.addEventListener('hashchange', handleLink)
-    return () => {
-      attempt++
-      window.removeEventListener('hashchange', handleLink)
-    }
-  }, [acceptsPuzzleLinks])
+    return () => { active = false }
+  }, [acceptsPuzzleLinks, workspaceReady, puzzleLink, hasRequestedGame, requested, sync.ready, sync.linked, locationHref, locationHash, navigate])
   useEffect(() => {
     if (!menuOpen) return
 
@@ -506,11 +518,13 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       )}
       <PlayContent.Provider value={playing && !workspaceReady ? (
         <main className="page workspace-initializing" aria-hidden="true"><div className="workspace" /></main>
+      ) : playRoute && openingPuzzleLink ? (
+        <main className="page sync-page"><h1>Opening puzzle…</h1></main>
       ) : playRoute && !game ? (
         <main className="page sync-page"><h1>{sync.linked && !sync.ready ? 'Loading puzzle…' : 'Puzzle unavailable on this device'}</h1>
-          <p>{sync.linked
+          {linkError ? <p role="alert">{linkError}</p> : <p>{sync.linked
             ? sync.message || 'Open this puzzle on your other device and choose Sync now from Puzzle options.'
-            : 'Link the device that has this puzzle to open it here.'}</p>
+            : 'Link the device that has this puzzle to open it here.'}</p>}
           <Link className={buttonClassName('primary')} to="/sync">Device sync</Link>
           <Link className={buttonClassName()} to="/puzzles/browse">Return to puzzles</Link>
         </main>

@@ -340,6 +340,18 @@ export const deviceSync = {
   },
   puzzleStatus,
   syncPuzzle,
+  async refreshPuzzles() {
+    const target = currentDevice()
+    if (!target || !navigator.onLine || Date.now() < retryAt) return
+    await exclusively(async () => {
+      if (!stillLinked(target)) return
+      try {
+        await target.engine.run({ uploads: new Set(), settings: false })
+      } catch (error) {
+        reportError(target, error)
+      }
+    })
+  },
   getSnapshot: () => state,
   getServerSnapshot: () => initial,
   subscribeConnection(fn: () => void) {
