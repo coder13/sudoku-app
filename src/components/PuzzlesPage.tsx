@@ -13,7 +13,7 @@ import { sixGridForBoxRows } from '../sudoku/grid'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, SEVEN_JIGSAW_NAME, SEVEN_JIGSAW_RULE, SIX_NAME, SIX_RULE, newPuzzleVariants, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, SEVEN_BOXLESS_NAME, SEVEN_JIGSAW_NAME, SEVEN_JIGSAW_RULE, SIX_NAME, SIX_RULE, newPuzzleVariants, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
 import { VariantPreview } from './VariantPreview'
@@ -60,7 +60,7 @@ function PuzzleRows({ puzzles, active, manage }: {
         const name = useRatingTitle ? rating || 'Unrated' : game.title
         const variant = gameVariantId(game)
         const variantLabel = variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME
-          : variant === 'six' ? SIX_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : variant === 'mini' ? MINI_NAME : variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[variant].name
+          : variant === 'six' ? SIX_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : variant === 'boxless-seven' ? SEVEN_BOXLESS_NAME : variant === 'mini' ? MINI_NAME : variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[variant].name
         const detail = (manage
           ? [useRatingTitle && variant !== 'classic' && variantLabel, !useRatingTitle && rating, puzzleStatus(game)]
           : [variantLabel, rating || 'Unrated', !game.timeUntracked && formatTime(game.elapsed)]).filter(Boolean).join(' · ')
@@ -103,6 +103,7 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
         <option value="mini">{MINI_NAME}</option>
         <option value="six">{SIX_NAME}</option>
         <option value="jigsaw-seven">{SEVEN_JIGSAW_NAME}</option>
+        <option value="boxless-seven">{SEVEN_BOXLESS_NAME}</option>
         <option value="algebraic-cages">{ALGEBRAIC_CAGES_NAME}</option>
         <option value="mixed">Mixed rules</option>
       </SelectControl>

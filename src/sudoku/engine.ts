@@ -136,7 +136,7 @@ type VariantRequest = {
 
 export type SizedClassicPosition = {
   version: 2
-  grid: { size: number; boxRows: number; boxColumns: number } | { size: number; regions: readonly (readonly number[])[] }
+  grid: { size: number; boxRows: number; boxColumns: number } | { size: number; regions: readonly (readonly number[])[] } | { size: number; noRegions: true }
   digits: readonly number[]
 }
 
@@ -177,7 +177,7 @@ export type SizedDifferenceRule = { type: 'difference'; cells: readonly [number,
 export type SizedLabeledDotsRule = {
   type: 'labeled-dots'; relation: 'difference' | 'ratio'; marks: readonly { cells: readonly [number, number]; value: number }[]; negative?: boolean
 }
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'arrow' | 'region-sum' }>
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
   | SizedDifferenceRule | SizedLabeledDotsRule
 export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
@@ -196,6 +196,7 @@ export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction 
 type SizedConstraintFailure = { type: 'cell'; cell: number }
   | { type: 'missing-digit' | 'repeated-digit'; house: House; digit: number }
   | { type: 'rule'; rule: number }
+  | { type: 'killer-cage'; rule: number; cage: number }
   | { type: 'kropki'; rule: number; pair: SizedKropkiPair }
 
 type SizedConstraintTracePosition = Omit<SizedClassicTracePosition, 'deduction'> & { deduction: SizedConstraintStep | null }
