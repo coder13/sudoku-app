@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPlaySession, defaultDigitHighlight, defaultToolPanels, puzzleTabsKey } from '../src/sudoku/play-session.ts'
+import { chainToolsActive, createPlaySession, defaultDigitHighlight, defaultToolPanels, puzzleTabsKey } from '../src/sudoku/play-session.ts'
 import { PLAY_PREFERENCES_KEY } from '../src/sudoku/play-preferences.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
@@ -136,4 +136,23 @@ test('saved mobile tools restore in display order and keep the selected tab', ()
   assert.deepEqual(createPlaySession(storage).getSnapshot().toolPanels, {
     open: ['solution', 'techniques', 'colors', 'chains', 'subsets'], active: 'techniques',
   })
+})
+
+test('chain drawing stays active when changing away from Chains or Digits tabs', () => {
+  // A drawing session remains usable on Colors, Techniques and other tool tabs.
+  for (const tab of ['colors', 'techniques', 'solution', 'subsets']) {
+    assert.equal(chainToolsActive(false, false, false, true, false), true, tab)
+  }
+  assert.equal(chainToolsActive(true, false, false, null, false), true)
+  assert.equal(chainToolsActive(false, true, false, true, false), true)
+  // Explicitly stopping drawing returns other tabs to their own input mode.
+  assert.equal(chainToolsActive(false, false, false, false, false), false)
+})
+
+test('strong-link browsing and pending endpoints only activate supported tool views', () => {
+  assert.equal(chainToolsActive(false, true, true, false, false), true)
+  assert.equal(chainToolsActive(true, false, false, null, false), true)
+  assert.equal(chainToolsActive(false, true, false, null, true), true)
+  assert.equal(chainToolsActive(false, false, true, false, false), false)
+  assert.equal(chainToolsActive(false, false, false, null, true), false)
 })
