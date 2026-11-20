@@ -64,6 +64,8 @@ The X sums #3 short link combines the verified publication’s X-Sums declaratio
 
 Entropic 7 / 13 sums keeps all twenty-seven sums and both black dots alongside Global Entropy. The short link verifies that the encoded rules account for the publication’s legend and skips the empty Consecutive Line layer. The same raw code imports with all active rules. Tests replay the complete Medium walkthrough in Play and check the opening sum hints, Technique Finder and sharing. [Entropic 7 / 13 sums](https://sudoku.coach/en/s/HqJ9) · [Short-link contracts](tests/coach-short-links-wasm.mts)
 
+The short link for *That’s 3 in the corner* applies the complete black-dot instruction from its publication while preserving all 24 printed dots and its other rules. Play explains what unmarked edges mean. Import verifies the published exact solution and retains the rule in shared puzzles. The walkthrough reports its 28-step stall. [That’s 3 in the corner](https://sudoku.coach/en/s/K95q)
+
 The placed-digit checks now include parity, Thermometers, Arrow sums, Killer totals and Quadruple circles in 9×9 Play. Tests cover both Pencil modes, manual and bulk entry, undo and redo, and every partial four-cell state for four representative Quadruple clue patterns in boxes and Jigsaw regions. The local feedback checks use the placed digits; the full engine continues to compute candidates and solutions. [Play tests](tests/variant-placed-rules.test.ts)
 
 ## Priority controls

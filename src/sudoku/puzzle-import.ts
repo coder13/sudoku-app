@@ -190,7 +190,7 @@ type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7,
 type CoachPublication = {
   hasAuthorInstructions: boolean
   title?: string
-  authoredRule?: 'x-sum'
+  authoredRule?: 'x-sum' | 'all-black-dots'
   declaredRules?: CoachTypedDeclaration
 }
 
@@ -221,6 +221,18 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   const constraints = data.givenConstraints ?? []
   const regions = readRegions(data.regions)
   const rules = readCoachRules(constraints, { regions, authoredRule: publication?.authoredRule })
+  if (publication?.authoredRule === 'all-black-dots') {
+    const black = rules.find(rule => rule.type === 'kropki' && rule.ratioTwo !== undefined)
+    if (black?.type !== 'kropki' || !black.ratioTwo) {
+      throw new Error('The Sudoku Coach export is missing the black Kropki dot layer from the published rules.')
+    }
+    // Native negative Kropki exempts edges with either color of dot. The
+    // author's complete black-dot rule exempts only the black dots.
+    if (rules.some(rule => rule.type === 'kropki' && rule.consecutive?.pairs?.length)) {
+      throw new Error('This Sudoku Coach puzzle uses white dots with an authored complete black-dot rule.')
+    }
+    black.ratioTwo = { ...black.ratioTwo, negative: true }
+  }
   if (publication?.declaredRules && (
     !rules.some(rule => rule.type === 'global-entropy') ||
     !publication.declaredRules.adjacentTotals.every(sum => rules.some(rule => rule.type === 'adjacent-total' && rule.sum === sum))
@@ -849,7 +861,7 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', id: string)
   if (typeof code !== 'string' || code.length > MAX_IMPORT_LENGTH) throw new Error('This link does not contain a supported puzzle export.')
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
-      ...(coach.authoredRule === 'x-sum' && { authoredRule: 'x-sum' }),
+      ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots') && { authoredRule: coach.authoredRule }),
       ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }
     : null

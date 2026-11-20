@@ -74,6 +74,11 @@ function declaresCoachXSums(lines) {
     /^- X is the first digit in the corresponding direction\.$/i.test(lines[2])
 }
 
+function coachAuthoredRule(lines) {
+  if (lines.length === 1 && /^All (?:possible )?black dots are given[.!]?$/i.test(lines[0])) return 'all-black-dots'
+  if (declaresCoachXSums(lines)) return 'x-sum'
+}
+
 // A published legend can refer to fully encoded rules. The app checks those
 // rules against the export before it accepts the publication.
 function coachTypedDeclaration(lines) {
@@ -102,9 +107,10 @@ function coachPublication(html, id, code) {
   const title = typeof puzzle.name === 'string' ? puzzle.name.trim().slice(0, 72) : ''
   const lines = puzzle.description.split(/\r?\n/).map(line => line.trim().replace(/[ \t]+/g, ' ')).filter(Boolean)
   const declaredRules = puzzle.custom_constraints ? undefined : coachTypedDeclaration(lines)
+  const authoredRule = coachAuthoredRule(lines)
   return {
     hasAuthorInstructions: puzzle.custom_constraints || puzzle.description.trim() !== '',
-    ...(declaresCoachXSums(lines) && { authoredRule: 'x-sum' }),
+    ...(authoredRule && { authoredRule }),
     ...(declaredRules && { declaredRules }),
     ...(title && { title }),
   }

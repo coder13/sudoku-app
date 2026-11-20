@@ -633,11 +633,16 @@ function describedVariantRules(puzzle: VariantPuzzle) {
       case 'extra-house':
         descriptions.push(disjoint.has(index) ? DISJOINT_GROUPS_RULE : 'Each shaded extra region must also contain the digits 1–9 once each.')
         break
-      case 'kropki':
-        descriptions.push('Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other.')
+      case 'kropki': {
+        const marked = [
+          rule.consecutive?.pairs?.length && 'Digits separated by a white dot are consecutive.',
+          rule.ratioTwo?.pairs?.length && 'Across a black dot, one digit is double the other.',
+        ].filter(Boolean).join(' ')
+        if (marked) descriptions.push(marked)
         if (rule.consecutive?.negative) descriptions.push('Digits in cells sharing an edge without a Kropki dot cannot be consecutive.')
         if (rule.ratioTwo?.negative) descriptions.push('For cells sharing an edge without a Kropki dot, neither digit can be twice the other.')
         break
+      }
       default:
         if (isVariantId(rule.type)) descriptions.push(VARIANTS[rule.type].rule)
     }

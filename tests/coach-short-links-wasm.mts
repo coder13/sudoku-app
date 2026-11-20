@@ -3,16 +3,19 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, redo, undo, valuesOf } from '../src/sudoku/game.ts'
+import { kropkiDigitExclusions } from '../src/sudoku/grid.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { isSharedPuzzleId, publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { variantPosition } from '../src/sudoku/variant-play.ts'
+import { variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { assertVariantCompletion } from './helpers/variant-truth.ts'
 
 useWasmWorker()
 
@@ -20,9 +23,10 @@ type Fixture = { url: string; code: string; title: string; puzzle: VariantPuzzle
 const between: Fixture = JSON.parse(readFileSync(new URL('./fixtures/between-coach.json', import.meta.url), 'utf8')).examples[0]
 const renban: Fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-coach.json', import.meta.url), 'utf8')).examples[0]
 
-const entropySums: Omit<Fixture, 'puzzle'> & { description: string } =
-  JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8'))
-    .examples.find(({ url }: { url: string }) => url.endsWith('HqJ9'))
+const entropySources: (Omit<Fixture, 'puzzle'> & { description: string })[] =
+  JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8')).examples
+const entropySums = entropySources.find(({ url }) => url.endsWith('HqJ9'))!
+const negativeBlackDots = entropySources.find(({ url }) => url.endsWith('K95q'))!
 
 const xSum = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8')) as {
   source: string
@@ -254,6 +258,84 @@ test('a Global Entropy publication whose legend matches its sum clues preserves 
     for (const source of ['MissingEntropy', 'MissingSeven', 'MissingThirteen']) {
       await assert.rejects(detectPuzzle('sudoku.coach/s/' + source), /missing rules from the published description/, source)
     }
+  } finally { sqlite.close() }
+})
+
+test('a written black-dot rule restores the negative constraint and keeps all printed dots and companion rules', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, title, description, solution } = negativeBlackDots
+  const dot = { type: 'ratio', segments: [{ cells: [0, 1], parameters: { ratio: 2 } }] }
+  const white = { type: 'difference', segments: [{ cells: [9, 10], parameters: { difference: 1 } }] }
+  const codes = {
+    K95q: code,
+    MissingLayer: coachCode({ givenConstraints: [{ type: 'globalEntropy', segments: [] }] }),
+    WhiteLayer: coachCode({ givenConstraints: [dot, white] }),
+    SplitBlack: coachCode({ givenConstraints: [dot, {
+      ...dot, segments: [{ cells: [10, 11], parameters: { ratio: 2 } }],
+    }] }),
+  }
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (!path.startsWith('https://sudoku.coach/')) return fetcher(path, init)
+    const id = path.split('/').at(-1)!
+    assert.ok(Object.hasOwn(codes, id))
+    return Promise.resolve(new Response(coachPage(id, codes[id as keyof typeof codes], title, { description })))
+  })
+  try {
+    const { game, format, grade } = await prepareImportedPuzzle(url)
+    assert.equal(format, 'Sudoku Coach')
+    assert.equal(game.title, title)
+    assert.equal(game.variant?.id, 'mixed')
+    assert.equal(game.variant.solution, solution)
+    assertVariantCompletion(game.variant.puzzle, solution)
+    const raw = (await detectPuzzle(code)).variant!.puzzle.rules!
+    const rawDots = raw.find(rule => rule.type === 'kropki')!
+    assert.equal(rawDots.ratioTwo?.negative, false)
+    const rules = game.variant.puzzle.rules!
+    assert.deepEqual(rules, raw.map(rule => rule === rawDots
+      ? { ...rawDots, ratioTwo: { ...rawDots.ratioTwo, negative: true } } : rule))
+
+    const expectedDots: string[] = []
+    for (let a = 0; a < 81; a++) {
+      for (const b of [a % 9 < 8 ? a + 1 : -1, a < 72 ? a + 9 : -1]) {
+        if (b === -1) continue
+        const first = Number(solution[a]), second = Number(solution[b])
+        if (first === 2 * second || second === 2 * first) expectedDots.push(a + ':' + b)
+      }
+    }
+    assert.equal(expectedDots.length, 24)
+    assert.deepEqual(rawDots.ratioTwo!.pairs!.map(pair => [...pair].sort((a, b) => a - b).join(':')).sort(), expectedDots.sort())
+    const descriptions = variantRuleDescriptions(game.variant.puzzle)
+    assert.ok(descriptions.includes('Across a black dot, one digit is double the other.'))
+    assert.ok(descriptions.includes('For cells sharing an edge without a Kropki dot, neither digit can be twice the other.'))
+    assert.ok(descriptions.every(description => !description.includes('white dot')))
+
+    assert.equal((await puzzleHints(game)).choices.length, 10)
+    const selected = await puzzleHints(game, 'all', 'kropki')
+    const actions = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.ok(actions.size > 10)
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count('kropki'), actions.size) } finally { scan.close() }
+
+    const walkthrough = await puzzleSolution(game)
+    assert.equal(grade, null)
+    assert.equal(walkthrough.rating.status, 'stalled')
+    assert.ok(walkthrough.steps.length > 0)
+    for (const step of walkthrough.steps) for (const action of step.actions) {
+      const candidate = 'place' in action ? action.place : action.eliminate
+      assert.equal(Number(solution[candidate.cell]) === candidate.digit, 'place' in action)
+    }
+
+    const id = await publishSharedPuzzle(game)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.equal(shared.game.title, title)
+    assert.deepEqual(shared.game.variant, game.variant)
+
+    const split = (await detectPuzzle('sudoku.coach/s/SplitBlack')).variant!.puzzle.rules!
+    assert.deepEqual(split.filter(rule => rule.type === 'kropki').map(rule => rule.ratioTwo?.pairs), [[[0, 1]], [[10, 11]]])
+    assert.equal(kropkiDigitExclusions(split, 10, 11, 2, 9) & (1 << 3), 0)
+    assert.equal(kropkiDigitExclusions(split, 11, 12, 2, 9) & (1 << 3), 1 << 3)
+    await assert.rejects(detectPuzzle('sudoku.coach/s/MissingLayer'), /missing the black Kropki dot layer/)
+    await assert.rejects(detectPuzzle('sudoku.coach/s/WhiteLayer'), /uses white dots/)
   } finally { sqlite.close() }
 })
 

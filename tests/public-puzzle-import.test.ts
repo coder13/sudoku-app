@@ -111,3 +111,22 @@ test('a Coach legend can declare already encoded rules without accepting extra i
     { ...expected, coach: { ...expected.coach, declaredRules: { globalEntropy: true, adjacentTotals: [7, 13] } } })
   while (examplesToCheck.length) assert.deepEqual(await (await request('sudoku-coach/HqJ9')).json(), expected)
 })
+
+
+test('a complete black-dot declaration never absorbs unrelated author instructions', async ({ mock }) => {
+  const code = 'SCv7_32_102aa'
+  const publication = { sudoku_id: 'K95q', sudoku: code, name: 'Complete black dots',
+    blocked: false, custom_constraints: false }
+  const descriptions = [
+    'All possible black dots are given',
+    'Not all black dots are given.',
+    'All black dots are given except in row 1.',
+    'All black dots are given.\nDots also count diagonally.',
+  ]
+  mock.method(globalThis, 'fetch', async () => new Response(
+    '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: { ...publication, description: descriptions.shift() } }) + '</script>'))
+  const expected = { code, coach: { title: publication.name, hasAuthorInstructions: true } }
+  assert.deepEqual(await (await request('sudoku-coach/K95q')).json(),
+    { ...expected, coach: { ...expected.coach, authoredRule: 'all-black-dots' } })
+  while (descriptions.length) assert.deepEqual(await (await request('sudoku-coach/K95q')).json(), expected)
+})
