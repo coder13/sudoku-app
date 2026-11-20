@@ -45,7 +45,7 @@ export function useNumberPuzzleGeneration(game: GeneratedNumberGame | null, repl
           sendFullHistory()
           return
         }
-        const board = generatedNumberToken(data)
+        const board = generatedNumberToken(data?.board ?? data)
         if (!board) {
           fail()
           return
@@ -53,8 +53,17 @@ export function useNumberPuzzleGeneration(game: GeneratedNumberGame | null, repl
         // The worker closes itself after any background index write.
         worker.onmessage = null
         worker.onerror = null
-        await openGeneratedNumberPuzzle(game, board)
-        if (workerRef.current !== worker) return
+        try {
+          await openGeneratedNumberPuzzle(game, board)
+        } catch {
+          if (workerRef.current === worker) fail()
+          else worker.terminate()
+          return
+        }
+        if (workerRef.current !== worker) {
+          worker.terminate()
+          return
+        }
         void router.navigate({
           to: `/puzzles/${game}/$puzzle`,
           params: { puzzle: 'generated' },
@@ -62,6 +71,9 @@ export function useNumberPuzzleGeneration(game: GeneratedNumberGame | null, repl
           state: { fromNumberDifficulty: game },
           replace,
         }).then(() => {
+          if (data?.indexPending) {
+            window.requestAnimationFrame(() => window.setTimeout(() => worker.postMessage({ boardOpened: true }), 0))
+          }
           if (!replace) rememberNumberDifficulty(game, difficulty)
           workerRef.current = null
           setPending(null)

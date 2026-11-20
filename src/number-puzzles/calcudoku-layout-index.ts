@@ -143,7 +143,10 @@ function selectionHistory(layouts: readonly (Layout | undefined)[]) {
   return { signatures, recipes }
 }
 
-export async function generateIndexedCalcudoku(request: GenerationOptions, publish: (token: string) => void) {
+export async function generateIndexedCalcudoku(
+  request: GenerationOptions,
+  publish: (token: string, indexPending?: boolean) => Promise<void>,
+) {
   const db = await openLayoutIndex()
   try {
     const { difficulty } = request
@@ -160,8 +163,8 @@ export async function generateIndexedCalcudoku(request: GenerationOptions, publi
         const selection = selectCalcudokuPlay(request, recent, selectionHistory(group))
         const recipe = selection.recipe ??
           olderCalcudoku(difficulty, sessions.map(({ id }) => id), selection.excluded) ?? selection.catalogRecipe()
-        publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()))
-        // The first board can open while the disposable index is populated.
+        // Let the board open before the index writes compete with the session save.
+        await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()), Boolean(last || reset))
         if (last || reset) await saveLayouts(db, checkpoint, last, additions, true).catch(() => {})
         return
       }
@@ -173,7 +176,7 @@ export async function generateIndexedCalcudoku(request: GenerationOptions, publi
         const { sessions: history } = await readCalcudokuSessions()
         recipe = olderCalcudoku(difficulty, history.map(({ id }) => id), selection.excluded) ?? selection.catalogRecipe()
       }
-      publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()))
+      await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()))
       return
     }
     throw new Error('Calcudoku layout history changed during indexing.')
