@@ -229,18 +229,18 @@ test('puzzle Undo and Redo stay enabled during chain drawing when history exists
     inputSize: 210, panelHeight: 280, setPanelHeight() {}, beginResize() {},
     multi: false, toggleMulti() {}, compact: true, chainDrawing: true,
   }
-  const buttonTag = (html: string, label: string) => [...html.matchAll(/<button\\b[^>]*>/g)]
+  const buttonTag = (html: string, label: string) => [...html.matchAll(/<button\b[^>]*>/g)]
     .map(([tag]) => tag).find(tag => tag.includes(`aria-label="${label}"`)) ?? ''
 
   const available = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: true, canRedo: true }))
-  assert.doesNotMatch(buttonTag(available, 'Undo'), /\\bdisabled(?:=|\\s|>|\\/)/)
-  assert.doesNotMatch(buttonTag(available, 'Redo'), /\\bdisabled(?:=|\\s|>|\\/)/)
+  assert.doesNotMatch(buttonTag(available, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
+  assert.doesNotMatch(buttonTag(available, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
 
   const noHistory = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: false, canRedo: false }))
-  assert.match(buttonTag(noHistory, 'Undo'), /\\bdisabled(?:=|\\s|>|\\/)/)
-  assert.match(buttonTag(noHistory, 'Redo'), /\\bdisabled(?:=|\\s|>|\\/)/)
+  assert.match(buttonTag(noHistory, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
+  assert.match(buttonTag(noHistory, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
 
   const locked = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: true, canRedo: true, disabled: true }))
-  assert.match(buttonTag(locked, 'Undo'), /\\bdisabled(?:=|\\s|>|\\/)/)
-  assert.match(buttonTag(locked, 'Redo'), /\\bdisabled(?:=|\\s|>|\\/)/)
+  assert.match(buttonTag(locked, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
+  assert.match(buttonTag(locked, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
 })
