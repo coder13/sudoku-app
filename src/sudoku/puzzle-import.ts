@@ -473,7 +473,7 @@ function readCoachSized(data: Record<string, unknown>) {
     ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
   if (active.some(rule => !record(rule) || !['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban'].includes(String(rule.type)))) {
-    throw new Error('This Sudoku Coach export includes an unsupported active rule.')
+    throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }
   const rules = readCoachRules(active)
   if (!isSizedRuleList(rules, grid.size)) throw new Error('This Sudoku Coach export contains invalid rules.')
