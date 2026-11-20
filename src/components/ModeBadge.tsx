@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import { Delete, Highlighter, Link2, Pen, Pencil } from 'lucide-react'
+import { Delete, Highlighter, Link2, Palette, Pen, Pencil } from 'lucide-react'
 import { MODE_BADGE_EDGES, type ModeBadgePosition } from '../sudoku/play-preferences'
+import type { PuzzleInputMode } from '../sudoku/puzzle-input-mode'
 
 const MODES = {
   pen: { label: 'Pen', Icon: Pen },
   pencil: { label: 'Pencil', Icon: Pencil },
   highlight: { label: 'Highlight', Icon: Highlighter },
   erase: { label: 'Erase', Icon: Delete },
+  color: { label: 'Color', Icon: Palette },
   chain: { label: 'Chain drawing', Icon: Link2 },
 } as const
 
@@ -22,7 +24,7 @@ type BadgeDrag = {
 }
 
 export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, onActivate, boundaryLabel = 'puzzle card' }: {
-  mode: keyof typeof MODES
+  mode: PuzzleInputMode
   descriptionId: string
   cardRef: RefObject<HTMLElement | null>
   position: ModeBadgePosition
