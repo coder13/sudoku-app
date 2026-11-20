@@ -9,11 +9,11 @@ import {
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import { techniqueLabel } from '../sudoku/hints'
-import { sixGridForBoxRows } from '../sudoku/grid'
+import { rectangularGridForBoxRows, rectangularLayouts, type RectangularBoxRows } from '../sudoku/grid'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, FIVE_JIGSAW_NAME, FIVE_JIGSAW_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, SEVEN_BOXLESS_NAME, SEVEN_JIGSAW_NAME, SEVEN_JIGSAW_RULE, SIX_NAME, SIX_RULE, newPuzzleVariants, sizedGridName, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, EIGHT_NAME, EIGHT_RULE, FIVE_JIGSAW_NAME, FIVE_JIGSAW_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, SEVEN_BOXLESS_NAME, SEVEN_JIGSAW_NAME, SEVEN_JIGSAW_RULE, SIX_NAME, SIX_RULE, newPuzzleVariants, rectangularBoxRows, rectangularPuzzleSize, sizedGridName, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel, variantName } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
 import { VariantPreview } from './VariantPreview'
@@ -105,6 +105,7 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
         <option value="six">{SIX_NAME}</option>
         <option value="jigsaw-five">{FIVE_JIGSAW_NAME}</option>
         <option value="jigsaw-seven">{SEVEN_JIGSAW_NAME}</option>
+        <option value="eight">{EIGHT_NAME}</option>
         <option value="boxless-seven">{SEVEN_BOXLESS_NAME}</option>
         <option value="algebraic-cages">{ALGEBRAIC_CAGES_NAME}</option>
         <option value="mixed">Mixed rules</option>
@@ -166,13 +167,15 @@ function PuzzleLibrary({ games, active, manage, loading }: {
 function NewPuzzleVariant({ variant, ruleset, boxRows, onCreate }: {
   variant: NewPuzzleId
   ruleset?: GenerationRulesetId
-  boxRows?: 2 | 3
-  onCreate: (variant: NewPuzzleId, boxRows?: 2 | 3) => void
+  boxRows?: RectangularBoxRows
+  onCreate: (variant: NewPuzzleId, boxRows?: RectangularBoxRows) => void
 }) {
   const navigate = useNavigate()
   const index = newPuzzleVariants.indexOf(variant)
+  const rectangularSize = rectangularPuzzleSize(variant)
   const { name, rule } = variant === 'mini' ? { name: MINI_NAME, rule: MINI_RULE }
     : variant === 'six' ? { name: SIX_NAME, rule: SIX_RULE }
+    : variant === 'eight' ? { name: EIGHT_NAME, rule: EIGHT_RULE }
     : variant === 'jigsaw-five' ? { name: FIVE_JIGSAW_NAME, rule: FIVE_JIGSAW_RULE }
     : variant === 'jigsaw-seven' ? { name: SEVEN_JIGSAW_NAME, rule: SEVEN_JIGSAW_RULE }
     : variant === 'algebraic-cages' ? { name: ALGEBRAIC_CAGES_NAME, rule: ALGEBRAIC_CAGES_RULE } : VARIANTS[variant]
@@ -205,12 +208,14 @@ function NewPuzzleVariant({ variant, ruleset, boxRows, onCreate }: {
     {!isSizedPuzzleId(variant) && <VariantRulesetSelector variant={variant} value={ruleset} onChange={next => {
       void navigate({ to: '/puzzles/new', search: { variant, ruleset: next }, replace: true, resetScroll: false })
     }} />}
-    {variant === 'six' && <label className="dialog-form">Box layout
+    {rectangularSize && <label className="dialog-form">Box layout
       <SelectControl value={boxRows ?? 2} onChange={event => {
-        void navigate({ to: '/puzzles/new', search: { variant, boxRows: event.target.value === '3' ? 3 : 2 }, replace: true, resetScroll: false })
+        const orientation = rectangularBoxRows(variant, Number(event.currentTarget.value))
+        void navigate({ to: '/puzzles/new', search: { variant, boxRows: orientation }, replace: true, resetScroll: false })
       }}>
-        <option value={2}>2 × 3 boxes</option>
-        <option value={3}>3 × 2 boxes</option>
+        {rectangularLayouts(rectangularSize).map(layout => <option key={layout.boxRows} value={layout.boxRows}>
+          {layout.boxRows} × {layout.boxColumns} boxes
+        </option>)}
       </SelectControl>
     </label>}
     <Link to="/puzzles/new/difficulty" search={{ variant, ruleset, boxRows }} state={{ fromPuzzleVariantPicker: true }}
@@ -229,7 +234,7 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
   variant: NewPuzzleId
   ruleset?: GenerationRulesetId
   difficulty: DifficultyPreference
-  boxRows?: 2 | 3
+  boxRows?: RectangularBoxRows
   save: (preference: NewPuzzlePreference) => void
 }) {
   const { busy, error, generate } = usePuzzleGeneration()
@@ -247,11 +252,13 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
     void generate(selected, onGenerated, variant, { ruleset: preset?.id, boxRows })
   }
 
-  const name = preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : variant === 'jigsaw-five' ? FIVE_JIGSAW_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : VARIANTS[variant].name)
+  const name = preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : variant === 'eight' ? EIGHT_NAME : variant === 'jigsaw-five' ? FIVE_JIGSAW_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : VARIANTS[variant].name)
+  const rectangularSize = rectangularPuzzleSize(variant)
+  const layout = rectangularSize ? rectangularGridForBoxRows(rectangularSize, boxRows) : undefined
   return <PuzzleDifficultyStep name={name} preview={<VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} />}
     busy={busy} error={error} onStart={start}
     startLabel={selected === 'auto' ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}>
-    {variant === 'six' && <p>{sixGridForBoxRows(boxRows).boxRows} × {sixGridForBoxRows(boxRows).boxColumns} boxes</p>}
+    {layout && <p>{layout.boxRows} × {layout.boxColumns} boxes</p>}
     {!sized && <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: next }, replace: true, resetScroll: false })
     }} />}
@@ -315,7 +322,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   rememberNewPuzzle: (preference: NewPuzzlePreference) => void
   preferencesReady: boolean
   loadingPuzzles: boolean
-  onCreatePuzzle: (variant: NewPuzzleId, boxRows?: 2 | 3) => void
+  onCreatePuzzle: (variant: NewPuzzleId, boxRows?: RectangularBoxRows) => void
   error?: string
 }) {
   const router = useRouter()
@@ -337,7 +344,8 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const screen = section === 'new' ? difficultyScreen ? 'difficulty' : 'variant' : undefined
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
   const ruleset = isSizedPuzzleId(variant) ? undefined : generationRuleset(variant, newPuzzleSearch?.ruleset ?? newPuzzlePreference.ruleset)?.id
-  const boxRows = variant === 'six' ? newPuzzleSearch?.boxRows ?? newPuzzlePreference.boxRows ?? 2 : undefined
+  const boxRows = rectangularBoxRows(variant, newPuzzleSearch?.boxRows ?? newPuzzlePreference.boxRows)
+    ?? (rectangularPuzzleSize(variant) ? 2 : undefined)
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
     : screen === 'variant' ? 'Choose a variant'
       : section === 'puzzles' ? 'Puzzles'

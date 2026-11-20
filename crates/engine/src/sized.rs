@@ -24,7 +24,7 @@ mod generation;
 #[cfg(all(feature = "generation", feature = "variants"))]
 pub use generation::{GeneratedAlgebraic, generate_algebraic};
 #[cfg(feature = "generation")]
-pub use generation::{MiniDifficulty, generate_five_jigsaw, generate_jigsaw, generate_mini, generate_six};
+pub use generation::{MiniDifficulty, generate_eight, generate_five_jigsaw, generate_jigsaw, generate_mini, generate_six};
 
 /// Wire version for a sized Classic grid. Version 1 uses the original 9×9 format.
 pub const SIZED_GRID_VERSION: u8 = 2;

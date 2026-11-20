@@ -120,8 +120,8 @@ const givens = (value, size = 9) => typeof value === 'string' && value.length ==
 const boolean = value => typeof value === 'boolean'
 const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
-const sixGrid = value => fields(value, { size: oneOf(6), boxRows: oneOf(2), boxColumns: oneOf(3) }) ||
-  fields(value, { size: oneOf(6), boxRows: oneOf(3), boxColumns: oneOf(2) })
+const rectangularGrid = value => fields(value, { size: oneOf(6, 8), boxRows: oneOf(2, 3, 4), boxColumns: oneOf(2, 3, 4) }) &&
+  value.boxRows * value.boxColumns === value.size
 const sharesGridEdge = (a, b, size) =>
   Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1
 function jigsawGrid(value) {
@@ -138,7 +138,7 @@ function jigsawGrid(value) {
   })
 }
 const sevenBoxlessGrid = value => fields(value, { size: oneOf(7), noRegions: oneOf(true) })
-const sizedGrid = value => miniGrid(value) || sixGrid(value) || jigsawGrid(value) || sevenBoxlessGrid(value)
+const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || sevenBoxlessGrid(value)
 function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
@@ -268,7 +268,7 @@ async function sharePuzzle(request, db, path) {
       version: oneOf(1), title: title => typeof title === 'string' && title.trim().length > 0 && title.length <= 72,
       givens: value => givens(value, data.grid?.size),
     }, { grid: sizedGrid, algebraic: value => data.grid?.size === 4 && algebraic(value),
-      sixRules: value => sixGrid(data.grid) && sizedRules(value, data.grid) && !Object.hasOwn(data, 'sizedRules'),
+      sixRules: value => data.grid?.size === 6 && rectangularGrid(data.grid) && sizedRules(value, data.grid) && !Object.hasOwn(data, 'sizedRules'),
       sixAuthor: value => Object.hasOwn(data, 'sixRules') && ruleAuthor(value),
       sizedRules: value => sizedGrid(data.grid) &&
         !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),

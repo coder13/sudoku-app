@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { type DifficultyPreference } from '../sudoku/difficulty'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
-import { EngineError, runEngine, type SixGrid } from '../sudoku/engine'
+import { EngineError, runEngine } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
@@ -9,8 +9,8 @@ import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
 import { verifySizedRulePuzzle } from '../sudoku/sized-rule-game'
-import { fiveJigsawForSeed, MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
-import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, sizedGridName, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { fiveJigsawForSeed, MINI_GRID, rectangularGridForBoxRows, sevenJigsawForSeed, type RectangularBoxRows } from '../sudoku/grid'
+import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, rectangularPuzzleSize, sizedGridName, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, variantDifficulty } from '../sudoku/variants'
 import { generationRuleset, type VariantGenerationOptions } from '../sudoku/variant-rulesets'
 
@@ -30,7 +30,7 @@ export function usePuzzleGeneration() {
     return () => { mounted.current = false }
   }, [])
 
-  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: SixGrid['boxRows'] }) {
+  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: RectangularBoxRows }) {
     if (pending.current) return
     pending.current = true
     setBusy(true)
@@ -50,13 +50,14 @@ export function usePuzzleGeneration() {
         onGenerated?.()
         return
       }
-      if (variant === 'six' || variant === 'jigsaw-five' || variant === 'jigsaw-seven') {
+      if (variant === 'six' || variant === 'eight' || variant === 'jigsaw-five' || variant === 'jigsaw-seven') {
         const difficulty = miniDifficulty(preference)
-        const grid = variant === 'six' ? sixGridForBoxRows(options?.boxRows)
+        const size = rectangularPuzzleSize(variant)
+        const grid = size ? rectangularGridForBoxRows(size, options?.boxRows)
           : variant === 'jigsaw-five' ? fiveJigsawForSeed(seed) : sevenJigsawForSeed(seed)
         const exclude = roomStore.playedSizedGivens(grid).map(givens => Array.from(givens, Number))
-        const givens = (await runEngine(grid.size === 6
-          ? { type: 'generate-six', seed, difficulty, grid, exclude }
+        const givens = (await runEngine('boxRows' in grid
+          ? { type: 'generate-rectangular', seed, difficulty, grid, exclude }
           : { type: 'generate-jigsaw', seed, difficulty, grid, exclude })).join('')
         const sized = await verifySizedRulePuzzle({ grid, givens, rules: [] })
         if (!mounted.current) return
