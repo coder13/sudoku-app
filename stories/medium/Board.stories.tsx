@@ -2,7 +2,7 @@ import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Board } from '../../src/components/Board'
 import { conflictsOf, enter, paintCandidates, valuesOf } from '../../src/sudoku/game'
-import { MINI_GRID } from '../../src/sudoku/grid'
+import { MINI_GRID, SEVEN_BOXLESS_GRID } from '../../src/sudoku/grid'
 import { lessonDiagram, lessonValues } from '../../src/sudoku/lesson-diagram'
 import { inProgress, lessonExamples, starter } from '../support/fixtures'
 import { LessonFrame, Width } from '../support/frames'
@@ -51,6 +51,17 @@ export const SevenJigsawThermometer: Story = {
     givens: '0'.repeat(49), values: '0'.repeat(49),
     sizedRules: [{ type: 'thermometer', cells: [8, 16, 24] }],
     selected: [24], candidates: Array.from({ length: 49 }, (_, cell) => cell === 24 ? 0b1100000 : 0),
+  },
+  decorators: [(Story) => <Width width={385}><Story /></Width>],
+}
+export const SevenBoxlessKiller: Story = {
+  args: {
+    grid: SEVEN_BOXLESS_GRID, givens: '0'.repeat(49), values: '0'.repeat(49),
+    sizedRules: [
+      { type: 'killer-cages', cages: [{ cells: [0, 1, 2, 7, 8, 14], sum: 26 }, { cells: [3, 4], sum: 8 }] },
+      { type: 'extra-house', cells: [6, 12, 18, 24, 30, 36, 42] },
+    ],
+    selected: [0],
   },
   decorators: [(Story) => <Width width={385}><Story /></Width>],
 }

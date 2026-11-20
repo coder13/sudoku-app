@@ -86,6 +86,7 @@ impl TryFrom<Rule> for SizedConstraint {
     fn try_from(rule: Rule) -> Result<Self, Self::Error> {
         Ok(match rule {
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
+            Rule::Variant(PuzzleRule::ExtraHouse { cells }) => Self::ExtraHouse { cells },
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
             Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
@@ -96,6 +97,7 @@ impl TryFrom<Rule> for SizedConstraint {
                 validate_drawing(&cells, segments, "Renban drawing paths must cover the same cells as the line.")?;
                 Self::Renban { cells }
             }
+            Rule::Variant(PuzzleRule::KillerCages { cages, cover_grid }) => Self::KillerCages { cages, cover_grid },
             Rule::Variant(PuzzleRule::RegionSum { cells, group_by_region, segments }) => {
                 validate_drawing(&cells, segments, "Region Sum drawing paths must cover the same cells as the line.")?;
                 Self::RegionSum { cells, group_by_region }

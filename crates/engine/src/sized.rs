@@ -29,6 +29,8 @@ pub use generation::{MiniDifficulty, generate_jigsaw, generate_mini, generate_si
 /// Wire version for a sized Classic grid. Version 1 uses the original 9×9 format.
 pub const SIZED_GRID_VERSION: u8 = 2;
 const MAX_SIZE: usize = 16;
+const NO_REGION: usize = 3 * MAX_SIZE;
+const HOUSE_SLOTS: usize = NO_REGION + 1;
 
 /// The dimensions of a square grid and its boxes, measured in cells.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -146,14 +148,35 @@ impl SizedGrid {
         Some(Self::from_region_ids(size, region_ids.into_iter()))
     }
 
+    /// Build row and column houses without default regions.
+    pub fn without_regions(size: usize) -> Option<Self> {
+        if !(4..=MAX_SIZE).contains(&size) {
+            return None;
+        }
+        Some(Self::from_memberships(size, 2 * size, (0..size * size).map(|cell| {
+            [cell / size, size + cell % size, NO_REGION]
+        })))
+    }
+
     fn from_region_ids(size: usize, regions: impl Iterator<Item = usize>) -> Self {
-        let mut houses: Vec<_> = (0..3 * size).map(|_| Vec::with_capacity(size)).collect();
-        let memberships = regions.enumerate().map(|(cell, region)| {
-            let memberships = [cell / size, size + cell % size, 2 * size + region];
-            for house in memberships {
-                houses[house].push(cell);
+        Self::from_memberships(size, 3 * size, regions.enumerate().map(|(cell, region)| {
+            [cell / size, size + cell % size, 2 * size + region]
+        }))
+    }
+
+    fn from_memberships(
+        size: usize,
+        house_count: usize,
+        memberships: impl Iterator<Item = [usize; 3]>,
+    ) -> Self {
+        let mut houses: Vec<_> = (0..house_count).map(|_| Vec::with_capacity(size)).collect();
+        let memberships = memberships.enumerate().map(|(cell, indices)| {
+            for house in indices {
+                if let Some(cells) = houses.get_mut(house) {
+                    cells.push(cell);
+                }
             }
-            memberships
+            indices
         }).collect();
         Self {
             size,
@@ -163,9 +186,13 @@ impl SizedGrid {
         }
     }
 
-    /// Number of rows, columns, regions, and digits in the layout.
+    /// Number of rows, columns and digits in the layout.
     pub fn size(&self) -> usize {
         self.size
+    }
+
+    pub fn has_regions(&self) -> bool {
+        self.houses.len() > 2 * self.size
     }
 
     /// Mask containing every legal digit in the layout.
@@ -363,6 +390,9 @@ impl SizedGrid {
     }
 
     fn locked_candidates(&self, masks: &[u16], choices: &mut Vec<SizedDeduction>, limit: usize) {
+        if !self.has_regions() {
+            return;
+        }
         let size = self.size;
         for (source, cells) in self.houses.iter().enumerate() {
             for digit in 1..=size as u8 {
@@ -424,11 +454,11 @@ impl SizedGrid {
         }
     }
 
-    fn used_digits(&self, digits: &[u8]) -> Option<[u16; 3 * MAX_SIZE]> {
+    fn used_digits(&self, digits: &[u8]) -> Option<[u16; HOUSE_SLOTS]> {
         if digits.len() != self.cell_count() {
             return None;
         }
-        let mut used = [0; 3 * MAX_SIZE];
+        let mut used = [0; HOUSE_SLOTS];
         for (cell, &digit) in digits.iter().enumerate() {
             if digit == 0 {
                 continue;
@@ -445,14 +475,17 @@ impl SizedGrid {
         Some(used)
     }
 
-    fn available(&self, cell: usize, used: &[u16; 3 * MAX_SIZE]) -> u16 {
+    fn available(&self, cell: usize, used: &[u16; HOUSE_SLOTS]) -> u16 {
         let [row, column, region] = self.memberships[cell];
         self.full_mask & !(used[row] | used[column] | used[region])
     }
 
-    fn toggle(&self, cell: usize, bit: u16, used: &mut [u16; 3 * MAX_SIZE]) {
-        for house in self.memberships[cell] {
-            used[house] ^= bit;
+    fn toggle(&self, cell: usize, bit: u16, used: &mut [u16; HOUSE_SLOTS]) {
+        let [row, column, region] = self.memberships[cell];
+        used[row] ^= bit;
+        used[column] ^= bit;
+        if region != NO_REGION {
+            used[region] ^= bit;
         }
     }
 
@@ -510,7 +543,7 @@ impl SizedGrid {
         digits: &[u8],
         budget: u32,
         limit: u8,
-        mut filter: impl FnMut(&[u8], &[u16; 3 * MAX_SIZE], &mut [u16]) -> bool,
+        mut filter: impl FnMut(&[u8], &[u16; HOUSE_SLOTS], &mut [u16]) -> bool,
     ) -> (Analysis, Option<Vec<u8>>) {
         let Some(mut used) = self.used_digits(digits) else {
             return (Analysis::Conflict, None);
@@ -572,9 +605,9 @@ impl Search<'_> {
     fn visit<const FILTERED: bool>(
         &mut self,
         digits: &mut [u8],
-        used: &mut [u16; 3 * MAX_SIZE],
+        used: &mut [u16; HOUSE_SLOTS],
         domains: &mut [u16],
-        filter: &mut impl FnMut(&[u8], &[u16; 3 * MAX_SIZE], &mut [u16]) -> bool,
+        filter: &mut impl FnMut(&[u8], &[u16; HOUSE_SLOTS], &mut [u16]) -> bool,
     ) -> Option<()> {
         self.budget = self.budget.checked_sub(1)?;
         if !filter(digits, used, domains) {
