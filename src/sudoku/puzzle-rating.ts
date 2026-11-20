@@ -7,7 +7,7 @@ export type PuzzleGrade = RatingAttempt['grade']
 
 export async function ratePuzzle(givens: string, variant?: Game['variant']): Promise<PuzzleGrade | null> {
   const rating = variant
-    ? await runEngine({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder() })
+    ? await runEngine({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder(variant.puzzle) })
     : await runEngine({ type: 'rate', values: givens, techniqueOrder: (await runEngine({ type: 'techniques' })).difficultyOrder })
   if (rating.status === 'stalled') return null
   return {

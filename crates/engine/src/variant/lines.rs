@@ -1,4 +1,4 @@
-mod groups;
+pub(super) mod groups;
 
 use std::{collections::HashMap, ops::Range};
 
@@ -34,6 +34,13 @@ enum OutsideClue {
 }
 
 impl LineConstraint {
+    pub(super) fn group_line(&self) -> Option<&groups::GroupLine> {
+        match &self.kind {
+            LineKind::ThreeGroups(line) => Some(line),
+            _ => None,
+        }
+    }
+
     pub fn compile(
         puzzle: &mut CompiledVariant,
         index: usize,

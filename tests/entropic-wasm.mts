@@ -23,8 +23,8 @@ const expected = [
   ['clover', 626, 73, 1036, 73, true, true],
   ['EoGB', 452, 69, 982, 69, true, true],
   ['BSEJ', 89, 5, 1573, 92, false, true],
-  ['Hyk5', 180, 9, 1680, 12, false, false],
-  ['Hafj', 107, 5, 107, 5, false, false],
+  ['Hyk5', 180, 9, 4444, 35, false, false],
+  ['Hafj', 107, 5, 882, 23, false, false],
   ['Ksy3', 2340, 159, 2680, 159, true, true],
 ] as const
 for (const [
@@ -73,7 +73,7 @@ for (const [
         nativeSteps,
         nativeComplete,
       ],
-      [await getVariantPlayOrder(), appPoints, appSteps, appComplete],
+      [await getVariantPlayOrder(puzzle), appPoints, appSteps, appComplete],
     ] as const
     for (const [techniqueOrder, points, steps, complete] of orders) {
       const trace = await runEngine({
@@ -84,6 +84,8 @@ for (const [
       })
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
+      const hasGroupProof = trace.steps.some(proof => proof.technique === 'group-line-house-support')
+      assert.equal(trace.rating.scoringVersion, hasGroupProof ? 9 : 8)
       if (complete) assert.deepEqual(trace.rating.status, { solved: 'medium' })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game
@@ -119,6 +121,67 @@ for (const [
     }
   })
 }
+
+test('the two published Entropic row-four proofs appear in hints and Finder at the old stalls', async () => {
+  const technique = 'group-line-house-support'
+  for (const [index, id] of ['Hyk5', 'Hafj'].entries()) {
+    const source = load('coach').examples.find((item: { url: string }) => item.url.endsWith(id))
+    const { game } = await prepareImportedPuzzle(source.code)
+    const variant = game.variant!, { puzzle } = variant
+    const position = variantPosition(variant)
+    const legacy = await runEngine({
+      type: 'variant', operation: 'trace', position, techniqueOrder: await getVariantPlayOrder(),
+    })
+    assert.equal(legacy.steps.length, index === 0 ? 12 : 5)
+    assert.equal(legacy.rating.scoringVersion, 8)
+    let played = game
+    for (const { actions } of legacy.steps)
+      played = applyDeduction(played, actions, variantHouseMasks(puzzle, valuesOf(played)))
+
+    const collection = 2051 + index
+    const selected = await puzzleHints(played, 'all', technique, collection)
+    const all = [...selected.choices]
+    while (all.length < selected.available) {
+      const page = await puzzleHintPage(variant, collection, all.length)
+      assert.ok(page.choices.length)
+      all.push(...page.choices)
+    }
+    const current = await puzzleHints(played)
+    assert.ok(current.choices.some(choice => choice.technique === technique))
+    const row = all.find(choice => {
+      const source = 'variant' in choice.evidence ? choice.evidence.variant.source?.deduction.evidence : undefined
+      return source?.type === 'group-line-house' && 'row' in source.house && source.house.row === 3
+    })
+    assert.ok(row && 'variant' in row.evidence)
+    assert.match(row.evidence.variant.description, /repeats three groups.*row 4/)
+    assert.match(row.evidence.variant.reason, /Only these group orders fit row 4/)
+    const proof = row.evidence.variant.source!.deduction.evidence
+    assert.ok(proof.type === 'group-line-house')
+    assert.equal(proof.lineCells.length, index === 0 ? 36 : 21)
+    assert.deepEqual(proof.cases.filter(order => !order.conflict).map(order => order.groups),
+      index === 0 ? [[7, 56, 448], [56, 7, 448]] : [[7, 56, 448], [448, 56, 7]])
+    for (const action of row.actions) {
+      assert.ok('eliminate' in action)
+      assert.notEqual(Number(source.solution[action.eliminate.cell]), action.eliminate.digit)
+    }
+    const scan = watchTechniqueScan(valuesOf(played), played.position.eliminations, variantPosition(variant, played.position))
+    try {
+      assert.deepEqual((await puzzleHintPage(variant, collection, 0)).choices, selected.choices)
+      assert.equal(await scan.count(technique),
+        new Set(all.flatMap(item => item.actions.map(action => JSON.stringify(action)))).size)
+    } finally {
+      scan.close()
+      await runEngine({ type: 'release-hints', collection })
+    }
+    const path = await puzzleSolution(game)
+    assert.equal(path.rating.status, 'stalled')
+    assert.equal(path.rating.scoringVersion, 9)
+    const stepIndex = path.steps.findIndex(hint => hint.technique === technique)
+    assert.ok(stepIndex >= 0)
+    const replay = await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder: await getVariantPlayOrder(puzzle), stepIndex })
+    assert.deepEqual(replay?.deduction.actions, path.steps[stepIndex].actions)
+  }
+})
 
 test('selected Entropic proofs survive every page and Finder without changing exact validation', async () => {
   const rules = [...clover.puzzle.rules!]

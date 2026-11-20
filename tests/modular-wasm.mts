@@ -24,7 +24,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 420, 21, 2000, 25, false, false, 'medium'],
+  ['HCHW', 420, 21, 2192, 28, false, false, 'medium'],
 ] as const
 for (const [
   id,
@@ -73,7 +73,7 @@ for (const [
         nativeSteps,
         nativeComplete,
       ],
-      [await getVariantPlayOrder(), appPoints, appSteps, appComplete],
+      [await getVariantPlayOrder(puzzle), appPoints, appSteps, appComplete],
     ] as const
     for (const [techniqueOrder, points, steps, complete] of orders) {
       const trace = await runEngine({
@@ -84,6 +84,8 @@ for (const [
       })
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
+      const hasGroupProof = trace.steps.some(proof => proof.technique === 'group-line-house-support')
+      assert.equal(trace.rating.scoringVersion, hasGroupProof ? 9 : 8)
       if (complete) assert.deepEqual(trace.rating.status, { solved: difficulty })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game

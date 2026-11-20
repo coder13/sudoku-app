@@ -281,6 +281,33 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = 'No assignment that puts a crossed-out digit in its marked cell reaches the required sum.'
       break
     }
+    case 'group-line-house': {
+      cells = evidence.cells
+      const rule = puzzle.rules?.[evidence.rule]
+      const family = rule?.type === 'modular' ? 'Modular' : 'Entropic'
+      const list = new Intl.ListFormat('en', { type: 'conjunction' })
+      const group = (mask: number) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+      const phaseOrder = (groups: number[]) => groups.map(mask => group(mask).join(', ')).join(' / ')
+      const failed = evidence.cases.flatMap(({ groups, conflict }) => {
+        if (!conflict) return []
+        const digits = group(conflict.digits)
+        const placeNames = list.format(conflict.cells.map(nameCell))
+        const digitNames = list.format(digits.map(String))
+        const limit = !conflict.cells.length ? `there is no place for ${digitNames}`
+          : !digits.length ? `${placeNames} would have no candidate`
+          : conflict.cells.length < digits.length ? `${digitNames} could go only in ${placeNames}`
+            : `${placeNames} could use only ${digitNames}`
+        return [`With groups ${phaseOrder(groups)}, ${limit}.`]
+      })
+      const house = houseLabel(evidence.house)
+      description = `The ${family} line starts at ${nameCell(evidence.lineCells[0])} and repeats three groups. Fit its highlighted cells into ${house} without repeating a digit.`
+      const remaining = evidence.cases.filter(example => !example.conflict)
+      const choices = remaining.map(({ groups }) => phaseOrder(groups))
+      const surviving = failed.length ? `Only these group orders fit ${house}. ${alternatives.format(choices)}.` : ''
+      reason = [...failed.slice(0, 2), surviving,
+        'Check the candidates in the house for the group orders that fit. None of the full assignments uses the crossed-out digits.'].filter(Boolean).join(' ')
+      break
+    }
     case 'line-houses': {
       cells = evidence.cells
       const gap = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'whispers')

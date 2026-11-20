@@ -72,7 +72,7 @@ test('sixty successive actual Medium puzzles are distinct, rule-dependent and ha
       if ('place' in action) assert.equal(action.place.digit, Number(value.solution[action.place.cell]))
       else assert.notEqual(action.eliminate.digit, Number(value.solution[action.eliminate.cell]))
     }
-    const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: value.puzzle }, techniqueOrder: await getVariantPlayOrder() })
+    const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: value.puzzle }, techniqueOrder: await getVariantPlayOrder(value.puzzle) })
     assert.equal(trace.rating.points, value.rating.points); assert.equal(trace.rating.hardest, value.rating.hardest)
     assert.deepEqual(trace.rating.counts, value.rating.counts); assert.deepEqual(trace.rating.status, value.rating.status)
     let played = game
@@ -90,7 +90,8 @@ test('sixty successive actual Medium puzzles are distinct, rule-dependent and ha
 })
 
 test('generation is deterministic, reaches a checked fallback after a fresh miss and rejects unavailable levels', async () => {
-  const recipe = variantSeeds.modular.medium![12], order = await getVariantPlayOrder()
+  const recipe = variantSeeds.modular.medium![12]
+  const order = await getVariantPlayOrder(variantGenerationRequest('modular', 'medium', recipe, []).template)
   const fresh = variantGenerationRequest('modular', 'medium', recipe, order, 42); fresh.maxNodes = 20_000
   await assert.rejects(runEngine(fresh), error => error instanceof EngineError && error.code === 'search-limit')
   assert.deepEqual(await generatePlayableVariant('modular', 'medium', 42, []), await runEngine(variantGenerationRequest('modular', 'medium', recipe, order)))

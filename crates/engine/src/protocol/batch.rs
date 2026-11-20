@@ -77,6 +77,11 @@ fn batch_row(command: BatchCommand, line: usize, text: &str) -> Value {
         Err(error) => (Value::Null, Value::Null, SCORING_VERSION, Err(error)),
     };
     let (order, result) = result.unwrap_or_else(|error| (order, failure(command, error)));
+    let scoring_version = ["/value/rating/scoringVersion", "/value/scoringVersion", "/rating/scoringVersion"]
+        .into_iter()
+        .find_map(|path| result.pointer(path).and_then(Value::as_u64))
+        .and_then(|version| u32::try_from(version).ok())
+        .unwrap_or(scoring_version);
     record(line, seed, order, scoring_version, result)
 }
 

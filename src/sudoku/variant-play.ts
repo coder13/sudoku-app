@@ -1,4 +1,4 @@
-import { EngineError, runEngine, type Difficulty, type VariantPosition } from './engine.ts'
+import { EngineError, runEngine, type Difficulty, type VariantPosition, type VariantPuzzle } from './engine.ts'
 import { type Game, type Position, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
@@ -10,7 +10,11 @@ import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions
 
 let playOrder: Promise<string[]> | undefined
 
-export function getVariantPlayOrder() {
+function withGroupLineHouses(order: readonly string[]) {
+  return order.flatMap(id => id === 'skyscrapers' ? ['group-line-house-support', id] : [id])
+}
+
+export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
   playOrder ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
     .then(([variant, classic]) => variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder,
       Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty]))))
@@ -18,13 +22,15 @@ export function getVariantPlayOrder() {
       playOrder = undefined
       throw error
     })
-  return playOrder
+  return puzzle?.rules?.some(rule => rule.type === 'entropic' || rule.type === 'modular')
+    ? playOrder.then(withGroupLineHouses) : playOrder
 }
 
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions) {
   if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
-  const techniqueOrder = await getVariantPlayOrder()
+  const order = await getVariantPlayOrder()
+  const techniqueOrder = id === 'entropic' || id === 'modular' ? withGroupLineHouses(order) : order
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')
@@ -77,7 +83,7 @@ export async function playCandidates(game: Game) {
   }
 }
 
-export async function variantHintOrder() {
+export async function variantHintOrder(puzzle: VariantPuzzle) {
   const disabled = new Set(readDisabledHintTechniques())
-  return (await getVariantPlayOrder()).filter((id) => !disabled.has(id))
+  return (await getVariantPlayOrder(puzzle)).filter((id) => !disabled.has(id))
 }

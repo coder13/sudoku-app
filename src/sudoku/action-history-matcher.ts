@@ -17,7 +17,7 @@ export function actionHistoryMatcher(variant?: VariantGame, run: typeof runEngin
       const proofs = await run({
         type: 'variant', operation: 'hints',
         position: { puzzle: variant.puzzle, entries: position.values, eliminations: position.eliminations },
-        techniqueOrder: await getVariantPlayOrder(), limit: 64,
+        techniqueOrder: await getVariantPlayOrder(variant.puzzle), limit: 64,
       }, { background: true })
       return proofs
     }

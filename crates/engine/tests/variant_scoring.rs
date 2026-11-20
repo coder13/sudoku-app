@@ -28,6 +28,12 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::GroupLineHouse(proof) => {
+            let choices: u16 = proof.domains.iter()
+                .map(|domain| (u32::BITS - (domain.count_ones() - 1).leading_zeros()) as u16)
+                .sum();
+            return 34 + 2 * choices + 2 * proof.cases.len() as u16;
+        }
         VariantEvidence::LineHouses(proof) => {
             let (cells, domains, houses) = (&proof.cells, &proof.domains, &proof.houses);
             let choices: u16 = domains
@@ -76,7 +82,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
 fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
     let mut path_scores = Vec::new();
     let mut tiers = [0; 5];
-    for &technique in VariantTechnique::DEFAULT_ORDER {
+    for &technique in VariantTechnique::DEFAULT_ORDER.iter().chain(VariantTechnique::EXPLICIT_TECHNIQUES) {
         if matches!(
             technique,
             VariantTechnique::FullHouse
@@ -129,7 +135,8 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
                 panic!("{} calibration path stalled", technique.id());
             };
             assert_eq!(trace.rating.technique_order, order);
-            assert_eq!(trace.rating.scoring_version, VARIANT_SCORING_VERSION);
+            let version = if technique == VariantTechnique::GroupLineHouseSupport { 9 } else { VARIANT_SCORING_VERSION };
+            assert_eq!(trace.rating.scoring_version, version);
             assert_eq!(trace.rating.regions, position.puzzle.regions);
             assert_eq!(trace.rating.rules, position.puzzle.rules);
             let total: u32 = trace
@@ -161,7 +168,7 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
     }
     assert_eq!(
         path_scores.len(),
-        3 * (VariantTechnique::DEFAULT_ORDER.len() - 3)
+        3 * (VariantTechnique::DEFAULT_ORDER.len() + VariantTechnique::EXPLICIT_TECHNIQUES.len() - 3)
     );
     path_scores.sort_unstable();
     println!(

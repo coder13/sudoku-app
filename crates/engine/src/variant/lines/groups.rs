@@ -3,7 +3,7 @@ use crate::{CELLS, DIGITS};
 /// A path has at most six possible repeating group orders. Compile its walk
 /// onto distinct cells so every later support request uses one domain per cell.
 #[derive(Clone, Debug)]
-pub(super) struct GroupLine {
+pub(in crate::variant) struct GroupLine {
     partition: DigitGroups,
     phases: Vec<usize>,
     consistent: bool,
@@ -66,13 +66,16 @@ impl GroupLine {
         self.phases[a] != self.phases[b]
     }
 
-    pub(super) fn support(&self, domains: &[u16], support: &mut [u16]) {
-        if !self.consistent {
-            return;
-        }
-        // Cells three positions apart use the same group, not the same digit.
+    pub(in crate::variant) fn phases(&self) -> &[usize] {
+        &self.phases
+    }
+
+    pub(in crate::variant) fn possible_orders(
+        &self,
+        domains: &[u16],
+    ) -> impl Iterator<Item = [u16; 3]> {
         let groups = self.partition.masks();
-        let mut possible = [DIGITS; 3];
+        let mut possible = if self.consistent { [DIGITS; 3] } else { [0; 3] };
         for (&phase, &domain) in self.phases.iter().zip(domains) {
             for group in groups {
                 if domain & group == 0 {
@@ -80,16 +83,22 @@ impl GroupLine {
                 }
             }
         }
+        ORDERS
+            .into_iter()
+            .map(move |order| order.map(|i| groups[i]))
+            .filter(move |order| {
+                order
+                    .iter()
+                    .zip(possible)
+                    .all(|(&group, options)| group & options != 0)
+            })
+    }
+
+    pub(super) fn support(&self, domains: &[u16], support: &mut [u16]) {
         let mut supported = [0; 3];
-        for order in ORDERS {
-            if order
-                .iter()
-                .enumerate()
-                .all(|(phase, &group)| possible[phase] & groups[group] != 0)
-            {
-                for (phase, group) in order.into_iter().enumerate() {
-                    supported[phase] |= groups[group];
-                }
+        for order in self.possible_orders(domains) {
+            for (slot, group) in supported.iter_mut().zip(order) {
+                *slot |= group;
             }
         }
         for ((&phase, &domain), target) in self.phases.iter().zip(domains).zip(support) {

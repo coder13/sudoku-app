@@ -18,8 +18,9 @@ use crate::{
 #[path = "logical_tests.rs"]
 mod tests;
 
-/// Version of the point costs and difficulty thresholds for structured puzzles.
+/// Baseline scoring version for structured paths using the default catalog.
 pub const VARIANT_SCORING_VERSION: u32 = 8;
+const GROUP_LINE_HOUSE_SCORING_VERSION: u32 = 9;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -27,13 +28,19 @@ const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 mod exclusions;
 mod pruning;
 mod line_houses;
+mod group_line_houses;
 
 macro_rules! catalog {
-    ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
+    (
+        $($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+
+        @explicit
+        $($(#[$extra_doc:meta])* $extra:ident: $extra_id:literal, $extra_cost:expr, $extra_tier:ident;)+
+    ) => {
         /// Techniques with rule-based explanations on a structured 9 × 9 grid.
         #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
         pub enum VariantTechnique {
             $($(#[$doc])* $name),+,
+            $($(#[$extra_doc])* $extra),+,
             /// A classic detector, subject to its house and uniqueness assumptions.
             Classic(Technique),
         }
@@ -42,24 +49,27 @@ macro_rules! catalog {
             /// Techniques in default solve order.
             pub const DEFAULT_ORDER: &'static [Self] = &[$(Self::$name),+];
 
+            /// Additional native techniques available in explicit profiles.
+            pub const EXPLICIT_TECHNIQUES: &'static [Self] = &[$(Self::$extra),+];
+
             /// Stable identifier for a proof or solver profile.
             pub const fn id(self) -> &'static str {
-                match self { $(Self::$name => $id),+, Self::Classic(technique) => technique.id() }
+                match self { $(Self::$name => $id,)+ $(Self::$extra => $extra_id,)+ Self::Classic(technique) => technique.id() }
             }
 
             /// Look up a supported technique by its case-sensitive ID.
             pub fn from_id(id: &str) -> Option<Self> {
-                match id { $($id => Some(Self::$name),)+ _ => Technique::from_id(id).map(Self::Classic) }
+                match id { $($id => Some(Self::$name),)+ $($extra_id => Some(Self::$extra),)+ _ => Technique::from_id(id).map(Self::Classic) }
             }
 
             /// Point cost per move made with this technique.
             pub const fn cost(self) -> u16 {
-                match self { $(Self::$name => $cost),+, Self::Classic(technique) => technique.cost() }
+                match self { $(Self::$name => $cost,)+ $(Self::$extra => $extra_cost,)+ Self::Classic(technique) => technique.cost() }
             }
 
             /// The minimum difficulty of a path that uses the technique.
             pub const fn difficulty(self) -> Difficulty {
-                match self { $(Self::$name => Difficulty::$tier),+, Self::Classic(technique) => technique.difficulty() }
+                match self { $(Self::$name => Difficulty::$tier,)+ $(Self::$extra => Difficulty::$extra_tier,)+ Self::Classic(technique) => technique.difficulty() }
             }
         }
     };
@@ -136,6 +146,10 @@ catalog! {
     Sandwich: "sandwich", 76, Hard;
     /// Apply a sum of the first X digits of a row or column.
     XSum: "x-sum", 80, Hard;
+
+    @explicit
+    /// Fit the repeated phases of an Entropic or Modular line inside one house.
+    GroupLineHouseSupport: "group-line-house-support", 64, Medium;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -150,6 +164,7 @@ impl VariantTechnique {
     pub fn all() -> impl Iterator<Item = Self> {
         Self::DEFAULT_ORDER
             .iter()
+            .chain(Self::EXPLICIT_TECHNIQUES)
             .copied()
             .chain(
                 Technique::ALL
@@ -236,6 +251,8 @@ pub enum VariantEvidence {
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
     LineHouses(Box<VariantLineHouseProof>),
+    /// Repeating groups and an all-different house.
+    GroupLineHouse(Box<VariantGroupLineHouseProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -298,6 +315,50 @@ pub struct VariantLineHouseProof {
     pub houses: Vec<VariantHouseKind>,
     /// Number of valid assignments in the complete enumeration.
     pub assignments: u32,
+}
+
+/// Group assignments to one line and available digits in a shared house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantGroupLineHouseProof {
+    /// Original Entropic or Modular rule index.
+    pub rule: usize,
+    /// Distinct path cells in first-visit order.
+    pub line_cells: Vec<usize>,
+    /// Candidate masks for the distinct path cells.
+    pub line_domains: Vec<u16>,
+    /// Repeating group position of each distinct path cell, from 0 to 2.
+    pub phases: Vec<usize>,
+    /// House where digits must be distinct.
+    pub house: VariantHouseKind,
+    /// The nine house cells in house order.
+    pub cells: [usize; 9],
+    /// Candidate masks for the house before the deduction.
+    pub domains: [u16; 9],
+    /// All house digits supported by both constraints.
+    pub supported: [u16; 9],
+    /// Group orders consistent with the line's candidates, and the cases the house rejects.
+    pub cases: Vec<VariantGroupLineHouseCase>,
+}
+
+/// One group order and, if impossible, a short count proving the conflict.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupLineHouseCase {
+    /// Digit mask for each of the three repeating positions.
+    pub groups: [u16; 3],
+    /// Digits with too few locations or cells with too few digits.
+    pub conflict: Option<VariantGroupLineHouseConflict>,
+}
+
+/// A subset of cells and its insufficient digit support, or the reverse.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupLineHouseConflict {
+    /// House cells involved in the count.
+    pub cells: Vec<usize>,
+    /// Digits involved in the count.
+    pub digits: u16,
 }
 
 /// A rule-based proof and the actions it justifies.
@@ -475,6 +536,9 @@ impl VariantPosition {
             let technique = step.technique;
             *rating.counts.entry(technique).or_default() += 1;
             rating.points += u32::from(technique.cost());
+            if technique == VariantTechnique::GroupLineHouseSupport {
+                rating.scoring_version = GROUP_LINE_HOUSE_SCORING_VERSION;
+            }
             let rank =
                 |technique: VariantTechnique| (technique.difficulty(), technique.cost(), technique);
             if rating
@@ -504,6 +568,7 @@ impl VariantDeduction {
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
+            VariantEvidence::GroupLineHouse(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -1007,6 +1072,7 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
+            GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines

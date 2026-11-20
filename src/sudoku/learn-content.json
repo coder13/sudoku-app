@@ -7880,6 +7880,46 @@
           "difficulty": "medium"
         },
         {
+          "id": "group-line-house-support",
+          "title": "Repeating groups and houses",
+          "summary": "Check which repeating groups on an Entropic or Modular line fit the candidates in a shared house. Each digit in the house needs its own cell.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a house crossed by the line"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Mark the first three positions on the line. Every third cell uses the same group. On an Entropic line, the groups are 1–3, 4–6, and 7–9. On a Modular line, they are 1, 4, 7, then 2, 5, 8, and 3, 6, 9.",
+                "Try an order for the three groups that fits the candidates along the line. Check the row, column, or region it crosses. If two required digits have only one cell between them, that order fails.",
+                "Look at the assignments that still fit the house and line. If none use a candidate in its own cell, remove that candidate."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "group-line-house-support"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "group-line-house-support",
+                  "title": "Repeating groups and houses"
+                }
+              ],
+              "guide": {
+                "start": "Look for several cells from one line that share a house.",
+                "check": "Try the group orders that fit the line. Count where the house can place each digit.",
+                "reason": "An order fails if the house has too few places for the digits that it needs."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
           "id": "renban",
           "title": "Renban lines",
           "summary": "A Renban line contains different consecutive digits in any order. A four-cell line that contains both 3 and 6 must also contain 4 and 5, even before you know their positions.",
