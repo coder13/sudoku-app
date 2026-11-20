@@ -66,7 +66,7 @@ function modeTemplate(selected: ReadonlySet<CustomRule>, random: () => number) {
 }
 
 function addClues(template: VariantPuzzle, chosen: ReadonlySet<CustomRule>, markers: readonly MarkerRule[],
-  negative: ReadonlySet<MarkerRule>, solution: string, random: () => number) {
+  negative: ReadonlySet<MarkerRule>, solution: string, difficulty: CustomDifficulty, random: () => number) {
   const rules = [...template.rules ?? []]
   const layouts: VariantClueLayout[] = []
   const digits = Array.from(solution, Number)
@@ -122,8 +122,11 @@ function addClues(template: VariantPuzzle, chosen: ReadonlySet<CustomRule>, mark
     const groups = sample([1, 2, 3, 4, 5, 6, 7, 8, 9], 3, random).map(digit => sample(cells.filter(cell => digits[cell] === digit), 2, random))
     rules.push({ type: 'clone', groups })
   }
+  // These outside techniques are graded Hard. Medium grids use fewer clues so
+  // the givens can uniquely determine the grid with lower-graded techniques.
+  const outsideCount = difficulty === 'medium' ? 1 : 4
   for (const clue of ['sandwich', 'x-sum', 'skyscrapers'] as const) if (chosen.has(clue)) {
-    for (const line of sample(cells.slice(0, 18), 4, random)) {
+    for (const line of sample(cells.slice(0, 18), outsideCount, random)) {
       const horizontal = line < 9
       const reverse = random() < 0.5
       const path = Array.from({ length: 9 }, (_, i) => horizontal ? line * 9 + i : i * 9 + line - 9)
@@ -204,11 +207,11 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
         const samplingSeed = Math.floor(random() * 0x1_0000_0000)
         try {
           const solution = await run({ type: 'variant', operation: 'solve', position: { puzzle: template }, seed: samplingSeed, maxNodes: 20_000 })
-          const clues = addClues(template, chosen, markers, negative, solution, random)
+          const clues = addClues(template, chosen, markers, negative, solution, difficulty, random)
           if (!clues) continue
           return await run({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
             maxNodes: 20_000, template: clues.puzzle, derivedClues: clues.layouts,
-            givens: [0, 35], difficulty, techniqueOrder, exclude })
+            givens: [0, difficulty === 'easy' ? 40 : 35], difficulty, techniqueOrder, exclude })
         } catch (error) {
           if (!(error instanceof EngineError && ['search-limit', 'unsolvable', 'conflict'].includes(error.code ?? ''))) throw error
         }

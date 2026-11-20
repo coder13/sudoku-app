@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { generateCustomSudoku } from '../src/sudoku/custom-generation.ts'
-import { customDifficulties, customRuleIds, type CustomRule, type MarkerRule } from '../src/sudoku/custom-modes.ts'
+import { customModeDifficulties, customRuleIds, type CustomRule, type MarkerRule } from '../src/sudoku/custom-modes.ts'
 import { runEngine, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, makeGame, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
@@ -10,7 +10,6 @@ import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantRuleDescriptions } from '../src/sudoku/variants.ts'
-import { variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -18,11 +17,9 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
 
-test('all 35 rule choices have a verified generation path at an offered level', async () => {
+test('all 35 rule choices generate unique puzzles at each offered difficulty', async () => {
   assert.equal(customRuleIds.length, 35)
-  for (const rule of customRuleIds) {
-    const recipes = Object.hasOwn(variantSeeds, rule) ? variantSeeds[rule as keyof typeof variantSeeds] : undefined
-    const difficulty = recipes?.hard && !recipes.medium ? 'hard' : 'medium'
+  for (const rule of customRuleIds) for (const difficulty of customModeDifficulties([rule])) {
     const result = await generateCustomSudoku([rule], difficulty, 5, [])
     assert.deepEqual(result.rating.status, { solved: difficulty }, rule)
     assertVariantCompletion(result.puzzle, result.solution)
@@ -50,7 +47,7 @@ test('all 35 rule choices have a verified generation path at an offered level', 
 test('the same mixed mode generates three actual difficulty grades with all selected rules', async () => {
   const rules = ['windoku', 'arrow'] as const satisfies readonly CustomRule[]
   const completions = new Set<string>()
-  for (const level of customDifficulties) {
+  for (const level of customModeDifficulties(rules)) {
     const result = await generateCustomSudoku(rules, level, 5, [])
     assert.deepEqual(result.rating.status, { solved: level })
     assert.equal(result.puzzle.rules?.filter(rule => rule.type === 'extra-house').length, 4)
@@ -137,7 +134,7 @@ const mixedMarkers = ['kropki-white', 'xv-ten'] as const satisfies readonly Mark
 const mixedRules = ['kropki', 'xv', 'arrow'] as const satisfies readonly CustomRule[]
 
 test('mixed complete marks retain all edge meanings, hints, and three exact ratings', async () => {
-  for (const difficulty of customDifficulties) {
+  for (const difficulty of customModeDifficulties(mixedRules)) {
     const { puzzle, solution, rating } = await generateCustomSudoku(mixedRules, difficulty, 5, [], { negativeMarkers: mixedMarkers })
     assert.deepEqual(rating.status, { solved: difficulty })
     assertVariantCompletion(puzzle, solution)

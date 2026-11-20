@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { Link } from '@tanstack/react-router'
 import { createPortal } from 'react-dom'
 import { ArrowRight, CircleCheck } from 'lucide-react'
-import { customDifficulties } from '../sudoku/custom-modes'
+import { isCustomDifficulty } from '../sudoku/custom-modes'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
@@ -71,7 +71,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const pairedActions = Boolean(nextActive && !inCollection)
   const sizedRecipe = isSizedPuzzleId(recipe)
   const difficultyPreference = game.difficulty ?? preferredDifficulty
-  const nextDifficulty = game.customMode ? customDifficulties.find(level => level === difficultyPreference) ?? 'medium'
+  const nextDifficulty = game.customMode ? (isCustomDifficulty(difficultyPreference) ? difficultyPreference : 'medium')
     : sizedRecipe ? miniDifficulty(difficultyPreference) : variantDifficulty(recipe, difficultyPreference)
   const nextGrade = nextDifficulty === 'auto' ? variantDifficulty(sizedRecipe ? undefined : recipe, recommended) : nextDifficulty
   const nextLabel = needsChoice ? 'Choose another puzzle' : `Next ${DIFFICULTY_LABELS[nextGrade].toLowerCase()} puzzle`

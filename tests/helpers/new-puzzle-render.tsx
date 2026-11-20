@@ -6,9 +6,9 @@ import { Route as NewPuzzleRoute } from '../../src/routes/puzzles.new'
 import type { NewPuzzlePreference } from '../../src/sudoku/preferences'
 
 /** Render actual New Puzzle screens with their real search validator and in-memory routing. */
-export async function renderNewPuzzle(path: string, preference: NewPuzzlePreference = { variant: 'classic', difficulty: 'medium' }) {
+export async function renderNewPuzzle(path: string, preference: NewPuzzlePreference = { variant: 'classic', difficulty: 'medium' }, preferencesReady = true) {
   const root = createRootRoute({ component: () => <PuzzlesPage games={[]} active={null} setDifficulty={() => {}}
-    newPuzzlePreference={preference} rememberNewPuzzle={() => {}} preferencesReady loadingPuzzles={false} onCreatePuzzle={() => {}} /> })
+    newPuzzlePreference={preference} rememberNewPuzzle={() => {}} preferencesReady={preferencesReady} loadingPuzzles={false} onCreatePuzzle={() => {}} /> })
   const puzzles = createRoute({ getParentRoute: () => root, path: 'puzzles' })
   const choice = createRoute({ getParentRoute: () => puzzles, path: 'new', validateSearch: NewPuzzleRoute.options.validateSearch })
   const custom = createRoute({ getParentRoute: () => choice, path: 'custom' })

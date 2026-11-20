@@ -3,7 +3,7 @@ import { type DifficultyPreference } from '../sudoku/difficulty'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
 import { EngineError, runEngine } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
-import { customDifficulties, type CustomModeDefinition } from '../sudoku/custom-modes'
+import { isCustomDifficulty, type CustomModeDefinition } from '../sudoku/custom-modes'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
@@ -44,7 +44,7 @@ export function usePuzzleGeneration() {
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
       if (options?.customMode) {
         const mode = options.customMode
-        const difficulty = customDifficulties.find(level => level === preference) ?? 'medium'
+        const difficulty = isCustomDifficulty(preference) ? preference : 'medium'
         const controller = new AbortController()
         customSearch.current = controller
         const { generateCustomSudoku } = await import('../sudoku/custom-generation')

@@ -2,8 +2,17 @@ import { VARIANTS, type PlayableVariant } from './variants.ts'
 
 export const coreSudokuModes = ['classic', 'diagonal', 'windoku', 'killer-cages', 'jigsaw'] as const
 export const coreModeLimit = 9
-export const customDifficulties = ['easy', 'medium', 'hard'] as const
-export type CustomDifficulty = typeof customDifficulties[number]
+const customDifficulties = ['easy', 'medium', 'hard'] as const
+const jigsawDifficulties = ['easy', 'medium', 'tricky'] as const
+export type CustomDifficulty = typeof customDifficulties[number] | typeof jigsawDifficulties[number]
+
+export function isCustomDifficulty(value: unknown): value is CustomDifficulty {
+  return value === 'easy' || value === 'medium' || value === 'tricky' || value === 'hard'
+}
+
+export function customModeDifficulties(rules: readonly CustomRule[]): readonly CustomDifficulty[] {
+  return rules.length === 1 && rules[0] === 'jigsaw' ? jigsawDifficulties : customDifficulties
+}
 
 const additionalRules = {
   'diagonal-main': { name: 'Main diagonal', rule: 'The diagonal from the top left must contain each digit once.' },
