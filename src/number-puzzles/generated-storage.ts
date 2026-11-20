@@ -7,6 +7,7 @@ type GeneratedRecord = {
   number: number
   progress?: SavedNumberProgress
 }
+export type GeneratedIdentity = Pick<GeneratedRecord, 'id' | 'number'>
 
 const storeName = 'generated'
 const tokenIndex = 'token'
@@ -100,7 +101,7 @@ function openDatabase() {
   return database
 }
 
-function readRequest<T>(request: IDBRequest<T>): Promise<T> {
+export function readRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
@@ -110,12 +111,15 @@ function readRequest<T>(request: IDBRequest<T>): Promise<T> {
 async function runTransaction<T>(mode: IDBTransactionMode, operation: (store: IDBObjectStore) => Promise<T>) {
   const db = await openDatabase()
   const transaction = db.transaction(storeName, mode)
-  const complete = new Promise<void>((resolve, reject) => {
+  const [, result] = await Promise.all([transactionDone(transaction), operation(transaction.objectStore(storeName))])
+  return result
+}
+
+export function transactionDone(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve()
     transaction.onabort = () => reject(transaction.error)
   })
-  const [result] = await Promise.all([operation(transaction.objectStore(storeName)), complete])
-  return result
 }
 
 function gameRange(game: GeneratedNumberGame) {
@@ -163,7 +167,7 @@ async function migrateLegacy(game: GeneratedNumberGame) {
   removeLocalVersion(legacyHistoryKey(game), legacy.history)
 }
 
-function prepareGame(game: GeneratedNumberGame) {
+export function prepareGeneratedHistory(game: GeneratedNumberGame) {
   let migration = migrations.get(game)
   if (!migration) {
     migration = openDatabase().then(() => migrateLegacy(game)).catch(error => {
@@ -177,7 +181,7 @@ function prepareGame(game: GeneratedNumberGame) {
 
 export async function generatedNumberHistory(game: GeneratedNumberGame): Promise<GeneratedRecord[]> {
   try {
-    await prepareGame(game)
+    await prepareGeneratedHistory(game)
     return await runTransaction('readonly', store => readRequest(store.getAll(gameRange(game))))
   } catch {
     const { ids, positions, pending } = await readLegacy(game)
@@ -185,6 +189,20 @@ export async function generatedNumberHistory(game: GeneratedNumberGame): Promise
       game, id, number: index + 1, progress: pending.get(id)?.progress ?? positions.get(id)?.progress,
     }))
   }
+}
+
+// The worker reads immutable identities. The main thread prepares legacy saves before it starts the worker.
+export async function readCalcudokuSessions(checkpoint?: GeneratedIdentity) {
+  return runTransaction('readonly', async store => {
+    const anchor: GeneratedRecord | undefined = checkpoint
+      ? await readRequest(store.get(['calcudoku', checkpoint.number])) : undefined
+    const reset = Boolean(checkpoint && anchor?.id !== checkpoint.id)
+    const range = checkpoint && !reset
+      ? IDBKeyRange.bound(['calcudoku', checkpoint.number], ['calcudoku', Infinity], true)
+      : gameRange('calcudoku')
+    const records: GeneratedRecord[] = await readRequest(store.getAll(range))
+    return { reset, sessions: records.map(({ id, number }) => ({ id, number })) }
+  })
 }
 
 async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progress?: SavedNumberProgress, staged?: string) {
@@ -210,7 +228,7 @@ async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progr
 
 export async function openGeneratedNumberPuzzle(game: GeneratedNumberGame, id: string): Promise<GeneratedRecord> {
   try {
-    await prepareGame(game)
+    await prepareGeneratedHistory(game)
     return await writeGeneratedRecord(game, id)
   } catch {
     const { ids, positions, pending } = await readLegacy(game)
@@ -233,7 +251,7 @@ export async function saveGeneratedNumberProgress(game: GeneratedNumberGame, id:
     staged = raw
   } catch { /* IndexedDB can still save if local storage is full. */ }
 
-  try { await prepareGame(game) } catch {
+  try { await prepareGeneratedHistory(game) } catch {
     const saved = saveNumberProgress(numberPositionKey(game, id), { position, past, future })
     if (saved && staged !== undefined) removeLocalVersion(key, staged)
     return saved || staged !== undefined

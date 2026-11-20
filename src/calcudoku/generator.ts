@@ -108,9 +108,24 @@ export function calcudokuRecipeSignature({ size, cages }: CageLayout): string {
   return size + '|' + key
 }
 
-type CalcudokuGenerationHistory = {
+export type CalcudokuGenerationHistory = {
   signatures: ReadonlySet<string>
   recipes: ReadonlySet<string>
+}
+
+function* calcudokuCandidates(difficulty: NumberPuzzleDifficulty, seed: number) {
+  const pick = seededIndex(seed)
+  const size = sizes[difficulty]
+  for (let attempt = 0; attempt < 128; attempt++) {
+    const recipe = makeRecipe(size, pick)
+    if (recipe.cages.filter(cage => cage.operator === 'equal').length <= Math.floor(size / 2)) {
+      yield { recipe, signature: calcudokuRecipeSignature(recipe) }
+    }
+  }
+}
+
+export function calcudokuCandidateSignatures(difficulty: NumberPuzzleDifficulty, seed: number): string[] {
+  return Array.from(calcudokuCandidates(difficulty, seed), ({ signature }) => signature)
 }
 
 /** Select connected cages with a unique solution that requires no search guesses. */
@@ -120,17 +135,12 @@ export function generateCalcudoku(
   excluded: ReadonlySet<string> = new Set(),
   history?: CalcudokuGenerationHistory,
 ): CalcudokuRecipe | null {
-  const pick = seededIndex(seed)
-  const size = sizes[difficulty]
   let fallback: CalcudokuRecipe | null = null
-  for (let attempt = 0; attempt < 128; attempt++) {
-    const recipe = makeRecipe(size, pick)
-    if (recipe.cages.filter(cage => cage.operator === 'equal').length > Math.floor(size / 2)) continue
-    const signature = calcudokuRecipeSignature(recipe)
+  for (const { recipe, signature } of calcudokuCandidates(difficulty, seed)) {
     if (excluded.has(signature)) continue
     const seen = history?.signatures.has(signature)
     if (seen && (fallback || history?.recipes.has(calcudokuRecipeKey(recipe)))) continue
-    const puzzle = createCalcudoku(size, recipe.cages)
+    const puzzle = createCalcudoku(recipe.size, recipe.cages)
     if (solveLatin(puzzle, [], 1).status !== 'unique') continue
     if (!seen) return recipe
     fallback = recipe

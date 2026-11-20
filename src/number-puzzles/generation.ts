@@ -1,5 +1,8 @@
 import { calcudokuCatalog } from '../calcudoku/catalog.ts'
-import { calcudokuRecipeKey, calcudokuRecipeSignature, generateCalcudoku, type CalcudokuRecipe } from '../calcudoku/generator.ts'
+import {
+  calcudokuRecipeKey, calcudokuRecipeSignature, generateCalcudoku,
+  type CalcudokuGenerationHistory, type CalcudokuRecipe,
+} from '../calcudoku/generator.ts'
 import { kakuroCatalog } from '../kakuro/catalog.ts'
 import { solveKakuro } from '../kakuro/engine.ts'
 import {
@@ -12,14 +15,14 @@ import {
   RECENT_GENERATED_PUZZLE_LIMIT, type GeneratedNumberGame,
 } from './generated.ts'
 
-export type GenerationRequest = {
+export type GenerationOptions = {
   game: GeneratedNumberGame
   difficulty: NumberPuzzleDifficulty
   seed: number
-  previous: readonly string[]
 }
+export type GenerationRequest = GenerationOptions & { previous?: readonly string[] }
 
-function retrySeed(seed: number) {
+export function retrySeed(seed: number) {
   return (seed ^ 0x9e3779b1) >>> 0
 }
 
@@ -31,7 +34,7 @@ function leastRecentCatalogPuzzle<Puzzle>(
   return catalog.sort((a, b) => (recent.get(a.signature) ?? -1) - (recent.get(b.signature) ?? -1))[0].puzzle
 }
 
-function olderCalcudoku(
+export function olderCalcudoku(
   difficulty: NumberPuzzleDifficulty,
   previous: readonly string[],
   excluded: ReadonlySet<string>,
@@ -47,10 +50,29 @@ function olderCalcudoku(
   }
 }
 
-function calcudokuRecipeForPlay({ difficulty, seed, previous }: GenerationRequest): CalcudokuRecipe {
+export function selectCalcudokuPlay(
+  { difficulty, seed }: GenerationOptions,
+  recent: ReadonlyMap<string, number>,
+  history: CalcudokuGenerationHistory,
+) {
   const catalog = calcudokuCatalog.filter(entry => entry.difficulty === difficulty)
     .map(({ puzzle }) => ({ puzzle, signature: calcudokuRecipeSignature(puzzle) }))
-  const excluded = new Set(catalog.map(({ signature }) => signature))
+  const excluded = new Set([...catalog.map(({ signature }) => signature), ...recent.keys()])
+  const recipe = generateCalcudoku(difficulty, seed, excluded, history) ??
+    generateCalcudoku(difficulty, retrySeed(seed), excluded, history) ??
+    generateCalcudoku(difficulty, seed, excluded)
+  return {
+    recipe,
+    excluded,
+    catalogRecipe(): CalcudokuRecipe {
+      const { size, cages } = leastRecentCatalogPuzzle(catalog, recent)
+      return { size, cages: [...cages] }
+    },
+  }
+}
+
+function calcudokuRecipeForPlay(request: GenerationOptions, previous: readonly string[]): CalcudokuRecipe {
+  const { difficulty } = request
   const recent = new Map<string, number>()
   const signatures = new Set<string>()
   const recipes = new Set<string>()
@@ -63,21 +85,13 @@ function calcudokuRecipeForPlay({ difficulty, seed, previous }: GenerationReques
       recipes.add(calcudokuRecipeKey(stored.recipe))
       if (!signatures.has(signature) && recent.size < RECENT_GENERATED_PUZZLE_LIMIT) {
         recent.set(signature, index)
-        excluded.add(signature)
       }
       signatures.add(signature)
     } catch { /* Ignore invalid saved cages. */ }
   }
 
-  const history = { signatures, recipes }
-  const recipe = generateCalcudoku(difficulty, seed, excluded, history) ??
-    generateCalcudoku(difficulty, retrySeed(seed), excluded, history) ??
-    generateCalcudoku(difficulty, seed, excluded) ??
-    olderCalcudoku(difficulty, previous, excluded)
-  if (recipe) return recipe
-
-  const { size, cages } = leastRecentCatalogPuzzle(catalog, recent)
-  return { size, cages: [...cages] }
+  const selection = selectCalcudokuPlay(request, recent, { signatures, recipes })
+  return selection.recipe ?? olderCalcudoku(difficulty, previous, selection.excluded) ?? selection.catalogRecipe()
 }
 
 function olderKakuro(
@@ -98,7 +112,7 @@ function olderKakuro(
   }
 }
 
-function kakuroRecipeForPlay({ difficulty, seed, previous }: GenerationRequest): KakuroRecipe {
+function kakuroRecipeForPlay({ difficulty, seed }: GenerationOptions, previous: readonly string[]): KakuroRecipe {
   const catalog = kakuroCatalog.map(({ puzzle, difficulty }) => ({ puzzle, difficulty, signature: kakuroRecipeSignature(puzzle) }))
   const excluded = new Set(catalog.map(({ signature }) => signature))
   const recent = new Map<string, number>()
@@ -122,11 +136,11 @@ function kakuroRecipeForPlay({ difficulty, seed, previous }: GenerationRequest):
   return kakuroRecipeFromPuzzle(leastRecentCatalogPuzzle(catalog.filter(entry => entry.difficulty === difficulty), recent))
 }
 
-export function generateNumberPuzzle(request: GenerationRequest): string {
+export function generateNumberPuzzle(request: GenerationOptions & { previous: readonly string[] }): string {
   const { game, difficulty } = request
   const puzzle = game === 'calcudoku'
-    ? { game, difficulty, recipe: calcudokuRecipeForPlay(request) }
-    : { game, difficulty, recipe: kakuroRecipeForPlay(request) }
+    ? { game, difficulty, recipe: calcudokuRecipeForPlay(request, request.previous) }
+    : { game, difficulty, recipe: kakuroRecipeForPlay(request, request.previous) }
   // A new session needs its own save even when the board has the same clues.
   return encodeGeneratedNumberPuzzle(puzzle, crypto.randomUUID())
 }
