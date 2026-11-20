@@ -147,3 +147,34 @@ fn the_published_boxless_killer_uses_only_rows_columns_and_the_authored_cages() 
     assert!(puzzle.candidates(&digits).unwrap().iter().all(|&mask| mask != 0));
     assert_eq!(puzzle.trace(digits.to_vec(), vec![0; 49], false).unwrap().last().unwrap().digits, expected);
 }
+
+#[test]
+fn boxless_cages_and_extra_houses_use_all_sixteen_digits() {
+    use sudoku_app_engine::{KillerCage, SizedGrid};
+
+    let layout = SizedGrid::without_regions(16).unwrap();
+    let rules = [
+        Rule::ExtraHouse { cells: (0..16).map(|i| 17 * i).collect() },
+        Rule::KillerCages {
+            cages: vec![
+                KillerCage { cells: vec![0, 17], sum: 31 },
+                KillerCage { cells: vec![33], sum: 16 },
+            ],
+            cover_grid: false,
+        },
+    ];
+    let puzzle = SizedConstraintGrid::with_layout(layout, &rules).unwrap();
+    let mut digits = [0; 256];
+    let candidates = puzzle.candidates(&digits).unwrap();
+    assert_eq!(candidates[0], 0xc000);
+    assert_eq!(candidates[17], 0xc000);
+    assert_eq!(candidates[33], 0x8000);
+    assert_eq!(candidates[34] & 0xc000, 0);
+
+    digits[0] = 16;
+    let candidates = puzzle.candidates(&digits).unwrap();
+    assert_eq!(candidates[17], 0x4000);
+    assert_eq!(candidates[34] & 0x8000, 0);
+    digits[51] = 16;
+    assert!(puzzle.candidates(&digits).is_none());
+}

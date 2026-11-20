@@ -494,6 +494,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (returnId) roomStore.select(returnId)
   }
 
+  const boxlessDraftLayout = game?.grid && 'noRegions' in game.grid ? game.grid : undefined
   const onlyActivePuzzle = activePuzzles.length === 1 ? activePuzzles[0] : undefined
   const emptyPuzzleContent = <div className="empty-puzzle-content">
     <Link className={buttonClassName('primary')} to="/puzzles/new"><Plus size={18} />New puzzle</Link>
@@ -620,7 +621,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onOpenHintPanel={() => setPanelVisibility('bottom', true)}
                 onOpenRightPanel={() => setPanelVisibility('right', true)}
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
-                onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages' : game?.grid?.size === 6 ? 'six' : game?.grid?.size === 7 ? 'jigsaw-seven' : game?.grid ? 'mini' : undefined, boxRows, game?.grid && 'noRegions' in game.grid ? game.grid : undefined)} onEditPuzzle={editPuzzle}
+                onNewPuzzle={openNewPuzzle} onEditPuzzle={editPuzzle}
+                onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages'
+                  : game?.grid?.size === 6 ? 'six' : game?.grid?.size === 7 ? 'jigsaw-seven' : game?.grid ? 'mini' : undefined,
+                boxRows, boxlessDraftLayout)}
                 onEditCages={() => setPanel('cages')}
                 onEditSizedRules={() => setPanel('sized-rules')} onEditRegions={() => setPanel('jigsaw-regions')}
                 onEditChainColors={() => openSettings('chain-colors')}

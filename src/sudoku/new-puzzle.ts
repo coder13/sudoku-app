@@ -1,8 +1,7 @@
 import type { DifficultyPreference } from './difficulty.ts'
 import type { Game } from './game.ts'
-import { generationVariant, isPuzzleVariantId, isVariantId, VARIANTS, type PuzzleVariantId, type VariantId } from './variants.ts'
-
 import type { SizedGrid } from './grid.ts'
+import { generationVariant, isPuzzleVariantId, isVariantId, VARIANTS, type PuzzleVariantId, type VariantId } from './variants.ts'
 
 export const MINI_NAME = 'Mini Sudoku'
 export const SIX_NAME = '6 × 6 Sudoku'
@@ -50,7 +49,6 @@ export function gameGenerationVariant(game?: Pick<Game, 'grid' | 'variant' | 'al
 export function miniDifficulty(preference: DifficultyPreference): MiniDifficulty {
   return preference === 'auto' || preference === 'easy' || preference === 'beginner' ? 'easy' : 'medium'
 }
-
 
 export function sizedGridName(grid: SizedGrid) {
   if ('noRegions' in grid) return SEVEN_BOXLESS_NAME

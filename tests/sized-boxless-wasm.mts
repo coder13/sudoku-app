@@ -97,7 +97,8 @@ test('authored extra regions coexist with boxless cages and constrain candidates
   assert.equal(game.sized.solution, givens)
   assert.equal(peer(0, 8, undefined, grid, rules), true)
   const entered = enter(enter(game, [0], 'value', 1), [8], 'value', 1)
-  assert.deepEqual(conflictsOf(valuesOf(entered), undefined, grid, rules), new Set([8, 0]))
+  assert.deepEqual(conflictsOf(valuesOf(entered), undefined, grid, [rules[0]]), new Set([8, 13, 43]))
+  assert.deepEqual(conflictsOf(valuesOf(entered), undefined, grid, rules), new Set([0, 8, 13, 43]))
   const candidates = await playCandidates(enter(game, [0], 'value', 1))
   assert.equal(candidates?.[8], 1 << 2)
 
