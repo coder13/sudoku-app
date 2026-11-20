@@ -2156,8 +2156,8 @@ export function Worktable({
       mobileToolsOpener.current = puzzleMenuButtonRef.current
       focusMobileInput.current = true
     } else if (tool === 'colors') {
+      // Opening a tool tab does not end the active chain drawing mode.
       setColorMode(false)
-      if (sketch.drawing) sketch.suspend()
     }
     selectToolPanel(tool, alsoOpen)
   }
