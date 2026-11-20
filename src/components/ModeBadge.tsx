@@ -21,13 +21,14 @@ type BadgeDrag = {
   lastPosition?: ModeBadgePosition
 }
 
-export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, onActivate }: {
+export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, onActivate, actionLabel }: {
   mode: keyof typeof MODES
   descriptionId: string
   cardRef: RefObject<HTMLElement | null>
   position: ModeBadgePosition
   onPosition: (position: ModeBadgePosition) => void
   onActivate: () => void
+  actionLabel?: string
 }) {
   const { label, Icon } = MODES[mode]
   const drag = useRef<BadgeDrag | null>(null)
@@ -142,7 +143,7 @@ export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, 
 
   return <>
     <button type="button" className="puzzle-mode-tab" data-edge={displayedPosition.edge} data-no-panel-hold
-      aria-label={mode === 'chain' ? 'Stop drawing links' : 'Cycle input mode'}
+      aria-label={mode === 'chain' ? actionLabel ?? 'Stop drawing links' : 'Cycle input mode'}
       aria-description="Drag or use the left and right arrow keys to move the icon around the puzzle card."
       style={{ '--mode-offset': `${displayedPosition.offset * 100}%` } as CSSProperties}
       onPointerDown={startDrag} onDragStart={(event) => event.preventDefault()}
