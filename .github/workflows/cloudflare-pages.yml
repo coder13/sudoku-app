@@ -39,6 +39,18 @@ jobs:
           RUSTUP_TOOLCHAIN: stable
           VITE_EXPERIMENTAL_MODE: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
 
+      - name: Build and check the board prototype for pull request previews
+        if: github.event_name == 'pull_request'
+        run: |
+          npm run check
+          npm --prefix tools/solid-board ci
+          npm --prefix tools/solid-board run check
+          npm --prefix tools/solid-board run build
+          npm exec --prefix tools/solid-board -- playwright install --with-deps chromium
+          npm --prefix tools/solid-board run benchmark -- --samples 4 --rounds 1 --warmup 2 --profile desktop --output results/ci.json
+          mkdir -p dist/client/experiments/solid-board
+          cp -R tools/solid-board/dist/. dist/client/experiments/solid-board/
+
       - name: Deploy to Cloudflare Pages
         id: pages
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3

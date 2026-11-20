@@ -4,6 +4,10 @@ Use the source link to see props and exports. Private names are included so rela
 
 Search by component name or browse the sections below.
 
+## Prototype tools
+
+The [Solid board comparison](../../../../tools/solid-board/README.md) is an isolated performance experiment. Its current React adapter imports the production `Board`. Its memoized React and Solid components support only the documented classic subset and are private to the tool. Do not use those prototype components in app screens.
+
 ## Shared controls and surfaces
 
 | Source | When to use it |
