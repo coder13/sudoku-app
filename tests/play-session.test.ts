@@ -140,8 +140,10 @@ test('saved mobile tools restore in display order and keep the selected tab', ()
 
 test('chain drawing stays active when changing away from Chains or Digits tabs', () => {
   // A drawing session remains usable on Colors, Techniques and other tool tabs.
-  for (const tab of ['colors', 'techniques', 'solution', 'subsets']) {
-    assert.equal(chainToolsActive(false, false, false, true, false), true, tab)
+  for (const tab of ['digits', 'chains', 'colors', 'techniques', 'solution', 'subsets']) {
+    const chainsVisible = tab === 'chains'
+    const chainKeypadVisible = tab === 'digits'
+    assert.equal(chainToolsActive(chainsVisible, chainKeypadVisible, false, true, false), true, tab)
   }
   assert.equal(chainToolsActive(true, false, false, null, false), true)
   assert.equal(chainToolsActive(false, true, false, true, false), true)
