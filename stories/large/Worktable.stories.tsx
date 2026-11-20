@@ -32,7 +32,7 @@ const meta = {
     cellReferenceStyle: DEFAULT_CELL_REFERENCE_STYLE,
     multi: false, actionsRef: { current: null }, inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(),
     beginResize: fn(), toggleMulti: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(), onStopPlaying: fn(),
-    onNewPuzzle: fn(), onCreatePuzzle: fn(), onEditPuzzle: fn(),
+    onNewPuzzle: fn(), onImportPuzzle: fn(),
     showLeftPanel: true, showRightPanel: true, showBottomPanel: true, onOpenHintPanel: fn(), onOpenRightPanel: fn(),
     puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),
   },

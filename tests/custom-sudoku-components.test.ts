@@ -5,7 +5,7 @@ import { coreModeLimit, coreSudokuModes, customModeDifficulties, readSudokuModes
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
 let server: ViteDevServer
-let renderNewPuzzle: (path: string) => Promise<string>
+let renderNewPuzzle: typeof import('./helpers/new-puzzle-render.tsx').renderNewPuzzle
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom',
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
@@ -20,12 +20,17 @@ test('the default chooser offers five 9×9 modes and a separate custom builder',
   for (const name of ['Classic', 'X Sudoku', 'Windoku', 'Killer', 'Jigsaw']) {
     assert.ok(markup.includes(`>${name}</span>`), name)
   }
-  assert.match(markup, /Other grid sizes/)
+  assert.doesNotMatch(markup, /Other grid sizes|Mini Sudoku|5 × 5 Jigsaw|6 × 6 Sudoku|7 × 7 Jigsaw|8 × 8 Sudoku|Algebraic Cages|Create puzzle/)
+  assert.match(markup, /href="\/import"[^>]*>.*Import puzzle/)
   assert.match(markup, /\/puzzles\/new\/custom/)
   assert.equal([...markup.matchAll(/href="\/puzzles\/new\/difficulty\?variant=/g)].length, 5)
   assert.doesNotMatch(markup, />Quadruple</)
   const builder = await renderNewPuzzle('/puzzles/new/custom', undefined, false)
   assert.equal([...builder.matchAll(/type="checkbox"/g)].length, 36)
+  assert.match(builder, /<label[^>]*>Grid<.*<option value="classic" selected="">9 × 9 Sudoku<\/option>/)
+  for (const grid of ['mini', 'jigsaw-five', 'six', 'jigsaw-seven', 'eight', 'algebraic-cages']) {
+    assert.ok(builder.includes(`<option value="${grid}">`), grid)
+  }
   assert.match(builder, /Show in core modes/)
   assert.match(builder, /Save mode/)
   assert.match(builder, /Generate puzzle/)
@@ -36,6 +41,21 @@ test('the default chooser offers five 9×9 modes and a separate custom builder',
   assert.match(xSudoku, /Each of the two marked diagonals/)
   assert.deepEqual(customModeDifficulties(['jigsaw']), ['easy', 'medium', 'tricky'])
   assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), ['easy', 'medium', 'hard'])
+})
+
+test('smaller grids are configured inside Custom Sudoku and retain their difficulty links', async () => {
+  const six = await renderNewPuzzle('/puzzles/new/custom?variant=six&boxRows=3', undefined, false)
+  assert.match(six, /<h1[^>]*>Custom Sudoku<\/h1>/)
+  assert.match(six, /<option value="six" selected="">6 × 6 Sudoku<\/option>/)
+  assert.match(six, /<option value="3" selected="">3 × 2 boxes/)
+  assert.match(six, /href="\/puzzles\/new\/difficulty\?variant=six&amp;boxRows=3"/)
+  assert.doesNotMatch(six, /Find a rule|Create puzzle/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=six&boxRows=3')
+  assert.match(difficulty, /href="\/puzzles\/new\/custom\?variant=six&amp;boxRows=3"/)
+  assert.match(difficulty, /Start medium puzzle/)
+  const legacy = await renderNewPuzzle('/puzzles/new?variant=mini')
+  assert.match(legacy, /<h1[^>]*>Custom Sudoku<\/h1>/)
+  assert.match(legacy, /href="\/puzzles\/new\/difficulty\?variant=mini"/)
 })
 
 test('saved mode definitions and rule choices round-trip, with nine core slots in total', () => {

@@ -1,7 +1,7 @@
 import { Button } from './Button'
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Archive, ArchiveRestore, BookmarkMinus, BookmarkPlus, Dices, PencilLine, Save } from 'lucide-react'
+import { Archive, ArchiveRestore, BookmarkMinus, BookmarkPlus, Dices, FileUp, Save } from 'lucide-react'
 import { formatPuzzleRating } from '../sudoku/difficulty'
 import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { usePresentContent } from './Presence'
@@ -22,7 +22,7 @@ function puzzleStatus(game: Game) {
   return `${rating} · Not started`
 }
 
-export function AdvancedPuzzleBrowser({ games, active, view, onViewChange, onSelect, onNew, onCreate, onSave, onEdit,
+export function AdvancedPuzzleBrowser({ games, active, view, onViewChange, onSelect, onNew, onImport, onSave,
   onSavePuzzle, onUnsavePuzzle, onArchivePuzzle, onRestorePuzzle }: {
   games: Game[]
   active: string | null
@@ -30,9 +30,8 @@ export function AdvancedPuzzleBrowser({ games, active, view, onViewChange, onSel
   onViewChange: (view: PuzzleBrowserView) => void
   onSelect: (id: string) => void
   onNew: () => void
-  onCreate: () => void
+  onImport: () => void
   onSave: () => void
-  onEdit: () => void
   onSavePuzzle: (id: string) => void
   onUnsavePuzzle: (id: string) => void
   onArchivePuzzle: (id: string) => void
@@ -102,14 +101,12 @@ export function AdvancedPuzzleBrowser({ games, active, view, onViewChange, onSel
 
   return <section className="advanced-puzzle-browser" aria-label="Puzzle browser">
     <header className="advanced-browser-heading">
-      <div><h2>Puzzles</h2><p>Switch puzzles or open the puzzle editor.</p></div>
+      <h2>Puzzles</h2>
     </header>
     <div className="advanced-browser-actions">
       <Button onClick={onNew}><Dices size={16} /> New puzzle</Button>
-      <Button onClick={onCreate}><PencilLine size={16} /> Create puzzle</Button>
-      {activeGame?.source === 'draft'
-        ? <Button variant="primary" onClick={onSave}><Save size={16} /> Save puzzle</Button>
-        : activeGame?.source === 'custom' && <Button onClick={onEdit}><PencilLine size={16} /> Edit puzzle</Button>}
+      <Button onClick={onImport}><FileUp size={16} aria-hidden="true" /> Import puzzle</Button>
+      {activeGame?.source === 'draft' && <Button variant="primary" onClick={onSave}><Save size={16} /> Save puzzle</Button>}
     </div>
     <div className="advanced-browser-tabs" role="tablist" aria-label="Puzzle browser views">
       {(['active', 'past', 'saved'] as const).map((item) => <button key={item} role="tab" aria-selected={view === item}

@@ -693,9 +693,7 @@ svg { flex-shrink: 0; }
   padding: var(--space-12) var(--space-10) 9px var(--space-12);
   border-bottom: 1px solid var(--border);
 }
-.advanced-browser-heading > div { min-width: 0; }
 .advanced-browser-heading h2 { font-size: 0.9375rem; }
-.advanced-browser-heading p { margin-top: var(--space-2); color: var(--muted); font-size: 0.6875rem; line-height: 1.35; }
 .advanced-browser-heading .icon-button { width: 30px; min-height: 30px; flex: 0 0 30px; }
 .advanced-browser-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); padding: 9px var(--space-10) 7px; }
 .advanced-browser-actions .button { min-width: 0; min-height: 34px; gap: var(--space-6); padding-inline: var(--space-8); font-size: 0.6875rem; white-space: nowrap; }
@@ -2024,7 +2022,6 @@ svg { flex-shrink: 0; }
 .sudoku-mode-list li > a:first-child > span:not(.variant-preview) { flex: 1; overflow-wrap: anywhere; }
 .sudoku-mode-list li > a:first-child > svg:last-child { flex: none; }
 .sudoku-mode-list li > a:first-child:hover { background: var(--selected-bg); }
-.sudoku-sized-modes > summary { cursor: pointer; padding-block: var(--space-8); font-weight: 650; }
 .sudoku-mode-form, .sudoku-saved-modes { display: grid; gap: var(--space-12); }
 .sudoku-selected-rules, .sudoku-mode-note { color: var(--muted); }
 .sudoku-custom-rule-list { display: grid; margin: 0; padding: 0; border: 0; }
@@ -2040,13 +2037,6 @@ svg { flex-shrink: 0; }
 .sudoku-custom-rule-list input, .sudoku-pin-mode input { flex: none; margin-top: .3em; }
 .sudoku-custom-rule-list span { display: grid; gap: var(--space-4); }
 .sudoku-custom-rule-list small { color: var(--muted); }
-.new-puzzle-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  gap: var(--space-8);
-  border-top: 1px solid var(--border);
-  padding-top: var(--space-16);
-}
 .new-puzzle-variant-picker {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
