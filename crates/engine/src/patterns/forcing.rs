@@ -24,6 +24,8 @@ pub(super) struct ForcingGraph {
 struct Clause {
     scope: ForcingScope,
     members: Vec<usize>,
+    // Cell clauses index digits. House clauses index cells.
+    domain: u128,
 }
 
 struct Intersection {
@@ -50,18 +52,19 @@ impl ForcingGraph {
             clauses.push(Clause {
                 scope: ForcingScope::Cell(cell),
                 members,
+                domain: u128::from(mask),
             });
         }
         for house in House::all() {
             for (digit, &positions) in positions.iter().enumerate() {
+                let domain = positions & house_cells(house);
                 clauses.push(Clause {
                     scope: ForcingScope::House {
                         house,
                         digit: digit as u8 + 1,
                     },
-                    members: cells(positions & house_cells(house))
-                        .map(|cell| cell * 9 + digit)
-                        .collect(),
+                    members: cells(domain).map(|cell| cell * 9 + digit).collect(),
+                    domain,
                 });
             }
         }
@@ -543,9 +546,9 @@ struct BranchSearch<'a> {
     advanced: Option<Box<advanced::State>>,
     guardians: Vec<usize>,
     seen: [usize; STATES],
-    // Negative literals indexed by digit and cell. Intersections can check
-    // their source domains without reading every candidate's fact index.
+    // Index negative literals both ways for cell and house clauses.
     removed: [u128; 9],
+    removed_from_cell: [u16; CELLS],
     facts: Vec<Fact>,
 }
 
@@ -563,6 +566,7 @@ impl<'a> BranchSearch<'a> {
             guardians: Vec::new(),
             seen: [UNSEEN; STATES],
             removed: [0; 9],
+            removed_from_cell: [0; CELLS],
             facts: Vec::new(),
         }
     }
@@ -578,9 +582,11 @@ impl<'a> BranchSearch<'a> {
         }
         for fact in self.facts.drain(len..) {
             self.seen[fact.state] = UNSEEN;
-            if fact.state & 1 == 0 && self.mode >= Mode::Dynamic {
+            if fact.state & 1 == 0 {
                 let id = fact.state / 2;
-                self.removed[id % 9] &= !(1 << (id / 9));
+                let (cell, digit) = (id / 9, id % 9);
+                self.removed[digit] &= !(1 << cell);
+                self.removed_from_cell[cell] &= !(1 << digit);
             }
         }
     }
@@ -692,16 +698,23 @@ impl<'a> BranchSearch<'a> {
         while *next < self.facts.len() {
             let fact = self.facts[*next];
             let id = fact.state / 2;
+            let (cell, digit) = (id / 9, id % 9);
             for clause in clauses_for(id) {
-                let members = &self.graph.clauses[clause].members;
+                let source = &self.graph.clauses[clause];
                 // Already-forced singles need no hypothetical proof.
-                if members.len() < 2 {
+                if source.members.len() < 2 {
                     continue;
                 }
+                let (removed, first, stride, pivot) = if clause < CELLS {
+                    (u128::from(self.removed_from_cell[cell]), cell * 9, 1, digit)
+                } else {
+                    (self.removed[digit], digit, 9, cell)
+                };
+                let possible = source.domain & !removed;
                 if fact.state & 1 != 0 {
-                    for &other in members.iter().filter(|&&other| other != id) {
+                    for position in cells(possible & !(1 << pivot)) {
                         if let Some(conflict) = self.add(
-                            other * 2,
+                            (first + position * stride) * 2,
                             Cause::Exclusion {
                                 clause,
                                 fact: *next,
@@ -713,16 +726,15 @@ impl<'a> BranchSearch<'a> {
                     }
                     continue;
                 }
-                let mut possible = members
-                    .iter()
-                    .copied()
-                    .filter(|&member| self.seen[member * 2] == UNSEEN);
-                let Some(last) = possible.next() else {
+                if possible == 0 {
                     return Some(Conflict::Exhausted(clause));
-                };
-                if (self.mode != Mode::Chain || members.len() == 2) && possible.next().is_none() {
+                }
+                if (self.mode != Mode::Chain || source.members.len() == 2)
+                    && possible.is_power_of_two()
+                {
+                    let last = first + possible.trailing_zeros() as usize * stride;
                     let mut mode = fact.mode;
-                    if members.len() > 2 {
+                    if source.members.len() > 2 {
                         mode = mode.max(Mode::Net);
                         if self.mode >= Mode::Dynamic && mode != self.mode {
                             mode = self
@@ -797,9 +809,11 @@ impl<'a> BranchSearch<'a> {
         let index = self.facts.len();
         self.facts.push(Fact { state, cause, mode });
         self.seen[state] = index;
-        if state & 1 == 0 && self.mode >= Mode::Dynamic {
+        if state & 1 == 0 {
             let id = state / 2;
-            self.removed[id % 9] |= 1 << (id / 9);
+            let (cell, digit) = (id / 9, id % 9);
+            self.removed[digit] |= 1 << cell;
+            self.removed_from_cell[cell] |= 1 << digit;
         }
         (self.seen[state ^ 1] != UNSEEN).then(|| Conflict::Opposite([self.seen[state ^ 1], index]))
     }
@@ -1086,29 +1100,47 @@ mod guardian_tests {
         let masks = crate::candidates(&board).unwrap();
         let positions = super::super::candidate_positions(&masks);
         let graph = ForcingGraph::new(&masks, &positions);
-        for mode in [Mode::Dynamic, Mode::Advanced] {
+        for (clause_index, clause) in graph.clauses.iter().enumerate() {
+            let expected = clause.members.iter().fold(0, |domain, &id| {
+                let position = if clause_index < CELLS { id % 9 } else { id / 9 };
+                domain | (1u128 << position)
+            });
+            assert_eq!(clause.domain, expected);
+        }
+        for mode in [Mode::Chain, Mode::Net, Mode::Dynamic, Mode::Advanced] {
             let mut branch = BranchSearch::new(&graph, mode);
             let check = |branch: &BranchSearch<'_>| {
-                let mut expected = [0; 9];
+                let mut expected_digits = [0; 9];
+                let mut expected_cells = [0; CELLS];
                 for fact in &branch.facts {
                     if fact.state & 1 == 0 {
                         let candidate = candidate(fact.state / 2);
-                        expected[usize::from(candidate.digit - 1)] |= 1 << candidate.cell;
+                        let digit = usize::from(candidate.digit - 1);
+                        expected_digits[digit] |= 1 << candidate.cell;
+                        expected_cells[candidate.cell] |= 1 << digit;
                     }
                 }
-                assert_eq!(branch.removed, expected);
+                assert_eq!(branch.removed, expected_digits);
+                assert_eq!(branch.removed_from_cell, expected_cells);
                 for &id in &graph.available {
                     assert_eq!(
                         branch.removed[id % 9] & (1 << (id / 9)) != 0,
                         branch.seen[id * 2] != UNSEEN
                     );
+                    assert_eq!(
+                        branch.removed_from_cell[id / 9] & (1 << (id % 9)) != 0,
+                        branch.seen[id * 2] != UNSEEN
+                    );
                 }
             };
             for &id in &graph.available {
-                if branch.run(id * 2 + 1).is_some() {
+                let conflict = branch.run(id * 2 + 1);
+                check(&branch);
+                if conflict.is_some() {
+                    branch.rollback(0);
+                    check(&branch);
                     continue;
                 }
-                check(&branch);
                 let checkpoint = branch.facts.len();
                 for &inner in &graph.available {
                     if branch.seen[inner * 2] != UNSEEN || branch.seen[inner * 2 + 1] != UNSEEN {
