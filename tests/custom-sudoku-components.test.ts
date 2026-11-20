@@ -14,15 +14,16 @@ before(async () => {
 })
 after(async () => { await server?.close() })
 
-test('the default chooser offers five 9×9 modes and a separate custom builder', async () => {
-  const markup = await renderNewPuzzle('/puzzles/new', undefined, false)
+test('the chooser offers five 9×9 modes, Import, and separate custom generation', async () => {
+  const markup = await renderNewPuzzle('/puzzles/new', { variant: 'six', difficulty: 'medium', boxRows: 3 }, false)
   assert.match(markup, /Choose a Sudoku mode/)
   for (const name of ['Classic', 'X Sudoku', 'Windoku', 'Killer', 'Jigsaw']) {
     assert.ok(markup.includes(`>${name}</span>`), name)
   }
   assert.doesNotMatch(markup, /Other grid sizes|Mini Sudoku|5 × 5 Jigsaw|6 × 6 Sudoku|7 × 7 Jigsaw|8 × 8 Sudoku|Algebraic Cages|Create puzzle/)
   assert.match(markup, /href="\/import"[^>]*>.*Import puzzle/)
-  assert.match(markup, /\/puzzles\/new\/custom/)
+  assert.match(markup, /href="\/puzzles\/new\/custom"[^>]*>.*Generate a custom puzzle/)
+  assert.ok(markup.indexOf('href="/import"') < markup.indexOf('href="/puzzles/new/custom"'))
   assert.equal([...markup.matchAll(/href="\/puzzles\/new\/difficulty\?variant=/g)].length, 5)
   assert.doesNotMatch(markup, />Quadruple</)
   const builder = await renderNewPuzzle('/puzzles/new/custom', undefined, false)
@@ -43,9 +44,9 @@ test('the default chooser offers five 9×9 modes and a separate custom builder',
   assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), ['easy', 'medium', 'hard'])
 })
 
-test('smaller grids are configured inside Custom Sudoku and retain their difficulty links', async () => {
+test('smaller grids are configured inside custom generation and retain their difficulty links', async () => {
   const six = await renderNewPuzzle('/puzzles/new/custom?variant=six&boxRows=3', undefined, false)
-  assert.match(six, /<h1[^>]*>Custom Sudoku<\/h1>/)
+  assert.match(six, /<h1[^>]*>Generate a custom puzzle<\/h1>/)
   assert.match(six, /<option value="six" selected="">6 × 6 Sudoku<\/option>/)
   assert.match(six, /<option value="3" selected="">3 × 2 boxes/)
   assert.match(six, /href="\/puzzles\/new\/difficulty\?variant=six&amp;boxRows=3"/)
@@ -54,7 +55,7 @@ test('smaller grids are configured inside Custom Sudoku and retain their difficu
   assert.match(difficulty, /href="\/puzzles\/new\/custom\?variant=six&amp;boxRows=3"/)
   assert.match(difficulty, /Start medium puzzle/)
   const legacy = await renderNewPuzzle('/puzzles/new?variant=mini')
-  assert.match(legacy, /<h1[^>]*>Custom Sudoku<\/h1>/)
+  assert.match(legacy, /<h1[^>]*>Generate a custom puzzle<\/h1>/)
   assert.match(legacy, /href="\/puzzles\/new\/difficulty\?variant=mini"/)
 })
 
