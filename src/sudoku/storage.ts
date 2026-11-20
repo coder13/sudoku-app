@@ -5,7 +5,7 @@ import { validActionHistory } from './action-history.ts'
 import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
-import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type HistoryPosition, type Position } from './game.ts'
+import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, shouldOfferPuzzleSave, type Game, type HistoryPosition, type Position } from './game.ts'
 import { isSizedRuleList, restoreSizedRuleGame } from './sized-rule-game.ts'
 import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
@@ -137,6 +137,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory, grid)) delete value.actionHistory
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
+      if (value.pendingSave !== true || !shouldOfferPuzzleSave(value)) delete value.pendingSave
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt
       if (attempt !== undefined && (value.source === 'draft' || !isRatingAttempt(attempt) ||
@@ -432,6 +433,7 @@ function withSavedForLater(state: Room, game: Game, savedForLater: true | undefi
   }
   if (savedForLater && (current.source === 'draft' || isSolved(current))) return state
   const updated = { ...current, savedForLater }
+  if (savedForLater) delete updated.pendingSave
   const saved = persist(() => writeGame(updated))
   return { ...state, games: state.games.map(item => item.id === game.id ? updated : item),
     storageAvailable: state.storageAvailable && saved }
@@ -535,13 +537,28 @@ export const roomStore = {
     const game = room.games.find((game) => game.id === id)
     if (game) playPuzzle(room, game)
   },
-  saveForLater(id: string) {
+  saveForLater(id: string, { notify = true } = {}) {
     const game = room.games.find(item => item.id === id)
     if (!game) return
     const next = withSavedForLater(room, game, true)
     if (next === room) return
-    if (room.active === id) { publishSelection(next, null); playListeners.forEach(listener => listener(null)) }
-    else publish(next)
+    if (room.active === id) {
+      publishSelection(next, null)
+      if (notify) playListeners.forEach(listener => listener(null))
+    } else publish(next)
+  },
+  resolvePendingSave(id: string, save: boolean) {
+    let game = room.games.find(item => item.id === id)
+    if (room.storageAvailable) {
+      // Check for a move or a save from another tab before discarding anything.
+      try {
+        const raw = readSaved(localStorage, GAME_PREFIX + id)
+        game = raw === null ? undefined : readGame(id, raw)
+      } catch { /* Use the in-memory game when browser storage is unavailable. */ }
+    }
+    if (!shouldOfferPuzzleSave(game)) return
+    if (save) roomStore.saveForLater(id, { notify: false })
+    else roomStore.remove(id, { notify: false })
   },
   stopPlaying(id: string) {
     if (room.active === id) { publishSelection(room, null); playListeners.forEach(listener => listener(null)) }
@@ -588,6 +605,7 @@ export const roomStore = {
     if (next.ratingAttempt && !next.ratingAttempt.outcome && next.position.entries !== merged.position.entries && isSolved(next)) {
       next = finishAttempt(next, 'solved')
     }
+    if (next.pendingSave && !shouldOfferPuzzleSave(next)) next = { ...next, pendingSave: undefined }
     const played = next.position !== merged.position || next.started !== merged.started
     const saved = persist(() => {
       writeGame(next)
@@ -614,7 +632,7 @@ export const roomStore = {
   finishRatingAttempt(id: string, finish: Exclude<RatingFinish, 'solved'>) {
     roomStore.update(id, (game) => isSolved(game) ? game : finishAttempt(game, finish))
   },
-  remove(id: string) {
+  remove(id: string, { notify = true } = {}) {
     const wasActive = room.active === id
     const removed = room.games.find((game) => game.id === id)
     const seenSaved = !removed || rememberPuzzle(removed)
@@ -633,6 +651,6 @@ export const roomStore = {
     publish({ ...room, games, active, playerRating: playerRatingFor(games),
       storageAvailable: room.storageAvailable && saved && remembered && seenSaved && outcomeSaved })
     if (saved) announceEdit(id, true)
-    if (wasActive) playListeners.forEach(listener => listener(null))
+    if (wasActive && notify) playListeners.forEach(listener => listener(null))
   },
 }

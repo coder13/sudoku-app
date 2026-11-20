@@ -71,6 +71,7 @@ Search by component name or browse the sections below.
 | [PuzzleCamera](../../../../src/components/PuzzleCamera.tsx) | `PuzzleCamera` captures a still image of a puzzle for import. |
 | [PhotoCropEditor](../../../../src/components/PhotoCropEditor.tsx) | `PhotoCropEditor` lets a player align the crop with a photographed grid before recognition. |
 | [PhotoPuzzleReview](../../../../src/components/PhotoPuzzleReview.tsx) | `PhotoPuzzleReview` lets a player correct recognized givens before opening a photographed puzzle. |
+| [Save before leaving](../../../../src/components/PuzzleDialogs.tsx) | `SaveUnstartedPuzzle` asks whether to save for later, leave without saving, or stay when leaving a newly generated puzzle before the first move. |
 
 ## Settings and linked devices
 

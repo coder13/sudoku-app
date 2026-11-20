@@ -248,7 +248,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
+  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, onSelectPuzzle = roomStore.select, sharedOnOtherDevice, catchUpPuzzle,
   pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -274,6 +274,7 @@ export function Worktable({
   onPublish: () => void
   onCancelDraft: () => void
   onStopPlaying: () => void
+  onSelectPuzzle?: (id: string) => void
   pausedOnLaunch?: boolean
   onResumeLaunch?: () => void
   loadingPuzzle?: boolean
@@ -2152,7 +2153,7 @@ export function Worktable({
     <CompletedPuzzle game={savedGame} games={games} catchUpPuzzle={catchUpPuzzle} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={showResults && !rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
       actionsTarget={mobile ? completionActionsTarget : null}
-      showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle} onResumePuzzle={roomStore.select}
+      showGuides={appearance.showGuides} cellReferenceStyle={cellReferenceStyle} onResumePuzzle={onSelectPuzzle}
       onChooseDifficulty={() => onNewPuzzle('difficulty')} onChooseVariant={() => onNewPuzzle()} />
   ) : null
   const solveSinglesAction = <button onClick={() => { void solveAllSingles() }} disabled={busy || !hasSingles}
@@ -2222,10 +2223,6 @@ export function Worktable({
   function showColors(openChains = false) {
     showPuzzleTool('colors', openChains && !grid ? 'chains' : undefined)
   }
-
-  const colorsAction = desktop && puzzleToolsAvailable && (
-    <button onClick={() => showColors()}><Palette size={17} /> Colors</button>
-  )
 
   function showChains() {
     if (grid) return
@@ -2324,7 +2321,6 @@ export function Worktable({
       data-presence={desktopActionsExiting ? 'exit' : 'open'}
       aria-hidden={desktopActionsExiting || undefined} inert={desktopActionsExiting || undefined}>
       {commonSolvingMenuItems}
-      {colorsAction}
       {offerSingles && <>
         <div className="app-menu-separator" role="separator" />
         {solveSinglesAction}
@@ -2536,7 +2532,7 @@ export function Worktable({
     {syncWarning && <span className="puzzle-sync-warning" role="status">{syncWarning}</span>}
     {catchUpPuzzle && !placeholder && !draft && <Button variant="quiet" className="puzzle-catch-up"
       style={showResults ? { visibility: 'hidden' } : undefined}
-      onClick={() => roomStore.select(catchUpPuzzle.id)} title={`Open ${catchUpPuzzle.title} from another linked device`}>
+      onClick={() => onSelectPuzzle(catchUpPuzzle.id)} title={`Open ${catchUpPuzzle.title} from another linked device`}>
       Catch up <ArrowRight size={14} aria-hidden="true" />
     </Button>}
   </div>
@@ -2724,7 +2720,7 @@ export function Worktable({
     </section>
   )
   const browserPanel = (
-    <AdvancedPuzzleBrowser games={games} active={game.id} view={puzzleBrowserView} onViewChange={setPuzzleBrowserView} onSelect={roomStore.select}
+    <AdvancedPuzzleBrowser games={games} active={game.id} view={puzzleBrowserView} onViewChange={setPuzzleBrowserView} onSelect={onSelectPuzzle}
       onNew={onNewPuzzle} onCreate={onCreatePuzzle} onSave={onPublish} onEdit={onEditPuzzle}
       onSavePuzzle={(id) => roomStore.update(id, (puzzle) => ({ ...puzzle, saved: true }))}
       onUnsavePuzzle={(id) => roomStore.update(id, (puzzle) => ({ ...puzzle, saved: false, savedForLater: undefined }))}
