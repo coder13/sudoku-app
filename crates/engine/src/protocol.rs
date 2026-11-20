@@ -1026,14 +1026,20 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
         #[cfg(feature = "generation")]
         Request::GenerateJigsaw { seed, difficulty, grid, exclude } => {
             let layout = sized::Layout::Regions(grid).build()?;
-            if layout.size() != 7 {
-                return Err(("invalid-layout", "Use a 7 × 7 grid with seven connected regions."));
+            let size = layout.size();
+            if !matches!(size, 5 | 7) {
+                return Err(("invalid-layout", "Use a 5 × 5 or 7 × 7 grid with connected regions."));
             }
-            if exclude.iter().any(|puzzle| puzzle.len() != 49 || puzzle.iter().any(|digit| *digit > 7)) {
+            if exclude.iter().any(|puzzle| puzzle.len() != layout.cell_count() ||
+                puzzle.iter().any(|digit| usize::from(*digit) > size)) {
                 return Err(("invalid-grid", "The cell count and digits must match the grid size."));
             }
-            crate::generate_jigsaw(&layout, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
-                .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
+            let puzzle = if size == 5 {
+                crate::generate_five_jigsaw(&layout, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+            } else {
+                crate::generate_jigsaw(&layout, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+            };
+            puzzle.ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
         #[cfg(all(feature = "generation", feature = "variants"))]
         Request::GenerateAlgebraic { seed, difficulty, exclude } => return sized_variant::generate(seed, difficulty, exclude),

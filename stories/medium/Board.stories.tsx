@@ -2,7 +2,7 @@ import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Board } from '../../src/components/Board'
 import { conflictsOf, enter, paintCandidates, valuesOf } from '../../src/sudoku/game'
-import { MINI_GRID, SEVEN_BOXLESS_GRID } from '../../src/sudoku/grid'
+import { fiveJigsawForSeed, MINI_GRID, SEVEN_BOXLESS_GRID } from '../../src/sudoku/grid'
 import { lessonDiagram, lessonValues } from '../../src/sudoku/lesson-diagram'
 import { inProgress, lessonExamples, starter } from '../support/fixtures'
 import { LessonFrame, Width } from '../support/frames'
@@ -40,6 +40,15 @@ export const SixWithCombinedRules: Story = {
     selected: [20], candidates: Array.from({ length: 36 }, (_, cell) => cell === 20 ? 0b101000 : 0),
   },
   decorators: [(Story) => <Width width={385}><Story /></Width>],
+}
+export const FiveJigsaw: Story = {
+  args: {
+    grid: fiveJigsawForSeed(),
+    givens: '0030000400000000100000002',
+    values: '0030000400000000100000002',
+    selected: [13], candidates: Array.from({ length: 25 }, (_, cell) => cell === 13 ? 0b11111 : 0),
+  },
+  decorators: [(Story) => <Width width={320}><Story /></Width>],
 }
 export const SevenJigsawThermometer: Story = {
   args: {

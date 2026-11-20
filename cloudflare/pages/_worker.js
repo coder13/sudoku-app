@@ -115,7 +115,8 @@ function fields(value, required, optional = {}) {
 
 const integer = (min, max) => value => Number.isInteger(value) && value >= min && value <= max
 const list = (valid, min, max = Infinity) => value => Array.isArray(value) && value.length >= min && value.length <= max && value.every(valid)
-const givens = (value, size = 9) => typeof value === 'string' && (size === 4 ? /^[0-4]{16}$/ : size === 6 ? /^[0-6]{36}$/ : size === 7 ? /^[0-7]{49}$/ : /^[0-9]{81}$/).test(value)
+const givens = (value, size = 9) => typeof value === 'string' && value.length === size ** 2 &&
+  [...value].every(digit => digit >= '0' && digit <= String(size))
 const boolean = value => typeof value === 'boolean'
 const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
@@ -123,8 +124,9 @@ const sixGrid = value => fields(value, { size: oneOf(6), boxRows: oneOf(2), boxC
   fields(value, { size: oneOf(6), boxRows: oneOf(3), boxColumns: oneOf(2) })
 const sharesGridEdge = (a, b, size) =>
   Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1
-function sevenJigsawGrid(value) {
-  const size = 7
+function jigsawGrid(value) {
+  const size = value?.size
+  if (size !== 5 && size !== 7) return false
   if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) }) ||
     new Set(value.regions.flat()).size !== size ** 2) return false
   return value.regions.every(part => {
@@ -136,7 +138,7 @@ function sevenJigsawGrid(value) {
   })
 }
 const sevenBoxlessGrid = value => fields(value, { size: oneOf(7), noRegions: oneOf(true) })
-const sizedGrid = value => miniGrid(value) || sixGrid(value) || sevenJigsawGrid(value) || sevenBoxlessGrid(value)
+const sizedGrid = value => miniGrid(value) || sixGrid(value) || jigsawGrid(value) || sevenBoxlessGrid(value)
 function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)

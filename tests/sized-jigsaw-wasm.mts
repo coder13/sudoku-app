@@ -1,16 +1,65 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { peer, enter, makeGame, move, redo, undo, valuesOf } from '../src/sudoku/game.ts'
+import { peer, enter, makeGame, move, puzzleIdentity, redo, undo, valuesOf } from '../src/sudoku/game.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
-import { sevenJigsawForSeed } from '../src/sudoku/grid.ts'
+import { fiveJigsawForSeed, jigsawMembership, sevenJigsawForSeed } from '../src/sudoku/grid.ts'
 import { puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { coachCode } from './helpers/coach-code.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
+
+test('the published 5 × 5 Jigsaw retains its authored regions through import, replay and sharing', async ({ mock }) => {
+  // First puzzle and answer from https://sudoku.cool/pdf/en-easy-j-5-5.pdf.
+  const membership = Array.from('0003401134012341123422234', Number)
+  const givens = '0000203500003000040000000'
+  const answer = '3514243521243151245351234'
+  const source = {
+    size: 5,
+    ruleset: 'Normal irregular 5x5 Sudoku rules apply.',
+    grid: Array.from({ length: 5 }, (_, row) => Array.from({ length: 5 }, (_, column) => {
+      const cell = 5 * row + column
+      return {
+        ...(membership[cell] === row ? {} : { region: membership[cell] }),
+        ...(givens[cell] === '0' ? {} : { given: true, value: Number(givens[cell]) }),
+      }
+    })),
+  }
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => fetcher(new URL(path, 'https://sudoku.test').href, init))
+    const { game } = await prepareImportedPuzzle(JSON.stringify(source))
+    assert.ok(game.grid?.size === 5 && game.sized)
+    assert.deepEqual(jigsawMembership(game.grid), membership)
+    assert.equal(game.sized.solution, answer)
+    assert.deepEqual(game.sized.rules, [])
+    assert.equal(peer(0, 10, undefined, game.grid), true)
+    assert.equal(peer(1, 6, undefined, game.grid), true)
+    assert.equal(peer(1, 7, undefined, game.grid), false)
+    const replay = await puzzleSolution(game)
+    assert.equal(replay.status, 'solved')
+    assert.equal(replay.board, answer)
+
+    const firstMove = enter(game, [0], 'value', Number(answer[0]))
+    assert.deepEqual(readGame(firstMove.id, JSON.stringify(firstMove))?.grid, game.grid)
+    const published = await publishSharedPuzzle(firstMove)
+    const { game: shared } = await prepareSharedPuzzle(published, [], new AbortController().signal)
+    assert.deepEqual(shared.grid, game.grid)
+    assert.equal(shared.givens, givens)
+    assert.equal(valuesOf(shared), givens)
+
+    const coach = await prepareImportedPuzzle(coachCode({ gridSize: 5, givenDigits: givens, regions: membership.map(label => label + 1) }))
+    assert.ok(coach.game.grid?.size === 5)
+    assert.equal(puzzleIdentity(coach.game), puzzleIdentity(game))
+    assert.equal(coach.game.sized?.solution, answer)
+  } finally {
+    sqlite.close()
+  }
+})
 
 // The published Thermometer export omits any region equal to the cell's row.
 const labels = ['0000111', '0200111', '2223331', '2223434', '5553434', '5666444', '5556666']
@@ -65,11 +114,14 @@ test('a 7 × 7 Jigsaw Thermometer keeps its authored houses through import, play
 
 test('Jigsaw generation verifies both recipes on every layout and excludes earlier givens', async () => {
   for (const difficulty of ['easy', 'medium'] as const) {
-    for (let seed = 0; seed < 8; seed++) {
-      const grid = sevenJigsawForSeed(seed)
+    const layouts = [
+      ...Array.from({ length: 6 }, (_, seed) => ({ seed, grid: fiveJigsawForSeed(seed) })),
+      ...Array.from({ length: 8 }, (_, seed) => ({ seed, grid: sevenJigsawForSeed(seed) })),
+    ]
+    for (const { seed, grid } of layouts) {
       const request = { type: 'generate-jigsaw', seed, grid, difficulty } as const
       const digits = await runEngine(request)
-      assert.equal(digits.length, 49)
+      assert.equal(digits.length, grid.size ** 2)
       const position = { version: 2 as const, grid, digits }
       assert.equal(await runEngine({ type: 'sized-classic', operation: 'analyze', position }), 'unique')
       const trace = await runEngine({ type: 'sized-classic', operation: 'trace', position })

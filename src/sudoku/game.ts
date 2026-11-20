@@ -1,6 +1,6 @@
 import { STARTER } from './formats.ts'
 import { sizedKillerState } from './sized-killer.ts'
-import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type SevenJigsawGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type JigsawGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
@@ -34,7 +34,7 @@ export type Position = {
   eliminations?: number[]
   draftCages?: readonly AlgebraicCage[]
   draftSizedRules?: SizedRuleGame['rules']
-  draftRegions?: SevenJigsawGrid['regions']
+  draftRegions?: JigsawGrid['regions']
 }
 
 export type HistoryPosition = Position & { chainSketch?: ChainSketchState | null }
@@ -106,7 +106,7 @@ export function makeGame(id: string, title: string, givens: string, source: Sour
     id, title, givens, source, created, ...(grid && { grid }),
     position: {
       entries: '0'.repeat(cellCount), center: Array(cellCount).fill(0), corner: Array(cellCount).fill(0), colors: Array(cellCount).fill(0),
-      ...(source === 'draft' && grid?.size === 7 && { draftSizedRules: [], ...('regions' in grid && { draftRegions: grid.regions }) }),
+      ...(source === 'draft' && grid && ('regions' in grid || 'noRegions' in grid) && { draftSizedRules: [], ...('regions' in grid && { draftRegions: grid.regions }) }),
     },
     past: [], future: [], elapsed: 0, started: false, paused: false,
   }
