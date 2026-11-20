@@ -1,6 +1,6 @@
-import { closedRegionSumCells, rectangularRegionIndex } from './region-sum.ts'
+import { closedRegionSumCells } from './region-sum.ts'
 import type { SizedConstraintRule } from './engine.ts'
-import { isGridText, matchesRectangularRegions, MINI_GRID, sixGridFromRegions } from './grid.ts'
+import { gridRegionIndex, isGridText, matchesRectangularRegions, MINI_GRID, sixGridFromRegions } from './grid.ts'
 import { isSizedRuleList } from './sized-rule-game.ts'
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -210,7 +210,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       rules.push({ type: 'thermometer', cells: bulb.cell === path[0] ? path : path.reverse() })
     } else if (matching.length === 0 && mayBeRegionSum) {
       const unique = [...new Set(path)]
-      const cells = closedRegionSumCells(unique, [path], cell => rectangularRegionIndex(cell, grid))
+      const cells = closedRegionSumCells(unique, [path], cell => gridRegionIndex(grid, cell))
       rules.push({ type: 'region-sum', cells, ...(unique.length !== path.length || cells !== unique ? { segments: [path] } : {}) })
     } else if (matching.length === 0 && mayBeRenban) {
       rules.push({ type: 'renban', cells: path })

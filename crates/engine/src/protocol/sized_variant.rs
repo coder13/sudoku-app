@@ -22,8 +22,8 @@ pub(super) struct Definition {
 #[derive(Deserialize, Serialize)]
 #[serde(untagged)]
 enum Rule {
-    Variant(PuzzleRule),
     Pair(PairRule),
+    Variant(PuzzleRule),
     Algebraic(AlgebraicRule),
 }
 
@@ -31,6 +31,12 @@ enum Rule {
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 enum PairRule {
     Difference { cells: [usize; 2], difference: u8 },
+    LabeledDots {
+        relation: crate::sized::SizedDotRelation,
+        marks: Vec<crate::sized::SizedLabeledDot>,
+        #[serde(default)]
+        negative: bool,
+    },
 }
 
 #[derive(Deserialize, Serialize)]
@@ -95,6 +101,7 @@ impl TryFrom<Rule> for SizedConstraint {
                 Self::RegionSum { cells, group_by_region }
             }
             Rule::Pair(PairRule::Difference { cells, difference }) => Self::Difference { cells, difference },
+            Rule::Pair(PairRule::LabeledDots { relation, marks, negative }) => Self::LabeledDots { relation, marks, negative },
             Rule::Variant(_) => {
                 return Err(("unsupported-rule", "This rule is unavailable on the sized grid."));
             }

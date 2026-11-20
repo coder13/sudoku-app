@@ -174,8 +174,11 @@ export type SizedVariantPosition = SizedClassicPosition & {
 
 export type SixGrid = { size: 6 } & ({ boxRows: 2; boxColumns: 3 } | { boxRows: 3; boxColumns: 2 })
 export type SizedDifferenceRule = { type: 'difference'; cells: readonly [number, number]; difference: number }
+export type SizedLabeledDotsRule = {
+  type: 'labeled-dots'; relation: 'difference' | 'ratio'; marks: readonly { cells: readonly [number, number]; value: number }[]; negative?: boolean
+}
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'arrow' | 'region-sum' }>
-  | SizedDifferenceRule
+  | SizedDifferenceRule | SizedLabeledDotsRule
 export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
   | { operation: 'analyze' | 'solve' | 'candidates' }
@@ -183,7 +186,7 @@ type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraint
   | { operation: 'trace'; eliminations?: readonly number[]; singlesOnly?: boolean }
 )
 
-export type SizedKropkiPair = { cells: [number, number]; relation: 'consecutive' | 'ratio-two'; negative: boolean }
+export type SizedKropkiPair = { cells: [number, number]; relation: 'consecutive' | 'ratio-two'; negative: boolean; value?: number }
 
 export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction }
   | { type: 'rule'; rule: number; actions: DeductionAction[] }
@@ -234,6 +237,7 @@ export type EngineRequest =
   | SizedClassicRequest
   | SizedVariantRequest
   | SizedConstraintRequest
+  | { type: 'generate-jigsaw'; seed: number; difficulty: 'easy' | 'medium'; grid: { size: number; regions: readonly (readonly number[])[] }; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-six'; seed: number; difficulty: 'easy' | 'medium'; grid: SixGrid; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-algebraic'; seed: number; difficulty?: AlgebraicRating['difficulty']; exclude?: readonly SizedVariantPosition[] }
@@ -624,7 +628,7 @@ export type EngineResult<T extends EngineRequest> =
     T['operation'] extends 'trace' ? AlgebraicTracePosition[] | null :
     AlgebraicCageProof | null
   ) :
-  T extends { type: 'generate-mini' | 'generate-six' } ? number[] :
+  T extends { type: 'generate-mini' | 'generate-six' | 'generate-jigsaw' } ? number[] :
   T extends { type: 'generate-algebraic' } ? SizedVariantPosition :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
@@ -730,6 +734,7 @@ function connectionFor(request: EngineRequest, options: WorkerOptions) {
     case 'generate':
     case 'generate-mini':
     case 'generate-six':
+    case 'generate-jigsaw':
     case 'generate-algebraic':
     case 'generate-constrained':
     case 'generate-targeted':

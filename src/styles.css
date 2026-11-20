@@ -3879,6 +3879,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     repeating-linear-gradient(to bottom, transparent 0 calc(100% / 6 - 1px), var(--grid-line) calc(100% / 6 - 1px) calc(100% / 6)),
     var(--board-bg);
 }
+.variant-preview[data-variant="jigsaw-seven"] {
+  background:
+    repeating-linear-gradient(to right, transparent 0 calc(100% / 7 - 1px), var(--grid-line) calc(100% / 7 - 1px) calc(100% / 7)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(100% / 7 - 1px), var(--grid-line) calc(100% / 7 - 1px) calc(100% / 7)),
+    var(--board-bg);
+}
 .variant-preview[data-variant="jigsaw"] { background: var(--board-bg); }
 .variant-preview[data-variant="inequality"] { background: var(--board-bg); }
 .variant-inequality-preview-digits text { fill: var(--board-ink); font-size: .62px; text-anchor: middle; dominant-baseline: central; }
@@ -3932,6 +3938,14 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-arrow-head { stroke-width: .11; }
 .variant-dot { stroke-width: .033; }
+.variant-labeled-dot text {
+  font: 650 .153px var(--font-sans, sans-serif);
+  text-anchor: middle;
+  dominant-baseline: central;
+  stroke: none;
+}
+.variant-labeled-dot.difference text { fill: #222; }
+.variant-labeled-dot.ratio text { fill: #fff; }
 .variant-dot-white { fill: #fff; stroke: #222; }
 .variant-dot-black { fill: #161616; stroke: #eee; }
 .variant-preview .variant-dot { r: .23px; }

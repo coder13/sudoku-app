@@ -198,3 +198,19 @@ test('Region Sum supports a total of 136 across two complete 16 × 16 boxes', as
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
   assert.deepEqual((await runEngine({ type: 'sized-variant', operation: 'solve', position }))?.digits, answer)
 })
+
+test('labeled ratios use the digit range and report precise positive and negative edges', async () => {
+  const size = 16
+  const digits = Array(size ** 2).fill(0)
+  digits[0] = 1
+  const position: SizedConstraintPosition = {
+    version: 2, grid: { size, boxRows: 4, boxColumns: 4 }, digits,
+    rules: [{ type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 16 }], negative: true }],
+  }
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.equal(candidates?.[1], 1 << 15)
+  assert.equal((candidates?.[16] ?? 0) & (1 << 1), 0)
+  const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 16 })
+  assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 1 && step.pair.value === 16))
+  assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 16 && step.pair.value === 2 && step.pair.negative))
+})

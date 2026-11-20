@@ -141,27 +141,73 @@ pub fn generate_six(
     };
     for _ in 0..160 {
         let solution = six_solution(spec, &mut random);
-        let mut puzzle = solution;
-        let mut order: [usize; 36] = std::array::from_fn(|cell| cell);
-        random.shuffle(&mut order);
-        let target = minimum + random.index(spread);
-        let mut clues = 36;
-        for cell in order {
-            puzzle[cell] = 0;
-            if layout.analyze(&puzzle, 2_000) == Analysis::Unique {
-                clues -= 1;
-                if clues == target {
-                    break;
-                }
-            } else {
-                puzzle[cell] = solution[cell];
-            }
-        }
-        if clues != target || excluded.contains(puzzle.as_slice()) {
-            continue;
-        }
-        if recipe_matches(&layout, puzzle, solution, difficulty) {
+        let puzzle = carve(&layout, solution, minimum, spread, 2_000, &mut random);
+        if let Some(puzzle) = puzzle
+            && !excluded.contains(puzzle.as_slice())
+            && recipe_matches(&layout, puzzle, solution, difficulty)
+        {
             return Some(puzzle);
+        }
+    }
+    None
+}
+
+/// Generate a uniquely solvable puzzle on a connected 7 × 7 layout.
+pub fn generate_jigsaw(
+    layout: &SizedGrid,
+    seed: u32,
+    difficulty: MiniDifficulty,
+    exclude: &[Vec<u8>],
+) -> Option<[u8; 49]> {
+    if layout.size() != 7 {
+        return None;
+    }
+    let excluded: HashSet<&[u8]> = exclude.iter().map(Vec::as_slice).collect();
+    // Relabeling a completion can always put these digits in the first row.
+    let mut labeled = [0; 49];
+    labeled[..7].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7]);
+    let base: [u8; 49] = layout.solve(&labeled, 500_000)?.try_into().ok()?;
+    let mut random = Random::from_seed(seed);
+    let (minimum, spread) = match difficulty {
+        MiniDifficulty::Easy => (20, 4),
+        MiniDifficulty::Medium => (15, 4),
+    };
+    for _ in 0..160 {
+        let mut digits = [1, 2, 3, 4, 5, 6, 7];
+        random.shuffle(&mut digits);
+        let solution = base.map(|digit| digits[usize::from(digit - 1)]);
+        if let Some(puzzle) = carve(layout, solution, minimum, spread, 10_000, &mut random)
+            && !excluded.contains(puzzle.as_slice())
+            && recipe_matches(layout, puzzle, solution, difficulty)
+        {
+            return Some(puzzle);
+        }
+    }
+    None
+}
+
+fn carve<const CELLS: usize>(
+    layout: &SizedGrid,
+    solution: [u8; CELLS],
+    minimum: usize,
+    spread: usize,
+    search_budget: u32,
+    random: &mut Random,
+) -> Option<[u8; CELLS]> {
+    let mut puzzle = solution;
+    let mut order: [usize; CELLS] = std::array::from_fn(|cell| cell);
+    random.shuffle(&mut order);
+    let target = minimum + random.index(spread);
+    let mut clues = CELLS;
+    for cell in order {
+        puzzle[cell] = 0;
+        if layout.analyze(&puzzle, search_budget) == Analysis::Unique {
+            clues -= 1;
+            if clues == target {
+                return Some(puzzle);
+            }
+        } else {
+            puzzle[cell] = solution[cell];
         }
     }
     None
@@ -190,14 +236,14 @@ fn shuffle_groups(width: usize, random: &mut Random) -> [usize; 6] {
     order
 }
 
-fn recipe_matches(
+fn recipe_matches<const CELLS: usize>(
     layout: &SizedGrid,
-    mut puzzle: [u8; 36],
-    solution: [u8; 36],
+    mut puzzle: [u8; CELLS],
+    solution: [u8; CELLS],
     difficulty: MiniDifficulty,
 ) -> bool {
     let mut beyond_naked_singles = false;
-    let mut removed = [0; 36];
+    let mut removed = [0; CELLS];
     while let Some(step) = layout.next_deduction(&puzzle, &removed) {
         if step.technique != SizedTechnique::NakedSingle {
             if difficulty == MiniDifficulty::Easy {

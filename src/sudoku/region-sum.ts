@@ -1,4 +1,4 @@
-import type { PlayGrid } from './grid.ts'
+import { gridRegionIndex, type PlayGrid } from './grid.ts'
 import type { SizedConstraintRule, VariantPuzzle, VariantRule } from './engine.ts'
 
 type RegionSum = Extract<VariantRule, { type: 'region-sum' }>
@@ -13,12 +13,8 @@ export function regionSumParts(rule: RegionSum, regions?: VariantPuzzle['regions
   return partitionRegionSum(rule, cell => regionIndex(cell, regions))
 }
 
-export function rectangularRegionIndex(cell: number, { size, boxRows, boxColumns }: PlayGrid) {
-  return Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
-}
-
 export function sizedRegionSumParts(rule: RegionSum, grid: PlayGrid) {
-  return partitionRegionSum(rule, cell => rectangularRegionIndex(cell, grid))
+  return partitionRegionSum(rule, cell => gridRegionIndex(grid, cell))
 }
 
 function partitionRegionSum(rule: RegionSum, regionOf: (cell: number) => number) {

@@ -34,10 +34,29 @@ pub enum SizedConstraint {
         consecutive: MarkedPairs,
         ratio_two: MarkedPairs,
     },
+    LabeledDots {
+        relation: SizedDotRelation,
+        marks: Vec<SizedLabeledDot>,
+        negative: bool,
+    },
     Difference {
         cells: [usize; 2],
         difference: u8,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "kebab-case"))]
+pub enum SizedDotRelation {
+    Difference,
+    Ratio,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(deny_unknown_fields))]
+pub struct SizedLabeledDot {
+    pub cells: [usize; 2],
+    pub value: u8,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -53,6 +72,8 @@ pub struct SizedKropkiPair {
     pub cells: [usize; 2],
     pub relation: SizedKropkiRelation,
     pub negative: bool,
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub value: Option<u8>,
 }
 
 /// A deduction from a standard house or one authored rule.
@@ -198,7 +219,7 @@ impl SizedConstraintGrid {
                     }
                     renbans.push(cells.clone());
                 }
-                SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. } => {}
+                SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. } | SizedConstraint::LabeledDots { .. } => {}
             }
         }
         let parity = parity
@@ -483,7 +504,7 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
-                SizedConstraint::Kropki { .. } => {
+                SizedConstraint::Kropki { .. } | SizedConstraint::LabeledDots { .. } => {
                     for link in &self.pair_links[rule] {
                         let support = link.supports(&domains);
                         if support.contains(&0) {
@@ -702,7 +723,7 @@ impl SizedConstraintGrid {
                 SizedConstraint::Difference { .. } => {
                     self.pair_links[rule].iter().any(|link| link.supports(&domains).contains(&0))
                 }
-                SizedConstraint::Kropki { .. } => {
+                SizedConstraint::Kropki { .. } | SizedConstraint::LabeledDots { .. } => {
                     if let Some(link) = self.pair_links[rule].iter().find(|link| {
                         link.supports(&domains).contains(&0)
                     }) {
