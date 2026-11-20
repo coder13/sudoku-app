@@ -256,6 +256,12 @@ impl SizedGrid {
         limit: usize,
         singles_only: bool,
     ) -> Option<SizedHints> {
+        let candidates = self.hint_candidates(digits, eliminations)?;
+        let choices = self.hint_choices(&candidates, limit, singles_only)?;
+        Some(SizedHints { candidates, choices })
+    }
+
+    fn hint_candidates(&self, digits: &[u8], eliminations: &[u16]) -> Option<Vec<u16>> {
         if eliminations.len() != self.cell_count()
             || eliminations.iter().any(|mask| mask & !self.full_mask != 0)
         {
@@ -287,6 +293,15 @@ impl SizedGrid {
         {
             return None;
         }
+        Some(masks)
+    }
+
+    fn hint_choices(
+        &self,
+        masks: &[u16],
+        limit: usize,
+        singles_only: bool,
+    ) -> Option<Vec<SizedDeduction>> {
         let mut choices = Vec::new();
         for (cell, &mask) in masks.iter().enumerate() {
             if choices.len() == limit {
@@ -323,12 +338,9 @@ impl SizedGrid {
             }
         }
         if !singles_only && choices.len() < limit {
-            self.locked_candidates(&masks, &mut choices, limit);
+            self.locked_candidates(masks, &mut choices, limit);
         }
-        Some(SizedHints {
-            candidates: masks,
-            choices,
-        })
+        Some(choices)
     }
 
     fn single(

@@ -352,14 +352,12 @@ impl SizedConstraintGrid {
         limit: usize,
         singles_only: bool,
     ) -> Option<SizedConstraintHints> {
-        let house = self
-            .layout
-            .find_hints(digits, eliminations, limit, singles_only)?;
+        let candidates = self.layout.hint_candidates(digits, eliminations)?;
         if !self.permits(digits) {
             return None;
         }
         let mut choices = Vec::new();
-        let mut domains = house.candidates.clone();
+        let mut domains = candidates.clone();
         for (cell, &digit) in digits.iter().enumerate() {
             if digit != 0 {
                 domains[cell] = 1 << (digit - 1);
@@ -406,7 +404,7 @@ impl SizedConstraintGrid {
                         SizedParity::Even => 0x5555,
                     };
                     for &cell in cells {
-                        eliminations_for(cell, house.candidates[cell] & excluded, &mut actions);
+                        eliminations_for(cell, candidates[cell] & excluded, &mut actions);
                     }
                     actions.sort_unstable();
                     actions.dedup();
@@ -420,7 +418,7 @@ impl SizedConstraintGrid {
                     for &cell in cells {
                         eliminations_for(
                             cell,
-                            house.candidates[cell] & !support[cell],
+                            candidates[cell] & !support[cell],
                             &mut actions,
                         );
                     }
@@ -430,9 +428,9 @@ impl SizedConstraintGrid {
                     if bulb == 0 {
                         return None;
                     }
-                    eliminations_for(*circle, house.candidates[*circle] & !bulb, &mut actions);
+                    eliminations_for(*circle, candidates[*circle] & !bulb, &mut actions);
                     for (&cell, mask) in cells.iter().zip(shaft) {
-                        eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::Renban { cells } => {
@@ -441,7 +439,7 @@ impl SizedConstraintGrid {
                         if mask == 0 {
                             return None;
                         }
-                        eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::Difference { .. } => {
@@ -451,7 +449,7 @@ impl SizedConstraintGrid {
                         return None;
                     }
                     for (cell, mask) in link.constraint.cells.into_iter().zip(support) {
-                        eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::Kropki { .. } => {
@@ -462,7 +460,7 @@ impl SizedConstraintGrid {
                         }
                         let mut actions = Vec::new();
                         for (cell, mask) in link.constraint.cells.into_iter().zip(support) {
-                            eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                            eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                         }
                         if !actions.is_empty() {
                             choices.push(SizedConstraintStep::Kropki { rule, pair: link.kropki_proof()?, actions });
@@ -478,17 +476,15 @@ impl SizedConstraintGrid {
             }
         }
         let remaining = limit - choices.len();
-        choices.extend(
-            house
-                .choices
-                .into_iter()
-                .take(remaining)
-                .map(|proof| SizedConstraintStep::House { proof }),
-        );
-        Some(SizedConstraintHints {
-            candidates: house.candidates,
-            choices,
-        })
+        if remaining != 0 {
+            choices.extend(
+                self.layout
+                    .hint_choices(&candidates, remaining, singles_only)?
+                    .into_iter()
+                    .map(|proof| SizedConstraintStep::House { proof }),
+            );
+        }
+        Some(SizedConstraintHints { candidates, choices })
     }
 
     pub fn trace(
