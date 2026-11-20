@@ -3152,7 +3152,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     /* Keep the puzzle and input card near the viewport edges, not spread apart by flex spacers. */
     .standard-workspace-page { padding-block: var(--space-4); }
     .mobile-panel-space { flex: 0 0 0; }
-    .mobile-panel-gap { flex-basis: var(--space-6); }
+    .mobile-panel-gap { flex-basis: var(--space-4); }
 
     /* Give unused viewport height to the input card instead of adding space between cards. */
     .mobile-panel-layout:not(.with-hint) > .mobile-panel[data-mobile-panel="input"]:not([data-first]) {
