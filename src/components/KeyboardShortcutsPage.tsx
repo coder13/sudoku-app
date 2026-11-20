@@ -16,6 +16,7 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
       { label: 'Hold for Pencil mode', description: 'Switch from Pen to Pencil while you hold the key.', keys: ['Ctrl/⌘'] },
       { label: 'Toggle a candidate or highlight a digit', description: 'Toggle a candidate in selected cells. With no cells selected, match all highlighted digits.', keys: ['Ctrl/⌘', '1–9'] },
       { label: 'Highlight any selected digit', description: 'Toggle a digit and highlight cells that contain any selected digit.', keys: ['Shift', '1–9'] },
+      { label: 'Cycle the highlighted digit', description: 'Highlight the next digit in order. Skip digits that are fully placed.', keys: ['`'] },
       { label: 'Erase selected cells', description: 'Remove placed digits or candidates from selected cells.', keys: ['0', 'Delete', 'Backspace'] },
     ],
   },

@@ -1,3 +1,5 @@
+import { placedDigitCounts } from './game.ts'
+
 export type DigitHighlightMatch = 'all' | 'any'
 
 export function activeHighlightDigit(
@@ -8,6 +10,15 @@ export function activeHighlightDigit(
 ) {
   const cellDigit = selected.includes(active) ? Number(values[active]) : 0
   return selectedDigit || cellDigit || null
+}
+
+export function nextIncompleteDigit(values: string, current: number | null, gridSize = 9) {
+  const counts = placedDigitCounts(values)
+  for (let offset = 0; offset < gridSize; offset++) {
+    const digit = ((current ?? 0) + offset) % gridSize + 1
+    if (counts[digit] < gridSize) return digit
+  }
+  return null
 }
 
 export function functionKeyDigit(key: string) {

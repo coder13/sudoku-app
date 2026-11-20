@@ -24,7 +24,7 @@ import { isAlgebraicCageList } from '../sudoku/algebraic-cages'
 import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID, sizedClassicPosition } from '../sudoku/grid'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
-import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
+import { activeHighlightDigit, functionKeyDigit, givenDigitAt, nextIncompleteDigit, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey } from '../sudoku/player-rating'
@@ -1687,7 +1687,18 @@ export function Worktable({
         if (canActivateTemporaryPencil) setPencilModifier(true)
         return
       }
-      const highlightedDigit = shiftDigit ?? functionKeyDigit(event.key)
+      const cycleDigit = key === '`' && !shortcut && !event.shiftKey && !event.isComposing &&
+        solvingDigitShortcuts && !variantRulesOpen &&
+        !(target instanceof HTMLElement && target.closest('dialog[open]'))
+      let highlightedDigit = shiftDigit ?? functionKeyDigit(event.key)
+      if (cycleDigit) {
+        event.preventDefault()
+        if (event.repeat) return
+        const current = strongLinksVisible ? onlyCandidate(strongLinkMask)
+          : sketch.drawing ? chainHighlightDigit : selectedDigit ?? onlyCandidate(highlightedDigitMask) ?? coloringDigit
+        highlightedDigit = nextIncompleteDigit(values, current, gridSize)
+        if (highlightedDigit === null) return
+      }
       if (sketch.drawing || browsingStrongLinks) {
         if (cancelTool && browsingStrongLinks) {
           event.preventDefault()
