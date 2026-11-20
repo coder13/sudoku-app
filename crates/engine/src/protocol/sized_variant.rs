@@ -22,14 +22,16 @@ pub(super) struct Definition {
 #[derive(Deserialize, Serialize)]
 #[serde(untagged)]
 enum Rule {
-    Pair(PairRule),
+    Sized(SizedRule),
     Variant(PuzzleRule),
     Algebraic(AlgebraicRule),
 }
 
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
-enum PairRule {
+enum SizedRule {
+    DoubleArrow { ends: [usize; 2], cells: Vec<usize> },
+    LinkedDoubleArrow { ends: [crate::SizedSumEnd; 2], cells: Vec<usize> },
     Difference { cells: [usize; 2], difference: u8 },
     LabeledDots {
         relation: crate::sized::SizedDotRelation,
@@ -90,6 +92,8 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
             Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
+            Rule::Sized(SizedRule::DoubleArrow { ends, cells }) => Self::DoubleArrow { ends, cells },
+            Rule::Sized(SizedRule::LinkedDoubleArrow { ends, cells }) => Self::LinkedDoubleArrow { ends, cells },
             Rule::Variant(PuzzleRule::Kropki { consecutive, ratio_two }) => {
                 Self::Kropki { consecutive, ratio_two }
             }
@@ -102,8 +106,8 @@ impl TryFrom<Rule> for SizedConstraint {
                 validate_drawing(&cells, segments, "Region Sum drawing paths must cover the same cells as the line.")?;
                 Self::RegionSum { cells, group_by_region }
             }
-            Rule::Pair(PairRule::Difference { cells, difference }) => Self::Difference { cells, difference },
-            Rule::Pair(PairRule::LabeledDots { relation, marks, negative }) => Self::LabeledDots { relation, marks, negative },
+            Rule::Sized(SizedRule::Difference { cells, difference }) => Self::Difference { cells, difference },
+            Rule::Sized(SizedRule::LabeledDots { relation, marks, negative }) => Self::LabeledDots { relation, marks, negative },
             Rule::Variant(_) => {
                 return Err(("unsupported-rule", "This rule is unavailable on the sized grid."));
             }

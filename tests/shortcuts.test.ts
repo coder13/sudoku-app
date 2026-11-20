@@ -19,8 +19,11 @@ test('older saved shortcuts gain the Generate candidates default without creatin
   assert.deepEqual(parseShortcutPreferences({ ...olderPreferences, digitMode: 'g' }), DEFAULT_SHORTCUTS)
 })
 
-test('the new Chains shortcuts preserve keys already assigned by the user', () => {
-  const { chainDrawing: _draw, newChain: _new, ...olderPreferences } = DEFAULT_SHORTCUTS
+test('Toggle draw links preserves custom keys and drops the old New chain binding', () => {
+  const { chainDrawing: _draw, ...olderPreferences } = DEFAULT_SHORTCUTS
+  assert.equal(DEFAULT_SHORTCUTS.chainDrawing, 'x')
+  assert.equal(EDITABLE_SHORTCUTS.find(({ id }) => id === 'chainDrawing')?.label, 'Toggle draw links')
+  assert.deepEqual(parseShortcutPreferences({ ...DEFAULT_SHORTCUTS, newChain: 'b' }), DEFAULT_SHORTCUTS)
   const shortcuts = parseShortcutPreferences({ ...olderPreferences, digitMode: 'x', pencilMode: 'b' })
   assert.equal(shortcuts.digitMode, 'x')
   assert.equal(shortcuts.pencilMode, 'b')

@@ -39,7 +39,7 @@ jobs:
           RUSTUP_TOOLCHAIN: stable
           VITE_EXPERIMENTAL_MODE: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
 
-      - name: Check board, resize, and solver lifecycles
+      - name: Check board, startup, resize, and solver lifecycles
         if: github.event_name == 'pull_request'
         run: |
           npm run check
@@ -51,6 +51,7 @@ jobs:
           node tools/react-board-performance/scripts/motion.mjs --regression-only --output results/motion-ci.json
           node scripts/check-mobile-resize.mjs --regression-only --output tools/react-board-performance/results/resize-ci.json
           node --experimental-strip-types scripts/check-worktable-lifecycle.mjs --output tools/react-board-performance/results/lifecycle-ci.json
+          node --experimental-sqlite --experimental-strip-types scripts/check-startup-loading.mjs --output tools/react-board-performance/results/startup-ci.json
 
       - name: Deploy to Cloudflare Pages
         id: pages

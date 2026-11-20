@@ -2,7 +2,7 @@
 
 This harness compares the complete production `Board` before and after the React optimizations. It does not use a reduced board implementation.
 
-The baseline is commit `8ae7c7d637a2c8e09eff7567d5132838c241deb9`. The `baseline` directory contains that commit's `Board.tsx`, `BoardMarks.tsx`, and `BoardAnnotations.tsx`. Only relative imports change. The manifest records original and adjusted source hashes. The runner checks them before each comparison.
+The baseline is commit `9b4e635752819d6045d96d602af3dc639622fbfa`. The `baseline` directory contains that commit's `Board.tsx`, `BoardMarks.tsx`, and `BoardAnnotations.tsx`. Only relative imports change. The manifest records original and adjusted source hashes. The runner checks them before each comparison.
 
 Both versions use the same React runtime, production CSS, other app dependencies, input path, fixtures, and browser settings.
 
@@ -45,6 +45,7 @@ Run these commands from the repository root after installing the harness depende
 node tools/react-board-performance/scripts/motion.mjs
 node scripts/check-mobile-resize.mjs --compare 7e8979c43f13c6238dc0a5c20a0ccbe3c85d4272 --rounds 3
 node --experimental-strip-types scripts/check-worktable-lifecycle.mjs
+node --experimental-sqlite --experimental-strip-types scripts/check-startup-loading.mjs
 ```
 
 The motion comparison uses the same optimized Board with either the previous paint transitions or the current direct highlights. A pinned, hashed fixture contains the earlier transition declarations. It records Chromium paint, style, and layout events, frame intervals, and the full observation window. Bulk-removal runs compare the pinned old Board with the current Board under the same current CSS. They also count fallback timers and check exit cleanup, reduced motion, and rapid restore/remove sequences.
@@ -53,7 +54,9 @@ The mobile resize comparison builds both resize implementations with the same cu
 
 The lifecycle script runs the real development app, stores, router, and WASM. It holds selected native worker replies to check pause, note edits, hint closure, navigation, and generation cancellation. It is a functional check, not a performance measurement. Generate the normal app WASM assets before running it.
 
-CI runs the motion and resize scripts with `--regression-only`, plus the lifecycle script. Timing thresholds are not used as a CI gate. Final reports include source hashes; raw results go in the ignored `results` directory.
+The startup script runs the real server HTML, client router, and sync Worker with an isolated SQLite database. It delays puzzle and settings responses to check the blank loading page, immediate cached play, remote completion, and failure recovery. It checks desktop and mobile geometry and records even brief Puzzles page mounts. Its offline case supplies local app assets while Chromium reports an offline network. It does not test service-worker installation. Use `--screenshots results/startup-screenshots` to capture the loading line and cached play during sync.
+
+CI runs the motion and resize scripts with `--regression-only`, plus the lifecycle and startup scripts. Timing thresholds are not used as a CI gate. Final reports include source hashes; raw results go in the ignored `results` directory.
 
 ## Timing limits
 

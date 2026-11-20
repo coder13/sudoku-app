@@ -27,7 +27,6 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
   },
   {
     title: 'Chain drawing', shortcuts: [
-      { label: 'End the path or stop drawing', description: 'End the current path. If no endpoint is selected, stop drawing.', keys: ['Escape'] },
       { label: 'Undo a link edit', description: 'Undo the last edit to the selected chain.', keys: ['Ctrl/⌘', 'Z'] },
       { label: 'Highlight matching candidates', description: 'Highlight the selected digit while you draw links.', keys: ['1–9'] },
       { label: 'Toggle a strong-link digit', description: 'With Show strong links on, toggle one digit without clearing the others.', keys: ['Shift', '1–9'] },
@@ -40,7 +39,7 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
       { label: 'Increase app text size', description: 'Enlarge text and digits throughout the app.', keys: ['Ctrl/⌘', '+'] },
       { label: 'Decrease app text size', description: 'Shrink text and digits throughout the app.', keys: ['Ctrl/⌘', '−'] },
       { label: 'Reset app text size', description: 'Restore the default app text scale.', keys: ['Ctrl/⌘', '0'] },
-      { label: 'Close or cancel', description: 'Close the current menu or cancel a temporary action.', keys: ['Escape'] },
+      { label: 'Close or cancel', description: 'Close the current menu or stop coloring or drawing links.', keys: ['Escape'] },
     ],
   },
 ]

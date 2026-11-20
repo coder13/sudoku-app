@@ -250,6 +250,66 @@ async function runRegression(options: { motionOnly?: boolean; pressKey?: (key: s
       compare('links:dom')
     }
     cases.push({ id: 'callbacks-focus-presence-and-refs', checks: checked.filter(key => /^(callbacks|candidate|links):/.test(key)).length })
+
+    for (const variant of ['baseline', 'optimized'] as const) {
+      const calls: unknown[] = []
+      const center = Array(81).fill(0), corner = Array(81).fill(0)
+      center[2] = 5; corner[2] = 10
+      let current: BoardProps = { ...propsFromState(createFixture('puzzle')),
+        position: { center, corner }, candidateLayout: 'center-corner', selected: [], active: 2,
+        onCell: undefined, linkDrawing: true, highlightedDigit: 3,
+        onCandidate: value => calls.push(['first', value]) }
+      const cell = () => root.querySelector<HTMLElement>('[data-cell="2"]')!
+      const expectCalls = (key: string, expected: unknown[]) => {
+        if (JSON.stringify(calls) !== JSON.stringify(expected)) {
+          throw new Error(`${variant} ${key}: expected ${JSON.stringify(expected)}, received ${JSON.stringify(calls)}.`)
+        }
+        compare(`chain:${key}`, { calls: calls.slice(), dom: snapshot() })
+      }
+      const update = async (next: Partial<BoardProps>) => {
+        current = { ...current, ...next }
+        dispatchProps(current)
+        await settle()
+      }
+      const clickCell = async (key: string, expected: unknown[]) => {
+        calls.length = 0
+        cell().click()
+        await settle()
+        expectCalls(key, expected)
+      }
+      await mount(variant, current)
+      await clickCell('center-gap', [['first', { cell: 2, digit: 3 }]])
+      const activeCandidate = cell().querySelector<HTMLButtonElement>('.candidate-button[tabindex="0"]')
+      if (activeCandidate?.textContent !== '3' || !activeCandidate.closest('.center-marks')) {
+        throw new Error(`${variant} did not move the candidate tab stop to the selected center note.`)
+      }
+      await update({ onCandidate: value => calls.push(['replacement', value]) })
+      await clickCell('callback-replacement', [['replacement', { cell: 2, digit: 3 }]])
+      await update({ highlightedDigit: 4 })
+      await clickCell('corner-gap', [['replacement', { cell: 2, digit: 4 }]])
+      calls.length = 0
+      const digitTwo = [...cell().querySelectorAll<HTMLButtonElement>('.candidate-button')]
+        .find(button => button.textContent === '2' && !button.closest('[inert]'))
+      if (!digitTwo) throw new Error(`${variant} is missing the direct candidate button.`)
+      digitTwo.click()
+      await settle()
+      expectCalls('direct-candidate-once', [['replacement', { cell: 2, digit: 2 }]])
+      await update({ onPaintCandidate: value => calls.push(['paint', value]) })
+      await clickCell('paint-priority', [['paint', { cell: 2, digit: 4 }]])
+      await update({ onCell: index => calls.push(['cell', index]) })
+      await clickCell('cell-handler-priority', [['cell', 2]])
+      await update({ onCell: undefined, onPaintCandidate: undefined, linkDrawing: false })
+      await clickCell('drawing-disabled', [])
+      await update({ linkDrawing: true, highlightedDigit: 9 })
+      await clickCell('absent-highlight', [])
+      await update({ highlightedDigit: 3, highlighting: { relatedCells: true, matchingDigits: true, matchingCandidates: false } })
+      await clickCell('candidate-highlighting-disabled', [])
+      await update({ highlighting: undefined, highlightedDigitMask: 5, highlightedDigitMatch: 'any' })
+      await clickCell('multiple-highlighted-digits', [])
+      await update({ highlightedDigitMask: 0, onCandidate: undefined })
+      await clickCell('callback-removed', [])
+    }
+    cases.push({ id: 'chain-cell-click-focus-and-presence', checks: checked.filter(key => key.startsWith('chain:')).length })
   }
 
   if (options.motionOnly) {

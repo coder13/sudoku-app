@@ -36,7 +36,7 @@ const sourceFiles = [
   'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
   'src/components/board-mark-cleanup.ts',
   'src/components/VariantClues.tsx', 'src/components/OutsideClues.tsx', 'src/styles.css', 'package-lock.json',
-  ...['game', 'highlighting', 'preferences', 'board-link-geometry', 'grid', 'variants', 'clone', 'outside-clues', 'engine', 'themes']
+  ...['game', 'highlighting', 'preferences', 'board-link-geometry', 'grid', 'variants', 'clone', 'outside-clues', 'sized-linked-double-arrow', 'engine', 'themes']
     .map(name => `src/sudoku/${name}.ts`),
   ...(await readdir(path.join(directory, 'src'))).map(name => `tools/react-board-performance/src/${name}`),
   'tools/react-board-performance/scripts/run.mjs', 'tools/react-board-performance/scripts/browser.mjs',
@@ -121,6 +121,10 @@ try {
     report.motionRegression = await page.evaluate(() => window.runBoardRegression({ motionOnly: true }))
     if (errors.length) throw new Error(`Motion regression browser errors: ${errors.join('; ')}`)
   } finally { await context.close() }
+  for (const [name, expected] of Object.entries(sourceHashes)) {
+    if (sha256(await readFile(path.join(repository, name))) !== expected) throw new Error(`Source changed during the run: ${name}.`)
+  }
+  report.sourceHashesVerifiedAtEnd = true
   report.finishedAt = new Date().toISOString()
   await save()
   console.log(`Saved ${path.relative(directory, output)}.`)

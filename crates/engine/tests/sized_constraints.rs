@@ -178,3 +178,65 @@ fn boxless_cages_and_extra_houses_use_all_sixteen_digits() {
     digits[51] = 16;
     assert!(puzzle.candidates(&digits).is_none());
 }
+
+// https://sudokupad.app/y176p34zew
+#[test]
+fn published_choose_your_fighter_double_arrows_are_unique() {
+    let digits = b"030000000000000000000002000000000000".map(|digit| digit - b'0');
+    let answer = b"435621162354521463346512253146614235".map(|digit| digit - b'0');
+    let rules = [
+        Rule::DoubleArrow { ends: [16, 21], cells: vec![22, 28, 34, 33, 27] },
+        Rule::DoubleArrow { ends: [21, 24], cells: vec![26, 19] },
+        Rule::DoubleArrow { ends: [24, 7], cells: vec![18, 12] },
+        Rule::DoubleArrow { ends: [7, 5], cells: vec![8, 9, 4] },
+        Rule::DoubleArrow { ends: [5, 16], cells: vec![11, 17] },
+    ];
+    let layout = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+    let grid = SizedConstraintGrid::new(layout, &rules).unwrap();
+    let result = grid.solve_unique(&digits, 100_000).unwrap();
+    assert_eq!(result, answer);
+}
+
+// https://sudokupad.app/xa14jqkz3e
+#[test]
+fn published_hamburger_double_arrows_are_unique() {
+    let digits = b"000000000000000000000000000000000000".map(|digit| digit - b'0');
+    let answer = b"421653365214142536653421536142214365".map(|digit| digit - b'0');
+    let rules = [
+        Rule::DoubleArrow { ends: [0, 4], cells: vec![1, 2, 3] },
+        Rule::DoubleArrow { ends: [11, 35], cells: vec![17, 23, 29] },
+        Rule::DoubleArrow { ends: [34, 30], cells: vec![33, 32, 31] },
+        Rule::DoubleArrow { ends: [12, 24], cells: vec![18] },
+        Rule::DoubleArrow { ends: [7, 10], cells: vec![8, 9] },
+        Rule::DoubleArrow { ends: [10, 22], cells: vec![16] },
+        Rule::DoubleArrow { ends: [22, 19], cells: vec![21, 20] },
+        Rule::DoubleArrow { ends: [19, 22], cells: vec![26, 27] },
+        Rule::DoubleArrow { ends: [19, 22], cells: vec![14, 15] },
+    ];
+    let layout = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+    let grid = SizedConstraintGrid::new(layout, &rules).unwrap();
+    let result = grid.solve_unique(&digits, 100_000).unwrap();
+    assert_eq!(result, answer);
+}
+
+// https://sudokupad.app/iqyiibuxka
+#[test]
+fn published_double_arrow_x_sums_has_one_solution() {
+    use sudoku_app_engine::{ClueDirection::*, SizedSumEnd as End};
+    let answer = b"614523235461521346346152463215152634".map(|digit| digit - b'0');
+    let rules = [
+        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: South, index: 1 }, End::XSum { direction: East, index: 1 }], cells: vec![0] },
+        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: West, index: 3 }, End::XSum { direction: North, index: 2 }], cells: vec![29, 28, 33] },
+        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: East, index: 5 }, End::XSum { direction: North, index: 2 }], cells: vec![30, 31] },
+        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: North, index: 2 }, End::XSum { direction: South, index: 2 }], cells: vec![32, 26, 20, 14, 8, 2] },
+        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: South, index: 2 }, End::XSum { direction: West, index: 1 }], cells: vec![3, 10, 17] },
+    ];
+    let grid = SizedConstraintGrid::new(SIX, &rules).unwrap();
+    let result = grid.solve_unique(&[0; 36], 100_000).unwrap();
+    assert_eq!(result, answer);
+    assert!(grid.candidates(&[0; 36]).unwrap().iter().zip(answer).all(|(&mask, digit)| mask & (1 << (digit - 1)) != 0));
+
+    let swapped = answer.map(|digit| match digit { 4 => 5, 5 => 4, other => other });
+    assert_eq!(SizedConstraintGrid::new(SIX, &[]).unwrap().analyze(&swapped, 100_000), Analysis::Unique);
+    assert_eq!(grid.analyze(&swapped, 100_000), Analysis::Conflict);
+}

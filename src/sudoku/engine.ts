@@ -177,8 +177,11 @@ export type SizedDifferenceRule = { type: 'difference'; cells: readonly [number,
 export type SizedLabeledDotsRule = {
   type: 'labeled-dots'; relation: 'difference' | 'ratio'; marks: readonly { cells: readonly [number, number]; value: number }[]; negative?: boolean
 }
+export type SizedSumEnd = number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }
+export type SizedLinkedDoubleArrow = { type: 'linked-double-arrow'; ends: readonly [SizedSumEnd, SizedSumEnd]; cells: readonly number[] }
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
-  | SizedDifferenceRule | SizedLabeledDotsRule
+  | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow
+  | { type: 'double-arrow'; ends: readonly [number, number]; cells: readonly number[] }
 export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
   | { operation: 'analyze' | 'solve' | 'solve-unique' | 'candidates' }

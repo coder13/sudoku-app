@@ -89,6 +89,18 @@ export function scenarios(): Scenario[] {
       { ...regular, overlay: { content: <span>Paused</span>, visible: false } },
       { ...regular, onCell: undefined }] },
   ]
+  const chain: BoardProps = { ...notes, onCell: undefined, onCandidate: () => {}, selected: [], active: 2 }
+  result.push({ id: 'chain-cell-target-highlights', states: [chain,
+    { ...chain, linkDrawing: true, highlightedDigit: 3 },
+    { ...chain, linkDrawing: true, highlightedDigit: 4 },
+    { ...chain, linkDrawing: true, highlightedDigitMask: 5, highlightedDigitMatch: 'any' },
+    { ...chain, linkDrawing: true, highlightedDigit: 3, highlighting: { relatedCells: true, matchingDigits: true, matchingCandidates: false } },
+    { ...chain, linkDrawing: true, highlightedDigit: 3, onCandidate: undefined },
+    { ...chain, linkDrawing: true, highlightedDigit: 3, onCell: noopCell },
+    { ...chain, linkDrawing: true, highlightedDigit: 3, onPaintCandidate: () => {} },
+    { ...chain, linkDrawing: true, highlightedDigit: 3, candidatePreview: { cell: 3, digit: 9, mode: 'corner' } },
+    { ...chain, linkDrawing: false, highlightedDigit: 3 }, regular,
+  ] })
 
   const rules: VariantRule[] = [
     { type: 'diagonal', diagonal: 'main' },
@@ -182,6 +194,30 @@ export function scenarios(): Scenario[] {
         { cells: [0, 1, grid.size], sum: 9 }, { cells: [grid.size + 1, grid.size + 2], sum: 5 },
       ] }] },
       basic,
+    ] })
+  }
+
+  for (const grid of [MINI_GRID, sixGridForBoxRows(2), SEVEN_BOXLESS_GRID]) {
+    const count = grid.size ** 2
+    const basic: BoardProps = { givens: '0'.repeat(count), values: '0'.repeat(count), grid, showGuides: true,
+      position: { center: Array(count).fill((1 << grid.size) - 1), corner: Array(count).fill(0) },
+      onCell: noopCell, selected: [0], active: 0, region: { row: 0, column: 0, rows: 2, columns: 3 } }
+    const outsideRules: readonly SizedConstraintRule[] = [
+      { type: 'linked-double-arrow', ends: [{ direction: 'south', index: 1 }, { direction: 'east', index: 1 }], cells: [0] },
+      { type: 'linked-double-arrow', ends: [{ direction: 'west', index: 2 }, { direction: 'north', index: 2 }],
+        cells: [count - 2, count - 3] },
+    ]
+    result.push({ id: `linked-double-arrow-${grid.size}-outside-clues`, states: [basic,
+      { ...basic, sizedRules: [
+        { type: 'double-arrow', ends: [0, 3], cells: [1, 2] },
+        { type: 'linked-double-arrow', ends: [grid.size, grid.size + 3], cells: [grid.size + 1, grid.size + 2] },
+      ] },
+      { ...basic, sizedRules: outsideRules.slice(0, 1) },
+      { ...basic, sizedRules: outsideRules },
+      { ...basic, sizedRules: outsideRules, overlay: { content: <span>Paused</span>, visible: true } },
+      { ...basic, sizedRules: [{ type: 'linked-double-arrow', ends: [0, { direction: 'west', index: 1 }], cells: [1, 2] }],
+        overlay: { content: <span>Paused</span>, visible: false } },
+      { ...basic, sizedRules: [] },
     ] })
   }
 

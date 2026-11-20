@@ -1,5 +1,6 @@
-import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
-import type { MarkedPairs, SizedConstraintRule, SizedLabeledDotsRule } from '../sudoku/engine'
+import { sizedSumEndKey, sizedSumEndLabel, sizedXSumDirections } from '../sudoku/sized-linked-double-arrow'
+import { Fragment, useId, useState, type FormEvent, type KeyboardEvent } from 'react'
+import type { MarkedPairs, SizedConstraintRule, SizedLabeledDotsRule, SizedSumEnd } from '../sudoku/engine'
 import { gridCellsShareEdge, sizedGridIdentity, type SizedGrid } from '../sudoku/grid'
 import { move, valuesOf, type Game } from '../sudoku/game'
 import { isSizedRuleList } from '../sudoku/sized-rule-game'
@@ -20,6 +21,8 @@ const ruleNames = {
   'labeled-dots': 'Labeled dots',
   difference: 'Difference marker',
   arrow: 'Arrow',
+  'double-arrow': 'Double Arrow',
+  'linked-double-arrow': 'Double Arrow with X-Sum ends',
   'region-sum': 'Region Sum line',
   'extra-house': 'Extra region',
   'killer-cages': 'Killer cages',
@@ -34,12 +37,17 @@ type KillerRule = Extract<SizedConstraintRule, { type: 'killer-cages' }>
 type KropkiKind = 'consecutive' | 'ratioTwo'
 type KropkiMarks = Partial<Record<KropkiKind, MarkedPairs>>
 
+const defaultLinkedEnds: readonly [SizedSumEnd, SizedSumEnd] = [
+  { direction: 'south', index: 0 }, { direction: 'north', index: 0 },
+]
+
 const emptyDotLayer: SizedLabeledDotsRule = { type: 'labeled-dots', relation: 'difference', marks: [] }
 
-function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
+function draftRule(kind: Exclude<RuleChoice, 'linked-double-arrow'>, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
   if (kind === 'killer-cages') return killer
   if (kind === 'labeled-dots') return labeled
   if (kind === 'region-sum') return { type: kind, cells, ...(groupByRegion && { groupByRegion }) }
+  if (kind === 'double-arrow') return { type: kind, ends: [cells[0] ?? 0, cells.at(-1) ?? 0], cells: cells.slice(1, -1) }
   if (kind === 'arrow') return { type: kind, circle: cells[0] ?? 0, cells: cells.slice(1) }
   if (kind === 'difference') return { type: kind, cells: [cells[0] ?? 0, cells[1] ?? cells[0] ?? 0], difference }
   if (kind === 'kropki') return { type: kind, ...marks }
@@ -55,6 +63,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [rules] = useState(game.position.draftSizedRules ?? [])
   const [editing, setEditing] = useState(-1)
   const [kind, setKind] = useState<RuleChoice>('thermometer')
+  const [linkedEnds, setLinkedEnds] = useState(defaultLinkedEnds)
   const [cells, setCells] = useState<readonly number[]>([])
   const [cages, setCages] = useState<KillerRule['cages']>([])
   const [cageIndex, setCageIndex] = useState(-1)
@@ -82,7 +91,9 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       cages.reduce((count, cage) => count + cage.cells.length, 0) === size ** 2 && { coverGrid: true }),
   })
   const killer = killerLayer(nextCages)
-  let rule = draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
+  let rule: SizedConstraintRule = kind === 'linked-double-arrow'
+    ? { type: kind, ends: linkedEnds, cells }
+    : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
   if (kind === 'renban' && previous?.type === 'renban' && cells === previous.cells) {
     rule = previous
   } else if (kind === 'region-sum' && previous?.type === 'region-sum' && cells === previous.cells) {
@@ -119,7 +130,11 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     const previous = rules[index]
     setEditing(index)
     setKind(previous ? ruleChoice(previous) : 'thermometer')
-    setCells(previous?.type === 'arrow' ? [previous.circle, ...previous.cells] : previous && 'cells' in previous ? previous.cells : [])
+    const selected = previous?.type === 'arrow' ? [previous.circle, ...previous.cells]
+      : previous?.type === 'double-arrow' ? [previous.ends[0], ...previous.cells, previous.ends[1]]
+        : previous && 'cells' in previous ? previous.cells : []
+    setCells(selected)
+    setLinkedEnds(previous?.type === 'linked-double-arrow' ? previous.ends : defaultLinkedEnds)
     setCages(previous?.type === 'killer-cages' ? previous.cages : [])
     setCageIndex(-1)
     setCageTotal('')
@@ -129,7 +144,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setDotValue(previous?.type === 'labeled-dots' && previous.relation === 'ratio' ? 2 : 1)
     setDifference(previous?.type === 'difference' ? previous.difference : 1)
     setGroupByRegion(previous?.type === 'region-sum' && previous.groupByRegion === true)
-    setActive(previous?.type === 'arrow' ? previous.circle : previous && 'cells' in previous ? previous.cells[0] : 0)
+    setActive(selected[0] ?? 0)
     setError('')
   }
 
@@ -141,6 +156,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       if ((kind === 'kropki' || kind === 'difference' || kind === 'labeled-dots') && current.length === 2) return [cell]
       if ((kind === 'thermometer' || kind === 'renban' || kind === 'extra-house' || kind === 'killer-cages') && current.length === size) return current
       if (kind === 'arrow' && current.length === size + 1) return current
+      if (kind === 'double-arrow' && current.length === 2 * size + 2) return current
       return [...current, cell]
     })
   }
@@ -200,6 +216,14 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       return
     }
     if (!isSizedRuleList(next, layout)) {
+      if (kind === 'linked-double-arrow') {
+        setError('Choose two different end circles, including an outside X-Sum, and select the line cells.')
+        return
+      }
+      if (kind === 'double-arrow') {
+        setError('Select two end circles with at least one cell along the line.')
+        return
+      }
       setError(kind === 'thermometer' ? `Select 2 to ${size} cells for the thermometer.`
         : kind === 'renban' ? `Select 1 to ${size} cells for the Renban line.`
           : kind === 'arrow' ? `Select a bulb and 1 to ${size} cells along the arrow.`
@@ -218,13 +242,15 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       <SelectControl id={`${id}-clue`} value={editing} onChange={event => selectRule(Number(event.currentTarget.value))}>
         <option value={-1}>New clue</option>
         {rules.map((rule, index) => <option key={index} value={index}>
-          {ruleNames[ruleChoice(rule)]}{rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
+          {ruleNames[ruleChoice(rule)]}{rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}
+          {rule.type === 'double-arrow' ? ` from ${cellName(rule.ends[0])} to ${cellName(rule.ends[1])}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
         </option>)}
       </SelectControl>
       <label htmlFor={`${id}-rule`}>Rule</label>
       <SelectControl id={`${id}-rule`} value={kind} onChange={event => {
         setKind(event.currentTarget.value as RuleChoice)
         setCells([])
+        setLinkedEnds(defaultLinkedEnds)
         setCages([])
         setCageIndex(-1)
         setCageTotal('')
@@ -239,7 +265,27 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         {Object.entries(ruleNames).filter(([value]) => value !== 'region-sum' || !('noRegions' in layout))
           .map(([value, label]) => <option key={value} value={value}>{label}</option>)}
       </SelectControl>
-      {'cells' in rule && <p id={`${id}-instructions`}>{kind === 'thermometer'
+      {kind === 'linked-double-arrow' && (() => {
+        const options: SizedSumEnd[] = sizedXSumDirections.flatMap(direction =>
+          Array.from({ length: size }, (_, index) => ({ direction, index })))
+        options.push(...Array.from({ length: size ** 2 }, (_, cell) => cell))
+        return <>
+          {linkedEnds.map((end, index) => <Fragment key={index}>
+            <label htmlFor={`${id}-linked-${index}`}>{index === 0 ? 'First end circle' : 'Second end circle'}</label>
+            <SelectControl id={`${id}-linked-${index}`} value={sizedSumEndKey(end)} onChange={event => {
+              const chosen = options.find(option => sizedSumEndKey(option) === event.currentTarget.value)
+              if (chosen === undefined) return
+              setLinkedEnds(index === 0 ? [chosen, linkedEnds[1]] : [linkedEnds[0], chosen])
+              setError('')
+            }}>
+              {options.map(option => <option key={sizedSumEndKey(option)} value={sizedSumEndKey(option)}>{sizedSumEndLabel(option, size)}</option>)}
+            </SelectControl>
+          </Fragment>)}
+          <p id={`${id}-instructions`}>Select the line cells in order between the two end circles.</p>
+        </>
+      })()}
+      {kind === 'double-arrow' && <p id={`${id}-instructions`}>Select the first end circle, the cells along the line in order, and the second end circle.</p>}
+      {'cells' in rule && kind !== 'double-arrow' && kind !== 'linked-double-arrow' && <p id={`${id}-instructions`}>{kind === 'thermometer'
         ? 'Select the cells in order, from the bulb to the tip.'
         : kind === 'renban' || kind === 'region-sum' ? 'Select the cells in the order you want to draw the line.'
           : kind === 'difference' ? 'Select two cells that share an edge.'

@@ -1,4 +1,6 @@
+mod double_arrow;
 mod killer;
+mod linked_double_arrow;
 mod pairs;
 mod region_sum;
 
@@ -6,7 +8,10 @@ use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction, House};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
 
+use self::double_arrow::DoubleArrow;
 use self::killer::Cage;
+use self::linked_double_arrow::LinkedDoubleArrow;
+pub use self::linked_double_arrow::SizedSumEnd;
 use self::pairs::{SizedPairLink, compile_pairs};
 use self::region_sum::RegionSum;
 
@@ -26,6 +31,11 @@ pub enum SizedConstraint {
         circle: usize,
         cells: Vec<usize>,
     },
+    DoubleArrow {
+        ends: [usize; 2],
+        cells: Vec<usize>,
+    },
+    LinkedDoubleArrow { ends: [SizedSumEnd; 2], cells: Vec<usize> },
     KillerCages {
         cages: Vec<crate::variant::KillerCage>,
         cover_grid: bool,
@@ -152,8 +162,10 @@ pub struct SizedConstraintGrid {
     thermometers: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
     arrows: Vec<(usize, Vec<usize>)>,
+    double_arrows: Vec<Option<DoubleArrow>>,
     region_sums: Vec<Option<RegionSum>>,
     cages: Vec<Vec<Cage>>,
+    linked_double_arrows: Vec<Option<LinkedDoubleArrow>>,
     pair_links: Vec<Vec<SizedPairLink>>,
 }
 
@@ -171,6 +183,8 @@ impl SizedConstraintGrid {
         let mut thermometers = Vec::new();
         let mut renbans = Vec::new();
         let mut arrows = Vec::new();
+        let mut double_arrows = Vec::new();
+        let mut linked_double_arrows = Vec::new();
         let mut region_sums = Vec::new();
         let mut cages = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
@@ -227,6 +241,14 @@ impl SizedConstraintGrid {
                     }
                     arrows.push((*circle, cells.clone()));
                 }
+                SizedConstraint::DoubleArrow { ends, cells } => {
+                    double_arrows.resize_with(index + 1, || None);
+                    double_arrows[index] = Some(DoubleArrow::compile(&layout, *ends, cells)?);
+                }
+                SizedConstraint::LinkedDoubleArrow { ends, cells } => {
+                    linked_double_arrows.resize_with(index + 1, || None);
+                    linked_double_arrows[index] = Some(LinkedDoubleArrow::compile(&layout, *ends, cells)?);
+                }
                 SizedConstraint::KillerCages { cages: authored, cover_grid } => {
                     cages.resize_with(index + 1, Vec::new);
                     for cage in authored {
@@ -268,8 +290,10 @@ impl SizedConstraintGrid {
             thermometers,
             renbans,
             arrows,
+            double_arrows,
             region_sums,
             cages,
+            linked_double_arrows,
             pair_links,
         })
     }
@@ -354,6 +378,21 @@ impl SizedConstraintGrid {
                 for (&cell, mask) in cells.iter().zip(shaft) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
+                }
+            }
+            for arrow in self.double_arrows.iter().flatten() {
+                let (end_masks, line_masks) = arrow.support(candidates);
+                for (&cell, mask) in arrow.ends.iter().zip(end_masks).chain(arrow.cells.iter().zip(line_masks)) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for arrow in self.linked_double_arrows.iter().flatten() {
+                let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                arrow.support(candidates, &mut supported);
+                for &cell in &arrow.cells {
+                    changed |= candidates[cell] != supported[cell];
+                    candidates[cell] = supported[cell];
                 }
             }
             for cage in self.cages.iter().flatten() {
@@ -522,6 +561,15 @@ impl SizedConstraintGrid {
                         );
                     }
                 }
+                SizedConstraint::DoubleArrow { ends, cells } => {
+                    let (end_masks, line_masks) = self.double_arrows[rule].as_ref()?.hint_support(&domains);
+                    if end_masks.contains(&0) {
+                        return None;
+                    }
+                    for (&cell, mask) in ends.iter().zip(end_masks).chain(cells.iter().zip(line_masks)) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
                 SizedConstraint::Arrow { circle, cells } => {
                     let (bulb, shaft) = arrow_masks(*circle, cells, &domains);
                     if bulb == 0 {
@@ -539,6 +587,16 @@ impl SizedConstraintGrid {
                             return None;
                         }
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::LinkedDoubleArrow { .. } => {
+                    let arrow = self.linked_double_arrows[rule].as_ref()?;
+                    let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                    if !arrow.support(&domains, &mut supported) {
+                        return None;
+                    }
+                    for &cell in &arrow.cells {
+                        eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
                     }
                 }
                 SizedConstraint::KillerCages { .. } => {
@@ -799,8 +857,14 @@ impl SizedConstraintGrid {
                 SizedConstraint::Arrow { circle, cells } => {
                     arrow_masks(*circle, cells, &domains).0 == 0
                 }
+                SizedConstraint::DoubleArrow { .. } => {
+                    self.double_arrows[rule].as_ref()?.hint_support(&domains).0.contains(&0)
+                }
                 SizedConstraint::ExtraHouse { cells } => {
                     extra_house_support(cells, &domains, self.layout.full_mask)[..cells.len()].contains(&0)
+                }
+                SizedConstraint::LinkedDoubleArrow { .. } => {
+                    !self.linked_double_arrows[rule].as_ref()?.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])
                 }
                 SizedConstraint::KillerCages { .. } => {
                     if let Some(cage) = self.cages[rule].iter().position(|cage| {
@@ -929,6 +993,13 @@ impl SizedConstraintGrid {
                 let max = if bulb == 0 { self.layout.size() } else { bulb };
                 total + empty <= max && (bulb == 0 || bulb <= total + empty * self.layout.size())
             })
+            && self.double_arrows.iter().flatten().all(|arrow| {
+                let size = self.layout.size();
+                let (ends_min, ends_max) = sum_bounds(&arrow.ends, digits, size);
+                let (line_min, line_max) = sum_bounds(&arrow.cells, digits, size);
+                ends_min <= line_max && line_min <= ends_max
+            })
+            && self.linked_double_arrows.iter().flatten().all(|arrow| arrow.permits(digits))
             && self.cages.iter().flatten().all(|cage| cage.permits(digits))
             && self.region_sums.iter().flatten().all(|line| line.permits(digits))
             && self.pair_links.iter().flatten().all(|link| {
@@ -950,6 +1021,13 @@ fn arrow_masks(circle: usize, cells: &[usize], candidates: &[u16]) -> (u16, [u16
         &shaft[..cells.len()], [totals], &mut support[..cells.len()], &mut [[0]; MAX_SIZE + 1],
     );
     ((matching >> 1) as u16, support)
+}
+
+fn sum_bounds(cells: &[usize], digits: &[u8], size: usize) -> (usize, usize) {
+    cells.iter().fold((0, 0), |(min, max), &cell| {
+        let digit = usize::from(digits[cell]);
+        if digit == 0 { (min + 1, max + size) } else { (min + digit, max + digit) }
+    })
 }
 
 fn diagonal_cells(size: usize, direction: SizedDiagonal) -> impl Iterator<Item = usize> + Clone {

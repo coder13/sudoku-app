@@ -35,6 +35,7 @@ export type AppearancePreferences = {
   lightTheme: ThemeId
   darkTheme: ThemeId
   showGuides: boolean
+  puzzleControlsPosition: 'top' | 'bottom'
   gridTextScale: number
   candidateTextSize: typeof CANDIDATE_TEXT_SIZES[number]
   appTextZoom: number
@@ -63,6 +64,7 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   lightTheme: 'violet',
   darkTheme: DEFAULT_DARK_THEME,
   showGuides: false,
+  puzzleControlsPosition: 'top',
   gridTextScale: DEFAULT_GRID_TEXT_SCALE,
   candidateTextSize: 100,
   appTextZoom: DEFAULT_APP_TEXT_ZOOM,
@@ -140,6 +142,7 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
           ? savedAppearance.lightTheme : DEFAULT_APPEARANCE.lightTheme,
         darkTheme: darkTheme && THEME_IDS_SET.has(darkTheme) ? darkTheme : DEFAULT_APPEARANCE.darkTheme,
         showGuides: savedAppearance.showGuides === true,
+        puzzleControlsPosition: savedAppearance.puzzleControlsPosition === 'bottom' ? 'bottom' : DEFAULT_APPEARANCE.puzzleControlsPosition,
         gridTextScale: clampGridTextScale(savedAppearance.gridTextScale),
         candidateTextSize: CANDIDATE_TEXT_SIZES.find(size => size === savedAppearance.candidateTextSize) ?? DEFAULT_APPEARANCE.candidateTextSize,
         appTextZoom: typeof savedAppearance.appTextZoom === 'number' && Number.isFinite(savedAppearance.appTextZoom)

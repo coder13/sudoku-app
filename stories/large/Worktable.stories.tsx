@@ -270,6 +270,24 @@ const branchedGame = {
 }
 export const ChainShortcuts: Story = {
   args: { game: branchedGame, games: [branchedGame] },
+  play: async ({ canvas, userEvent }) => {
+    const grid = () => canvas.findByRole('grid', { name: 'Sudoku grid' })
+    await userEvent.keyboard('dh')
+    await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.keyboard('x')
+    const linkGrid = within(await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' }))
+    const candidate = linkGrid.getByRole('button', { name: /^4 in row 6, column 6/ })
+    await userEvent.click(candidate)
+    await expect(candidate).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.keyboard('b')
+    await expect(candidate).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.keyboard('x')
+    await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' })
+    await userEvent.keyboard('x')
+    await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
+  },
 }
 export const MedusaRemoval: Story = {
   args: { game: medusaRemovalGame, games: [medusaRemovalGame] },
