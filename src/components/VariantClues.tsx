@@ -113,6 +113,12 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
   }
   return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
     {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
+    {rules.map((rule, index) => rule.type === 'extra-house' && <ExtraRegion key={index} cells={rule.cells} size={size} />)}
+    {rules.map((rule, index) => rule.type === 'killer-cages' && <g key={index}>
+      {rule.cages.map(({ cells, sum }) => <g key={Math.min(...cells)} data-killer-cage={sum}>
+        <Cage cells={cells} captionWidth={sum < 10 ? .17 : .3} captionInset={.1} size={size} />
+      </g>)}
+    </g>)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
     {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={size} />)}
@@ -147,6 +153,10 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
   for (const rule of rules) {
     if (rule.type === 'diagonal') {
       for (const cell of gridDiagonalCells(size, rule.diagonal)) labels[cell].add(rule.diagonal === 'main' ? 'top-left diagonal' : 'top-right diagonal')
+    } else if (rule.type === 'extra-house') {
+      for (const cell of rule.cells) labels[cell].add('extra region')
+    } else if (rule.type === 'killer-cages') {
+      for (const { cells, sum } of rule.cages) for (const cell of cells) labels[cell].add(`cage total ${sum}`)
     } else if (rule.type === 'parity') {
       const odd = rule.parity === 'odd'
       const digits = Array.from({ length: Math.floor((size + Number(odd)) / 2) }, (_, index) => String(index * 2 + (odd ? 1 : 2)))
@@ -248,25 +258,25 @@ export function AlgebraicCages({ rules, captions = false }: { rules: SizedVarian
   </svg>
 }
 
-function cellBoundary(cells: readonly number[]) {
+function cellBoundary(cells: readonly number[], size = 9) {
   const members = new Set(cells)
   const edge = cells.flatMap((cell) => {
-    const column = x(cell)
-    const row = y(cell)
+    const column = x(cell, size)
+    const row = y(cell, size)
     return [
-      !members.has(cell - 9) && `M${column},${row}h1`,
-      (column === 8 || !members.has(cell + 1)) && `M${column + 1},${row}v1`,
-      !members.has(cell + 9) && `M${column},${row + 1}h1`,
+      !members.has(cell - size) && `M${column},${row}h1`,
+      (column === size - 1 || !members.has(cell + 1)) && `M${column + 1},${row}v1`,
+      !members.has(cell + size) && `M${column},${row + 1}h1`,
       (column === 0 || !members.has(cell - 1)) && `M${column},${row}v1`,
     ].filter(Boolean)
   }).join(' ')
   return edge
 }
 
-function ExtraRegion({ cells }: { cells: readonly number[] }) {
+function ExtraRegion({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
   return <g className="variant-extra-region">
-    {cells.map((cell) => <rect key={cell} x={x(cell)} y={y(cell)} width="1" height="1" />)}
-    <path d={cellBoundary(cells)} />
+    {cells.map((cell) => <rect key={cell} x={x(cell, size)} y={y(cell, size)} width="1" height="1" />)}
+    <path d={cellBoundary(cells, size)} />
   </g>
 }
 

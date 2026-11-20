@@ -7,6 +7,7 @@ import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-
 import { findSharedAttempt } from './puzzle-sharing.ts'
 import { applyPuzzleGrade, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
 import { validation } from './puzzle-validation.ts'
+import { SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
 import { variantName } from './variants.ts'
 
 export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] | 'Photo or screenshot'; grade?: PuzzleGrade | null }
@@ -38,7 +39,9 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
-    : variant ? `Imported ${variantName(variant)} puzzle` : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
+    : variant ? `Imported ${variantName(variant)} puzzle`
+      : grid && 'noRegions' in grid ? `Imported ${SEVEN_BOXLESS_NAME}`
+        : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
   const game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
   if (grid && (grid.size !== 4 || sizedRules?.length)) {
     if (!sizedRules) throw new Error('This puzzle is missing its rule list.')

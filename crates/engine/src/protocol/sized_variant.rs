@@ -86,6 +86,7 @@ impl TryFrom<Rule> for SizedConstraint {
     fn try_from(rule: Rule) -> Result<Self, Self::Error> {
         Ok(match rule {
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
+            Rule::Variant(PuzzleRule::ExtraHouse { cells }) => Self::ExtraHouse { cells },
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
             Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },

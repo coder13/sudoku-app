@@ -2,6 +2,7 @@ import { runEngine, type MarkedPairs, type SizedConstraintPosition, type SizedCo
 import { conflictsOf } from './game.ts'
 import { isGridText, gridCellsShareEdge, gridDiagonalCells, kropkiDigitExclusions, sizedClassicPosition, type SizedGrid } from './grid.ts'
 import { sizedRegionSumParts } from './region-sum.ts'
+import { sizedKillerState, validSizedKillerRule } from './sized-killer.ts'
 import { validation } from './puzzle-validation.ts'
 
 export type SizedRuleDefinition = { grid: SizedGrid; givens: string; rules: readonly SizedConstraintRule[]; author?: string; authoredSolution?: string }
@@ -25,8 +26,10 @@ function validKropkiMarks(value: unknown, size: number): value is MarkedPairs {
 export function isSizedRuleList(value: unknown, grid: SizedGrid): value is SizedRuleDefinition['rules'] {
   const { size } = grid
   if (!Array.isArray(value) || value.length > 128) return false
+  const occupiedCages = new Set<number>()
   return value.every(rule => {
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return false
+    if (rule.type === 'killer-cages') return validSizedKillerRule(rule, size, occupiedCages)
     if (rule.type === 'diagonal') {
       return Object.keys(rule).length === 2 && (rule.diagonal === 'main' || rule.diagonal === 'anti')
     }
@@ -59,6 +62,7 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       return Object.keys(rule).length === 3 && cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size) &&
         Number.isInteger(rule.difference) && rule.difference >= 1 && rule.difference < size
     }
+    if (rule.type === 'extra-house') return Object.keys(rule).length === 2 && cells.length === size && new Set(cells).size === size
     if (rule.type === 'parity') {
       return Object.keys(rule).length === 3 && cells.length > 0 && (rule.parity === 'even' || rule.parity === 'odd')
     }
@@ -67,7 +71,7 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
     if (rule.type === 'region-sum') {
       if (Object.keys(rule).some(key => !['type', 'cells', 'segments', 'groupByRegion'].includes(key)) ||
         (rule.groupByRegion !== undefined && typeof rule.groupByRegion !== 'boolean') ||
-        sizedRegionSumParts(rule, grid).length < 2) return false
+        'noRegions' in grid || sizedRegionSumParts(rule, grid).length < 2) return false
     } else if (rule.type !== 'renban' || Object.keys(rule).some(key => !['type', 'cells', 'segments'].includes(key))) return false
     if (rule.segments === undefined) return true
     const segments: unknown = rule.segments
@@ -104,6 +108,8 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
   for (const rule of rules) {
     if (rule.type === 'diagonal') {
       if (new Set(gridDiagonalCells(grid.size, rule.diagonal).map(cell => solution[cell])).size !== grid.size) return
+    } else if (rule.type === 'extra-house') {
+      if (new Set(rule.cells.map(cell => solution[cell])).size !== grid.size) return
     } else if (rule.type === 'parity') {
       if (rule.cells.some(cell => Number(solution[cell]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
     } else if (rule.type === 'renban') {
@@ -119,6 +125,7 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
     } else if (rule.type === 'thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] <= solution[rule.cells[index - 1]])) return
   }
+  if (sizedKillerState(rules, solution, grid.size)?.conflicts.size) return
   if (rules.some(rule => rule.type === 'kropki' || rule.type === 'labeled-dots')) {
     const { size } = grid
     for (let cell = 0; cell < size ** 2; cell++) {
@@ -136,6 +143,8 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
   const clues = new Set<string>()
   for (const rule of rules) {
     if (rule.type === 'diagonal') clues.add(`Place each digit from 1 to ${grid.size} once on the ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal.`)
+    else if (rule.type === 'extra-house') clues.add(`Place each digit from 1 to ${grid.size} once in each marked extra region.`)
+    else if (rule.type === 'killer-cages') clues.add('Digits in a cage add to its printed total and cannot repeat.')
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
     else if (rule.type === 'renban') clues.add('The cells on each Renban line contain different consecutive digits in any order.')
     else if (rule.type === 'region-sum') clues.add(rule.groupByRegion
@@ -159,6 +168,7 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
       if (rule.ratioTwo?.negative) clues.add('An unmarked edge cannot have one digit double the other.')
     }
   }
-  const region = 'regions' in grid ? 'region' : `${grid.boxRows} × ${grid.boxColumns} box`
-  return [`Place each digit from 1 to ${grid.size} once in every row, column, and ${region}.`, ...clues]
+  const houses = 'noRegions' in grid ? 'row and column'
+    : `row, column, and ${'regions' in grid ? 'region' : `${grid.boxRows} × ${grid.boxColumns} box`}`
+  return [`Place each digit from 1 to ${grid.size} once in every ${houses}.`, ...clues]
 }
