@@ -53,10 +53,13 @@ function makeLayout(rows: readonly string[]): KakuroPuzzle {
 
 function puzzleFromFill(layout: KakuroPuzzle, values: readonly number[]): KakuroPuzzle {
   const cells: KakuroCell[] = layout.cells.map(cell => cell === null ? null : {})
-  for (const run of layout.runs) {
-    cells[run.clue]![run.direction] = run.cells.reduce((total, cell) => total + values[cell], 0)
-  }
-  return createKakuro(layout.width, cells)
+  // The layout already validates every run. A new fill only changes its totals.
+  const runs = layout.runs.map(run => {
+    const total = run.cells.reduce((sum, cell) => sum + values[cell], 0)
+    cells[run.clue]![run.direction] = total
+    return { ...run, total }
+  })
+  return { ...layout, cells, runs }
 }
 
 type SignatureLayout = {
