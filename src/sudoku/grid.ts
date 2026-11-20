@@ -1,4 +1,4 @@
-import type { House, SizedClassicPosition, SizedConstraintRule } from './engine.ts'
+import type { House, SizedClassicPosition, SizedConstraintRule, VariantRule } from './engine.ts'
 
 export const CLASSIC_GRID = { size: 9, boxRows: 3, boxColumns: 3 } as const
 export const MINI_GRID = { size: 4, boxRows: 2, boxColumns: 2 } as const
@@ -166,7 +166,7 @@ export function rowColumnSumTotal([first, second]: readonly [number, number], si
   return (row === Math.floor(second / size) ? row : first % size) + 1
 }
 
-export function kropkiDigitExclusions(rules: readonly SizedConstraintRule[], cell: number, other: number, digit: number, size: number) {
+export function kropkiDigitExclusions(rules: readonly (SizedConstraintRule | VariantRule)[], cell: number, other: number, digit: number, size: number) {
   if (!gridCellsShareEdge(cell, other, size)) return 0
   let white = false, black = false, negativeWhite = false, negativeBlack = false
   const matches = ([a, b]: readonly [number, number]) => a === cell && b === other || a === other && b === cell

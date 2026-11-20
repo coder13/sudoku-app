@@ -106,7 +106,7 @@ test('all transformations preserve positive pair endpoints and independent negat
     const transformed = reflectVariant(puzzle, symmetry)
     assert.deepEqual(transformed.rules, [{ type: 'xv', five: { pairs: [[map(0), map(1)]], negative: true }, ten: { pairs: [[map(1), map(10)]], negative: false } }])
     const descriptions = variantRuleDescriptions(transformed)
-    assert.ok(descriptions.some(text => text.includes('All V clues')))
-    assert.equal(descriptions.some(text => text.includes('All X clues')), false)
+    assert.ok(descriptions.includes('Digits in cells sharing an edge without a V or X cannot sum to 5.'))
+    assert.equal(descriptions.includes('Digits in cells sharing an edge without a V or X cannot sum to 10.'), false)
   }
 })

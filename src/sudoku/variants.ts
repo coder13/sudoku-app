@@ -5,6 +5,7 @@ import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
 import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
+import { kropkiDigitExclusions } from './grid.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -309,10 +310,11 @@ export function sumLabel(sum: number) {
 
 /** Extra pairwise exclusions beyond the same-digit peers used by the player. */
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
-  let excluded = 0
-  let v = false, x = false, negativeV = false, negativeX = false
+  const rules = puzzle?.rules ?? []
   const edge = cellsShareEdge(from, to)
-  for (const rule of puzzle?.rules ?? []) {
+  let excluded = edge && rules.length ? kropkiDigitExclusions(rules, from, to, digit, 9) : 0
+  let v = false, x = false, negativeV = false, negativeX = false
+  for (const rule of rules) {
     if ((rule.type === 'entropic' || rule.type === 'modular') && rule.cells.includes(from) && rule.cells.includes(to)) {
       const samePhase = rule.cells.indexOf(from) % 3 === rule.cells.indexOf(to) % 3
       const group = lineGroupMask(rule.type, digit)
