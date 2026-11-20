@@ -37,6 +37,13 @@ function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?:
 const renbanColors = ['#cf419c', '#8353be', '#d26878', '#aa48bf']
 const regionSumColors = ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0']
 const regionSumEndGap = .28
+const overlapColors: Partial<Record<VariantRule['type'], string>> = {
+  thermometer: 'currentColor',
+  whispers: '#72a54e',
+  entropic: '#bc6c27',
+  modular: '#288e93',
+  between: 'var(--board-ink)',
+}
 
 function RenbanClue({ cells, segments, number, size = 9 }: {
   cells: readonly number[]; segments?: readonly (readonly number[])[]; number: number; size?: number
@@ -551,16 +558,25 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
     }
   }
   const drawnSums = new Set<number>()
-  const markedEdges = new Set([...dots.keys(), ...sums.keys(), ...rules.flatMap(rule => rule.type === 'inequality' ? [pairKey(rule.less, rule.greater)] : [])])
+  const markedEdges = new Set([...dots.keys(), ...sums.keys()])
+  for (const rule of rules) {
+    if (rule.type === 'inequality') markedEdges.add(pairKey(rule.less, rule.greater))
+    if (rule.type === 'quadruple') {
+      const corner = rule.topLeft
+      markedEdges.add(pairKey(corner, corner + 10))
+      markedEdges.add(pairKey(corner + 1, corner + 9))
+    }
+  }
   return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
     {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
     {drawingOrder.map(({ rule, index, overlay }) => {
       if (overlay === 'between-endpoints' && rule.type === 'between') return <BetweenClue key={`${index}-endpoints`} cells={rule.cells} endpoints />
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
       if (overlay === 'colored-line') {
-        const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]] : undefined
+        const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]]
+          : rule.type === 'thermometer' ? [rule.cells[0]] : undefined
         const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(path => lineSkipsCells(path))
-        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : rule.type === 'region-sum' ? regionSumColor(index) : renbanColor(index)
+        const color = rule.type === 'region-sum' ? regionSumColor(index) : overlapColors[rule.type] ?? renbanColor(index)
         return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}
           data-region-sum={rule.type === 'region-sum' ? regionSumIndices.get(index)! + 1 : undefined}>
           {coloredLanes.get(index)!.map((lane, part) =>

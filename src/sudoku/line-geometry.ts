@@ -62,7 +62,8 @@ export function coloredLineOverlapLanes(rules: readonly VariantRule[], size = 9)
   const cellCount = size ** 2
   const owners = new Map<number, number[]>()
   rules.forEach((rule, index) => {
-    if (rule.type !== 'renban' && rule.type !== 'entropic' && rule.type !== 'modular' && rule.type !== 'between' && rule.type !== 'region-sum') return
+    if (rule.type !== 'renban' && rule.type !== 'entropic' && rule.type !== 'modular' && rule.type !== 'between' &&
+      rule.type !== 'region-sum' && rule.type !== 'whispers' && rule.type !== 'thermometer') return
     for (const edge of new Set(edges(paths(rule), size))) {
       const list = owners.get(edge) ?? []
       list.push(index); owners.set(edge, list)

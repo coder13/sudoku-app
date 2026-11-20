@@ -59,6 +59,32 @@ test('nonstandard minimum differences are printed on their lines and conflicts r
   for (const cell of [0, 10]) assert.match(html.match(new RegExp(`data-cell="${cell}" class="([^"]+)"`))![1], /\bconflict\b/)
 })
 
+test('Whispers and Thermometer share an edge in separate lanes with the bulb exposed', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'thermometer', cells: [1, 2, 3] },
+    { type: 'whispers', cells: [1, 2, 11], minDifference: 2 },
+    { type: 'whispers', cells: [20, 29], minDifference: 5 },
+  ] }
+  const html = renderToStaticMarkup(createElement(Board, { variantPuzzle: puzzle, givens: puzzle.givens, values: puzzle.givens }))
+  assert.match(html, /class="variant-thermometer"><polyline points="1\.5,0\.5 2\.5,0\.5 3\.5,0\.5"><\/polyline><circle cx="1\.5" cy="0\.5" r="\.32"/)
+  assert.match(html, /class="variant-thermometer-overlap"><line x1="1\.82" y1="0\.45" x2="2\.5" y2="0\.45" stroke="currentColor"/)
+  assert.match(html, /class="variant-whispers-overlap"><line x1="1\.5" y1="0\.55" x2="2\.5" y2="0\.55" stroke="#72a54e"/)
+  assert.equal(html.split('class="variant-whispers-overlap"').length - 1, 1)
+  assert.match(html, /class="variant-whispers-gap"[^>]*>≥2<\/text>/)
+})
+
+test('a Whispers minimum label moves off a Quadruple circle and points back to the path', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'whispers', cells: [0, 10], minDifference: 2 },
+    { type: 'quadruple', topLeft: 0, digits: [1] },
+  ] }
+  const html = renderToStaticMarkup(createElement(Board, { variantPuzzle: puzzle, givens: puzzle.givens, values: puzzle.givens }))
+  assert.match(html, /class="variant-whispers-label-leader" x1="1" y1="1"/)
+  const [, x, y] = html.match(/class="variant-whispers-gap" x="([^"]+)" y="([^"]+)">≥2<\/text>/)!
+  assert.ok(Math.hypot(Number(x) - 1, Number(y) - 1) > .5)
+  assert.match(html, /class="variant-quadruple"><circle cx="1" cy="1" r="\.265"/)
+})
+
 test('the imported Cmdt board renders every region, diagonal, cage total and line family', async () => {
   const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { url: string; code: string }[]
   const source = examples.find(source => source.url.endsWith('/Cmdt'))!
@@ -74,6 +100,18 @@ test('the imported Cmdt board renders every region, diagonal, cage total and lin
     ]
     for (const [clue, count] of expected) assert.equal(html.split(`class="${clue}"`).length - 1, count, clue)
     assert.equal(html.split('data-min-difference="2"').length - 1, 16)
+    assert.equal(html.split('class="variant-whispers-gap"').length - 1, 16)
+    assert.equal(html.split('class="variant-whispers-label-leader"').length - 1, 2)
+    const corners = variant!.puzzle.rules!.filter(rule => rule.type === 'quadruple').map(({ topLeft }) =>
+      [topLeft % 9 + 1, Math.floor(topLeft / 9) + 1])
+    for (const [, labelX, labelY] of html.matchAll(/class="variant-whispers-gap" x="([^"]+)" y="([^"]+)"/g)) {
+      assert.ok(corners.every(([x, y]) => Math.hypot(Number(labelX) - x, Number(labelY) - y) > .45))
+    }
+    for (const type of ['thermometer', 'whispers']) {
+      const groups = [...html.matchAll(new RegExp(`class="variant-${type}-overlap">([^]*?)<\\/g>`, 'g'))]
+      const strokes = groups.reduce((total, [, markup]) => total + markup.split('<line ').length - 1, 0)
+      assert.equal(strokes, 31, type)
+    }
     const overlap = html.match(/data-cell="4"[^>]*aria-label="([^"]+)"/)![1]
     assert.match(overlap, /extra region 1.*extra region 2/i)
   }

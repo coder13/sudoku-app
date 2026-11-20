@@ -4001,6 +4001,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-thermometer { color: var(--board-ink); opacity: .28; }
 .variant-thermometer polyline { fill: none; stroke: currentColor; stroke-width: .22; stroke-linecap: round; stroke-linejoin: round; }
 .variant-thermometer circle { fill: currentColor; }
+.variant-thermometer-overlap { color: var(--board-ink); opacity: .5; }
+.variant-thermometer-overlap line { stroke-linecap: round; }
 [data-sized-rule-clues]:has(> .variant-renban) .variant-thermometer polyline { stroke-width: .38; }
 .variant-arrow-line, .variant-arrow-circle, .variant-arrow-head {
   fill: none;
@@ -4082,7 +4084,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .board-body[data-highlighted-rule="parity"] .variant-parity { fill: var(--rule-accent); fill-opacity: .2; stroke: var(--rule-accent); stroke-opacity: 1; }
 .board-body[data-highlighted-rule="kropki"] .variant-dot { stroke: var(--rule-accent); stroke-width: .055; }
 .board-body[data-highlighted-rule="arrow"] :is(.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head) { stroke: var(--rule-accent); opacity: 1; }
-.board-body[data-highlighted-rule="thermometer"] .variant-thermometer { color: var(--rule-accent); opacity: .85; }
+.board-body[data-highlighted-rule="thermometer"] :is(.variant-thermometer, .variant-thermometer-overlap) { color: var(--rule-accent); opacity: .85; }
 .board-body[data-highlighted-rule="extra-house"] .variant-extra-region rect { fill: var(--rule-accent); opacity: .25; }
 .board-body[data-highlighted-rule="extra-house"] .variant-extra-region path { stroke: var(--rule-accent); stroke-opacity: 1; }
 .board-body[data-highlighted-rule="sandwich"] [data-outside-clue="sandwich"],
@@ -4093,7 +4095,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .board-body[data-highlighted-rule="clone"] .variant-clone path { stroke: var(--rule-accent); stroke-opacity: 1; }
 .board-body[data-highlighted-rule="inequality"] :is(.variant-inequality-sign, .variant-inequality-connector),
 .board-body[data-highlighted-rule="palindrome"] :is(.variant-palindrome, .variant-palindrome-overlap) polyline,
-.board-body[data-highlighted-rule="whispers"] .variant-whispers polyline,
+.board-body[data-highlighted-rule="whispers"] :is(.variant-whispers, .variant-whispers-overlap) :is(polyline, line),
 .board-body[data-highlighted-rule="renban"] :is(.variant-renban, .variant-renban-overlap) :is(polyline, line),
 .board-body[data-highlighted-rule="between"] :is(.variant-between, .variant-between-overlap) :is(polyline, line, circle),
 .board-body[data-highlighted-rule="region-sum"] :is(.variant-region-sum, .variant-region-sum-overlap) :is(polyline, line, circle),
@@ -4235,6 +4237,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   stroke-linejoin: round;
   opacity: .65;
 }
+.variant-whispers-overlap line { stroke-linecap: round; }
 .variant-whispers-gap, .variant-whispers-gap-halo {
   font-size: .2px;
   font-weight: 700;
@@ -4244,6 +4247,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-whispers-gap { fill: var(--board-ink); stroke: none; }
 .variant-whispers-gap-halo { fill: none; stroke: var(--board-bg); stroke-width: .07; }
 .variant-whispers-label-leader { stroke: #72a54e; stroke-width: .025; stroke-dasharray: .05 .04; }
+@container (max-width: 340px) {
+  .board-variant-clues :is(.variant-whispers-gap, .variant-whispers-gap-halo) { font-size: .28px; }
+}
 .variant-preview .variant-whispers polyline { stroke-width: .23; opacity: 1; }
 .variant-preview .variant-whispers-gap, .variant-preview .variant-whispers-gap-halo { font-size: .65px; }
 
