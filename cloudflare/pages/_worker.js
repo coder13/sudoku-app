@@ -169,6 +169,7 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('labeled-dots'), relation: oneOf('difference', 'ratio'),
       marks: list(mark => fields(mark, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) }), 0, 2 * size * (size - 1)) },
       { negative: boolean }) && (rule.marks.length > 0 || rule.negative)) ||
+    fields(rule, { type: oneOf('anti-sum'), sum: integer(2, 2 * size) }) ||
     fields(rule, { type: oneOf('difference'), cells: pair, difference: integer(1, size - 1) }) ||
     (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
