@@ -1,13 +1,9 @@
 import { rulloCatalog, type RulloEntry } from '../rullo/catalog'
-import { checkRullo, findRulloHints, KEEP, solveRullo, type RulloPuzzle } from '../rullo/engine'
+import { checkRullo, findRulloHints, KEEP, REMOVE, solveRullo, type RulloPuzzle } from '../rullo/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberBoard, type NumberGameConfig } from './NumberPuzzle'
 import './rullo.css'
 
 const techniques = ['Line sum', 'Crossing line sums']
-const cellChoices = [
-  { label: 'Keep', key: 'k', state: 'kept' },
-  { label: 'Remove', key: 'r', state: 'removed' },
-]
 
 function rulloBoard(puzzle: RulloPuzzle): NumberBoard {
   const width = puzzle.width + 1
@@ -30,9 +26,11 @@ function rulloBoard(puzzle: RulloPuzzle): NumberBoard {
 
   const decisions = (values: readonly number[]) => gridCells.map(cell => values[cell] ?? 0)
   return {
-    width, height, maxValue: cellChoices.length, cells, cellChoices,
-    check: values => {
-      const { complete, conflicts } = checkRullo(puzzle, decisions(values))
+    width, height, maxValue: REMOVE, cells,
+    cellChoices: { labels: ['Keep', 'Remove'], off: REMOVE },
+    mirrorEdgeClues: true,
+    check: (values, mode) => {
+      const { complete, conflicts } = checkRullo(puzzle, decisions(values), { keepUnmarked: mode !== 'solution' })
       return { complete, marked: conflicts.map(clueCell) }
     },
     solve: () => {
@@ -63,7 +61,7 @@ function rulloBoard(puzzle: RulloPuzzle): NumberBoard {
 const rullo: NumberGameConfig<RulloEntry> = {
   game: 'rullo',
   name: 'Rullo',
-  rules: 'Keep or remove each number. The numbers you keep must add up to the target for each row and column.',
+  rules: 'Select a cell to remove its number. Select it again to put the number back. The numbers left in each row and column must add up to its target.',
   techniques,
   entries: rulloCatalog,
   hasClueCells: true,

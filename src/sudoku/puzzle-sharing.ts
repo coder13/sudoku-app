@@ -92,7 +92,7 @@ export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Pr
     (algebraic !== undefined && (grid?.size !== 4 || !validSharedAlgebraic(algebraic))) ||
     (legacy && (grid?.size !== 6 || data.sizedRules !== undefined || data.sizedAuthor !== undefined)) ||
     (grid?.size === 6 && sizedRules === undefined) ||
-    (sizedRules !== undefined && (!grid || algebraic !== undefined || !isSizedRuleList(sizedRules, grid.size) ||
+    (sizedRules !== undefined && (!grid || algebraic !== undefined || !isSizedRuleList(sizedRules, grid) ||
       (grid.size === 4 && !sizedRules.length))) ||
     (sizedAuthor !== undefined && (!sizedRules || !isSizedRuleAuthor(sizedAuthor))) ||
     (variant !== undefined && (!variant || !isPuzzleVariantId(variant.id) ||

@@ -84,3 +84,36 @@ fn shared_thermometer_cells_propagate_parity_to_the_tip() {
     assert!(grid.candidates(&placed).is_none());
     assert!(SizedConstraintGrid::new(SIX, &[Rule::Thermometer { cells: vec![0, 0] }]).is_none());
 }
+
+#[test]
+fn exact_search_proves_the_sparse_jigsaw_thermometer_within_a_small_node_budget() {
+    let labels = b"0000111020011122233312223434555343456664445556666";
+    let regions: Vec<Vec<usize>> = (b'0'..b'7')
+        .map(|label| {
+            labels
+                .iter()
+                .enumerate()
+                .filter_map(|(cell, &region)| (label == region).then_some(cell))
+                .collect()
+        })
+        .collect();
+    let layout = sudoku_app_engine::SizedGrid::with_regions(7, &regions).unwrap();
+    let rules = [
+        vec![8, 16, 24],
+        vec![14, 22, 30],
+        vec![20, 26, 33],
+        vec![41, 48, 47],
+        vec![6, 12],
+        vec![42, 43],
+    ]
+    .map(|cells| Rule::Thermometer { cells });
+    let grid = SizedConstraintGrid::with_layout(layout, &rules).unwrap();
+    let digits = [0; 49];
+    assert_eq!(grid.analyze(&digits, 1), Analysis::SearchLimit);
+    assert_eq!(grid.analyze(&digits, 15_000), Analysis::Unique);
+    let answer: Vec<u8> = b"7135624632415747625132517346127346534562715641732"
+        .iter()
+        .map(|c| c - b'0')
+        .collect();
+    assert_eq!(grid.solve(&digits, 15_000), Some(answer));
+}

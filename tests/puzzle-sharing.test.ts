@@ -128,7 +128,19 @@ test('the sharing API validates the common rule contract against a Mini layout',
       { type: 'difference', cells: [4, 5], difference: 3 }] }
     const { id: differenceShareId } = await api<{ id: string }>('shares', 'POST', mixed)
     assert.deepEqual(await api(`shares/${differenceShareId}`), mixed)
+    const arrow = { ...mixed, sizedRules: [...mixed.sizedRules, { type: 'arrow', circle: 1, cells: [0, 6] }] }
+    const { id: arrowShareId } = await api<{ id: string }>('shares', 'POST', arrow)
+    assert.deepEqual(await api(`shares/${arrowShareId}`), arrow)
+    const regionSum = { type: 'region-sum', cells: [0, 4, 9, 5], groupByRegion: true, segments: [[0, 4], [4, 9, 5]] }
+    const combined = { ...arrow, sizedRules: [...arrow.sizedRules, regionSum] }
+    const { id: combinedShareId } = await api<{ id: string }>('shares', 'POST', combined)
+    assert.deepEqual(await api(`shares/${combinedShareId}`), combined)
     for (const invalid of [
+      { ...combined, sizedRules: [{ ...regionSum, groupByRegion: 'true' }] },
+      { ...combined, sizedRules: [{ ...regionSum, cells: [0, 1], segments: undefined }] },
+      { ...combined, sizedRules: [{ ...regionSum, segments: [[0, 9, 5]] }] },
+      { ...arrow, sizedRules: [{ type: 'arrow', circle: 1, cells: [0, 1] }] },
+      { ...arrow, sizedRules: [{ type: 'arrow', circle: 1, cells: [6, 6] }] },
       { ...mixed, sizedRules: [{ type: 'difference', cells: [4, 5], difference: 4 }] },
       { ...mixed, sizedRules: [{ type: 'difference', cells: [0, 5], difference: 2 }] },
       { ...kropki, sizedRules: [{ type: 'kropki', consecutive: { pairs: [[3, 4]] } }] },
