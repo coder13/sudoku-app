@@ -378,6 +378,7 @@ export function Worktable({
   const puzzleStageRef = useRef<HTMLDivElement>(null)
   const restoreCellFocus = useRef<number | null>(null)
   const puzzleCardRef = useRef<HTMLElement>(null)
+  const puzzleGridBorderRef = useRef<HTMLDivElement>(null)
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
   const puzzleMenuPopupRef = useRef<HTMLDivElement>(null)
@@ -2288,6 +2289,19 @@ export function Worktable({
     : sketch.drawing && chainMasks ? 'chain' : eraseMode ? 'erase' : colorMode || brush !== null ? 'color'
       : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging || gridInputMode === 'color' ? undefined : gridInputMode
+  const modeBadge = badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={mobile ? puzzleGridBorderRef : puzzleCardRef} boundaryLabel={mobile ? 'puzzle grid border' : undefined}
+          position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
+            if (badgeMode === 'chain') {
+              stopDrawingAndFocusGrid()
+              return
+            }
+            if (colorsVisible) setColorBrush(null)
+            setEraseMode(false)
+            setColorMode(false)
+            setPencilModifier(false)
+            if (badgeMode === 'pen') setPencil(true)
+            setHighlightMode(badgeMode === 'pencil')
+          }} />
   const showPlayerColors = colorsPanelOpen || colorMode
   const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
     ? sketch.annotations : undefined
@@ -2302,6 +2316,8 @@ export function Worktable({
       candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       descriptionId={badgeMode ? modeBadgeId : undefined}
+      modeBorder={mobile ? gridInputMode : undefined} modeBoundaryRef={mobile ? puzzleGridBorderRef : undefined}
+      modeBadge={mobile ? modeBadge : undefined}
       highlightedDigit={strongLinksVisible ? null : chainHighlightDigit} highlightedDigitMask={strongLinksVisible ? strongLinkMask : 0}
       highlightedDigitMatch="any" highlighting={highlighting} highlightCandidateCells={!strongLinksVisible}
       highlightCandidateCount={!strongLinksVisible && highlightCandidatePairs ? 2 : null}
@@ -2318,6 +2334,8 @@ export function Worktable({
       candidatePreview={!inspectSubset && canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
+      modeBorder={mobile ? gridInputMode : undefined} modeBoundaryRef={mobile ? puzzleGridBorderRef : undefined}
+      modeBadge={mobile ? modeBadge : undefined}
       label={cages ? 'Algebraic Cages Sudoku grid' : variant ? `${variantName(variant)} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations || inspectSubset ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
@@ -2410,8 +2428,8 @@ export function Worktable({
 
   const puzzlePanel = (
       <div className="puzzle-column" data-reserve-badge-space={!placeholder && !draft || undefined}>
-        <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
-          data-input-mode={gridInputMode}
+        <section ref={puzzleCardRef} className={mobile ? 'puzzle puzzle-flat' : 'surface puzzle'} aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
+          data-input-mode={mobile ? undefined : gridInputMode}
           data-desktop-solved={desktop && completed && !previewing || undefined}
           style={{ '--board-font-scale': appearance.gridTextScale, '--candidate-font-scale': appearance.candidateTextSize / 100 } as CSSProperties}>
         {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
@@ -2515,19 +2533,7 @@ export function Worktable({
             </Button>
           })}
         </nav>}
-        {badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleCardRef}
-          position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
-            if (badgeMode === 'chain') {
-              stopDrawingAndFocusGrid()
-              return
-            }
-            if (colorsVisible) setColorBrush(null)
-            setEraseMode(false)
-            setColorMode(false)
-            setPencilModifier(false)
-            if (badgeMode === 'pen') setPencil(true)
-            setHighlightMode(badgeMode === 'pencil')
-          }} />}
+        {!mobile && modeBadge}
         {presentationDraft && <div className="draft-tip"><PencilLine size={16} /> Enter the givens, then save your puzzle.</div>}
         </section>
       </div>
