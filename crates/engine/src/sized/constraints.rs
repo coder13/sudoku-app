@@ -247,6 +247,16 @@ impl SizedConstraintGrid {
     }
 
     /// Find a completion which satisfies every active rule.
+    /// Return a completion only after counting exactly one solution.
+    pub fn solve_unique(&self, digits: &[u8], budget: u32) -> Result<Vec<u8>, Analysis> {
+        let (analysis, first) = self.search(digits, budget, 2);
+        if analysis == Analysis::Unique {
+            first.ok_or(Analysis::Unsolvable)
+        } else {
+            Err(analysis)
+        }
+    }
+
     pub fn solve(&self, digits: &[u8], budget: u32) -> Option<Vec<u8>> {
         self.search(digits, budget, 1).1
     }
