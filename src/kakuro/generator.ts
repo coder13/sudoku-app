@@ -25,6 +25,12 @@ export const kakuroLayouts = {
 } as const
 
 export type KakuroRecipe = [width: number, clues: string]
+
+export function kakuroRecipeFromPuzzle(puzzle: KakuroPuzzle): KakuroRecipe {
+  return [puzzle.width, puzzle.cells.map(cell =>
+    cell === null ? '.' : `${cell.down ?? ''}/${cell.across ?? ''}`).join(' ')]
+}
+
 const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 const attemptsPerLayout = 48
 const editsPerAttempt = 120
@@ -136,7 +142,7 @@ export function kakuroRecipeSignature(puzzle: KakuroPuzzle): string {
   return layouts.topology + '|' + signature!
 }
 
-function hintDifficulty(puzzle: KakuroPuzzle, whiteCount: number): NumberPuzzleDifficulty | null {
+export function kakuroHintDifficulty(puzzle: KakuroPuzzle, whiteCount: number): NumberPuzzleDifficulty | null {
   const values = puzzle.cells.map(() => 0)
   let depth = 0
   for (let i = 0; i < whiteCount; i++) {
@@ -184,10 +190,9 @@ export function findKakuroRecipes(
         const key = kakuroRecipeSignature(puzzle)
         if (!seen.has(key) && !signatures.has(key)) {
           seen.add(key)
-          if (hintDifficulty(puzzle, white.length) === difficulty && solveKakuro(puzzle, [], 1).status === 'unique') {
+          if (kakuroHintDifficulty(puzzle, white.length) === difficulty && solveKakuro(puzzle, [], 1).status === 'unique') {
             signatures.add(key)
-            accepted.push([puzzle.width, puzzle.cells.map(cell =>
-              cell === null ? '.' : `${cell.down ?? ''}/${cell.across ?? ''}`).join(' ')])
+            accepted.push(kakuroRecipeFromPuzzle(puzzle))
             if (accepted.length === count) return accepted
           }
         }
