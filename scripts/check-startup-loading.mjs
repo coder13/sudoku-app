@@ -296,7 +296,6 @@ async function installRoutes(context, data, holds, requests, backendErrors, sock
       await route.abort('failed').catch(() => {})
     }
   })
-  if (offline) await context.setOffline(true)
 }
 
 const cases = [
@@ -454,6 +453,18 @@ async function runCase(specification, profile) {
   page.setDefaultTimeout(20_000)
   page.on('pageerror', error => errors.push(error.message))
   try {
+    if (specification.offline) {
+      // Set both network access and native navigator state on the existing page
+      // before hydration. Headless Shell 151 can leave onLine true when only
+      // Playwright's deprecated network-emulation command runs before newPage.
+      await context.setOffline(true)
+      const cdp = await context.newCDPSession(page)
+      await cdp.send('Network.enable')
+      await cdp.send('Network.overrideNetworkState', {
+        offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+      })
+      check.equal(await page.evaluate(() => navigator.onLine), false, 'The page must be offline before app navigation')
+    }
     const response = await page.goto(report.url + (specification.pathname ?? '/'), {
       waitUntil: specification.javaScriptEnabled === false ? 'load' : 'domcontentloaded',
     })
