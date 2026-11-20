@@ -111,7 +111,11 @@ async function coachPublication(html, id, code) {
   const colouredLines = !puzzle.custom_constraints && id === '7rs9' && lines.length === 1 &&
     /^Orange = entropy, brown = modular, blue = regional sum \(including the cosmetic lines\)\.?$/i.test(lines[0]) &&
     await digest(code) === 'a454bc2435d4d69950db865205e3cd117bd3ab325bd6c528a8d6944007f357d4'
-  const authoredRule = coachAuthoredRule(lines) ?? (colouredLines ? 'line-colours' : undefined)
+  // This publication explains its encoded Renban halves and uses colours to select mirrored pairs.
+  const mirroredRenbans = !puzzle.custom_constraints && id === 'Ksy3' &&
+    await digest(lines.join('\n')) === 'c5728dc0b34fdb26456e7f7e0ed449cce6c6a0ccfb468fb83880660514f75801'
+  const authoredRule = coachAuthoredRule(lines) ?? (colouredLines ? 'line-colours'
+    : mirroredRenbans ? 'mirrored-renban' : undefined)
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
     await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'

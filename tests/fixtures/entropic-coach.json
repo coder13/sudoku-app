@@ -459,6 +459,7 @@
     },
     {
       "url": "https://sudoku.coach/en/s/Ksy3",
+      "description": "every palindrome line here is a mirrored renban line: contains a set of consecutive digits, in any order, arranged in a palindrome. this means each digit appears twice, unlike a normal renban (with the possible exception of the centre cell of the palindrome). or, you can think of it as 2 identical but separate renban lines.\n\nwho's got a better name for this one? I tried renbanabner and nabnerenban and renbaner.... maybe it should just be Banana Lines since that's what it ends up sounding like, lol\n\nas always, given colours are for convenient palindrome pair selection, and can be hidden for clearer visuals. double tap to select both cells in a pair.",
       "title": "palindren? renbalindrome? renbananer?",
       "author": "carrion",
       "published": "2026-10-14 11:33:35",

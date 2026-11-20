@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import worker from '../cloudflare/pages/_worker.js'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 const request = (path: string, options?: RequestInit) =>
   worker.fetch(new Request(`https://sudoku.example/api/v1/import/${path}`, options), {}, {})
@@ -129,4 +131,45 @@ test('a complete black-dot declaration never absorbs unrelated author instructio
   assert.deepEqual(await (await request('sudoku-coach/K95q')).json(),
     { ...expected, coach: { ...expected.coach, authoredRule: 'all-black-dots' } })
   while (descriptions.length) assert.deepEqual(await (await request('sudoku-coach/K95q')).json(), expected)
+})
+
+test('the mirrored Renban publication accepts only encoded halves and matching pair colours', async ({ mock }) => {
+  const { examples } = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8'))
+  const source = examples.find(({ url }: { url: string }) => url.endsWith('/Ksy3'))
+  const palindrome = { type: 'palindromeLine', segments: [{ cells: [0, 10, 20, 30, 40] }] }
+  const renban = { type: 'renban', segments: [{ cells: [40, 30, 20] }] }
+  const palette = ['red', 'green', 'blue']
+  const cellColours = new Map([[0, '01'], [10, '02'], [30, '20'], [40, '10']])
+  const coloursAtCells = () => Array.from({ length: 81 }, (_, i) => cellColours.get(i) ?? '').join(',')
+  const data = { colours: palette, givenColours: coloursAtCells(), givenConstraints: [palindrome, renban] }
+  const publication = { sudoku_id: 'Ksy3', sudoku: coachCode(data), name: source.title,
+    description: source.description.replaceAll('\n', '\r\n'), custom_constraints: false, blocked: false }
+  let specificSudoku = publication
+  mock.method(globalThis, 'fetch', (url: string, options?: RequestInit) => url === source.url
+    ? Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'))
+    : worker.fetch(new Request(new URL(url, 'https://sudoku.example'), options), {}, {}))
+
+  const imported = await detectPuzzle(source.url)
+  assert.deepEqual(imported.variant?.puzzle.rules, [
+    { type: 'palindrome', cells: [0, 10, 20, 30, 40] },
+    { type: 'renban', cells: [40, 30, 20] },
+  ])
+
+  for (const givenConstraints of [[palindrome], [palindrome, { ...renban, segments: [{ cells: [40, 30] }] }], [renban]]) {
+    specificSudoku = { ...publication, sudoku: coachCode({ ...data, givenConstraints }) }
+    await assert.rejects(detectPuzzle(source.url), /does not match its published mirrored Renban/)
+  }
+
+  cellColours.set(20, cellColours.get(40)!)
+  cellColours.delete(40)
+  specificSudoku = { ...publication, sudoku: coachCode({ ...data, givenColours: coloursAtCells() }) }
+  await assert.rejects(detectPuzzle(source.url), /does not match its published mirrored Renban/)
+
+  for (const override of [
+    { description: publication.description + '\nRed cells also count twice.' },
+    { custom_constraints: true },
+  ]) {
+    specificSudoku = { ...publication, ...override }
+    await assert.rejects(detectPuzzle(source.url), /has author instructions/)
+  }
 })

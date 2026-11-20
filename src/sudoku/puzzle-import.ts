@@ -200,7 +200,7 @@ type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7,
 type CoachPublication = {
   hasAuthorInstructions: boolean
   title?: string
-  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours'
+  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban'
   declaredRules?: CoachTypedDeclaration
   whispersGuide?: true
 }
@@ -236,26 +236,61 @@ function readCoachProgress(data: Record<string, unknown>, givens: string): Impor
   if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean)) return { entries, center, corner }
 }
 
-function coachColoursMatchExtraHouses({ colours, givenColours }: Record<string, unknown>, rules: readonly VariantRule[]): boolean {
-  if (!hasData(colours) && !hasData(givenColours)) return true
+function readCoachCellColours({ colours, givenColours }: Record<string, unknown>) {
+  if (!hasData(colours) && !hasData(givenColours)) return { cellColours: [], paletteSize: 0 }
   if (!Array.isArray(colours) || !colours.length || colours.length > COACH_BASE62.length ||
     !colours.every(colour => typeof colour === 'string' && colour.length > 0) ||
-    typeof givenColours !== 'string') return false
+    typeof givenColours !== 'string') return
+  const palette = COACH_BASE62.slice(0, colours.length)
   const cellColours = givenColours.split(',')
-  if (cellColours.length !== 81) return false
-  const groups = colours.map((): number[] => [])
-  for (const [cell, shades] of cellColours.entries()) {
-    if (new Set(shades).size !== shades.length) return false
-    for (const shade of shades) {
-      const group = groups[COACH_BASE62.indexOf(shade)]
-      if (!group) return false
-      group.push(cell)
-    }
+  if (cellColours.length !== 81 || cellColours.some(shades =>
+    new Set(shades).size !== shades.length || [...shades].some(shade => !palette.includes(shade)))) return
+  return { cellColours, paletteSize: colours.length }
+}
+
+function coachColoursMatchExtraHouses(data: Record<string, unknown>, rules: readonly VariantRule[]): boolean {
+  const colours = readCoachCellColours(data)
+  if (!colours) return false
+  const groups = Array.from({ length: colours.paletteSize }, (): number[] => [])
+  for (const [cell, shades] of colours.cellColours.entries()) {
+    for (const shade of shades) groups[COACH_BASE62.indexOf(shade)].push(cell)
   }
   // The built-in region drawing already shows a colour group with this exact membership.
   const houses = rules.filter(rule => rule.type === 'extra-house')
   return groups.every(group => group.length === 9 &&
     houses.some(house => house.cells.length === group.length && group.every(cell => house.cells.includes(cell))))
+}
+
+function coachMirroredRenbansMatch(data: Record<string, unknown>, rules: readonly VariantRule[]): boolean {
+  const colours = readCoachCellColours(data)
+  if (!colours) return false
+  const cellSetKey = (cells: readonly number[]) => [...cells].sort((a, b) => a - b).join(',')
+  const renbans = new Set(rules.filter(rule => rule.type === 'renban').map(rule => cellSetKey(rule.cells)))
+  const palindromes = rules.filter(rule => rule.type === 'palindrome')
+  if (!palindromes.length) return false
+
+  const mirrorPairs = new Set<string>()
+  for (const { cells } of palindromes) {
+    // A Renban on either half applies to both halves through the mirrored digits.
+    // Both halves include the middle cell of an odd-length Palindrome.
+    const half = Math.ceil(cells.length / 2)
+    if (!renbans.has(cellSetKey(cells.slice(0, half))) && !renbans.has(cellSetKey(cells.slice(-half)))) return false
+    for (let index = 0; index < Math.floor(cells.length / 2); index++) {
+      mirrorPairs.add(cellSetKey([cells[index], cells[cells.length - 1 - index]]))
+    }
+  }
+
+  // The same pair of colours selects the two mirrored cells. Individual colours
+  // are reused on several pairs, so compare the whole combination on each cell.
+  const groups = new Map<string, number[]>()
+  for (const [cell, shades] of colours.cellColours.entries()) {
+    if (!shades) continue
+    const combination = [...shades].sort().join('')
+    const group = groups.get(combination)
+    if (group) group.push(cell)
+    else groups.set(combination, [cell])
+  }
+  return [...groups.values()].every(cells => mirrorPairs.has(cellSetKey(cells)))
 }
 
 async function fromCoach(code: string, publication?: CoachPublication | null): Promise<ImportedPuzzle> {
@@ -285,8 +320,12 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   if (guideLayers.length > 0 && !whispersGuide || publication?.whispersGuide && !whispersGuide) {
     throw new Error('This Sudoku Coach puzzle has an unsupported Whispers guide.')
   }
-  if ((publication || whispersGuide) &&
-    (COACH_DRAWINGS.some(key => hasData(data[key])) || !whispersGuide && !coachColoursMatchExtraHouses(data, rules))) {
+  const mirroredRenban = publication?.authoredRule === 'mirrored-renban'
+  if (mirroredRenban && !coachMirroredRenbansMatch(data, rules)) {
+    throw new Error('The Sudoku Coach export does not match its published mirrored Renban rules and markings.')
+  }
+  if ((publication || whispersGuide) && (COACH_DRAWINGS.some(key => hasData(data[key])) ||
+    !whispersGuide && !mirroredRenban && !coachColoursMatchExtraHouses(data, rules))) {
     throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
   }
   if (publication?.authoredRule === 'all-black-dots') {
@@ -947,8 +986,8 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', id: string)
   if (typeof code !== 'string' || code.length > MAX_IMPORT_LENGTH) throw new Error('This link does not contain a supported puzzle export.')
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
-      ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots' || coach.authoredRule === 'line-colours') &&
-        { authoredRule: coach.authoredRule }),
+      ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots' ||
+        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban') && { authoredRule: coach.authoredRule }),
       ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
       ...(coach.whispersGuide === true && { whispersGuide: true }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }

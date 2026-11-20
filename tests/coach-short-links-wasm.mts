@@ -31,6 +31,10 @@ const modularSources: (Omit<Fixture, 'puzzle'> & { description: string; publishe
   JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples
 const published220V = modularSources.find(source => source.url.endsWith('/7rs9'))!
 
+const entropicSources: (Fixture & { description?: string })[] =
+  JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8')).examples
+const mirroredRenban = entropicSources.find(({ url }) => url.endsWith('/Ksy3'))!
+
 const entropySources: (Omit<Fixture, 'puzzle'> & { description: string })[] =
   JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8')).examples
 const entropySums = entropySources.find(({ url }) => url.endsWith('HqJ9'))!
@@ -477,6 +481,47 @@ test('220V imports its complete published rules and centered paths through the s
     sourceDescription = description
     sourceCode = coachCode({ givenConstraints: [{ type: 'nonconsecutive', segments: [] }] })
     await assert.rejects(detectPuzzle(url), /has author instructions/)
+  } finally { sqlite.close() }
+})
+
+test('the published Ksy3 link imports Mirrored Renbans and every encoded companion rule', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, title, description, puzzle, solution } = mirroredRenban
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response(coachPage('Ksy3', code, title, { description })))
+    : fetcher(path, init))
+  try {
+    const { game, grade } = await prepareImportedPuzzle(url)
+    assert.equal(game.title, title)
+    assert.equal(game.variant?.id, 'mixed')
+    assert.deepEqual(game.variant.puzzle, puzzle)
+    assert.deepEqual(game.variant, (await prepareImportedPuzzle(code)).game.variant)
+    assert.equal(game.variant.solution, solution)
+    assertVariantCompletion(puzzle, solution)
+    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 2680])
+    assert.ok((await puzzleHints(game)).choices.length > 1)
+    const selected = await puzzleHints(game, 'all', 'adjacent-total')
+    const targets = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.ok(targets.size > 0)
+    const scan = watchTechniqueScan(valuesOf(game), undefined, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count('adjacent-total'), targets.size) } finally { scan.close() }
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, solution)
+    let played = game
+    for (const step of path.steps) {
+      for (const action of step.actions) {
+        const candidate = 'place' in action ? action.place : action.eliminate
+        assert.equal(Number(solution[candidate.cell]) === candidate.digit, 'place' in action)
+      }
+      played = applyDeduction(played, step.actions, variantHouseMasks(puzzle, valuesOf(played)))
+    }
+    assert.equal(valuesOf(played), solution)
+    assert.deepEqual(readGame(played.id, JSON.stringify(played))?.variant, game.variant)
+    const id = await publishSharedPuzzle(played)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.equal(shared.game.title, title)
+    assert.deepEqual(shared.game.variant, game.variant)
   } finally { sqlite.close() }
 })
 
