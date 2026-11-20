@@ -4,6 +4,7 @@ import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type Candi
 import { CLASSIC_GRID, type SizedGrid } from '../sudoku/grid'
 import { activeHighlightDigit, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
+import type { PuzzleInputMode } from '../sudoku/puzzle-input-mode'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
 import { OutsideClues } from './OutsideClues'
@@ -43,7 +44,7 @@ type Props = {
   pointerFocusedCell?: number | null
   boardRef?: RefObject<HTMLDivElement | null>
   /** The mobile mode border and badge belong to the grid, not to the puzzle toolbar. */
-  modeBorder?: 'pen' | 'pencil' | 'highlight' | 'erase' | 'color' | 'chain'
+  modeBorder?: PuzzleInputMode
   modeBoundaryRef?: Ref<HTMLDivElement>
   modeBadge?: ReactNode
   onCell?: (index: number, event: MouseEvent) => void
