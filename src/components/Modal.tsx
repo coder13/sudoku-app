@@ -4,19 +4,22 @@ import { X } from 'lucide-react'
 import { exitDelay, usePresence } from './Presence'
 
 /** Use when a task needs a blocking dialog with managed focus and dismissal. */
-export function Modal({ title, onClose, className = '', leading, children, open = true, motionSpeed = 'standard' }: {
-  title: string
+export function Modal({ title, onClose, className = '', leading, children, open = true, motionSpeed = 'standard', returnFocus }: {
+  title: ReactNode
   onClose: () => void
   className?: string
   leading?: ReactNode
   children: ReactNode
   open?: boolean
   motionSpeed?: 'standard' | 'overlay'
+  returnFocus?: () => HTMLElement | null
 }) {
   const [closing, setClosing] = useState(false)
   const { mounted, exiting } = usePresence(open && !closing, motionSpeed)
   const dialog = useRef<HTMLDialogElement>(null)
   const closeTimer = useRef<number | null>(null)
+  const focusOnClose = useRef(returnFocus)
+  focusOnClose.current = returnFocus
   const id = useId()
 
   useEffect(() => {
@@ -45,7 +48,8 @@ export function Modal({ title, onClose, className = '', leading, children, open 
     element?.showModal()
     return () => {
       element?.close()
-      if (focus instanceof HTMLElement && focus.isConnected) focus.focus({ preventScroll: true })
+      const target = focusOnClose.current?.() ?? focus
+      if (target instanceof HTMLElement && target.isConnected) target.focus({ preventScroll: true })
     }
   }, [mounted])
 

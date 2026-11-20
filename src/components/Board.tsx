@@ -5,7 +5,7 @@ import { jigsawMembership, CLASSIC_GRID, type SizedGrid } from '../sudoku/grid'
 import { activeHighlightDigit, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import type { PuzzleInputMode } from '../sudoku/puzzle-input-mode'
-import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
+import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership, type VariantRuleSectionId } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
@@ -16,6 +16,7 @@ import { BoardMarks, type BoardMark } from './BoardMarks'
 type Props = {
   descriptionId?: string
   variantPuzzle?: VariantPuzzle
+  highlightedRule?: VariantRuleSectionId | null
   grid?: SizedGrid
   algebraicCages?: SizedVariantPosition['rules']
   sizedRules?: readonly SizedConstraintRule[]
@@ -71,7 +72,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
@@ -83,6 +84,8 @@ export function Board({
   const boxRows = 'boxRows' in grid ? grid.boxRows : Math.ceil(gridSize / slotsAcross)
   const boxColumns = 'boxColumns' in grid ? grid.boxColumns : slotsAcross
   const variantRules = variantPuzzle?.rules
+  const highlightedDiagonals = useMemo(() => highlightedRule === 'diagonal'
+    ? (variantRules ?? []).flatMap(rule => rule.type === 'diagonal' ? [rule.diagonal] : []) : [], [highlightedRule, variantRules])
   const outside = useMemo(() => outsideClueLayout(variantRules), [variantRules])
   const hasOutside = Object.values(outside.depths).some(Boolean)
   const clones = cloneLayout(variantRules)
@@ -196,7 +199,7 @@ export function Board({
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle || algebraicCages?.length || sizedRules?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}
-        data-input-mode={modeBorder} ref={modeBoundaryRef}>
+        data-highlighted-rule={highlightedRule ?? undefined} data-input-mode={modeBorder} ref={modeBoundaryRef}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}
@@ -349,6 +352,7 @@ export function Board({
                     data-pointer-focused={pointerFocusedCell === index || undefined}
                     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
                     data-box-edge={rectangularBoxes && col % boxColumns === 0 || undefined}
+                    data-rule-highlighted={highlightedDiagonals.some(diagonal => diagonal === 'main' ? row === col : row + col === gridSize + 1) || undefined}
                     data-region-right={regionsAt && col < gridSize && regionAtCell !== regionsAt[index + 1] || undefined}
                     data-region-bottom={regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize] || undefined}
                     data-alternate-box={rectangularBoxes && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
