@@ -3910,7 +3910,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     var(--board-bg);
 }
 .variant-preview[data-variant="jigsaw"] { background: var(--board-bg); }
-.variant-preview:is([data-variant="inequality"], [data-variant="xv"]) { background: var(--board-bg); }
+.variant-preview:is([data-variant="inequality"], [data-variant="xv"], [data-variant="adjacent-total"]) { background: var(--board-bg); }
 .variant-inequality-preview-digits text { fill: var(--board-ink); font-size: .62px; text-anchor: middle; dominant-baseline: central; }
 .variant-preview-regions { fill: none; stroke: var(--grid-strong); stroke-width: .23; }
 .variant-clues { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -4169,6 +4169,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-xv-halo, .variant-total-halo { fill: none; stroke: var(--board-bg); stroke-width: .07; }
 .variant-xv-mark, .variant-total-mark { fill: var(--board-ink); stroke: none; }
 .variant-preview :is(.variant-xv-mark, .variant-xv-halo) { font-size: .68px; }
+.variant-preview :is(.variant-total-mark, .variant-total-halo) { font-size: .57px; }
 .variant-palindrome-overlap polyline {
   fill: none;
   stroke: var(--board-ink);

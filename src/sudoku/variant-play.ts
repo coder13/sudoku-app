@@ -38,6 +38,9 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
       // A sampled positive marker layout can contain only one symbol.
       if (id === 'xv' && !result.puzzle.rules?.some(rule =>
         rule.type === 'xv' && rule.five?.pairs?.length && rule.ten?.pairs?.length)) return
+      // Two-cell sums includes at least one clue beyond the two XV totals.
+      if (id === 'adjacent-total' && !result.puzzle.rules?.some(rule =>
+        rule.type === 'adjacent-total' && rule.sum !== 5 && rule.sum !== 10)) return
       return result
     } catch (error) {
       if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
