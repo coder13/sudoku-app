@@ -132,16 +132,44 @@ pub fn generate_six(
     if spec.size != 6 || !matches!((spec.box_rows, spec.box_columns), (2, 3) | (3, 2)) {
         return None;
     }
+    let minimum = match difficulty {
+        MiniDifficulty::Easy => 16,
+        MiniDifficulty::Medium => 11,
+    };
+    generate_rectangular(spec, seed, difficulty, exclude, minimum, 2_000)
+}
+
+/// Generate a uniquely solvable 8 × 8 puzzle with 2 × 4 or 4 × 2 boxes.
+pub fn generate_eight(
+    spec: GridSpec,
+    seed: u32,
+    difficulty: MiniDifficulty,
+    exclude: &[Vec<u8>],
+) -> Option<[u8; 64]> {
+    if spec.size != 8 || !matches!((spec.box_rows, spec.box_columns), (2, 4) | (4, 2)) {
+        return None;
+    }
+    let minimum = match difficulty {
+        MiniDifficulty::Easy => 29,
+        MiniDifficulty::Medium => 22,
+    };
+    generate_rectangular(spec, seed, difficulty, exclude, minimum, 10_000)
+}
+
+fn generate_rectangular<const CELLS: usize>(
+    spec: GridSpec,
+    seed: u32,
+    difficulty: MiniDifficulty,
+    exclude: &[Vec<u8>],
+    minimum: usize,
+    budget: u32,
+) -> Option<[u8; CELLS]> {
     let layout = SizedGrid::new(spec)?;
     let excluded: HashSet<&[u8]> = exclude.iter().map(Vec::as_slice).collect();
     let mut random = Random::from_seed(seed);
-    let (minimum, spread) = match difficulty {
-        MiniDifficulty::Easy => (16, 4),
-        MiniDifficulty::Medium => (11, 4),
-    };
     for _ in 0..160 {
-        let solution = six_solution(spec, &mut random);
-        let puzzle = carve(&layout, solution, minimum, spread, 2_000, &mut random);
+        let solution = rectangular_solution(spec, &mut random);
+        let puzzle = carve(&layout, solution, minimum, 4, budget, &mut random);
         if let Some(puzzle) = puzzle
             && !excluded.contains(puzzle.as_slice())
             && recipe_matches(&layout, puzzle, solution, difficulty)
@@ -241,24 +269,27 @@ fn carve<const CELLS: usize>(
     None
 }
 
-fn six_solution(spec: GridSpec, random: &mut Random) -> [u8; 36] {
-    let mut digits = [1, 2, 3, 4, 5, 6];
-    random.shuffle(&mut digits);
-    let rows = shuffle_groups(spec.box_rows, random);
-    let columns = shuffle_groups(spec.box_columns, random);
+fn rectangular_solution<const CELLS: usize>(spec: GridSpec, random: &mut Random) -> [u8; CELLS] {
+    let size = spec.size;
+    let mut digits: [u8; super::MAX_SIZE] = std::array::from_fn(|index| index as u8 + 1);
+    random.shuffle(&mut digits[..size]);
+    let rows = shuffle_groups(size, spec.box_rows, random);
+    let columns = shuffle_groups(size, spec.box_columns, random);
     std::array::from_fn(|cell| {
-        let row = rows[cell / 6];
-        let column = columns[cell % 6];
-        digits[(row % spec.box_rows * spec.box_columns + row / spec.box_rows + column) % 6]
+        let row = rows[cell / size];
+        let column = columns[cell % size];
+        digits[(row % spec.box_rows * spec.box_columns + row / spec.box_rows + column) % size]
     })
 }
 
-fn shuffle_groups(width: usize, random: &mut Random) -> [usize; 6] {
-    let mut groups = [0, 1, 2];
-    random.shuffle(&mut groups[..6 / width]);
-    let mut order: [usize; 6] =
-        std::array::from_fn(|cell| groups[cell / width] * width + cell % width);
-    for group in order.chunks_exact_mut(width) {
+fn shuffle_groups(size: usize, width: usize, random: &mut Random) -> [usize; super::MAX_SIZE] {
+    let mut groups: [usize; super::MAX_SIZE] = std::array::from_fn(|group| group);
+    random.shuffle(&mut groups[..size / width]);
+    let mut order = [0; super::MAX_SIZE];
+    for (cell, slot) in order[..size].iter_mut().enumerate() {
+        *slot = groups[cell / width] * width + cell % width;
+    }
+    for group in order[..size].chunks_exact_mut(width) {
         random.shuffle(group);
     }
     order
