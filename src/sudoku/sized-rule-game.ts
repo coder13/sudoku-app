@@ -1,7 +1,7 @@
 import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndKey } from './sized-linked-double-arrow.ts'
 import { runEngine, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
-import { isGridText, gridCellsShareEdge, gridDiagonalCells, kropkiDigitExclusions, sizedClassicPosition, type SizedGrid } from './grid.ts'
+import { isGridText, gridCellsShareEdge, gridDiagonalCells, kropkiDigitExclusions, rowColumnSumTotal, sizedClassicPosition, type SizedGrid } from './grid.ts'
 import { sizedRegionSumParts } from './region-sum.ts'
 import { sizedKillerState, validSizedKillerRule } from './sized-killer.ts'
 import { validation } from './puzzle-validation.ts'
@@ -36,6 +36,15 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
     }
     if (rule.type === 'anti-sum') {
       return Object.keys(rule).length === 2 && Number.isInteger(rule.sum) && rule.sum >= 2 && rule.sum <= 2 * size
+    }
+    if (rule.type === 'row-column-sum') {
+      return Object.keys(rule).every(key => key === 'type' || key === 'pairs' || key === 'requireUnmarked') &&
+        (rule.requireUnmarked === undefined || typeof rule.requireUnmarked === 'boolean') &&
+        Array.isArray(rule.pairs) && rule.pairs.length <= 2 * size * (size - 1) &&
+        (rule.pairs.length > 0 || rule.requireUnmarked === true) &&
+        rule.pairs.every((pair: unknown) => Array.isArray(pair) && pair.length === 2 &&
+          pair.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2) && gridCellsShareEdge(pair[0], pair[1], size)) &&
+        new Set(rule.pairs.map(([a, b]: [number, number]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.pairs.length
     }
     if (rule.type === 'kropki') {
       return Object.keys(rule).every(key => ['type', 'consecutive', 'ratioTwo'].includes(key)) &&
@@ -146,6 +155,17 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
         if (cell % size < size - 1 && digit + Number(solution[cell + 1]) === rule.sum ||
           cell < size * (size - 1) && digit + Number(solution[cell + size]) === rule.sum) return
       }
+    } else if (rule.type === 'row-column-sum') {
+      const { size } = grid
+      const matches = (pair: readonly [number, number]) => Number(solution[pair[0]]) + Number(solution[pair[1]]) === rowColumnSumTotal(pair, size)
+      if (!rule.pairs.every(matches)) return
+      if (rule.requireUnmarked) {
+        const marked = new Set(rules.flatMap(layer => layer.type === 'row-column-sum'
+          ? layer.pairs.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b)) : []))
+        const qualifies = (a: number, b: number) => !marked.has(a * size ** 2 + b) && matches([a, b])
+        if (![...solution].some((_, cell) => (cell % size < size - 1 && qualifies(cell, cell + 1)) ||
+          (cell < size * (size - 1) && qualifies(cell, cell + size)))) return
+      }
     } else if (rule.type === 'difference') {
       const [a, b] = rule.cells
       if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
@@ -182,6 +202,10 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     }
     else if (rule.type === 'double-arrow') clues.add('The digits along each Double Arrow add up to the sum of the digits in its two end circles.')
     else if (rule.type === 'arrow') clues.add('The digits along each arrow add up to the digit in its bulb. The same digit can appear more than once along an arrow if the other rules allow it.')
+    else if (rule.type === 'row-column-sum') {
+      clues.add('Across a horizontal diamond, the digits add to their row number. Across a vertical diamond, they add to their column number.')
+      if (rule.requireUnmarked) clues.add('At least one edge without a diamond must also have digits that add to its row or column number.')
+    }
     else if (rule.type === 'anti-sum') clues.add(`Digits in cells that share an edge cannot add to ${rule.sum}.`)
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')
     else if (rule.type === 'labeled-dots') {

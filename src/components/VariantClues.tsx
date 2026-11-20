@@ -4,7 +4,7 @@ import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDif
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
-import { gridDiagonalCells, type SizedGrid } from '../sudoku/grid'
+import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from '../sudoku/grid'
 import { cloneLayout } from '../sudoku/clone'
 
 const x = (cell: number, size = 9) => cell % size
@@ -103,6 +103,10 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
   const doubleArrows = rules.filter(rule => rule.type === 'double-arrow')
   const doubleArrowEnds = new Set(doubleArrows.flatMap(rule => rule.ends))
   const dots = kropkiDots(rules, size)
+  const diamondEdges = new Map(rules.flatMap(rule => rule.type === 'row-column-sum'
+    ? rule.pairs.map(pair => [pairKey(...pair, size), pair] as const) : []))
+  const differences = new Set(diamondEdges.size
+    ? rules.flatMap(rule => rule.type === 'difference' ? [pairKey(...rule.cells, size)] : []) : [])
   const dotValues = new Map<number, [number?, number?]>()
   for (const rule of rules) if (rule.type === 'labeled-dots') {
     const kind = rule.relation === 'ratio' ? 1 : 0
@@ -153,6 +157,14 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     })}
     {rules.map((rule, index) => rule.type === 'difference' &&
       <DifferenceClue key={index} {...rule} dots={dots.get(pairKey(...rule.cells, size)) ?? 0} size={size} />)}
+    {[...diamondEdges].map(([edge, [a, b]]) => {
+      const shared = dots.has(edge) || differences.has(edge)
+      const [cx, cy] = pairCenter(a, b, shared ? -.34 : 0, size)
+      const side = shared ? .17 : .25
+      return <rect key={edge} className="variant-row-column-sum-diamond" data-row-column-sum-diamond
+        x={cx - side / 2} y={cy - side / 2} width={side} height={side}
+        transform={`rotate(45 ${cx} ${cy})`} />
+    })}
   </svg>
 }
 
@@ -228,6 +240,12 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       labels[a].add(`Double Arrow ${doubleArrowNumber} end circle paired with ${at(b)}`)
       labels[b].add(`Double Arrow ${doubleArrowNumber} end circle paired with ${at(a)}`)
       for (const cell of rule.cells) labels[cell].add(`Double Arrow ${doubleArrowNumber} line`)
+    } else if (rule.type === 'row-column-sum') {
+      for (const [a, b] of rule.pairs) {
+        const total = rowColumnSumTotal([a, b], size)
+        labels[a].add(`sum diamond with ${at(b)}, total ${total}`)
+        labels[b].add(`sum diamond with ${at(a)}, total ${total}`)
+      }
     } else if (rule.type === 'difference') {
       const [a, b] = rule.cells
       labels[a].add(`difference of ${rule.difference} with ${at(b)}`)

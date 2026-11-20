@@ -47,6 +47,92 @@ fn orthogonal_edges(size: usize) -> impl Iterator<Item = [usize; 2]> {
     })
 }
 
+#[derive(Debug)]
+pub(super) struct RowColumnSum {
+    pub marked: Vec<PairConstraint<MAX_SIZE>>,
+    unmarked: Option<Vec<PairConstraint<MAX_SIZE>>>,
+}
+
+pub(super) enum UnmarkedSumSupport {
+    Impossible,
+    One { cells: [usize; 2], masks: [u16; 2] },
+    Unrestricted,
+}
+
+impl RowColumnSum {
+    pub fn compile(
+        size: usize,
+        pairs: &[[usize; 2]],
+        require_unmarked: bool,
+        rules: &[SizedConstraint],
+    ) -> Option<Self> {
+        if pairs.is_empty() && !require_unmarked || pairs.len() > 2 * size * (size - 1) {
+            return None;
+        }
+        let sum = |[a, b]: [usize; 2]| {
+            if b - a == 1 { a / size + 1 } else { a % size + 1 }
+        };
+        let link = |cells| {
+            let total = sum(cells) as u8;
+            PairConstraint::from_relation(cells, size, |x, y| x != y && x + y == total)
+        };
+        let mut printed = BTreeSet::new();
+        let mut marked = Vec::with_capacity(pairs.len());
+        for &pair in pairs {
+            let cells = adjacent_edge(pair, size)?;
+            if !printed.insert(cells) {
+                return None;
+            }
+            marked.push(link(cells));
+        }
+        let unmarked = require_unmarked.then(|| {
+            // An edge marked by any diamond layer is printed on the same grid.
+            let all_printed: BTreeSet<_> = rules
+                .iter()
+                .filter_map(|rule| match rule {
+                    SizedConstraint::RowColumnSum { pairs, .. } => Some(pairs),
+                    _ => None,
+                })
+                .flatten()
+                .filter_map(|&pair| adjacent_edge(pair, size))
+                .collect();
+            orthogonal_edges(size)
+                .filter(|cells| sum(*cells) >= 3 && !all_printed.contains(cells))
+                .map(link)
+                .collect()
+        });
+        Some(Self { marked, unmarked })
+    }
+
+    pub fn unmarked_support(&self, domains: &[u16]) -> UnmarkedSumSupport {
+        let Some(links) = &self.unmarked else { return UnmarkedSumSupport::Unrestricted };
+        let mut only = None;
+        for link in links {
+            let masks = link.restrict(link.cells.map(|cell| domains[cell]));
+            if masks.contains(&0) {
+                continue;
+            }
+            if only.is_some() {
+                return UnmarkedSumSupport::Unrestricted;
+            }
+            only = Some(UnmarkedSumSupport::One { cells: link.cells, masks });
+        }
+        only.unwrap_or(UnmarkedSumSupport::Impossible)
+    }
+
+    pub fn permits(&self, digits: &[u8]) -> bool {
+        self.marked.iter().all(|link| {
+            let [left, right] = link.cells.map(|cell| digits[cell]);
+            left == 0 || right == 0 || link.permits(left, right)
+        }) && self.unmarked.as_ref().is_none_or(|links| {
+            digits.contains(&0) || links.iter().any(|link| {
+                let [left, right] = link.cells.map(|cell| digits[cell]);
+                link.permits(left, right)
+            })
+        })
+    }
+}
+
 pub(super) fn compile_pairs(
     size: usize,
     rules: &[SizedConstraint],

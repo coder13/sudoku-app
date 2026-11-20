@@ -12,7 +12,7 @@ use self::double_arrow::DoubleArrow;
 use self::killer::Cage;
 use self::linked_double_arrow::LinkedDoubleArrow;
 pub use self::linked_double_arrow::SizedSumEnd;
-use self::pairs::{SizedPairLink, compile_pairs};
+use self::pairs::{RowColumnSum, SizedPairLink, UnmarkedSumSupport, compile_pairs};
 use self::region_sum::RegionSum;
 
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
@@ -57,6 +57,7 @@ pub enum SizedConstraint {
         negative: bool,
     },
     AntiSum { sum: u8 },
+    RowColumnSum { pairs: Vec<[usize; 2]>, require_unmarked: bool },
     Difference {
         cells: [usize; 2],
         difference: u8,
@@ -119,6 +120,12 @@ pub enum SizedConstraintStep {
         cells: [usize; 2],
         actions: Vec<HintAction>,
     },
+    RowColumnSum {
+        rule: usize,
+        cells: [usize; 2],
+        unmarked: bool,
+        actions: Vec<HintAction>,
+    },
     Contradiction {
         assumption: Candidate,
         placements: Vec<Candidate>,
@@ -140,6 +147,7 @@ pub enum SizedConstraintFailure {
     KillerCage { rule: usize, cage: usize },
     Kropki { rule: usize, pair: SizedKropkiPair },
     AntiSum { rule: usize, cells: [usize; 2] },
+    RowColumnSum { rule: usize, cells: Option<[usize; 2]> },
 }
 
 #[derive(Debug)]
@@ -174,6 +182,7 @@ pub struct SizedConstraintGrid {
     cages: Vec<Vec<Cage>>,
     linked_double_arrows: Vec<Option<LinkedDoubleArrow>>,
     pair_links: Vec<Vec<SizedPairLink>>,
+    row_column_sums: Vec<Option<RowColumnSum>>,
 }
 
 impl SizedConstraintGrid {
@@ -193,6 +202,7 @@ impl SizedConstraintGrid {
         let mut double_arrows = Vec::new();
         let mut linked_double_arrows = Vec::new();
         let mut region_sums = Vec::new();
+        let mut row_column_sums = Vec::new();
         let mut cages = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
@@ -281,6 +291,10 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. }
                 | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. } => {}
+                SizedConstraint::RowColumnSum { pairs, require_unmarked } => {
+                    row_column_sums.resize_with(index + 1, || None);
+                    row_column_sums[index] = Some(RowColumnSum::compile(size, pairs, *require_unmarked, rules)?);
+                }
             }
         }
         let parity = parity
@@ -303,6 +317,7 @@ impl SizedConstraintGrid {
             cages,
             linked_double_arrows,
             pair_links,
+            row_column_sums,
         })
     }
 
@@ -337,7 +352,9 @@ impl SizedConstraintGrid {
                 candidates[cell] = 1 << (digit - 1);
             }
         }
-        self.apply_rules(digits, &mut candidates);
+        if !self.apply_rules(digits, &mut candidates) {
+            return None;
+        }
         for (cell, &digit) in digits.iter().enumerate() {
             if digit != 0 {
                 candidates[cell] = 0;
@@ -346,7 +363,7 @@ impl SizedConstraintGrid {
         Some(candidates)
     }
 
-    fn apply_rules(&self, digits: &[u8], candidates: &mut [u16]) {
+    fn apply_rules(&self, digits: &[u8], candidates: &mut [u16]) -> bool {
         for &(cell, mask) in &self.parity {
             candidates[cell] &= mask;
         }
@@ -426,8 +443,28 @@ impl SizedConstraintGrid {
                     candidates[cell] = mask;
                 }
             }
+            for layer in self.row_column_sums.iter().flatten() {
+                for link in &layer.marked {
+                    let before = link.cells.map(|cell| candidates[cell]);
+                    let masks = link.restrict(before);
+                    changed |= before != masks;
+                    for (cell, mask) in link.cells.into_iter().zip(masks) {
+                        candidates[cell] = mask;
+                    }
+                }
+                match layer.unmarked_support(candidates) {
+                    UnmarkedSumSupport::Impossible => return false,
+                    UnmarkedSumSupport::One { cells, masks } => {
+                        changed |= cells.map(|cell| candidates[cell]) != masks;
+                        for (cell, mask) in cells.into_iter().zip(masks) {
+                            candidates[cell] = mask;
+                        }
+                    }
+                    UnmarkedSumSupport::Unrestricted => {}
+                }
+            }
             if !changed {
-                break;
+                return true;
             }
         }
     }
@@ -644,6 +681,32 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
+                SizedConstraint::RowColumnSum { .. } => {
+                    let layer = self.row_column_sums[rule].as_ref()?;
+                    let witness = match layer.unmarked_support(&domains) {
+                        UnmarkedSumSupport::Impossible => return None,
+                        UnmarkedSumSupport::One { cells, masks } => Some((cells, masks, true)),
+                        UnmarkedSumSupport::Unrestricted => None,
+                    };
+                    let marked = layer.marked.iter().map(|link| {
+                        (link.cells, link.restrict(link.cells.map(|cell| domains[cell])), false)
+                    });
+                    for (cells, masks, unmarked) in marked.chain(witness) {
+                        if masks.contains(&0) {
+                            return None;
+                        }
+                        let mut actions = Vec::new();
+                        for (cell, mask) in cells.into_iter().zip(masks) {
+                            eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                        }
+                        if !actions.is_empty() {
+                            choices.push(SizedConstraintStep::RowColumnSum { rule, cells, unmarked, actions });
+                            if choices.len() == limit {
+                                break;
+                            }
+                        }
+                    }
+                }
                 SizedConstraint::Difference { .. } => {
                     let link = self.pair_links[rule].first()?;
                     let support = link.supports(&domains);
@@ -726,7 +789,8 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraintStep::Rule { actions, .. }
                 | SizedConstraintStep::Kropki { actions, .. }
-                | SizedConstraintStep::AntiSum { actions, .. } => {
+                | SizedConstraintStep::AntiSum { actions, .. }
+                | SizedConstraintStep::RowColumnSum { actions, .. } => {
                     advance(actions, &mut digits, &mut eliminations)
                 }
             }
@@ -780,7 +844,8 @@ impl SizedConstraintGrid {
                         Some(SizedConstraintStep::House { proof }) => proof.actions,
                         Some(SizedConstraintStep::Rule { actions, .. })
                         | Some(SizedConstraintStep::Kropki { actions, .. })
-                        | Some(SizedConstraintStep::AntiSum { actions, .. }) => actions,
+                        | Some(SizedConstraintStep::AntiSum { actions, .. })
+                        | Some(SizedConstraintStep::RowColumnSum { actions, .. }) => actions,
                         _ => break,
                     };
                     placements.extend(actions.iter().filter_map(|action| match action {
@@ -894,6 +959,18 @@ impl SizedConstraintGrid {
                 SizedConstraint::Renban { cells } => {
                     self.renban_masks(cells, &domains)[..cells.len()].contains(&0)
                 }
+                SizedConstraint::RowColumnSum { .. } => {
+                    let layer = self.row_column_sums[rule].as_ref()?;
+                    if let Some(link) = layer.marked.iter().find(|link| {
+                        link.restrict(link.cells.map(|cell| domains[cell])).contains(&0)
+                    }) {
+                        return Some(SizedConstraintFailure::RowColumnSum { rule, cells: Some(link.cells) });
+                    }
+                    if matches!(layer.unmarked_support(&domains), UnmarkedSumSupport::Impossible) {
+                        return Some(SizedConstraintFailure::RowColumnSum { rule, cells: None });
+                    }
+                    false
+                }
                 SizedConstraint::Difference { .. } => {
                     self.pair_links[rule].iter().any(|link| link.supports(&domains).contains(&0))
                 }
@@ -935,12 +1012,10 @@ impl SizedConstraintGrid {
                 }
                 if local_nodes_left > 0 {
                     local_nodes_left -= 1;
-                    self.apply_rules(digits, domains);
-                    return !domains.contains(&0);
+                    return self.apply_rules(digits, domains) && !domains.contains(&0);
                 }
                 loop {
-                    self.apply_rules(digits, domains);
-                    if domains.contains(&0) {
+                    if !self.apply_rules(digits, domains) || domains.contains(&0) {
                         return false;
                     }
                     match self.layout.restrict_search_houses(domains) {
@@ -1021,6 +1096,7 @@ impl SizedConstraintGrid {
             && self.linked_double_arrows.iter().flatten().all(|arrow| arrow.permits(digits))
             && self.cages.iter().flatten().all(|cage| cage.permits(digits))
             && self.region_sums.iter().flatten().all(|line| line.permits(digits))
+            && self.row_column_sums.iter().flatten().all(|layer| layer.permits(digits))
             && self.pair_links.iter().flatten().all(|link| {
                 let [left, right] = link.constraint.cells.map(|cell| digits[cell]);
                 left == 0 || right == 0 || link.constraint.permits(left, right)

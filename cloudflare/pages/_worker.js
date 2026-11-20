@@ -170,6 +170,9 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
       marks: list(mark => fields(mark, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) }), 0, 2 * size * (size - 1)) },
       { negative: boolean }) && (rule.marks.length > 0 || rule.negative)) ||
     fields(rule, { type: oneOf('anti-sum'), sum: integer(2, 2 * size) }) ||
+    (fields(rule, { type: oneOf('row-column-sum'), pairs: list(pair, 0, 2 * size * (size - 1)) }, { requireUnmarked: boolean }) &&
+      (rule.pairs.length > 0 || rule.requireUnmarked === true) &&
+      new Set(rule.pairs.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.pairs.length) ||
     fields(rule, { type: oneOf('difference'), cells: pair, difference: integer(1, size - 1) }) ||
     (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
