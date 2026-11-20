@@ -40,7 +40,7 @@ test('unmodified Coach XV exports retain every marked sum and every companion ru
 
 test('XV keeps its wire format while Coach general totals use their own rule', async () => {
   assert.equal(isPlayablePuzzle('xv', fixture.puzzle), true)
-  assert.equal(generationVariant({ id: 'xv' }), undefined)
+  assert.equal(generationVariant({ id: 'xv' }), 'xv')
   const general = await detectPuzzle(examples.find(example => example.deferred.length)!.code)
   assert.deepEqual(general.variant!.puzzle.rules!.at(-1), { type: 'adjacent-total', cells: [80, 79], sum: 15 })
   for (const sum of [undefined, null, 0, 2, 18, 15.5, '5']) {

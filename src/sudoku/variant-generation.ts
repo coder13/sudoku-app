@@ -13,6 +13,7 @@ export type VariantSeed = {
   retryAttempts?: number
   cageSizes?: number[]
   dotCount?: number
+  markCount?: number
   markedCells?: number[]
   minDifference?: number
   layout?: string
@@ -61,6 +62,9 @@ export function variantGenerationRequest(
       break
     case 'kropki':
       derivedClues.push({ type: 'markers', family: 'kropki', count: recipe.dotCount })
+      break
+    case 'xv':
+      derivedClues.push({ type: 'markers', family: 'xv', count: recipe.markCount })
       break
     case 'parity':
       derivedClues.push({ type: 'parity', cells: recipe.markedCells! })

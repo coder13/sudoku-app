@@ -31,29 +31,34 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
   // Equivalent clues can give an imported puzzle a different variant label.
   // Let the native logical key compare complete definitions across that history.
   const excluded = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
+  const tryGenerate = async (request: ReturnType<typeof variantGenerationRequest>) => {
+    if (excluded.length) request.exclude = excluded
+    try {
+      const result = await runEngine(request)
+      // A sampled positive marker layout can contain only one symbol.
+      if (id === 'xv' && !result.puzzle.rules?.some(rule =>
+        rule.type === 'xv' && rule.five?.pairs?.length && rule.ten?.pairs?.length)) return
+      return result
+    } catch (error) {
+      if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
+    }
+  }
+
   const initial = seed % recipes.length
   for (let attempt = 0; attempt <= recipes.length; attempt++) {
     const recipe = recipes[(initial + Math.max(0, attempt - 1)) % recipes.length]
     const request = variantGenerationRequest(id, difficulty, recipe, techniqueOrder, attempt === 0 ? seed : recipe.seed)
     if (attempt === 0) request.maxNodes = 20_000
-    if (excluded.length) request.exclude = excluded
-    try {
-      return await runEngine(request)
-    } catch (error) {
-      if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
-    }
+    const result = await tryGenerate(request)
+    if (result) return result
   }
   const recipe = recipes[initial]
   if (recipe.retryAttempts) {
     const request = variantGenerationRequest(id, difficulty, recipe, techniqueOrder, seed)
     request.maxNodes = 20_000
     request.maxAttempts = recipe.retryAttempts
-    if (excluded.length) request.exclude = excluded
-    try {
-      return await runEngine(request)
-    } catch (error) {
-      if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
-    }
+    const result = await tryGenerate(request)
+    if (result) return result
   }
   throw new EngineError('No puzzle found for this difficulty.', 'search-limit')
 }

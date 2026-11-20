@@ -112,15 +112,15 @@ export const VARIANTS = {
     name: 'Kropki',
     rule: 'Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other. Unmarked pairs have no extra rule.',
   },
+  xv: {
+    name: 'XV',
+    rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
+  },
 } as const
 
 // Playable imported variants can be released before generation recipes exist.
 export const PUZZLE_VARIANTS = {
   ...VARIANTS,
-  xv: {
-    name: 'XV',
-    rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
-  },
   'adjacent-total': {
     name: 'Two-cell sums',
     rule: 'Digits joined by a Roman numeral have that total. For example, XV means 15. Unmarked pairs can have any total unless a negative V or X rule is stated.',

@@ -5,6 +5,7 @@ use crate::CELLS;
 
 mod comparisons;
 mod renban;
+mod xv;
 
 // Drawing paths do not change a puzzle's logical identity. Keep them in the
 // public canonical definition, but ignore them when excluding played puzzles.
@@ -13,6 +14,7 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     normalize_equalities(&mut logical);
     normalize_group_lines(&mut logical);
     renban::normalize(&mut logical);
+    xv::normalize(&mut logical);
     let complement_comparisons = comparisons::normalize(&mut logical);
     // Whispers constrains neighboring pairs, independently of path direction,
     // segmentation or repeated edges. Keep this normalization private to played
