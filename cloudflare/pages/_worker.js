@@ -62,6 +62,18 @@ const publicPuzzleSources = {
   },
 }
 
+// Recognize a complete authored declaration, including the optional credit and rating.
+function declaresCoachXSums(description) {
+  const lines = description.split(/\r?\n/).map(line => line.trim().replace(/[ \t]+/g, ' ')).filter(Boolean)
+  if (/^Special request by [\w-]{1,32} :D$/i.test(lines[0])) lines.shift()
+  if (/^(?:Normal|Standard) Sudoku rules apply\.$/i.test(lines[0])) lines.shift()
+  if (/^SE \d{1,3}(?:\.\d{1,3})?$/i.test(lines.at(-1))) lines.pop()
+  return lines.length === 3 &&
+    /^Variant Rules \(X[ -]Sums\):$/i.test(lines[0]) &&
+    /^- Clues outside the grid indicate the sum of the first X digits in the corresponding direction\.$/i.test(lines[1]) &&
+    /^- X is the first digit in the corresponding direction\.$/i.test(lines[2])
+}
+
 // Coach publishes the puzzle code and its author instructions separately.
 function coachPublication(html, id, code) {
   const scripts = [...html.matchAll(/<script>\s*let mainInitData\s*=\s*({[\s\S]*?})\s*;?\s*<\/script>/gi)]
@@ -77,6 +89,7 @@ function coachPublication(html, id, code) {
   const title = typeof puzzle.name === 'string' ? puzzle.name.trim().slice(0, 72) : ''
   return {
     hasAuthorInstructions: puzzle.custom_constraints || puzzle.description.trim() !== '',
+    ...(declaresCoachXSums(puzzle.description) && { authoredRule: 'x-sum' }),
     ...(title && { title }),
   }
 }

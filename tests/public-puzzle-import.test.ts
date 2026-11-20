@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import worker from '../cloudflare/pages/_worker.js'
 
@@ -74,4 +75,19 @@ test('Coach publication metadata belongs to the requested puzzle and preserves a
       { code, coach: { title: 'Puzzle title', hasAuthorInstructions: true } })
   }
   while (pages.length) assert.deepEqual(await (await request('sudoku-coach/Ab12')).json(), { code })
+})
+
+test('the published X-Sums declaration must describe the complete rules', async ({ mock }) => {
+  const { metadata } = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8'))
+  const codes = [
+    metadata.description.replaceAll('\n', '\r\n'),
+    metadata.description.replace('sum of the first', 'product of the first'),
+    metadata.description + '\nRed cells count twice.',
+  ]
+  mock.method(globalThis, 'fetch', async () => new Response(
+    '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: { ...metadata, description: codes.shift() } }) + '</script>'))
+  const expected = { code: metadata.sudoku, coach: { title: metadata.name, hasAuthorInstructions: true } }
+  assert.deepEqual(await (await request('sudoku-coach/AsnF')).json(),
+    { ...expected, coach: { ...expected.coach, authoredRule: 'x-sum' } })
+  while (codes.length) assert.deepEqual(await (await request('sudoku-coach/AsnF')).json(), expected)
 })

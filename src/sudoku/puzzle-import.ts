@@ -6,6 +6,7 @@ import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, is
 import { EMPTY } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
+import type { OutsideSide } from './outside-clues.ts'
 import { closedRegionSumCells, regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
@@ -185,7 +186,7 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
   return data
 }
 
-type CoachPublication = { hasAuthorInstructions: boolean; title?: string }
+type CoachPublication = { hasAuthorInstructions: boolean; title?: string; authoredRule?: 'x-sum' }
 
 async function fromCoach(code: string, publication?: CoachPublication | null): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
@@ -197,7 +198,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
     throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 6 × 6, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 Sudoku Coach grids.')
   }
   if (publication === null) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
-  if (publication?.hasAuthorInstructions) {
+  if (publication?.hasAuthorInstructions && !publication.authoredRule) {
     throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
   }
   if (publication && COACH_AUTHORED_MARKINGS.some(key => hasData(data[key]))) {
@@ -207,7 +208,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
   const constraints = data.givenConstraints ?? []
   const regions = readRegions(data.regions)
-  const imported = makeImportedPuzzle('Sudoku Coach', givens, readCoachRules(constraints, regions), regions)
+  const rules = readCoachRules(constraints, { regions, authoredRule: publication?.authoredRule })
+  const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions)
   return publication?.title ? { ...imported, title: publication.title } : imported
 }
 
@@ -230,12 +232,58 @@ function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'differ
   return { markers, negative: record(settings) && settings.negativeConstraint === true }
 }
 
-function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions'], grid?: SizedGrid): VariantRule[] {
+function coachOutsideRay(side: OutsideSide, index: number) {
+  const direction = side === 'top' ? 'south' : side === 'bottom' ? 'north' : side === 'left' ? 'east' : 'west'
+  const cells = Array.from({ length: 9 }, (_, i) => side === 'top' ? i * 9 + index : side === 'bottom' ? (8 - i) * 9 + index
+    : side === 'left' ? index * 9 + i : index * 9 + 8 - i)
+  return { direction, cells } as const
+}
+
+function readCoachXSums(constraint: Record<string, unknown>, segments: readonly unknown[]) {
+  const { settings } = constraint
+  if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key =>
+    !['gridZoomOut', 'gridSnapToCorners', 'gridSnapToEdges', 'textSize'].includes(key)) ||
+    (settings.gridZoomOut !== undefined && settings.gridZoomOut !== 1) ||
+    (settings.gridSnapToCorners !== undefined && settings.gridSnapToCorners !== false) ||
+    (settings.gridSnapToEdges !== undefined && settings.gridSnapToEdges !== false) ||
+    (settings.textSize !== undefined && !(typeof settings.textSize === 'number' && Number.isFinite(settings.textSize) && settings.textSize > 0)))) {
+    throw new Error('This Sudoku Coach X-Sums layer uses unsupported settings.')
+  }
+  const clues: Extract<VariantRule, { type: 'x-sum' }>[] = []
+  const cellCenter = (coordinate: number) => coordinate >= 0.5 && coordinate <= 8.5 && Number.isInteger(coordinate - 0.5)
+  for (const segment of segments) {
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+      !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 ||
+      !segment.cells[0].every(Number.isFinite) || !record(segment.parameters) ||
+      Object.keys(segment.parameters).length !== 1 || typeof segment.parameters.text !== 'string') {
+      throw new Error('This Sudoku Coach puzzle has an invalid X-Sum label.')
+    }
+    const { text } = segment.parameters
+    if (!text) continue
+    const [x, y] = segment.cells[0] as [number, number]
+    const side = cellCenter(x) && y === -0.5 ? 'top' : cellCenter(x) && y === 9.5 ? 'bottom'
+      : cellCenter(y) && x === -0.5 ? 'left' : cellCenter(y) && x === 9.5 ? 'right' : undefined
+    const sum = Number(text)
+    if (!side || !/^[1-9][0-9]?$/.test(text) || sum > 45) {
+      throw new Error('This Sudoku Coach X-Sum needs a total from 1 through 45 beside a row or column.')
+    }
+    clues.push({ type: 'x-sum', ...coachOutsideRay(side, (side === 'top' || side === 'bottom' ? x : y) - 0.5), sum })
+  }
+  return clues
+}
+
+function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
+  regions?: VariantPuzzle['regions']; grid?: SizedGrid; authoredRule?: CoachPublication['authoredRule']
+} = {}): VariantRule[] {
   if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const rules: VariantRule[] = []
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
+    }
+    if (constraint.type === 'cosmeticText' && authoredRule === 'x-sum') {
+      rules.push(...readCoachXSums(constraint, constraint.segments))
+      continue
     }
     if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
@@ -287,10 +335,7 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
         const { side, index, value } = segment.parameters
         if (typeof side !== 'string' || !['top', 'right', 'bottom', 'left'].includes(side) || !Number.isInteger(index) || Number(index) < 0 || Number(index) > 8 ||
           !Number.isInteger(value) || Number(value) < 0 || Number(value) > 35) throw new Error('This Sudoku Coach puzzle has an invalid Sandwich clue.')
-        const direction = side === 'top' ? 'south' : side === 'bottom' ? 'north' : side === 'left' ? 'east' : 'west'
-        const cells = Array.from({ length: 9 }, (_, i) => side === 'top' ? i * 9 + Number(index) : side === 'bottom' ? (8 - i) * 9 + Number(index)
-          : side === 'left' ? Number(index) * 9 + i : Number(index) * 9 + 8 - i)
-        rules.push({ type: 'sandwich', direction, cells, sum: Number(value) })
+        rules.push({ type: 'sandwich', ...coachOutsideRay(side as OutsideSide, Number(index)), sum: Number(value) })
       }
     } else if (constraint.type === 'quadruple') {
       for (const segment of constraint.segments) {
@@ -453,6 +498,13 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
       throw new Error(`This Sudoku Coach rule is not supported yet (${constraint.type}).`)
     }
   }
+  if (authoredRule === 'x-sum') {
+    const clues = rules.filter(rule => rule.type === 'x-sum')
+    if (!clues.length) throw new Error('This Sudoku Coach X-Sums puzzle has no outside totals.')
+    if (new Set(clues.map(rule => `${rule.direction}:${rule.cells[0]}`)).size !== clues.length) {
+      throw new Error('This Sudoku Coach puzzle has multiple X-Sums for the same side of a row or column.')
+    }
+  }
   // Coach exempts difference markers from its global relation, independently of rule order.
   // The positive dot remains a separate rule and still requires a difference of one.
   const exceptions = [...new Map(rules.flatMap(rule => rule.type === 'kropki'
@@ -508,7 +560,7 @@ function readCoachSized(data: Record<string, unknown>) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }
   const rules = active.flatMap((constraint): (VariantRule | SizedDifferenceRule | SizedLabeledDotsRule)[] => {
-    if (!record(constraint) || constraint.type !== 'difference' && constraint.type !== 'ratio') return readCoachRules([constraint], undefined, grid)
+    if (!record(constraint) || constraint.type !== 'difference' && constraint.type !== 'ratio') return readCoachRules([constraint], { grid })
     const relation = constraint.type
     const { markers, negative } = readCoachPairMarkers(constraint, relation)
     const ratio = relation === 'ratio'
@@ -775,6 +827,7 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', id: string)
   if (typeof code !== 'string' || code.length > MAX_IMPORT_LENGTH) throw new Error('This link does not contain a supported puzzle export.')
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
+      ...(coach.authoredRule === 'x-sum' && { authoredRule: 'x-sum' }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }
     : null
   return { code, publication }

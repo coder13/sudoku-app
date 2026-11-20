@@ -20,6 +20,15 @@ type Fixture = { url: string; code: string; title: string; puzzle: VariantPuzzle
 const between: Fixture = JSON.parse(readFileSync(new URL('./fixtures/between-coach.json', import.meta.url), 'utf8')).examples[0]
 const renban: Fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-coach.json', import.meta.url), 'utf8')).examples[0]
 
+const xSum = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8')) as {
+  source: string
+  metadata: { sudoku_id: string; sudoku: string; name: string; description: string; custom_constraints: boolean }
+  decoded: { givenConstraints: { segments: { cells: number[][]; parameters: { text: string } }[] }[] }
+}
+const xSumTranscription: Pick<Fixture, 'puzzle' | 'solution'> =
+  JSON.parse(readFileSync(new URL('./fixtures/x-sum-coach-transcription.json', import.meta.url), 'utf8'))
+const terrain = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8')).source
+
 function coachPage(id: string, code: string, name: string, details: Record<string, unknown> = {}) {
   const specificSudoku = {
     sudoku_id: id, sudoku: code, name, blocked: false, custom_constraints: false, description: '', ...details,
@@ -101,6 +110,91 @@ test('a complete Renban short link and the same pasted code have the same logica
     const path = await puzzleSolution(game)
     assert.deepEqual(path, await puzzleSolution(pasted.game))
     assert.equal(path.board, renban.solution)
+  } finally { sqlite.close() }
+})
+
+test('published X-Sums import from the author declaration and preserve typed companion rules', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const metadata = xSum.metadata
+  const mix = coachCode({ givenConstraints: [
+    ...xSum.decoded.givenConstraints, { type: 'even', segments: [{ cells: [0] }] },
+  ] })
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (path === xSum.source) return Promise.resolve(new Response(coachPage(metadata.sudoku_id, metadata.sudoku, metadata.name, metadata)))
+    if (path === 'https://sudoku.coach/en/s/Mix') return Promise.resolve(new Response(coachPage('Mix', mix, 'X-Sums and Even', {
+      description: metadata.description, custom_constraints: true,
+    })))
+    return fetcher(path, init)
+  })
+  try {
+    const { game, format } = await prepareImportedPuzzle(xSum.source)
+    assert.equal(format, 'Sudoku Coach')
+    assert.equal(game.title, metadata.name)
+    assert.equal(game.variant?.id, 'x-sum')
+    assert.deepEqual(game.variant.puzzle, xSumTranscription.puzzle)
+    assert.equal(game.variant.solution, xSumTranscription.solution)
+    assert.ok((await puzzleHints(game)).choices.length > 1)
+
+    const selected = await puzzleHints(game, 'all', 'x-sum')
+    const targets = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.ok(targets.size > 0)
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count('x-sum'), targets.size) } finally { scan.close() }
+
+    const walkthrough = await puzzleSolution(game)
+    assert.equal(walkthrough.board, xSumTranscription.solution)
+    assert.deepEqual(walkthrough.rating.status, { solved: 'hard' })
+    const share = await publishSharedPuzzle(game)
+    const shared = await prepareSharedPuzzle(share, [], new AbortController().signal)
+    assert.equal(shared.game.title, game.title)
+    assert.deepEqual(shared.game.variant, game.variant)
+
+    const imported = await detectPuzzle('sudoku.coach/s/Mix')
+    assert.equal(imported.variant?.id, 'mixed')
+    assert.deepEqual(imported.variant.puzzle.rules, [
+      ...xSumTranscription.puzzle.rules!, { type: 'parity', cells: [0], parity: 'even' },
+    ])
+    await assert.rejects(detectPuzzle(metadata.sudoku), /unsupported settings.*cosmeticText/)
+  } finally { sqlite.close() }
+})
+
+test('an X-Sums declaration rejects ambiguous totals, markings and unsupported companion rules', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { description } = xSum.metadata
+  const text = (label: string, x = -0.5, y = 0.5) => ({ cells: [[x, y]], parameters: { text: label } })
+  const layer = (...segments: ReturnType<typeof text>[]) => ({ type: 'cosmeticText', segments })
+  const codes = {
+    Extra: xSum.metadata.sudoku,
+    Empty: coachCode({ givenConstraints: [layer(text(''))] }),
+    Corner: coachCode({ givenConstraints: [layer(text('10', -0.5, -0.5))] }),
+    Interior: coachCode({ givenConstraints: [layer(text('10', 0.5, 0.5))] }),
+    Fraction: coachCode({ givenConstraints: [layer(text('10', 1.25, -0.5))] }),
+    BadTotal: coachCode({ givenConstraints: [layer(text('46'))] }),
+    Duplicate: coachCode({ givenConstraints: [layer(text('10')), layer(text('12'))] }),
+    Graphic: coachCode({ givenConstraints: [{ ...layer(text('10')), settings: { gridSnapToEdges: true } }] }),
+    Color: coachCode({ givenColours: [{ cells: [0] }], givenConstraints: [layer(text('10'))] }),
+    Unknown: coachCode({ givenConstraints: [layer(text('10')), { type: 'globalModularity', segments: [] }] }),
+  }
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    const id = path.split('/').at(-1)!
+    if (!path.startsWith('https://sudoku.coach/')) return fetcher(path, init)
+    if (id === terrain.sudoku_id) return Promise.resolve(new Response(coachPage(id, terrain.sudoku, terrain.name, terrain)))
+    assert.ok(Object.hasOwn(codes, id))
+    const authorRules = id === 'Extra' ? description + '\nDigits on blue cells count twice.' : description
+    return Promise.resolve(new Response(coachPage(id, codes[id as keyof typeof codes], 'X-Sums', {
+      description: authorRules, custom_constraints: true,
+    })))
+  })
+  try {
+    for (const [id, error] of [
+      ['Extra', /has author instructions/], [terrain.sudoku_id, /has author instructions/],
+      ['Empty', /has no outside totals/], ['Corner', /beside a row or column/], ['Interior', /beside a row or column/],
+      ['Fraction', /beside a row or column/], ['BadTotal', /1 through 45/], ['Duplicate', /multiple X-Sums/],
+      ['Graphic', /layer uses unsupported settings/], ['Color', /unsupported authored markings/],
+      ['Unknown', /not supported yet.*globalModularity/],
+    ] as const) {
+      await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), error, id)
+    }
   } finally { sqlite.close() }
 })
 

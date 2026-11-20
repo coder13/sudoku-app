@@ -56,9 +56,11 @@ Existing compatibility matrices and independently checked completion witnesses c
 
 ## Published Coach links
 
-The local app opens a 9×9 Coach short link when the resolver can match its publication record to the requested puzzle and the export contains supported rules. The publication title survives save and share. Links with author instructions or unsupported markings still require source-format work. [Coach interchange](https://github.com/coder13/sudoku-app/issues/7)
+The local app opens a 9×9 Coach short link when the resolver can match its publication record to the requested puzzle and the export contains supported rules. The publication title survives save and share. Unsupported author instructions and markings still require source-format work. [Coach interchange](https://github.com/coder13/sudoku-app/issues/7)
 
 The actual published Between the Dots response keeps all twelve Between Lines and eleven black dots, several opening hints, matching Technique Finder counts and a 62-step partial walkthrough. A separate published Renban short link reaches its complete solution. Its short-link and pasted-code walkthroughs match. Diamond Sandwich remains rejected because its author instructions change how clues count digits. [Between the Dots](https://sudoku.coach/en/s/9KxH) · [Renban](https://sudoku.coach/en/s/Jh4o) · [Diamond Sandwich](https://sudoku.coach/en/s/D8HP)
+
+The X sums #3 short link combines the verified publication’s X-Sums declaration with the sixteen numeric labels in its export. The imported rules match the independent transcription, give multiple ranked hints and matching X-Sums Finder counts, and retain a complete Hard walkthrough and title through sharing. Typed companion rules pass through the same importer. Raw codes with untyped text, extra authored rules and ambiguous clue geometry still reject. [X sums #3](https://sudoku.coach/en/s/AsnF) · [Short-link contracts](tests/coach-short-links-wasm.mts)
 
 The placed-digit checks now include parity, Thermometers, Arrow sums, Killer totals and Quadruple circles in 9×9 Play. Tests cover both Pencil modes, manual and bulk entry, undo and redo, and every partial four-cell state for four representative Quadruple clue patterns in boxes and Jigsaw regions. The local feedback checks use the placed digits; the full engine continues to compute candidates and solutions. [Play tests](tests/variant-placed-rules.test.ts)
 
