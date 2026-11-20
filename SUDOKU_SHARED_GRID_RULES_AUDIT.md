@@ -173,3 +173,18 @@ The original Coach FWpZ code has an explicitly empty region list, no givens, and
 The engine stores only row and column houses for this layout. Numbered cages reuse exact digit-set support and support the supplied digit range. Warm app-profile median and p95 were 2,593 / 2,711 µs for uniqueness, 379 / 397 µs for exact solving, 27 / 31 µs for candidates, 35 / 41 µs for eight hints, and 33,564 / 34,464 µs for the full replay. No HTTP request or browser rendering is included. The rectangular and irregular sized-rule controls still pass with the prototype engine.
 
 The paired parity run on the existing six sized controls returned identical classification and completion payloads. Median changes stayed within 9 µs across the 4×4, 6×6, 7×7 Jigsaw, and 16×16 controls.
+
+### Exact support for smaller cages
+
+One-cell cages intersect the given total with the cell's candidates. Two-cell cages test the two arrangements of each compiled digit pair. The larger cages continue to use digit-set matching. Exhaustive independent enumeration covers every 7×7 pair of candidate masks and eleven legal totals. The paired Wasm check matched 348 complete responses, including every position in the published boxless Killer replay and sized Killer controls on 6×6 and 16×16 grids.
+
+The published boxless Killer was benchmarked with 100 warm calls per measurement, alternating the two builds. Values are median / p95 in microseconds.
+
+| Operation | Digit-set matching | Direct one- and two-cell support |
+| --- | ---: | ---: |
+| Verify uniqueness and return solution | 2,628 / 2,909 | 1,992 / 2,171 |
+| Candidate masks | 25 / 28 | 24 / 27 |
+| Eight hints | 31 / 36 | 31 / 35 |
+| Full logical replay | 32,866 / 33,876 | 27,481 / 28,174 |
+
+An earlier singleton prefilter reproduced the proofs but increased verification and replay time on this control, so the direct support calculation is used for the shorter cages.
