@@ -60,6 +60,8 @@ The local app opens a 9×9 Coach short link when the resolver can match its publ
 
 The actual published Between the Dots response keeps all twelve Between Lines and eleven black dots, several opening hints, matching Technique Finder counts and a 62-step partial walkthrough. A separate published Renban short link reaches its complete solution. Its short-link and pasted-code walkthroughs match. Diamond Sandwich remains rejected because its author instructions change how clues count digits. [Between the Dots](https://sudoku.coach/en/s/9KxH) · [Renban](https://sudoku.coach/en/s/Jh4o) · [Diamond Sandwich](https://sudoku.coach/en/s/D8HP)
 
+The placed-digit checks now include parity, Thermometers, Arrow sums, Killer totals and Quadruple circles in 9×9 Play. Tests cover both Pencil modes, manual and bulk entry, undo and redo, and every partial four-cell state for four representative Quadruple clue patterns in boxes and Jigsaw regions. The local feedback checks use the placed digits; the full engine continues to compute candidates and solutions. [Play tests](tests/variant-placed-rules.test.ts)
+
 ## Priority controls
 
 Use complete source definitions, including every companion clue and parameter. Start browser review with these controls, then cover every table row:

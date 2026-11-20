@@ -980,6 +980,7 @@ Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app
 
 - [x] Finish the current Inequality integration and inventory all 28 existing 9×9 variants plus Classic, existing rule configurations and representative combined-rule controls for [281](https://github.com/coder13/sudoku-app/issues/281). Record current construction paths, existing automated evidence, known human-reasoning gaps and pending browser approval in the [review inventory](SUDOKU_VARIANT_USABILITY_AUDIT.md).
 - [ ] Review actual rendering at narrow/desktop sizes, in light/dark themes and with larger text. Share screenshots for approval before merging broader visual changes.
+- [x] Add immediate placed-digit feedback for 9×9 parity markers, Thermometers, Arrow sums, Killer totals and Quadruple circles. Check mixed conflicts, both Pencil modes, bulk entry and redo. Exhaustively verify the four-cell Quadruple checks on representative clue patterns in standard and Jigsaw regions. [Play tests](tests/variant-placed-rules.test.ts)
 - [ ] Verify combined-rule import/play/input/candidates/conflicts, both Pencil modes, undo/redo, save/reload and sharing without losing any source constraint.
 - [ ] Verify several sound hints when available, selected techniques, proof provenance, pages and counts across existing variants and combined rules. Investigate actual coverage gaps.
 - [ ] Verify Technique Finder progress/cancellation, enabled techniques, counts, pages and action application against the same live candidate state.

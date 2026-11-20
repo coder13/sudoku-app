@@ -239,7 +239,7 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
   return excluded
 }
 
-export function sizedArrowState(rules: readonly SizedConstraintRule[] | undefined, values: string, size: number) {
+export function sizedArrowState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, size: number) {
   const arrows = rules?.filter(rule => rule.type === 'arrow' || rule.type === 'double-arrow')
   if (!arrows?.length) return
   const allowed = Array<number>(values.length).fill((1 << size) - 1)
