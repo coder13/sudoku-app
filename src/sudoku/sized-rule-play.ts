@@ -1,3 +1,4 @@
+import { linkedDoubleArrowCells } from './sized-linked-double-arrow.ts'
 import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
@@ -34,6 +35,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   const cells = cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
     : rule.type === 'arrow' ? [rule.circle, ...rule.cells]
       : rule.type === 'double-arrow' ? [rule.ends[0], ...rule.cells, rule.ends[1]]
+        : rule.type === 'linked-double-arrow' ? linkedDoubleArrowCells(rule, size)
         : 'cells' in rule ? [...rule.cells] : []
   const candidates = actions.map(action => 'place' in action ? action.place : action.eliminate)
   let description: string
@@ -66,6 +68,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'arrow') {
     description = 'The digits along this arrow add up to the digit in its bulb.'
     reason = 'Remove the candidates that cannot appear in an arrow sum that fits the bulb.'
+  } else if (rule.type === 'linked-double-arrow') {
+    description = 'The Double Arrow line and its two end circles have the same total. Each X-Sum adds the first X digits from its end.'
+    reason = 'Remove candidates that cannot fit both totals with the correct X-Sum lengths.'
   } else if (rule.type === 'double-arrow') {
     description = 'The digits along this Double Arrow add up to the sum of the digits in its two end circles.'
     reason = 'Remove candidates that cannot contribute to a total shared by the line and the two end circles.'
@@ -77,7 +82,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     reason = 'Each remaining candidate fits in at least one increasing sequence using the candidates along the thermometer. Remove the candidates that fit in none.'
   }
   return {
-    actions, technique: `sized-${rule.type}`, evidence: { variant: { description, reason } },
+    actions, technique: rule.type === 'linked-double-arrow' ? 'sized-double-arrow' : `sized-${rule.type}`, evidence: { variant: { description, reason } },
     pattern: { houses: [], cells, candidates },
   }
 }
@@ -100,6 +105,9 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     } else if (rule.type === 'arrow') {
       locations.push(rule.circle, ...rule.cells)
       conflict = 'No set of digits along the arrow can add up to a digit in the bulb.'
+    } else if (rule.type === 'linked-double-arrow') {
+      locations.push(...linkedDoubleArrowCells(rule, size))
+      conflict = 'No total fits the Double Arrow line and its two end circles with the correct X-Sum lengths.'
     } else if (rule.type === 'double-arrow') {
       locations.push(rule.ends[0], ...rule.cells, rule.ends[1])
       conflict = 'No total fits both the Double Arrow line and its two end circles.'

@@ -1,3 +1,4 @@
+import { linkedDoubleArrowCells, linkedDoubleArrowConflicts } from './sized-linked-double-arrow.ts'
 import { STARTER } from './formats.ts'
 import { sizedKillerState } from './sized-killer.ts'
 import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type SevenJigsawGrid } from './grid.ts'
@@ -242,6 +243,9 @@ export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGr
         conflicts.add(j)
       }
     }
+  }
+  for (const rule of sizedRules ?? []) if (rule.type === 'linked-double-arrow' && linkedDoubleArrowConflicts(rule, values, grid.size)) {
+    for (const cell of linkedDoubleArrowCells(rule, grid.size)) if (values[cell] !== '0') conflicts.add(cell)
   }
   for (const cell of placedRuleState(puzzle, values, grid, sizedRules)?.conflicts ?? []) conflicts.add(cell)
   return conflicts

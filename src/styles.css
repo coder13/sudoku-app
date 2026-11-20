@@ -4200,7 +4200,7 @@ a.game-row { text-decoration: none; color: inherit; }
 
 /* Outside clues have their own cell-sized gutters. Grid and link coordinates stay local. */
 .board-frame.has-outside-clues {
-  grid-template-columns: var(--board-guide-width, 20px) minmax(0, var(--outside-left-track)) minmax(0, 9fr) minmax(0, var(--outside-right-track));
+  grid-template-columns: var(--board-guide-width, 20px) minmax(0, var(--outside-left-track)) minmax(0, var(--board-outside-grid-track, 9fr)) minmax(0, var(--outside-right-track));
   grid-template-rows: var(--board-guide-height, 19px) auto auto auto auto;
   grid-template-areas: ". . columns ." ". . top ." "rows left board right" ". . bottom ." ". legend legend legend";
 }
@@ -4211,8 +4211,8 @@ a.game-row { text-decoration: none; color: inherit; }
 .has-outside-clues > .row-labels { padding-block: 2px; }
 .board-outside-clues text { font-family: inherit; font-size: .36px; font-weight: 720; fill: currentColor; text-anchor: middle; dominant-baseline: central; }
 .outside-diagonal-arrow { fill: none; stroke: currentColor; stroke-width: .035; stroke-linecap: round; }
-.outside-clues-top { grid-area: top; aspect-ratio: 9 / var(--outside-top); pointer-events: none; }
-.outside-clues-bottom { grid-area: bottom; aspect-ratio: 9 / var(--outside-bottom); pointer-events: none; }
+.outside-clues-top { grid-area: top; aspect-ratio: var(--board-columns, 9) / var(--outside-top); pointer-events: none; }
+.outside-clues-bottom { grid-area: bottom; aspect-ratio: var(--board-columns, 9) / var(--outside-bottom); pointer-events: none; }
 .variant-little-killer-preview text { font-size: 1.7px; font-weight: 750; fill: var(--board-ink); }
 .variant-little-killer-preview path { fill: none; stroke: var(--board-ink); stroke-width: .35; }
 .variant-skyscrapers-preview text { font-size: 2px; font-weight: 750; fill: var(--board-ink); }
