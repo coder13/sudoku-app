@@ -6,6 +6,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
 import betweenNewman from '../../tests/fixtures/between-newman.json'
 import regionSumNewman from '../../tests/fixtures/region-sum-newman.json'
+import modularCoach from '../../tests/fixtures/modular-coach.json'
 import littleKillerMurphy from '../../tests/fixtures/little-killer-murphy.json'
 import littleKillerNewman from '../../tests/fixtures/little-killer-newman.json'
 import sandwichMurphy from '../../tests/fixtures/sandwich-murphy.json'
@@ -83,6 +84,17 @@ export const RegionSumLines: Story = {
 export const RegionSumLinesCompact: Story = {
   ...RegionSumLines,
   parameters: { ...RegionSumLines.parameters, gridWidth: 290 },
+}
+
+const regionSum220V = modularCoach.examples.find(source => source.url.endsWith('/7rs9'))!.publishedPuzzle as VariantPuzzle
+
+export const RegionSumContacts: Story = {
+  args: { label: '220V Sudoku grid', variantPuzzle: regionSum220V, givens: regionSum220V.givens, values: regionSum220V.givens },
+}
+
+export const RegionSumContactsCompact: Story = {
+  args: candidateGrid(regionSum220V, '220V Sudoku grid with candidates'),
+  parameters: { gridWidth: 290 },
 }
 
 export const RegionSumClosedAndSeparated: Story = {

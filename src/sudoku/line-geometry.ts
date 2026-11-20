@@ -17,6 +17,30 @@ function paths(rule: VariantRule): readonly (readonly number[])[] {
   }
 }
 
+/** Find open Region Sum ends that touch another independent Region Sum line. */
+export function sharedRegionSumEnds(rules: readonly VariantRule[]) {
+  const visited = new Set<number>(), contacts = new Set<number>()
+  rules.forEach(rule => {
+    if (rule.type !== 'region-sum') return
+    for (const cell of rule.cells) {
+      if (visited.has(cell)) contacts.add(cell)
+      visited.add(cell)
+    }
+  })
+  const shared = new Map<number, ReadonlySet<number>>()
+  if (!contacts.size) return shared
+  rules.forEach((rule, index) => {
+    if (rule.type !== 'region-sum') return
+    const drawing = paths(rule)
+    const visits = new Map<number, number>()
+    for (const path of drawing) for (const cell of path) visits.set(cell, (visits.get(cell) ?? 0) + 1)
+    const ends = new Set(drawing.flatMap(path => path.length > 1 ? [path[0], path.at(-1)!] : [])
+      .filter(cell => visits.get(cell) === 1 && contacts.has(cell)))
+    if (ends.size) shared.set(index, ends)
+  })
+  return shared
+}
+
 /** Split straight paths at every grid center so long and short overlaps agree. */
 function* edges(lines: readonly (readonly number[])[], size = 9) {
   for (const line of lines) for (let i = 1; i < line.length; i++) {

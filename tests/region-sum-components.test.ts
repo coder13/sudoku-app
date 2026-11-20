@@ -68,13 +68,42 @@ test('220V renders each recovered blue line and the repeated orange center in bo
     assert.equal(html.split('class="variant-region-sum"').length - 1, 9)
     assert.equal(html.split('class="variant-entropic"').length - 1, 4)
     assert.equal(html.split('class="variant-modular"').length - 1, 2)
-    assert.match(html, /points="6\.5,4\.5 5\.5,3\.5 4\.5,2\.5 5\.5,1\.5"/)
+    const [, path] = html.match(/data-region-sum="5"[^>]*><polyline points="([^"]+)"/)!
+    const shape = path.split(' ').map(point => point.split(',').map(Number))
+    assert.deepEqual(shape.slice(1, -1), [[5.5, 3.5], [4.5, 2.5]])
+    for (const [drawn, center] of [[shape[0], [6.5, 4.5]], [shape.at(-1)!, [5.5, 1.5]]]) {
+      assert.ok(Math.abs(Math.hypot(drawn[0] - center[0], drawn[1] - center[1]) - .28) < 1e-8)
+      assert.deepEqual(drawn.map(Math.floor), center.map(Math.floor))
+    }
+    assert.match(html, /data-region-sum="1"[^>]*><polyline points="[^"]* 6\.5,4\.5 [^"]+"/)
     assert.match(html, /points="4\.5,4\.5 4\.5,3\.5 5\.5,4\.5 4\.5,4\.5 3\.5,4\.5 4\.5,5\.5 4\.5,4\.5"/)
     const label = html.match(/data-cell="14"[^>]*aria-label="([^"]+)"/)![1]
     for (const line of [2, 5, 6]) assert.match(label, new RegExp(`Region Sum line ${line}, part`))
     const clipped = html.match(/data-cell="23"[^>]*aria-label="([^"]+)"/)![1]
     assert.doesNotMatch(clipped, /Region Sum/)
   }
+})
+
+test('Region Sum contact gaps also shorten overlay lanes and follow dashed endpoint dots', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'region-sum', cells: [0, 40, 80] },
+    { type: 'region-sum', cells: [0, 10, 20, 30] },
+    { type: 'region-sum', cells: [24, 25, 34, 33], segments: [[24, 25, 34, 33, 24]] },
+    { type: 'region-sum', cells: [24, 23, 22] },
+    { type: 'region-sum', cells: [56, 57, 58], segments: [[56, 57], [57, 58]] },
+    { type: 'region-sum', cells: [57, 48] },
+  ] }
+  const html = renderToStaticMarkup(board(puzzle))
+  const [whole, x, y] = html.match(/data-region-sum="1"[^>]*><g><line class="variant-region-sum-jump" x1="([^"]+)" y1="([^"]+)"/)!
+  assert.ok(Number(x) > .65 && Number(y) > .65, whole)
+  assert.ok(html.includes(`class="variant-region-sum-node" cx="${x}" cy="${y}"`))
+  for (const index of [1, 2]) {
+    const [_, laneX, laneY] = html.match(new RegExp(`class="variant-region-sum-overlap" data-region-sum="${index}"><line x1="([^"]+)" y1="([^"]+)"`))!
+    assert.ok(Math.abs(Number(laneX) + Number(laneY) - Number(x) - Number(y)) < 1e-8)
+  }
+  assert.match(html, /data-region-sum="3"[^>]*><polyline points="6\.5,2\.5 7\.5,2\.5 7\.5,3\.5 6\.5,3\.5 6\.5,2\.5"/)
+  assert.match(html, /data-region-sum="4"[^>]*><polyline points="6\.22,2\.5 5\.5,2\.5 4\.5,2\.5"/)
+  assert.match(html, /data-region-sum="5"[^>]*><polyline points="2\.5,6\.5 3\.5,6\.5"><\/polyline><polyline points="3\.5,6\.5 4\.5,6\.5"/)
 })
 
 test('closed paths, separated logical cells and overlapping families remain visible in all orientations', () => {
