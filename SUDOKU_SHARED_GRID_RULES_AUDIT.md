@@ -151,9 +151,24 @@ Each timing below uses 100 warm app-profile calls and excludes network time. Val
 | Rule hints | 45 / 52 | 38 / 44 |
 | Full replay | 564 / 640 | 3,132 / 3,245 |
 
+### One exact verification request
+
+Sized puzzle verification returns the unique completion from the same search that establishes uniqueness. This avoids compiling the puzzle and searching again for the first completion. The algebraic path also returns the verified variable values from the unique completion.
+
+Paired app-profile measurements used 200 warm calls per control. Both paths returned identical solutions. The separate conflict, multiple, and unsolvable controls returned the same status without a solution. Values are median / p95 in microseconds.
+
+| Control | Separate verification and solve | One verification request |
+| --- | ---: | ---: |
+| Mini Region Sum | 31 / 79 | 20 / 48 |
+| Mini Algebraic Cages | 26 / 33 | 16 / 22 |
+| 6×6 Arrow | 470 / 508 | 281 / 311 |
+| 6×6 Region Sum | 1,410 / 1,506 | 790 / 842 |
+| 7×7 Jigsaw Thermometer | 5,887 / 6,018 | 3,112 / 3,194 |
+| 7×7 Jigsaw numbered dots | 396 / 430 | 215 / 245 |
+
 ## Boxless 7×7 engine baseline
 
-The original Coach FWPZ code has an explicitly empty region list, no givens, and 18 distinct-digit Killer cages covering all 49 cells. An independent solver using only the rows, columns, and authored cages found one completion. Rows and columns alone admit multiple completions. The native prototype matches the independent answer and reaches it in 167 logical steps. [Published boxless Killer](https://sudoku.coach/en/s/FWpZ)
+The original Coach FWpZ code has an explicitly empty region list, no givens, and 18 distinct-digit Killer cages covering all 49 cells. An independent solver using only the rows, columns, and authored cages found one completion. Rows and columns alone admit multiple completions. The native prototype matches the independent answer and reaches it in 167 logical steps. [Published boxless Killer](https://sudoku.coach/en/s/FWpZ)
 
 The engine stores only row and column houses for this layout. Numbered cages reuse exact digit-set support and support the supplied digit range. Warm app-profile median and p95 were 2,593 / 2,711 µs for uniqueness, 379 / 397 µs for exact solving, 27 / 31 µs for candidates, 35 / 41 µs for eight hints, and 33,564 / 34,464 µs for the full replay. No HTTP request or browser rendering is included. The rectangular and irregular sized-rule controls still pass with the prototype engine.
 
