@@ -98,6 +98,22 @@ test('algebraic cages retain labels and cell descriptions on the 4×4 grid', () 
   assert.deepEqual(labels.map(({ props }) => props.children), ['n+2', 'n-1'])
 })
 
+test('mobile mode outline and badge attach to the Sudoku grid, not the card', () => {
+  const boundary = { current: null }
+  const badge = createElement('button', { className: 'puzzle-mode-tab', type: 'button' }, 'Drawing mode')
+  const tree = boardTree({ modeBorder: 'pencil', modeBoundaryRef: boundary, modeBadge: badge })
+  const body = tree.find(({ props }) => String(props.className) === 'board-body')
+  assert.ok(body)
+  assert.equal(body.props['data-input-mode'], 'pencil')
+  assert.equal(body.props.ref, boundary)
+  const children = elements(body.props.children)
+  assert.ok(children.some(({ props }) => props.className === 'sudoku-grid'))
+  assert.ok(children.some(({ props }) => props.className === 'puzzle-mode-tab'))
+  const frame = tree.find(({ props }) => String(props.className).startsWith('board-frame'))
+  assert.equal(frame?.props['data-input-mode'], undefined)
+  assert.equal(boardTree({}).find(({ props }) => props.className === 'board-body')?.props['data-input-mode'], undefined)
+})
+
 test('chain drawing exposes a keyboard tab stop and accepts keyboard candidate activation', () => {
   const selected: unknown[] = []
   const tree = boardTree({ onCandidate: (candidate: unknown) => selected.push(candidate) })
