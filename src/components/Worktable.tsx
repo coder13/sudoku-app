@@ -512,7 +512,6 @@ export function Worktable({
   const chainKeypadVisible = !grid && chainsPanelOpen && (mobile ? activeToolPanel === 'digits'
     : advancedWorkspace && desktopInputVisible)
   const drawingIntent = savedPlayState?.drawingIntent ?? null
-  const chainDrawingRequested = drawingIntent ?? (game.chainSketch?.pending != null)
   const chainsActive = !grid && chainToolsActive(chainsVisible, chainKeypadVisible, showStrongLinks, drawingIntent,
     game.chainSketch?.pending != null)
   const variantEliminations = (variant || grid) && eliminations
