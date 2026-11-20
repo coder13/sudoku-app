@@ -77,14 +77,17 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
   const clauses = rulesText.slice(1)
   const thermometer = /^Digits along a thermometer strictly increase from bulb to tip\.$/i
+  const compactThermometer = /^THERMOMETER - Digits increase in value along a thermometer, starting from the bulb end\.(?: They don't have to be adjacent, for example 1-3-4 or 2-4 would be just fine\.)?$/i
   const renban = /^Digits along a pink line form a set of non-repeating consecutive digits in any order\.$/i
   const compactRenban = /^RENBAN - Digits on a purple Renban line must be a set of consecutive, non-repeating digits \(in any order\)\.(?: For example, a length 3 line could have -3-1-2-, but not -1-2-4- or -1-3-1-\.)?$/i
   const isRenban = (clause: string) => renban.test(clause) || compactRenban.test(clause)
-  const authoredThermometers = clauses.some(clause => thermometer.test(clause))
+  const isThermometer = (clause: string) => thermometer.test(clause) || compactThermometer.test(clause)
+  const authoredThermometers = clauses.some(isThermometer)
+  const compactBulbs = clauses.some(clause => compactThermometer.test(clause))
   const authoredRenban = clauses.some(isRenban)
   const validBase = base ? base.slice(1, 4).every(part => Number(part) === size) &&
     Number(base[4]) === grid.boxRows && Number(base[5]) === grid.boxColumns : Number(compactBase?.[1]) === size
-  if (!validBase || clauses.some(clause => !thermometer.test(clause) && !isRenban(clause))) {
+  if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause))) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
@@ -96,8 +99,8 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     throw new Error('This SudokuPad export has unsupported underlays.')
   }
   const bulbs = (underlays ?? []).map(bulb => {
-    if (!record(bulb) || Object.keys(bulb).some(key => !['center', 'width', 'height', 'rounded', 'backgroundColor'].includes(key)) ||
-      bulb.rounded !== true || typeof bulb.width !== 'number' || bulb.width !== bulb.height || bulb.width <= 0 || bulb.width > 1 ||
+    if (!record(bulb) || Object.keys(bulb).some(key => !['center', 'width', 'height', 'rounded', 'backgroundColor', 'stroke'].includes(key)) ||
+      (bulb.stroke !== undefined && (!compactBulbs || bulb.stroke !== 'none')) || bulb.rounded !== true || typeof bulb.width !== 'number' || bulb.width !== bulb.height || bulb.width <= 0 || bulb.width > 1 ||
       typeof bulb.backgroundColor !== 'string') {
       throw new Error('This SudokuPad export has an unsupported thermometer bulb.')
     }
@@ -109,8 +112,12 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       throw new Error('This SudokuPad export has an unsupported line.')
     }
     const path = readPath(line.wayPoints, size)
-    const matching = bulbs.flatMap((bulb, index) =>
-      bulb.color === line.color && (bulb.cell === path[0] || bulb.cell === path.at(-1)) ? [index] : [])
+    // This compact export convention uses a darker, unbordered bulb.
+    const compactShaft = compactBulbs && /^#(?:ccc|cccccc(?:ff)?)$/i.test(line.color)
+    const matching = bulbs.flatMap((bulb, index) => {
+      const matchesColor = bulb.color === line.color || (compactShaft && /^#(?:999|999999(?:ff)?)$/i.test(bulb.color))
+      return matchesColor && (bulb.cell === path[0] || bulb.cell === path.at(-1)) ? [index] : []
+    })
     if (matching.length === 1) {
       const [bulb] = bulbs.splice(matching[0], 1)
       rules.push({ type: 'thermometer', cells: bulb.cell === path[0] ? path : path.reverse() })
