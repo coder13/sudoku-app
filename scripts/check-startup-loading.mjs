@@ -241,12 +241,12 @@ async function waitForGate(hold) {
   let timer
   try {
     await Promise.race([hold.started, new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`Sync did not reach ${hold.method} ${hold.path}`)), 20_000)
+      timer = setTimeout(() => reject(new Error(`Did not reach ${hold.method} ${hold.path}`)), 20_000)
     })])
   } finally { clearTimeout(timer) }
 }
 
-async function installRoutes(context, data, holds, requests, backendErrors, sockets, offline) {
+async function installRoutes(context, data, holds, requests, backendErrors, sockets, offline, scriptGate) {
   await context.routeWebSocket('**/api/v1/live', socket => {
     sockets.push(socket)
     socket.onMessage(message => { if (message === 'ping') socket.send('pong') })
@@ -254,6 +254,7 @@ async function installRoutes(context, data, holds, requests, backendErrors, sock
   await context.route('**/*', async route => {
     const request = route.request()
     const url = new URL(request.url())
+    if (scriptGate && request.resourceType() === 'script') await scriptGate.wait()
     if (url.pathname.startsWith('/api/v1/')) {
       const record = { method: request.method(), path: url.pathname.slice('/api/v1/'.length) + url.search, status: null }
       requests.push(record)
@@ -446,28 +447,33 @@ async function runCase(specification, profile) {
   const context = await browser.newContext({ viewport: profile.viewport, isMobile: profile.isMobile, hasTouch: profile.hasTouch, reducedMotion: 'no-preference',
     javaScriptEnabled: specification.javaScriptEnabled ?? true, serviceWorkers: 'block' })
   const holds = specification.hold ? [specification.hold()] : []
+  const scriptGate = specification.offline ? gate('app script responses') : null
   const requests = [], errors = [], backendErrors = [], sockets = []
-  await installRoutes(context, data, holds, requests, backendErrors, sockets, specification.offline)
+  await installRoutes(context, data, holds, requests, backendErrors, sockets, specification.offline, scriptGate)
   if (specification.javaScriptEnabled !== false) await context.addInitScript(instrument, data.values)
   const page = await context.newPage()
   page.setDefaultTimeout(20_000)
   page.on('pageerror', error => errors.push(error.message))
   try {
-    if (specification.offline) {
-      // Set both network access and native navigator state on the existing page
-      // before hydration. Headless Shell 151 can leave onLine true when only
-      // Playwright's deprecated network-emulation command runs before newPage.
+    const response = await page.goto(report.url + (specification.pathname ?? '/'), {
+      waitUntil: scriptGate ? 'commit' : specification.javaScriptEnabled === false ? 'load' : 'domcontentloaded',
+    })
+    if (scriptGate) {
+      // Hold external scripts until offline state is set on the actual app
+      // document. Headless Shell 151 can reset the native state on navigation.
+      // The inline appearance bootstrap does not hydrate the app or start sync.
+      await waitForGate(scriptGate)
+      check.equal(await page.locator('#sudoku-workspace').count(), 0, 'The script gate must hold app hydration')
+      check.equal(requests.length, 0, 'The script gate must prevent initial sync')
       await context.setOffline(true)
       const cdp = await context.newCDPSession(page)
       await cdp.send('Network.enable')
       await cdp.send('Network.overrideNetworkState', {
         offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
       })
-      check.equal(await page.evaluate(() => navigator.onLine), false, 'The page must be offline before app navigation')
+      check.equal(await page.evaluate(() => navigator.onLine), false, 'The committed page must be offline before hydration')
+      scriptGate.release()
     }
-    const response = await page.goto(report.url + (specification.pathname ?? '/'), {
-      waitUntil: specification.javaScriptEnabled === false ? 'load' : 'domcontentloaded',
-    })
     const details = await specification.run({ page, check, holds, requests, sockets, profile, response })
     const probe = specification.javaScriptEnabled === false ? null : await assertNoFlash(page, check)
     check.deepEqual(errors, [], 'The app must not throw browser errors')
@@ -485,6 +491,7 @@ async function runCase(specification, profile) {
     failures.push(error)
     console.error(JSON.stringify(detail, null, 2))
   } finally {
+    scriptGate?.release()
     for (const hold of holds) hold.release()
     await context.close()
     data.db?.sqlite.close()
