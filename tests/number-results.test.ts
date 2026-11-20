@@ -32,8 +32,8 @@ for (const { board, values } of [
     const progress: SavedNumberProgress[] = [
       { values, notes: blank },
       { values, notes: blank, clock: { elapsed: 42, finished: true } },
-      { values: wrong, notes: blank, clock: { elapsed: 11, finished: true } },
-      { values: blank, notes: blank, future: [[first, values[first], 0]] },
+      { values: wrong, notes: blank, clock: { elapsed: 11, finished: true }, lastPlayed: 1_790_000_000_000 },
+      { values: blank, notes: blank, future: [[first, values[first], 0]], lastPlayed: 'yesterday' },
       { values: blank, notes: blank.map((_, cell) => cell === first ? 1 : 0) },
       { values: blank, notes: blank },
       { values: [], notes: [] },
@@ -47,6 +47,7 @@ for (const { board, values } of [
     assert.deepEqual([...summarizeDifficultySolves(results.totals)], [['easy', { solved: 2, averageSeconds: 42 }]])
     assert.deepEqual(results.active, [2, 3, 4].map(index => ({
       id: ids[index], number: index + 1, difficulty: 'easy', generated: true,
+      ...(index === 2 && { lastPlayed: 1_790_000_000_000, elapsed: 11 }),
     })))
   })
 }

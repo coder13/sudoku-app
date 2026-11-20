@@ -2,7 +2,7 @@ import { hidatoCatalog, type HidatoEntry } from '../hidato/catalog'
 import { checkHidato, findHidatoHints, hidatoTechniques, solveHidato } from '../hidato/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 
-const hidato: NumberGameConfig<HidatoEntry> = {
+export const hidato = {
   game: 'hidato',
   name: 'Hidato',
   rules: 'Fill the board with consecutive numbers. Every pair of consecutive numbers must touch along an edge or at a corner.',
@@ -27,7 +27,7 @@ const hidato: NumberGameConfig<HidatoEntry> = {
       hints: (values, limit) => findHidatoHints(puzzle, values, limit),
     }
   },
-}
+} satisfies NumberGameConfig<HidatoEntry>
 
 export function HidatoDifficultyPage() {
   return <NumberGameDifficulty config={hidato} />

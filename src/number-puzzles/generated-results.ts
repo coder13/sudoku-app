@@ -4,10 +4,23 @@ import { recordDifficultySolve, type DifficultyTotals } from '../sudoku/difficul
 import type { NumberPuzzleDifficulty, NumberPuzzleEntry } from './catalog.ts'
 import { calcudokuFromRecipe, decodeGeneratedNumberPuzzle, kakuroFromRecipe, type GeneratedNumberGame } from './generated.ts'
 import type { GeneratedRecord } from './generated-storage.ts'
-import { hasNumberMoves, parseNumberProgress, type SavedNumberProgress } from './progress.ts'
+import { hasNumberMoves, parseNumberProgress, readNumberClock, readNumberLastPlayed, type SavedNumberProgress } from './progress.ts'
+
+export type ActiveNumberEntry = NumberPuzzleEntry & { lastPlayed?: number; elapsed?: number }
+
+export function activeNumberEntry(entry: NumberPuzzleEntry, saved: SavedNumberProgress): ActiveNumberEntry {
+  const lastPlayed = readNumberLastPlayed(saved.lastPlayed)
+  const clock = readNumberClock(saved.clock)
+  return {
+    id: entry.id, number: entry.number, difficulty: entry.difficulty,
+    ...(entry.generated && { generated: true }),
+    ...(lastPlayed !== undefined && { lastPlayed }),
+    ...(clock && clock !== 'untimed' && { elapsed: clock.elapsed }),
+  }
+}
 
 export type GeneratedNumberResults = {
-  active: NumberPuzzleEntry[]
+  active: ActiveNumberEntry[]
   totals: DifficultyTotals<NumberPuzzleDifficulty>
 }
 
@@ -62,5 +75,5 @@ export function addGeneratedNumberResult(result: GeneratedNumberResults, game: G
     // Only a full grid can contribute to solve statistics.
     complete: values => editable.every((canEnter, cell) => !canEnter || values[cell] > 0) && complete(values),
   })
-  if (status === 'started') result.active.push({ id, number, difficulty, generated: true })
+  if (status === 'started') result.active.push(activeNumberEntry({ id, number, difficulty, generated: true }, progress))
 }

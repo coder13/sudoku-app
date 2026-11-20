@@ -33,12 +33,13 @@ test('number game progress reads old saves and saves both history stacks with th
     assert.deepEqual(loadNumberProgress(key, editable, 4), {
       position: noted, past: past.slice(1), future: [],
     })
-    assert.equal(saveNumberProgress(key, { ...progress, clock: { elapsed: 0 } }), true)
+    const timed = { ...progress, lastPlayed: 1_790_000_000_000 }
+    assert.equal(saveNumberProgress(key, { ...timed, clock: { elapsed: 0 } }), true)
     assert.deepEqual(saveNumberClock(key, 8), { elapsed: 8 })
-    assert.deepEqual(loadNumberProgress(key, editable, 4), { ...progress, clock: { elapsed: 8 } })
-    assert.equal(saveNumberProgress(key, { ...progress, clock: { elapsed: 6, finished: true } }), true)
+    assert.deepEqual(loadNumberProgress(key, editable, 4), { ...timed, clock: { elapsed: 8 } })
+    assert.equal(saveNumberProgress(key, { ...timed, clock: { elapsed: 6, finished: true } }), true)
     assert.deepEqual(saveNumberClock(key, 2), { elapsed: 8, finished: true })
-    assert.deepEqual(loadNumberProgress(key, editable, 4), { ...progress, clock: { elapsed: 8, finished: true } })
+    assert.deepEqual(loadNumberProgress(key, editable, 4), { ...timed, clock: { elapsed: 8, finished: true } })
     storage.setItem(key, '{"values": [], "notes": false}')
     assert.equal(readNumberProgress(key), null)
     storage.setItem(key, '{')
@@ -90,9 +91,9 @@ test('generated history recovers unlisted boards and saves moves when IndexedDB 
     assert.deepEqual(await saveGeneratedNumberClock('calcudoku', next, 5), { elapsed: 5 })
     assert.equal(await saveGeneratedNumberClock('calcudoku', next, 'untimed'), 'untimed')
     assert.equal(await saveGeneratedNumberProgress('calcudoku', next, {
-      position: newest, past: [[2, 0, 4]], future: [], clock: { elapsed: 9, finished: true },
+      position: newest, past: [[2, 0, 4]], future: [], clock: { elapsed: 9, finished: true }, lastPlayed: 1_790_000_000_000,
     }), true)
-    assert.deepEqual((await openGeneratedNumberPuzzle('calcudoku', next)).progress, { ...newest, clock: 'untimed' })
+    assert.deepEqual((await openGeneratedNumberPuzzle('calcudoku', next)).progress, { ...newest, clock: 'untimed', lastPlayed: 1_790_000_000_000 })
   } finally {
     if (original) Object.defineProperty(globalThis, 'localStorage', original)
     else Reflect.deleteProperty(globalThis, 'localStorage')

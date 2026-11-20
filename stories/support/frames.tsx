@@ -17,7 +17,7 @@ import { kakuroCatalog } from '../../src/kakuro/catalog'
 import { calcudokuCatalog } from '../../src/calcudoku/catalog'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
 import { hidatoCatalog } from '../../src/hidato/catalog'
-import type { NumberGame } from '../../src/components/NumberPuzzle'
+import type { NumberGame } from '../../src/number-puzzles/catalog'
 
 export const noop = () => {}
 

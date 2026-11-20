@@ -3,8 +3,8 @@ import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog
 export type NumberPosition = { values: number[]; notes: number[] }
 export type NumberMove = readonly [cell: number, value: number, notes: number]
 export type NumberClock = { elapsed: number; finished?: true } | 'untimed'
-export type NumberProgress = { position: NumberPosition; past: NumberMove[]; future: NumberMove[]; clock?: NumberClock }
-export type SavedNumberProgress = { values: unknown[]; notes: unknown[]; past?: unknown; future?: unknown; clock?: unknown }
+export type NumberProgress = { position: NumberPosition; past: NumberMove[]; future: NumberMove[]; clock?: NumberClock; lastPlayed?: number }
+export type SavedNumberProgress = { values: unknown[]; notes: unknown[]; past?: unknown; future?: unknown; clock?: unknown; lastPlayed?: unknown }
 export const NUMBER_HISTORY_SIZE = 64
 
 export function readNumberClock(value: unknown): NumberClock | undefined {
@@ -13,6 +13,10 @@ export function readNumberClock(value: unknown): NumberClock | undefined {
   const { elapsed, finished } = value as Partial<Record<'elapsed' | 'finished', unknown>>
   if (typeof elapsed !== 'number' || !Number.isSafeInteger(elapsed) || elapsed < 0) return
   return finished === true ? { elapsed, finished } : { elapsed }
+}
+
+export function readNumberLastPlayed(value: unknown) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 && value <= 8.64e15 ? value : undefined
 }
 
 export function numberProgressWithClock(progress: SavedNumberProgress, previous?: SavedNumberProgress): SavedNumberProgress {
@@ -70,6 +74,7 @@ export function parseNumberProgress(saved: SavedNumberProgress, editable: readon
   }
 
   const clock = readNumberClock(saved.clock)
+  const lastPlayed = readNumberLastPlayed(saved.lastPlayed)
   return {
     position: {
       values: editable.map((write, index) => write && valid(values[index], maxValue) ? values[index] : 0),
@@ -78,6 +83,7 @@ export function parseNumberProgress(saved: SavedNumberProgress, editable: readon
     past: readHistory(past),
     future: readHistory(future),
     ...(clock === undefined ? {} : { clock }),
+    ...(lastPlayed === undefined ? {} : { lastPlayed }),
   }
 }
 
@@ -95,8 +101,8 @@ function writeNumberProgress(key: string, progress: SavedNumberProgress) {
   }
 }
 
-export function saveNumberProgress(key: string, { position, past, future, clock }: NumberProgress): boolean {
-  return writeNumberProgress(key, numberProgressWithClock({ ...position, past, future, clock }, readNumberProgress(key) ?? undefined))
+export function saveNumberProgress(key: string, { position, past, future, clock, lastPlayed }: NumberProgress): boolean {
+  return writeNumberProgress(key, numberProgressWithClock({ ...position, past, future, clock, lastPlayed }, readNumberProgress(key) ?? undefined))
 }
 
 export function saveNumberClock(key: string, change: number | 'untimed') {

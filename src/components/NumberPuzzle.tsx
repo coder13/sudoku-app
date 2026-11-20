@@ -1,13 +1,13 @@
 import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
 import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Sigma, Undo2 } from 'lucide-react'
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
-import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
+import { numberPuzzleDestination, numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberGame, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import {
   summarizeDifficultySolves, type DifficultyStatistics, type DifficultyTotals,
 } from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
 import { requestGeneratedNumberResults } from '../number-puzzles/difficulty-history'
-import { recordNumberResult } from '../number-puzzles/generated-results'
+import { activeNumberEntry, recordNumberResult, type ActiveNumberEntry } from '../number-puzzles/generated-results'
 import {
   numberPositionKey, openGeneratedNumberPuzzle, saveGeneratedNumberClock, saveGeneratedNumberProgress,
 } from '../number-puzzles/generated-storage'
@@ -36,8 +36,6 @@ import { PuzzleKeypad } from './PuzzleKeypad'
 import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
 import './number-puzzle.css'
-
-export type NumberGame = GeneratedNumberGame | 'futoshiki' | 'hidato' | 'rullo'
 
 type BoardCell = {
   label?: string
@@ -78,14 +76,6 @@ export type NumberGameConfig<Entry extends NumberPuzzleEntry> = {
   | { game: Exclude<NumberGame, GeneratedNumberGame>; generatedEntry?: never }
 )
 
-function puzzleDestination(game: NumberGame, entry: NumberPuzzleEntry) {
-  return {
-    to: `/puzzles/${game}/$puzzle` as const,
-    params: { puzzle: entry.generated ? 'generated' : entry.id },
-    search: entry.generated ? { board: entry.id } : undefined,
-  }
-}
-
 function boardPosition(game: NumberGame, id: string, board: NumberBoard) {
   const key = numberPositionKey(game, id)
   const editable = editableCells(board)
@@ -103,14 +93,15 @@ function NumberGameHeading({ game, title, inPlay, children }: {
   const router = useRouter()
   const canGoBack = useCanGoBack()
   const state = useLocation({ select: location => location.state })
-  const fromParent = inPlay ? state.fromNumberDifficulty === game || game === 'kakuro' && state.fromKakuroDifficulty
+  const fromLibrary = inPlay && state.fromNumberPuzzleLibrary
+  const fromParent = inPlay ? fromLibrary || state.fromNumberDifficulty === game || game === 'kakuro' && state.fromKakuroDifficulty
     : state.fromPuzzleGameTypes
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [title])
 
   return <header className="puzzles-page-heading number-puzzle-heading">
-    <Link to={inPlay ? `/puzzles/${game}` : '/puzzles/games'} className={iconButtonClassName('secondary', inPlay ? undefined : 'puzzles-back')}
-      aria-label={inPlay ? `Back to ${title} difficulty` : 'Back to game types'}
+    <Link to={fromLibrary ? '/puzzles/browse' : inPlay ? `/puzzles/${game}` : '/puzzles/games'} className={iconButtonClassName('secondary', inPlay ? undefined : 'puzzles-back')}
+      aria-label={fromLibrary ? 'Back to active puzzles' : inPlay ? `Back to ${title} difficulty` : 'Back to game types'}
       onClick={event => {
         if (fromParent && canGoBack && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
           event.preventDefault()
@@ -130,6 +121,23 @@ type NumberDifficultyResults = {
   statistics: ReadonlyMap<NumberPuzzleDifficulty, DifficultyStatistics>
 }
 
+export function readCatalogNumberResults<Entry extends NumberPuzzleEntry>(config: NumberGameConfig<Entry>) {
+  const status = new Map<string, ProgressStatus>()
+  const totals: DifficultyTotals<NumberPuzzleDifficulty> = new Map()
+  const active: ActiveNumberEntry[] = []
+  for (const entry of config.entries) {
+    const saved = readNumberProgress(numberPositionKey(config.game, entry.id))
+    if (!saved) continue
+    const board = config.board(entry)
+    const result = recordNumberResult(totals, entry.difficulty, saved, {
+      editable: editableCells(board), maxValue: board.maxValue, complete: values => board.check(values).complete,
+    })
+    if (result) status.set(entry.id, result)
+    if (result === 'started') active.push(activeNumberEntry(entry, saved))
+  }
+  return { status, totals, active }
+}
+
 const resumeBatchSize = 24
 
 function NumberResumeList({ game, entries }: { game: NumberGame; entries: readonly NumberPuzzleEntry[] }) {
@@ -145,7 +153,7 @@ function NumberResumeList({ game, entries }: { game: NumberGame; entries: readon
     <ul className="game-list main-puzzle-list">
       {entries.slice(0, visible).map((entry, index) => <li key={entry.id}>
         <Link ref={visible > resumeBatchSize && index === visible - resumeBatchSize ? firstNewLink : undefined}
-          className="game-row" {...puzzleDestination(game, entry)} state={{ fromNumberDifficulty: game }}>
+          className="game-row" {...numberPuzzleDestination(game, entry)} state={{ fromNumberDifficulty: game }}>
           <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</strong>
             {entry.generated && <small>Generated puzzle</small>}</span>
           <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
@@ -167,17 +175,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   const [results, setResults] = useState<NumberDifficultyResults | null>(null)
 
   useEffect(() => {
-    const catalog = new Map<string, ProgressStatus>()
-    const totals: DifficultyTotals<NumberPuzzleDifficulty> = new Map()
-    for (const entry of entries) {
-      const saved = readNumberProgress(numberPositionKey(game, entry.id))
-      if (!saved) continue
-      const board = config.board(entry)
-      const status = recordNumberResult(totals, entry.difficulty, saved, {
-        editable: editableCells(board), maxValue: board.maxValue, complete: values => board.check(values).complete,
-      })
-      if (status) catalog.set(entry.id, status)
-    }
+    const { status: catalog, totals } = readCatalogNumberResults(config)
     const savedDifficulty = loadNumberDifficulty(game)
     if (savedDifficulty && entries.some(entry => entry.difficulty === savedDifficulty)) setDifficulty(savedDifficulty)
     setCatalogProgress(catalog)
@@ -217,7 +215,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
     if (generatedEntry) generation.generate(difficulty)
     else if (next) {
       rememberNumberDifficulty(game, difficulty)
-      void router.navigate({ ...puzzleDestination(game, next), state: { fromNumberDifficulty: game } })
+      void router.navigate({ ...numberPuzzleDestination(game, next), state: { fromNumberDifficulty: game } })
     }
   }
 
@@ -231,7 +229,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
           busy={busy} disabled={!ready} error={generation.error} onStart={start}
           startLabel={`Start ${numberPuzzleDifficultyLabels[difficulty].toLowerCase()} puzzle`}
           actions={generatedEntry && next && <Link className={buttonClassName('quiet')}
-            {...puzzleDestination(game, next)} state={{ fromNumberDifficulty: game }}
+            {...numberPuzzleDestination(game, next)} state={{ fromNumberDifficulty: game }}
             onClick={event => {
               if (!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) rememberNumberDifficulty(game, difficulty)
             }}>Play a catalog puzzle</Link>}>
@@ -375,7 +373,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   function update(move: NumberProgress) {
     let nextClock: NumberClock = puzzleTiming.getSnapshot().trackTime ? clock ?? { elapsed: 0 } : 'untimed'
     if (nextClock !== 'untimed' && board.check(move.position.values).complete) nextClock = { ...nextClock, finished: true }
-    const next = { ...move, clock: nextClock }
+    const next = { ...move, clock: nextClock, lastPlayed: Date.now() }
     setProgress(next)
     if (generatedGame) {
       const save = ++lastSave.current
@@ -772,8 +770,9 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       {result.complete ? 'Puzzle solved.' : status}
     </div>
     {result.complete && (next
-      ? <Link className={buttonClassName('primary')} {...puzzleDestination(game, next)}
-        state={{ fromNumberDifficulty: game }} replace>Next puzzle</Link>
+      ? <Link className={buttonClassName('primary')} {...numberPuzzleDestination(game, next)}
+        state={previous => previous.fromNumberPuzzleLibrary ? { fromNumberPuzzleLibrary: true } : { fromNumberDifficulty: game }}
+        replace>Next puzzle</Link>
       : config.generatedEntry
         ? <Button variant="primary" disabled={generation.pending !== null} onClick={() => generation.generate(entry.difficulty)}>
           {generation.pending ? 'Generating…' : 'Generate next puzzle'}

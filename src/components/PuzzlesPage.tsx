@@ -7,11 +7,13 @@ import {
   DIFFICULTY_LABELS, formatPuzzleRating, isDifficulty, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
 import { createGameId, formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
-import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
+import { inProgress, lastPlayed, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import {
   coreModeLimit, coreSudokuModes, customModeDifficulties, customRuleIds, customRules, markerOptions, readSudokuModes,
   selectedMarkerRules, writeSudokuModes, type CustomDifficulty, type CustomRule, type MarkerRule, type SudokuMode,
 } from '../sudoku/custom-modes'
+import { numberPuzzleDestination, numberPuzzleDifficultyLabels } from '../number-puzzles/catalog'
+import type { ActiveNumberPuzzle, NumberPuzzleActivity } from './number-puzzle-activity'
 import { techniqueLabel } from '../sudoku/hints'
 import { rectangularGridForBoxRows, rectangularLayouts, type RectangularBoxRows } from '../sudoku/grid'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
@@ -56,12 +58,29 @@ function puzzleStatus(game: Game) {
   return 'Not started'
 }
 
-function PuzzleRows({ puzzles, active, manage }: {
-  puzzles: readonly Game[]; active: string | null; manage?: (id: string) => void
+function PuzzleRows({ puzzles, active, manage, focusIndex, firstNewLink }: {
+  puzzles: readonly (Game | ActiveNumberPuzzle)[]
+  active: string | null
+  manage?: (id: string) => void
+  focusIndex?: number
+  firstNewLink?: React.Ref<HTMLAnchorElement>
 }) {
   const List = manage ? 'ul' : 'ol'
   return <List className="game-list main-puzzle-list" role="list">
-      {puzzles.map(game => {
+      {puzzles.map((game, index) => {
+        const ref = index === focusIndex ? firstNewLink : undefined
+        if ('game' in game) {
+          const title = `${game.name} · ${numberPuzzleDifficultyLabels[game.difficulty]} ${game.number}`
+          const detail = [game.generated && 'Generated puzzle', game.elapsed !== undefined && formatTime(game.elapsed)]
+            .filter(Boolean).join(' · ')
+          return <li key={`${game.game}:${game.id}`}>
+            <Link ref={ref} className="game-row" {...numberPuzzleDestination(game.game, game)} state={{ fromNumberPuzzleLibrary: true }}>
+              <Grid3X3 size={24} aria-hidden="true" />
+              <span className="game-row-copy"><strong>{title}</strong>{detail && <small>{detail}</small>}</span>
+              <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
+            </Link>
+          </li>
+        }
         const manageable = manage && game.source !== 'draft'
         const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
         const useRatingTitle = manageable && game.source === 'generated' && /\bPuzzle \d+$/.test(game.title)
@@ -74,7 +93,7 @@ function PuzzleRows({ puzzles, active, manage }: {
           ? [useRatingTitle && variant !== 'classic' && variantLabel, !useRatingTitle && rating, puzzleStatus(game)]
           : [variantLabel, rating || 'Unrated', !game.timeUntracked && formatTime(game.elapsed)]).filter(Boolean).join(' · ')
         return <li key={game.id} className={manageable ? 'game-row-with-options' : undefined}>
-          <Link className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
+          <Link ref={ref} className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
             <MiniGrid values={valuesOf(game)} size={game.grid?.size} />
             <span className="game-row-copy"><strong>{name}</strong><small>{detail}</small></span>
             {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
@@ -150,18 +169,48 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
   </div>
 }
 
+const activePuzzleBatchSize = 24
+
 function PuzzleLibrary({ games, active, manage, loading }: {
   games: Game[]; active: string | null; manage: (id: string) => void; loading: boolean
 }) {
   const title = useId()
+  const [{ entries: numberPuzzles, loading: loadingNumberPuzzles }, setNumberActivity] =
+    useState<NumberPuzzleActivity>({ entries: [], loading: true })
+  const [visible, setVisible] = useState(activePuzzleBatchSize)
+  const firstNewLink = useRef<HTMLAnchorElement>(null)
 
-  const activePuzzles = inProgress(games)
+  useEffect(() => {
+    let disposed = false
+    let cancel: (() => void) | undefined
+    void import('./number-puzzle-activity').then(({ requestActiveNumberPuzzles }) => {
+      if (!disposed) cancel = requestActiveNumberPuzzles(setNumberActivity)
+    }).catch(() => { if (!disposed) setNumberActivity({ entries: [], loading: false }) })
+    return () => {
+      disposed = true
+      cancel?.()
+    }
+  }, [])
+
+  useEffect(() => { firstNewLink.current?.focus() }, [visible])
+
+  const activePuzzles = useMemo(() => {
+    const sudoku = inProgress(games)
+    if (!numberPuzzles.length) return sudoku
+    return [...sudoku, ...numberPuzzles]
+      .map(puzzle => ({ puzzle, time: 'game' in puzzle ? puzzle.lastPlayed ?? 0 : lastPlayed(puzzle) }))
+      .sort((a, b) => b.time - a.time)
+      .map(({ puzzle }) => puzzle)
+  }, [games, numberPuzzles])
+  const limit = numberPuzzles.length ? visible : activePuzzles.length
   const saved = games.filter((game) => !isSolved(game) && (game.savedForLater || game.archived))
   return <div className="main-menu-section puzzle-library">
     {activePuzzles.length > 0 ? <section className="puzzle-library-section" aria-labelledby={`${title}-active`}>
       <h2 id={`${title}-active`}>Active Puzzles</h2>
-      <PuzzleRows puzzles={activePuzzles} active={active} manage={manage} />
-    </section> : loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
+      <PuzzleRows puzzles={activePuzzles.slice(0, limit)} active={active} manage={manage} firstNewLink={firstNewLink}
+        focusIndex={visible > activePuzzleBatchSize ? visible - activePuzzleBatchSize : undefined} />
+      {limit < activePuzzles.length && <Button onClick={() => setVisible(visible + activePuzzleBatchSize)}>Show more puzzles</Button>}
+    </section> : loading || loadingNumberPuzzles ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
       : <Link className={buttonClassName('primary', 'puzzle-empty-action')} to="/puzzles/new">
         <Dices size={18} aria-hidden="true" />Start a new puzzle
       </Link>}

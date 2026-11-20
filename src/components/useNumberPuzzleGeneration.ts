@@ -68,7 +68,8 @@ export function useNumberPuzzleGeneration(game: GeneratedNumberGame | null, repl
           to: `/puzzles/${game}/$puzzle`,
           params: { puzzle: 'generated' },
           search: { board },
-          state: { fromNumberDifficulty: game },
+          state: previous => replace && previous.fromNumberPuzzleLibrary
+            ? { fromNumberPuzzleLibrary: true } : { fromNumberDifficulty: game },
           replace,
         }).then(() => {
           if (data?.indexPending) {

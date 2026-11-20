@@ -58,7 +58,7 @@ function rulloBoard(puzzle: RulloPuzzle): NumberBoard {
   }
 }
 
-const rullo: NumberGameConfig<RulloEntry> = {
+export const rullo = {
   game: 'rullo',
   name: 'Rullo',
   rules: 'Select a cell to remove its number. Select it again to put the number back. The numbers left in each row and column must add up to its target.',
@@ -66,7 +66,7 @@ const rullo: NumberGameConfig<RulloEntry> = {
   entries: rulloCatalog,
   hasClueCells: true,
   board: ({ puzzle }) => rulloBoard(puzzle),
-}
+} satisfies NumberGameConfig<RulloEntry>
 
 export function RulloDifficultyPage() {
   return <NumberGameDifficulty config={rullo} />

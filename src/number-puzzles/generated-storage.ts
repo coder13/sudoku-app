@@ -253,8 +253,8 @@ export async function openGeneratedNumberPuzzle(game: GeneratedNumberGame, id: s
 
 export async function saveGeneratedNumberProgress(game: GeneratedNumberGame, id: string, next: NumberProgress) {
   const key = pendingPositionKey(game, id)
-  const { position, past, future, clock } = next
-  const progress = numberProgressWithClock({ ...position, past, future, clock }, parseSavedNumberProgress(localValue(key)) ?? undefined)
+  const { position, past, future, clock, lastPlayed } = next
+  const progress = numberProgressWithClock({ ...position, past, future, clock, lastPlayed }, parseSavedNumberProgress(localValue(key)) ?? undefined)
   let staged: string | undefined
   // Keep the move across a reload until IndexedDB commits it.
   try {
