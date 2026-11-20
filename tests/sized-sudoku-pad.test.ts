@@ -139,3 +139,16 @@ test('compact SudokuPad retains empty cells, escaped metadata, and drawing layer
     "{ce:[[,,,]]}junk",
   ]) assert.throws(() => decodeSudokuPadEnvelope('scl' + lzString.compressToBase64(malformed)), /does not contain a supported puzzle export/)
 })
+
+test('sized SudokuPad uses midpoint overlays for positive Kropki dots', async () => {
+  const { lines, underlays, ...source } = thermoExport(2)
+  source.metadata.rules = source.metadata.rules.split('\n\n')[0] + '\n\n' +
+    'Digits separated by a white dot are consecutive.\nDigits separated by a black dot have a 1:2 ratio.\nNot all dots are given.'
+  const overlay = { rounded: true, width: .34, height: .34, text: '' }
+  const overlays = [{ ...overlay, center: [1, .5], backgroundColor: '#fff' },
+    { ...overlay, center: [1.5, 1], backgroundColor: '#000' }]
+  assert.deepEqual((await detectPuzzle(encode({ ...source, overlays }))).sizedRules,
+    [{ type: 'kropki', consecutive: { pairs: [[0, 6]] }, ratioTwo: { pairs: [[6, 7]] } }])
+  await assert.rejects(detectPuzzle(encode({ ...source, overlays: [{ ...overlays[0], center: [1, 1] }] })), /between two neighboring cells/)
+  await assert.rejects(detectPuzzle(encode({ ...source, overlays: [{ ...overlays[0], text: '2' }] })), /unsupported dot/)
+})

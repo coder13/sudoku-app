@@ -119,7 +119,14 @@ test('the sharing API validates the common rule contract against a Mini layout',
       sizedRules: [{ type: 'renban', cells: [0, 1, 5], segments: [[0, 1], [1, 5]] }], sizedAuthor: 'Test setter' }
     const { id } = await api<{ id: string }>('shares', 'POST', definition)
     assert.deepEqual(await api(`shares/${id}`), definition)
+    const kropki = { ...definition, title: 'Mini dots', sizedRules: [
+      { type: 'kropki', consecutive: { pairs: [[0, 1]], negative: true }, ratioTwo: { pairs: [[1, 5]], negative: false } },
+    ] }
+    const { id: dotShareId } = await api<{ id: string }>('shares', 'POST', kropki)
+    assert.deepEqual(await api(`shares/${dotShareId}`), kropki)
     for (const invalid of [
+      { ...kropki, sizedRules: [{ type: 'kropki', consecutive: { pairs: [[3, 4]] } }] },
+      { ...kropki, sizedRules: [{ type: 'kropki', ratioTwo: { negative: 'true' } }] },
       { ...definition, sizedRules: [] },
       { ...definition, sizedRules: undefined },
       { ...definition, sixRules: definition.sizedRules },

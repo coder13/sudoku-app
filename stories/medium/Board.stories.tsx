@@ -44,6 +44,14 @@ export const MiniRenbanLine: Story = {
   },
   decorators: [(Story) => <Width width={290}><Story /></Width>],
 }
+export const MiniKropkiDots: Story = {
+  args: {
+    grid: MINI_GRID, givens: '1000000000000000', values: '1000000000000000',
+    sizedRules: [{ type: 'kropki', consecutive: { pairs: [[0, 1], [6, 10]] }, ratioTwo: { pairs: [[0, 1], [2, 6]] } }],
+    selected: [1], active: 1,
+  },
+  decorators: [(Story) => <Width width={290}><Story /></Width>],
+}
 export const AlgebraicCageCaptions: Story = {
   args: {
     grid: MINI_GRID, givens: '0'.repeat(16), values: '0'.repeat(16),
