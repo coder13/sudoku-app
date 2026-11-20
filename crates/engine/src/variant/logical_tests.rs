@@ -3,6 +3,50 @@ use crate::{HintAction, VariantPuzzle, parse_givens};
 
 #[cfg(feature = "wasm-api")]
 #[test]
+fn renban_sum_scopes_and_actions_replay_on_the_complete_mode_position() {
+    use crate::variant::lines::renban_sum::contained_joins;
+
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/fixtures/little-killer-menace.json"
+    ))
+    .unwrap();
+    let puzzle: VariantPuzzle = serde_json::from_value(fixture["puzzle"].clone()).unwrap();
+    let solution = parse_givens(fixture["solution"].as_str().unwrap()).unwrap();
+    let compiled = puzzle.compile().unwrap();
+    let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
+    for technique in [VariantTechnique::Renban, VariantTechnique::LittleKiller] {
+        assert!(compiled.explain(&position, technique).is_empty());
+    }
+    let joins = contained_joins(&compiled).collect::<Vec<_>>();
+    assert_eq!(
+        joins.iter().map(|join| join.rules).collect::<Vec<_>>(),
+        [[4, 0], [7, 1], [14, 2], [13, 3]],
+    );
+    for (join, expected_count) in joins.into_iter().zip([18, 18, 3, 14]) {
+        let [_, sum_rule] = join.rules;
+        let PuzzleRule::LittleKiller { cells, .. } = &puzzle.rules[sum_rule] else {
+            unreachable!()
+        };
+        assert_eq!(join.cells, cells);
+        let domains = join
+            .cells
+            .iter()
+            .map(|&cell| position.domain(cell))
+            .collect::<Vec<_>>();
+        let support = join.support(&domains);
+        let actions = position.removals(join.cells, support.into_iter());
+        assert_eq!(actions.len(), expected_count);
+        for action in actions {
+            let HintAction::Eliminate(candidate) = action else {
+                unreachable!()
+            };
+            assert_ne!(solution[candidate.cell], candidate.digit);
+        }
+    }
+}
+
+#[cfg(feature = "wasm-api")]
+#[test]
 fn stronger_public_verification_keeps_bounded_hint_eligibility_stable() {
     let fixture: serde_json::Value = serde_json::from_str(include_str!(
         "../../../../tests/fixtures/palindrome-whispers.json"
