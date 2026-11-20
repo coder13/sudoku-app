@@ -9,6 +9,20 @@ type ToolPanels = { open: PuzzleTool[]; active: ToolPanelTab; height?: number }
 export const defaultToolPanels: ToolPanels = { open: [], active: 'digits' }
 type DigitHighlight = { mask: number; match: DigitHighlightMatch; modeOverridden: boolean }
 export const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all', modeOverridden: false }
+
+/** Keep link drawing active across tool tabs until the player explicitly stops it.
+ * Browsing strong links without drawing still needs the Chains or Digits tab.
+ */
+export function chainToolsActive(
+  chainsVisible: boolean,
+  chainKeypadVisible: boolean,
+  showStrongLinks: boolean,
+  drawingIntent: boolean | null,
+  hasPendingLink: boolean,
+) {
+  return chainsVisible || drawingIntent === true ||
+    (chainKeypadVisible && (showStrongLinks || (drawingIntent ?? hasPendingLink)))
+}
 type SolutionView = { identity: string; step: number; hintOpen: boolean; hidden?: true }
 
 type PuzzleTabs = {
