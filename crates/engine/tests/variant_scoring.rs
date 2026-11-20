@@ -8,7 +8,7 @@ use sudoku_app_engine::{
 
 fn estimate(deduction: &VariantDeduction) -> u16 {
     use VariantTechnique::*;
-    let (cells, domains, cages) = match &deduction.evidence {
+    let (cells, domains, supporting_rules) = match &deduction.evidence {
         VariantEvidence::Exclusion { premise, .. } => {
             let (base, alternatives, mut cells) = match premise {
                 VariantExclusionPremise::Cell { cell, domain } => {
@@ -42,6 +42,9 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         VariantEvidence::Intersection { .. } => return Technique::Pointing.cost(),
         VariantEvidence::LockedDigit { clue, domains, .. } => (&clue.cells, domains, 0),
         VariantEvidence::Constraint { cells, domains, .. } => (cells, domains, 0),
+        VariantEvidence::RayHouses(proof) => {
+            (&proof.cells, &proof.domains, proof.houses.len() as u16)
+        }
         VariantEvidence::RenbanSum(proof) => (&proof.cells, &proof.domains, 0),
         VariantEvidence::RenbanSumHouse(proof) => (&proof.cells, &proof.domains, 0),
         VariantEvidence::CageSum {
@@ -72,9 +75,11 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         RenbanLockedDigit => 24 + span + choices,
         // Compare each possible Renban interval's sum with the remainders on the ray.
         RenbanSum => 42 + span + 2 * choices,
+        LittleKillerHouseSupport => 32 + span + 2 * choices + 3 * supporting_rules,
+        RenbanSumRayHouses => 46 + span + 2 * choices + 3 * supporting_rules,
         // Match intervals in two lines and check the conflict in their house.
         RenbanSumHouse => 54 + span + 2 * choices,
-        CageHouseSum => 34 + 18 + 3 * cages + span + 2 * choices,
+        CageHouseSum => 34 + 18 + 3 * supporting_rules + span + 2 * choices,
         Skyscrapers | Sandwich | XSum => 40 + span + 2 * choices,
         technique => panic!("no variant scoring model for {}", technique.id()),
     }

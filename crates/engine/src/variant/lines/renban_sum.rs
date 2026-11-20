@@ -25,6 +25,14 @@ impl ContainedJoin<'_> {
         &self.ray.cells
     }
 
+    pub fn ray(&self) -> &LineConstraint {
+        self.ray
+    }
+
+    pub fn members(&self) -> u16 {
+        self.members
+    }
+
     pub fn support(&self, domains: &[u16]) -> JointSupport {
         assert_eq!(domains.len(), self.cells().len());
         contained_support(domains, self.members, self.total)

@@ -302,6 +302,20 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         .map(digit => ({ cell: cells[i], digit })))
       break
     }
+    case 'ray-houses': {
+      cells = evidence.cells
+      const ray = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'little-killer')
+      const houseNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
+      const total = ray ? `The Little Killer diagonal from ${nameCell(cells[0])} to ${nameCell(cells[cells.length - 1])} must add to ${ray.sum}.`
+        : 'Follow the highlighted Little Killer diagonal.'
+      const renban = technique === 'renban-sum-ray-houses'
+      description = `${total} Two cells on the diagonal need different digits when both lie in the same house. Check ${houseNames}.`
+      if (renban) description += ' The Renban on the diagonal needs its own consecutive set of digits.'
+      reason = renban
+        ? 'Fit the Renban set and the other digits into the diagonal sum. Check each of the named houses for repeats. For each crossed-out candidate, every assignment containing it fails one of these checks.'
+        : 'Fit the digits into the diagonal sum. Check each of the named houses for repeats. For each crossed-out candidate, every assignment containing it fails one of these checks.'
+      break
+    }
     case 'renban-sum': {
       cells = evidence.cells
       const renban = puzzle.rules?.[evidence.rules[0]]

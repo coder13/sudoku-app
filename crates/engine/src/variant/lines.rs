@@ -1,4 +1,5 @@
 mod groups;
+pub(super) mod ray_houses;
 pub(super) mod renban_sum;
 
 use std::{collections::HashMap, ops::Range};
@@ -35,6 +36,13 @@ enum OutsideClue {
 }
 
 impl LineConstraint {
+    pub fn little_killer_sum(&self) -> Option<u16> {
+        match self.kind {
+            LineKind::Sum(total) => Some(total),
+            _ => None,
+        }
+    }
+
     pub fn compile(
         puzzle: &mut CompiledVariant,
         index: usize,

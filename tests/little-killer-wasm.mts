@@ -38,7 +38,7 @@ const share = (puzzle: VariantPuzzle) =>
 
 for (const [index, source] of sources.entries()) {
   test(
-    source.title + ' imports all rules with multiple valid hints and a checked, honestly partial human path',
+    source.title + ' imports all rules with multiple valid hints and a complete checked walkthrough',
     async () => {
       const { game } = await prepareImportedPuzzle(share(source.puzzle))
       assert.deepEqual(game.variant!.puzzle, source.puzzle)
@@ -49,18 +49,45 @@ for (const [index, source] of sources.entries()) {
         if (game.givens[cell] === '0') assert.ok(candidates![cell] & (1 << (Number(source.solution[cell]) - 1)))
       const choices = await puzzleHints(game)
       assert.ok(choices.choices.length > 1)
-      const solution = await puzzleSolution(game)
-      assert.equal(solution.rating.status, 'stalled')
-      assert.notEqual(solution.board, source.solution)
-      if (index < 2) {
-        assert.equal(solution.rating.score.points, index === 0 ? 958 : 558)
+      const technique = 'little-killer-house-support'
+      const selected = await puzzleHints(game, 'all', technique)
+      assert.ok(selected.choices.length >= 2)
+      const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant!, game.position))
+      try {
+        assert.equal(await scan.count(technique), new Set(selected.choices.flatMap(choice =>
+          choice.actions.map(action => JSON.stringify(action)))).size)
+      } finally {
+        scan.close()
       }
+      for (const hint of selected.choices) {
+        assert.ok('variant' in hint.evidence)
+        assert.match(hint.evidence.variant.description, /Little Killer diagonal.*must add to.*same house/)
+        assert.ok(hint.actions.every(action => 'eliminate' in action &&
+          Number(source.solution[action.eliminate.cell]) !== action.eliminate.digit))
+      }
+      const [points, steps, supportedSteps] = [[2522,105,5],[3434,119,9],[2888,114,4]][index]
+      const solution = await puzzleSolution(game)
+      assert.deepEqual(solution.rating.status, { solved: 'medium' })
+      assert.equal(solution.board, source.solution)
+      assert.equal(solution.rating.score.points, points)
+      assert.equal(solution.steps.length, steps)
+      assert.equal(solution.rating.score.counts[technique], supportedSteps)
+      const grade = await ratePuzzle(game.givens, game.variant)
+      assert.ok(grade)
+      assert.equal(grade.points, points)
+      assert.deepEqual(grade.techniqueOrder, solution.rating.techniqueOrder)
+      const previous = await runEngine({
+        type: 'variant', operation: 'rate', position: { puzzle: source.puzzle },
+        techniqueOrder: await getVariantPlayOrder(),
+      })
+      assert.equal(previous.status, 'stalled')
+      if (index < 2) assert.equal(previous.points, index === 0 ? 958 : 558)
       let play = game
       const trace = await runEngine({
         type: 'variant',
         operation: 'trace',
         position: { puzzle: source.puzzle },
-        techniqueOrder: await getVariantPlayOrder(),
+        techniqueOrder: await getVariantPlayOrder(source.puzzle),
       })
       for (const step of trace.steps) {
         for (const action of step.actions) {
@@ -76,7 +103,7 @@ for (const [index, source] of sources.entries()) {
         assert.deepEqual(undo(play).position, before.position)
         assert.deepEqual(redo(undo(play)).position, play.position)
       }
-      assert.equal(isSolved(play), false)
+      assert.equal(isSolved(play), true)
       assert.equal(valuesOf(play), solution.board)
       assertVariantCompletion(source.puzzle, source.solution)
       assert.equal(countLineSolutions(source.puzzle).solution, source.solution)
@@ -190,6 +217,15 @@ test('actual Medium New Puzzle generation yields twenty distinct independently u
     assert.equal(result.givens, 30)
     assert.deepEqual(result.rating.status, { solved: 'medium' })
     assert.ok(result.rating.counts['little-killer'])
+    const order = await getVariantPlayOrder(result.puzzle)
+    assert.ok(order.includes('little-killer-house-support'))
+    const { techniqueOrder: generationOrder, ...generatedRating } = result.rating
+    const { techniqueOrder: playOrder, ...playRating } = await runEngine({
+      type: 'variant', operation: 'rate', position: { puzzle: result.puzzle }, techniqueOrder: order,
+    })
+    assert.ok(generationOrder.includes('little-killer-house-support'))
+    assert.deepEqual(generationOrder, playOrder.filter(id => generationOrder.includes(id)))
+    assert.deepEqual(generatedRating, playRating)
     assertVariantCompletion(result.puzzle, result.solution)
     const counted = countLineSolutions(result.puzzle)
     assert.equal(counted.count, 1)
@@ -311,7 +347,7 @@ test('converted typed Coach controls and authored Jigsaw companions retain every
   }
 })
 
-test('Renban ModE opens with seven proofs and shows an honest eleven-step partial path', async () => {
+test('Renban ModE opens with seven proofs and shows an honest twelve-step partial path', async () => {
   const source = JSON.parse(readFileSync(new URL('./fixtures/little-killer-menace.json', import.meta.url), 'utf8')) as {
     puzzle: VariantPuzzle; solution: string
   }
@@ -323,11 +359,17 @@ test('Renban ModE opens with seven proofs and shows an honest eleven-step partia
   const technique = 'renban-sum'
   const sharedHouse = 'renban-sum-house'
   const lockedDigit = 'renban-locked-digit'
+  const rayHouses = 'renban-sum-ray-houses'
+  const pureHouses = 'little-killer-house-support'
   const position = variantPosition(variant, game.position)
   const baseOrder = await getVariantPlayOrder()
   assert.ok(!baseOrder.includes(technique) && !baseOrder.includes(sharedHouse))
-  assert.deepEqual(await getVariantPlayOrder(sources[0].puzzle), baseOrder)
-  assert.deepEqual((await getVariantPlayOrder(source.puzzle)).filter(id => id !== technique && id !== sharedHouse && id !== lockedDigit), baseOrder)
+  const pureOrder = await getVariantPlayOrder(sources[0].puzzle)
+  assert.ok(pureOrder.includes(pureHouses))
+  assert.deepEqual(pureOrder.filter(id => id !== pureHouses), baseOrder)
+  const modeOrder = await getVariantPlayOrder(source.puzzle)
+  assert.ok(modeOrder.includes(rayHouses))
+  assert.deepEqual(modeOrder.filter(id => ![technique, sharedHouse, lockedDigit, pureHouses, rayHouses].includes(id)), baseOrder)
 
   const catalog = await puzzleTechniqueCatalog(true)
   assert.deepEqual(catalog.techniques.find(item => item.id === technique), {
@@ -437,10 +479,25 @@ test('Renban ModE opens with seven proofs and shows an honest eleven-step partia
 
   const path = await puzzleSolution(game)
   assert.equal(path.rating.status, 'stalled')
-  assert.equal(path.steps.length, 11)
+  assert.equal(path.steps.length, 12)
   assert.equal(path.rating.score.counts[technique], 5)
   assert.equal(path.rating.score.counts[lockedDigit], 1)
-  assert.equal(path.rating.score.points, 570)
+  assert.equal(path.rating.score.counts[rayHouses], 1)
+  assert.equal(path.rating.score.points, 649)
+  const final = path.steps[11]
+  assert.equal(final.technique, rayHouses)
+  assert.deepEqual(final.actions, [{ eliminate: { cell: 56, digit: 4 } }])
+  assert.ok('variant' in final.evidence)
+  assert.match(final.evidence.variant.description, /add to 15.*box 4 and box 8.*Renban/)
+  const finalProof = final.evidence.variant.source?.deduction.evidence
+  assert.ok(finalProof?.type === 'ray-houses')
+  assert.deepEqual(finalProof.houses, [{ region: 3 }, { region: 7 }])
+  const replay = await runEngine({
+    type: 'variant', operation: 'replay-step', position, techniqueOrder: modeOrder, stepIndex: 11,
+  })
+  assert.deepEqual(replay?.deduction.actions, final.actions)
+  assert.equal(replay!.before.eliminations[56] & (1 << 3), 0)
+  assert.notEqual(replay!.after.eliminations[56] & (1 << 3), 0)
   assert.equal(path.positions!.length, path.steps.length + 1)
   assert.equal(path.board, source.puzzle.givens)
   for (const step of path.steps) for (const action of step.actions) {

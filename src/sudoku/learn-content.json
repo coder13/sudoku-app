@@ -8069,6 +8069,86 @@
           "difficulty": "medium"
         },
         {
+          "id": "little-killer-house-support",
+          "title": "Little Killer and shared houses",
+          "summary": "Digits on a Little Killer diagonal may repeat where the cells share no house. Check where the diagonal enters the same box, region, or extra house more than once to narrow the possible sums.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check the total and shared houses"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Group the diagonal cells that share a house. Their digits must differ within that group.",
+                "List the subtotals each group can make with distinct digits. Combine them to reach the printed sum.",
+                "Remove a candidate if no assignment reaches the total while keeping the digits distinct in each shared house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "little-killer-house-support"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "little-killer-house-support",
+                  "title": "Little Killer and shared houses"
+                }
+              ],
+              "guide": {
+                "start": "Group the diagonal cells that share a house. Their digits must differ within that group.",
+                "check": "List the subtotals each group can make with distinct digits. Combine them to reach the printed sum.",
+                "reason": "Remove a candidate if no assignment reaches the total while keeping the digits distinct in each shared house."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
+          "id": "renban-sum-ray-houses",
+          "title": "Renban sum and shared houses",
+          "summary": "When a Little Killer diagonal contains a Renban, every valid set on the line leaves a fixed sum for the other cells. A shared house can rule out combinations that fit both printed clues.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check the total and shared houses"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a Little Killer diagonal with a Renban entirely on it. Identify the diagonal cells that share houses.",
+                "Try each consecutive set on the Renban. Subtract its sum from the printed total, then check the remaining cells for repeats in their houses.",
+                "Remove a candidate when every assignment that reaches the total and fits the Renban repeats a digit in a shared house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-sum-ray-houses"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-sum-ray-houses",
+                  "title": "Renban sum and shared houses"
+                }
+              ],
+              "guide": {
+                "start": "Find a Little Killer diagonal with a Renban entirely on it. Identify the diagonal cells that share houses.",
+                "check": "Try each consecutive set on the Renban. Subtract its sum from the printed total, then check the remaining cells for repeats in their houses.",
+                "reason": "Remove a candidate when every assignment that reaches the total and fits the Renban repeats a digit in a shared house."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "hard"
+        },
+        {
           "id": "renban-sum",
           "title": "Renban and Little Killer",
           "summary": "When a Little Killer diagonal contains a whole Renban, each possible set of consecutive digits leaves a different total for the other cells on the diagonal. Compare those totals to rule out candidates.",

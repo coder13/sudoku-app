@@ -94,6 +94,11 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     );
                     scopes.insert(proof.cells);
                 }
+                VariantEvidence::RayHouses(proof) => {
+                    assert!(!proof.houses.is_empty());
+                    assert!(proof.rules.iter().all(|&index| index < position.puzzle.rules.len()));
+                    scopes.insert(proof.cells);
+                }
                 VariantEvidence::RenbanSum(proof) => {
                     let [renban, ray] = proof.rules.map(|index| &position.puzzle.rules[index]);
                     assert!(matches!(renban, sudoku_app_engine::PuzzleRule::Renban { .. }));

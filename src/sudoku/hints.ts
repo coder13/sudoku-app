@@ -54,6 +54,8 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'whispers-house-support': 'Whispers and shared houses',
   'renban-locked-digit': 'Renban locked digit',
   'renban-sum': 'Renban and Little Killer',
+  'little-killer-house-support': 'Little Killer and shared houses',
+  'renban-sum-ray-houses': 'Renban sum and shared houses',
   'renban-sum-house': 'Renban and Little Killer with a shared house',
   '3d-medusa': '3D Medusa',
   'non-consecutive-locked-candidates-2': 'Non-Consecutive locked candidates (2 cells)',
