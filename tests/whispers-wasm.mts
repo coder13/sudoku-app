@@ -113,18 +113,15 @@ test('Whispers rules and player history survive the real save and reload service
 })
 
 test('real Coach exports retain Whispers settings while unsupported companion rules still reject', async () => {
-  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { code: string; deferred: string }[]
-  for (const example of examples) {
-    if (example.deferred !== 'twoCellSum') {
-      await assert.rejects(detectPuzzle(example.code), /unsupported|not supported/)
-      continue
-    }
-    const imported = (await detectPuzzle(example.code)).variant!.puzzle
-    assert.equal(imported.rules!.length, 12)
-    assert.deepEqual(imported.rules!.filter(rule => rule.type === 'whispers').map(rule => rule.minDifference), [4, 4, 4, 4, 4, 4, 5, 5, 5])
-    const sums = imported.rules!.find(rule => rule.type === 'xv')!
-    assert.equal(sums.type, 'xv'); assert.equal(sums.ten?.pairs?.length, 7)
-  }
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { code: string; url: string }[]
+  const lesson = examples.find(source => source.url.endsWith('/B5mt'))!
+  const colouring = examples.find(source => source.url.endsWith('/Chcs'))!
+  await assert.rejects(detectPuzzle(lesson.code), /unsupported|not supported/)
+  const imported = (await detectPuzzle(colouring.code)).variant!.puzzle
+  assert.equal(imported.rules!.length, 12)
+  assert.deepEqual(imported.rules!.filter(rule => rule.type === 'whispers').map(rule => rule.minDifference), [4, 4, 4, 4, 4, 4, 5, 5, 5])
+  const sums = imported.rules!.find(rule => rule.type === 'xv')!
+  assert.equal(sums.type, 'xv'); assert.equal(sums.ten?.pairs?.length, 7)
 })
 
 test('seeded Whispers exercises remain distinct, unique and checkable', async () => {

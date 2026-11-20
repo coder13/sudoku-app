@@ -1,5 +1,5 @@
 {
-  "description": "Unmodified real SCv7 exports. The native Whispers rule preserves the source minimum; full imports explicitly reject other unimplemented rules or annotations.",
+  "description": "Unmodified real SCv7 exports for Whispers and mixed rules. The German Whisper Line Basics lesson still needs its authored legend.",
   "examples": [
     {
       "url": "https://sudoku.coach/en/s/B5mt",
@@ -12,15 +12,14 @@
       "url": "https://sudoku.coach/en/s/Chcs",
       "title": "Whisper Colouring 15",
       "author": "cyboogie",
-      "code": "SCv7_32_f2e8ql6bdr13047s2vrjl1vo3njsk9rglgs49gd4iog433h9d88vvngdamgi23p1b6lk96ktjn6aosr1ek6dmtfouqm70o3lv3qcrajdn8acnk54hoauu5ommqme06aov8t152kt7t17ft4hg5qrsfno7taebtvrvoksuo0tdg76mo8s1i3pcc02iohsudj0osp9c1svfgif1pbqomht6g43dc40qielg1dh02ucca9o0177s07c50n7e34c088mfem85l9g39d46kal6099c92ian5t6754gmpd194bla1uck0ia91903la6jdiqkh8kag46rbk4qg9nnmnih157tvfdgdnceovfl9p3t8alhlffr99a856uevdalar26vn5kgnsjv8bv7koi14b67jo6mcs91sea6ha5scvu51ua3j0s8nir7er2goqujs771ge98ot1blqh02me7k66jh0ni2a8ma6l5754ktlkdm9khfnr7jqss6ju3b3va6vh82suebnsnedom56q77hjmletcss1nkm8f6t7aqntquco9v51sn8t0ila753dj0qj0e6foqeu2mn2svs02kstv7s",
-      "deferred": "twoCellSum"
+      "code": "SCv7_32_f2e8ql6bdr13047s2vrjl1vo3njsk9rglgs49gd4iog433h9d88vvngdamgi23p1b6lk96ktjn6aosr1ek6dmtfouqm70o3lv3qcrajdn8acnk54hoauu5ommqme06aov8t152kt7t17ft4hg5qrsfno7taebtvrvoksuo0tdg76mo8s1i3pcc02iohsudj0osp9c1svfgif1pbqomht6g43dc40qielg1dh02ucca9o0177s07c50n7e34c088mfem85l9g39d46kal6099c92ian5t6754gmpd194bla1uck0ia91903la6jdiqkh8kag46rbk4qg9nnmnih157tvfdgdnceovfl9p3t8alhlffr99a856uevdalar26vn5kgnsjv8bv7koi14b67jo6mcs91sea6ha5scvu51ua3j0s8nir7er2goqujs771ge98ot1blqh02me7k66jh0ni2a8ma6l5754ktlkdm9khfnr7jqss6ju3b3va6vh82suebnsnedom56q77hjmletcss1nkm8f6t7aqntquco9v51sn8t0ila753dj0qj0e6foqeu2mn2svs02kstv7s"
     },
     {
       "url": "https://sudoku.coach/en/s/Cmdt",
       "title": "(156) 1 to 32",
       "author": "0123456789ABCDEF",
       "code": "SCv7_32_f2ebqlqbeedj047u5vl7a3v81msmcujd7f9toehp21dsd6j2e00rej9iv7nlrsdg4dgh8ckjl4qscm3sqav3tr9epui6hr7mnduj5p160epajivqqiqe9pg7f4k4v1g077i8badq3jnolhhss97mi3renpnf5ahgsgfefrbfafeks2q90bhq0c4d0joc7n55ntju7nvho4scvuvps55gbs79a5vjmb8psvcv8o0s0b343jnaahmtfp5mtae2rju4dr4gqjc0ei7ked4k6ijb0tc5s3b181pjg4racb6tjndphteqcl056o0qn113n3rpicfkopssin7iubvndpqtfmda33vc6a45lqb24gc1goaag1l6g15h0olt32r5432n40i4g0cagdja1s9a815t1rpgh6nja2bdsag502k56g0pr0ae87lnfi8ictcln6onemapenqci5rhgl2vtb97kearvummtrfqullabbf82i388grj2d81k906231ph028qrdqljtifqev4rbj7ab6ciesdhbj9btg1p22hqbnji87k6e9fki4n5t1pi3l5dgc2kv58h50qa3ilfgcakv58hjkqm0g68lu981guh0kk20gcb4bc2ps01phps3f2olj8fvmlnu06g8t68dg9n88g3g12dic8p9ch2nolm8m0gs4418mn9bkdc413dkc839c102ora6b0eb8ni6pc77bqio774uhvp0dir5sbt48l5s2t89t3mof9uhq9egb751p01ku489pc0gm1sq81tcekoat65dg0chvo91tt7hrf40777pq1hpvs0iiv3dol8fqbg3j7npgh4kja1dlsg2uiup106f83810a881in31eevok9u1s43id09js1ugfofatueavgq23a39tr7boovdbm0oilfneersg0g7boa3ergk7nf2cpr76pvueqlgk45regktrnhkgutdepchabd5ifif9mve759b9vl4ksv10tet2at11jp08i7ke8e887glb03men0b185619q4lsa4mbp700f8bmch14ohhfrpmbplbgigouand8is3cb0befugpgs33s2m3fn3ve03cgs39j8iro84ahm6h973bejnrloguo824h6s5rmgs9di7qn92tat76d9r464kj4it3fhjuumr3ma4lf4b62l9lfcbaik4lr7qb85uk0geihr1vv4t5lecb7c3khm73sjf3qn67ja4m5qhq05jcrn7b99iqk3qlht6ahcmfo94cjfuinr35dprfdspjmamis4a3pjjuler5eb6433vl6cqsqaskdc2pqmmjbjf7bo83nvi1800mrtjdblneud7b95vhchipvn1jv4q8",
-      "deferred": "cage settings"
+      "solution": "412673895986125734375498126829354671541769382763812459157286943694537218238941567"
     }
   ]
 }

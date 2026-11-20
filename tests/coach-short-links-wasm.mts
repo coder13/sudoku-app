@@ -10,7 +10,7 @@ import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle
 import { isSharedPuzzleId, publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { variantPosition } from '../src/sudoku/variant-play.ts'
-import { variantRuleDescriptions } from '../src/sudoku/variants.ts'
+import { variantHouseMasks, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
@@ -22,6 +22,8 @@ useWasmWorker()
 type Fixture = { url: string; code: string; title: string; puzzle: VariantPuzzle; solution: string }
 const between: Fixture = JSON.parse(readFileSync(new URL('./fixtures/between-coach.json', import.meta.url), 'utf8')).examples[0]
 const renban: Fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-coach.json', import.meta.url), 'utf8')).examples[0]
+const mixedWhispers = (JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as Omit<Fixture, 'puzzle'>[])
+  .find(source => source.url.endsWith('/Cmdt'))!
 
 const entropySources: (Omit<Fixture, 'puzzle'> & { description: string })[] =
   JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8')).examples
@@ -368,6 +370,74 @@ test('a published legacy Coach code retains its Global Entropy rule through help
     const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
     assert.deepEqual(shared.game.variant, game.variant)
     assert.equal(shared.game.title, game.title)
+  } finally { sqlite.close() }
+})
+
+test('the published Cmdt short link preserves its full mixed puzzle, hints, Finder and walkthrough', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, title, solution } = mixedWhispers
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response(coachPage('Cmdt', code, title)))
+    : fetcher(path, init))
+  try {
+    const { game, grade } = await prepareImportedPuzzle(url)
+    assert.equal(game.title, title)
+    assert.equal(game.variant?.id, 'mixed')
+    assert.deepEqual(game.variant.puzzle, (await detectPuzzle(code)).variant?.puzzle)
+    assert.equal(game.variant.solution, solution)
+    assertVariantCompletion(game.variant.puzzle, solution)
+    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 3910])
+    const ranked = await puzzleHints(game)
+    assert.equal(ranked.choices.length, 10)
+    const selected = await puzzleHints(game, 'all', 'thermometer')
+    const actions = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.ok(actions.size > 10)
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count('thermometer'), actions.size) } finally { scan.close() }
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, solution)
+    let played = game
+    for (const step of path.steps) {
+      for (const action of step.actions) {
+        const candidate = 'place' in action ? action.place : action.eliminate
+        assert.equal(Number(solution[candidate.cell]) === candidate.digit, 'place' in action)
+      }
+      played = applyDeduction(played, step.actions, variantHouseMasks(game.variant.puzzle, valuesOf(played)))
+    }
+    assert.equal(valuesOf(played), solution)
+    const id = await publishSharedPuzzle(played)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.equal(shared.game.title, game.title)
+    assert.deepEqual(shared.game.variant, game.variant)
+  } finally { sqlite.close() }
+})
+
+test('published markings require exact colour-to-region membership', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const house = [0, 1, 2, 9, 10, 11, 18, 19, 20]
+  const marks = (cells: number[]) => Array.from({ length: 81 }, (_, cell) => cells.includes(cell) ? '0' : '').join(',')
+  const region = { type: 'region', segments: [{ cells: house }] }
+  const cases = {
+    Exact: { givenColours: marks(house) },
+    Partial: { givenColours: marks(house.slice(1)) },
+    Other: { givenColours: marks([...house.slice(1), 80]) },
+    Unknown: { givenColours: marks(house).replace('0', '1') },
+    Truncated: { givenColours: '0,0' },
+    Missing: { givenColours: marks(house), givenConstraints: [] },
+  } as const
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (!path.startsWith('https://sudoku.coach/')) return fetcher(path, init)
+    const id = path.split('/').at(-1)! as keyof typeof cases
+    const source = coachCode({ colours: ['blue'], givenConstraints: [region], ...cases[id] })
+    return Promise.resolve(new Response(coachPage(id, source, 'Colored region')))
+  })
+  try {
+    const exact = await detectPuzzle('https://sudoku.coach/en/s/Exact')
+    assert.deepEqual(exact.variant?.puzzle.rules, [{ type: 'extra-house', cells: house }])
+    for (const id of Object.keys(cases).filter(key => key !== 'Exact')) {
+      await assert.rejects(detectPuzzle(`https://sudoku.coach/en/s/${id}`), /unsupported authored markings/)
+    }
   } finally { sqlite.close() }
 })
 

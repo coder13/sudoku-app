@@ -11,6 +11,7 @@ import { describeHint, techniqueLabel } from '../src/sudoku/hints.ts'
 import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
 import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { assertLineHouseProof } from './helpers/line-house-truth.ts'
 import { isVariantId, variantDifficulties } from '../src/sudoku/variants.ts'
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
@@ -56,6 +57,26 @@ test('nonstandard minimum differences are printed on their lines and conflicts r
   const html = renderToStaticMarkup(createElement(Board, { variantPuzzle: puzzle, givens: puzzle.givens, values: values.join(''), errors: conflictsOf(values.join(''), puzzle) }))
   assert.match(html, /data-min-difference="4"/); assert.match(html, /class="variant-whispers-gap"[^>]*>≥4<\/text>/)
   for (const cell of [0, 10]) assert.match(html.match(new RegExp(`data-cell="${cell}" class="([^"]+)"`))![1], /\bconflict\b/)
+})
+
+test('the imported Cmdt board renders every region, diagonal, cage total and line family', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { url: string; code: string }[]
+  const source = examples.find(source => source.url.endsWith('/Cmdt'))!
+  const { variant, givens } = await detectPuzzle(source.code)
+  const board = createElement(Board, { variantPuzzle: variant?.puzzle, givens, values: givens })
+  const mobile = createElement(MobilePanelLayout, { puzzleId: 'coach-cmdt', rearranging: false, blocked: false,
+    onRearrangingChange() {}, withHint: false, panels: { puzzle: { title: 'Puzzle', content: board } } })
+  for (const node of [board, mobile]) {
+    const html = renderToStaticMarkup(node)
+    const expected: [string, number][] = [
+      ['variant-extra-region', 5], ['variant-diagonal', 2], ['variant-cage-total', 10],
+      ['variant-quadruple', 21], ['variant-thermometer', 18], ['variant-whispers', 16],
+    ]
+    for (const [clue, count] of expected) assert.equal(html.split(`class="${clue}"`).length - 1, count, clue)
+    assert.equal(html.split('data-min-difference="2"').length - 1, 16)
+    const overlap = html.match(/data-cell="4"[^>]*aria-label="([^"]+)"/)![1]
+    assert.match(overlap, /extra region 1.*extra region 2/i)
+  }
 })
 
 test('sharing a progressed Whispers puzzle retains its complete starting definition', async () => {
