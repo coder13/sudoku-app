@@ -158,7 +158,12 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
     const rules = game.sized?.rules ?? game.sizedRules ?? []
     const keys = [...new Set(rules.map(rule => JSON.stringify(orderedPuzzleFields(
       rule.type === 'renban' ? { type: rule.type, cells: [...rule.cells].sort((a, b) => a - b) }
-        : rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) } : rule,
+        : rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) }
+          : rule.type === 'row-column-sum' ? {
+            type: rule.type,
+            pairs: rule.pairs.map(([a, b]) => [Math.min(a, b), Math.max(a, b)]).sort(([a, b], [c, d]) => a - c || b - d),
+            ...(rule.requireUnmarked && { requireUnmarked: true }),
+          } : rule,
     ))))].sort()
     const geometry = sizedGridIdentity(game.grid)
     return `${geometry}:${game.givens}:${keys.join(',')}`

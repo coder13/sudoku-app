@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fn } from 'storybook/test'
 import { ImportPuzzle } from '../../src/components/ImportPuzzle'
+import diamonds from '../../tests/fixtures/sized-sudokupad-row-column-sum.json'
 import antiSum from '../../tests/fixtures/sized-sudokupad-anti-sum.json'
 import { starter } from '../support/fixtures'
 import { DialogStory } from '../support/frames'
@@ -52,5 +53,18 @@ export const JigsawAntiSumPreview: Story = {
     await expect(await canvas.findByRole('grid', { name: '5 × 5 puzzle preview' })).toBeVisible()
     await expect(canvas.getByText('Digits in cells that share an edge cannot add to 9.')).toBeVisible()
     await expect(canvas.getByText('Digits strictly increase from the bulb to the tip of each thermometer.')).toBeVisible()
+  },
+}
+
+export const JigsawDiamondPreview: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })
+    await userEvent.click(input)
+    await userEvent.paste(diamonds.url)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Preview puzzle' }))
+    const grid = await canvas.findByRole('grid', { name: '5 × 5 puzzle preview' })
+    await expect(grid).toBeVisible()
+    await expect(grid.querySelector('[data-cell="22"]')).toHaveAccessibleName(/sum diamond.*total 5/)
+    await expect(canvas.getByText(/At least one edge without a diamond/)).toBeVisible()
   },
 }

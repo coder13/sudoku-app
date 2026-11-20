@@ -26,12 +26,13 @@ const COACH_FIELDS = new Set([
 ])
 const FPUZZLES_BASE_FIELDS = ['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage']
 const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
-const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts'])
+const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts', 'rectangle'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
 const FP_JIGSAW_BASE = /^(?:normal|standard) irregular(?: ([57])\s*[×x]\s*\1)? sudoku rules apply(?:\.|: fill each row, column and region with the digits 1[-–]([57])\.)$/i
 const FP_JIGSAW_THERMOMETER = /^(?:Digits along a thermometer must strictly increase from the bulb to the end|Thermometers: Digits along a thermometer must increase starting at the bulb)\.$/i
 const FP_ANTI_SUM = /^Anti-Sum(?: \((\d{1,2})\))?: Digits in orthogonally (?:adjacent|connected) cells may not sum to (\d{1,2})\.$/i
 const FP_JIGSAW_DOTS = /^A white dot with a number in it implies the difference between two cells\. A black dot with a number in it implies the ratio relationship between two cells\.$/i
+const FP_ROW_COLUMN_SUM = /^Diamond-Sum: Digits in cells horizontally connected by a diamond sum to their row index\. Digits in cells vertically connected by a diamond sum to their column index\.(?: (Not all diamonds are given\.))?$/i
 const PLAIN_MINI_RULES = /^\s*(?:normal|standard) 4\s*[×x]\s*4 sudoku rules apply[.!]?\s*$/i
 
 export type ImportFormat = 'Sudoku Coach' | 'Sudoku Exchange' | 'SudokuPad' | 'f-puzzles' | 'Puzzle link' | 'HoDoKu' | 'Text grid'
@@ -555,6 +556,24 @@ function fpJigsawMetadata(data: Record<string, unknown>, hasAntiSum: boolean) {
     Array.isArray(cage.cells) && cage.cells.length === 1 && cage.cells[0] === 'R1C1')
 }
 
+function fpRowColumnSum(data: Record<string, unknown>, clauses: readonly string[], size: number): SizedConstraintRule | undefined {
+  const statements = clauses.map(clause => FP_ROW_COLUMN_SUM.exec(clause)).filter(match => match !== null)
+  if (statements.length === 0 && !hasData(data.rectangle)) return
+  if (statements.length !== 1 || data.rectangle !== undefined && !Array.isArray(data.rectangle)) {
+    throw new Error('This f-puzzles export has unsupported rectangles or diamond rules.')
+  }
+  const rectangles = Array.isArray(data.rectangle) ? data.rectangle : []
+  const pairs = rectangles.map(mark => {
+    if (!record(mark) || Object.keys(mark).length !== 7 || !Array.isArray(mark.cells) || mark.cells.length !== 2 ||
+      mark.width !== 0.25 || mark.height !== 0.25 || mark.angle !== 45 ||
+      mark.baseC !== '#000000' || mark.outlineC !== '#000000' || mark.fontC !== '#000000') {
+      throw new Error('This f-puzzles export has a rectangle that the app cannot read as a diamond.')
+    }
+    return [fpCellIndex(mark.cells[0], size), fpCellIndex(mark.cells[1], size)] as const
+  })
+  return { type: 'row-column-sum', pairs, ...(statements[0][1] && { requireUnmarked: true }) }
+}
+
 function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 5 | 7, labels: readonly unknown[], givens: string, format: ImportFormat): ImportedPuzzle {
   const regions: number[][] = Array.from({ length: size }, () => [])
   for (const [cell, label] of labels.entries()) {
@@ -595,6 +614,8 @@ function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 5 | 7, labels: 
   const [, ...clauses] = jigsawRuleClauses(data.ruleset)
   const antiSums = clauses.map(clause => antiSumFromClause(clause, size)).filter(sum => sum !== undefined)
   if (!fpJigsawMetadata(data, antiSums.length > 0)) throw new Error('This f-puzzles export includes unsupported XV rules or cages.')
+  const diamonds = fpRowColumnSum(data, clauses, size)
+  if (diamonds) rules.push(diamonds)
   for (const sum of new Set(antiSums)) rules.push({ type: 'anti-sum', sum })
   if (clauses.some(clause => FP_JIGSAW_THERMOMETER.test(clause)) && !rules.some(rule => rule.type === 'thermometer') ||
     clauses.some(clause => FP_JIGSAW_DOTS.test(clause)) && !rules.some(rule => rule.type === 'labeled-dots') ||
@@ -618,7 +639,7 @@ function knownJigsawRuleset(text: string, size: number) {
   const match = FP_JIGSAW_BASE.exec(base)
   const sizes = match?.slice(1).filter(value => value !== undefined)
   return !!sizes?.length && sizes.every(value => Number(value) === size) && clauses.every(clause =>
-    FP_JIGSAW_THERMOMETER.test(clause) || FP_JIGSAW_DOTS.test(clause) || antiSumFromClause(clause, size) !== undefined)
+    FP_JIGSAW_THERMOMETER.test(clause) || FP_JIGSAW_DOTS.test(clause) || FP_ROW_COLUMN_SUM.test(clause) || antiSumFromClause(clause, size) !== undefined)
 }
 
 function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): ImportedPuzzle {
