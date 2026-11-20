@@ -3226,6 +3226,13 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       inline-size: 100%;
       max-inline-size: min(100%, var(--board-frame-limit));
       margin-inline: auto;
+      min-inline-size: 0;
+    }
+    .standard-workspace-page .puzzle-flat:has(.board-frame:not(.has-outside-clues)) {
+      --puzzle-grid-inset: 0px;
+    }
+    .standard-workspace-page .puzzle-flat :is(.puzzle-metadata, .puzzle-actions, .puzzle-quick-actions) {
+      max-inline-size: 100%;
     }
     /* If dragging the input makes the board smaller, the header follows the grid. */
     .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle.puzzle-flat {
