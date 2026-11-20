@@ -41,3 +41,33 @@ test('number game progress reads old saves and saves both history stacks with th
     else Reflect.deleteProperty(globalThis, 'localStorage')
   }
 })
+
+test('generated history recovers unlisted boards and saves moves when IndexedDB is unavailable', async () => {
+  const storage = new MemoryStorage()
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true })
+  const { generatedNumberHistory, openGeneratedNumberPuzzle, saveGeneratedNumberProgress } =
+    await import('../src/number-puzzles/generated-storage.ts')
+  try {
+    const history = 'calcudoku.generated.v1'
+    const [first, orphan, next] = ['v1.YQ', 'v1.Yg', 'v1.Yw']
+    const orphanKey = `calcudoku.position.v1.${orphan}`
+    const saved = { ...noted, past: [[2, 0, 0]], future: [[2, 3, 0]] }
+    storage.setItem(history, JSON.stringify([first, first, 'invalid']))
+    storage.setItem(orphanKey, JSON.stringify(saved))
+
+    assert.deepEqual((await generatedNumberHistory('calcudoku')).map(({ id }) => id), [first, orphan])
+    assert.deepEqual(await openGeneratedNumberPuzzle('calcudoku', orphan), {
+      game: 'calcudoku', id: orphan, number: 2, progress: saved,
+    })
+    assert.equal((await openGeneratedNumberPuzzle('calcudoku', next)).number, 3)
+    assert.equal(await saveGeneratedNumberProgress('calcudoku', next, {
+      position: noted, past: [[2, 0, 0]], future: [[2, 3, 0]],
+    }), true)
+    assert.deepEqual((await openGeneratedNumberPuzzle('calcudoku', next)).progress, saved)
+    assert.deepEqual(storage.getItem(orphanKey), JSON.stringify(saved))
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+})
