@@ -145,6 +145,14 @@ export function MobilePanelLayout(props: Props) {
 
     const blockSize = (element: HTMLElement) => parseFloat(getComputedStyle(element).blockSize)
     const fitBoard = () => {
+      // The footer must remain as wide as the input card even after the grid shrinks.
+      const inputWidth = input.getBoundingClientRect().width
+      if (inputWidth) {
+        const value = `${Math.round(inputWidth)}px`
+        if (layout.style.getPropertyValue('--mobile-input-panel-width') !== value) {
+          layout.style.setProperty('--mobile-input-panel-width', value)
+        }
+      }
       const fitHint = layout.hasAttribute('data-fit-hint')
       const sideBySide = fitHint && getComputedStyle(workspace).display === 'grid'
       if (layout.hasAttribute('data-input-sized') && !sideBySide) return
@@ -172,7 +180,10 @@ export function MobilePanelLayout(props: Props) {
     for (const element of [page, puzzle, puzzle.querySelector('.puzzle-column'), input, hintPanel]) {
       if (element) observer.observe(element)
     }
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      layout.style.removeProperty('--mobile-input-panel-width')
+    }
   }, [order, props.inputTabCount, props.rearranging, props.withHint])
 
   function cancelHold() {
